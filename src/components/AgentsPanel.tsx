@@ -11,6 +11,7 @@ import { AgentConfig } from "@/types";
 
 export function AgentsPanel() {
   const config = useAppStore(state => state.config);
+  const loaded = useAppStore(state => state.loaded);
   const binaries = useAppStore(state => state.binaries);
   const detectBinaries = useAppStore(state => state.detectBinaries);
   const removeAgent = useAppStore(state => state.removeAgent);
@@ -58,7 +59,15 @@ export function AgentsPanel() {
                 
                 <div>
                   <span className="font-semibold">CLI: </span>
-                  {bin === undefined ? "Cargando..." : bin === null ? <span className="text-destructive font-medium">No detectado</span> : bin.path}
+                  {a.provider === "custom" ? (
+                    a.customCommand?.program || "No configurado"
+                  ) : !loaded ? (
+                    "Cargando..."
+                  ) : (!bin ? (
+                    <span className="text-destructive font-medium">No detectado</span>
+                  ) : (
+                    <span>{bin.path}{bin.version ? ` (${bin.version})` : ""}</span>
+                  ))}
                 </div>
               </div>
               
