@@ -175,7 +175,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       }
       
       if (input.agent.role === "planner") {
-        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch");
+        // Planners do not implement, but they do need git to check what the implementers left
+        // behind and to commit/push: only git, nothing else from the shell.
+        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)");
       }
 
       return {
