@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 
 /** "Segundo plano" (tray/notifications) and "Orquestación" (maxRounds, approvals, model auto-selection). */
-export function GeneralSettings() {
+export function GeneralSection() {
   const config = useAppStore(state => state.config);
   const updateConfig = useAppStore(state => state.updateConfig);
   const setMaxRounds = useAppStore(state => state.setMaxRounds);
