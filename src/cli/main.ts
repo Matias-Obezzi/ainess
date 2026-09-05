@@ -41,7 +41,7 @@ async function main() {
   }
 
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.log("Uso: ais [opciones] <prompt>");
+    console.log("ainess CLI (ais) — Uso: ais [opciones] <prompt>");
     console.log("  -a, --agent <nombre>   Agente a usar");
     console.log("  -w, --workspace <dir>  Directorio de trabajo (busca o crea proyecto)");
     console.log("  -p, --project <nombre> Proyecto a usar");
