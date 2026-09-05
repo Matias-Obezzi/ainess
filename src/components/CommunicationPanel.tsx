@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { useAppStore, selectProjectMessages } from "@/store";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useAppStore } from "@/store";
 import { MessageItem } from "./MessageItem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,15 @@ const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error"
 
 export function CommunicationPanel() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
-  const messages = useAppStore(state => selectProjectMessages(state, currentProjectId));
+  // Select the stable array and filter in useMemo: a selector that returns a fresh
+  // array on every call makes useSyncExternalStore re-render forever.
+  const allMessages = useAppStore(state => state.messages);
+  const messages = useMemo(
+    () => currentProjectId
+      ? allMessages.filter(m => m.projectId === currentProjectId || (!m.projectId && m.kind === "system"))
+      : [],
+    [allMessages, currentProjectId],
+  );
   const agents = useAppStore(state => state.config.agents);
   const clearMessages = useAppStore(state => state.clearMessages);
   
