@@ -27,7 +27,7 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
       <Header />
-      <Island position="top" />
+      <Island position="top" idle={false} />
       <Toaster position="bottom-right" richColors />
       
       <main className="flex-1 overflow-hidden p-4">

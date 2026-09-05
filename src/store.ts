@@ -200,8 +200,10 @@ async function runInit(): Promise<void> {
       await get().saveConfig();
     }
     
-    await get().detectBinaries();
-    await orchestrator.attachListeners();
+    if (isTauri()) {
+      await get().detectBinaries();
+      await orchestrator.attachListeners();
+    }
     
     set({ loaded: true });
 }
