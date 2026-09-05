@@ -449,7 +449,9 @@ Cada task debe ser autocontenida (el agente no ve esta conversación).${extraIns
 
 export function parseDelegations(text: string): Delegation[] {
   const delegations: Delegation[] = [];
-  const regex = /\`\`\`delegate\s*\n([\s\S]*?)\`\`\`/g;
+  // The closing fence must sit at the start of a line: a task's text often carries its own
+  // ``` blocks inside the JSON string, and a lazy match would cut the JSON there.
+  const regex = /\`\`\`delegate[ \t]*\n([\s\S]*?)\n[ \t]*\`\`\`[ \t]*(?=\n|$)/g;
   let match;
   while ((match = regex.exec(text)) !== null) {
     try {

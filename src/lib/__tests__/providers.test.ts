@@ -161,3 +161,14 @@ describe("copilot provider", () => {
     expect(yolo.args).toContain("--yolo");
   });
 });
+
+describe("parseDelegations with fences inside the task", () => {
+  it("does not stop at a ``` that lives inside the JSON string", () => {
+    // JSON.stringify keeps the fence on one line: the task's own ``` and newlines are escaped.
+    const block = JSON.stringify({ tasks: [{ agent: "Copilot", task: ["Repo: C:\\x. Corré:", "```", "npm test", "```", "y reportá."].join("\n") }] });
+    const text = ["Delego.", "", "```delegate", block, "```", "", "Sigo con ```ts", "const a = 1;", "```"].join("\n");
+    const parsed = parseDelegations(text);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].task).toContain("npm test");
+  });
+});

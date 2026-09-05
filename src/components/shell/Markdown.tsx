@@ -84,8 +84,15 @@ const components: Components = {
     const lang = /language-([\w-]+)/.exec(childProps?.className ?? "")?.[1];
     const text = nodeText(childProps?.children ?? children);
     if (lang === "delegate") {
-      const tasks = parseDelegations("```delegate\n" + text + "\n```");
+      const tasks = parseDelegations("```delegate\n" + text.trimEnd() + "\n```");
       if (tasks.length > 0) return <DelegationCard tasks={tasks} />;
+      // Even when the JSON is broken, raw JSON is never what the user wants to read.
+      return (
+        <div className="my-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs">
+          <span className="font-medium text-destructive">Delegación con formato inválido</span>
+          <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground">{text.trim()}</pre>
+        </div>
+      );
     }
     return (
       <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
