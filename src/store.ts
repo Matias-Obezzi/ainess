@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 
@@ -7,14 +7,18 @@ export interface AppState {
   loaded: boolean;
   config: AppConfig;
   binaries: Binaries;
-  runtime: Record<string, AgentRuntime>;
+  runtime: Record<string, Record<string, AgentRuntime>>;
   runs: Record<string, Run>;
   messages: CommMessage[];
-  activeTaskRunId: string | null;
+  activeTaskRunId: Record<string, string | null>;
+  currentProjectId: string | null;
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
-  setWorkspaceDir(dir: string | null, persist?: boolean): void;
+  addProject(project: Omit<Project, "id" | "createdAt">): void;
+  updateProject(id: string, patch: Partial<Project>): void;
+  removeProject(id: string): void;
+  setCurrentProject(id: string | null): void;
   setMaxRounds(n: number): void;
   upsertAgent(agent: AgentConfig): void;
   removeAgent(agentId: string): void;
@@ -25,12 +29,12 @@ export interface AppState {
   setSharedContext(text: string): void;
   detectBinaries(): Promise<void>;
 
-  submitPrompt(text: string, targetAgentId: string): Promise<void>;
-  instructAgent(agentId: string, text: string): Promise<void>;
-  stopAgent(agentId: string): Promise<void>;
-  stopAll(): Promise<void>;
-  resetSession(agentId: string): void;
-  clearMessages(): void;
+  submitPrompt(text: string, targetAgentId: string, projectId: string): Promise<void>;
+  instructAgent(agentId: string, text: string, projectId: string): Promise<void>;
+  stopAgent(agentId: string, projectId: string): Promise<void>;
+  stopAll(projectId?: string): Promise<void>;
+  resetSession(agentId: string, projectId: string): void;
+  clearMessages(projectId?: string): void;
 }
 
 function generateSeedConfig(): AppConfig {
@@ -39,8 +43,9 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 2,
-    workspaceDir: null,
+    version: 3,
+    projects: [],
+    lastProjectId: null,
     maxRounds: 6,
     skills: [],
     mcpServers: [],
@@ -91,12 +96,13 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 2, agents: [], workspaceDir: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "" },
+  config: { version: 3, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "" },
   binaries: {},
   runtime: {},
   runs: {},
   messages: [],
-  activeTaskRunId: null,
+  activeTaskRunId: {},
+  currentProjectId: null,
 
   init: () => {
     // Idempotent: StrictMode mounts twice and both calls must share one initialization.
@@ -108,9 +114,52 @@ export const useAppStore = create<AppState>()((set, get) => ({
     await getTransport().saveConfig(get().config);
   },
 
-  setWorkspaceDir: (dir, persist = true) => {
-    set((state) => ({ config: { ...state.config, workspaceDir: dir } }));
-    if (persist) debouncedSave();
+  addProject: (project) => {
+    set((state) => {
+      const id = crypto.randomUUID();
+      const newProject: Project = { ...project, id, createdAt: Date.now() };
+      return { config: { ...state.config, projects: [...state.config.projects, newProject] } };
+    });
+    debouncedSave();
+  },
+
+  updateProject: (id, patch) => {
+    set((state) => {
+      const newProjects = state.config.projects.map(p => p.id === id ? { ...p, ...patch } : p);
+      return { config: { ...state.config, projects: newProjects } };
+    });
+    debouncedSave();
+  },
+
+  removeProject: (id) => {
+    // stopAll(id) is an async action, so we do it here, but zustand set is sync.
+    // The plan says "mata sus runs primero con stopAll(projectId)". 
+    // Wait, the orchestrator might be async, so we just call it.
+    orchestrator.stopAll(id);
+    set((state) => {
+      const newProjects = state.config.projects.filter(p => p.id !== id);
+      const newRuntime = { ...state.runtime };
+      delete newRuntime[id];
+      const newActiveTask = { ...state.activeTaskRunId };
+      delete newActiveTask[id];
+      // clear messages for project
+      const newMessages = state.messages.filter(m => m.projectId !== id);
+      const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
+      return { 
+        config: { ...state.config, projects: newProjects }, 
+        runtime: newRuntime, 
+        activeTaskRunId: newActiveTask,
+        messages: newMessages,
+        runs: newRuns,
+        currentProjectId: state.currentProjectId === id ? null : state.currentProjectId
+      };
+    });
+    debouncedSave();
+  },
+
+  setCurrentProject: (id) => {
+    set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
+    debouncedSave();
   },
 
   setMaxRounds: (n) => {
@@ -128,8 +177,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         newAgents.push(agent);
       }
       const newRuntime = { ...state.runtime };
-      if (!newRuntime[agent.id]) {
-        newRuntime[agent.id] = { agentId: agent.id, status: "idle", queuedInstructions: [] };
+      for (const p of state.config.projects) {
+        if (!newRuntime[p.id]) newRuntime[p.id] = {};
+        if (!newRuntime[p.id][agent.id]) {
+          newRuntime[p.id][agent.id] = { agentId: agent.id, status: "idle", queuedInstructions: [] };
+        }
       }
       return { config: { ...state.config, agents: newAgents }, runtime: newRuntime };
     });
@@ -159,7 +211,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
         return s;
       });
       const newRuntime = { ...state.runtime };
-      delete newRuntime[agentId];
+      for (const pId of Object.keys(newRuntime)) {
+        newRuntime[pId] = { ...newRuntime[pId] };
+        delete newRuntime[pId][agentId];
+      }
       return { config: { ...state.config, agents: newAgents, skills: newSkills, mcpServers: newMcp }, runtime: newRuntime };
     });
     debouncedSave();
@@ -219,31 +274,45 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ binaries });
   },
 
-  submitPrompt: async (text, targetAgentId) => {
-    await orchestrator.submitPrompt(text, targetAgentId);
+  submitPrompt: async (text, targetAgentId, projectId) => {
+    await orchestrator.submitPrompt(text, targetAgentId, projectId);
   },
 
-  instructAgent: async (agentId, text) => {
-    await orchestrator.instructAgent(agentId, text);
+  instructAgent: async (agentId, text, projectId) => {
+    await orchestrator.instructAgent(agentId, text, projectId);
   },
 
-  stopAgent: async (agentId) => {
-    await orchestrator.stopAgent(agentId);
+  stopAgent: async (agentId, projectId) => {
+    await orchestrator.stopAgent(agentId, projectId);
   },
 
-  stopAll: async () => {
-    await orchestrator.stopAll();
+  stopAll: async (projectId) => {
+    await orchestrator.stopAll(projectId);
   },
 
-  resetSession: (agentId) => {
+  resetSession: (agentId, projectId) => {
     set((state) => {
-      const r = state.runtime[agentId];
+      if (!state.runtime[projectId]) return state;
+      const r = state.runtime[projectId][agentId];
       if (!r) return state;
-      return { runtime: { ...state.runtime, [agentId]: { ...r, sessionId: undefined } } };
+      return { 
+        runtime: { 
+          ...state.runtime, 
+          [projectId]: { 
+            ...state.runtime[projectId], 
+            [agentId]: { ...r, sessionId: undefined } 
+          } 
+        } 
+      };
     });
   },
 
-  clearMessages: () => set({ messages: [] })
+  clearMessages: (projectId) => set((state) => {
+    if (projectId) {
+      return { messages: state.messages.filter(m => m.projectId !== projectId) };
+    }
+    return { messages: [] };
+  })
 }));
 
 async function runInit(): Promise<void> {
@@ -255,24 +324,42 @@ async function runInit(): Promise<void> {
       isSeed = true;
     }
     
-    // Migration to version 2
-    if ((config.version as number) === 1 || !config.skills) {
+    // Migration to version 3
+    if ((config.version as number) < 3) {
+      const oldConfig = config as any;
+      let projects: Project[] = [];
+      let lastProjectId = null;
+      if (oldConfig.workspaceDir) {
+        lastProjectId = crypto.randomUUID();
+        projects.push({
+          id: lastProjectId,
+          name: "Principal",
+          workspaceDir: oldConfig.workspaceDir,
+          createdAt: Date.now()
+        });
+      }
       config = {
         ...config,
-        version: 2,
+        version: 3,
+        projects,
+        lastProjectId,
         skills: config.skills || [],
         mcpServers: config.mcpServers || [],
         sharedContext: config.sharedContext || ""
       } as AppConfig;
+      delete (config as any).workspaceDir;
       isSeed = true; // force save
     }
     
-    const runtime: Record<string, AgentRuntime> = {};
-    for (const a of config.agents) {
-      runtime[a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
+    const runtime: Record<string, Record<string, AgentRuntime>> = {};
+    for (const p of config.projects) {
+      runtime[p.id] = {};
+      for (const a of config.agents) {
+        runtime[p.id][a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
+      }
     }
 
-    set({ config, runtime });
+    set({ config, runtime, currentProjectId: config.lastProjectId });
     
     if (isSeed) {
       await get().saveConfig();
@@ -302,6 +389,42 @@ export function selectSkillsFor(state: AppState, agentId: string): Skill[] {
 
 export function selectMcpFor(state: AppState, agentId: string): McpServer[] {
   return state.config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agentId));
+}
+
+export function selectRuntime(state: AppState, projectId: string | null | undefined, agentId: string): AgentRuntime {
+  if (!projectId) return { agentId, status: "idle", queuedInstructions: [] };
+  const projectRuntime = state.runtime[projectId];
+  if (!projectRuntime) return { agentId, status: "idle", queuedInstructions: [] };
+  return projectRuntime[agentId] || { agentId, status: "idle", queuedInstructions: [] };
+}
+
+export function selectProjectMessages(state: AppState, projectId: string | null | undefined): CommMessage[] {
+  if (!projectId) return [];
+  return state.messages.filter(m => m.projectId === projectId || (!m.projectId && m.kind === "system"));
+}
+
+export function selectRunningCount(state: AppState, projectId?: string): number {
+  let count = 0;
+  if (projectId) {
+    const projectRuntime = state.runtime[projectId];
+    if (!projectRuntime) return 0;
+    for (const r of Object.values(projectRuntime)) {
+      if (r.status === "working" || r.status === "waiting") count++;
+    }
+    return count;
+  }
+  // Count across all projects
+  for (const pr of Object.values(state.runtime)) {
+    for (const r of Object.values(pr)) {
+      if (r.status === "working" || r.status === "waiting") count++;
+    }
+  }
+  return count;
+}
+
+export function selectProject(state: AppState, id: string | null | undefined): Project | undefined {
+  if (!id) return undefined;
+  return state.config.projects.find(p => p.id === id);
 }
 
 // Dev-only hook so the app can be driven from a debugger / e2e script.

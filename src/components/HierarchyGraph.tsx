@@ -10,6 +10,7 @@ const nodeTypes = { agent: AgentNode };
 export function HierarchyGraph() {
   const config = useAppStore(state => state.config);
   const runtime = useAppStore(state => state.runtime);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
 
   const { nodes, edges } = useMemo(() => {
     const agents = config.agents;
@@ -66,7 +67,7 @@ export function HierarchyGraph() {
         });
 
         if (a.parentId) {
-          const status = runtime[a.id]?.status;
+          const status = currentProjectId ? runtime[currentProjectId]?.[a.id]?.status : "idle";
           flowEdges.push({
             id: `${a.parentId}-${a.id}`,
             source: a.parentId,
@@ -79,7 +80,7 @@ export function HierarchyGraph() {
     }
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [config.agents, runtime]);
+  }, [config.agents, runtime, currentProjectId]);
 
   return (
     <div className="w-full h-full">

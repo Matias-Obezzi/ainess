@@ -15,7 +15,11 @@ import { RunDetailDialog } from "./RunDetailDialog";
 
 export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
   const { agent } = data;
-  const runtime = useAppStore(state => state.runtime[agent.id]);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const runtime = useAppStore(state => {
+    if (!currentProjectId) return undefined;
+    return state.runtime[currentProjectId]?.[agent.id];
+  });
   const binaries = useAppStore(state => state.binaries);
   const stopAgent = useAppStore(state => state.stopAgent);
   const runs = useAppStore(state => state.runs);
@@ -27,7 +31,7 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
   const binaryInfo = binaries[agent.provider];
 
   const agentRuns = Object.values(runs)
-    .filter(r => r.agentId === agent.id)
+    .filter(r => r.agentId === agent.id && r.projectId === currentProjectId)
     .sort((a, b) => b.startedAt - a.startedAt);
   const lastRunId = agentRuns.length > 0 ? agentRuns[0].id : null;
 
@@ -62,6 +66,20 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
           <span>{statusLabel[status] || status}</span>
         </div>
 
+        {(() => {
+          const store = useAppStore.getState();
+          const otherProjects = Object.entries(store.runtime).filter(([pId, pRuntime]) => pId !== currentProjectId && (pRuntime[agent.id]?.status === "working" || pRuntime[agent.id]?.status === "waiting"));
+          if (otherProjects.length > 0) {
+            const projectNames = otherProjects.map(([pId]) => store.config.projects.find(p => p.id === pId)?.name).filter(Boolean);
+            return (
+              <Badge variant="secondary" className="text-[9px] mt-1 self-start bg-orange-100 text-orange-800 border-orange-200">
+                ocupado en: {projectNames.join(", ")}
+              </Badge>
+            );
+          }
+          return null;
+        })()}
+
         {runtime?.currentTask && (
           <div className="text-xs text-muted-foreground line-clamp-2 mt-1" title={runtime.currentTask}>
             {runtime.currentTask}
@@ -69,8 +87,8 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
         )}
 
         <div className="flex gap-2 mt-2 flex-wrap">
-          {(status === "working" || status === "waiting") && (
-            <Button size="sm" variant="destructive" className="h-6 text-xs px-2" onClick={() => void stopAgent(agent.id)}>
+          {(status === "working" || status === "waiting") && currentProjectId && (
+            <Button size="sm" variant="destructive" className="h-6 text-xs px-2" onClick={() => void stopAgent(agent.id, currentProjectId)}>
               Detener
             </Button>
           )}

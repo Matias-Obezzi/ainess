@@ -62,10 +62,19 @@ export interface McpServer {
   enabledFor: "all" | string[];
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  workspaceDir: string;
+  color?: string;
+  createdAt: number;
+}
+
 export interface AppConfig {
-  version: 2;
+  version: 3;
   agents: AgentConfig[];
-  workspaceDir: string | null;
+  projects: Project[];
+  lastProjectId: string | null;
   /** Max planner continuation rounds per user task. */
   maxRounds: number;
   skills: Skill[];
@@ -88,6 +97,7 @@ export type RunStatus = "running" | "done" | "error" | "killed";
 
 export interface Run {
   id: string;
+  projectId: string;
   agentId: string;
   parentRunId: string | null;
   /** Id of the root run of the user task this run belongs to (itself for a root run). */
@@ -121,6 +131,7 @@ export interface CommMessage {
   id: string;
   ts: number;
   runId?: string;
+  projectId?: string;
   fromAgentId: string | "user";
   toAgentId?: string | "user";
   kind: MessageKind;

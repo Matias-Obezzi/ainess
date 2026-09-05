@@ -1,4 +1,4 @@
-﻿import { parseArgs } from "node:util";
+import { parseArgs } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { useAppStore, selectRoots } from "@/store";
@@ -35,15 +35,16 @@ async function main() {
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log("Uso: ais [opciones] <prompt>");
     console.log("  -a, --agent <nombre>   Agente a usar");
-    console.log("  -w, --workspace <dir>  Directorio de trabajo");
+    console.log("  -w, --workspace <dir>  Directorio de trabajo (busca o crea proyecto)");
+    console.log("  -p, --project <nombre> Proyecto a usar");
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, context, run");
+    console.log("Subcomandos: agents, skills, mcp, context, projects, run");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "context"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "context", "projects"]);
   const first = args[0];
 
   if (!first.startsWith("-") && !KNOWN.has(first)) {
@@ -288,6 +289,33 @@ async function main() {
     }
   }
 
+  if (first === "projects") {
+    const sub = args[1] || "list";
+    if (sub === "list") {
+      print(store.config.projects, store.config.projects.map(p => `- ${p.name}: ${p.workspaceDir}`).join("\n"));
+      process.exit(0);
+    } else if (sub === "add") {
+      const name = args[2];
+      if (!name || name.startsWith("-")) error("Falta nombre");
+      const dirIdx = args.indexOf("--dir");
+      if (dirIdx === -1 || !args[dirIdx+1]) error("Falta --dir <carpeta>");
+      const workspaceDir = path.resolve(args[dirIdx+1]);
+      if (store.config.projects.find(p => p.name.toLowerCase() === name.toLowerCase())) error("Proyecto ya existe");
+      store.addProject({ name, workspaceDir });
+      await store.saveConfig();
+      print({ name, workspaceDir }, `Proyecto agregado: ${name}`);
+      process.exit(0);
+    } else if (sub === "remove") {
+      const name = args[2];
+      const p = store.config.projects.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (!p) error("No encontrado");
+      store.removeProject(p.id);
+      await store.saveConfig();
+      print({ id: p.id }, "Proyecto eliminado");
+      process.exit(0);
+    }
+  }
+
   if (first === "context") {
     const sub = args[1] || "show";
     if (sub === "show") {
@@ -318,6 +346,7 @@ async function main() {
     options: {
       agent: { type: "string", short: "a" },
       workspace: { type: "string", short: "w" },
+      project: { type: "string", short: "p" },
       json: { type: "boolean" },
       quiet: { type: "boolean", short: "q" },
       "max-rounds": { type: "string" },
@@ -349,8 +378,22 @@ async function main() {
     if (!agentId) error("No hay agentes configurados.");
   }
 
-  if (values.workspace) store.setWorkspaceDir(path.resolve(String(values.workspace)), false);
-  else store.setWorkspaceDir(process.cwd(), false);
+  let projectId = "";
+  if (values.project) {
+    const p = store.config.projects.find(x => x.name.toLowerCase() === String(values.project).toLowerCase());
+    if (!p) error(`Proyecto "${values.project}" no encontrado.`);
+    projectId = p.id;
+  } else {
+    let targetDir = values.workspace ? path.resolve(String(values.workspace)) : process.cwd();
+    let p = store.config.projects.find(x => path.resolve(x.workspaceDir) === targetDir);
+    if (!p) {
+      const pName = path.basename(targetDir) || "Proyecto";
+      store.addProject({ name: pName, workspaceDir: targetDir });
+      p = useAppStore.getState().config.projects.find(x => path.resolve(x.workspaceDir) === targetDir);
+    }
+    projectId = p!.id;
+  }
+  store.setCurrentProject(projectId);
 
   if (values["max-rounds"]) store.setMaxRounds(parseInt(String(values["max-rounds"]), 10));
 
@@ -359,6 +402,7 @@ async function main() {
   useAppStore.subscribe((state, prevState) => {
     if (state.messages.length > prevState.messages.length || state.messages !== prevState.messages) {
       for (const msg of state.messages) {
+        if (msg.projectId && msg.projectId !== projectId) continue;
         if (!prevState.messages.find(m => m.id === msg.id) || msg.kind === "text") {
           const prevLen = printedLengths.get(msg.id) || 0;
           if (msg.text.length > prevLen) {
@@ -398,10 +442,10 @@ async function main() {
       }
     }
 
-    if (prevState.activeTaskRunId !== null && state.activeTaskRunId === null) {
+    if (prevState.activeTaskRunId[projectId] && !state.activeTaskRunId[projectId]) {
       if (!values.json) process.stdout.write("\n");
-      const errs = state.messages.find(m => m.kind === "error" && m.text.includes("No se encontró el CLI"));
-      const isError = errs || state.runs[prevState.activeTaskRunId]?.status === "error";
+      const errs = state.messages.find(m => m.projectId === projectId && m.kind === "error" && m.text.includes("No se encontró el CLI"));
+      const isError = errs || state.runs[prevState.activeTaskRunId[projectId] as string]?.status === "error";
       process.exit(isError ? 1 : 0);
     }
   });
@@ -415,7 +459,7 @@ async function main() {
   });
   process.on("exit", () => killAllSync());
 
-  await useAppStore.getState().submitPrompt(prompt, agentId);
+  await useAppStore.getState().submitPrompt(prompt, agentId, projectId);
 }
 
 main().catch(e => {

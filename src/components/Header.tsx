@@ -1,31 +1,22 @@
-import { useAppStore } from "@/store";
+import { useAppStore, selectRunningCount } from "@/store";
 import { Button } from "@/components/ui/button";
-import { open } from "@tauri-apps/plugin-dialog";
-import { toast } from "@/components/ui/toast";
-import { isTauri } from "@/lib/tauri";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
+import { useState } from "react";
+import { ProjectDialog } from "./ProjectDialog";
+import { Folder } from "lucide-react";
 
 export function Header() {
   const config = useAppStore(state => state.config);
-  const setWorkspaceDir = useAppStore(state => state.setWorkspaceDir);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const setCurrentProject = useAppStore(state => state.setCurrentProject);
   const stopAll = useAppStore(state => state.stopAll);
-  const runs = useAppStore(state => state.runs);
+  
+  const currentRunningCount = selectRunningCount(useAppStore.getState(), currentProjectId || undefined);
+  const totalRunningCount = selectRunningCount(useAppStore.getState());
+  const otherRunningCount = totalRunningCount - currentRunningCount;
 
-  const runningCount = Object.values(runs).filter(r => r.status === "running").length;
-
-  const handleOpenWorkspace = async () => {
-    if (!isTauri()) {
-      toast.error("No disponible en el navegador");
-      return;
-    }
-    try {
-      const selected = await open({ directory: true, multiple: false });
-      if (typeof selected === "string") {
-        setWorkspaceDir(selected);
-      }
-    } catch (e) {
-      toast.error("Error al abrir diálogo");
-    }
-  };
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
@@ -35,22 +26,62 @@ export function Header() {
       </div>
       
       <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={handleOpenWorkspace}>
-          {config.workspaceDir ?? "Elegir workspace…"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={currentProjectId || "none"} onValueChange={(val) => {
+            if (val === "new") {
+              setProjectDialogOpen(true);
+            } else {
+              setCurrentProject(val === "none" ? null : val);
+            }
+          }}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Seleccionar proyecto" />
+            </SelectTrigger>
+            <SelectContent>
+              {config.projects.length === 0 && <SelectItem value="none" disabled>Sin proyectos</SelectItem>}
+              {config.projects.map(p => (
+                <SelectItem key={p.id} value={p.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || "#4f8cff" }} />
+                    {p.name}
+                  </div>
+                </SelectItem>
+              ))}
+              <SelectSeparator />
+              <SelectItem value="new">
+                <div className="flex items-center gap-2 text-primary">
+                  <Folder className="w-4 h-4" />
+                  Nuevo proyecto...
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {otherRunningCount > 0 && (
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+              {otherRunningCount} en otros proyectos
+            </Badge>
+          )}
+        </div>
         
         <div className="text-sm">
-          {runningCount} trabajando
+          {currentRunningCount} trabajando
         </div>
         
         <Button 
           variant="destructive" 
-          disabled={runningCount === 0} 
-          onClick={() => void stopAll()}
+          disabled={currentRunningCount === 0} 
+          onClick={(e) => {
+            if (e.shiftKey) stopAll();
+            else stopAll(currentProjectId || undefined);
+          }}
+          title="Click: Detener actual. Shift+Click: Detener todos los proyectos."
         >
-          Detener todo
+          Detener
         </Button>
       </div>
+
+      <ProjectDialog isOpen={projectDialogOpen} onOpenChange={setProjectDialogOpen} />
     </header>
   );
 }

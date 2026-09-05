@@ -14,10 +14,11 @@ interface Props {
 export function InstructDialog({ agentId, open, onOpenChange, isWorking }: Props) {
   const [text, setText] = useState("");
   const instructAgent = useAppStore(state => state.instructAgent);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
 
   const handleSend = () => {
-    if (!text.trim()) return;
-    void instructAgent(agentId, text);
+    if (!text.trim() || !currentProjectId) return;
+    void instructAgent(agentId, text, currentProjectId);
     setText("");
     onOpenChange(false);
   };

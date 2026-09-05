@@ -18,7 +18,7 @@ function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
   }));
 }
 
-function appendCommText(agentId: string, runId: string, delta: string) {
+function appendCommText(agentId: string, runId: string, projectId: string, delta: string) {
   useAppStore.setState(state => {
     const msgId = `text-${runId}`;
     const idx = state.messages.findIndex(m => m.id === msgId);
@@ -30,21 +30,23 @@ function appendCommText(agentId: string, runId: string, delta: string) {
       return {
         messages: [
           ...state.messages,
-          { id: msgId, ts: Date.now(), runId, fromAgentId: agentId, kind: "text", text: delta }
+          { id: msgId, ts: Date.now(), runId, projectId, fromAgentId: agentId, kind: "text", text: delta }
         ]
       };
     }
   });
 }
 
-function startRun(opts: { agentId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string }): string | undefined {
+function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
-  if (!agent) return undefined;
+  const project = store.config.projects.find(p => p.id === opts.projectId);
+  if (!agent || !project) return undefined;
 
   const runId = crypto.randomUUID();
   const run: Run = {
     id: runId,
+    projectId: opts.projectId,
     agentId: opts.agentId,
     parentRunId: opts.parentRunId,
     rootRunId: opts.rootRunId ?? runId,
@@ -59,6 +61,7 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
 
   useAppStore.setState(state => {
     const parentRun = opts.parentRunId ? state.runs[opts.parentRunId] : undefined;
+    const projectRuntime = state.runtime[opts.projectId] || {};
     return {
       runs: {
         ...state.runs,
@@ -67,11 +70,14 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
       },
       runtime: {
         ...state.runtime,
-        [opts.agentId]: {
-          ...state.runtime[opts.agentId],
-          status: "working",
-          currentRunId: runId,
-          currentTask: opts.prompt
+        [opts.projectId]: {
+          ...projectRuntime,
+          [opts.agentId]: {
+            ...projectRuntime[opts.agentId],
+            status: "working",
+            currentRunId: runId,
+            currentTask: opts.prompt
+          }
         }
       }
     };
@@ -85,11 +91,20 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
 
   if (!binary || !binary.path) {
     const err = `No se encontró el CLI de ${provider.label}. Instalalo o configurá un comando custom.`;
-    useAppStore.setState(state => ({
-      runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: err, endedAt: Date.now() } },
-      runtime: { ...state.runtime, [opts.agentId]: { ...state.runtime[opts.agentId], status: "error", lastError: err, currentRunId: undefined } }
-    }));
-    addMessage({ fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: err, runId });
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[opts.projectId] || {};
+      return {
+        runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: err, endedAt: Date.now() } },
+        runtime: { 
+          ...state.runtime, 
+          [opts.projectId]: { 
+            ...pRuntime, 
+            [opts.agentId]: { ...pRuntime[opts.agentId], status: "error", lastError: err, currentRunId: undefined } 
+          } 
+        }
+      };
+    });
+    addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: err, runId });
     setTimeout(() => onRunFinished(runId), 0);
     return runId;
   }
@@ -98,7 +113,7 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
   const systemPrompt = buildSystemPrompt(agent, children, { skills, sharedContext });
-  const sessionId = opts.resume ? store.runtime[opts.agentId]?.sessionId : undefined;
+  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
   const mcpServers = selectMcpFor(store, agent.id);
 
@@ -121,7 +136,7 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
-      cwd: store.config.workspaceDir ?? undefined,
+      cwd: project.workspaceDir,
       binaryPath: binary.path,
       mcpConfigPath
     });
@@ -130,11 +145,20 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
   };
 
   doSpawn().catch(err => {
-    useAppStore.setState(state => ({
-      runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: String(err), endedAt: Date.now() } },
-      runtime: { ...state.runtime, [opts.agentId]: { ...state.runtime[opts.agentId], status: "error", lastError: String(err), currentRunId: undefined } }
-    }));
-    addMessage({ fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: String(err), runId });
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[opts.projectId] || {};
+      return {
+        runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: String(err), endedAt: Date.now() } },
+        runtime: { 
+          ...state.runtime, 
+          [opts.projectId]: { 
+            ...pRuntime, 
+            [opts.agentId]: { ...pRuntime[opts.agentId], status: "error", lastError: String(err), currentRunId: undefined } 
+          } 
+        }
+      };
+    });
+    addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: String(err), runId });
     onRunFinished(runId);
   });
 
@@ -167,24 +191,28 @@ function handleOutput(e: RunOutputEvent) {
 
   for (const ev of events) {
     if (ev.type === "session") {
-      useAppStore.setState(state => ({
-        runtime: { ...state.runtime, [run.agentId]: { ...state.runtime[run.agentId], sessionId: ev.sessionId } }
-      }));
+      useAppStore.setState(state => {
+        const pRuntime = state.runtime[run.projectId] || {};
+        return {
+          runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId } } }
+        };
+      });
     } else if (ev.type === "text") {
-      appendCommText(run.agentId, e.runId, ev.text);
+      appendCommText(run.agentId, e.runId, run.projectId, ev.text);
     } else if (ev.type === "tool") {
       const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
-      addMessage({ fromAgentId: run.agentId, kind: "tool", text: text.substring(0, 300), runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "tool", text: text.substring(0, 300), runId: e.runId });
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
+        const pRuntime = state.runtime[run.projectId] || {};
         return {
           runs: { ...state.runs, [e.runId]: { ...r, output: ev.text } },
-          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.agentId]: { ...state.runtime[run.agentId], sessionId: ev.sessionId } } } : {})
+          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId } } } } : {})
         };
       });
     } else if (ev.type === "error") {
-      addMessage({ fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
     }
   }
 }
@@ -235,41 +263,47 @@ function onRunFinished(runId: string) {
         for (const task of delegations) {
           const childAgent = children.find(c => c.name.toLowerCase() === task.agent.toLowerCase() || c.id === task.agent);
           if (childAgent) {
-            addMessage({ fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: task.task, runId });
-            startRun({ agentId: childAgent.id, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId });
+            addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: task.task, runId });
+            startRun({ agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId });
           } else {
-            addMessage({ fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
+            addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
           }
         }
       }
     }
   }
 
-  useAppStore.setState(state => ({
-    runtime: {
-      ...state.runtime,
-      [agent.id]: {
-        ...state.runtime[agent.id],
-        status: agentStatus,
-        currentRunId: undefined,
-        currentTask: undefined
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[run.projectId] || {};
+    return {
+      runtime: {
+        ...state.runtime,
+        [run.projectId]: {
+          ...pRuntime,
+          [agent.id]: {
+            ...pRuntime[agent.id],
+            status: agentStatus,
+            currentRunId: undefined,
+            currentTask: undefined
+          }
+        }
       }
-    }
-  }));
+    };
+  });
 
   if (!waitingForChildren) {
     if (!run.parentRunId) {
-      addMessage({ fromAgentId: agent.id, toAgentId: "user", kind: "result", text: run.output, runId });
+      addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: "user", kind: "result", text: run.output, runId });
       // Only runs belonging to the current task clear it; direct instructions don't.
-      if (useAppStore.getState().activeTaskRunId === run.rootRunId) {
-        useAppStore.setState({ activeTaskRunId: null });
+      if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {
+        useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
       }
     } else {
       maybeContinueParent(run.parentRunId);
     }
   }
 
-  processQueuedInstructions(agent.id);
+  processQueuedInstructions(agent.id, run.projectId);
 }
 
 function maybeContinueParent(parentRunId: string) {
@@ -298,6 +332,7 @@ function maybeContinueParent(parentRunId: string) {
     const cancelled = cancelledRuns.delete(parentRunId);
     if (cancelled || parentRun.round >= store.config.maxRounds) {
       addMessage({
+        projectId: parentRun.projectId,
         fromAgentId: "system",
         toAgentId: parentRun.agentId,
         kind: "system",
@@ -309,18 +344,22 @@ function maybeContinueParent(parentRunId: string) {
         }));
       }
 
-      useAppStore.setState(state => ({
-        runtime: { ...state.runtime, [parentRun.agentId]: { ...state.runtime[parentRun.agentId], status: "idle" } }
-      }));
+      useAppStore.setState(state => {
+        const pRuntime = state.runtime[parentRun.projectId] || {};
+        return {
+          runtime: { ...state.runtime, [parentRun.projectId]: { ...pRuntime, [parentRun.agentId]: { ...pRuntime[parentRun.agentId], status: "idle" } } }
+        };
+      });
 
       if (!parentRun.parentRunId) {
-        useAppStore.setState({ activeTaskRunId: null });
+        useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
       } else {
         maybeContinueParent(parentRun.parentRunId);
       }
     } else {
       startRun({
         agentId: parentRun.agentId,
+        projectId: parentRun.projectId,
         prompt: outputText,
         parentRunId: parentRun.parentRunId,
         round: parentRun.round + 1,
@@ -331,44 +370,50 @@ function maybeContinueParent(parentRunId: string) {
   }
 }
 
-function processQueuedInstructions(agentId: string) {
+function processQueuedInstructions(agentId: string, projectId: string) {
   const store = useAppStore.getState();
-  const runtime = store.runtime[agentId];
+  const runtime = store.runtime[projectId]?.[agentId];
   if (!runtime || runtime.status === "working") return;
 
   if (runtime.queuedInstructions.length > 0) {
     const text = runtime.queuedInstructions[0];
-    useAppStore.setState(state => ({
-      runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], queuedInstructions: state.runtime[agentId].queuedInstructions.slice(1) } }
-    }));
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[projectId] || {};
+      return {
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: pRuntime[agentId].queuedInstructions.slice(1) } } }
+      };
+    });
     
     // User instructions are always direct: no parent, so they never re-trigger
     // a continuation of a planner that already received its results.
-    startRun({ agentId, prompt: text, parentRunId: null, round: 0, resume: true });
+    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true });
   }
 }
 
-export async function submitPrompt(text: string, targetAgentId: string): Promise<void> {
-  addMessage({ fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
-  const runId = startRun({ agentId: targetAgentId, prompt: text, parentRunId: null, round: 0 });
+export async function submitPrompt(text: string, targetAgentId: string, projectId: string): Promise<void> {
+  addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
+  const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0 });
   if (runId) {
-    useAppStore.setState({ activeTaskRunId: runId });
+    useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
   }
 }
 
-export async function instructAgent(agentId: string, text: string): Promise<void> {
+export async function instructAgent(agentId: string, text: string, projectId: string): Promise<void> {
   const store = useAppStore.getState();
-  const runtime = store.runtime[agentId];
+  const runtime = store.runtime[projectId]?.[agentId];
   if (!runtime) return;
 
-  addMessage({ fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
+  addMessage({ projectId, fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
 
   if (runtime.status === "working") {
-    useAppStore.setState(state => ({
-      runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], queuedInstructions: [...state.runtime[agentId].queuedInstructions, text] } }
-    }));
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[projectId] || {};
+      return {
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: [...pRuntime[agentId].queuedInstructions, text] } } }
+      };
+    });
   } else {
-    startRun({ agentId, prompt: text, parentRunId: null, round: 0, resume: true });
+    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true });
   }
 }
 
@@ -385,9 +430,9 @@ function descendsFromAgent(runs: Record<string, Run>, run: Run, agentId: string)
 /** Runs whose continuation was cancelled by the user while they waited for children. */
 const cancelledRuns = new Set<string>();
 
-export async function stopAgent(agentId: string): Promise<void> {
+export async function stopAgent(agentId: string, projectId: string): Promise<void> {
   const store = useAppStore.getState();
-  const runtime = store.runtime[agentId];
+  const runtime = store.runtime[projectId]?.[agentId];
   if (runtime?.currentRunId) {
     await getTransport().killRun(runtime.currentRunId);
     return;
@@ -395,7 +440,7 @@ export async function stopAgent(agentId: string): Promise<void> {
   // Waiting for children: stop every running run delegated (directly or not) by this agent,
   // and cancel the continuation so the agent does not re-delegate with "[detenido]" results.
   const descendants = Object.values(store.runs).filter(
-    r => r.status === "running" && descendsFromAgent(store.runs, r, agentId)
+    r => r.projectId === projectId && r.status === "running" && descendsFromAgent(store.runs, r, agentId)
   );
   for (const r of descendants) {
     let cursor = r.parentRunId ? store.runs[r.parentRunId] : undefined;
@@ -406,18 +451,35 @@ export async function stopAgent(agentId: string): Promise<void> {
   }
   await Promise.all(descendants.map(r => getTransport().killRun(r.id).catch(() => {})));
   if (descendants.length === 0) {
-    useAppStore.setState(state => ({
-      runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], status: "idle" } }
-    }));
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[projectId] || {};
+      return {
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], status: "idle" } } }
+      };
+    });
   }
 }
 
-export async function stopAll(): Promise<void> {
+export async function stopAll(projectId?: string): Promise<void> {
   const store = useAppStore.getState();
-  for (const agentId in store.runtime) {
-    const runtime = store.runtime[agentId];
-    if (runtime?.currentRunId) {
-      getTransport().killRun(runtime.currentRunId).catch(() => {});
+  if (projectId) {
+    const pRuntime = store.runtime[projectId];
+    if (pRuntime) {
+      for (const agentId in pRuntime) {
+        const runtime = pRuntime[agentId];
+        if (runtime?.currentRunId) {
+          getTransport().killRun(runtime.currentRunId).catch(() => {});
+        }
+      }
+    }
+  } else {
+    for (const pid in store.runtime) {
+      for (const agentId in store.runtime[pid]) {
+        const runtime = store.runtime[pid][agentId];
+        if (runtime?.currentRunId) {
+          getTransport().killRun(runtime.currentRunId).catch(() => {});
+        }
+      }
     }
   }
 }

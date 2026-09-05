@@ -15,6 +15,7 @@ export function AgentsPanel() {
   const binaries = useAppStore(state => state.binaries);
   const detectBinaries = useAppStore(state => state.detectBinaries);
   const removeAgent = useAppStore(state => state.removeAgent);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
   const resetSession = useAppStore(state => state.resetSession);
   
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null | undefined>(undefined);
@@ -73,7 +74,7 @@ export function AgentsPanel() {
               
               <div className="flex gap-2 mt-auto pt-2">
                 <Button size="sm" variant="outline" onClick={() => setEditingAgent(a)}>Editar</Button>
-                <Button size="sm" variant="outline" onClick={() => resetSession(a.id)}>Reiniciar sesión</Button>
+                <Button size="sm" variant="outline" onClick={() => currentProjectId && resetSession(a.id, currentProjectId)}>Reiniciar sesión</Button>
                 <Button size="sm" variant="destructive" onClick={() => handleDelete(a)}>Eliminar</Button>
               </div>
             </Card>

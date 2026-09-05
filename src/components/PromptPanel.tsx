@@ -37,17 +37,18 @@ export function PromptPanel() {
   const stopAll = useAppStore(state => state.stopAll);
 
   const roots = config.agents.filter(a => a.parentId === null);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
 
   const targetAgent = config.agents.find(a => a.id === targetId);
-  const targetRuntime = targetAgent ? runtime[targetId] : null;
+  const targetRuntime = targetAgent && currentProjectId ? runtime[currentProjectId]?.[targetId] : null;
   const isWorking = targetRuntime?.status === "working";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   
   const handleSend = () => {
-    if (!prompt.trim() || isWorking || !targetId) return;
-    void submitPrompt(prompt, targetId);
+    if (!prompt.trim() || isWorking || !targetId || !currentProjectId) return;
+    void submitPrompt(prompt, targetId, currentProjectId);
     setPrompt("");
   };
 
@@ -62,12 +63,13 @@ export function PromptPanel() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeRun = activeTaskRunId ? runs[activeTaskRunId] : null;
+  const currentActiveTaskRunId = currentProjectId ? activeTaskRunId[currentProjectId] : null;
+  const activeRun = currentActiveTaskRunId ? runs[currentActiveTaskRunId] : null;
   
   let taskCard = null;
   if (activeRun) {
     const rootAgent = config.agents.find(a => a.id === activeRun.agentId);
-    const taskRuns = Object.values(runs).filter(r => r.rootRunId === activeTaskRunId);
+    const taskRuns = Object.values(runs).filter(r => r.rootRunId === currentActiveTaskRunId);
     const currentRound = Math.max(0, ...taskRuns.map(r => r.round));
     const runningCount = taskRuns.filter(r => r.status === "running").length;
     const elapsedSecs = Math.max(0, Math.floor((now - activeRun.startedAt) / 1000));
@@ -81,7 +83,7 @@ export function PromptPanel() {
           <div><span className="font-medium">Tiempo transcurrido:</span> {formatElapsed(elapsedSecs)}</div>
           <div><span className="font-medium">Runs activos:</span> {runningCount}</div>
         </div>
-        <Button variant="destructive" size="sm" className="mt-3 w-full" onClick={() => void stopAll()}>
+        <Button variant="destructive" size="sm" className="mt-3 w-full" onClick={() => currentProjectId && stopAll(currentProjectId)}>
           Detener tarea
         </Button>
       </Card>

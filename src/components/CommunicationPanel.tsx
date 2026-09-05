@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectMessages } from "@/store";
 import { MessageItem } from "./MessageItem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { ArrowDown } from "lucide-react";
 const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
 
 export function CommunicationPanel() {
-  const messages = useAppStore(state => state.messages);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const messages = useAppStore(state => selectProjectMessages(state, currentProjectId));
   const agents = useAppStore(state => state.config.agents);
   const clearMessages = useAppStore(state => state.clearMessages);
   
@@ -99,7 +100,9 @@ export function CommunicationPanel() {
           ))}
         </div>
 
-        <Button variant="ghost" size="sm" onClick={() => clearMessages()}>Limpiar</Button>
+        <Button variant="ghost" size="sm" onClick={() => clearMessages(currentProjectId || undefined)}>
+          Limpiar
+        </Button>
       </div>
 
       <div 

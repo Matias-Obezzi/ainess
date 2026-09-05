@@ -17,6 +17,7 @@ export function useNotifications() {
       const newMessages = messages.slice(lastIdx + 1);
       
       for (const msg of newMessages) {
+        if (msg.projectId && msg.projectId !== state.currentProjectId) continue;
         if (msg.kind === "delegation") {
           const from = state.config.agents.find(a => a.id === msg.fromAgentId)?.name || "Alguien";
           const to = state.config.agents.find(a => a.id === msg.toAgentId)?.name || "Alguien";
