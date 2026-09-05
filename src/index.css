@@ -85,5 +85,23 @@
 @layer base {
   * { border-color: var(--border); }
   html, body, #root { height: 100%; }
-  body { margin: 0; background: var(--background); color: var(--foreground); }
+  /* The shell owns its scrolling; the document itself never scrolls. */
+  body { margin: 0; overflow: hidden; background: var(--background); color: var(--foreground); }
 }
+
+/* Thin, discreet scrollbars everywhere (Claude-desktop style). Outside @layer so it wins
+   over component styles; the track stays transparent and the thumb only shows on content. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 22%, transparent);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklch, var(--foreground) 38%, transparent); }
+*::-webkit-scrollbar-corner { background: transparent; }

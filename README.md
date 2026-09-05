@@ -1,4 +1,4 @@
-# AIS (Agentic Interaction System)
+# ainess (antes AIS - Agentic Interaction System)
 
 AIS es una aplicaciÃ³n de escritorio que orquesta agentes de IA (como Claude Code, Antigravity y GitHub Copilot CLI) para resolver tareas complejas de desarrollo de software en tu workspace local de forma autÃ³noma.
 

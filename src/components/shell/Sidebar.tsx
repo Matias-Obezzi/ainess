@@ -37,6 +37,7 @@ export function Sidebar() {
   const screen = useAppStore(state => state.screen);
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
+  const sidebarOpen = useAppStore(state => state.sidebarOpen);
   const openHome = useAppStore(state => state.openHome);
   const openProject = useAppStore(state => state.openProject);
   const openSettings = useAppStore(state => state.openSettings);
@@ -122,10 +123,16 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-[260px] shrink-0 border-r border-border bg-card flex flex-col">
+    <aside
+      className={`shrink-0 overflow-hidden bg-card transition-[width] duration-200 ${
+        sidebarOpen ? "w-[260px] border-r border-border" : "w-0"
+      }`}
+      aria-hidden={!sidebarOpen}
+    >
+      <div className="w-[260px] h-full flex flex-col">
       <div className="p-3 flex flex-col gap-2 border-b border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold tracking-tight">AIS</span>
+          <span className="text-sm font-bold tracking-tight">ainess</span>
           <span className="text-[10px] text-muted-foreground">Orquestador</span>
         </div>
         <Button
@@ -303,6 +310,7 @@ export function Sidebar() {
           editChatId={editingChatId}
         />
       )}
+      </div>
     </aside>
   );
 }

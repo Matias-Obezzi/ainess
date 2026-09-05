@@ -1,4 +1,4 @@
-# AIS — Orquestador local de agentes de IA
+# ainess — Orquestador local de agentes de IA
 
 App de escritorio (Tauri 2 + React 19 + Tailwind 4 + componentes `@uiness`) que conecta las IAs
 instaladas en la PC (Claude Code, Antigravity, Copilot, Gemini, Codex…), les asigna un rol
@@ -249,20 +249,50 @@ Seed por defecto (primer arranque): `Claude` (planner, provider claude, raíz),
 
 ## UI (src/App.tsx + src/components/)
 
-Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex`:
-`<Sidebar/>` + columna principal + `<CommSidePanel/>` opcional + `<SettingsDialog/>` (modal,
-siempre montado). Encima flotan `<Island />` de `@/components/ui/island` (cuántos agentes están
-trabajando) y `<Toaster />` de `@/components/ui/toast` (delegación enviada, error de un agente,
-tarea terminada).
+Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex.flex-col`:
+`<TitleBar/>` + una fila `flex-1` con `<Sidebar/>` + columna principal + `<CommSidePanel/>`
+opcional, más `<SettingsDialog/>` y `<SearchPalette/>` (modales, siempre montados). Encima flotan
+`<Island />` de `@/components/ui/island` (cuántos agentes están trabajando) y `<Toaster />` de
+`@/components/ui/toast` (delegación enviada, error de un agente, tarea terminada).
 
 La navegación vive en el store: `screen` ("home" | "project"), `projectMode` ("chat" | "graph"),
 `commPanelOpen`, `settingsOpen` (booleano, no persistido: Configuración es un modal, no una
-pantalla), `settingsSection`, `sidebarCollapsed`, con las acciones `openHome`,
+pantalla), `settingsSection`, `sidebarCollapsed`, `sidebarOpen`, `searchOpen` (no persistido),
+`navHistory`/`navIndex` (no persistidos), con las acciones `openHome`,
 `openProject(projectId, chatId?)`, `openSettings(section?)` (abre el modal), `closeSettings()`,
-`setProjectMode`, `toggleCommPanel` y `toggleSidebarProject`. Todo eso se persiste en `localStorage` bajo la clave
+`setProjectMode`, `toggleCommPanel`, `toggleSidebarProject`, `toggleSidebar(open?)`,
+`toggleSearch(open?)`, `goBack()` y `goForward()`. Lo persistible va a `localStorage` bajo la clave
 `ais.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
 
-1. **Sidebar** — `components/shell/Sidebar.tsx` (260px): botones Inicio y Nuevo proyecto; lista de
+**Barra de título** — `components/shell/TitleBar.tsx` (`h-10`, `bg-card border-b`). La ventana usa
+`"decorations": false` en `tauri.conf.json`, así que la barra es propia: el contenedor y el título
+llevan `data-tauri-drag-region` (arrastre y doble click para maximizar), los botones no. A la
+izquierda `PanelLeft` (colapsa el sidebar, `Ctrl+B`), `Search` (paleta, `Ctrl+K`) y las flechas
+atrás/adelante; al centro el nombre "ainess"; a la derecha, solo con `isTauri()`, los controles de
+ventana de 46x40 (`minimize()`, `toggleMaximize()` con icono de restaurar cuando está maximizada, y
+`close()`, que respeta la bandeja). Permisos en `capabilities/default.json`:
+`core:window:allow-minimize|maximize|unmaximize|toggle-maximize|close|start-dragging|is-maximized`.
+
+**Historial de navegación** — `navHistory: NavEntry[]` (`{ screen, projectId, chatId, projectMode }`)
+con `navIndex`. `openHome`, `openProject`, `setProjectMode` y `setCurrentChat` pasan por `pushNav`,
+que corta el futuro, ignora la entrada idéntica consecutiva y guarda 50 como máximo. `goBack`/
+`goForward` aplican la entrada con `applyNav` (sin pushear; si el proyecto ya no existe cae a
+"home"). Configuración es un modal y no entra en el historial. Selectores `canGoBack`/`canGoForward`.
+
+**Paleta de búsqueda** — `components/shell/SearchPalette.tsx`: `Dialog` arriba (`top-[15%]`) con un
+input autofocus y resultados agrupados en Proyectos / Chats / Agentes / Configuración, filtrados por
+substring sin acentos ni mayúsculas. Flechas para moverse, Enter o click para abrir (proyecto →
+`openProject(id, null)`, chat → `openProject(projectId, chatId)`, agente → `openSettings("agents")`,
+sección → `openSettings(id)`).
+
+**Scrollbars** — `src/index.css` define barras finas (`scrollbar-width: thin` y
+`::-webkit-scrollbar` de 10px con thumb `color-mix(in oklch, var(--foreground) 22%, transparent)`,
+redondeado y con `background-clip: content-box`) fuera de `@layer` para que ganen; `body` va con
+`overflow: hidden` porque el scroll lo maneja la app. El thumb del `ScrollArea` de shadcn usa el
+mismo color.
+
+1. **Sidebar** — `components/shell/Sidebar.tsx` (260px, colapsable a `w-0` con `sidebarOpen`,
+   persistido): cabecera "ainess"; botones Inicio y Nuevo proyecto; lista de
    proyectos colapsables (punto de color, nombre, badge naranja con agentes trabajando, menú
    contextual Editar / Nuevo chat / Eliminar) y, dentro de cada uno, "Orquestador", los chats del
    proyecto (`config.chats` filtrados por `projectId`) y "+ Nuevo chat". Al pie: "N trabajando",

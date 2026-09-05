@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ais",
+  "productName": "ainess",
   "version": "0.1.0",
   "identifier": "com.matias.ais",
   "build": {
@@ -12,7 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "AIS - Orquestador de agentes",
+        "title": "ainess",
+        "decorations": false,
         "width": 1400,
         "height": 900,
         "minWidth": 1000,
