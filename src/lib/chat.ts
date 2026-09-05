@@ -1,7 +1,6 @@
 // Chat orchestrator: individual and shared chat conversations with agents.
 import { useAppStore, selectAgent, selectSkillsFor } from "@/store";
 import { startRun, addMessage } from "@/lib/orchestrator";
-import { buildSystemPrompt } from "@/lib/providers";
 import { getTransport } from "@/lib/transport";
 import type { ChatMessage } from "@/types";
 
@@ -19,10 +18,16 @@ function chatFilePath(chatId: string): string {
   return `chats/${chatId}.json`;
 }
 
+/** On-disk shape: messages plus the per-agent provider sessions, so a chat can be resumed
+ *  from another process (the CLI) and not only within the app's lifetime. */
+interface ChatFile { messages: ChatMessage[]; sessions: Record<string, string> }
+
 async function persistMessages(chatId: string): Promise<void> {
-  const msgs = useAppStore.getState().chatMessages[chatId];
+  const state = useAppStore.getState();
+  const msgs = state.chatMessages[chatId];
   if (!msgs) return;
-  await getTransport().writeTextFile(chatFilePath(chatId), JSON.stringify(msgs, null, 2));
+  const file: ChatFile = { messages: msgs, sessions: state.chatSessions[chatId] || {} };
+  await getTransport().writeTextFile(chatFilePath(chatId), JSON.stringify(file, null, 2));
 }
 
 export async function loadChatMessages(chatId: string): Promise<void> {
@@ -31,9 +36,12 @@ export async function loadChatMessages(chatId: string): Promise<void> {
   const raw = await getTransport().readTextFile(chatFilePath(chatId));
   if (raw) {
     try {
-      const msgs = JSON.parse(raw) as ChatMessage[];
+      const parsed = JSON.parse(raw) as ChatFile | ChatMessage[];
+      const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
+      const sessions = Array.isArray(parsed) ? {} : parsed.sessions || {};
       useAppStore.setState(state => ({
-        chatMessages: { ...state.chatMessages, [chatId]: msgs }
+        chatMessages: { ...state.chatMessages, [chatId]: msgs },
+        chatSessions: { ...state.chatSessions, [chatId]: { ...sessions, ...(state.chatSessions[chatId] || {}) } },
       }));
     } catch { /* corrupt file, ignore */ }
   }
@@ -319,8 +327,18 @@ export async function stopChat(chatId: string): Promise<void> {
   const turn = activeTurns.get(chatId);
   if (!turn || !turn.runId) return;
 
-  await getTransport().killRun(turn.runId).catch(() => {});
   activeTurns.delete(chatId);
+  await getTransport().killRun(turn.runId).catch(() => {});
+  // The run's completion no longer maps to a turn, so close the pending bubble here.
+  useAppStore.setState(state => {
+    const msgs = state.chatMessages[chatId] || [];
+    const idx = msgs.findIndex(m => m.status === "pending");
+    if (idx < 0) return state;
+    const newMsgs = [...msgs];
+    newMsgs[idx] = { ...newMsgs[idx], text: newMsgs[idx].text || "[detenido por el usuario]", status: "done" };
+    return { chatMessages: { ...state.chatMessages, [chatId]: newMsgs } };
+  });
+  void persistMessages(chatId);
 }
 
 // ---- Helper to check if a chat has an active turn ----

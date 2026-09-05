@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { Header } from "@/components/Header";
 import { useActivityIsland } from "@/hooks/useActivityIsland";
@@ -12,9 +12,18 @@ import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { AgentsPanel } from "@/components/AgentsPanel";
 import { ResourcesPanel } from "@/components/ResourcesPanel";
 import { ProjectsPanel } from "@/components/ProjectsPanel";
+import { ChatPanel } from "@/components/ChatPanel";
 
 export default function App() {
   const init = useAppStore(state => state.init);
+  const [tab, setTab] = useState("prompt");
+
+  // Other panels can jump to a tab (e.g. "Chatear" on a graph node) without prop drilling.
+  useEffect(() => {
+    const onOpenTab = (e: Event) => setTab((e as CustomEvent<string>).detail);
+    window.addEventListener("ais:open-tab", onOpenTab);
+    return () => window.removeEventListener("ais:open-tab", onOpenTab);
+  }, []);
   const loaded = useAppStore(state => state.loaded);
   const currentProjectId = useAppStore(state => state.currentProjectId);
 
@@ -41,11 +50,12 @@ export default function App() {
       <Toaster position="bottom-right" richColors />
       
       <main className="flex-1 overflow-hidden p-4">
-        <Tabs defaultValue="prompt" className="h-full flex flex-col">
+        <Tabs value={tab} onValueChange={setTab} className="h-full flex flex-col">
           <TabsList>
             <TabsTrigger value="prompt">Prompt</TabsTrigger>
             <TabsTrigger value="comunicacion">Comunicación</TabsTrigger>
             <TabsTrigger value="jerarquia">Jerarquía</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="proyectos">Proyectos</TabsTrigger>
             <TabsTrigger value="agentes">Agentes</TabsTrigger>
             <TabsTrigger value="recursos">Recursos</TabsTrigger>
@@ -59,6 +69,9 @@ export default function App() {
           </TabsContent>
           <TabsContent value="jerarquia" className="flex-1 mt-2 overflow-hidden">
             {currentProjectId ? <HierarchyGraph /> : noProjectState}
+          </TabsContent>
+          <TabsContent value="chat" className="flex-1 mt-2 overflow-hidden">
+            {currentProjectId ? <ChatPanel /> : noProjectState}
           </TabsContent>
           <TabsContent value="proyectos" className="flex-1 mt-2 overflow-hidden">
             <ProjectsPanel />

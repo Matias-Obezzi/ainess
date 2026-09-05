@@ -105,3 +105,23 @@ También puedes truncar variables, por ejemplo: `{{output|300}}`.
   `ais hooks add AbrirReporte --event result --action command --program code --args "{{workspace}}/report.md"`
 - **Instrucción encadenada**:
   `ais hooks add Review --event run.finished --filter-agent Implementador --action instruct --agent Revisor --template "Revisá estos cambios: {{output}}"`
+
+## Chat
+
+Además de las tareas con delegación, podés hablar directamente con un agente o armar una conversación compartida entre varios, cada uno con un rol propio para ese chat. Los chats pertenecen a un proyecto (usan su carpeta como workspace) y cada agente mantiene su sesión, así que la conversación continúa donde quedó, incluso entre la app y el CLI.
+
+- **Individual**: un solo agente. No delega ni parsea bloques `delegate`: es un chat puro.
+- **Compartido**: varios agentes responden por turnos, en el orden de la lista, viendo lo que ya dijeron los demás en ese turno.
+
+En la app: pestaña **Chat** → "Nuevo chat", elegí modo, participantes, rol y modelo opcional. Desde el grafo, el botón "Chatear" de un nodo abre su chat individual.
+
+Desde la terminal:
+
+```bash
+ais chat -a Antigravity -w C:\repo                       # chat interactivo (vos> ...), /nuevo reinicia, /salir termina
+ais chat --shared "Claude:arquitecto,Antigravity:crítico" -w C:\repo
+ais chat send "CLI: Antigravity" "¿Qué pendientes quedaron?" -w C:\repo   # un turno, no interactivo
+echo "Resumime el README" | ais chat -a Claude            # entrada por pipe: un turno por línea
+```
+
+Los mensajes y las sesiones se guardan en `%APPDATA%\com.matias.ais\chats\<id>.json`.

@@ -4,6 +4,9 @@ import * as path from "node:path";
 import { useAppStore, selectRoots } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nodeTransport, killAllSync } from "@/lib/transport-node";
+import * as readline from "node:readline";
+import { isChatActive } from "@/lib/chat";
+import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
@@ -40,11 +43,14 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, run");
+    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, profile, presets, chat, run");
+    console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
+    console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
+    console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat"]);
   const first = args[0];
 
   if (!first.startsWith("-") && !KNOWN.has(first)) {
@@ -595,6 +601,144 @@ async function main() {
       print({ ok: true }, "Context set");
       process.exit(0);
     }
+  }
+
+  // Resolves (or creates) the project for -p/-w, mirroring the run command.
+  function resolveProjectId(projectName?: string, workspace?: string): string {
+    if (projectName) {
+      const p = store.config.projects.find(x => x.name.toLowerCase() === projectName.toLowerCase());
+      if (!p) error(`Proyecto "${projectName}" no encontrado.`);
+      return p.id;
+    }
+    const targetDir = workspace ? path.resolve(workspace) : process.cwd();
+    let p = store.config.projects.find(x => path.resolve(x.workspaceDir) === targetDir);
+    if (!p) {
+      store.addProject({ name: path.basename(targetDir) || "Proyecto", workspaceDir: targetDir });
+      p = useAppStore.getState().config.projects.find(x => path.resolve(x.workspaceDir) === targetDir);
+    }
+    return p!.id;
+  }
+
+  if (first === "chat") {
+    const { values: cv, positionals: cp } = parseArgs({
+      args: args.slice(1),
+      options: {
+        agent: { type: "string", short: "a" },
+        shared: { type: "string" },
+        workspace: { type: "string", short: "w" },
+        project: { type: "string", short: "p" },
+        name: { type: "string" },
+        model: { type: "string" },
+      },
+      allowPositionals: true,
+      strict: false,
+    });
+    const findAgent = (name: string) => {
+      const a = store.config.agents.find(x => x.name.toLowerCase() === name.trim().toLowerCase());
+      if (!a) error(`Agente "${name}" no encontrado.`);
+      return a;
+    };
+    const projectId = resolveProjectId(cv.project as string | undefined, cv.workspace as string | undefined);
+    store.setCurrentProject(projectId);
+
+    // Participants from --shared "A:rol,B:rol" or -a <agente>.
+    let participants: ChatParticipant[] = [];
+    if (cv.shared) {
+      participants = String(cv.shared).split(",").filter(Boolean).map(part => {
+        const [name, ...roleParts] = part.split(":");
+        return { agentId: findAgent(name).id, role: roleParts.join(":").trim() || "participante", model: cv.model as string | undefined };
+      });
+    } else if (cv.agent) {
+      participants = [{ agentId: findAgent(String(cv.agent)).id, role: "asistente", model: cv.model as string | undefined }];
+    }
+
+    const isSend = cp[0] === "send";
+    const chatName = isSend ? cp[1] : (cv.name as string | undefined);
+    if (isSend && !chatName) error("Uso: ais chat send <nombre-chat> \"texto\"");
+
+    // Find an existing chat by name in this project, or create one from the participants.
+    let chat = chatName
+      ? useAppStore.getState().config.chats.find(c => c.projectId === projectId && c.name.toLowerCase() === chatName.toLowerCase())
+      : undefined;
+    if (!chat) {
+      if (participants.length === 0) {
+        error(isSend ? `Chat "${chatName}" no encontrado. Indicá -a <agente> o --shared para crearlo.` : "Indicá -a <agente> o --shared \"A:rol,B:rol\".");
+      }
+      const names = participants.map(p => store.config.agents.find(a => a.id === p.agentId)?.name).join(", ");
+      const id = store.createChat({
+        projectId,
+        name: chatName || `CLI: ${names}`,
+        mode: participants.length > 1 ? "shared" : "individual",
+        participants,
+      });
+      await store.saveConfig();
+      chat = useAppStore.getState().config.chats.find(c => c.id === id)!;
+    }
+    await store.loadChatMessages(chat.id);
+
+    const agentLabel = (agentId: string) => {
+      const a = store.config.agents.find(x => x.id === agentId);
+      const role = chat!.participants.find(p => p.agentId === agentId)?.role;
+      return `\x1b[36m${a?.name || agentId}\x1b[0m${role ? ` (${role})` : ""}`;
+    };
+    const printedIds = new Set<string>((useAppStore.getState().chatMessages[chat.id] || []).map(m => m.id));
+    const flush = () => {
+      for (const m of useAppStore.getState().chatMessages[chat!.id] || []) {
+        if (printedIds.has(m.id) || m.status === "pending" || m.from === "user") continue;
+        printedIds.add(m.id);
+        if (jsonOutput) console.log(JSON.stringify(m));
+        else console.log(`\n${agentLabel(m.from)}:\n${m.status === "error" ? "\x1b[31m" : ""}${m.text}\x1b[0m`);
+      }
+    };
+    const runTurn = async (text: string) => {
+      const chatId = chat!.id;
+      await store.sendChatMessage(chatId, text);
+      // Each participant's reply is printed as soon as its bubble closes.
+      while (isChatActive(chatId)) {
+        await new Promise(r => setTimeout(r, 300));
+        flush();
+      }
+      flush();
+    };
+
+    process.on("SIGINT", () => { void store.stopChat(chat!.id); setTimeout(() => process.exit(130), 2000); });
+    process.on("exit", () => killAllSync());
+
+    if (isSend) {
+      let text = cp.slice(2).join(" ");
+      if (!text && !process.stdin.isTTY) text = fs.readFileSync(0, "utf-8").trim();
+      if (!text) error("Falta el texto del mensaje.");
+      await runTurn(text);
+      process.exit(0);
+    }
+
+    if (!jsonOutput) {
+      const who = chat.participants.map(p => agentLabel(p.agentId)).join(", ");
+      console.log(`Chat "${chat.name}" con ${who}. Escribí y Enter para enviar; /nuevo reinicia las sesiones; /salir termina.`);
+    }
+    if (!process.stdin.isTTY) {
+      // Piped input: one turn per non-empty line, then exit.
+      const lines = fs.readFileSync(0, "utf-8").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      for (const line of lines) await runTurn(line);
+      process.exit(0);
+    }
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: "vos> " });
+    rl.prompt();
+    rl.on("line", async (line) => {
+      const text = line.trim();
+      if (text === "/salir" || text === "/exit") { rl.close(); return; }
+      if (text === "/nuevo") {
+        useAppStore.setState(state => ({ chatSessions: { ...state.chatSessions, [chat!.id]: {} } }));
+        console.log("Sesiones reiniciadas.");
+      } else if (text) {
+        rl.pause();
+        await runTurn(text);
+        rl.resume();
+      }
+      rl.prompt();
+    });
+    rl.on("close", () => process.exit(0));
+    return;
   }
 
   const { values, positionals } = parseArgs({

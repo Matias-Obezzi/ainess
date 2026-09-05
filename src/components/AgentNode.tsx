@@ -23,6 +23,20 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
   const binaries = useAppStore(state => state.binaries);
   const stopAgent = useAppStore(state => state.stopAgent);
   const runs = useAppStore(state => state.runs);
+
+  // Opens (or creates) this agent's individual chat in the current project and jumps to the Chat tab.
+  const openChat = () => {
+    const state = useAppStore.getState();
+    if (!currentProjectId) return;
+    const existing = state.config.chats.find(
+      c => c.projectId === currentProjectId && c.mode === "individual" && c.participants.length === 1 && c.participants[0].agentId === agent.id
+    );
+    const chatId = existing
+      ? existing.id
+      : state.createChat({ projectId: currentProjectId, name: agent.name, mode: "individual", participants: [{ agentId: agent.id, role: "asistente" }] });
+    state.setCurrentChat(chatId);
+    window.dispatchEvent(new CustomEvent("ais:open-tab", { detail: "chat" }));
+  };
   
   const [instructOpen, setInstructOpen] = useState(false);
   const [runDetailOpen, setRunDetailOpen] = useState(false);
@@ -97,6 +111,9 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
           </Button>
           <Button size="sm" variant="outline" className="h-6 text-xs px-2" disabled={!lastRunId} onClick={() => setRunDetailOpen(true)}>
             Ver salida
+          </Button>
+          <Button size="sm" variant="outline" className="h-6 text-xs px-2" disabled={!currentProjectId} onClick={openChat}>
+            Chatear
           </Button>
         </div>
       </Card>
