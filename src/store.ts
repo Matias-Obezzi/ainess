@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 
@@ -30,8 +30,8 @@ export interface AppState {
   detectBinaries(): Promise<void>;
   updateConfig(patch: Partial<AppConfig>): void;
 
-  submitPrompt(text: string, targetAgentId: string, projectId: string): Promise<void>;
-  instructAgent(agentId: string, text: string, projectId: string): Promise<void>;
+  submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void>;
+  instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void>;
   stopAgent(agentId: string, projectId: string): Promise<void>;
   stopAll(projectId?: string): Promise<void>;
   resetSession(agentId: string, projectId: string): void;
@@ -302,12 +302,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ binaries: finalBinaries });
   },
 
-  submitPrompt: async (text, targetAgentId, projectId) => {
-    await orchestrator.submitPrompt(text, targetAgentId, projectId);
+  submitPrompt: async (text, targetAgentId, projectId, opts) => {
+    await orchestrator.submitPrompt(text, targetAgentId, projectId, opts);
   },
 
-  instructAgent: async (agentId, text, projectId) => {
-    await orchestrator.instructAgent(agentId, text, projectId);
+  instructAgent: async (agentId, text, projectId, opts) => {
+    await orchestrator.instructAgent(agentId, text, projectId, opts);
   },
 
   stopAgent: async (agentId, projectId) => {
@@ -368,13 +368,13 @@ async function runInit(): Promise<void> {
       }
       config = {
         ...config,
-        version: 3,
+        version: 4,
         projects,
         lastProjectId,
         skills: config.skills || [],
         mcpServers: config.mcpServers || [],
         sharedContext: config.sharedContext || ""
-      } as AppConfig;
+      } as unknown as AppConfig;
       delete (config as any).workspaceDir;
       isSeed = true; // force save
     }

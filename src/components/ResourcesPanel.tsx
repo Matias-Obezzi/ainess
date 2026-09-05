@@ -41,6 +41,7 @@ export function ResourcesPanel() {
   };
 
   return (
+    <div className="h-full flex flex-col p-2 space-y-4">
       <Tabs defaultValue="profile" className="flex-1 flex flex-col">
         <TabsList className="grid grid-cols-5 h-auto">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
