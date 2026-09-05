@@ -336,3 +336,37 @@ export async function fetchQuota(provider: ProviderId): Promise<ProviderQuota> {
     return { provider, status: "error", message: e instanceof Error ? e.message : String(e), fetchedAt: Date.now(), items: [] };
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Formatting helpers shared by the UI and the CLI.
+// ---------------------------------------------------------------------------------------------
+
+/** Localized "D/M HH:MM" for the app UI. */
+export function formatResetsAt(ms?: number): string | undefined {
+  if (ms === undefined || Number.isNaN(ms)) return undefined;
+  return new Date(ms).toLocaleString("es-AR", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Plain-text rendering of a single quota row, used by `ais quota`. */
+export function formatQuotaLine(item: QuotaItem): string {
+  const bits: string[] = [`${item.label}:`];
+  if (item.unlimited) {
+    bits.push("ilimitado");
+  } else if (item.entitlement !== undefined && item.remaining !== undefined) {
+    const pct = item.percentRemaining !== undefined ? ` (${Math.round(item.percentRemaining)}%)` : "";
+    bits.push(`${item.remaining}/${item.entitlement}${pct}`);
+  } else if (item.usedPercent !== undefined) {
+    bits.push(`${item.usedPercent}% usado`);
+  } else if (item.note) {
+    bits.push(item.note);
+  }
+  if (item.resetsAt !== undefined && !Number.isNaN(item.resetsAt)) {
+    const d = new Date(item.resetsAt);
+    // A midnight-UTC reset came from a date-only field (e.g. copilot's quota_reset_date): show
+    // just the date; otherwise it is a real timestamp (e.g. Claude's usage windows).
+    const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+    const dateStr = d.toISOString().slice(0, 10);
+    bits.push(isDateOnly ? `se renueva ${dateStr}` : `se renueva ${dateStr} ${d.toISOString().slice(11, 16)}`);
+  }
+  return bits.join(" ");
+}

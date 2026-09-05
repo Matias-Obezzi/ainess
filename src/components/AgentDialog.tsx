@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { AgentConfig, ProviderId, AgentRole } from "@/types";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
+import { formatResetsAt } from "@/lib/quota";
 import { roleLabel } from "@/lib/labels";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { open } from "@tauri-apps/plugin-dialog";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -18,16 +23,111 @@ interface Props {
   agent?: AgentConfig;
 }
 
-export function AgentDialog({ open, onOpenChange, agent }: Props) {
+const DEFAULT_MODEL_OPTION = "__default__";
+const OTHER_MODEL_OPTION = "__other__";
+
+function quotaLine(item: QuotaItem): { text: string; percent?: number } {
+  if (item.unlimited) return { text: "Ilimitado" };
+  if (item.entitlement !== undefined && item.remaining !== undefined) {
+    const percent = item.percentRemaining ?? Math.round((item.remaining / item.entitlement) * 100);
+    return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
+  }
+  if (item.usedPercent !== undefined) {
+    return { text: `${item.usedPercent}% usado`, percent: 100 - item.usedPercent };
+  }
+  return { text: item.note || "" };
+}
+
+function QuotaBlock({ provider }: { provider: ProviderId }) {
+  const quotaState = useAppStore(state => state.quota[provider]);
+  const refreshQuota = useAppStore(state => state.refreshQuota);
+  const [loading, setLoading] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      await refreshQuota(provider);
+    } finally {
+      setLoading(false);
+    }
+  }, [provider, refreshQuota]);
+
+  return (
+    <Card className="p-3 space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="font-semibold text-sm">Cuota de {PROVIDERS[provider]?.label}</span>
+        <Button size="sm" variant="outline" onClick={() => void handleRefresh()} disabled={loading}>
+          {loading && <Loader2 className="size-3 mr-1 animate-spin" />}
+          Actualizar
+        </Button>
+      </div>
+
+      {!quotaState && (
+        <div className="text-sm text-muted-foreground">Sin datos todavía. Apretá "Actualizar".</div>
+      )}
+
+      {quotaState && quotaState.status !== "ok" && (
+        <div className="text-sm text-muted-foreground">{quotaState.message}</div>
+      )}
+
+      {quotaState?.status === "ok" && provider === "antigravity" && (
+        <div className="space-y-1">
+          {quotaState.items.map(item => (
+            <div key={item.label} className="flex justify-between text-sm">
+              <span>{item.label}</span>
+              <span className="text-muted-foreground">
+                {item.resetsAt ? `Agotado, se libera a las ${formatResetsAt(item.resetsAt)}` : "Disponible"}
+              </span>
+            </div>
+          ))}
+          <div className="text-xs text-muted-foreground pt-1">
+            Antigravity no expone la cuota: se infiere de los errores de los runs.
+          </div>
+        </div>
+      )}
+
+      {quotaState?.status === "ok" && provider !== "antigravity" && (
+        <div className="space-y-2">
+          {quotaState.items.map(item => {
+            const { text, percent } = quotaLine(item);
+            return (
+              <div key={item.label} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>{item.label}</span>
+                  <span className="text-muted-foreground">{text}</span>
+                </div>
+                {percent !== undefined && <Progress value={Math.max(0, Math.min(100, percent))} />}
+                {item.resetsAt !== undefined && (
+                  <div className="text-xs text-muted-foreground">se renueva {formatResetsAt(item.resetsAt)}</div>
+                )}
+              </div>
+            );
+          })}
+          {quotaState.items.length === 0 && <div className="text-sm text-muted-foreground">Sin información.</div>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
   const config = useAppStore(state => state.config);
   const upsertAgent = useAppStore(state => state.upsertAgent);
+  const binaries = useAppStore(state => state.binaries);
+  const models = useAppStore(state => state.models);
+  const quotaByProvider = useAppStore(state => state.quota);
+  const refreshModels = useAppStore(state => state.refreshModels);
+  const refreshQuota = useAppStore(state => state.refreshQuota);
+  const detectBinaries = useAppStore(state => state.detectBinaries);
+  const updateConfig = useAppStore(state => state.updateConfig);
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<ProviderId>("claude");
   const [role, setRole] = useState<AgentRole>("implementer");
   const [parentId, setParentId] = useState<string | null>(null);
-  const [model, setModel] = useState("");
+  const [modelOption, setModelOption] = useState<string>(DEFAULT_MODEL_OPTION);
+  const [otherModel, setOtherModel] = useState("");
   const [autoApprove, setAutoApprove] = useState(false);
   const [requireApproval, setRequireApproval] = useState(false);
   const [description, setDescription] = useState("");
@@ -36,15 +136,28 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
   const [customArgs, setCustomArgs] = useState("");
   const [color, setColor] = useState("#888888");
 
+  const setModelFromAgent = (providerId: ProviderId, modelValue: string | undefined, availableModels: { id: string }[]) => {
+    if (!modelValue) {
+      setModelOption(DEFAULT_MODEL_OPTION);
+      setOtherModel("");
+    } else if (availableModels.some(m => m.id === modelValue) || (PROVIDERS[providerId]?.models || []).some(m => m.id === modelValue)) {
+      setModelOption(modelValue);
+      setOtherModel("");
+    } else {
+      setModelOption(OTHER_MODEL_OPTION);
+      setOtherModel(modelValue);
+    }
+  };
+
   useEffect(() => {
-    if (open) {
+    if (dialogOpen) {
       if (agent) {
         setId(agent.id);
         setName(agent.name);
         setProvider(agent.provider);
         setRole(agent.role);
         setParentId(agent.parentId);
-        setModel(agent.model || "");
+        setModelFromAgent(agent.provider, agent.model, models[agent.provider] || []);
         setAutoApprove(agent.autoApprove);
         setRequireApproval(agent.requireApproval ?? false);
         setDescription(agent.description || "");
@@ -58,8 +171,10 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
         setProvider("claude");
         setRole("implementer");
         setParentId(null);
-        setModel("");
+        setModelOption(DEFAULT_MODEL_OPTION);
+        setOtherModel("");
         setAutoApprove(false);
+        setRequireApproval(false);
         setDescription("");
         setSystemPrompt("");
         setCustomProgram("");
@@ -67,7 +182,17 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
         setColor("#888888");
       }
     }
-  }, [open, agent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, agent]);
+
+  // Fetch the model list and quota for the selected provider whenever the dialog is open
+  // and the provider changes (covers both opening the dialog and switching providers).
+  useEffect(() => {
+    if (!dialogOpen || provider === "custom") return;
+    void refreshModels(provider);
+    void refreshQuota(provider);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, provider]);
 
   // Find valid parents (not self, not descendant)
   const descendants = new Set<string>();
@@ -82,6 +207,8 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
   }
   const validParents = config.agents.filter(a => !descendants.has(a.id));
 
+  const resolvedModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
+
   const handleSave = () => {
     const newAgent: AgentConfig = {
       id,
@@ -89,7 +216,7 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
       provider,
       role,
       parentId,
-      model: model || undefined,
+      model: resolvedModel || undefined,
       autoApprove,
       requireApproval: requireApproval || undefined,
       description: description || undefined,
@@ -106,10 +233,43 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
     onOpenChange(false);
   };
 
-  const defaultModels = PROVIDERS[provider]?.defaultModels || [];
+  const availableModels = models[provider] || PROVIDERS[provider]?.models || [];
+  const providerQuota = quotaByProvider[provider];
+
+  const quotaSuffixFor = (modelId: string): string => {
+    if (!providerQuota || providerQuota.status !== "ok") return "";
+    if (provider === "antigravity") {
+      const pool = providerQuota.items.find(i => modelId.startsWith(i.model || "___"));
+      if (!pool) return "";
+      return pool.resetsAt ? ` · agotado hasta ${formatResetsAt(pool.resetsAt)}` : " · disponible";
+    }
+    const item = providerQuota.items.find(i => i.model === modelId);
+    if (!item) return "";
+    const { text } = quotaLine(item);
+    return text ? ` · ${text}` : "";
+  };
+
+  const handlePickExecutable = async () => {
+    const selected = await open({ multiple: false, filters: [{ name: "Ejecutable", extensions: ["exe", "cmd", "bat"] }] });
+    if (selected && typeof selected === "string") {
+      const overrides = { ...config.binaryOverrides, [provider]: selected };
+      updateConfig({ binaryOverrides: overrides });
+      await detectBinaries();
+    }
+  };
+
+  const handleClearOverride = async () => {
+    const overrides = { ...config.binaryOverrides };
+    delete overrides[provider];
+    updateConfig({ binaryOverrides: overrides });
+    await detectBinaries();
+  };
+
+  const currentBinary = binaries[provider];
+  const hasOverride = !!config.binaryOverrides?.[provider];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{agent ? "Editar agente" : "Nuevo agente"}</DialogTitle>
@@ -174,17 +334,32 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
               </div>
               <div className="space-y-1">
                 <Label>Modelo</Label>
-                <Input 
-                  value={model} 
-                  onChange={e => setModel(e.target.value)} 
-                  list="default-models" 
-                  placeholder="Ej: gemini-3.1-pro-high"
-                />
-                <datalist id="default-models">
-                  {defaultModels.map(m => <option key={m} value={m} />)}
-                </datalist>
+                <Select value={modelOption} onValueChange={setModelOption}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DEFAULT_MODEL_OPTION}>Por defecto del proveedor</SelectItem>
+                    {availableModels.map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={OTHER_MODEL_OPTION}>Otro…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {modelOption === OTHER_MODEL_OPTION && (
+                  <Input
+                    className="mt-1"
+                    value={otherModel}
+                    onChange={e => setOtherModel(e.target.value)}
+                    placeholder="Ej: gemini-3.1-pro-high"
+                  />
+                )}
               </div>
             </div>
+
+            {provider !== "custom" && <QuotaBlock provider={provider} />}
 
             <div className="flex items-center gap-2">
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
@@ -215,6 +390,23 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
                 <div className="space-y-1">
                   <Label>Argumentos (separados por espacio)</Label>
                   <Input value={customArgs} onChange={e => setCustomArgs(e.target.value)} placeholder="agy --prompt {prompt}" />
+                </div>
+              </div>
+            )}
+
+            {provider !== "custom" && (
+              <div className="space-y-2 p-3 border rounded">
+                <Label>Ejecutable</Label>
+                <div className="text-sm">
+                  {currentBinary?.path
+                    ? <span>{currentBinary.path}{currentBinary.version ? ` (${currentBinary.version})` : ""}</span>
+                    : <span className="text-destructive">No detectado</span>}
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button size="sm" variant="outline" onClick={() => void handlePickExecutable()}>Cargar a mano</Button>
+                  {hasOverride && (
+                    <Button size="sm" variant="ghost" onClick={() => void handleClearOverride()}>Limpiar override</Button>
+                  )}
                 </div>
               </div>
             )}
