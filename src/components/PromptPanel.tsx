@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
-
+import { PROVIDERS } from "@/lib/providers";
 
 function formatTimeAgo(ts: number, now: number) {
   const diffSecs = Math.max(0, Math.floor((now - ts) / 1000));
@@ -46,9 +46,15 @@ export function PromptPanel() {
   const isWorking = targetRuntime?.status === "working";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   
+  const [targetModel, setTargetModel] = useState<string>("none");
+  const [customModel, setCustomModel] = useState("");
+
+  const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+
   const handleSend = () => {
     if (!prompt.trim() || isWorking || !targetId || !currentProjectId) return;
-    void submitPrompt(prompt, targetId, currentProjectId);
+    const finalModel = targetModel === "none" ? undefined : targetModel === "custom" ? customModel : targetModel;
+    void submitPrompt(prompt, targetId, currentProjectId, { model: finalModel });
     setPrompt("");
   };
 
@@ -123,9 +129,35 @@ export function PromptPanel() {
           onKeyDown={handleKeyDown}
           className="min-h-[120px]"
         />
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
+          <Select 
+            value="none" 
+            onValueChange={(val) => {
+              if (val === "none") return;
+              const preset = config.presets?.find(p => p.id === val);
+              if (preset) {
+                setPrompt(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
+                if (preset.agentId) setTargetId(preset.agentId);
+                if (preset.model) {
+                  setTargetModel(preset.model);
+                  setCustomModel("");
+                }
+              }
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Órdenes predefinidas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Seleccionar orden...</SelectItem>
+              {config.presets?.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           <Select value={targetId} onValueChange={setTargetId}>
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Destino" />
             </SelectTrigger>
             <SelectContent>
@@ -134,7 +166,31 @@ export function PromptPanel() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={handleSend} disabled={!prompt.trim() || isWorking || !targetId}>
+
+          <Select value={targetModel} onValueChange={setTargetModel}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Modelo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Por defecto del agente</SelectItem>
+              {modelOptions.map(m => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+              <SelectItem value="custom">Otro...</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {targetModel === "custom" && (
+            <input 
+              type="text" 
+              className="flex h-9 w-[150px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              placeholder="Escribí el modelo..." 
+              value={customModel} 
+              onChange={e => setCustomModel(e.target.value)} 
+            />
+          )}
+
+          <Button onClick={handleSend} disabled={!prompt.trim() || isWorking || !targetId || (targetModel === "custom" && !customModel.trim())}>
             Enviar
           </Button>
         </div>

@@ -1,13 +1,16 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import { SkillDialog } from "./SkillDialog";
 import { McpDialog } from "./McpDialog";
+import { PresetDialog } from "./PresetDialog";
 import { Skill, McpServer } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
@@ -25,6 +28,9 @@ export function ResourcesPanel() {
   const [editingMcp, setEditingMcp] = useState<McpServer | null>(null);
   const [isMcpOpen, setIsMcpOpen] = useState(false);
 
+  const [editingPreset, setEditingPreset] = useState<any | null>(null);
+  const [isPresetOpen, setIsPresetOpen] = useState(false);
+
   const handleSyncMcp = async () => {
     const res = await syncMcpToAntigravity(store.config.mcpServers);
     if (res.success) {
@@ -35,13 +41,86 @@ export function ResourcesPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col p-2 space-y-4">
-      <Tabs defaultValue="skills" className="flex-1 flex flex-col">
-        <TabsList>
+      <Tabs defaultValue="profile" className="flex-1 flex flex-col">
+        <TabsList className="grid grid-cols-5 h-auto">
+          <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsTrigger value="presets">Órdenes</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="mcp">MCP Servers</TabsTrigger>
-          <TabsTrigger value="context">Contexto Compartido</TabsTrigger>
+          <TabsTrigger value="context">Contexto</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="profile" className="flex-1 mt-4 flex flex-col gap-4 overflow-y-auto">
+          <p className="text-sm text-muted-foreground">Esta información se inyecta en el prompt del sistema para que los agentes te conozcan mejor.</p>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold">Tu Nombre</label>
+            <Input 
+              value={store.config.profile?.name || ""}
+              onChange={e => store.updateConfig({ profile: { ...store.config.profile, name: e.target.value } })}
+              placeholder="Ej: Matias"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold">Sobre vos (rol, seniority, contexto)</label>
+            <Textarea 
+              className="resize-none"
+              value={store.config.profile?.about || ""}
+              onChange={e => store.updateConfig({ profile: { ...store.config.profile, about: e.target.value } })}
+              placeholder="Ej: Desarrollador full stack especializado en React y Node."
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold">Preferencias de trabajo</label>
+            <Textarea 
+              className="resize-none h-32"
+              value={store.config.profile?.preferences || ""}
+              onChange={e => store.updateConfig({ profile: { ...store.config.profile, preferences: e.target.value } })}
+              placeholder="Ej: Respuestas cortas, en español rioplatense, siempre con validación de tipos."
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+            <Switch 
+              checked={store.config.autoModel} 
+              onCheckedChange={(checked) => store.updateConfig({ autoModel: checked })}
+            />
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold">Auto-selección de modelos por el Orquestador</label>
+              <span className="text-sm text-muted-foreground">Si está activo, el planificador elegirá automáticamente el modelo adecuado (flash, pro, etc) para cada tarea delegada a los agentes.</span>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="presets" className="flex-1 mt-4 overflow-y-auto space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setEditingPreset(null); setIsPresetOpen(true); }}>Nueva orden</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {store.config.presets?.map(preset => {
+              const targetAgent = store.config.agents.find(a => a.id === preset.agentId);
+              return (
+                <Card key={preset.id}>
+                  <CardHeader>
+                    <CardTitle>{preset.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{preset.prompt}</p>
+                    <div className="flex gap-2 mt-2">
+                      {targetAgent && <Badge variant="outline">Agente: {targetAgent.name}</Badge>}
+                      {preset.model && <Badge variant="outline">Modelo: {preset.model}</Badge>}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setEditingPreset(preset); setIsPresetOpen(true); }}>Editar</Button>
+                    <Button variant="destructive" size="sm" onClick={() => {
+                      const newPresets = store.config.presets.filter(p => p.id !== preset.id);
+                      store.updateConfig({ presets: newPresets });
+                    }}>Eliminar</Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
 
         <TabsContent value="skills" className="flex-1 mt-4 overflow-y-auto space-y-4">
           <div className="flex justify-end">
@@ -134,6 +213,12 @@ export function ResourcesPanel() {
         open={isMcpOpen} 
         onOpenChange={setIsMcpOpen} 
         server={editingMcp} 
+      />
+
+      <PresetDialog 
+        open={isPresetOpen} 
+        onOpenChange={setIsPresetOpen} 
+        preset={editingPreset} 
       />
     </div>
   );
