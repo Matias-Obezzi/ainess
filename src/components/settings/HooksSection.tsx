@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store";
+import { confirmDelete } from "@/lib/confirm";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -67,7 +68,7 @@ export function HooksSection() {
             <CardFooter className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => testHook(hook.id)}>Probar</Button>
               <Button variant="outline" size="sm" onClick={() => openEdit(hook)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => removeHook(hook.id)}>Eliminar</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("el hook", hook.name).then(ok => ok && removeHook(hook.id))}>Eliminar</Button>
             </CardFooter>
           </Card>
         ))}

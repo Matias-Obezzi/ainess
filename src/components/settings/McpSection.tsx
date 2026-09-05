@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { confirmDelete } from "@/lib/confirm";
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,7 +107,7 @@ export function McpSection() {
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => openEdit(server)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => removeMcpServer(server.id)}>Eliminar</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("el servidor MCP", server.name).then(ok => ok && removeMcpServer(server.id))}>Eliminar</Button>
             </CardFooter>
           </Card>
         ))}

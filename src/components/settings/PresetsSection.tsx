@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store";
+import { confirmDelete } from "@/lib/confirm";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,10 +62,10 @@ export function PresetsSection() {
               </CardContent>
               <CardFooter className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => openEdit(preset)}>Editar</Button>
-                <Button variant="destructive" size="sm" onClick={() => {
-                  const newPresets = config.presets.filter(p => p.id !== preset.id);
-                  updateConfig({ presets: newPresets });
-                }}>Eliminar</Button>
+                <Button variant="destructive" size="sm" onClick={() => void confirmDelete("la orden", preset.name).then(ok => {
+                  if (!ok) return;
+                  updateConfig({ presets: config.presets.filter(p => p.id !== preset.id) });
+                })}>Eliminar</Button>
               </CardFooter>
             </Card>
           );

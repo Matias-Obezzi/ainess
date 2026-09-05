@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store";
+import { confirmDelete } from "@/lib/confirm";
 import type { ReactNode } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export function SkillsSection() {
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => openEdit(skill)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => removeSkill(skill.id)}>Eliminar</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("la skill", skill.name).then(ok => ok && removeSkill(skill.id))}>Eliminar</Button>
             </CardFooter>
           </Card>
         ))}
