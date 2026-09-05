@@ -72,7 +72,8 @@ function generateSeedConfig(): AppConfig {
   };
 }
 
-let saveTimeout: any = null;
+let initPromise: Promise<void> | null = null;
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
@@ -89,31 +90,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
   messages: [],
   activeTaskRunId: null,
 
-  init: async () => {
-    if (get().loaded) return;
-    
-    let config = isTauri() ? await ipc.loadConfig() : null;
-    let isSeed = false;
-    if (!config) {
-      config = generateSeedConfig();
-      isSeed = true;
-    }
-    
-    const runtime: Record<string, AgentRuntime> = {};
-    for (const a of config.agents) {
-      runtime[a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
-    }
-
-    set({ config, runtime });
-    
-    if (isTauri() && isSeed) {
-      await get().saveConfig();
-    }
-    
-    await get().detectBinaries();
-    await orchestrator.attachListeners();
-    
-    set({ loaded: true });
+  init: () => {
+    // Idempotent: StrictMode mounts twice and both calls must share one initialization.
+    if (!initPromise) initPromise = runInit();
+    return initPromise;
   },
 
   saveConfig: async () => {
@@ -199,6 +179,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   clearMessages: () => set({ messages: [] })
 }));
+
+async function runInit(): Promise<void> {
+    const { set, get } = { set: useAppStore.setState, get: useAppStore.getState };
+    let config = isTauri() ? await ipc.loadConfig() : null;
+    let isSeed = false;
+    if (!config) {
+      config = generateSeedConfig();
+      isSeed = true;
+    }
+    
+    const runtime: Record<string, AgentRuntime> = {};
+    for (const a of config.agents) {
+      runtime[a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
+    }
+
+    set({ config, runtime });
+    
+    if (isTauri() && isSeed) {
+      await get().saveConfig();
+    }
+    
+    await get().detectBinaries();
+    await orchestrator.attachListeners();
+    
+    set({ loaded: true });
+}
 
 export function selectChildren(state: AppState, agentId: string): AgentConfig[] {
   return state.config.agents.filter(a => a.parentId === agentId);

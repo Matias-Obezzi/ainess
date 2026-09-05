@@ -234,7 +234,10 @@ function onRunFinished(runId: string) {
   if (!waitingForChildren) {
     if (!run.parentRunId) {
       addMessage({ fromAgentId: agent.id, toAgentId: "user", kind: "result", text: run.output, runId });
-      useAppStore.setState({ activeTaskRunId: null });
+      // Only the root run of the current task clears it; direct instructions don't.
+      if (useAppStore.getState().activeTaskRunId === runId) {
+        useAppStore.setState({ activeTaskRunId: null });
+      }
     } else {
       maybeContinueParent(run.parentRunId);
     }
@@ -301,18 +304,9 @@ function processQueuedInstructions(agentId: string) {
       runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], queuedInstructions: state.runtime[agentId].queuedInstructions.slice(1) } }
     }));
     
-    const runsArray = Object.values(store.runs);
-    const lastRun = [...runsArray].reverse().find(r => r.agentId === agentId);
-    const parentRunId = lastRun ? lastRun.parentRunId : null;
-    const round = lastRun ? lastRun.round : 0;
-
-    startRun({
-      agentId,
-      prompt: text,
-      parentRunId,
-      round,
-      resume: true
-    });
+    // User instructions are always direct: no parent, so they never re-trigger
+    // a continuation of a planner that already received its results.
+    startRun({ agentId, prompt: text, parentRunId: null, round: 0, resume: true });
   }
 }
 
@@ -336,11 +330,18 @@ export async function instructAgent(agentId: string, text: string): Promise<void
       runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], queuedInstructions: [...state.runtime[agentId].queuedInstructions, text] } }
     }));
   } else {
-    const runsArray = Object.values(store.runs);
-    const lastRun = [...runsArray].reverse().find(r => r.agentId === agentId);
-    const parentRunId = lastRun ? lastRun.parentRunId : null;
-    startRun({ agentId, prompt: text, parentRunId, round: lastRun ? lastRun.round : 0, resume: true });
+    startRun({ agentId, prompt: text, parentRunId: null, round: 0, resume: true });
   }
+}
+
+/** True when `run` descends (through parentRunId) from a run of `agentId`. */
+function descendsFromAgent(runs: Record<string, Run>, run: Run, agentId: string): boolean {
+  let cursor = run.parentRunId ? runs[run.parentRunId] : undefined;
+  while (cursor) {
+    if (cursor.agentId === agentId) return true;
+    cursor = cursor.parentRunId ? runs[cursor.parentRunId] : undefined;
+  }
+  return false;
 }
 
 export async function stopAgent(agentId: string): Promise<void> {
@@ -348,6 +349,17 @@ export async function stopAgent(agentId: string): Promise<void> {
   const runtime = store.runtime[agentId];
   if (runtime?.currentRunId) {
     await ipc.killRun(runtime.currentRunId);
+    return;
+  }
+  // Waiting for children: stop every running run delegated (directly or not) by this agent.
+  const descendants = Object.values(store.runs).filter(
+    r => r.status === "running" && descendsFromAgent(store.runs, r, agentId)
+  );
+  await Promise.all(descendants.map(r => ipc.killRun(r.id).catch(() => {})));
+  if (descendants.length === 0) {
+    useAppStore.setState(state => ({
+      runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], status: "idle" } }
+    }));
   }
 }
 
