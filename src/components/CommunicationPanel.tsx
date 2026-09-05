@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/store";
 import { MessageItem } from "./MessageItem";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageKind } from "@/types";
 import { kindLabel } from "@/lib/labels";
+import { ArrowDown } from "lucide-react";
 
 const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
 
@@ -18,13 +18,39 @@ export function CommunicationPanel() {
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [filterKinds, setFilterKinds] = useState<Set<MessageKind>>(new Set(allKinds));
   
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [stickToBottom, setStickToBottom] = useState(true);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const prevMessagesLength = useRef(messages.length);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView();
+    if (messages.length > prevMessagesLength.current) {
+      if (stickToBottom) {
+        bottomRef.current?.scrollIntoView();
+      } else {
+        setHasNewMessages(true);
+      }
     }
-  }, [messages.length]);
+    prevMessagesLength.current = messages.length;
+  }, [messages.length, stickToBottom]);
+
+  const onScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 40;
+    setStickToBottom(isAtBottom);
+    if (isAtBottom) {
+      setHasNewMessages(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    setStickToBottom(true);
+    setHasNewMessages(false);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const toggleKind = (kind: MessageKind) => {
     setFilterKinds(prev => {
@@ -46,7 +72,7 @@ export function CommunicationPanel() {
   });
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden relative">
       <div className="p-2 border-b border-border flex items-center gap-2 flex-wrap">
         <Select value={filterAgent} onValueChange={setFilterAgent}>
           <SelectTrigger className="w-[150px] h-8 text-xs">
@@ -76,14 +102,29 @@ export function CommunicationPanel() {
         <Button variant="ghost" size="sm" onClick={() => clearMessages()}>Limpiar</Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col">
+      <div 
+        ref={scrollContainerRef}
+        onScroll={onScroll}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="flex flex-col relative">
           {filteredMessages.map(m => (
             <MessageItem key={m.id} message={m} />
           ))}
-          <div ref={scrollRef} />
+          <div ref={bottomRef} />
         </div>
-      </ScrollArea>
+      </div>
+
+      {!stickToBottom && hasNewMessages && (
+        <Button
+          size="sm"
+          className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2"
+          onClick={scrollToBottom}
+        >
+          <ArrowDown className="h-4 w-4" />
+          Ir al final
+        </Button>
+      )}
     </div>
   );
 }

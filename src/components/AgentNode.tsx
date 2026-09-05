@@ -11,17 +11,25 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { InstructDialog } from "./InstructDialog";
+import { RunDetailDialog } from "./RunDetailDialog";
 
 export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
   const { agent } = data;
   const runtime = useAppStore(state => state.runtime[agent.id]);
   const binaries = useAppStore(state => state.binaries);
   const stopAgent = useAppStore(state => state.stopAgent);
+  const runs = useAppStore(state => state.runs);
   
   const [instructOpen, setInstructOpen] = useState(false);
+  const [runDetailOpen, setRunDetailOpen] = useState(false);
 
   const status = runtime?.status || "idle";
   const binaryInfo = binaries[agent.provider];
+
+  const agentRuns = Object.values(runs)
+    .filter(r => r.agentId === agent.id)
+    .sort((a, b) => b.startedAt - a.startedAt);
+  const lastRunId = agentRuns.length > 0 ? agentRuns[0].id : null;
 
   return (
     <>
@@ -60,7 +68,7 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
           </div>
         )}
 
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-2 flex-wrap">
           {(status === "working" || status === "waiting") && (
             <Button size="sm" variant="destructive" className="h-6 text-xs px-2" onClick={() => void stopAgent(agent.id)}>
               Detener
@@ -68,6 +76,9 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
           )}
           <Button size="sm" variant="secondary" className="h-6 text-xs px-2" onClick={() => setInstructOpen(true)}>
             Indicar
+          </Button>
+          <Button size="sm" variant="outline" className="h-6 text-xs px-2" disabled={!lastRunId} onClick={() => setRunDetailOpen(true)}>
+            Ver salida
           </Button>
         </div>
       </Card>
@@ -78,6 +89,11 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
         open={instructOpen} 
         onOpenChange={setInstructOpen} 
         isWorking={status === "working"}
+      />
+      <RunDetailDialog
+        runId={lastRunId}
+        open={runDetailOpen}
+        onOpenChange={setRunDetailOpen}
       />
     </>
   );
