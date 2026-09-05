@@ -1,0 +1,33 @@
+use std::fs;
+use tauri::Manager;
+
+#[tauri::command]
+pub fn load_config(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> {
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let config_path = config_dir.join("config.json");
+
+    if !config_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(config_path).map_err(|e| e.to_string())?;
+    let json = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+
+    Ok(Some(json))
+}
+
+#[tauri::command]
+pub fn save_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<(), String> {
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+    }
+
+    let config_path = config_dir.join("config.json");
+    let json_string = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+    
+    fs::write(config_path, json_string).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
