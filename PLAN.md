@@ -204,27 +204,54 @@ Seed por defecto (primer arranque): `Claude` (planner, provider claude, raíz),
 
 ## UI (src/App.tsx + src/components/)
 
-Layout: header con nombre, selector de workspace (botón que abre `open({ directory: true })` de
-`@tauri-apps/plugin-dialog`), botón "Detener todo", y `<Island />` de `@/components/ui/island`
-mostrando cuántos agentes están trabajando. `<Toaster />` de `@/components/ui/toast` para avisos
-(delegación enviada, error de un agente, tarea terminada).
+Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex`:
+`<Sidebar/>` + columna principal + `<CommSidePanel/>` opcional. Encima flotan `<Island />` de
+`@/components/ui/island` (cuántos agentes están trabajando) y `<Toaster />` de
+`@/components/ui/toast` (delegación enviada, error de un agente, tarea terminada).
 
-Pestañas (`@/components/ui/tabs`):
-1. **Prompt** — `PromptPanel.tsx`: textarea, select de agente destino (por defecto el planner
-   raíz), botón Enviar (Ctrl+Enter), estado de la tarea actual (round, agentes activos), y un
-   historial corto de prompts enviados.
-2. **Comunicación** — `CommunicationPanel.tsx`: feed de `messages` con filtros por agente y por
-   tipo, cada mensaje con badge del agente (color), hora, tipo; los `delegation` resaltados;
-   auto-scroll al final. Botón limpiar.
-3. **Jerarquía** — `HierarchyGraph.tsx` con `@xyflow/react` (importar
-   `@xyflow/react/dist/style.css`): árbol por `parentId`, layout por niveles calculado a mano
-   (x por índice dentro del nivel, y por profundidad). Nodo custom `AgentNode.tsx`: nombre,
-   provider, rol, estado (punto de color + texto), tarea actual truncada, disponibilidad del
-   binario, botones **Detener** y **Indicar** (abre `InstructDialog.tsx` con un textarea).
-   Edges padre→hijo, `animated` cuando el hijo está `working`.
-4. **Agentes** — `AgentsPanel.tsx`: lista/cards + `AgentDialog.tsx` para crear/editar
-   (nombre, provider, rol, padre, modelo, autoApprove, descripción, systemPrompt, comando
-   custom). Muestra si el binario está detectado y su ruta. Botón "Volver a detectar".
+La navegación vive en el store: `screen` ("home" | "project" | "settings"), `projectMode`
+("chat" | "graph"), `commPanelOpen`, `settingsSection`, `sidebarCollapsed`, con las acciones
+`openHome`, `openProject(projectId, chatId?)`, `openSettings`, `setProjectMode`,
+`toggleCommPanel` y `toggleSidebarProject`. Todo eso se persiste en `localStorage` bajo la clave
+`ais.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
+
+1. **Sidebar** — `components/shell/Sidebar.tsx` (260px): botones Inicio y Nuevo proyecto; lista de
+   proyectos colapsables (punto de color, nombre, badge naranja con agentes trabajando, menú
+   contextual Editar / Nuevo chat / Eliminar) y, dentro de cada uno, "Orquestador", los chats del
+   proyecto (`config.chats` filtrados por `projectId`) y "+ Nuevo chat". Al pie: "N trabajando",
+   badge ámbar de aprobaciones pendientes y el engranaje de Configuración.
+2. **Inicio** — `components/shell/HomeScreen.tsx`: grilla de cards de proyecto con carpeta, estado
+   de actividad (agentes trabajando con su tarea, o la última tarea raíz con su estado y "hace X"),
+   tareas activas, runs guardados y botones Abrir / Editar / Eliminar.
+3. **Proyecto** — `components/shell/ProjectScreen.tsx`: barra superior (proyecto, toggle
+   Chat ↔ Jerarquía, "N trabajando", Comunicación, Detener), `ApprovalsPanel`, el cuerpo y el
+   `Composer` siempre abajo. El cuerpo es:
+   - `OrchestratorThread.tsx` — la conversación principal: cada run raíz (`parentRunId === null`,
+     `kind !== "chat"`) como burbuja del usuario + respuesta del agente, con tiempo transcurrido
+     mientras corre, chips de delegaciones hijas y botón Detalles (`RunDetailDialog`). Los runs con
+     `round > 0` son continuaciones automáticas y no muestran burbuja de usuario.
+   - `ChatThread.tsx` — el hilo de un chat individual/compartido (`chatMessages[chatId]`).
+   - `HierarchyGraph.tsx` con `@xyflow/react` (importar `@xyflow/react/dist/style.css`): árbol por
+     `parentId`, layout por niveles calculado a mano (x por índice dentro del nivel, y por
+     profundidad). Nodo custom `AgentNode.tsx`: nombre, provider, rol, estado (punto de color +
+     texto), tarea actual truncada, disponibilidad del binario, botones **Detener**, **Indicar**
+     (abre `InstructDialog.tsx`), **Ver salida** y **Chatear**. Edges padre→hijo, `animated`
+     cuando el hijo está `working`.
+   - `Composer.tsx` — textarea (Ctrl+Enter para enviar, flecha arriba recupera el último prompt).
+     Sin chat abierto manda `submitPrompt` con selects de destino, modelo y órdenes predefinidas;
+     con un chat abierto manda `sendChatMessage`. Mientras algo corre, el botón pasa a Detener.
+4. **Comunicación** — `components/shell/CommSidePanel.tsx` (380px a la derecha, se superpone bajo
+   1100px) envuelve `CommunicationPanel.tsx`: feed de `messages` con filtros por agente y por tipo,
+   cada mensaje con badge del agente (color), hora, tipo; los `delegation` resaltados; auto-scroll
+   al final. Botón limpiar.
+5. **Configuración** — `components/shell/SettingsScreen.tsx`: dos pestañas, **Agentes**
+   (`AgentsPanel.tsx` + `AgentDialog.tsx` para crear/editar: nombre, provider, rol, padre, modelo,
+   autoApprove, descripción, systemPrompt, comando custom; muestra si el binario está detectado y
+   su ruta) y **Recursos** (`ResourcesPanel.tsx`: perfil, órdenes, skills, MCP, hooks, contexto,
+   remoto).
+
+Helpers de formato en `src/lib/format.ts`: `formatTimeAgo`, `formatElapsed`, `truncate`,
+`formatClock`.
 
 Componentes disponibles en `@/components/ui/`: button, badge, card, input, textarea, label,
 switch, separator, dialog, tooltip, select, tabs, scroll-area, alert, island, toast, progress,

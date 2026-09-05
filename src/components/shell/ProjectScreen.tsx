@@ -47,7 +47,8 @@ export function ProjectScreen() {
           {project.workspaceDir}
         </span>
 
-        <div className="mx-auto flex items-center gap-1 rounded-md border border-border p-0.5">
+        {/* Right of centre on purpose: the <Island /> floats over the middle of the top edge. */}
+        <div className="ml-auto flex items-center gap-1 rounded-md border border-border p-0.5">
           <Button
             variant={projectMode === "chat" ? "secondary" : "ghost"}
             size="sm"
