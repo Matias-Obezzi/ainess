@@ -2435,6 +2435,57 @@ function detectGeneric(name) {
 	};
 	return null;
 }
+/**
+* Node refuses to spawn `.cmd`/`.bat` files without a shell, and going through cmd.exe
+* mangles prompts with quotes or newlines. npm shims are all shaped the same way
+* (`"%_prog%" "%dp0%\node_modules\<pkg>\bin\x.js" %*`), so resolve the script and run it
+* with the current Node binary instead.
+*/
+function resolveProgram(program, args) {
+	if (!/\.(cmd|bat)$/i.test(program)) return {
+		program,
+		args
+	};
+	try {
+		const m = fs.readFileSync(program, "utf-8").match(/"%dp0%\\([^"]+\.(?:m?js|cjs))"/i);
+		if (m) {
+			const script = path.join(path.dirname(program), m[1]);
+			if (fs.existsSync(script)) return {
+				program: process.execPath,
+				args: [script, ...args]
+			};
+		}
+	} catch {}
+	return {
+		program: process.env.ComSpec || "cmd.exe",
+		args: [
+			"/d",
+			"/s",
+			"/c",
+			program,
+			...args
+		]
+	};
+}
+function killTree(child) {
+	if (process.platform === "win32" && child.pid) spawnSync("taskkill", [
+		"/PID",
+		child.pid.toString(),
+		"/T",
+		"/F"
+	], { windowsHide: true });
+	try {
+		child.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM");
+	} catch {}
+}
+/** Kill every active run synchronously (used on process exit). */
+function killAllSync() {
+	for (const [runId, child] of activeRuns) {
+		killedRuns.add(runId);
+		killTree(child);
+	}
+	activeRuns.clear();
+}
 var nodeTransport = {
 	spawnRun: async (opts) => {
 		const env = {
@@ -2444,7 +2495,8 @@ var nodeTransport = {
 			FORCE_COLOR: "0",
 			CI: "1"
 		};
-		const child = spawn(opts.program, opts.args, {
+		const resolved = resolveProgram(opts.program, opts.args);
+		const child = spawn(resolved.program, resolved.args, {
 			cwd: opts.cwd || process.cwd(),
 			env,
 			stdio: [
@@ -2455,6 +2507,29 @@ var nodeTransport = {
 			windowsHide: true
 		});
 		activeRuns.set(opts.runId, child);
+		let exited = false;
+		const emitExit = (code) => {
+			if (exited) return;
+			exited = true;
+			activeRuns.delete(opts.runId);
+			const killed = killedRuns.has(opts.runId);
+			killedRuns.delete(opts.runId);
+			const ev = {
+				runId: opts.runId,
+				code,
+				killed
+			};
+			for (const h of exitHandlers) h(ev);
+		};
+		child.on("error", (err) => {
+			for (const h of outputHandlers) h({
+				runId: opts.runId,
+				stream: "stderr",
+				line: `No se pudo iniciar \`${opts.program}\`: ${err.message}`
+			});
+			emitExit(null);
+		});
+		if (child.stdin) child.stdin.on("error", () => {});
 		if (opts.stdinText && child.stdin) {
 			child.stdin.write(opts.stdinText);
 			child.stdin.end();
@@ -2481,29 +2556,13 @@ var nodeTransport = {
 			};
 			for (const h of outputHandlers) h(ev);
 		});
-		child.on("close", (code) => {
-			activeRuns.delete(opts.runId);
-			const killed = killedRuns.has(opts.runId);
-			killedRuns.delete(opts.runId);
-			const ev = {
-				runId: opts.runId,
-				code,
-				killed
-			};
-			for (const h of exitHandlers) h(ev);
-		});
+		child.on("close", (code) => emitExit(code));
 	},
 	killRun: async (runId) => {
 		const child = activeRuns.get(runId);
 		if (!child) return false;
 		killedRuns.add(runId);
-		if (process.platform === "win32" && child.pid) spawnSync("taskkill", [
-			"/PID",
-			child.pid.toString(),
-			"/T",
-			"/F"
-		]);
-		child.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM");
+		killTree(child);
 		return true;
 	},
 	onRunOutput: async (h) => {
@@ -2589,7 +2648,13 @@ async function main() {
 		}
 		process.exit(0);
 	}
-	let prompt = positionals[0] === "run" ? positionals[1] : positionals[0];
+	const KNOWN = /* @__PURE__ */ new Set(["run", "agents"]);
+	const first = positionals[0];
+	if (first && !KNOWN.has(first) && positionals.length === 1 && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
+		console.error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ais run "<texto>"`);
+		process.exit(2);
+	}
+	let prompt = first === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
 	if (!prompt && !process.stdin.isTTY) prompt = fs.readFileSync(0, "utf-8").trim();
 	if (!prompt) {
 		console.error("Falta el prompt");
@@ -2651,6 +2716,13 @@ async function main() {
 		useAppStore.getState().stopAll();
 		setTimeout(() => process.exit(130), 3e3);
 	});
+	process.stdout.on("error", (err) => {
+		if (err.code === "EPIPE") {
+			killAllSync();
+			process.exit(0);
+		}
+	});
+	process.on("exit", () => killAllSync());
 	await useAppStore.getState().submitPrompt(prompt, agentId);
 }
 main().catch((e) => {

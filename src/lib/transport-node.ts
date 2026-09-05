@@ -118,10 +118,47 @@ function detectGeneric(name: string): BinaryInfo | null {
   return null;
 }
 
+/**
+ * Node refuses to spawn `.cmd`/`.bat` files without a shell, and going through cmd.exe
+ * mangles prompts with quotes or newlines. npm shims are all shaped the same way
+ * (`"%_prog%" "%dp0%\node_modules\<pkg>\bin\x.js" %*`), so resolve the script and run it
+ * with the current Node binary instead.
+ */
+function resolveProgram(program: string, args: string[]): { program: string; args: string[] } {
+  if (!/\.(cmd|bat)$/i.test(program)) return { program, args };
+  try {
+    const text = fs.readFileSync(program, "utf-8");
+    const m = text.match(/"%dp0%\\([^"]+\.(?:m?js|cjs))"/i);
+    if (m) {
+      const script = path.join(path.dirname(program), m[1]);
+      if (fs.existsSync(script)) return { program: process.execPath, args: [script, ...args] };
+    }
+  } catch { /* fall through */ }
+  // Unknown shim: let cmd.exe run it (arguments with newlines may break here).
+  return { program: process.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c", program, ...args] };
+}
+
+function killTree(child: ChildProcess): void {
+  if (process.platform === "win32" && child.pid) {
+    spawnSync("taskkill", ["/PID", child.pid.toString(), "/T", "/F"], { windowsHide: true });
+  }
+  try { child.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM"); } catch { /* already gone */ }
+}
+
+/** Kill every active run synchronously (used on process exit). */
+export function killAllSync(): void {
+  for (const [runId, child] of activeRuns) {
+    killedRuns.add(runId);
+    killTree(child);
+  }
+  activeRuns.clear();
+}
+
 export const nodeTransport: Transport = {
   spawnRun: async (opts: SpawnOptions) => {
     const env = { ...process.env, ...(opts.env || {}), NO_COLOR: "1", FORCE_COLOR: "0", CI: "1" };
-    const child = spawn(opts.program, opts.args, {
+    const resolved = resolveProgram(opts.program, opts.args);
+    const child = spawn(resolved.program, resolved.args, {
       cwd: opts.cwd || process.cwd(),
       env,
       stdio: ["pipe", "pipe", "pipe"],
@@ -129,6 +166,23 @@ export const nodeTransport: Transport = {
     });
 
     activeRuns.set(opts.runId, child);
+
+    let exited = false;
+    const emitExit = (code: number | null) => {
+      if (exited) return;
+      exited = true;
+      activeRuns.delete(opts.runId);
+      const killed = killedRuns.has(opts.runId);
+      killedRuns.delete(opts.runId);
+      const ev: RunExitEvent = { runId: opts.runId, code, killed };
+      for (const h of exitHandlers) h(ev);
+    };
+    // Spawn failures (ENOENT, EACCES…) arrive here; without this the run would hang forever.
+    child.on("error", (err) => {
+      for (const h of outputHandlers) h({ runId: opts.runId, stream: "stderr", line: `No se pudo iniciar \`${opts.program}\`: ${err.message}` });
+      emitExit(null);
+    });
+    if (child.stdin) child.stdin.on("error", () => { /* process closed stdin early */ });
 
     if (opts.stdinText && child.stdin) {
       child.stdin.write(opts.stdinText);
@@ -151,23 +205,14 @@ export const nodeTransport: Transport = {
       });
     }
 
-    child.on("close", (code) => {
-      activeRuns.delete(opts.runId);
-      const killed = killedRuns.has(opts.runId);
-      killedRuns.delete(opts.runId);
-      const ev: RunExitEvent = { runId: opts.runId, code, killed };
-      for (const h of exitHandlers) h(ev);
-    });
+    child.on("close", (code) => emitExit(code));
   },
 
   killRun: async (runId: string) => {
     const child = activeRuns.get(runId);
     if (!child) return false;
     killedRuns.add(runId);
-    if (process.platform === "win32" && child.pid) {
-      spawnSync("taskkill", ["/PID", child.pid.toString(), "/T", "/F"]);
-    }
-    child.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM");
+    killTree(child);
     return true;
   },
 

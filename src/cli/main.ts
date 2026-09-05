@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { useAppStore, selectRoots } from "@/store";
 import { setTransport } from "@/lib/transport";
-import { nodeTransport } from "@/lib/transport-node";
+import { nodeTransport, killAllSync } from "@/lib/transport-node";
 
 async function main() {
   setTransport(nodeTransport);
@@ -49,8 +49,17 @@ async function main() {
     process.exit(0);
   }
 
-  let prompt = positionals[0] === "run" ? positionals[1] : positionals[0];
-  
+  // A lone lowercase word that is not a known subcommand is almost certainly a typo:
+  // refuse it instead of sending it as a prompt to the planner (which costs tokens).
+  const KNOWN = new Set(["run", "agents"]);
+  const first = positionals[0];
+  if (first && !KNOWN.has(first) && positionals.length === 1 && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
+    console.error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ais run "<texto>"`);
+    process.exit(2);
+  }
+
+  let prompt = first === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
+
   if (!prompt && !process.stdin.isTTY) {
     prompt = fs.readFileSync(0, "utf-8").trim();
   }
@@ -146,6 +155,12 @@ async function main() {
     useAppStore.getState().stopAll();
     setTimeout(() => process.exit(130), 3000);
   });
+  // If stdout goes away (e.g. piped into `head`), stop the agents instead of orphaning them.
+  process.stdout.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EPIPE") { killAllSync(); process.exit(0); }
+  });
+  // Last resort: never leave CLI children running after this process ends.
+  process.on("exit", () => killAllSync());
 
   await useAppStore.getState().submitPrompt(prompt, agentId);
 }
