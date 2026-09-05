@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ReactFlow, Background, Controls, MiniMap, Node, Edge } from "@xyflow/react";
+import { ReactFlow, Background, Controls, Node, Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useAppStore } from "@/store";
 import { AgentNode } from "./AgentNode";
@@ -85,6 +85,7 @@ export function HierarchyGraph() {
   return (
     <div className="w-full h-full">
       <ReactFlow
+        proOptions={{ hideAttribution: true }}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -92,7 +93,6 @@ export function HierarchyGraph() {
       >
         <Background />
         <Controls />
-        <MiniMap />
       </ReactFlow>
     </div>
   );
