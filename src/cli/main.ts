@@ -44,12 +44,128 @@ async function main() {
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "context", "projects"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "context", "projects", "detect", "profile", "presets"]);
   const first = args[0];
 
   if (!first.startsWith("-") && !KNOWN.has(first)) {
     if (/^[a-z][a-z0-9-]{0,24}$/.test(first) && args.length === 1) {
       error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}`);
+    }
+  }
+
+  if (first === "detect") {
+    const sub = args[1] || "list";
+    if (sub === "list") {
+      if (jsonOutput) {
+        console.log(JSON.stringify(store.binaries));
+      } else {
+        const providers = Object.keys(store.binaries) as ProviderId[];
+        for (const p of providers) {
+          const bin = store.binaries[p];
+          if (bin?.path) {
+            console.log(`${p}: ${bin.path} ${bin.version ? `(${bin.version})` : ""}`);
+          } else {
+            console.log(`${p}: No detectado`);
+          }
+        }
+      }
+      process.exit(0);
+    } else if (sub === "set") {
+      const provider = args[2] as ProviderId;
+      const rp = args[3];
+      if (!provider || !rp) error("Uso: ais detect set <provider> <ruta>");
+      store.updateConfig({ binaryOverrides: { ...store.config.binaryOverrides, [provider]: rp } });
+      await store.detectBinaries();
+      print({ ok: true }, "Override seteado.");
+      process.exit(0);
+    } else if (sub === "clear") {
+      const provider = args[2] as ProviderId;
+      if (!provider) error("Uso: ais detect clear <provider>");
+      const overrides = { ...store.config.binaryOverrides };
+      delete overrides[provider];
+      store.updateConfig({ binaryOverrides: overrides });
+      await store.detectBinaries();
+      print({ ok: true }, "Override borrado.");
+      process.exit(0);
+    }
+  }
+
+  if (first === "profile") {
+    const sub = args[1] || "show";
+    if (sub === "show") {
+      print(store.config.profile, `Nombre: ${store.config.profile?.name}\nSobre vos: ${store.config.profile?.about}\nPreferencias: ${store.config.profile?.preferences}`);
+      process.exit(0);
+    } else if (sub === "set") {
+      const { values } = parseArgs({
+        args: args.slice(2),
+        options: {
+          name: { type: "string" },
+          about: { type: "string" },
+          "about-file": { type: "string" },
+          preferences: { type: "string" },
+        },
+        strict: false
+      });
+      const current = store.config.profile || { name: "", about: "", preferences: "" };
+      let about = values.about as string | undefined;
+      if (values["about-file"]) about = fs.readFileSync(values["about-file"] as string, "utf-8");
+      
+      store.updateConfig({
+        profile: {
+          name: values.name !== undefined ? String(values.name) : current.name,
+          about: about !== undefined ? about : current.about,
+          preferences: values.preferences !== undefined ? String(values.preferences) : current.preferences,
+        }
+      });
+      print({ ok: true }, "Perfil guardado.");
+      process.exit(0);
+    }
+  }
+
+  if (first === "presets") {
+    const sub = args[1] || "list";
+    if (sub === "list") {
+      print(store.config.presets, store.config.presets?.map(p => `- ${p.name}: ${p.prompt.substring(0, 50)}... [Agent: ${p.agentId||"Cualquiera"}] [Model: ${p.model||"Predeterminado"}]`).join("\n") || "");
+      process.exit(0);
+    } else if (sub === "add") {
+      const name = args[2];
+      if (!name) error("Falta nombre");
+      const { values } = parseArgs({
+        args: args.slice(3),
+        options: {
+          prompt: { type: "string" },
+          agent: { type: "string" },
+          model: { type: "string" },
+        },
+        strict: false
+      });
+      if (!values.prompt) error("Falta --prompt");
+      let agentId: string | undefined = undefined;
+      if (values.agent) {
+        const a = store.config.agents.find(x => x.name.toLowerCase() === String(values.agent).toLowerCase());
+        if (!a) error(`Agente "${values.agent}" no encontrado`);
+        agentId = a.id;
+      }
+      const p = {
+        id: crypto.randomUUID(),
+        name,
+        prompt: String(values.prompt),
+        agentId,
+        model: values.model ? String(values.model) : undefined
+      };
+      const presets = [...(store.config.presets || [])];
+      const idx = presets.findIndex(x => x.name === name);
+      if (idx >= 0) presets[idx] = p; else presets.push(p);
+      store.updateConfig({ presets });
+      print(p, "Orden guardada");
+      process.exit(0);
+    } else if (sub === "remove") {
+      const name = args[2];
+      if (!name) error("Falta nombre");
+      const presets = (store.config.presets || []).filter(p => p.name !== name);
+      store.updateConfig({ presets });
+      print({ ok: true }, "Orden eliminada");
+      process.exit(0);
     }
   }
 
@@ -64,6 +180,30 @@ async function main() {
           console.log(`- ${a.name} [${a.role}] (Provider: ${a.provider}, Parent: ${parent})`);
         }
       }
+      process.exit(0);
+    } else if (sub === "init") {
+      const providerKeys = Object.keys(store.binaries) as ProviderId[];
+      const detectables = providerKeys.filter(p => p !== "custom");
+      const rootPlanner = store.config.agents.find(a => a.parentId === null && a.role === "planner");
+      let added = 0;
+      for (const p of detectables) {
+        const bin = store.binaries[p];
+        const hasAgent = store.config.agents.some(a => a.provider === p);
+        if (bin && bin.path && bin.version !== null && !hasAgent) {
+          store.upsertAgent({
+            id: crypto.randomUUID(),
+            name: p.charAt(0).toUpperCase() + p.slice(1),
+            provider: p,
+            role: "implementer",
+            parentId: rootPlanner ? rootPlanner.id : null,
+            autoApprove: true,
+            color: "#6b7280"
+          });
+          added++;
+        }
+      }
+      await store.saveConfig();
+      print({ added }, `Inicializados ${added} agentes.`);
       process.exit(0);
     } else if (sub === "add" || sub === "edit") {
       const { values, positionals } = parseArgs({
@@ -350,12 +490,32 @@ async function main() {
       json: { type: "boolean" },
       quiet: { type: "boolean", short: "q" },
       "max-rounds": { type: "string" },
+      preset: { type: "string" },
+      model: { type: "string" },
+      "auto-model": { type: "boolean" },
     },
     allowPositionals: true,
     strict: false
   });
 
+  if (values["auto-model"] !== undefined) {
+    store.updateConfig({ autoModel: Boolean(values["auto-model"]) });
+  }
+
   let prompt = first === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
+
+  if (values.preset) {
+    const presetObj = store.config.presets?.find(p => p.name === values.preset);
+    if (!presetObj) error(`Orden predefinida "${values.preset}" no encontrada.`);
+    prompt = presetObj.prompt + (prompt ? "\n" + prompt : "");
+    if (!values.agent && presetObj.agentId) {
+      const a = store.config.agents.find(x => x.id === presetObj.agentId);
+      if (a) values.agent = a.name;
+    }
+    if (!values.model && presetObj.model) {
+      values.model = presetObj.model;
+    }
+  }
 
   if (!prompt && !process.stdin.isTTY) {
     try { prompt = fs.readFileSync(0, "utf-8").trim(); } catch {}
@@ -459,7 +619,7 @@ async function main() {
   });
   process.on("exit", () => killAllSync());
 
-  await useAppStore.getState().submitPrompt(prompt, agentId, projectId);
+  await useAppStore.getState().submitPrompt(prompt, agentId, projectId, { model: values.model as string | undefined });
 }
 
 main().catch(e => {
