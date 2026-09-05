@@ -31,16 +31,22 @@ export function useActivityCount(runId: string): number {
   return useMemo(() => messages.filter(m => m.kind !== "text").length, [messages]);
 }
 
+/**
+ * The rows actually rendered: only the last `limit` ones once there are too many, except the
+ * streamed text, which is never folded away.
+ */
+export function visibleActivityRows<T extends { kind: string }>(rows: T[], limit: number, expanded: boolean): T[] {
+  if (expanded || rows.length <= limit) return rows;
+  return rows.filter((m, i) => i >= rows.length - limit || m.kind === "text");
+}
+
 export function RunActivity({ runId, compact = false, showFooter = true }: { runId: string; compact?: boolean; showFooter?: boolean }) {
   const rows = useRunMessages(runId);
   const run = useAppStore(state => state.runs[runId]);
   const [expanded, setExpanded] = useState(false);
 
   const limit = compact ? COMPACT_ROWS : FULL_ROWS;
-  // The streamed text is never folded away: only the steps around it are.
-  const shown = !expanded && rows.length > limit
-    ? rows.filter((m, i) => i >= rows.length - limit || m.kind === "text")
-    : rows;
+  const shown = visibleActivityRows(rows, limit, expanded);
   const hiddenCount = rows.length - shown.length;
 
   const isRunning = run?.status === "running";
