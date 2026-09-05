@@ -21,4 +21,11 @@ export const nullTransport: Transport = {
   remotePushState: async () => {},
   onRemoteCommand: async () => () => {},
   setTrayEnabled: async () => {},
+  logAppend: async () => {},
+  logsDir: async () => "",
+  openLogsDir: async () => { throw new Error("No disponible en el navegador"); },
+  tunnelStart: async () => { throw new Error("El túnel no está disponible en el navegador"); },
+  tunnelStop: async () => {},
+  tunnelStatus: async () => ({ running: false }),
+  tunnelDetect: async () => ({ cloudflared: null, ngrok: null }),
 };

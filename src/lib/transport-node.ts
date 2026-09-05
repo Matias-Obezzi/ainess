@@ -1,5 +1,6 @@
 import { Transport } from "./transport";
 import { nodeRemote } from "./remote-node";
+import { nodeTunnel } from "./tunnel-node";
 import type { AppConfig, BinaryInfo, RunExitEvent, RunOutputEvent, SpawnOptions } from "@/types";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import * as readline from "node:readline";
@@ -16,6 +17,41 @@ const exitHandlers = new Set<(e: RunExitEvent) => void>();
 function getConfigPath() {
   const appData = process.env.APPDATA ?? os.homedir();
   return path.join(appData, "com.matias.ais", "config.json");
+}
+
+/** Same folder Tauri's `app_log_dir` points at: `%LOCALAPPDATA%\com.matias.ais\logs`. */
+export function getLogsDir(): string {
+  const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
+  return path.join(local, "com.matias.ais", "logs");
+}
+
+const LOG_KEEP_DAYS = 14;
+let prunedLogs = false;
+
+/** Deletes log files older than 14 days, once per process. Best effort. */
+function pruneLogs(dir: string): void {
+  if (prunedLogs) return;
+  prunedLogs = true;
+  try {
+    const cutoff = Date.now() - LOG_KEEP_DAYS * 86_400_000;
+    for (const name of fs.readdirSync(dir)) {
+      const m = name.match(/^ainess-(\d{4}-\d{2}-\d{2})\.log$/);
+      if (!m) continue;
+      if (Date.parse(`${m[1]}T00:00:00Z`) < cutoff) fs.unlinkSync(path.join(dir, name));
+    }
+  } catch { /* nothing to prune */ }
+}
+
+/** Appends one line to today's log file, in the same format as src-tauri/src/logging.rs. */
+function appendLog(level: string, source: string, message: string): void {
+  try {
+    const dir = getLogsDir();
+    fs.mkdirSync(dir, { recursive: true });
+    pruneLogs(dir);
+    const stamp = new Date().toISOString();
+    const flat = message.replace(/\r/g, "").replace(/\n/g, "\\n");
+    fs.appendFileSync(path.join(dir, `ainess-${stamp.slice(0, 10)}.log`), `${stamp} [${level}] [${source}] ${flat}\n`, "utf-8");
+  } catch { /* logging must never break the CLI */ }
 }
 
 function getVersion(binPath: string): string | null {
@@ -357,6 +393,11 @@ export const nodeTransport: Transport = {
   },
 
   ...nodeRemote,
+  ...nodeTunnel,
 
   setTrayEnabled: async () => {},
+
+  logAppend: async (level: string, source: string, message: string) => appendLog(level, source, message),
+  logsDir: async () => getLogsDir(),
+  openLogsDir: async () => { throw new Error("Abrí la carpeta a mano: " + getLogsDir()); },
 };

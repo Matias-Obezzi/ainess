@@ -121,11 +121,24 @@ export interface Approval {
   decidedAt?: number;
 }
 
+/** Public tunnel provider used on top of the LAN server. */
+export type TunnelProviderId = "cloudflared" | "ngrok";
+
+export interface TunnelConfig {
+  provider: TunnelProviderId;
+  /** Only meaningful while `RemoteConfig.enabled` is true: the tunnel needs the local server. */
+  enabled: boolean;
+}
+
 export interface RemoteConfig {
   enabled: boolean;
   port: number;
   token: string;
+  tunnel: TunnelConfig;
 }
+
+/** Minimum level written to the log file (see src/lib/logger.ts). */
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface TrayConfig {
   /** Keep the app running in the system tray when the window is closed. */
@@ -137,7 +150,7 @@ export interface TrayConfig {
 }
 
 export interface AppConfig {
-  version: 8;
+  version: 9;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
   approveDelegations: boolean;
   remote: RemoteConfig;
@@ -156,6 +169,10 @@ export interface AppConfig {
   autoModel: boolean;
   hooks: Hook[];
   chats: Chat[];
+  /** Minimum level written to the log file. Default "info". */
+  logLevel: LogLevel;
+  /** Check for a new release a few seconds after startup. Default true. */
+  autoUpdateCheck: boolean;
 }
 
 export interface AgentRuntime {

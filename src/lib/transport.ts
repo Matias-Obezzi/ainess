@@ -25,6 +25,20 @@ export interface Transport {
 
   /** Toggles closing the window to the system tray instead of quitting. No-op outside Tauri. */
   setTrayEnabled(enabled: boolean): Promise<void>;
+
+  /** Appends one line to today's log file (see src/lib/logger.ts). Never throws. */
+  logAppend(level: string, source: string, message: string): Promise<void>;
+  /** Absolute path of the logs folder. */
+  logsDir(): Promise<string>;
+  /** Opens the logs folder in the file manager. */
+  openLogsDir(): Promise<void>;
+
+  // Public tunnel on top of the LAN server (see src/lib/remote.ts).
+  tunnelStart(provider: string, port: number): Promise<{ url: string }>;
+  tunnelStop(): Promise<void>;
+  tunnelStatus(): Promise<{ running: boolean; url?: string; provider?: string }>;
+  /** Absolute path of each tunnel binary, or null when it is not installed. */
+  tunnelDetect(): Promise<{ cloudflared: string | null; ngrok: string | null }>;
 }
 
 let currentTransport: Transport | null = null;

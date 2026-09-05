@@ -12,6 +12,7 @@ import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectScreen } from "@/components/shell/ProjectScreen";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { CommSidePanel } from "@/components/shell/CommSidePanel";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 
 export default function App() {
   const init = useAppStore(state => state.init);
@@ -25,6 +26,7 @@ export default function App() {
 
   useNotifications();
   useSystemNotifications();
+  useUpdateCheck();
 
   // Ctrl+, opens Configuración, Ctrl+K the search palette and Ctrl+B toggles the sidebar.
   useEffect(() => {

@@ -54,4 +54,20 @@ export const tauriTransport: Transport = {
     }),
 
   setTrayEnabled: async (enabled) => invoke<void>("set_tray_enabled", { enabled }),
+
+  logAppend: async (level, source, message) => {
+    try {
+      await invoke<void>("log_append", { level, source, message });
+    } catch {
+      /* logging must never surface an error */
+    }
+  },
+
+  logsDir: async () => invoke<string>("logs_dir"),
+  openLogsDir: async () => invoke<void>("open_logs_dir"),
+
+  tunnelStart: async (provider, port) => invoke<{ url: string }>("tunnel_start", { provider, port }),
+  tunnelStop: async () => invoke<void>("tunnel_stop"),
+  tunnelStatus: async () => invoke<{ running: boolean; url?: string; provider?: string }>("tunnel_status"),
+  tunnelDetect: async () => invoke<{ cloudflared: string | null; ngrok: string | null }>("tunnel_detect"),
 };

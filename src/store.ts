@@ -6,13 +6,14 @@ import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
+import { setLogLevel, log } from "@/lib/logger";
 
 /** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
 export type Screen = "home" | "project";
 /** Project screen body: conversation or agent graph. */
 export type ProjectMode = "chat" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote";
+export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -119,6 +120,12 @@ export interface AppState {
   refreshRemoteStatus(): Promise<void>;
   regenerateRemoteToken(): Promise<void>;
 
+  /** Public tunnel on top of the LAN server. */
+  tunnelStatus: remote.TunnelStatus;
+  startTunnel(): Promise<void>;
+  stopTunnel(): Promise<void>;
+  refreshTunnelStatus(): Promise<void>;
+
   // Chat actions
   createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
   updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
@@ -135,9 +142,9 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 8,
+    version: 9,
     approveDelegations: false,
-    remote: { enabled: false, port: 4710, token: crypto.randomUUID() },
+    remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
     tray: { enabled: true, notifyApprovals: true, notifyResults: true },
     projects: [],
     lastProjectId: null,
@@ -151,6 +158,8 @@ function generateSeedConfig(): AppConfig {
     presets: [],
     autoModel: false,
     chats: [],
+    logLevel: "info",
+    autoUpdateCheck: true,
     agents: [
       {
         id: claudeId,
@@ -206,7 +215,7 @@ const defaultUiPrefs: UiPrefs = {
   sidebarOpen: true,
 };
 
-const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote"];
+const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote", "about"];
 
 /** Old builds stored "settings" as a screen and "resources" as a settings tab; both were removed. */
 function sanitizeSettingsSection(value: unknown): SettingsSection {
@@ -303,7 +312,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 8, approveDelegations: false, remote: { enabled: false, port: 4710, token: "" }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
+  config: { version: 9, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -418,8 +427,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
   stopRemote: async () => {
+    // The tunnel forwards to the local server: without it, it points at nothing.
+    if (get().tunnelStatus.running) await get().stopTunnel().catch(() => {});
     await remote.stopRemote();
     set({ remoteStatus: { running: false, clients: 0 } });
+  },
+
+  tunnelStatus: { running: false },
+  startTunnel: async () => {
+    try {
+      const status = await remote.startTunnel();
+      set({ tunnelStatus: status });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      log.error("tunnel", message);
+      set({ tunnelStatus: { running: false, error: message } });
+      throw e;
+    }
+  },
+  stopTunnel: async () => {
+    await remote.stopTunnel();
+    set({ tunnelStatus: { running: false } });
+  },
+  refreshTunnelStatus: async () => {
+    const status = await getTransport().tunnelStatus();
+    set(state => ({
+      tunnelStatus: status.running
+        ? { ...status }
+        : { running: false, error: state.tunnelStatus.running ? "Se cayó el túnel" : state.tunnelStatus.error },
+    }));
   },
   refreshRemoteStatus: async () => {
     const status = await getTransport().remoteStatus();
@@ -653,6 +689,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (patch.tray && isTauri()) {
       void getTransport().setTrayEnabled(patch.tray.enabled).catch(() => {});
     }
+    if (patch.logLevel) setLogLevel(patch.logLevel);
     debouncedSave();
   },
 
@@ -897,6 +934,21 @@ async function runInit(): Promise<void> {
         ...config,
         version: 8,
         tray: config.tray ?? { enabled: true, notifyApprovals: true, notifyResults: true },
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 9: file logging, update checks and the public tunnel.
+    if ((config.version as number) < 9 || !config.remote?.tunnel) {
+      config = {
+        ...config,
+        version: 9,
+        logLevel: config.logLevel ?? "info",
+        autoUpdateCheck: config.autoUpdateCheck ?? true,
+        remote: {
+          ...config.remote,
+          tunnel: config.remote?.tunnel ?? { provider: "cloudflared", enabled: false },
+        },
       } as AppConfig;
       isSeed = true;
     }
@@ -933,6 +985,9 @@ async function runInit(): Promise<void> {
       navIndex: 0,
     });
 
+    setLogLevel(config.logLevel ?? "info");
+    log.info("app", `configuración cargada (${config.projects.length} proyectos, ${config.agents.length} agentes)`);
+
     if (isTauri()) {
       void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
     }
@@ -958,6 +1013,9 @@ async function runInit(): Promise<void> {
     // Remote access is opt-in; a failure (port busy) must not break startup.
     if (config.remote?.enabled) {
       await get().startRemote().catch(() => {});
+      if (config.remote.tunnel?.enabled && get().remoteStatus.running) {
+        await get().startTunnel().catch(() => {});
+      }
     }
 }
 

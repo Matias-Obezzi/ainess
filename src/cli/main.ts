@@ -7,7 +7,10 @@ import { nodeTransport, killAllSync, wingetCandidates } from "@/lib/transport-no
 import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
-import { remoteUrl } from "@/lib/remote";
+import { remoteUrl, tunnelUrl } from "@/lib/remote";
+import { installConsoleCapture, log } from "@/lib/logger";
+import { isTunnelProvider } from "@/lib/tunnel";
+import { killTunnelSync } from "@/lib/tunnel-node";
 import { localIp } from "@/lib/remote-node";
 import { claudeCandidateDirs } from "@/lib/transport-node";
 import * as os from "node:os";
@@ -17,6 +20,9 @@ import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
 async function main() {
   setTransport(nodeTransport);
+  // Everything the CLI prints (and any crash) also goes to the shared log file.
+  installConsoleCapture();
+  log.info("cli", `ais ${process.argv.slice(2).join(" ")}`);
   await useAppStore.getState().init();
   const store = useAppStore.getState();
 
@@ -54,8 +60,8 @@ async function main() {
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
     console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
-    console.log("  serve [--port N] [-w dir|-p proyecto]      Servidor para el celular (misma WiFi), Ctrl+C termina");
-    console.log("  remote url | token [--regenerate]          URL con token para el celular");
+    console.log("  serve [--port N] [--tunnel [prov]] [-w dir|-p proyecto]  Servidor para el celular, Ctrl+C termina");
+    console.log("  remote url [--tunnel] | token [--regenerate]             URL con token para el celular"); 
     console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
     console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
     console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
@@ -669,6 +675,16 @@ async function main() {
     const sub = args[1] || "url";
     const remote = store.config.remote;
     if (sub === "url") {
+      if (args.includes("--tunnel")) {
+        // The tunnel only exists inside a running `ais serve --tunnel` (or the app).
+        const st = await nodeTransport.tunnelStatus();
+        if (!st.running || !st.url) {
+          error("No hay un tunel activo en este proceso. Levantalo con `ais serve --tunnel` o desde la app (Configuracion -> Remoto).");
+        }
+        const turl = tunnelUrl(st.url!, remote.token);
+        print({ url: turl, provider: st.provider }, turl);
+        process.exit(0);
+      }
       const url = remoteUrl(localIp(), remote.port, remote.token);
       print({ url, port: remote.port, ip: localIp(), enabled: remote.enabled }, url);
       process.exit(0);
@@ -703,9 +719,26 @@ async function main() {
       error(`No se pudo iniciar el servidor: ${e instanceof Error ? e.message : String(e)}`);
     }
     const st = useAppStore.getState().remoteStatus;
-    if (jsonOutput) console.log(JSON.stringify({ url: st.url, ip: st.ip, port: port ?? store.config.remote.port }));
+
+    // `--tunnel [cloudflared|ngrok]`: publish the local server on a public URL.
+    let publicUrl: string | undefined;
+    const tunnelIdx = args.indexOf("--tunnel");
+    if (tunnelIdx !== -1) {
+      const arg = args[tunnelIdx + 1];
+      const provider = isTunnelProvider(arg) ? arg : store.config.remote.tunnel.provider;
+      store.updateConfig({ remote: { ...store.config.remote, tunnel: { provider, enabled: true } } });
+      try {
+        await store.startTunnel();
+        publicUrl = tunnelUrl(useAppStore.getState().tunnelStatus.url ?? "", store.config.remote.token);
+      } catch (e) {
+        error(`No se pudo abrir el tunel: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    if (jsonOutput) console.log(JSON.stringify({ url: st.url, ip: st.ip, port: port ?? store.config.remote.port, tunnelUrl: publicUrl }));
     else {
       console.log(`Servidor remoto escuchando en ${st.ip}:${port ?? store.config.remote.port}`);
+      if (publicUrl) console.log(`Tunel publico:\n  ${publicUrl}\nCualquiera con esta URL y el token puede operar la app.`);
       console.log(`Abrí desde el celular (misma WiFi):\n  ${st.url}\nCtrl+C para terminar.`);
     }
     // Live feed of what the phone triggers, same format as `run`.
@@ -722,7 +755,7 @@ async function main() {
     const shutdown = () => { void store.stopRemote().finally(() => flushHistory().finally(() => process.exit(0))); };
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
-    process.on("exit", () => killAllSync());
+    process.on("exit", () => { killAllSync(); killTunnelSync(); });
     setInterval(() => {}, 1 << 30); // keep the event loop alive
     return;
   }

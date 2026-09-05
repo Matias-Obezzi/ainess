@@ -3,6 +3,7 @@
 // this module is the shared, transport-agnostic part.
 import { useAppStore, selectRoots } from "@/store";
 import { getTransport } from "@/lib/transport";
+import { log } from "@/lib/logger";
 import type { Approval, CommMessage } from "@/types";
 
 export interface RemoteSnapshot {
@@ -25,6 +26,14 @@ export interface RemoteStatus {
   url?: string;
   ip?: string;
   clients: number;
+}
+
+export interface TunnelStatus {
+  running: boolean;
+  /** Public URL of the tunnel, without the token. */
+  url?: string;
+  provider?: string;
+  error?: string;
 }
 
 const MAX_MESSAGES = 150;
@@ -158,4 +167,26 @@ export async function stopRemote(): Promise<void> {
 
 export function remoteUrl(ip: string, port: number, token: string): string {
   return `http://${ip}:${port}/?token=${encodeURIComponent(token)}`;
+}
+
+/** Public URL of the tunnel with the token appended, ready to open on a phone. */
+export function tunnelUrl(publicUrl: string, token: string): string {
+  return `${publicUrl.replace(/\/$/, "")}/?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Opens the public tunnel. The LAN server has to be up first: the tunnel just forwards
+ * `127.0.0.1:<port>`, so without it every request would 502.
+ */
+export async function startTunnel(): Promise<TunnelStatus> {
+  const { remote } = useAppStore.getState().config;
+  const status = await getTransport().remoteStatus();
+  if (!status.running) throw new Error("Prendé primero el acceso remoto local");
+  const info = await getTransport().tunnelStart(remote.tunnel.provider, remote.port);
+  log.info("tunnel", `túnel ${remote.tunnel.provider} activo`);
+  return { running: true, url: info.url, provider: remote.tunnel.provider };
+}
+
+export async function stopTunnel(): Promise<void> {
+  await getTransport().tunnelStop();
 }

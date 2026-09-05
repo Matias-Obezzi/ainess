@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppStore } from "@/store";
 import type { SettingsSection } from "@/store";
 import { cn } from "@/lib/utils";
-import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, X, type LucideIcon } from "lucide-react";
+import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, Info, X, type LucideIcon } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
 import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
@@ -15,6 +15,7 @@ import { McpSection, McpSectionActions, McpSectionProvider } from "@/components/
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
 import { RemoteSection } from "@/components/settings/RemoteSection";
+import { AboutSection } from "@/components/settings/AboutSection";
 
 export interface SettingsSectionDef {
   id: SettingsSection;
@@ -41,6 +42,7 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   { id: "hooks", label: "Hooks", help: "Acciones automáticas en eventos del orquestador.", icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
   { id: "context", label: "Contexto", help: "Texto compartido agregado al system prompt de todos los agentes.", icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
   { id: "remote", label: "Remoto", help: "Acceso desde el celular en la misma red local.", icon: Smartphone, component: RemoteSection },
+  { id: "about", label: "Acerca de", help: "Versión, actualizaciones y archivos de log.", icon: Info, component: AboutSection },
 ];
 
 /** Configuración, as a modal with an internal sidebar of sections (replaces the old settings screen). */

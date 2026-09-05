@@ -67,6 +67,37 @@ export function GeneralSection() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Actualizaciones y registro</CardTitle>
+          <CardDescription>Los logs quedan en archivos locales con rotación diaria (Acerca de → Abrir carpeta de logs).</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={config.autoUpdateCheck}
+              onCheckedChange={(checked) => updateConfig({ autoUpdateCheck: checked })}
+            />
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold">Buscar actualizaciones al iniciar</label>
+              <span className="text-sm text-muted-foreground">Unos segundos después de abrir la app se consulta si hay una versión nueva publicada.</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <Switch
+              checked={config.logLevel === "debug"}
+              onCheckedChange={(checked) => updateConfig({ logLevel: checked ? "debug" : "info" })}
+            />
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold">Registrar detalles (debug)</label>
+              <span className="text-sm text-muted-foreground">
+                Escribe también las líneas de nivel debug. Sirve para diagnosticar un problema; genera archivos más grandes.
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Orquestación</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
