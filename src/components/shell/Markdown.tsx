@@ -1,13 +1,14 @@
 // Markdown renderer for agent answers and live text. Styles come from Tailwind classes here
 // (no @tailwindcss/typography), so the output matches the shell's own type scale.
-import { isValidElement, type MouseEvent, type ReactNode } from "react";
+import { isValidElement, useState, type MouseEvent, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { parseDelegations } from "@/lib/providers";
 import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
-import { Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Share2 } from "lucide-react";
+import { truncate } from "@/lib/format";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -24,24 +25,51 @@ function openLink(e: MouseEvent<HTMLAnchorElement>, href?: string) {
   void import("@tauri-apps/plugin-opener").then(m => m.openUrl(href)).catch(() => {});
 }
 
-/** A ```delegate block shown as what it means, not as raw JSON. */
+/** First non-empty line of a task, for the collapsed preview. */
+function firstLine(text: string): string {
+  const line = text.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? "";
+  return truncate(line.replace(/^#+\s*/, ""), 110);
+}
+
+/**
+ * A ```delegate block shown as what it means, not as raw JSON. Collapsed by default (the task
+ * text is usually a long brief); expanded, each task renders as markdown.
+ */
 function DelegationCard({ tasks }: { tasks: Delegation[] }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="my-2 rounded-md border border-border bg-background/60 p-2">
-      <div className="flex items-center gap-1.5 text-xs font-medium">
-        <Share2 className="h-3.5 w-3.5" />
-        Delegación
-      </div>
-      <ul className="mt-1.5 flex flex-col gap-1">
+    <div className="my-2 rounded-md border border-border bg-background/60">
+      <button
+        type="button"
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs font-medium hover:bg-accent/40 rounded-md"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+        <Share2 className="h-3.5 w-3.5 shrink-0" />
+        <span>Delegación</span>
+        <span className="text-muted-foreground font-normal truncate">
+          → {tasks.map(t => t.agent).join(", ")}
+        </span>
+      </button>
+
+      <div className="flex flex-col gap-2 px-2 pb-2">
         {tasks.map((t, i) => (
-          <li key={i} className="text-xs">
-            <span className="font-medium">{t.agent}</span>
-            {t.model ? <span className="text-muted-foreground"> · {t.model}</span> : null}
-            <span className="text-muted-foreground">: </span>
-            <span className="whitespace-pre-wrap break-words">{t.task}</span>
-          </li>
+          <div key={i} className="text-xs flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium">{t.agent}</span>
+              {t.model ? <span className="text-muted-foreground">· {t.model}</span> : null}
+            </div>
+            {open ? (
+              <div className="rounded-md border border-border/60 bg-card px-2.5 py-2">
+                <Markdown text={t.task} className="text-xs" />
+              </div>
+            ) : (
+              <div className="text-muted-foreground truncate" title={t.task}>{firstLine(t.task)}</div>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
