@@ -14,6 +14,10 @@ interface Props {
   editChatId?: string;
 }
 
+/** Roles that make sense in a chat; the text lands in the agent's system prompt ("tu rol es …"). */
+const CHAT_ROLES = ["asistente", "arquitecto", "revisor de código", "QA", "abogado del diablo", "docente", "product owner", "investigador"];
+const OTHER_ROLE = "__other__";
+
 export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
   const agents = useAppStore(state => state.config.agents);
   const currentProjectId = useAppStore(state => state.currentProjectId);
@@ -84,6 +88,9 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
 
           <div>
             <Label>Participantes</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Con quién hablás directamente, sin pasar por el planificador. Con más de uno, responden por turno y cada uno ve lo que dijeron los otros; el rol le dice a cada agente cómo comportarse en este chat.
+            </p>
             <div className="flex flex-col gap-2 mt-2">
               {participants.map((p, idx) => {
                 return (
@@ -98,12 +105,28 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      className="flex-1"
-                      value={p.role}
-                      onChange={e => updateParticipant(idx, { role: e.target.value })}
-                      placeholder="Rol (ej: arquitecto)"
-                    />
+                    <Select
+                      value={CHAT_ROLES.includes(p.role) ? p.role : OTHER_ROLE}
+                      onValueChange={v => updateParticipant(idx, { role: v === OTHER_ROLE ? "" : v })}
+                    >
+                      <SelectTrigger className="w-[150px]" title="Cómo tiene que comportarse en este chat">
+                        <SelectValue placeholder="Rol" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CHAT_ROLES.map(r => (
+                          <SelectItem key={r} value={r}>{r[0].toUpperCase() + r.slice(1)}</SelectItem>
+                        ))}
+                        <SelectItem value={OTHER_ROLE}>Otro…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!CHAT_ROLES.includes(p.role) && (
+                      <Input
+                        className="flex-1 min-w-[120px]"
+                        value={p.role}
+                        onChange={e => updateParticipant(idx, { role: e.target.value })}
+                        placeholder="Describí el rol"
+                      />
+                    )}
                     <Input
                       className="w-[120px]"
                       value={p.model || ""}
