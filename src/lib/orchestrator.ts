@@ -37,7 +37,7 @@ function appendCommText(agentId: string, runId: string, projectId: string, delta
   });
 }
 
-function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string }): string | undefined {
+function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
@@ -56,7 +56,8 @@ function startRun(opts: { agentId: string; projectId: string; prompt: string; pa
     output: "",
     rawLines: [],
     childRunIds: [],
-    round: opts.round
+    round: opts.round,
+    model: opts.model
   };
 
   useAppStore.setState(state => {
@@ -112,7 +113,12 @@ function startRun(opts: { agentId: string; projectId: string; prompt: string; pa
   const children = selectChildren(store, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
-  const systemPrompt = buildSystemPrompt(agent, children, { skills, sharedContext });
+  const systemPrompt = buildSystemPrompt(agent, children, { 
+    skills, 
+    sharedContext, 
+    profile: store.config.profile, 
+    autoModel: store.config.autoModel 
+  });
   const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
   const mcpServers = selectMcpFor(store, agent.id);
@@ -131,8 +137,10 @@ function startRun(opts: { agentId: string; projectId: string; prompt: string; pa
       mcpConfigPath = await getTransport().writeTextFile(`mcp/${agent.id}.json`, JSON.stringify(obj, null, 2));
     }
 
+    const effectiveAgent = opts.model ? { ...agent, model: opts.model } : agent;
+
     const spawnOpts = provider.buildCommand({
-      agent,
+      agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
@@ -263,8 +271,20 @@ function onRunFinished(runId: string) {
         for (const task of delegations) {
           const childAgent = children.find(c => c.name.toLowerCase() === task.agent.toLowerCase() || c.id === task.agent);
           if (childAgent) {
-            addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: task.task, runId });
-            startRun({ agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId });
+            let modelToUse: string | undefined = undefined;
+            if (task.model && store.config.autoModel) {
+              const providerSpec = PROVIDERS[childAgent.provider];
+              const allowed = new Set(providerSpec?.defaultModels || []);
+              if (childAgent.model) allowed.add(childAgent.model);
+              if (allowed.has(task.model)) {
+                modelToUse = task.model;
+              } else {
+                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: `Modelo "${task.model}" no está disponible para ${childAgent.name}, se ignorará.`, runId });
+              }
+            }
+            const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
+            addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
+            startRun({ agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse });
           } else {
             addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
           }
@@ -390,15 +410,15 @@ function processQueuedInstructions(agentId: string, projectId: string) {
   }
 }
 
-export async function submitPrompt(text: string, targetAgentId: string, projectId: string): Promise<void> {
+export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
-  const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0 });
+  const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model });
   if (runId) {
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
   }
 }
 
-export async function instructAgent(agentId: string, text: string, projectId: string): Promise<void> {
+export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void> {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   if (!runtime) return;
@@ -413,7 +433,7 @@ export async function instructAgent(agentId: string, text: string, projectId: st
       };
     });
   } else {
-    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true });
+    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true, model: opts?.model });
   }
 }
 
