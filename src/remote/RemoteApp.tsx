@@ -143,7 +143,10 @@ function HomeView() {
   const runtime = useAppStore(state => state.runtime);
   const approvals = useAppStore(state => state.approvals);
 
-  const pending = useMemo(() => Object.values(approvals).filter(a => a.status === "pending"), [approvals]);
+  const pending = useMemo(
+    () => Object.values(approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
+    [approvals],
+  );
 
   return (
     <>
@@ -154,7 +157,7 @@ function HomeView() {
             variant="outline"
             size="sm"
             className="ml-auto h-10 gap-1.5 border-amber-500/60 text-amber-600 dark:text-amber-400"
-            onClick={() => openProject(pending.sort((a, b) => a.createdAt - b.createdAt)[0].projectId)}
+            onClick={() => openProject(pending[0].projectId)}
           >
             <ShieldCheck className="h-4 w-4" />
             {pending.length} {pending.length === 1 ? "aprobación" : "aprobaciones"}
