@@ -6,6 +6,7 @@ import { setTransport } from "@/lib/transport";
 import { nodeTransport, killAllSync } from "@/lib/transport-node";
 import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
+import { flushHistory, loadHistory } from "@/lib/history";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
@@ -43,20 +44,23 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, profile, presets, chat, run");
+    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, profile, presets, chat, history, status, run");
+    console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
+    console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
+    console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
     console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
     console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
     console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status"]);
   const first = args[0];
 
-  if (!first.startsWith("-") && !KNOWN.has(first)) {
-    if (/^[a-z][a-z0-9-]{0,24}$/.test(first) && args.length === 1) {
-      error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}`);
-    }
+  // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
+  // through `ais run "<texto>"` or contain spaces). Rejecting it avoids burning tokens.
+  if (!first.startsWith("-") && !KNOWN.has(first) && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
+    error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ais run "<texto>"`);
   }
 
   if (first === "detect") {
@@ -551,6 +555,70 @@ async function main() {
     }
   }
 
+  if (first === "history" || first === "status") {
+    const { values: hv, positionals: hp } = parseArgs({
+      args: args.slice(1),
+      options: {
+        workspace: { type: "string", short: "w" },
+        project: { type: "string", short: "p" },
+        limit: { type: "string" },
+        json: { type: "boolean" },
+      },
+      allowPositionals: true,
+      strict: false,
+    });
+    const agentName = (id: string) => store.config.agents.find(a => a.id === id)?.name || id;
+    const fmt = (ts: number) => new Date(ts).toLocaleString("es-AR", { hour12: false });
+    const oneLine = (s: string, n: number) => s.replace(/\s+/g, " ").trim().slice(0, n);
+
+    if (first === "status") {
+      // A fresh process only sees what was persisted by the app/CLI that ran the tasks.
+      for (const p of store.config.projects) await loadHistory(p.id);
+      const state = useAppStore.getState();
+      const report = state.config.projects.map(p => {
+        const runs = Object.values(state.runs).filter(r => r.projectId === p.id);
+        const running = runs.filter(r => r.status === "running");
+        const last = runs.sort((a, b) => b.startedAt - a.startedAt)[0];
+        return { project: p.name, workspaceDir: p.workspaceDir, runs: runs.length, running: running.map(r => ({ agent: agentName(r.agentId), task: oneLine(r.prompt, 80) })), last: last ? { agent: agentName(last.agentId), status: last.status, at: last.startedAt } : null };
+      });
+      if (jsonOutput || hv.json) { console.log(JSON.stringify(report)); process.exit(0); }
+      if (report.length === 0) console.log("No hay proyectos.");
+      for (const r of report) {
+        console.log(`- ${r.project} (${r.workspaceDir}): ${r.runs} runs guardados`);
+        for (const x of r.running) console.log(`    en curso (según el último guardado): ${x.agent}: ${x.task}`);
+        if (r.last) console.log(`    último: ${r.last.agent} [${r.last.status}] ${fmt(r.last.at)}`);
+      }
+      process.exit(0);
+    }
+
+    const projectId = resolveProjectId(hv.project as string | undefined, hv.workspace as string | undefined);
+    await loadHistory(projectId);
+    const state = useAppStore.getState();
+    const runs = Object.values(state.runs).filter(r => r.projectId === projectId).sort((a, b) => b.startedAt - a.startedAt);
+
+    if (hp[0] === "show") {
+      const prefix = hp[1];
+      if (!prefix) error("Uso: ais history show <runId>");
+      const run = runs.find(r => r.id.startsWith(prefix));
+      if (!run) error(`No hay un run que empiece con "${prefix}".`);
+      if (jsonOutput || hv.json) { console.log(JSON.stringify(run)); process.exit(0); }
+      console.log(`Run ${run.id}\nAgente: ${agentName(run.agentId)}  Estado: ${run.status}  Ronda: ${run.round}  Inicio: ${fmt(run.startedAt)}${run.endedAt ? `  Fin: ${fmt(run.endedAt)}` : ""}`);
+      console.log(`\n## Prompt\n${run.prompt}\n\n## Salida\n${run.output}\n\n## Líneas crudas (${run.rawLines.length})\n${run.rawLines.join("\n")}`);
+      process.exit(0);
+    }
+
+    const limit = parseInt(String(hv.limit || "20"), 10) || 20;
+    const shown = runs.slice(0, limit);
+    if (jsonOutput || hv.json) { console.log(JSON.stringify(shown)); process.exit(0); }
+    if (shown.length === 0) console.log("Sin runs guardados para este proyecto.");
+    for (const r of shown) {
+      console.log(`${fmt(r.startedAt)}  ${r.id.slice(0, 8)}  ${agentName(r.agentId)} [${r.status}] r${r.round}`);
+      console.log(`    > ${oneLine(r.prompt, 80)}`);
+      if (r.output) console.log(`    < ${oneLine(r.output, 120)}`);
+    }
+    process.exit(0);
+  }
+
   if (first === "projects") {
     const sub = args[1] || "list";
     if (sub === "list") {
@@ -762,7 +830,8 @@ async function main() {
     store.updateConfig({ autoModel: Boolean(values["auto-model"]) });
   }
 
-  let prompt = first === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
+  // `run` may come after options (ais -a X run "..."), so strip it wherever it is.
+  let prompt = positionals[0] === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
 
   if (values.preset) {
     const presetObj = store.config.presets?.find(p => p.name === values.preset);
@@ -866,16 +935,16 @@ async function main() {
       if (!values.json) process.stdout.write("\n");
       const errs = state.messages.find(m => m.projectId === projectId && m.kind === "error" && m.text.includes("No se encontró el CLI"));
       const isError = errs || state.runs[prevState.activeTaskRunId[projectId] as string]?.status === "error";
-      process.exit(isError ? 1 : 0);
+      void flushHistory().finally(() => process.exit(isError ? 1 : 0));
     }
   });
 
   process.on("SIGINT", () => {
     useAppStore.getState().stopAll();
-    setTimeout(() => process.exit(130), 3000);
+    setTimeout(() => { void flushHistory().finally(() => process.exit(130)); }, 2500);
   });
   process.stdout.on("error", (err: NodeJS.ErrnoException) => {
-    if (err.code === "EPIPE") { killAllSync(); process.exit(0); }
+    if (err.code === "EPIPE") { killAllSync(); void flushHistory().finally(() => process.exit(0)); }
   });
   process.on("exit", () => killAllSync());
 

@@ -2,7 +2,7 @@ import { useAppStore, selectRunningCount } from "@/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Folder, PlayCircle } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ProjectDialog } from "./ProjectDialog";
 import { toast } from "@/components/ui/toast";
 
@@ -11,7 +11,14 @@ export function ProjectsPanel() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const setCurrentProject = useAppStore(state => state.setCurrentProject);
   const removeProject = useAppStore(state => state.removeProject);
-  
+  const runs = useAppStore(state => state.runs);
+  // Count per project once per runs change (a selector returning a new object would re-render forever).
+  const savedRuns = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of Object.values(runs)) counts[r.projectId] = (counts[r.projectId] ?? 0) + 1;
+    return counts;
+  }, [runs]);
+
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
 
@@ -57,6 +64,7 @@ export function ProjectsPanel() {
               <div className="text-sm flex items-center gap-1.5">
                 <PlayCircle className="w-4 h-4 text-orange-500" />
                 {running} tareas activas
+                <span className="text-muted-foreground">· {savedRuns[p.id] ?? 0} runs guardados</span>
               </div>
 
               <div className="flex gap-2 mt-auto pt-2">

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
+import * as history from "@/lib/history";
 
 export interface AppState {
   loaded: boolean;
@@ -46,6 +47,8 @@ export interface AppState {
   stopAll(projectId?: string): Promise<void>;
   resetSession(agentId: string, projectId: string): void;
   clearMessages(projectId?: string): void;
+  /** Drops a project's runs and feed, in memory and on disk. */
+  clearHistory(projectId: string): Promise<void>;
 
   // Chat actions
   createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
@@ -165,6 +168,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // The plan says "mata sus runs primero con stopAll(projectId)". 
     // Wait, the orchestrator might be async, so we just call it.
     orchestrator.stopAll(id);
+    history.forgetHistory(id);
     set((state) => {
       const newProjects = state.config.projects.filter(p => p.id !== id);
       const newRuntime = { ...state.runtime };
@@ -188,6 +192,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setCurrentProject: (id) => {
     set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
+    if (id) void history.loadHistory(id);
     debouncedSave();
   },
 
@@ -392,12 +397,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
     });
   },
 
-  clearMessages: (projectId) => set((state) => {
+  clearMessages: (projectId) => {
     if (projectId) {
-      return { messages: state.messages.filter(m => m.projectId !== projectId) };
+      void history.clearHistory(projectId);
+      return;
     }
-    return { messages: [] };
-  }),
+    set({ messages: [] });
+    for (const p of get().config.projects) void history.clearHistory(p.id);
+  },
+
+  clearHistory: (projectId) => history.clearHistory(projectId),
 
   // ---- Chat actions ----
   createChat: (opts) => {
@@ -544,7 +553,14 @@ async function runInit(): Promise<void> {
     
     await get().detectBinaries();
     await orchestrator.attachListeners();
-    
+
+    // Restore runs and feed: every project when there are few, otherwise only the last one.
+    history.attachHistoryPersistence();
+    const toLoad = config.projects.length <= 5
+      ? config.projects.map(p => p.id)
+      : (config.lastProjectId ? [config.lastProjectId] : []);
+    await Promise.all(toLoad.map(id => history.loadHistory(id)));
+
     set({ loaded: true });
 }
 

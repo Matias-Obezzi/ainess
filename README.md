@@ -125,3 +125,17 @@ echo "Resumime el README" | ais chat -a Claude            # entrada por pipe: un
 ```
 
 Los mensajes y las sesiones se guardan en `%APPDATA%\com.matias.ais\chats\<id>.json`.
+
+## Historial
+
+Los runs y el feed de comunicación de cada proyecto se guardan en `%APPDATA%\com.matias.ais\history\<projectId>.json` (máximo 300 runs y 3000 mensajes por proyecto; de cada run se conservan las últimas 300 líneas crudas). Al abrir la app o el CLI se restauran solos; un run que quedó a medias cuando se cerró la app aparece como error "[interrumpido: la aplicación se cerró]".
+
+Desde la terminal:
+
+```bash
+ais history -w C:\repo --limit 20     # últimos runs del proyecto
+ais history show 3f2a                 # prompt, salida y líneas crudas de un run (prefijo del id)
+ais status                            # runs guardados y último run por proyecto
+```
+
+El botón "Limpiar" de la pestaña Comunicación borra el historial del proyecto, en memoria y en disco.
