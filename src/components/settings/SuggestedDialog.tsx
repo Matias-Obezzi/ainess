@@ -3,7 +3,6 @@ import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { SUGGESTED_MCP, SUGGESTED_SKILLS } from "@/lib/suggested";
 import { toast } from "@/components/ui/toast";
 import { Check } from "lucide-react";
@@ -64,7 +63,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>{kind === "mcp" ? "Servidores MCP sugeridos" : "Skills sugeridas"}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="-mx-4 flex-1 px-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-2 py-2">
             {items.map(item => {
               const already = existingNames.has(item.name);
@@ -96,7 +95,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleAdd} disabled={selected.size === 0}>
