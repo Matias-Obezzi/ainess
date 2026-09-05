@@ -302,9 +302,9 @@ async function fetchAntigravityQuota(): Promise<ProviderQuota> {
     items.push({
       label: POOL_LABELS[pool] || `Pool ${pool}`,
       model: pool,
-      unlimited: !exhausted,
+      // Not "unlimited": the pool has a cap, we just don't know its size until it runs out.
       resetsAt: exhausted ? mark.exhaustedUntil : undefined,
-      note: exhausted ? undefined : "Disponible",
+      note: exhausted ? "Agotado" : "Disponible",
     });
   }
   return {
