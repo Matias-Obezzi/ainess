@@ -1,20 +1,34 @@
 mod config;
 mod detect;
-mod runner;
 mod http;
+mod logging;
 mod remote;
+mod runner;
 mod tray;
+mod tunnel;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .manage(runner::RunnerState::default())
         .manage(remote::RemoteState::default())
         .manage(tray::TrayState::default())
+        .manage(tunnel::TunnelState::default())
+        .manage(logging::LogState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let handle = app.handle().clone();
+            logging::prune_old(&handle);
+            logging::append(
+                &handle,
+                "info",
+                "app",
+                &format!("ainess {} iniciando", handle.package_info().version),
+            );
             tray::setup_tray(app)?;
             Ok(())
         })
@@ -32,13 +46,29 @@ pub fn run() {
             detect::detect_binaries,
             http::http_post,
             http::http_get,
+            logging::log_append,
+            logging::logs_dir,
+            logging::open_logs_dir,
+            logging::read_recent_logs,
             remote::remote_start,
             remote::remote_stop,
             remote::remote_status,
             remote::remote_push_state,
             remote::remote_reply,
-            tray::set_tray_enabled
+            tray::set_tray_enabled,
+            tunnel::tunnel_start,
+            tunnel::tunnel_stop,
+            tunnel::tunnel_status,
+            tunnel::tunnel_detect
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    // Quitting from the tray or closing the last window must not leave the tunnel process alive.
+    app.run(|handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            tunnel::shutdown(handle);
+            logging::append(handle, "info", "app", "ainess cerrando");
+        }
+    });
 }

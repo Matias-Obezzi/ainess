@@ -19,6 +19,8 @@ use tauri::{AppHandle, Emitter, State as TauriState};
 use tokio::sync::{broadcast, oneshot};
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
+use crate::logging;
+
 const PAGE: &str = include_str!("../../src/remote/remote.html");
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -214,12 +216,17 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
-        .map_err(|e| if e.kind() == std::io::ErrorKind::AddrInUse { format!("El puerto {port} está ocupado") } else { e.to_string() })?;
+        .map_err(|e| {
+            let msg = if e.kind() == std::io::ErrorKind::AddrInUse { format!("El puerto {port} está ocupado") } else { e.to_string() };
+            logging::append(&inner.app, "error", "remote", &format!("no se pudo escuchar en el puerto {port}: {msg}"));
+            msg
+        })?;
     let task = tauri::async_runtime::spawn(async move {
         let _ = axum::serve(listener, router).await;
     });
     let ip = local_ip();
     let url = format!("http://{ip}:{port}/?token={}", urlencode(&token));
+    logging::append(&inner.app, "info", "remote", &format!("servidor remoto escuchando en {ip}:{port}"));
     *state.server.lock().unwrap() = Some(Server { inner, task, url: url.clone(), ip: ip.clone() });
     Ok(RemoteInfo { url, ip })
 }
@@ -234,9 +241,10 @@ fn urlencode(s: &str) -> String {
 }
 
 #[tauri::command]
-pub fn remote_stop(state: TauriState<'_, RemoteState>) -> Result<(), String> {
+pub fn remote_stop(app: AppHandle, state: TauriState<'_, RemoteState>) -> Result<(), String> {
     if let Some(s) = state.server.lock().unwrap().take() {
         s.task.abort();
+        logging::append(&app, "info", "remote", "servidor remoto detenido");
     }
     Ok(())
 }

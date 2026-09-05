@@ -1,5 +1,8 @@
 use serde::Serialize;
 use std::collections::HashMap;
+use tauri::AppHandle;
+
+use crate::logging;
 
 #[derive(Serialize)]
 pub struct HttpResponse {
@@ -9,6 +12,7 @@ pub struct HttpResponse {
 
 #[tauri::command]
 pub async fn http_post(
+    app: AppHandle,
     url: String,
     body: String,
     headers: HashMap<String, String>,
@@ -22,11 +26,11 @@ pub async fn http_post(
     for (k, v) in headers {
         req = req.header(k, v);
     }
-    
-    let res = req.body(body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+
+    let res = req.body(body).send().await.map_err(|e| {
+        logging::append(&app, "error", "http", &format!("POST {url} falló: {e}"));
+        e.to_string()
+    })?;
 
     let status = res.status().as_u16();
     let res_body = res.text().await.unwrap_or_default();
@@ -39,6 +43,7 @@ pub async fn http_post(
 
 #[tauri::command]
 pub async fn http_get(
+    app: AppHandle,
     url: String,
     headers: HashMap<String, String>,
 ) -> Result<HttpResponse, String> {
@@ -52,10 +57,10 @@ pub async fn http_get(
         req = req.header(k, v);
     }
 
-    let res = req
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let res = req.send().await.map_err(|e| {
+        logging::append(&app, "error", "http", &format!("GET {url} falló: {e}"));
+        e.to_string()
+    })?;
 
     let status = res.status().as_u16();
     let res_body = res.text().await.unwrap_or_default();

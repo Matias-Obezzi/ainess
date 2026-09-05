@@ -10,6 +10,8 @@ use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
+use crate::logging;
+
 #[derive(Default)]
 pub struct RunnerState {
     children: Arc<Mutex<HashMap<String, Arc<Mutex<Child>>>>>,
@@ -110,9 +112,17 @@ pub fn spawn_run(
     opts: SpawnOptions,
 ) -> Result<(), String> {
     let mut cmd = build_command(&opts);
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| format!("No se pudo iniciar `{}`: {e}", opts.program))?;
+    let mut child = cmd.spawn().map_err(|e| {
+        let msg = format!("No se pudo iniciar `{}`: {e}", opts.program);
+        logging::append(&app, "error", "runner", &format!("run {}: {msg}", opts.run_id));
+        msg
+    })?;
+    logging::append(
+        &app,
+        "info",
+        "runner",
+        &format!("run {} inicia: {} {}", opts.run_id, opts.program, opts.args.join(" ")),
+    );
 
     if let Some(text) = opts.stdin_text.clone() {
         if let Some(mut stdin) = child.stdin.take() {
@@ -155,6 +165,12 @@ pub fn spawn_run(
             }
         };
         let killed = children.lock().unwrap().remove(&run_id).is_none();
+        logging::append(
+            &app,
+            "info",
+            "runner",
+            &format!("run {run_id} termina: código {code:?}{}", if killed { " (detenido)" } else { "" }),
+        );
         let _ = app.emit(
             "run-exit",
             ExitEvent {
@@ -205,7 +221,7 @@ pub struct ExecResult {
 }
 
 #[tauri::command]
-pub fn exec_capture(program: String, args: Vec<String>, cwd: Option<String>) -> Result<ExecResult, String> {
+pub fn exec_capture(app: AppHandle, program: String, args: Vec<String>, cwd: Option<String>) -> Result<ExecResult, String> {
     let mut cmd = Command::new(&program);
     cmd.args(&args)
         .stdout(Stdio::piped())
@@ -230,7 +246,11 @@ pub fn exec_capture(program: String, args: Vec<String>, cwd: Option<String>) -> 
     // third-party deps like wait-timeout, we can just spawn and wait, or spawn a thread. 
     // Wait, wait_timeout is usually what people mean. I'll just spawn and read, since the 
     // Node side already does sync execution with a timeout. I'll just wait for the process.
-    let output = cmd.output().map_err(|e| format!("No se pudo ejecutar {}: {}", program, e))?;
+    let output = cmd.output().map_err(|e| {
+        let msg = format!("No se pudo ejecutar {}: {}", program, e);
+        logging::append(&app, "error", "exec", &msg);
+        msg
+    })?;
 
     Ok(ExecResult {
         code: output.status.code(),

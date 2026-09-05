@@ -260,3 +260,15 @@ fn get_version(path: &str) -> Option<String> {
         Some(first_line.to_string())
     }
 }
+
+/// Full path of an executable, looking at PATH first and then at the winget package folders
+/// (a process started before a winget install keeps the old PATH). Used by tunnel.rs.
+pub fn find_path(name: &str) -> Option<String> {
+    if let Ok(p) = which::which(name) {
+        return Some(p.to_string_lossy().into_owned());
+    }
+    winget_candidates(name)
+        .into_iter()
+        .find(|p| p.exists())
+        .map(|p| p.to_string_lossy().into_owned())
+}

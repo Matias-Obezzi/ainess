@@ -42,8 +42,14 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => show_main_window(app),
-            "quit" => app.exit(0),
+            "show" => {
+                crate::logging::append(app, "debug", "tray", "mostrar ventana desde la bandeja");
+                show_main_window(app);
+            }
+            "quit" => {
+                crate::logging::append(app, "info", "tray", "salir desde la bandeja");
+                app.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -63,6 +69,7 @@ pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
         if state.enabled.load(Ordering::Relaxed) {
             api.prevent_close();
             let _ = window.hide();
+            crate::logging::append(window.app_handle(), "debug", "tray", "ventana oculta en la bandeja");
         }
     }
 }
