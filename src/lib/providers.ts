@@ -67,15 +67,18 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     return [{ type: "session", sessionId: obj.conversation_id }];
   }
   if (obj.event === "step_update" && obj.step_update) {
-    const { step_type, text_delta, tool_name, tool_call } = obj.step_update;
-    if (step_type === "agent_response" || step_type === "user_input") {
-      if (text_delta && step_type === "agent_response") {
-        return [{ type: "text", text: text_delta }];
-      }
-    } else {
-      const detail = tool_name || (tool_call && tool_call.name);
-      return [{ type: "tool", name: step_type, detail }];
+    const { step_type, state, text_delta, tool_name, tool_info } = obj.step_update;
+    if (step_type === "agent_response") {
+      return text_delta ? [{ type: "text", text: text_delta }] : [];
     }
+    if (step_type === "user_input" || step_type === "system_message") return [];
+    // Tool steps arrive twice (ACTIVE then DONE/ERROR): log once when they start, plus failures.
+    const name: string = tool_name || tool_info?.name || step_type;
+    const params = tool_info?.parameters;
+    const detail = params ? JSON.stringify(params).substring(0, 200) : undefined;
+    if (state === "ACTIVE") return [{ type: "tool", name, detail }];
+    if (state === "ERROR") return [{ type: "error", text: `Falló la herramienta ${name}` }];
+    return [];
   }
   if (obj.event === "result" && obj.result) {
     const events: ParsedEvent[] = [];
@@ -137,7 +140,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     buildCommand: (input) => {
       const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
       const args = ["-p", prompt, "--output-format", "stream-json", "--print-timeout", "30m"];
-      
+      // Without --add-dir agy treats an unregistered cwd as "outside of project" and
+      // works in its own scratch folder instead of the workspace.
+      if (input.cwd) args.push("--add-dir", input.cwd);
       if (input.agent.model) args.push("--model", input.agent.model);
       if (input.sessionId) args.push("--conversation", input.sessionId);
       

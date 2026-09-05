@@ -37,7 +37,7 @@ function appendCommText(agentId: string, runId: string, delta: string) {
   });
 }
 
-function startRun(opts: { agentId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean }): string | undefined {
+function startRun(opts: { agentId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   if (!agent) return undefined;
@@ -47,6 +47,7 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
     id: runId,
     agentId: opts.agentId,
     parentRunId: opts.parentRunId,
+    rootRunId: opts.rootRunId ?? runId,
     prompt: opts.prompt,
     status: "running",
     startedAt: Date.now(),
@@ -210,7 +211,7 @@ function onRunFinished(runId: string) {
           const childAgent = children.find(c => c.name.toLowerCase() === task.agent.toLowerCase() || c.id === task.agent);
           if (childAgent) {
             addMessage({ fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: task.task, runId });
-            startRun({ agentId: childAgent.id, prompt: task.task, parentRunId: runId, round: run.round });
+            startRun({ agentId: childAgent.id, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId });
           } else {
             addMessage({ fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
           }
@@ -234,8 +235,8 @@ function onRunFinished(runId: string) {
   if (!waitingForChildren) {
     if (!run.parentRunId) {
       addMessage({ fromAgentId: agent.id, toAgentId: "user", kind: "result", text: run.output, runId });
-      // Only the root run of the current task clears it; direct instructions don't.
-      if (useAppStore.getState().activeTaskRunId === runId) {
+      // Only runs belonging to the current task clear it; direct instructions don't.
+      if (useAppStore.getState().activeTaskRunId === run.rootRunId) {
         useAppStore.setState({ activeTaskRunId: null });
       }
     } else {
@@ -269,9 +270,20 @@ function maybeContinueParent(parentRunId: string) {
       }
     }
 
-    if (parentRun.round >= store.config.maxRounds) {
-      addMessage({ fromAgentId: "system", toAgentId: parentRun.agentId, kind: "system", text: "Se alcanzó el máximo de rondas" });
-      
+    const cancelled = cancelledRuns.delete(parentRunId);
+    if (cancelled || parentRun.round >= store.config.maxRounds) {
+      addMessage({
+        fromAgentId: "system",
+        toAgentId: parentRun.agentId,
+        kind: "system",
+        text: cancelled ? `Tarea de ${parentAgent.name} detenida por el usuario` : "Se alcanzó el máximo de rondas"
+      });
+      if (cancelled) {
+        useAppStore.setState(state => ({
+          runs: { ...state.runs, [parentRunId]: { ...state.runs[parentRunId], output: "[detenido por el usuario]" } }
+        }));
+      }
+
       useAppStore.setState(state => ({
         runtime: { ...state.runtime, [parentRun.agentId]: { ...state.runtime[parentRun.agentId], status: "idle" } }
       }));
@@ -287,7 +299,8 @@ function maybeContinueParent(parentRunId: string) {
         prompt: outputText,
         parentRunId: parentRun.parentRunId,
         round: parentRun.round + 1,
-        resume: true
+        resume: true,
+        rootRunId: parentRun.rootRunId
       });
     }
   }
@@ -344,6 +357,9 @@ function descendsFromAgent(runs: Record<string, Run>, run: Run, agentId: string)
   return false;
 }
 
+/** Runs whose continuation was cancelled by the user while they waited for children. */
+const cancelledRuns = new Set<string>();
+
 export async function stopAgent(agentId: string): Promise<void> {
   const store = useAppStore.getState();
   const runtime = store.runtime[agentId];
@@ -351,10 +367,18 @@ export async function stopAgent(agentId: string): Promise<void> {
     await ipc.killRun(runtime.currentRunId);
     return;
   }
-  // Waiting for children: stop every running run delegated (directly or not) by this agent.
+  // Waiting for children: stop every running run delegated (directly or not) by this agent,
+  // and cancel the continuation so the agent does not re-delegate with "[detenido]" results.
   const descendants = Object.values(store.runs).filter(
     r => r.status === "running" && descendsFromAgent(store.runs, r, agentId)
   );
+  for (const r of descendants) {
+    let cursor = r.parentRunId ? store.runs[r.parentRunId] : undefined;
+    while (cursor) {
+      if (cursor.agentId === agentId) { cancelledRuns.add(cursor.id); break; }
+      cursor = cursor.parentRunId ? store.runs[cursor.parentRunId] : undefined;
+    }
+  }
   await Promise.all(descendants.map(r => ipc.killRun(r.id).catch(() => {})));
   if (descendants.length === 0) {
     useAppStore.setState(state => ({

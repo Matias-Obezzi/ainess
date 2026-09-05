@@ -79,6 +79,7 @@ El prompt va por **stdin**. Salida: una línea JSON por evento:
 ### antigravity (`agy.exe`)
 ```
 agy -p "<prompt>" --output-format stream-json --print-timeout 30m
+    --add-dir <workspaceDir>          # obligatorio: sin esto ignora el cwd y trabaja en su scratch
     [--model <m>] [--conversation <conversationId>]
     (autoApprove ? --dangerously-skip-permissions : --mode accept-edits)
 ```

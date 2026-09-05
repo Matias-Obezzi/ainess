@@ -219,3 +219,8 @@ export function selectRoots(state: AppState): AgentConfig[] {
 export function selectAgent(state: AppState, id: string): AgentConfig | undefined {
   return state.config.agents.find(a => a.id === id);
 }
+
+// Dev-only hook so the app can be driven from a debugger / e2e script.
+if (import.meta.env.DEV) {
+  (window as unknown as { __ais?: typeof useAppStore }).__ais = useAppStore;
+}

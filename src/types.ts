@@ -68,6 +68,8 @@ export interface Run {
   id: string;
   agentId: string;
   parentRunId: string | null;
+  /** Id of the root run of the user task this run belongs to (itself for a root run). */
+  rootRunId: string;
   prompt: string;
   status: RunStatus;
   startedAt: number;
