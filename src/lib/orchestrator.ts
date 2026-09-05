@@ -12,7 +12,7 @@ export async function attachListeners(): Promise<void> {
   await getTransport().onRunExit(handleExit);
 }
 
-function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
+export function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
   useAppStore.setState(state => ({
     messages: [...state.messages, { ...msg, id: crypto.randomUUID(), ts: Date.now() }]
   }));
@@ -37,7 +37,7 @@ function appendCommText(agentId: string, runId: string, projectId: string, delta
   });
 }
 
-function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string }): string | undefined {
+export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
@@ -57,7 +57,8 @@ function startRun(opts: { agentId: string; projectId: string; prompt: string; pa
     rawLines: [],
     childRunIds: [],
     round: opts.round,
-    model: opts.model
+    model: opts.model,
+    kind: opts.kind,
   };
 
   useAppStore.setState(state => {
@@ -113,7 +114,7 @@ function startRun(opts: { agentId: string; projectId: string; prompt: string; pa
   const children = selectChildren(store, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
-  const systemPrompt = buildSystemPrompt(agent, children, { 
+  const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, { 
     skills, 
     sharedContext, 
     profile: store.config.profile, 
@@ -256,6 +257,30 @@ function onRunFinished(runId: string) {
   if (!run) return;
   const agent = selectAgent(store, run.agentId);
   if (!agent) return;
+
+  // Chat runs bypass normal delegation logic
+  if (run.kind === "chat") {
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[run.projectId] || {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [run.projectId]: {
+            ...pRuntime,
+            [agent.id]: {
+              ...pRuntime[agent.id],
+              status: "idle",
+              currentRunId: undefined,
+              currentTask: undefined
+            }
+          }
+        }
+      };
+    });
+    // Notify chat module
+    import("@/lib/chat").then(m => m.onChatRunFinished(runId)).catch(() => {});
+    return;
+  }
 
   let agentStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
   let waitingForChildren = false;

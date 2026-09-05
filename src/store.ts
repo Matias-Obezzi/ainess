@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 
@@ -12,6 +12,12 @@ export interface AppState {
   messages: CommMessage[];
   activeTaskRunId: Record<string, string | null>;
   currentProjectId: string | null;
+  /** Chat messages in memory, keyed by chatId. */
+  chatMessages: Record<string, ChatMessage[]>;
+  /** Session ids per chat per agent. */
+  chatSessions: Record<string, Record<string, string>>;
+  /** Currently selected chat id. */
+  currentChatId: string | null;
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
@@ -40,6 +46,15 @@ export interface AppState {
   stopAll(projectId?: string): Promise<void>;
   resetSession(agentId: string, projectId: string): void;
   clearMessages(projectId?: string): void;
+
+  // Chat actions
+  createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
+  updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
+  removeChat(id: string): void;
+  setCurrentChat(id: string | null): void;
+  sendChatMessage(chatId: string, text: string): Promise<void>;
+  stopChat(chatId: string): Promise<void>;
+  loadChatMessages(chatId: string): Promise<void>;
 }
 
 function generateSeedConfig(): AppConfig {
@@ -48,7 +63,7 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 5,
+    version: 6,
     projects: [],
     lastProjectId: null,
     maxRounds: 6,
@@ -60,6 +75,7 @@ function generateSeedConfig(): AppConfig {
     profile: { name: "", about: "", preferences: "" },
     presets: [],
     autoModel: false,
+    chats: [],
     agents: [
       {
         id: claudeId,
@@ -106,13 +122,16 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 5, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false },
+  config: { version: 6, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
   binaries: {},
   runtime: {},
   runs: {},
   messages: [],
   activeTaskRunId: {},
   currentProjectId: null,
+  chatMessages: {},
+  chatSessions: {},
+  currentChatId: null,
 
   init: () => {
     // Idempotent: StrictMode mounts twice and both calls must share one initialization.
@@ -378,7 +397,65 @@ export const useAppStore = create<AppState>()((set, get) => ({
       return { messages: state.messages.filter(m => m.projectId !== projectId) };
     }
     return { messages: [] };
-  })
+  }),
+
+  // ---- Chat actions ----
+  createChat: (opts) => {
+    const id = crypto.randomUUID();
+    const chat: Chat = { id, ...opts, createdAt: Date.now() };
+    set((state) => ({
+      config: { ...state.config, chats: [...state.config.chats, chat] },
+      currentChatId: id,
+    }));
+    debouncedSave();
+    return id;
+  },
+
+  updateChat: (id, patch) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        chats: state.config.chats.map(c => c.id === id ? { ...c, ...patch } : c)
+      }
+    }));
+    debouncedSave();
+  },
+
+  removeChat: (id) => {
+    set((state) => {
+      const newChats = state.config.chats.filter(c => c.id !== id);
+      const newChatMessages = { ...state.chatMessages };
+      delete newChatMessages[id];
+      const newSessions = { ...state.chatSessions };
+      delete newSessions[id];
+      return {
+        config: { ...state.config, chats: newChats },
+        chatMessages: newChatMessages,
+        chatSessions: newSessions,
+        currentChatId: state.currentChatId === id ? null : state.currentChatId,
+      };
+    });
+    debouncedSave();
+  },
+
+  setCurrentChat: (id) => {
+    set({ currentChatId: id });
+  },
+
+  sendChatMessage: async (chatId, text) => {
+    const { sendChatMessage } = await import("@/lib/chat");
+    await sendChatMessage(chatId, text);
+  },
+
+  stopChat: async (chatId) => {
+    const { stopChat } = await import("@/lib/chat");
+    await stopChat(chatId);
+  },
+
+  loadChatMessages: async (chatId) => {
+    const { loadChatMessages } = await import("@/lib/chat");
+    await loadChatMessages(chatId);
+  },
 }));
 
 async function runInit(): Promise<void> {
@@ -436,6 +513,16 @@ async function runInit(): Promise<void> {
         ...config,
         version: 5,
         hooks: config.hooks || [],
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 6
+    if ((config.version as number) < 6) {
+      config = {
+        ...config,
+        version: 6,
+        chats: config.chats || [],
       } as unknown as AppConfig;
       isSeed = true;
     }
