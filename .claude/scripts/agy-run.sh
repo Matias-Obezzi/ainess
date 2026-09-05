@@ -2,7 +2,7 @@
 # Despacha un plan a Antigravity (agy CLI) en modo headless y guarda el resultado.
 # Uso: .claude/scripts/agy-run.sh <plan.md> [--model <id>] [--timeout <dur>] [--effort low|medium|high]
 # Env: AGY_BIN, AGY_PROJECT (nombre del proyecto en Antigravity), AGY_NEW_PROJECT=1 (crea el proyecto),
-#      AGY_MODEL, AGY_TIMEOUT, AGY_EFFORT
+#      AGY_MODEL, AGY_TIMEOUT, AGY_EFFORT, AGY_ADD_DIR (directorio extra del workspace, ej. un worktree)
 set -uo pipefail
 
 AGY="${AGY_BIN:-$HOME/.gemini/bin/agy.exe}"
@@ -51,6 +51,7 @@ EOF
 )
 
 ARGS=(--dangerously-skip-permissions --output-format json --print-timeout "$TIMEOUT")
+[ -n "${AGY_ADD_DIR:-}" ] && ARGS+=(--add-dir "$AGY_ADD_DIR")
 [ -n "$EFFORT" ] && [ "$EFFORT" != "none" ] && ARGS+=(--effort "$EFFORT")
 if [ "${AGY_NEW_PROJECT:-}" = "1" ]; then
   ARGS+=(--new-project)
