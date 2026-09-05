@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Despacha un plan a GitHub Copilot CLI en modo headless y guarda el resultado.
 # Uso: .claude/scripts/copilot-run.sh <plan.md> [--model <id>] [--timeout <dur>] [--repo <dir>]
-# Env: COPILOT_BIN, COPILOT_MODEL (default claude-opus-5), COPILOT_TIMEOUT (default 90m),
+# Env: COPILOT_BIN, COPILOT_MODEL (default claude-sonnet-5; en el plan Individual no hay opus: disponibles claude-sonnet-5, gpt-5.4, gpt-5.3-codex, gemini-3.8-flash, grok-4.5, claude-haiku-4.5), COPILOT_TIMEOUT (default 90m),
 #      COPILOT_REPO (directorio del repo/worktree donde trabajar; default: raíz del repo del plan)
 set -uo pipefail
 
 WINGET_COPILOT="$LOCALAPPDATA/Microsoft/WinGet/Packages/GitHub.Copilot_Microsoft.Winget.Source_8wekyb3d8bbwe/copilot.exe"
 COPILOT="${COPILOT_BIN:-$(command -v copilot 2>/dev/null || echo "$WINGET_COPILOT")}"
-MODEL="${COPILOT_MODEL:-claude-opus-5}"
+MODEL="${COPILOT_MODEL:-claude-sonnet-5}"
 TIMEOUT="${COPILOT_TIMEOUT:-90m}"
 REPO="${COPILOT_REPO:-}"
 

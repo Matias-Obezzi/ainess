@@ -5,6 +5,13 @@ import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
 
+/** Which top-level screen the shell is showing. */
+export type Screen = "home" | "project" | "settings";
+/** Project screen body: conversation or agent graph. */
+export type ProjectMode = "chat" | "graph";
+/** Which tab of the settings screen is open. */
+export type SettingsSection = "agents" | "resources";
+
 export interface AppState {
   loaded: boolean;
   config: AppConfig;
@@ -20,6 +27,21 @@ export interface AppState {
   chatSessions: Record<string, Record<string, string>>;
   /** Currently selected chat id. */
   currentChatId: string | null;
+
+  // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
+  screen: Screen;
+  projectMode: ProjectMode;
+  commPanelOpen: boolean;
+  settingsSection: SettingsSection;
+  /** projectId -> collapsed in the sidebar. */
+  sidebarCollapsed: Record<string, boolean>;
+  openHome(): void;
+  /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
+  openProject(projectId: string, chatId?: string | null): void;
+  openSettings(section?: SettingsSection): void;
+  setProjectMode(mode: ProjectMode): void;
+  toggleCommPanel(open?: boolean): void;
+  toggleSidebarProject(projectId: string): void;
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
@@ -129,6 +151,60 @@ function generateSeedConfig(): AppConfig {
   };
 }
 
+/** Shell layout preferences, kept out of the config file (per-machine, not per-project). */
+interface UiPrefs {
+  screen: Screen;
+  projectMode: ProjectMode;
+  commPanelOpen: boolean;
+  settingsSection: SettingsSection;
+  sidebarCollapsed: Record<string, boolean>;
+}
+
+const UI_PREFS_KEY = "ais.ui";
+const defaultUiPrefs: UiPrefs = {
+  screen: "home",
+  projectMode: "chat",
+  commPanelOpen: false,
+  settingsSection: "agents",
+  sidebarCollapsed: {},
+};
+
+/** localStorage does not exist in the CLI/node build, so every access is guarded. */
+function loadUiPrefs(): UiPrefs {
+  if (typeof localStorage === "undefined") return { ...defaultUiPrefs };
+  try {
+    const raw = localStorage.getItem(UI_PREFS_KEY);
+    if (!raw) return { ...defaultUiPrefs };
+    const parsed = JSON.parse(raw) as Partial<UiPrefs>;
+    return {
+      screen: parsed.screen === "project" || parsed.screen === "settings" ? parsed.screen : "home",
+      projectMode: parsed.projectMode === "graph" ? "graph" : "chat",
+      commPanelOpen: parsed.commPanelOpen === true,
+      settingsSection: parsed.settingsSection === "resources" ? "resources" : "agents",
+      sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
+    };
+  } catch {
+    return { ...defaultUiPrefs };
+  }
+}
+
+function saveUiPrefs(): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const s = useAppStore.getState();
+    const prefs: UiPrefs = {
+      screen: s.screen,
+      projectMode: s.projectMode,
+      commPanelOpen: s.commPanelOpen,
+      settingsSection: s.settingsSection,
+      sidebarCollapsed: s.sidebarCollapsed,
+    };
+    localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Private mode / quota: layout preferences are not worth failing over.
+  }
+}
+
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
@@ -151,6 +227,54 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   approvals: {},
+
+  ...(() => {
+    const prefs = loadUiPrefs();
+    // The saved screen is only restored once the project list is known (see runInit).
+    return { ...prefs, screen: "home" as Screen };
+  })(),
+
+  openHome: () => {
+    set({ screen: "home" });
+    saveUiPrefs();
+  },
+
+  openProject: (projectId, chatId) => {
+    const state = get();
+    const sameProject = state.currentProjectId === projectId;
+    let nextChatId: string | null;
+    if (chatId === undefined) {
+      // Keep the open chat only when it belongs to this project.
+      const current = state.currentChatId ? state.config.chats.find(c => c.id === state.currentChatId) : undefined;
+      nextChatId = sameProject && current && current.projectId === projectId ? current.id : null;
+    } else {
+      nextChatId = chatId;
+    }
+    if (!sameProject) state.setCurrentProject(projectId);
+    set({ currentChatId: nextChatId, screen: "project" });
+    if (nextChatId) void state.loadChatMessages(nextChatId);
+    saveUiPrefs();
+  },
+
+  openSettings: (section) => {
+    set(s => ({ screen: "settings", settingsSection: section ?? s.settingsSection }));
+    saveUiPrefs();
+  },
+
+  setProjectMode: (mode) => {
+    set({ projectMode: mode });
+    saveUiPrefs();
+  },
+
+  toggleCommPanel: (open) => {
+    set(s => ({ commPanelOpen: open ?? !s.commPanelOpen }));
+    saveUiPrefs();
+  },
+
+  toggleSidebarProject: (projectId) => {
+    set(s => ({ sidebarCollapsed: { ...s.sidebarCollapsed, [projectId]: !s.sidebarCollapsed[projectId] } }));
+    saveUiPrefs();
+  },
 
   approve: (approvalId, note) => orchestrator.approveApproval(approvalId, note),
   reject: (approvalId, note) => orchestrator.rejectApproval(approvalId, note),
@@ -231,15 +355,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // clear messages for project
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
-      return { 
-        config: { ...state.config, projects: newProjects }, 
-        runtime: newRuntime, 
+      // Chats belong to the project, so they go with it (otherwise they stay orphaned in config).
+      const newChats = state.config.chats.filter(c => c.projectId !== id);
+      const wasCurrent = state.currentProjectId === id;
+      return {
+        config: { ...state.config, projects: newProjects, chats: newChats },
+        runtime: newRuntime,
         activeTaskRunId: newActiveTask,
         messages: newMessages,
         runs: newRuns,
-        currentProjectId: state.currentProjectId === id ? null : state.currentProjectId
+        currentProjectId: wasCurrent ? null : state.currentProjectId,
+        currentChatId: wasCurrent ? null : state.currentChatId,
+        // Losing the open project drops the user back to the home screen.
+        screen: wasCurrent && state.screen === "project" ? ("home" as Screen) : state.screen,
       };
     });
+    saveUiPrefs();
     debouncedSave();
   },
 
@@ -609,8 +740,22 @@ async function runInit(): Promise<void> {
       }
     }
 
-    set({ config, runtime, currentProjectId: config.lastProjectId });
-    
+    // Restore the shell layout; the saved screen only counts when its project still exists.
+    const prefs = loadUiPrefs();
+    const lastProjectValid = !!config.lastProjectId && config.projects.some(p => p.id === config.lastProjectId);
+    const screen: Screen = prefs.screen === "settings" ? "settings" : lastProjectValid ? "project" : "home";
+    set({
+      config,
+      runtime,
+      currentProjectId: lastProjectValid ? config.lastProjectId : null,
+      screen,
+      projectMode: prefs.projectMode,
+      commPanelOpen: prefs.commPanelOpen,
+      settingsSection: prefs.settingsSection,
+      sidebarCollapsed: prefs.sidebarCollapsed,
+    });
+
+
     if (isSeed) {
       await get().saveConfig();
     }
