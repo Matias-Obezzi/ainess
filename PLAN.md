@@ -339,12 +339,37 @@ mismo color.
      mensaje pendiente del agente lleva `runId` (lo setea `lib/chat.ts` apenas `startRun` devuelve
      el id) y muestra `RunActivity` dentro de la burbuja: no hay badge "escribiendo…" ni indicador
      "Escribiendo…" al final del hilo.
-   - `HierarchyGraph.tsx` con `@xyflow/react` (importar `@xyflow/react/dist/style.css`): árbol por
-     `parentId`, layout por niveles calculado a mano (x por índice dentro del nivel, y por
-     profundidad). Nodo custom `AgentNode.tsx`: nombre, provider, rol, estado (punto de color +
-     texto), tarea actual truncada, disponibilidad del binario, botones **Detener**, **Indicar**
-     (abre `InstructDialog.tsx`), **Ver salida** y **Chatear**. Edges padre→hijo, `animated`
-     cuando el hijo está `working`.
+   - `HierarchyGraph.tsx` con `@xyflow/react` (importar `@xyflow/react/dist/style.css`), envuelto en
+     `ReactFlowProvider`: árbol por `parentId` con layout propio (`layoutAgents`, exportada y
+     testeada) — `y` por profundidad y `x` centrando cada grupo de hijos bajo su padre a partir del
+     ancho del subárbol (`NODE_WIDTH` 260, `GAP_X` 40, `GAP_Y` 90); huérfanos y ciclos caen como
+     raíces extra. `fitView` con `padding: 0.2`, zoom 0.4–1.5, nodos arrastrables pero no
+     conectables, `deleteKeyCode` nulo, y re-`fitView` cuando cambia la cantidad de agentes o el
+     ancho del contenedor (`ResizeObserver`). Edges `smoothstep` (`borderRadius` 12) del color del
+     hijo, `strokeOpacity` 0.7, más gruesos y `animated` cuando trabaja, `markerEnd` de flecha y
+     label "delegado" mientras el hijo está `working`/`waiting`. Sin `<Controls/>`: arriba a la
+     izquierda un resumen ("N trabajando / esperando / inactivos") y arriba a la derecha una toolbar
+     de iconos (Ajustar vista, Centrar en el activo, Acercar, Alejar) que se esconde con el
+     inspector abierto. Sin agentes, `EmptyState` con CTA a Configuración > Agentes.
+     - Nodo custom `AgentNode.tsx` (260px, borde superior del color del agente, `ring` si está
+       seleccionado): avatar con la inicial, nombre, "{provider} · {rol}", `StatusDot` (pulso si
+       trabaja) y `AlertTriangle` si falta el CLI; una línea de estado con cronómetro
+       ("Trabajando · 2:14", desde el `startedAt` del `currentRunId`, tick de 1 s solo si está
+       activo), badge ámbar "en {proyecto}" si está ocupado en otro, la tarea actual en dos líneas y
+       la última herramienta del run (`meta.summary` + `toolIcon`). Abajo, acciones solo de icono con
+       tooltip: Detener, Indicar (`InstructDialog.tsx`), Ver salida (`RunDetailDialog.tsx` del último
+       run) y Chatear, más un menú con Reiniciar sesión y Editar agente.
+     - `shell/AgentInspector.tsx` — panel de 360px dentro del área del grafo
+       (`absolute right-3 top-3 bottom-3`) que se abre al clickear un nodo y se cierra con la X, con
+       click en el fondo o con `Escape` (lleva `data-inspector`, que el `Composer` ignora para no
+       detener la tarea): cabecera con estado, la tarea actual completa, `RunActivity` del run en
+       curso ("Actividad en vivo") o las últimas 3 tareas del agente en el proyecto con su hora,
+       estado y "Ver", y las mismas acciones con texto.
+     - `agent-actions.tsx` — `useAgentActions(agent)` y `AgentActionDialogs`, la semántica compartida
+       por el nodo y el inspector (`stopAgent`, `instructAgent`, último run, chat individual,
+       `resetSession`, `openSettings("agents")`).
+     - Los estilos de React Flow viven en `src/index.css` sobre los tokens del tema (variables
+       `--xy-*` y reglas `.react-flow__*`), sin duplicar reglas para `.dark`.
    - `Composer.tsx` — textarea (Ctrl+Enter para enviar, flecha arriba recupera el último prompt).
      Sin chat abierto manda `submitPrompt` con selects de destino, modelo y órdenes predefinidas;
      con un chat abierto manda `sendChatMessage`. Mientras algo corre, el botón pasa a Detener.
