@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Transport } from "./transport";
 import { ipc, onRunOutput, onRunExit } from "./tauri";
+import type { PtyExitEvent, PtyOutputEvent, ShellInfo } from "@/types";
 
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
 export const tauriTransport: Transport = {
@@ -70,4 +71,12 @@ export const tauriTransport: Transport = {
   tunnelStop: async () => invoke<void>("tunnel_stop"),
   tunnelStatus: async () => invoke<{ running: boolean; url?: string; provider?: string }>("tunnel_status"),
   tunnelDetect: async () => invoke<{ cloudflared: string | null; ngrok: string | null }>("tunnel_detect"),
+
+  ptySpawn: async (opts) => invoke<void>("pty_spawn", opts),
+  ptyWrite: async (id, data) => invoke<void>("pty_write", { id, data }),
+  ptyResize: async (id, cols, rows) => invoke<void>("pty_resize", { id, cols, rows }),
+  ptyKill: async (id) => invoke<void>("pty_kill", { id }),
+  ptyListShells: async () => invoke<ShellInfo[]>("pty_list_shells"),
+  onPtyOutput: async (h) => listen<PtyOutputEvent>("pty-output", ev => h(ev.payload)),
+  onPtyExit: async (h) => listen<PtyExitEvent>("pty-exit", ev => h(ev.payload)),
 };

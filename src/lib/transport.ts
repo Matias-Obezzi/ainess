@@ -39,6 +39,16 @@ export interface Transport {
   tunnelStatus(): Promise<{ running: boolean; url?: string; provider?: string }>;
   /** Absolute path of each tunnel binary, or null when it is not installed. */
   tunnelDetect(): Promise<{ cloudflared: string | null; ngrok: string | null }>;
+
+  // Integrated terminals (see src-tauri/src/pty.rs). Desktop app only.
+  ptySpawn(opts: { id: string; shell: string; cwd?: string; cols: number; rows: number }): Promise<void>;
+  ptyWrite(id: string, data: string): Promise<void>;
+  ptyResize(id: string, cols: number, rows: number): Promise<void>;
+  ptyKill(id: string): Promise<void>;
+  /** Shells available on this machine, best first. Empty outside the desktop app. */
+  ptyListShells(): Promise<import("@/types").ShellInfo[]>;
+  onPtyOutput(h: (e: import("@/types").PtyOutputEvent) => void): Promise<() => void>;
+  onPtyExit(h: (e: import("@/types").PtyExitEvent) => void): Promise<() => void>;
 }
 
 let currentTransport: Transport | null = null;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, ModelInfo, ProviderQuota } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, ModelInfo, ProviderQuota, ShellInfo, TerminalTab } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -50,6 +50,10 @@ export interface AppState {
   screen: Screen;
   projectMode: ProjectMode;
   commPanelOpen: boolean;
+  /** Whether the terminals section of the right dock is open (persisted). */
+  termPanelOpen: boolean;
+  /** Fraction of the dock height taken by Comunicación when both sections are open (0.3–0.8, persisted). */
+  dockSplit: number;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
   settingsOpen: boolean;
   settingsSection: SettingsSection;
@@ -69,11 +73,25 @@ export interface AppState {
   closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
   toggleCommPanel(open?: boolean): void;
+  toggleTermPanel(open?: boolean): void;
+  setDockSplit(value: number): void;
   toggleSidebarProject(projectId: string): void;
   toggleSidebar(open?: boolean): void;
   toggleSearch(open?: boolean): void;
   goBack(): void;
   goForward(): void;
+
+  // ---- Integrated terminals (in memory only, never persisted) ----
+  /** Open terminal tabs, in tab-bar order. */
+  terminals: TerminalTab[];
+  activeTerminalId: string | null;
+  /** Shells detected on this machine, loaded once at startup (desktop app only). */
+  shells: ShellInfo[];
+  openTerminal(opts?: { shellId?: string; cwd?: string }): void;
+  closeTerminal(id: string): void;
+  setActiveTerminal(id: string): void;
+  renameTerminal(id: string, title: string): void;
+  markTerminalExited(id: string, code: number | null): void;
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
@@ -200,6 +218,8 @@ interface UiPrefs {
   screen: Screen;
   projectMode: ProjectMode;
   commPanelOpen: boolean;
+  termPanelOpen: boolean;
+  dockSplit: number;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
   sidebarOpen: boolean;
@@ -210,6 +230,8 @@ const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "chat",
   commPanelOpen: false,
+  termPanelOpen: false,
+  dockSplit: 0.5,
   settingsSection: "general",
   sidebarCollapsed: {},
   sidebarOpen: true,
@@ -224,6 +246,15 @@ function sanitizeSettingsSection(value: unknown): SettingsSection {
   return "general";
 }
 
+/** The dock divider never lets either section shrink below a usable height. */
+export const MIN_DOCK_SPLIT = 0.3;
+export const MAX_DOCK_SPLIT = 0.8;
+
+function clampDockSplit(value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : defaultUiPrefs.dockSplit;
+  return Math.min(MAX_DOCK_SPLIT, Math.max(MIN_DOCK_SPLIT, n));
+}
+
 /** localStorage does not exist in the CLI/node build, so every access is guarded. */
 function loadUiPrefs(): UiPrefs {
   if (typeof localStorage === "undefined") return { ...defaultUiPrefs };
@@ -235,6 +266,8 @@ function loadUiPrefs(): UiPrefs {
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: parsed.projectMode === "graph" ? "graph" : "chat",
       commPanelOpen: parsed.commPanelOpen === true,
+      termPanelOpen: parsed.termPanelOpen === true,
+      dockSplit: clampDockSplit(parsed.dockSplit),
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
       sidebarOpen: parsed.sidebarOpen !== false,
@@ -252,6 +285,8 @@ function saveUiPrefs(): void {
       screen: s.screen,
       projectMode: s.projectMode,
       commPanelOpen: s.commPanelOpen,
+      termPanelOpen: s.termPanelOpen,
+      dockSplit: s.dockSplit,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
       sidebarOpen: s.sidebarOpen,
@@ -261,6 +296,9 @@ function saveUiPrefs(): void {
     // Private mode / quota: layout preferences are not worth failing over.
   }
 }
+
+/** Hard cap on open terminals: eight PTYs is already a lot of live shells. */
+export const MAX_TERMINALS = 8;
 
 /** Cap on the back/forward stack: enough for a session, small enough to stay cheap. */
 const MAX_NAV = 50;
@@ -330,6 +368,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,
   searchOpen: false,
+  terminals: [],
+  activeTerminalId: null,
+  shells: [],
 
   ...(() => {
     const prefs = loadUiPrefs();
@@ -380,6 +421,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleCommPanel: (open) => {
     set(s => ({ commPanelOpen: open ?? !s.commPanelOpen }));
+    saveUiPrefs();
+  },
+
+  toggleTermPanel: (open) => {
+    set(s => ({ termPanelOpen: open ?? !s.termPanelOpen }));
+    saveUiPrefs();
+  },
+
+  setDockSplit: (value) => {
+    set({ dockSplit: clampDockSplit(value) });
     saveUiPrefs();
   },
 
@@ -467,6 +518,67 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({ config: { ...state.config, remote: { ...state.config.remote, token: crypto.randomUUID() } } }));
     await get().saveConfig();
     if (wasRunning) await get().startRemote();
+  },
+
+  // ---- Integrated terminals ----
+  openTerminal: (opts) => {
+    const state = get();
+    if (state.terminals.length >= MAX_TERMINALS) return;
+    const shells = state.shells;
+    if (shells.length === 0) {
+      log.warn("terminal", "no hay ningún shell disponible en esta máquina");
+      return;
+    }
+    const shell = (opts?.shellId && shells.find(sh => sh.id === opts.shellId)) || shells[0];
+    const project = selectProject(state, state.currentProjectId);
+    const cwd = opts?.cwd ?? project?.workspaceDir ?? "";
+    // Titles are numbered per shell so two PowerShells are still telling apart.
+    const used = state.terminals.filter(t => t.shellId === shell.id).length + 1;
+    const terminal: TerminalTab = {
+      id: `term-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      title: `${shell.label} ${used}`,
+      shellId: shell.id,
+      shellPath: shell.path,
+      cwd,
+      projectId: state.currentProjectId,
+      exited: null,
+    };
+    set(s => ({
+      terminals: [...s.terminals, terminal],
+      activeTerminalId: terminal.id,
+      termPanelOpen: true,
+    }));
+    saveUiPrefs();
+    log.info("terminal", `nueva terminal ${terminal.title} (${shell.path}) en ${cwd || "home"}`);
+  },
+
+  closeTerminal: (id) => {
+    const state = get();
+    const index = state.terminals.findIndex(t => t.id === id);
+    if (index === -1) return;
+    void getTransport().ptyKill(id).catch(e => log.warn("terminal", `no se pudo cerrar ${id}: ${e}`));
+    const terminals = state.terminals.filter(t => t.id !== id);
+    let activeTerminalId = state.activeTerminalId;
+    if (activeTerminalId === id) {
+      const neighbour = terminals[Math.min(index, terminals.length - 1)];
+      activeTerminalId = neighbour ? neighbour.id : null;
+    }
+    set({ terminals, activeTerminalId });
+  },
+
+  setActiveTerminal: (id) => {
+    if (!get().terminals.some(t => t.id === id)) return;
+    set({ activeTerminalId: id });
+  },
+
+  renameTerminal: (id, title) => {
+    const clean = title.trim();
+    if (!clean) return;
+    set(s => ({ terminals: s.terminals.map(t => (t.id === id ? { ...t, title: clean.slice(0, 40) } : t)) }));
+  },
+
+  markTerminalExited: (id, code) => {
+    set(s => ({ terminals: s.terminals.map(t => (t.id === id ? { ...t, exited: code } : t)) }));
   },
 
   init: () => {
@@ -973,6 +1085,8 @@ async function runInit(): Promise<void> {
       screen,
       projectMode: prefs.projectMode,
       commPanelOpen: prefs.commPanelOpen,
+      termPanelOpen: prefs.termPanelOpen,
+      dockSplit: prefs.dockSplit,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
       sidebarOpen: prefs.sidebarOpen,
@@ -990,6 +1104,11 @@ async function runInit(): Promise<void> {
 
     if (isTauri()) {
       void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
+      // Terminals need the list of shells before the first tab can be opened.
+      void getTransport()
+        .ptyListShells()
+        .then(shells => set({ shells }))
+        .catch(e => log.warn("terminal", `no se pudieron detectar los shells: ${e}`));
     }
 
     if (isSeed) {

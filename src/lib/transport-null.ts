@@ -1,5 +1,7 @@
 import { Transport } from "./transport";
 
+const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app de escritorio";
+
 // Used by the plain-browser preview (vite dev without Tauri): nothing can run or persist.
 export const nullTransport: Transport = {
   spawnRun: async () => {},
@@ -28,4 +30,11 @@ export const nullTransport: Transport = {
   tunnelStop: async () => {},
   tunnelStatus: async () => ({ running: false }),
   tunnelDetect: async () => ({ cloudflared: null, ngrok: null }),
+  ptySpawn: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyWrite: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyResize: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyKill: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyListShells: async () => [],
+  onPtyOutput: async () => () => {},
+  onPtyExit: async () => () => {},
 };

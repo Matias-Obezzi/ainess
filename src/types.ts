@@ -332,3 +332,34 @@ export type ParsedEvent =
   | { type: "result"; text: string; sessionId?: string }
   | { type: "error"; text: string }
   | { type: "raw"; text: string };
+
+// ---- Integrated terminals (see src-tauri/src/pty.rs) ----
+
+/** A shell detected on this machine, offered when opening a terminal. */
+export interface ShellInfo {
+  id: string;
+  label: string;
+  path: string;
+}
+
+/** One open terminal tab. Lives only in memory: terminals are not restored on restart. */
+export interface TerminalTab {
+  id: string;
+  title: string;
+  shellId: string;
+  shellPath: string;
+  cwd: string;
+  projectId: string | null;
+  /** Exit code once the shell died, null while it is alive. */
+  exited?: number | null;
+}
+
+export interface PtyOutputEvent {
+  id: string;
+  data: string;
+}
+
+export interface PtyExitEvent {
+  id: string;
+  code: number | null;
+}

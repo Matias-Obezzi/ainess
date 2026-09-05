@@ -87,7 +87,8 @@ export function Composer() {
     if (!busy) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if ((e.target as HTMLElement | null)?.closest?.("[role=dialog]")) return;
+      // Escape belongs to the shell running in a terminal, and to open dialogs.
+      if ((e.target as HTMLElement | null)?.closest?.("[role=dialog], .xterm")) return;
       e.preventDefault();
       handleStop();
     };

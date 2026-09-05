@@ -2,6 +2,7 @@ mod config;
 mod detect;
 mod http;
 mod logging;
+mod pty;
 mod remote;
 mod runner;
 mod tray;
@@ -15,6 +16,7 @@ pub fn run() {
         .manage(tray::TrayState::default())
         .manage(tunnel::TunnelState::default())
         .manage(logging::LogState::default())
+        .manage(pty::PtyState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -50,6 +52,11 @@ pub fn run() {
             logging::logs_dir,
             logging::open_logs_dir,
             logging::read_recent_logs,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
+            pty::pty_list_shells,
             remote::remote_start,
             remote::remote_stop,
             remote::remote_status,
@@ -68,6 +75,7 @@ pub fn run() {
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {
             tunnel::shutdown(handle);
+            pty::shutdown(handle);
             logging::append(handle, "info", "app", "ainess cerrando");
         }
     });

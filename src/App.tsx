@@ -11,7 +11,7 @@ import { SearchPalette } from "@/components/shell/SearchPalette";
 import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectScreen } from "@/components/shell/ProjectScreen";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { CommSidePanel } from "@/components/shell/CommSidePanel";
+import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 
 export default function App() {
@@ -19,6 +19,7 @@ export default function App() {
   const loaded = useAppStore(state => state.loaded);
   const screen = useAppStore(state => state.screen);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
+  const termPanelOpen = useAppStore(state => state.termPanelOpen);
 
   useEffect(() => {
     void init();
@@ -28,12 +29,21 @@ export default function App() {
   useSystemNotifications();
   useUpdateCheck();
 
-  // Ctrl+, opens Configuración, Ctrl+K the search palette and Ctrl+B toggles the sidebar.
+  // Ctrl+, opens Configuración, Ctrl+K the search palette, Ctrl+B toggles the sidebar
+  // and Ctrl+` the terminals dock.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
-      if (key === ",") {
+      if (key === "`") {
+        e.preventDefault();
+        const state = useAppStore.getState();
+        state.toggleTermPanel();
+        // Opening an empty dock straight into its empty state helps nobody.
+        if (!state.termPanelOpen && useAppStore.getState().terminals.length === 0) {
+          useAppStore.getState().openTerminal();
+        }
+      } else if (key === ",") {
         e.preventDefault();
         useAppStore.getState().openSettings();
       } else if (key === "k") {
@@ -73,7 +83,7 @@ export default function App() {
           {screen === "project" && <ProjectScreen />}
         </main>
 
-        {commPanelOpen && screen === "project" && <CommSidePanel />}
+        {(commPanelOpen || termPanelOpen) && screen === "project" && <RightDock />}
       </div>
 
       <SettingsDialog />

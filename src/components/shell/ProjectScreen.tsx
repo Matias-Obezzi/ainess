@@ -7,7 +7,7 @@ import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
-import { GitBranch, MessageSquare, PanelRight } from "lucide-react";
+import { GitBranch, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
 
 /** The working screen for one project: top bar, thread or graph, and the composer. */
 export function ProjectScreen() {
@@ -17,6 +17,8 @@ export function ProjectScreen() {
   const setProjectMode = useAppStore(state => state.setProjectMode);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
+  const termPanelOpen = useAppStore(state => state.termPanelOpen);
+  const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
   const runtime = useAppStore(state => state.runtime);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
 
@@ -78,6 +80,21 @@ export function ProjectScreen() {
             onClick={() => toggleCommPanel()}
           >
             <PanelRight className="h-3.5 w-3.5" /> Comunicación
+          </Button>
+          <Button
+            variant={termPanelOpen ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7"
+            title="Mostrar u ocultar las terminales (Ctrl+`)"
+            onClick={() => {
+              const wasOpen = termPanelOpen;
+              toggleTermPanel();
+              if (!wasOpen && useAppStore.getState().terminals.length === 0) {
+                useAppStore.getState().openTerminal();
+              }
+            }}
+          >
+            <TerminalSquare className="h-3.5 w-3.5" /> Terminal
           </Button>
         </div>
       </div>

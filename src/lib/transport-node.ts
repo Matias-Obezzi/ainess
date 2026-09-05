@@ -8,6 +8,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
+const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app de escritorio";
+
 const activeRuns = new Map<string, ChildProcess>();
 const killedRuns = new Set<string>();
 
@@ -400,4 +402,13 @@ export const nodeTransport: Transport = {
   logAppend: async (level: string, source: string, message: string) => appendLog(level, source, message),
   logsDir: async () => getLogsDir(),
   openLogsDir: async () => { throw new Error("Abrí la carpeta a mano: " + getLogsDir()); },
+
+  // Integrated terminals are a desktop-app feature; the CLI has a real shell already.
+  ptySpawn: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyWrite: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyResize: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyKill: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptyListShells: async () => [],
+  onPtyOutput: async () => () => {},
+  onPtyExit: async () => () => {},
 };
