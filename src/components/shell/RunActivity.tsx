@@ -16,19 +16,44 @@ const ACTIVITY_KINDS = new Set(["text", "tool", "delegation", "error", "stderr",
 const FULL_ROWS = 30;
 const COMPACT_ROWS = 6;
 
+const NO_MESSAGES: CommMessage[] = [];
+
+/**
+ * The whole feed grouped by run, rebuilt once per `messages` identity and shared by every
+ * component on screen (a thread can hold hundreds of bubbles and a run streams many deltas
+ * per second, so one pass beats one filter per bubble).
+ */
+let indexCache: { messages: CommMessage[]; byRun: Map<string, CommMessage[]> } | null = null;
+
+function activityByRun(messages: CommMessage[]): Map<string, CommMessage[]> {
+  if (indexCache && indexCache.messages === messages) return indexCache.byRun;
+  const byRun = new Map<string, CommMessage[]>();
+  for (const m of messages) {
+    if (!m.runId || !ACTIVITY_KINDS.has(m.kind)) continue;
+    const list = byRun.get(m.runId);
+    if (list) list.push(m);
+    else byRun.set(m.runId, [m]);
+  }
+  indexCache = { messages, byRun };
+  return byRun;
+}
+
 /** Messages of one run, in arrival order. */
 function useRunMessages(runId: string): CommMessage[] {
   const messages = useAppStore(state => state.messages);
-  return useMemo(
-    () => messages.filter(m => m.runId === runId && ACTIVITY_KINDS.has(m.kind)),
-    [messages, runId],
-  );
+  return useMemo(() => activityByRun(messages).get(runId) ?? NO_MESSAGES, [messages, runId]);
 }
 
 /** How many steps (tools, delegations, errors) a run has taken. Used for the "Actividad" header. */
 export function useActivityCount(runId: string): number {
-  const messages = useRunMessages(runId);
-  return useMemo(() => messages.filter(m => m.kind !== "text").length, [messages]);
+  // A number, not an array: a finished bubble then only re-renders when its own count moves.
+  return useAppStore(state => {
+    let count = 0;
+    for (const m of activityByRun(state.messages).get(runId) ?? NO_MESSAGES) {
+      if (m.kind !== "text") count++;
+    }
+    return count;
+  });
 }
 
 /**
