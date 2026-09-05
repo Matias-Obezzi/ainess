@@ -55,8 +55,45 @@ fn detect_generic(name: &str) -> Option<BinaryInfo> {
             version,
         })
     } else {
-        None
+        find_winget(name)
     }
+}
+
+/// winget installs portable CLIs under `%LOCALAPPDATA%\Microsoft\WinGet\Packages\<id>\` (or a
+/// subfolder) and only adds that folder to the *registry* PATH: a process started before the
+/// install (this app, the user's terminal) keeps its old PATH, so look there directly.
+fn winget_candidates(name: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if !cfg!(windows) {
+        return out;
+    }
+    let Some(local) = dirs::data_local_dir() else { return out };
+    let root = local.join("Microsoft").join("WinGet");
+    let exe = format!("{name}.exe");
+    out.push(root.join("Links").join(&exe));
+    if let Ok(pkgs) = std::fs::read_dir(root.join("Packages")) {
+        for pkg in pkgs.flatten() {
+            let dir = pkg.path();
+            out.push(dir.join(&exe));
+            if let Ok(subs) = std::fs::read_dir(&dir) {
+                for sub in subs.flatten() {
+                    if sub.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        out.push(sub.path().join(&exe));
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+fn find_winget(name: &str) -> Option<BinaryInfo> {
+    let path = winget_candidates(name).into_iter().find(|p| p.exists())?;
+    let path_str = path.to_string_lossy().into_owned();
+    Some(BinaryInfo {
+        version: get_version(&path_str),
+        path: path_str,
+    })
 }
 
 fn detect_claude() -> Option<BinaryInfo> {
@@ -136,7 +173,7 @@ fn detect_claude() -> Option<BinaryInfo> {
         }
     }
 
-    None
+    find_winget("claude")
 }
 
 fn detect_antigravity() -> Option<BinaryInfo> {
@@ -160,7 +197,7 @@ fn detect_antigravity() -> Option<BinaryInfo> {
         }
     }
 
-    None
+    find_winget("agy")
 }
 
 fn parse_semver(s: &str) -> Option<Vec<u32>> {

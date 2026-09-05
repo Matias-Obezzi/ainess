@@ -89,6 +89,38 @@ export function claudeCandidateDirs(): string[] {
   return [...new Set(dirs)];
 }
 
+/**
+ * winget installs portable CLIs under `%LOCALAPPDATA%\Microsoft\WinGet\Packages\<id>\` (or a
+ * subfolder) and puts that folder on the *registry* PATH. A process started before the install
+ * keeps its old PATH, so scan those folders directly instead of asking the user to restart.
+ */
+export function wingetCandidates(name: string): string[] {
+  if (process.platform !== "win32") return [];
+  const root = path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "Microsoft", "WinGet");
+  const exe = `${name}.exe`;
+  const out: string[] = [path.join(root, "Links", exe)];
+  const packages = path.join(root, "Packages");
+  let pkgs: string[] = [];
+  try { pkgs = fs.readdirSync(packages); } catch { return out; }
+  for (const pkg of pkgs) {
+    const dir = path.join(packages, pkg);
+    out.push(path.join(dir, exe));
+    try {
+      for (const sub of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (sub.isDirectory()) out.push(path.join(dir, sub.name, exe));
+      }
+    } catch { /* unreadable package */ }
+  }
+  return out;
+}
+
+function findWinget(name: string): BinaryInfo | null {
+  for (const candidate of wingetCandidates(name)) {
+    if (fs.existsSync(candidate)) return { path: candidate, version: getVersion(candidate) };
+  }
+  return null;
+}
+
 function detectClaude(): BinaryInfo | null {
   let p = which("claude");
   if (p) return { path: p, version: getVersion(p) };
@@ -119,7 +151,7 @@ function detectClaude(): BinaryInfo | null {
   if (fs.existsSync(localBin)) {
     return { path: localBin, version: getVersion(localBin) };
   }
-  return null;
+  return findWinget("claude");
 }
 
 function detectAgy(): BinaryInfo | null {
@@ -130,13 +162,13 @@ function detectAgy(): BinaryInfo | null {
   if (fs.existsSync(agyBin)) {
     return { path: agyBin, version: getVersion(agyBin) };
   }
-  return null;
+  return findWinget("agy");
 }
 
 function detectGeneric(name: string): BinaryInfo | null {
   const p = which(name);
   if (p) return { path: p, version: getVersion(p) };
-  return null;
+  return findWinget(name);
 }
 
 /**

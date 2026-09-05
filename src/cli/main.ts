@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { useAppStore, selectRoots } from "@/store";
 import { setTransport } from "@/lib/transport";
-import { nodeTransport, killAllSync } from "@/lib/transport-node";
+import { nodeTransport, killAllSync, wingetCandidates } from "@/lib/transport-node";
 import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
@@ -81,6 +81,10 @@ async function main() {
           console.log(`Carpeta Claude Code ${d}: ${fs.existsSync(d) ? entries.join(", ") || "(vacía)" : "no existe"}`);
         }
         console.log(`PATH tiene claude: ${process.env.PATH?.split(";").some(p => fs.existsSync(path.join(p, "claude.exe")) || fs.existsSync(path.join(p, "claude.cmd"))) ? "sí" : "no"}`);
+        for (const name of ["copilot", "gemini", "codex"]) {
+          const found = wingetCandidates(name).filter(p => fs.existsSync(p));
+          if (found.length) console.log(`winget ${name}: ${found.join(", ")}`);
+        }
       }
       if (jsonOutput) {
         console.log(JSON.stringify(store.binaries));

@@ -76,7 +76,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
         [opts.projectId]: {
           ...projectRuntime,
           [opts.agentId]: {
-            ...projectRuntime[opts.agentId],
+            ...(projectRuntime[opts.agentId] ?? { agentId: opts.agentId, queuedInstructions: [] }),
             status: "working",
             currentRunId: runId,
             currentTask: opts.prompt
@@ -232,9 +232,12 @@ function handleExit(e: RunExitEvent) {
   const run = store.runs[e.runId];
   if (!run) return;
 
-  const isError = e.code !== 0 && !e.killed && !run.output;
+  const agentForRun = selectAgent(store, run.agentId);
+  const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
+  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(run.rawLines) : finalOutputFromLines(run.rawLines));
+  const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
-  const output = e.killed ? "[detenido por el usuario]" : (run.output || finalOutputFromLines(run.rawLines));
+  const output = e.killed ? "[detenido por el usuario]" : collected;
 
   useAppStore.setState(state => ({
     runs: {
@@ -454,12 +457,13 @@ function processQueuedInstructions(agentId: string, projectId: string) {
   const runtime = store.runtime[projectId]?.[agentId];
   if (!runtime || runtime.status === "working") return;
 
-  if (runtime.queuedInstructions.length > 0) {
-    const text = runtime.queuedInstructions[0];
+  const queued = runtime.queuedInstructions ?? [];
+  if (queued.length > 0) {
+    const text = queued[0];
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {
-        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: pRuntime[agentId].queuedInstructions.slice(1) } } }
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: (pRuntime[agentId]?.queuedInstructions ?? []).slice(1) } } }
       };
     });
     
@@ -496,7 +500,7 @@ export async function instructAgent(agentId: string, text: string, projectId: st
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {
-        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: [...pRuntime[agentId].queuedInstructions, text] } } }
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: [...(pRuntime[agentId]?.queuedInstructions ?? []), text] } } }
       };
     });
   } else {

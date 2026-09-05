@@ -195,7 +195,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => {
       const id = crypto.randomUUID();
       const newProject: Project = { ...project, id, createdAt: Date.now() };
-      return { config: { ...state.config, projects: [...state.config.projects, newProject] } };
+      // Every agent needs a runtime entry in the new project, or the first run there crashes.
+      const projectRuntime: Record<string, AgentRuntime> = {};
+      for (const agent of state.config.agents) {
+        projectRuntime[agent.id] = { agentId: agent.id, status: "idle", queuedInstructions: [] };
+      }
+      return {
+        config: { ...state.config, projects: [...state.config.projects, newProject] },
+        runtime: { ...state.runtime, [id]: projectRuntime },
+      };
     });
     debouncedSave();
   },

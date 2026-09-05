@@ -19,6 +19,8 @@ export interface ProviderSpec {
   note?: string;
   buildCommand(input: BuildInput): Omit<SpawnOptions, "runId">;
   parseLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[];
+  /** Final answer when the provider's own `result` event doesn't carry it (default: all raw lines). */
+  finalOutput?(rawLines: string[]): string;
 }
 
 function parseJsonTolerant(line: string): any {
@@ -90,6 +92,51 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     return events;
   }
   return [];
+}
+
+/**
+ * GitHub Copilot CLI `--output-format json` (JSONL). Relevant events:
+ * - `assistant.message` → `data.content` (text) + `data.toolRequests[{name, arguments}]`
+ * - `result` → `sessionId` (the final answer is NOT included: see `copilotFinalOutput`)
+ * Ephemeral deltas (`assistant.message_delta`, `assistant.tool_call_delta`) are ignored.
+ */
+function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
+  const obj = parseJsonTolerant(line);
+  if (!obj || typeof obj.type !== "string") {
+    if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
+    return line.trim() ? [{ type: "raw", text: line }] : [];
+  }
+  if (obj.type === "assistant.message") {
+    const events: ParsedEvent[] = [];
+    const content = typeof obj.data?.content === "string" ? obj.data.content : "";
+    if (content.trim()) events.push({ type: "text", text: content + "\n" });
+    for (const req of Array.isArray(obj.data?.toolRequests) ? obj.data.toolRequests : []) {
+      const name = req?.name ?? req?.toolName ?? "tool";
+      const detail = req?.arguments !== undefined ? JSON.stringify(req.arguments).substring(0, 200) : undefined;
+      events.push({ type: "tool", name, detail });
+    }
+    return events;
+  }
+  if (obj.type === "result") {
+    return obj.sessionId ? [{ type: "session", sessionId: obj.sessionId }] : [];
+  }
+  if (obj.type === "error" || obj.type === "session.error") {
+    const msg = obj.data?.message ?? obj.message ?? line;
+    return [{ type: "error", text: String(msg) }];
+  }
+  return [];
+}
+
+/** Copilot's `result` event carries no answer text: rebuild it from the assistant messages. */
+function copilotFinalOutput(lines: string[]): string {
+  const parts: string[] = [];
+  for (const line of lines) {
+    const obj = parseJsonTolerant(line);
+    if (obj?.type === "assistant.message" && typeof obj.data?.content === "string" && obj.data.content.trim()) {
+      parts.push(obj.data.content);
+    }
+  }
+  return parts.join("\n");
 }
 
 function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
@@ -166,17 +213,23 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   copilot: {
     id: "copilot",
     label: "GitHub Copilot",
-    defaultModels: [],
-    supportsSessions: false,
+    defaultModels: ["auto", "claude-sonnet-5"],
+    supportsSessions: true,
     promptVia: "arg",
+    note: "En modo no interactivo Copilot exige --allow-all-tools; con auto-aprobación se usa --yolo (también rutas y URLs).",
     buildCommand: (input) => {
       const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
-      const args = ["-p", prompt];
-      if (input.agent.autoApprove) args.push("--allow-all-tools");
+      // -p without --allow-all-tools makes every tool call fail, so it is always on;
+      // --yolo additionally lifts the path/URL checks.
+      const args = ["-p", prompt, "--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
+      if (input.agent.autoApprove) args.push("--yolo");
       if (input.agent.model) args.push("--model", input.agent.model);
+      if (input.sessionId) args.push("--resume", input.sessionId);
+      if (input.cwd) args.push("--add-dir", input.cwd);
       return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
     },
-    parseLine: parsePlainLine
+    parseLine: parseCopilotLine,
+    finalOutput: copilotFinalOutput
   },
   gemini: {
     id: "gemini",

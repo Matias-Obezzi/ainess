@@ -91,9 +91,21 @@ Salida (una línea JSON por evento):
   (otros `step_type` son tool calls: loguearlos como `tool` con el nombre si viene)
 - `{"event":"result","result":{"conversation_id":"…","status":"SUCCESS","response":"<texto final>","usage":{…}}}`
 
-### copilot / gemini / codex (no instalados acá, presets para cuando estén)
+### copilot (GitHub Copilot CLI, instalado con winget)
 ```
-copilot -p "<prompt>" [--allow-all-tools] [--model <m>]
+copilot -p "<prompt>" --output-format json -s --no-ask-user --no-color --no-auto-update --allow-all-tools [--yolo] [--model <m>] [--resume <sessionId>] --add-dir <cwd>
+```
+`--allow-all-tools` es obligatorio en modo no interactivo (sin él toda tool falla); `--yolo` (autoApprove)
+además levanta la verificación de rutas y URLs. Salida JSONL:
+- `{"type":"assistant.message","data":{"content":"…","toolRequests":[{"name":"glob","arguments":{…}}]}}` → texto + tools
+- `{"type":"result","sessionId":"…","exitCode":0}` → sesión (NO trae la respuesta: el resultado final se arma
+  concatenando los `content` de los `assistant.message`, ver `finalOutput` en el spec)
+- `assistant.message_delta` / `assistant.tool_call_delta` / `session.*` / `model.*` se ignoran.
+Detección: `which` y, si el PATH del proceso está viejo (winget sólo actualiza el PATH del registro), se busca
+`copilot.exe` en `%LOCALAPPDATA%\Microsoft\WinGet\{Links,Packages\*[\*]}`.
+
+### gemini / codex (no instalados acá, presets para cuando estén)
+```
 gemini  -p "<prompt>" [--yolo] [-m <m>]
 codex   exec "<prompt>" [--full-auto] [-m <m>]
 ```

@@ -126,3 +126,36 @@ describe("plain-text providers and system prompt", () => {
     expect(prompt.trim().endsWith("PROPIO")).toBe(true);
   });
 });
+
+describe("copilot provider", () => {
+  const copilot = PROVIDERS.copilot;
+  const msg = (content: string, toolRequests: unknown[] = []) =>
+    JSON.stringify({ type: "assistant.message", data: { messageId: "m", content, toolRequests } });
+
+  it("turns assistant.message into text and tool events", () => {
+    const line = msg("", [{ toolCallId: "t1", name: "glob", arguments: { pattern: "*" }, type: "function" }]);
+    expect(copilot.parseLine(line, "stdout")).toEqual([{ type: "tool", name: "glob", detail: '{"pattern":"*"}' }]);
+    expect(copilot.parseLine(msg("hola"), "stdout")).toEqual([{ type: "text", text: "hola\n" }]);
+  });
+
+  it("takes the session id from the result event and ignores deltas", () => {
+    const result = JSON.stringify({ type: "result", sessionId: "s-1", exitCode: 0 });
+    expect(copilot.parseLine(result, "stdout")).toEqual([{ type: "session", sessionId: "s-1" }]);
+    const delta = JSON.stringify({ type: "assistant.message_delta", data: { deltaContent: "h" }, ephemeral: true });
+    expect(copilot.parseLine(delta, "stdout")).toEqual([]);
+  });
+
+  it("rebuilds the final answer from the assistant messages", () => {
+    const lines = [msg("", [{ name: "glob", arguments: {} }]), JSON.stringify({ type: "tool.execution_start" }), msg("Listo:\n- a.txt"), JSON.stringify({ type: "result", sessionId: "s" })];
+    expect(copilot.finalOutput!(lines)).toBe("Listo:\n- a.txt");
+  });
+
+  it("always allows tools in -p mode and resumes sessions", () => {
+    const cmd = copilot.buildCommand({ agent: agent({ provider: "copilot", autoApprove: false }), prompt: "t", systemPrompt: "s", binaryPath: "copilot.exe", cwd: "C:\p", sessionId: "s-1" });
+    expect(cmd.args).toContain("--allow-all-tools");
+    expect(cmd.args).not.toContain("--yolo");
+    expect(cmd.args.slice(cmd.args.indexOf("--resume"), cmd.args.indexOf("--resume") + 2)).toEqual(["--resume", "s-1"]);
+    const yolo = copilot.buildCommand({ agent: agent({ provider: "copilot", autoApprove: true }), prompt: "t", systemPrompt: "s", binaryPath: "copilot.exe" });
+    expect(yolo.args).toContain("--yolo");
+  });
+});
