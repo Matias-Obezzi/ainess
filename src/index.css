@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -78,3 +79,11 @@
 .dark .react-flow__controls-button:hover { background: var(--muted); }
 .dark .react-flow__minimap { background: var(--card); border-color: var(--border); }
 .dark .react-flow__minimap-mask { fill: var(--background); opacity: 0.5; }
+
+/* Portaled content (dialogs, selects, tooltips) lives outside the app root: give the whole
+   document the theme colors so text is never black-on-dark. */
+@layer base {
+  * { border-color: var(--border); }
+  html, body, #root { height: 100%; }
+  body { margin: 0; background: var(--background); color: var(--foreground); }
+}
