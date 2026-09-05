@@ -11,13 +11,12 @@ import { SkillDialog } from "./SkillDialog";
 import { McpDialog } from "./McpDialog";
 import { PresetDialog } from "./PresetDialog";
 import { HookDialog } from "./HookDialog";
-import { RemotePanel } from "./RemotePanel";
 import { Skill, McpServer, Hook } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 import type { SettingsSection } from "@/store";
 
 /** Renders the content of a single "Resources" section (used inside the settings dialog sidebar). */
-export function ResourceSection({ section }: { section: Exclude<SettingsSection, "general" | "agents"> }) {
+export function ResourceSection({ section }: { section: SettingsSection }) {
   const store = useAppStore();
   const [sharedContext, setSharedContext] = useState(store.config.sharedContext);
 
@@ -221,10 +220,6 @@ export function ResourceSection({ section }: { section: Exclude<SettingsSection,
         </div>
       </div>
     );
-  }
-
-  if (section === "remote") {
-    return <RemotePanel />;
   }
 
   if (section === "hooks") {

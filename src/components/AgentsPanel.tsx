@@ -56,7 +56,7 @@ export function AgentsPanel() {
             <Button size="sm" onClick={() => setEditingAgent(null)}>Nuevo agente</Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-4">
           {config.agents.map(a => {
             const parent = config.agents.find(p => p.id === a.parentId);
             const bin = binaries[a.provider];
@@ -68,7 +68,7 @@ export function AgentsPanel() {
             const modelExhausted = modelQuotaItem?.resetsAt && modelQuotaItem.resetsAt > Date.now();
 
             return (
-              <Card key={a.id} className="p-4 flex flex-col gap-2" style={{ borderTop: `4px solid ${a.color || "#888"}` }}>
+              <Card key={a.id} className="p-4 flex flex-col gap-2" style={{ borderLeft: `4px solid ${a.color || "#888"}` }}>
                 <div className="flex justify-between items-start">
                   <div className="font-bold">{a.name}</div>
                   <div className="flex gap-1">

@@ -111,7 +111,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>Evento</Label>
               <Select value={event} onValueChange={(v) => setEvent(v as HookEvent)}>
-                <SelectTrigger className="bg-[#111] border-[#333]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
                   {EVENTS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                 </SelectContent>
@@ -120,7 +120,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>Acción</Label>
               <Select value={actionType} onValueChange={setActionType}>
-                <SelectTrigger className="bg-[#111] border-[#333]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
                   {ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
                 </SelectContent>
@@ -132,7 +132,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>Filtro: Agente (Opcional)</Label>
               <Select value={filterAgentId} onValueChange={setFilterAgentId}>
-                <SelectTrigger className="bg-[#111] border-[#333]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
                   <SelectItem value="all">Todos</SelectItem>
                   {store.config.agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -142,7 +142,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>Filtro: Proyecto (Opcional)</Label>
               <Select value={filterProjectId} onValueChange={setFilterProjectId}>
-                <SelectTrigger className="bg-[#111] border-[#333]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
                   <SelectItem value="all">Todos</SelectItem>
                   {store.config.projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -176,7 +176,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               <div className="space-y-2">
                 <Label>Agente a instruir</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger className="bg-[#111] border-[#333]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#1e1e1e] border-[#333]">
                     {store.config.agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                   </SelectContent>
