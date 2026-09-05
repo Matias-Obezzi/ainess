@@ -1,4 +1,4 @@
-import { AgentRole, AgentStatus, MessageKind } from "@/types";
+import { AgentRole, AgentStatus, MessageKind, RunStatus } from "@/types";
 
 export const statusLabel: Record<AgentStatus, string> = {
   idle: "Inactivo",
@@ -25,4 +25,19 @@ export const kindLabel: Record<MessageKind, string> = {
   system: "Sistema",
   error: "Error",
   stderr: "Stderr"
+};
+
+/** How a run's status shows up on the little colored dot. */
+export const runDotStatus: Record<RunStatus, AgentStatus> = {
+  running: "working",
+  done: "idle",
+  error: "error",
+  killed: "stopped"
+};
+
+export const runStatusLabel: Record<RunStatus, string> = {
+  running: "En curso",
+  done: "Terminada",
+  error: "Error",
+  killed: "Detenida"
 };
