@@ -175,9 +175,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       }
       
       if (input.agent.role === "planner") {
-        // Planners do not implement, but they do need git to check what the implementers left
-        // behind and to commit/push: only git, nothing else from the shell.
-        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)");
+        // Planners do not implement, but they do keep the plans (.claude/) and need git to check
+        // what the implementers left behind and to commit/push: nothing else from the shell.
+        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.claude/**)", "Write(.claude/**)", "MultiEdit(.claude/**)");
       }
 
       return {
@@ -381,7 +381,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   let prompt = "";
   
   if (agent.role === "planner") {
-    prompt = "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás.";
+    prompt = "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .claude/ del proyecto (planes, handoffs, notas) y usar git.";
     if (children.length > 0) {
       prompt += " Agentes disponibles bajo tu mando:\n";
       for (const child of children) {

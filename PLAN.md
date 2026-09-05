@@ -68,7 +68,7 @@ claude -p --output-format stream-json --verbose
        [--model <m>] [--resume <sessionId>]
        --append-system-prompt "<system>"
        (autoApprove ? --dangerously-skip-permissions : --permission-mode acceptEdits)
-       (role planner ? --allowedTools Read Grep Glob LS WebSearch WebFetch "Bash(git:*)" : nada)
+       (role planner ? --allowedTools Read Grep Glob LS WebSearch WebFetch "Bash(git:*)" "Edit(.claude/**)" "Write(.claude/**)" "MultiEdit(.claude/**)" : nada)
 ```
 El prompt va por **stdin**. Salida: una línea JSON por evento:
 - `{"type":"system","subtype":"init","session_id":"…"}`
