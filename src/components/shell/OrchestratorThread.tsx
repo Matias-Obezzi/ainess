@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { formatClock, formatElapsed, truncate } from "@/lib/format";
 import type { AgentStatus, Run, RunStatus } from "@/types";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, MessagesSquare } from "lucide-react";
 
 /** How a run's status shows up on the little colored dot. */
 const dotStatus: Record<RunStatus, AgentStatus> = {
@@ -29,6 +31,7 @@ const MAX_COLLAPSED_LINES = 12;
 export function OrchestratorThread() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const runs = useAppStore(state => state.runs);
+  const historyLoading = useAppStore(state => currentProjectId ? state.historyLoading[currentProjectId] : false);
 
   const rootRuns = useMemo(
     () => Object.values(runs)
@@ -68,16 +71,18 @@ export function OrchestratorThread() {
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4">
-        {rootRuns.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2 px-8">
-            <p className="max-w-md">
-              Escribí abajo qué querés que haga el equipo. El planificador (Claude) analiza, delega a los
-              implementadores y te responde acá.
-            </p>
-            <p className="text-xs italic max-w-md">
-              Ejemplo: «Agregá tests para el módulo de autenticación y arreglá lo que falle.»
-            </p>
+        {historyLoading ? (
+          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+            <RunBubbleSkeleton />
+            <RunBubbleSkeleton />
           </div>
+        ) : rootRuns.length === 0 ? (
+          <EmptyState
+            icon={MessagesSquare}
+            title="Todavía no hay tareas en este proyecto"
+            description='Escribí abajo qué querés que haga el equipo. El planificador (Claude) analiza, delega a los implementadores y te responde acá. Ejemplo: «Agregá tests para el módulo de autenticación y arreglá lo que falle.»'
+            className="h-full"
+          />
         ) : (
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             {rootRuns.map(run => <RunBubble key={run.id} run={run} />)}
@@ -91,6 +96,17 @@ export function OrchestratorThread() {
           <ArrowDown className="h-4 w-4" /> Nuevos mensajes
         </Button>
       )}
+    </div>
+  );
+}
+
+function RunBubbleSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col items-end gap-1">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+      </div>
+      <Skeleton className="h-16 w-full rounded-lg" />
     </div>
   );
 }

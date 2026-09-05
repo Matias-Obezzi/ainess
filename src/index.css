@@ -105,3 +105,18 @@
 }
 *::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklch, var(--foreground) 38%, transparent); }
 *::-webkit-scrollbar-corner { background: transparent; }
+/* Placed in the utilities layer (not base) so it wins, at equal specificity, over Tailwind's
+   own `cursor-default` utility applied to select/dropdown menu items. */
+@layer utilities {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  select,
+  summary,
+  [data-slot="select-trigger"],
+  [data-slot="dropdown-menu-item"],
+  [data-slot="tabs-trigger"],
+  [data-slot="switch"] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}

@@ -36,10 +36,14 @@ export interface AppState {
   quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
+  /** Whether a chat's messages are being loaded from disk for the first time (for a skeleton). */
+  chatLoading: Record<string, boolean>;
   /** Session ids per chat per agent. */
   chatSessions: Record<string, Record<string, string>>;
   /** Currently selected chat id. */
   currentChatId: string | null;
+  /** Whether a project's history is being loaded from disk for the first time (for a skeleton). */
+  historyLoading: Record<string, boolean>;
 
   // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
   screen: Screen;
@@ -309,8 +313,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
   activeTaskRunId: {},
   currentProjectId: null,
   chatMessages: {},
+  chatLoading: {},
   chatSessions: {},
   currentChatId: null,
+  historyLoading: {},
   approvals: {},
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,

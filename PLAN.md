@@ -321,21 +321,54 @@ mismo color.
    1100px) envuelve `CommunicationPanel.tsx`: feed de `messages` con filtros por agente y por tipo,
    cada mensaje con badge del agente (color), hora, tipo; los `delegation` resaltados; auto-scroll
    al final. Botón limpiar.
-5. **Configuración** — `components/settings/SettingsDialog.tsx`: modal (`Dialog`) con un sidebar
-   interno de secciones (General, Agentes, Perfil, Órdenes, Skills, MCP, Hooks, Contexto, Remoto),
-   abierto/cerrado con `store.settingsOpen`/`openSettings(section?)`/`closeSettings()` (atajo
-   `Ctrl+,`). **General** (`components/settings/GeneralSettings.tsx`): card "Segundo plano" (tray y
-   notificaciones, ver abajo) y card "Orquestación" (`maxRounds`, auto-selección de modelos,
-   aprobar delegaciones). **Agentes** (`AgentsPanel.tsx`: solo las cards de agentes, sin sección
-   "IAs detectadas"; cabecera con "Autodetectar" (corre `detectBinaries()` y muestra un resumen en
-   toast) y "Nuevo agente". `AgentDialog.tsx` para crear/editar: nombre, provider, rol, padre,
-   modelo —`Select` con la lista real de modelos del proveedor y la cuota que le queda, más
-   "Otro…" para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una
-   sección "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override"; ver "Modelos y
-   cuota"). **Perfil / Órdenes / Skills / MCP / Hooks / Contexto / Remoto** —
-   `components/ResourcesPanel.tsx` exporta `ResourceSection({ section })`, que renderiza solo el
-   contenido de esa sección (perfil ya no tiene los switches de auto-modelo/aprobar delegaciones,
-   viven en General).
+5. **Configuración** — `components/settings/SettingsDialog.tsx`: modal (`Dialog`, `showCloseButton`
+   `false`) con un sidebar interno de secciones y un router `SETTINGS_SECTIONS: SettingsSectionDef[]`
+   (`id`, `label`, `help`, `icon`, `component`, `actions?`, `provider?`). Cada sección es su propio
+   componente en `components/settings/` con su cuerpo (`component`) y, si necesita botones
+   específicos, un componente de acciones (`actions`) que `SettingsDialog` renderiza en el header,
+   a la derecha del título/ayuda y antes del botón de cerrar (separados por un `Separator`
+   vertical). El header tiene su propio botón de cerrar (`X`, `aria-label="Cerrar"` → `closeSettings()`);
+   el `X` por defecto del `Dialog` está oculto. Cuando el cuerpo y las acciones de una sección
+   comparten estado (p. ej. el diálogo de "nuevo/editar X"), la sección expone un `provider` (un
+   contexto chico creado con `createDialogContext`/`createToggleContext` de
+   `components/settings/section-context.tsx`) que `SettingsDialog` monta alrededor de ambos.
+   Abierto/cerrado con `store.settingsOpen`/`openSettings(section?)`/`closeSettings()` (atajo
+   `Ctrl+,`).
+   - **General** (`GeneralSection.tsx`, sin acciones): card "Segundo plano" (tray y notificaciones,
+     ver abajo) y card "Orquestación" (`maxRounds`, auto-selección de modelos, aprobar
+     delegaciones).
+   - **Agentes** (`AgentsSection.tsx` + `AgentsSectionActions` + `AgentsSectionProvider`): cards de
+     agentes (skeleton mientras `!loaded`, `EmptyState` si no hay agentes); acciones del header:
+     "Autodetectar" (`detectBinaries()` + toast resumen) y "Nuevo agente". `AgentDialog.tsx` para
+     crear/editar: nombre, provider, rol, padre, modelo —`Select` con la lista real de modelos del
+     proveedor y la cuota que le queda (skeleton mientras se cargan modelos/cuota la primera vez;
+     el `Select` se reemplaza por un placeholder "Cargando modelos…" deshabilitado), más "Otro…"
+     para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una sección
+     "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override".
+   - **Perfil** (`ProfileSection.tsx` + acción "Guardar" en el header): nombre/sobre vos/preferencias
+     en un borrador local que se persiste solo al guardar.
+   - **Órdenes** (`PresetsSection.tsx` + acción "Nueva orden"), **Skills** (`SkillsSection.tsx` +
+     acciones "Sugeridos"/"Nueva skill") y **MCP** (`McpSection.tsx` + acción "Nuevo MCP" y un
+     `DropdownMenu` con "Sugeridos"/"Sincronizar con Antigravity"): listas de cards con `EmptyState`
+     cuando están vacías (el CTA de Skills/MCP abre "Sugeridos"). "Sugeridos"
+     (`SuggestedDialog.tsx` + catálogo curado en `src/lib/suggested.ts`: `SUGGESTED_MCP`,
+     `SUGGESTED_SKILLS`) es un picker con checkbox por ítem (ya agregados, por nombre, quedan
+     deshabilitados con badge "Agregado") y un botón "Agregar N seleccionados" que hace
+     `upsertMcpServer`/`upsertSkill` con `id: crypto.randomUUID()`, `enabledFor: "all"`.
+   - **Hooks** (`HooksSection.tsx` + acción "Nuevo hook") y **Contexto** (`ContextSection.tsx` +
+     acción "Guardar", mismo patrón de borrador local que Perfil).
+   - **Remoto** (`RemoteSection.tsx`, sin acciones, antes `RemotePanel.tsx`): switch, puerto, QR y
+     URL; skeleton mientras se lee el estado remoto por primera vez al abrir la sección.
+   - `components/ui/empty-state.tsx` (`EmptyState({ icon, title, description, action? })`) se usa
+     además fuera de Configuración: Inicio sin proyectos, hilo de un chat sin mensajes, hilo del
+     orquestador sin tareas y el feed de Comunicación sin actividad. Los skeletons (`ui/skeleton.tsx`)
+     cubren, además de Agentes y `AgentDialog`: Inicio mientras `!loaded`, `ChatThread` mientras
+     `store.chatLoading[chatId]` (seteado por `lib/chat.ts#loadChatMessages` en la primera carga) y
+     el hilo del orquestador mientras `store.historyLoading[projectId]` (seteado por
+     `lib/history.ts#loadHistory` en la primera carga del proyecto).
+   - `src/index.css` agrega, dentro de `@layer base`, reglas de `cursor: pointer` para todo elemento
+     clickeable (`button`, `[role="button"]`, `a[href]`, `label[for]`, `select`, `summary`, y los
+     `data-slot` de select/dropdown/tabs/switch) y `cursor: not-allowed` para `button:disabled`.
 
 ## Bandeja y notificaciones
 

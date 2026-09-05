@@ -4,9 +4,10 @@ import { MessageItem } from "./MessageItem";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MessageKind } from "@/types";
 import { kindLabel } from "@/lib/labels";
-import { ArrowDown, Trash2 } from "lucide-react";
+import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
 const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
 
@@ -124,12 +125,21 @@ export function CommunicationPanel() {
         onScroll={onScroll}
         className="flex-1 overflow-y-auto"
       >
-        <div className="flex flex-col relative">
-          {filteredMessages.map(m => (
-            <MessageItem key={m.id} message={m} />
-          ))}
-          <div ref={bottomRef} />
-        </div>
+        {filteredMessages.length === 0 ? (
+          <EmptyState
+            icon={Radio}
+            title="Todavía no hay actividad"
+            description="Acá vas a ver lo que se dicen los agentes entre sí a medida que trabajan."
+            className="h-full"
+          />
+        ) : (
+          <div className="flex flex-col relative">
+            {filteredMessages.map(m => (
+              <MessageItem key={m.id} message={m} />
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        )}
       </div>
 
       {!stickToBottom && hasNewMessages && (
