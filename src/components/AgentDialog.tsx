@@ -386,10 +386,13 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               <Label htmlFor="require-approval">Requiere tu aprobación para recibir tareas delegadas</Label>
             </div>
 
-            <div className="space-y-1">
-              <Label>Descripción (para el planificador padre)</Label>
-              <Input value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
+            {/* A root planner has no parent to describe itself to. */}
+            {role !== "planner" && (
+              <div className="space-y-1">
+                <Label>Descripción (para el planificador padre)</Label>
+                <Input value={description} onChange={e => setDescription(e.target.value)} />
+              </div>
+            )}
 
             <div className="space-y-1">
               <Label>Instrucciones extra (System prompt)</Label>
