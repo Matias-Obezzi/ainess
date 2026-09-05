@@ -72,7 +72,7 @@ export function SettingsDialog() {
                 <h3 className="font-semibold text-sm">{active.label}</h3>
                 <p className="text-xs text-muted-foreground">{active.help}</p>
               </div>
-
+              {/* ACA VAN BOTONES ESPECIFICOS POR SECCION ACTIVA */}
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {sections[settingsSection as keyof typeof sections] ?? <ResourceSection section={settingsSection} />}
