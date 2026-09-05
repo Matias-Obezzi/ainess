@@ -1,4 +1,9 @@
-import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill } from "@/types";
+import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo } from "@/types";
+
+/** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
+function toModels(ids: string[]): ModelInfo[] {
+  return ids.map(id => ({ id, label: id }));
+}
 
 export interface BuildInput {
   agent: AgentConfig;
@@ -14,6 +19,8 @@ export interface ProviderSpec {
   id: ProviderId;
   label: string;
   defaultModels: string[];
+  /** Same as `defaultModels`, but with a human label per model (used by the model picker). */
+  models: ModelInfo[];
   supportsSessions: boolean;
   promptVia: "stdin" | "arg";
   note?: string;
@@ -150,7 +157,8 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   claude: {
     id: "claude",
     label: "Claude Code",
-    defaultModels: ["sonnet", "opus", "haiku"],
+    defaultModels: ["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"],
+    models: toModels(["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"]),
     supportsSessions: true,
     promptVia: "stdin",
     buildCommand: (input) => {
@@ -184,6 +192,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "antigravity",
     label: "Antigravity",
     defaultModels: ["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"],
+    models: toModels(["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]),
     supportsSessions: true,
     promptVia: "arg",
     buildCommand: (input) => {
@@ -213,7 +222,20 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   copilot: {
     id: "copilot",
     label: "GitHub Copilot",
-    defaultModels: ["auto", "claude-sonnet-5"],
+    defaultModels: [
+      "auto", "claude-sonnet-5", "claude-fable-5.1", "claude-fable-5", "claude-opus-5", "claude-opus-4.8",
+      "claude-opus-4.8-fast", "claude-opus-4.7", "claude-sonnet-4.6", "claude-haiku-4.5", "gpt-5.6-sol",
+      "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5-mini",
+      "mai-code-1.1-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
+      "grok-4.5", "kimi-k3"
+    ],
+    models: toModels([
+      "auto", "claude-sonnet-5", "claude-fable-5.1", "claude-fable-5", "claude-opus-5", "claude-opus-4.8",
+      "claude-opus-4.8-fast", "claude-opus-4.7", "claude-sonnet-4.6", "claude-haiku-4.5", "gpt-5.6-sol",
+      "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5-mini",
+      "mai-code-1.1-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
+      "grok-4.5", "kimi-k3"
+    ]),
     supportsSessions: true,
     promptVia: "arg",
     note: "En modo no interactivo Copilot exige --allow-all-tools; con auto-aprobación se usa --yolo (también rutas y URLs).",
@@ -235,6 +257,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "gemini",
     label: "Gemini CLI",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
@@ -250,6 +273,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "codex",
     label: "Codex CLI",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
@@ -265,6 +289,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "custom",
     label: "Custom Command",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
@@ -296,6 +321,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "ollama",
     label: "Ollama",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "stdin",
     buildCommand: (input) => {
@@ -316,6 +342,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "aider",
     label: "Aider",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
@@ -330,6 +357,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     id: "opencode",
     label: "OpenCode",
     defaultModels: [],
+    models: [],
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
