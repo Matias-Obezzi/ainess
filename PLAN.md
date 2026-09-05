@@ -114,6 +114,49 @@ Salida: texto plano; el resultado final es todo el stdout.
 ### custom
 `agent.customCommand = { program, args }`, con `{prompt}` reemplazado en args. Salida texto plano.
 
+## Modelos y cuota (src/lib/quota.ts)
+
+Fuentes de datos por proveedor (todas verificadas en esta máquina):
+
+- **Antigravity — modelos**: `agy models` imprime "Fetching available models..." y luego una línea
+  `id<TAB>etiqueta` por modelo (`parseAgyModels`). Se cachean en memoria 10 min; si falla o no hay
+  binario detectado, se usa `PROVIDERS.antigravity.models` (lista fija).
+- **Antigravity — cuota**: no hay comando; se infiere de los errores de los runs. Cuando un run
+  termina con un texto que matchea `/quota reached.*?Resets in\s+((?:\d+h)?(?:\d+m)?(?:\d+s)?)/i`
+  (ver `parseResetDuration`), se marca `exhaustedUntil = now + duración` para el pool del modelo
+  usado (`poolOf`: `gemini-*` → pool `gemini`, `claude-*` → pool `claude`, si no el id hasta el
+  primer guion). Persistido en `quota/antigravity.json` (`{ pools: { [pool]: { exhaustedUntil,
+  lastError } } }`) vía `writeTextFile`/`readTextFile`. `recordAntigravityOutcome` se llama desde
+  `orchestrator.handleExit` en cada run de un agente antigravity; un run exitoso del pool borra la
+  marca. `store.loadQuotaMarks()` recarga el estado al arrancar si hay marcas persistidas (no pega
+  a ninguna API: es solo lectura de disco).
+- **Copilot — modelos**: lista fija en `PROVIDERS.copilot.models` (documentada por
+  `copilot help config`).
+- **Copilot — cuota** (global, no por modelo): token con `exec("gh", ["auth", "token"])` (si `gh`
+  no está o falla → `status: "unavailable"`). Luego `GET
+  https://api.github.com/copilot_internal/user` con headers `Authorization: token <t>`, `Accept:
+  application/json`, `User-Agent: AIS`. Respuesta: `quota_reset_date`, `quota_snapshots.{
+  premium_interactions, chat, completions }` cada uno `{ entitlement, remaining,
+  percent_remaining, unlimited }`.
+- **Claude Code — modelos**: lista fija (`sonnet`, `opus`, `haiku` + ids concretos).
+- **Claude Code — cuota** (global por cuenta, con ventanas): token en
+  `~/.claude/.credentials.json` → `claudeAiOauth.accessToken` (leído con `readHomeFile`, si no
+  existe → `status: "unavailable"`). `GET https://api.anthropic.com/api/oauth/usage` con headers
+  `Authorization: Bearer <t>`, `anthropic-beta: oauth-2025-04-20`. HTTP 401 → token vencido.
+  Respuesta: `five_hour: { utilization, resets_at }`, `seven_day: { utilization, resets_at }` y
+  opcionales `seven_day_opus` / `seven_day_sonnet` (por modelo).
+- **gemini / codex / ollama / aider / opencode / custom**: modelos = `defaultModels` (puede ser
+  vacío); cuota = `status: "unavailable"` ("Este proveedor no expone su cuota").
+
+`Transport` expone `httpGet(url, headers)` y `readHomeFile(relativePath)` (solo lectura, relativo
+al home del usuario, rechaza `..`) además de `httpPost`/`readTextFile`/`writeTextFile`. Timeout de
+15 s en las requests HTTP (reqwest en Rust). Nunca se loguean tokens: solo viajan en el header.
+
+`refreshQuota`/`refreshModels` (store) no se llaman automáticamente al arrancar la app — solo al
+abrir el diálogo de un agente, al apretar "Actualizar" ahí, o desde `ais quota` en el CLI — para no
+pegarle a las APIs sin necesidad. El CLI `ais quota [provider] [--json]` sin argumento recorre los
+providers usados por algún agente configurado.
+
 ## Protocolo de delegación
 
 El orquestador arma el system prompt según el rol:
@@ -187,6 +230,8 @@ interface AppState {
   upsertAgent(agent: AgentConfig): void;
   removeAgent(agentId: string): void;
   detectBinaries(): Promise<void>;
+  refreshModels(provider: ProviderId): Promise<ModelInfo[]>;   // ver "Modelos y cuota"
+  refreshQuota(provider: ProviderId): Promise<ProviderQuota>;  // ver "Modelos y cuota"
 
   submitPrompt(text: string, targetAgentId: string): Promise<void>;
   instructAgent(agentId: string, text: string): Promise<void>;
@@ -222,9 +267,13 @@ Pestañas (`@/components/ui/tabs`):
    provider, rol, estado (punto de color + texto), tarea actual truncada, disponibilidad del
    binario, botones **Detener** y **Indicar** (abre `InstructDialog.tsx` con un textarea).
    Edges padre→hijo, `animated` cuando el hijo está `working`.
-4. **Agentes** — `AgentsPanel.tsx`: lista/cards + `AgentDialog.tsx` para crear/editar
-   (nombre, provider, rol, padre, modelo, autoApprove, descripción, systemPrompt, comando
-   custom). Muestra si el binario está detectado y su ruta. Botón "Volver a detectar".
+4. **Agentes** — `AgentsPanel.tsx`: solo las cards de agentes (ya no hay sección "IAs
+   detectadas"); cabecera con botones "Autodetectar" (vuelve a correr `detectBinaries()` y
+   muestra un resumen en toast) y "Nuevo agente". `AgentDialog.tsx` para crear/editar (nombre,
+   provider, rol, padre, modelo —`Select` con la lista real de modelos del proveedor y la cuota
+   que le queda, más "Otro…" para un id libre—, autoApprove, descripción, systemPrompt, comando
+   custom, y una sección "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar
+   override"). Ver "Modelos y cuota" para el detalle de `models`/`quota`.
 
 Componentes disponibles en `@/components/ui/`: button, badge, card, input, textarea, label,
 switch, separator, dialog, tooltip, select, tabs, scroll-area, alert, island, toast, progress,
