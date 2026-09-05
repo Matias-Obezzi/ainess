@@ -3,9 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "ais": "bin/ais.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:cli": "vite build --config vite.cli.config.ts",
+    "cli": "node bin/ais.js",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -31,6 +36,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "@types/node": "^26.4.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",

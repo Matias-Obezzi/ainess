@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage } from "@/types";
-import { ipc, isTauri } from "@/lib/tauri";
+import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 
 export interface AppState {
@@ -14,7 +14,7 @@ export interface AppState {
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
-  setWorkspaceDir(dir: string | null): void;
+  setWorkspaceDir(dir: string | null, persist?: boolean): void;
   setMaxRounds(n: number): void;
   upsertAgent(agent: AgentConfig): void;
   removeAgent(agentId: string): void;
@@ -97,14 +97,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   saveConfig: async () => {
-    if (isTauri()) {
-      await ipc.saveConfig(get().config);
-    }
+    await getTransport().saveConfig(get().config);
   },
 
-  setWorkspaceDir: (dir) => {
+  setWorkspaceDir: (dir, persist = true) => {
     set((state) => ({ config: { ...state.config, workspaceDir: dir } }));
-    debouncedSave();
+    if (persist) debouncedSave();
   },
 
   setMaxRounds: (n) => {
@@ -147,10 +145,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   detectBinaries: async () => {
-    if (isTauri()) {
-      const binaries = await ipc.detectBinaries();
-      set({ binaries });
-    }
+    const binaries = await getTransport().detectBinaries();
+    set({ binaries });
   },
 
   submitPrompt: async (text, targetAgentId) => {
@@ -182,7 +178,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
 async function runInit(): Promise<void> {
     const { set, get } = { set: useAppStore.setState, get: useAppStore.getState };
-    let config = isTauri() ? await ipc.loadConfig() : null;
+    let config = await getTransport().loadConfig();
     let isSeed = false;
     if (!config) {
       config = generateSeedConfig();
@@ -196,14 +192,12 @@ async function runInit(): Promise<void> {
 
     set({ config, runtime });
     
-    if (isTauri() && isSeed) {
+    if (isSeed) {
       await get().saveConfig();
     }
     
-    if (isTauri()) {
-      await get().detectBinaries();
-      await orchestrator.attachListeners();
-    }
+    await get().detectBinaries();
+    await orchestrator.attachListeners();
     
     set({ loaded: true });
 }
@@ -222,5 +216,7 @@ export function selectAgent(state: AppState, id: string): AgentConfig | undefine
 
 // Dev-only hook so the app can be driven from a debugger / e2e script.
 if (import.meta.env.DEV) {
-  (window as unknown as { __ais?: typeof useAppStore }).__ais = useAppStore;
+  if (typeof window !== "undefined") {
+    (window as unknown as { __ais?: typeof useAppStore }).__ais = useAppStore;
+  }
 }

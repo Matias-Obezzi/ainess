@@ -1,5 +1,5 @@
 import { useAppStore, selectChildren, selectAgent } from "@/store";
-import { ipc, onRunOutput, onRunExit } from "@/lib/tauri";
+import { getTransport } from "@/lib/transport";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
@@ -8,8 +8,8 @@ let listenersAttached = false;
 export async function attachListeners(): Promise<void> {
   if (listenersAttached) return;
   listenersAttached = true;
-  await onRunOutput(handleOutput);
-  await onRunExit(handleExit);
+  await getTransport().onRunOutput(handleOutput);
+  await getTransport().onRunExit(handleExit);
 }
 
 function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
@@ -104,7 +104,7 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
     binaryPath: binary.path
   });
 
-  ipc.spawnRun({ runId, ...spawnOpts }).catch(err => {
+  getTransport().spawnRun({ runId, ...spawnOpts }).catch(err => {
     useAppStore.setState(state => ({
       runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: String(err), endedAt: Date.now() } },
       runtime: { ...state.runtime, [opts.agentId]: { ...state.runtime[opts.agentId], status: "error", lastError: String(err), currentRunId: undefined } }
@@ -364,7 +364,7 @@ export async function stopAgent(agentId: string): Promise<void> {
   const store = useAppStore.getState();
   const runtime = store.runtime[agentId];
   if (runtime?.currentRunId) {
-    await ipc.killRun(runtime.currentRunId);
+    await getTransport().killRun(runtime.currentRunId);
     return;
   }
   // Waiting for children: stop every running run delegated (directly or not) by this agent,
@@ -379,7 +379,7 @@ export async function stopAgent(agentId: string): Promise<void> {
       cursor = cursor.parentRunId ? store.runs[cursor.parentRunId] : undefined;
     }
   }
-  await Promise.all(descendants.map(r => ipc.killRun(r.id).catch(() => {})));
+  await Promise.all(descendants.map(r => getTransport().killRun(r.id).catch(() => {})));
   if (descendants.length === 0) {
     useAppStore.setState(state => ({
       runtime: { ...state.runtime, [agentId]: { ...state.runtime[agentId], status: "idle" } }
@@ -392,7 +392,7 @@ export async function stopAll(): Promise<void> {
   for (const agentId in store.runtime) {
     const runtime = store.runtime[agentId];
     if (runtime?.currentRunId) {
-      ipc.killRun(runtime.currentRunId).catch(() => {});
+      getTransport().killRun(runtime.currentRunId).catch(() => {});
     }
   }
 }
