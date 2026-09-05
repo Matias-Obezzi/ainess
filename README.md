@@ -52,3 +52,29 @@ La configuración y el estado de la aplicación se guardan automáticamente en:
 `%APPDATA%\com.matias.ais\config.json`
 
 > **Nota sobre Antigravity**: Antigravity CLI (`agy`) requiere permisos sobre el directorio del workspace (`--add-dir`). AIS se encarga de inyectar automáticamente esta bandera al invocarlo.
+
+## Recursos compartidos
+
+AIS permite compartir recursos entre distintos agentes para estandarizar el comportamiento del equipo:
+- **Skills**: Instrucciones y convenciones que se inyectan en el prompt del sistema.
+- **Servidores MCP**: Herramientas extra. Para Claude se configuran con --mcp-config por sesi�n, y para Antigravity (gy mcp) se sincronizan de forma global a la m�quina usando is mcp sync.
+- **Contexto compartido**: Un bloque de texto que se inyecta a todos los agentes para darles contexto sobre el proyecto o equipo.
+
+### CLI (Recursos)
+
+- **Agentes**: 
+  - is agents add --name QA --provider antigravity --role reviewer --parent Claude
+  - is agents list
+  - is agents remove QA
+- **Skills**:
+  - is skills add convenciones --file RULES.md --agents Claude,QA
+  - is skills list
+  - is skills remove convenciones
+- **MCP**:
+  - is mcp add mi-server --command npx --args "-y @modelcontextprotocol/server-filesystem /dir"
+  - is mcp add fetch --url https://api.example.com/sse
+  - is mcp sync (sincroniza con Antigravity)
+- **Contexto**:
+  - is context set --file context.txt
+  - is context clear
+
