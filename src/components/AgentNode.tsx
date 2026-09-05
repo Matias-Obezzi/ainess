@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
 import { statusLabel, roleLabel } from "@/lib/labels";
 import { PROVIDERS } from "@/lib/providers";
-import { formatElapsed } from "@/lib/format";
+import { formatElapsed, truncate } from "@/lib/format";
 import { toolIcon } from "@/lib/tool-summary";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -232,7 +232,13 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
               <TooltipTrigger asChild>
                 <p className="line-clamp-2 cursor-help text-xs text-muted-foreground">{actions.currentTask}</p>
               </TooltipTrigger>
-              <TooltipContent className="max-w-sm whitespace-pre-wrap">{actions.currentTask}</TooltipContent>
+              {/* A delegated brief can be pages long: the popover shows a taste, the inspector the rest. */}
+              <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                {truncate(actions.currentTask, 240)}
+                {actions.currentTask.length > 240 && (
+                  <span className="mt-1 block text-[10px] opacity-70">Click en el nodo para ver la tarea completa</span>
+                )}
+              </TooltipContent>
             </Tooltip>
           )}
 
