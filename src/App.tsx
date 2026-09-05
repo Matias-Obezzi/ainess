@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/store";
-import { useActivityIsland } from "@/hooks/useActivityIsland";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Island } from "@/components/ui/island";
 import { Toaster } from "@/components/ui/toast";
@@ -21,7 +20,6 @@ export default function App() {
     void init();
   }, [init]);
 
-  useActivityIsland();
   useNotifications();
 
   if (!loaded) return null;
