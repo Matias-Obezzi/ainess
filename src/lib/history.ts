@@ -164,8 +164,14 @@ export async function flushHistory(): Promise<void> {
 
 /** Load (or re-sync) a project's history into the store. Safe to call repeatedly. */
 export async function loadHistory(projectId: string): Promise<void> {
+  const firstLoad = !loadedProjects.has(projectId);
   loadedProjects.add(projectId);
-  await mergeFromDisk(projectId);
+  if (firstLoad) useAppStore.setState(state => ({ historyLoading: { ...state.historyLoading, [projectId]: true } }));
+  try {
+    await mergeFromDisk(projectId);
+  } finally {
+    if (firstLoad) useAppStore.setState(state => ({ historyLoading: { ...state.historyLoading, [projectId]: false } }));
+  }
 }
 
 /** Alias that reads better at call sites that want fresh data from other processes. */

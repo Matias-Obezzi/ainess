@@ -33,17 +33,22 @@ async function persistMessages(chatId: string): Promise<void> {
 export async function loadChatMessages(chatId: string): Promise<void> {
   const existing = useAppStore.getState().chatMessages[chatId];
   if (existing && existing.length > 0) return; // already loaded
-  const raw = await getTransport().readTextFile(chatFilePath(chatId));
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as ChatFile | ChatMessage[];
-      const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
-      const sessions = Array.isArray(parsed) ? {} : parsed.sessions || {};
-      useAppStore.setState(state => ({
-        chatMessages: { ...state.chatMessages, [chatId]: msgs },
-        chatSessions: { ...state.chatSessions, [chatId]: { ...sessions, ...(state.chatSessions[chatId] || {}) } },
-      }));
-    } catch { /* corrupt file, ignore */ }
+  useAppStore.setState(state => ({ chatLoading: { ...state.chatLoading, [chatId]: true } }));
+  try {
+    const raw = await getTransport().readTextFile(chatFilePath(chatId));
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as ChatFile | ChatMessage[];
+        const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
+        const sessions = Array.isArray(parsed) ? {} : parsed.sessions || {};
+        useAppStore.setState(state => ({
+          chatMessages: { ...state.chatMessages, [chatId]: msgs },
+          chatSessions: { ...state.chatSessions, [chatId]: { ...sessions, ...(state.chatSessions[chatId] || {}) } },
+        }));
+      } catch { /* corrupt file, ignore */ }
+    }
+  } finally {
+    useAppStore.setState(state => ({ chatLoading: { ...state.chatLoading, [chatId]: false } }));
   }
 }
 
