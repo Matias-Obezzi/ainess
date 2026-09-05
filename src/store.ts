@@ -28,6 +28,7 @@ export interface AppState {
   removeMcpServer(serverId: string): void;
   setSharedContext(text: string): void;
   detectBinaries(): Promise<void>;
+  updateConfig(patch: Partial<AppConfig>): void;
 
   submitPrompt(text: string, targetAgentId: string, projectId: string): Promise<void>;
   instructAgent(agentId: string, text: string, projectId: string): Promise<void>;
@@ -43,13 +44,17 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 3,
+    version: 4,
     projects: [],
     lastProjectId: null,
     maxRounds: 6,
     skills: [],
     mcpServers: [],
     sharedContext: "",
+    binaryOverrides: {},
+    profile: { name: "", about: "", preferences: "" },
+    presets: [],
+    autoModel: false,
     agents: [
       {
         id: claudeId,
@@ -96,7 +101,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 3, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "" },
+  config: { version: 4, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false },
   binaries: {},
   runtime: {},
   runs: {},
@@ -269,9 +274,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
     debouncedSave();
   },
 
+  updateConfig: (patch) => {
+    set((state) => ({ config: { ...state.config, ...patch } }));
+    debouncedSave();
+  },
+
   detectBinaries: async () => {
-    const binaries = await getTransport().detectBinaries();
-    set({ binaries });
+    const detected = await getTransport().detectBinaries();
+    const config = get().config;
+    const overrides = config.binaryOverrides || {};
+    const finalBinaries: Binaries = { ...detected };
+    
+    for (const [provider, overridePath] of Object.entries(overrides)) {
+      if (!overridePath) continue;
+      const id = provider as ProviderId;
+      try {
+        const res = await getTransport().exec(overridePath, ["--version"]);
+        if (res.code === 0) {
+          finalBinaries[id] = { path: overridePath, version: res.stdout.trim() };
+        } else {
+          finalBinaries[id] = { path: overridePath, version: null };
+        }
+      } catch (e) {
+        finalBinaries[id] = { path: overridePath, version: null };
+      }
+    }
+    set({ binaries: finalBinaries });
   },
 
   submitPrompt: async (text, targetAgentId, projectId) => {
@@ -350,6 +378,20 @@ async function runInit(): Promise<void> {
       delete (config as any).workspaceDir;
       isSeed = true; // force save
     }
+
+    // Migration to version 4
+    if ((config.version as number) < 4) {
+      config = {
+        ...config,
+        version: 4,
+        binaryOverrides: config.binaryOverrides || {},
+        profile: config.profile || { name: "", about: "", preferences: "" },
+        presets: config.presets || [],
+        autoModel: config.autoModel || false
+      } as AppConfig;
+      isSeed = true;
+    }
+
     
     const runtime: Record<string, Record<string, AgentRuntime>> = {};
     for (const p of config.projects) {

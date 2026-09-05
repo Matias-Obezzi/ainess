@@ -238,6 +238,54 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       };
     },
     parseLine: parsePlainLine
+  },
+  ollama: {
+    id: "ollama",
+    label: "Ollama",
+    defaultModels: [],
+    supportsSessions: false,
+    promptVia: "stdin",
+    buildCommand: (input) => {
+      const model = input.agent.model;
+      if (!model) throw new Error("Ollama requires a model to be selected");
+      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      return {
+        program: input.binaryPath,
+        args: ["run", model],
+        cwd: input.cwd,
+        stdinText: prompt,
+        env: { NO_COLOR: "1" }
+      };
+    },
+    parseLine: parsePlainLine
+  },
+  aider: {
+    id: "aider",
+    label: "Aider",
+    defaultModels: [],
+    supportsSessions: false,
+    promptVia: "arg",
+    buildCommand: (input) => {
+      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const args = ["--message", prompt, "--yes-always"];
+      if (input.agent.model) args.push("--model", input.agent.model);
+      return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
+    },
+    parseLine: parsePlainLine
+  },
+  opencode: {
+    id: "opencode",
+    label: "OpenCode",
+    defaultModels: [],
+    supportsSessions: false,
+    promptVia: "arg",
+    buildCommand: (input) => {
+      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const args = ["run", prompt];
+      if (input.agent.model) args.push("--model", input.agent.model);
+      return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
+    },
+    parseLine: parsePlainLine
   }
 };
 
@@ -245,7 +293,7 @@ export function finalOutputFromLines(lines: string[]): string {
   return lines.join("");
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean }): string {
   let prompt = "";
   
   if (agent.role === "planner") {
@@ -253,13 +301,32 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     if (children.length > 0) {
       prompt += " Agentes disponibles bajo tu mando:\n";
       for (const child of children) {
-        prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}\n`;
+        let childModelsInfo = "";
+        if (extras?.autoModel) {
+          const providerSpec = PROVIDERS[child.provider];
+          const models = new Set(providerSpec?.defaultModels || []);
+          if (child.model) models.add(child.model);
+          const modelsList = Array.from(models).join(", ");
+          if (modelsList) {
+            childModelsInfo = ` (Modelos disponibles: ${modelsList})`;
+          }
+        }
+        prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}${childModelsInfo}\n`;
       }
+      
+      let delegateSchema = `{"tasks":[{"agent":"nombre o id del agente","task":"instrucción detallada y autocontenida"}]}`;
+      let extraInstruction = "";
+      
+      if (extras?.autoModel) {
+        delegateSchema = `{"tasks":[{"agent":"nombre o id del agente","task":"instrucción detallada y autocontenida","model":"modelo elegido (opcional)"}]}`;
+        extraInstruction = ` Elegí el modelo más adecuado para cada tarea según su dificultad (los flash/haiku para tareas simples y rápidas, los pro/opus/sonnet para tareas complejas) e indicalo en el campo model de cada task del bloque delegate.`;
+      }
+      
       prompt += `Para delegar incluí en tu respuesta uno o más bloques exactamente así:
 \`\`\`delegate
-{"tasks":[{"agent":"nombre o id del agente","task":"instrucción detallada y autocontenida"}]}
+${delegateSchema}
 \`\`\`
-Cada task debe ser autocontenida (el agente no ve esta conversación). Cuando recibas los resultados, verificalos; si falta algo delegá de nuevo. Si no queda nada por delegar respondé sin bloques delegate con un resumen final para el usuario.`;
+Cada task debe ser autocontenida (el agente no ve esta conversación).${extraInstruction} Cuando recibas los resultados, verificalos; si falta algo delegá de nuevo. Si no queda nada por delegar respondé sin bloques delegate con un resumen final para el usuario.`;
     } else {
       prompt += " No tenés agentes bajo tu mando. Respondé directamente a la tarea.";
     }
@@ -272,6 +339,13 @@ Cada task debe ser autocontenida (el agente no ve esta conversación). Cuando re
   }
 
   if (extras) {
+    if (extras.profile && (extras.profile.name || extras.profile.about || extras.profile.preferences)) {
+      prompt += (prompt ? "\n\n" : "") + "## Sobre el usuario\n";
+      if (extras.profile.name) prompt += `Nombre: ${extras.profile.name}\n`;
+      if (extras.profile.about) prompt += `${extras.profile.about}\n`;
+      if (extras.profile.preferences) prompt += `Preferencias de trabajo: ${extras.profile.preferences}\n`;
+    }
+    
     if (extras.sharedContext && extras.sharedContext.trim()) {
       prompt += (prompt ? "\n\n" : "") + "## Contexto compartido del equipo\n" + extras.sharedContext;
     }
