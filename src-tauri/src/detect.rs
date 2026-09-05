@@ -82,8 +82,19 @@ fn detect_claude() -> Option<BinaryInfo> {
     }
     if let Some(d) = dirs::data_local_dir() { roots.push(d); }
     roots.dedup();
-    for appdata_path in roots {
-        let claude_code_dir = appdata_path.join("Claude").join("claude-code");
+    let mut candidate_dirs: Vec<PathBuf> = roots.iter().map(|r| r.join("Claude").join("claude-code")).collect();
+    // The Store build of the desktop app is an MSIX package: its AppData\Roaming is virtualized
+    // and the real files live under Packages\Claude_*\LocalCache\Roaming.
+    if let Some(local) = dirs::data_local_dir() {
+        if let Ok(entries) = std::fs::read_dir(local.join("Packages")) {
+            for e in entries.flatten() {
+                if e.file_name().to_string_lossy().starts_with("Claude_") {
+                    candidate_dirs.push(e.path().join("LocalCache").join("Roaming").join("Claude").join("claude-code"));
+                }
+            }
+        }
+    }
+    for claude_code_dir in candidate_dirs {
         if let Ok(entries) = std::fs::read_dir(&claude_code_dir) {
             for entry in entries.flatten() {
                 if let Ok(file_type) = entry.file_type() {

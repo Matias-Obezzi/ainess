@@ -78,6 +78,14 @@ export function claudeCandidateDirs(): string[] {
     path.join(os.homedir(), "AppData", "Local"),
   ].filter((r): r is string => !!r);
   const dirs = roots.map(r => path.join(r, "Claude", "claude-code"));
+  // The desktop app from the Microsoft Store is an MSIX package: Windows virtualizes its
+  // AppData\Roaming, so the real files live under Packages\Claude_*\LocalCache\Roaming.
+  const packages = path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "Packages");
+  try {
+    for (const entry of fs.readdirSync(packages)) {
+      if (/^Claude_/i.test(entry)) dirs.push(path.join(packages, entry, "LocalCache", "Roaming", "Claude", "claude-code"));
+    }
+  } catch { /* no Packages folder */ }
   return [...new Set(dirs)];
 }
 
