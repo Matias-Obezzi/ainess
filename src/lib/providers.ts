@@ -379,7 +379,8 @@ export function parseDelegations(text: string): Delegation[] {
       if (Array.isArray(tasks)) {
         for (const t of tasks) {
           if (t && typeof t.agent === "string" && typeof t.task === "string") {
-            delegations.push({ agent: t.agent, task: t.task });
+            const model = typeof t.model === "string" && t.model.trim() ? t.model.trim() : undefined;
+            delegations.push(model ? { agent: t.agent, task: t.task, model } : { agent: t.agent, task: t.task });
           }
         }
       }

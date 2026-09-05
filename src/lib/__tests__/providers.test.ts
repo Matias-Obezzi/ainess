@@ -1,0 +1,128 @@
+import { describe, it, expect } from "vitest";
+import { PROVIDERS, parseDelegations, finalOutputFromLines, buildSystemPrompt } from "@/lib/providers";
+import type { AgentConfig } from "@/types";
+
+const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
+  id: "a1",
+  name: "Obrero",
+  provider: "antigravity",
+  role: "implementer",
+  parentId: null,
+  autoApprove: true,
+  ...over,
+});
+
+describe("parseDelegations", () => {
+  it("reads the {tasks:[...]} form", () => {
+    const text = 'Voy a delegar.\n```delegate\n{"tasks":[{"agent":"Obrero","task":"crear hola.txt"}]}\n```\n';
+    expect(parseDelegations(text)).toEqual([{ agent: "Obrero", task: "crear hola.txt" }]);
+  });
+
+  it("reads a bare array and several blocks", () => {
+    const text = '```delegate\n[{"agent":"A","task":"t1"}]\n```\nx\n```delegate\n{"tasks":[{"agent":"B","task":"t2"}]}\n```';
+    expect(parseDelegations(text).map(d => d.agent)).toEqual(["A", "B"]);
+  });
+
+  it("keeps the model chosen by the planner", () => {
+    const text = '```delegate\n{"tasks":[{"agent":"Obrero","task":"t","model":"gemini-3.8-flash-high"}]}\n```';
+    expect(parseDelegations(text)[0].model).toBe("gemini-3.8-flash-high");
+  });
+
+  it("ignores invalid JSON and malformed tasks without throwing", () => {
+    const text = '```delegate\n{not json}\n```\n```delegate\n{"tasks":[{"agent":1},{"task":"sin agente"}]}\n```';
+    expect(parseDelegations(text)).toEqual([]);
+  });
+
+  it("returns [] when there is no block", () => {
+    expect(parseDelegations("Listo, terminé.")).toEqual([]);
+  });
+});
+
+describe("antigravity provider", () => {
+  it("passes --add-dir, --conversation and skip-permissions", () => {
+    const cmd = PROVIDERS.antigravity.buildCommand({
+      agent: agent({ model: "gemini-3.1-pro-high" }),
+      prompt: "hola",
+      systemPrompt: "SYS",
+      sessionId: "conv-1",
+      cwd: "C:/ws",
+      binaryPath: "agy.exe",
+    });
+    expect(cmd.program).toBe("agy.exe");
+    expect(cmd.args).toContain("--add-dir");
+    expect(cmd.args[cmd.args.indexOf("--add-dir") + 1]).toBe("C:/ws");
+    expect(cmd.args[cmd.args.indexOf("--conversation") + 1]).toBe("conv-1");
+    expect(cmd.args[cmd.args.indexOf("--model") + 1]).toBe("gemini-3.1-pro-high");
+    expect(cmd.args).toContain("--dangerously-skip-permissions");
+    // The system prompt is prepended to the prompt argument (agy has no flag for it).
+    expect(cmd.args[1]).toContain("SYS");
+    expect(cmd.args[1]).toContain("hola");
+  });
+
+  it("parses stream-json events", () => {
+    const p = PROVIDERS.antigravity;
+    expect(p.parseLine('{"event":"init","conversation_id":"c1","init":{}}', "stdout")).toEqual([{ type: "session", sessionId: "c1" }]);
+    expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"agent_response","text_delta":"OK","state":"DONE"}}', "stdout"))
+      .toEqual([{ type: "text", text: "OK" }]);
+    const active = p.parseLine('{"event":"step_update","step_update":{"step_type":"tool","state":"ACTIVE","tool_name":"write_to_file","tool_info":{"name":"write_to_file","parameters":{"TargetFile":"a.txt"}}}}', "stdout");
+    expect(active[0]).toMatchObject({ type: "tool", name: "write_to_file" });
+    // DONE steps are not logged twice.
+    expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"tool","state":"DONE","tool_name":"write_to_file"}}', "stdout")).toEqual([]);
+    const result = p.parseLine('{"event":"result","result":{"conversation_id":"c1","status":"SUCCESS","response":"hecho"}}', "stdout");
+    expect(result).toEqual([{ type: "result", text: "hecho", sessionId: "c1" }]);
+    expect(p.parseLine("not json", "stderr")).toEqual([{ type: "error", text: "not json" }]);
+    expect(p.parseLine("not json", "stdout")).toEqual([{ type: "raw", text: "not json" }]);
+  });
+});
+
+describe("claude provider", () => {
+  it("sends the prompt via stdin and restricts planners to read-only tools", () => {
+    const cmd = PROVIDERS.claude.buildCommand({
+      agent: agent({ provider: "claude", role: "planner", autoApprove: false }),
+      prompt: "planificá",
+      systemPrompt: "SYS",
+      sessionId: "s1",
+      cwd: "C:/ws",
+      binaryPath: "claude.exe",
+    });
+    expect(cmd.stdinText).toBe("planificá");
+    expect(cmd.args).toContain("--resume");
+    expect(cmd.args).toContain("--allowedTools");
+    expect(cmd.args).toContain("--permission-mode");
+    expect(cmd.args).not.toContain("--dangerously-skip-permissions");
+  });
+
+  it("parses stream-json events", () => {
+    const p = PROVIDERS.claude;
+    expect(p.parseLine('{"type":"system","subtype":"init","session_id":"s1"}', "stdout")).toEqual([{ type: "session", sessionId: "s1" }]);
+    const assistant = p.parseLine('{"type":"assistant","message":{"content":[{"type":"text","text":"hola"},{"type":"tool_use","name":"Edit","input":{"a":1}}]}}', "stdout");
+    expect(assistant.map(e => e.type)).toEqual(["text", "tool"]);
+    expect(p.parseLine('{"type":"result","subtype":"success","result":"fin","session_id":"s1"}', "stdout")).toEqual([{ type: "result", text: "fin", sessionId: "s1" }]);
+  });
+});
+
+describe("plain-text providers and system prompt", () => {
+  it("joins stdout lines as the final output", () => {
+    expect(finalOutputFromLines(["a\n", "b\n"])).toBe("a\nb\n");
+  });
+
+  it("tells planners how to delegate and lists their children", () => {
+    const planner = agent({ id: "p", name: "Jefe", role: "planner" });
+    const child = agent({ id: "c", name: "Obrero", parentId: "p", description: "hace cosas" });
+    const prompt = buildSystemPrompt(planner, [child], { skills: [], sharedContext: "" });
+    expect(prompt).toContain("```delegate");
+    expect(prompt).toContain("Obrero");
+    expect(prompt).toContain("hace cosas");
+  });
+
+  it("injects skills, shared context and the agent's own instructions", () => {
+    const prompt = buildSystemPrompt(agent({ systemPrompt: "PROPIO" }), [], {
+      skills: [{ id: "s", name: "Estilo", content: "Usá tabs", enabledFor: "all" }],
+      sharedContext: "CONTEXTO",
+    });
+    expect(prompt).toContain("Estilo");
+    expect(prompt).toContain("Usá tabs");
+    expect(prompt).toContain("CONTEXTO");
+    expect(prompt.trim().endsWith("PROPIO")).toBe(true);
+  });
+});

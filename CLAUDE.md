@@ -4,7 +4,7 @@ Tauri 2 + React 19 + TypeScript + Tailwind 4 + componentes `@uiness` (registry s
 `src/components/ui`). UI en español, código en inglés. `PLAN.md` es la fuente de verdad de la
 arquitectura y los contratos (tipos, comandos Rust, protocolo de delegación).
 
-Comandos: `npx tsc --noEmit` (front), `cd src-tauri && cargo check` (back), `npm run tauri dev` (app).
+Comandos: `npx tsc --noEmit` (front), `npm test` (unit, vitest), `cd src-tauri && cargo check` (back), `npm run build:cli` (CLI), `npm run tauri dev` (app), `npm run tauri build` (instalador).
 
 ## Handoff a Antigravity
 
