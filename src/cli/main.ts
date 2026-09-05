@@ -48,10 +48,11 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, profile, presets, chat, history, status, run");
+    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, run");
     console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
+    console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
     console.log("  serve [--port N] [-w dir|-p proyecto]      Servidor para el celular (misma WiFi), Ctrl+C termina");
     console.log("  remote url | token [--regenerate]          URL con token para el celular");
@@ -61,7 +62,7 @@ async function main() {
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -118,6 +119,31 @@ async function main() {
       print({ ok: true }, "Override borrado.");
       process.exit(0);
     }
+  }
+
+  if (first === "quota") {
+    const { fetchQuota, formatQuotaLine } = await import("@/lib/quota");
+    const requested = args[1] && !args[1].startsWith("-") ? (args[1] as ProviderId) : undefined;
+    const providers: ProviderId[] = requested
+      ? [requested]
+      : (Array.from(new Set(store.config.agents.map(a => a.provider))) as ProviderId[]);
+
+    const results: Record<string, unknown> = {};
+    for (const p of providers) {
+      const q = await fetchQuota(p);
+      results[p] = q;
+      if (!jsonOutput) {
+        if (q.status !== "ok") {
+          console.log(`${p}: ${q.message || q.status}`);
+        } else if (q.items.length === 0) {
+          console.log(`${p}: sin información`);
+        } else {
+          console.log(`${p}: ${q.items.map(formatQuotaLine).join(", ")}`);
+        }
+      }
+    }
+    if (jsonOutput) console.log(JSON.stringify(results));
+    process.exit(0);
   }
 
   if (first === "profile") {

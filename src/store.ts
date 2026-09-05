@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, ModelInfo, ProviderQuota } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
+import * as quota from "@/lib/quota";
 
 /** Which top-level screen the shell is showing. */
 export type Screen = "home" | "project" | "settings";
@@ -21,6 +22,10 @@ export interface AppState {
   messages: CommMessage[];
   activeTaskRunId: Record<string, string | null>;
   currentProjectId: string | null;
+  /** Models available per provider (fetched or fixed list). */
+  models: Partial<Record<ProviderId, ModelInfo[]>>;
+  /** Last known quota per provider. */
+  quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
   /** Session ids per chat per agent. */
@@ -61,8 +66,11 @@ export interface AppState {
   toggleHook(id: string, enabled: boolean): void;
   testHook(id: string): Promise<void>;
   setSharedContext(text: string): void;
-  detectBinaries(): Promise<void>;
+  detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
+  refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
+  refreshQuota(provider: ProviderId): Promise<ProviderQuota>;
+  loadQuotaMarks(): Promise<void>;
 
   submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void>;
   instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void>;
@@ -218,6 +226,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
   config: { version: 7, approveDelegations: false, remote: { enabled: false, port: 4710, token: "" }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
   binaries: {},
+  models: {},
+  quota: {},
   runtime: {},
   runs: {},
   messages: [],
@@ -546,6 +556,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }
     }
     set({ binaries: finalBinaries });
+
+    const providerIds = Object.keys(finalBinaries) as ProviderId[];
+    const found = providerIds.filter(p => finalBinaries[p]?.path && finalBinaries[p]?.version !== null);
+    const missing = providerIds.filter(p => !found.includes(p));
+    return { found, missing };
+  },
+
+  refreshModels: async (provider) => {
+    const models = await quota.listModels(provider, get().binaries);
+    set(state => ({ models: { ...state.models, [provider]: models } }));
+    return models;
+  },
+
+  refreshQuota: async (provider) => {
+    const result = await quota.fetchQuota(provider);
+    set(state => ({ quota: { ...state.quota, [provider]: result } }));
+    return result;
+  },
+
+  loadQuotaMarks: async () => {
+    const pools = await quota.antigravityQuota();
+    if (Object.keys(pools).length === 0) return;
+    const result = await quota.fetchQuota("antigravity");
+    set(state => ({ quota: { ...state.quota, antigravity: result } }));
   },
 
   submitPrompt: async (text, targetAgentId, projectId, opts) => {
@@ -761,6 +795,7 @@ async function runInit(): Promise<void> {
     }
     
     await get().detectBinaries();
+    await get().loadQuotaMarks();
     await orchestrator.attachListeners();
 
     // Restore runs and feed: every project when there are few, otherwise only the last one.

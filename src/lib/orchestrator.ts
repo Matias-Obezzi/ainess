@@ -2,6 +2,7 @@ import { useAppStore, selectChildren, selectAgent, selectSkillsFor, selectMcpFor
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
+import { recordAntigravityOutcome } from "@/lib/quota";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
@@ -251,6 +252,11 @@ function handleExit(e: RunExitEvent) {
       }
     }
   }));
+
+  if (agentForRun?.provider === "antigravity" && !e.killed) {
+    const text = `${output}\n${run.rawLines.slice(-20).join("\n")}`;
+    void recordAntigravityOutcome(run.model ?? agentForRun.model, text, status === "done");
+  }
 
   onRunFinished(e.runId);
 }

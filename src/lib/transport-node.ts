@@ -341,5 +341,20 @@ export const nodeTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
 
+  httpGet: async (url: string, headers: Record<string, string>) => {
+    const res = await fetch(url, { method: "GET", headers });
+    return { status: res.status, body: await res.text() };
+  },
+
+  readHomeFile: async (relativePath: string) => {
+    if (relativePath.includes("..")) throw new Error("Invalid path");
+    const p = path.join(os.homedir(), relativePath);
+    try {
+      return fs.readFileSync(p, "utf-8");
+    } catch {
+      return null;
+    }
+  },
+
   ...nodeRemote,
 };

@@ -5,71 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PROVIDERS } from "@/lib/providers";
 import { roleLabel } from "@/lib/labels";
+import { formatResetsAt } from "@/lib/quota";
 import { AgentDialog } from "./AgentDialog";
 import { island } from "@/components/ui/island";
-import { AgentConfig, ProviderId } from "@/types";
-import { open } from "@tauri-apps/plugin-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-function OverrideDialog({ provider, open: isOpen, onOpenChange }: { provider: ProviderId | null, open: boolean, onOpenChange: (open: boolean) => void }) {
-  const config = useAppStore(state => state.config);
-  const updateConfig = useAppStore(state => state.updateConfig);
-  const detectBinaries = useAppStore(state => state.detectBinaries);
-  const [path, setPath] = useState("");
-
-  const handleOpen = async () => {
-    const selected = await open({ multiple: false, filters: [{ name: "Ejecutable", extensions: ["exe", "cmd", "bat"] }] });
-    if (selected && typeof selected === "string") {
-      setPath(selected);
-    }
-  };
-
-  const handleSave = async () => {
-    if (provider) {
-      const overrides = { ...config.binaryOverrides, [provider]: path };
-      updateConfig({ binaryOverrides: overrides });
-      await detectBinaries();
-    }
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cargar CLI a mano ({provider ? PROVIDERS[provider].label : ""})</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
-          <Label>Ruta al ejecutable</Label>
-          <div className="flex gap-2">
-            <Input value={path} onChange={e => setPath(e.target.value)} placeholder="C:\ruta\al\ejecutable.exe" />
-            <Button variant="outline" onClick={handleOpen}>Buscar...</Button>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave}>Guardar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { AgentConfig } from "@/types";
+import { toast } from "@/components/ui/toast";
+import { ScanSearch } from "lucide-react";
 
 export function AgentsPanel() {
   const config = useAppStore(state => state.config);
   const loaded = useAppStore(state => state.loaded);
   const binaries = useAppStore(state => state.binaries);
   const detectBinaries = useAppStore(state => state.detectBinaries);
+  const quotaByProvider = useAppStore(state => state.quota);
   const removeAgent = useAppStore(state => state.removeAgent);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const resetSession = useAppStore(state => state.resetSession);
-  const upsertAgent = useAppStore(state => state.upsertAgent);
-  const updateConfig = useAppStore(state => state.updateConfig);
   
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null | undefined>(undefined);
-  const [overrideProvider, setOverrideProvider] = useState<ProviderId | null>(null);
 
   const handleDelete = async (agent: AgentConfig) => {
     const confirmed = await island.confirm({
@@ -82,76 +35,37 @@ export function AgentsPanel() {
     }
   };
 
-  const handleCreateFromProvider = (providerId: ProviderId) => {
-    const rootPlanner = config.agents.find(a => a.parentId === null && a.role === "planner");
-    upsertAgent({
-      id: crypto.randomUUID(),
-      name: PROVIDERS[providerId].label,
-      provider: providerId,
-      role: "implementer",
-      parentId: rootPlanner ? rootPlanner.id : null,
-      autoApprove: true,
-      color: "#6b7280"
-    });
+  const handleAutoDetect = async () => {
+    const { found } = await detectBinaries();
+    if (found.length > 0) {
+      toast.success(`Detectados: ${found.map(p => PROVIDERS[p]?.label || p).join(", ")}`);
+    } else {
+      toast.info("No se detectó ningún CLI nuevo");
+    }
   };
-
-  const providerKeys = Object.keys(PROVIDERS) as ProviderId[];
-  const detectables = providerKeys.filter(p => p !== "custom");
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold">IAs detectadas</h2>
-          <Button variant="outline" size="sm" onClick={() => void detectBinaries()}>Volver a detectar</Button>
-        </div>
-        <div className="grid grid-cols-1 gap-2">
-          {detectables.map(provider => {
-            const bin = binaries[provider];
-            const hasAgent = config.agents.some(a => a.provider === provider);
-            const override = config.binaryOverrides?.[provider];
-            
-            return (
-              <div key={provider} className="flex items-center justify-between p-3 border rounded-md">
-                <div className="flex flex-col">
-                  <span className="font-semibold">{PROVIDERS[provider].label}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {!loaded ? "Cargando..." : (
-                      bin?.path 
-                        ? (bin.version === null ? <span className="text-destructive">Ruta no válida: {bin.path}</span> : `${bin.path} ${bin.version ? `(${bin.version})` : ""}`)
-                        : <span className="text-destructive">No detectado</span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  {!hasAgent && bin?.path && bin?.version !== null && (
-                    <Button size="sm" onClick={() => handleCreateFromProvider(provider)}>Crear agente</Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => setOverrideProvider(provider)}>Cargar a mano</Button>
-                  {override && (
-                    <Button size="sm" variant="ghost" onClick={async () => {
-                      const newOverrides = { ...config.binaryOverrides };
-                      delete newOverrides[provider];
-                      updateConfig({ binaryOverrides: newOverrides });
-                      await detectBinaries();
-                    }}>Limpiar override</Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 mt-4">
-        <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold">Agentes</h2>
-          <Button size="sm" onClick={() => setEditingAgent(null)}>Nuevo agente custom</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => void handleAutoDetect()}>
+              <ScanSearch className="size-4 mr-1" /> Autodetectar
+            </Button>
+            <Button size="sm" onClick={() => setEditingAgent(null)}>Nuevo agente</Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {config.agents.map(a => {
             const parent = config.agents.find(p => p.id === a.parentId);
             const bin = binaries[a.provider];
+            const agentQuota = quotaByProvider[a.provider];
+            const globalQuotaItem = agentQuota?.status === "ok" ? agentQuota.items.find(i => !i.model) : undefined;
+            const modelQuotaItem = agentQuota?.status === "ok" && a.model
+              ? agentQuota.items.find(i => i.model === a.model || (a.provider === "antigravity" && a.model!.startsWith(i.model || "___")))
+              : undefined;
+            const modelExhausted = modelQuotaItem?.resetsAt && modelQuotaItem.resetsAt > Date.now();
 
             return (
               <Card key={a.id} className="p-4 flex flex-col gap-2" style={{ borderTop: `4px solid ${a.color || "#888"}` }}>
@@ -180,6 +94,24 @@ export function AgentsPanel() {
                       <span>{bin.path}{bin.version ? ` (${bin.version})` : ""}</span>
                     ))}
                   </div>
+
+                  {globalQuotaItem && (
+                    <div>
+                      <span className="font-semibold">Cuota: </span>
+                      {globalQuotaItem.unlimited
+                        ? "ilimitado"
+                        : globalQuotaItem.percentRemaining !== undefined
+                          ? `${Math.round(globalQuotaItem.percentRemaining)}% disponible`
+                          : globalQuotaItem.usedPercent !== undefined
+                            ? `${100 - globalQuotaItem.usedPercent}% disponible`
+                            : globalQuotaItem.note}
+                    </div>
+                  )}
+                  {modelExhausted && (
+                    <Badge variant="destructive" className="w-fit">
+                      Sin cuota hasta {formatResetsAt(modelQuotaItem!.resetsAt)}
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="flex gap-2 mt-auto pt-2">
@@ -198,11 +130,7 @@ export function AgentsPanel() {
         onOpenChange={(open) => !open && setEditingAgent(undefined)} 
         agent={editingAgent === null ? undefined : editingAgent} 
       />
-      <OverrideDialog 
-        provider={overrideProvider} 
-        open={overrideProvider !== null} 
-        onOpenChange={(open) => !open && setOverrideProvider(null)} 
-      />
     </div>
   );
 }
+
