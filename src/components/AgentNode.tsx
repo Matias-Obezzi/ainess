@@ -24,7 +24,7 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
   const stopAgent = useAppStore(state => state.stopAgent);
   const runs = useAppStore(state => state.runs);
 
-  // Opens (or creates) this agent's individual chat in the current project and jumps to the Chat tab.
+  // Opens (or creates) this agent's individual chat and switches the project screen to it.
   const openChat = () => {
     const state = useAppStore.getState();
     if (!currentProjectId) return;
@@ -34,8 +34,8 @@ export function AgentNode({ data }: { data: { agent: AgentConfig } }) {
     const chatId = existing
       ? existing.id
       : state.createChat({ projectId: currentProjectId, name: agent.name, mode: "individual", participants: [{ agentId: agent.id, role: "asistente" }] });
-    state.setCurrentChat(chatId);
-    window.dispatchEvent(new CustomEvent("ais:open-tab", { detail: "chat" }));
+    state.openProject(currentProjectId, chatId);
+    state.setProjectMode("chat");
   };
   
   const [instructOpen, setInstructOpen] = useState(false);

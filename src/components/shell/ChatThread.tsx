@@ -1,0 +1,140 @@
+import { useEffect, useRef, useState } from "react";
+import { useAppStore } from "@/store";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChatDialog } from "@/components/ChatDialog";
+import { island } from "@/components/ui/island";
+import { isChatActive } from "@/lib/chat";
+import { formatClock } from "@/lib/format";
+import type { ChatMessage } from "@/types";
+import { Pencil, Trash2 } from "lucide-react";
+
+/** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
+export function ChatThread({ chatId }: { chatId: string }) {
+  const chats = useAppStore(state => state.config.chats);
+  const agents = useAppStore(state => state.config.agents);
+  const chatMessages = useAppStore(state => state.chatMessages);
+  const loadChatMessages = useAppStore(state => state.loadChatMessages);
+  const removeChat = useAppStore(state => state.removeChat);
+  const openProject = useAppStore(state => state.openProject);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const chat = chats.find(c => c.id === chatId);
+  const messages: ChatMessage[] = chatMessages[chatId] || [];
+
+  // The active-turn flag lives outside the store, so poll it while a reply streams in.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    void loadChatMessages(chatId);
+  }, [chatId, loadChatMessages]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, messages[messages.length - 1]?.text]);
+
+  if (!chat) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+        El chat ya no existe.
+      </div>
+    );
+  }
+
+  const isActive = isChatActive(chatId);
+
+  const handleRemove = async () => {
+    const confirmed = await island.confirm({
+      title: "¿Eliminar chat?",
+      description: `Se eliminará ${chat.name} y sus mensajes.`,
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const projectId = chat.projectId;
+    removeChat(chatId);
+    openProject(projectId, null);
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-4 py-2 border-b border-border flex items-center gap-2 shrink-0">
+        <span className="font-semibold text-sm truncate">{chat.name}</span>
+        <Badge variant="outline" className="text-[10px]">
+          {chat.mode === "shared" ? "Compartido" : "Individual"}
+        </Badge>
+        <span className="text-xs text-muted-foreground truncate">
+          {chat.participants.map(p => `${agents.find(a => a.id === p.agentId)?.name ?? "?"} (${p.role})`).join(" · ")}
+        </span>
+        <div className="ml-auto flex gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar chat" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Eliminar chat" onClick={() => void handleRemove()}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col gap-3 max-w-3xl mx-auto">
+          {messages.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">
+              Todavía no hay mensajes en este chat.
+            </div>
+          )}
+          {messages.map(msg => <ChatBubble key={msg.id} message={msg} />)}
+          {isActive && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" />
+              Escribiendo…
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+      </div>
+
+      {editOpen && (
+        <ChatDialog key={chatId} open={editOpen} onOpenChange={setEditOpen} editChatId={chatId} />
+      )}
+    </div>
+  );
+}
+
+function ChatBubble({ message }: { message: ChatMessage }) {
+  const agents = useAppStore(state => state.config.agents);
+  const isUser = message.from === "user";
+  const agent = !isUser ? agents.find(a => a.id === message.from) : undefined;
+  const name = isUser ? "Vos" : (agent?.name || message.from);
+  const color = agent?.color || "#888";
+
+  return (
+    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        {!isUser && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />}
+        <span className="text-xs font-medium">{name}</span>
+        <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
+        {message.status === "pending" && (
+          <Badge variant="secondary" className="text-[9px] animate-pulse">escribiendo…</Badge>
+        )}
+        {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
+      </div>
+      <div
+        className={`rounded-lg px-3 py-2 max-w-[80%] text-sm whitespace-pre-wrap break-words ${
+          isUser
+            ? "bg-primary text-primary-foreground"
+            : message.status === "error"
+              ? "bg-destructive/10 text-destructive border border-destructive/20"
+              : "bg-muted"
+        }`}
+      >
+        {message.status === "pending" && !message.text ? "…" : message.text}
+      </div>
+    </div>
+  );
+}
