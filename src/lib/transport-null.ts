@@ -20,4 +20,5 @@ export const nullTransport: Transport = {
   remoteStatus: async () => ({ running: false, clients: 0 }),
   remotePushState: async () => {},
   onRemoteCommand: async () => () => {},
+  setTrayEnabled: async () => {},
 };

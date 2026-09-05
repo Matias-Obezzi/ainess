@@ -250,14 +250,16 @@ Seed por defecto (primer arranque): `Claude` (planner, provider claude, raíz),
 ## UI (src/App.tsx + src/components/)
 
 Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex`:
-`<Sidebar/>` + columna principal + `<CommSidePanel/>` opcional. Encima flotan `<Island />` de
-`@/components/ui/island` (cuántos agentes están trabajando) y `<Toaster />` de
-`@/components/ui/toast` (delegación enviada, error de un agente, tarea terminada).
+`<Sidebar/>` + columna principal + `<CommSidePanel/>` opcional + `<SettingsDialog/>` (modal,
+siempre montado). Encima flotan `<Island />` de `@/components/ui/island` (cuántos agentes están
+trabajando) y `<Toaster />` de `@/components/ui/toast` (delegación enviada, error de un agente,
+tarea terminada).
 
-La navegación vive en el store: `screen` ("home" | "project" | "settings"), `projectMode`
-("chat" | "graph"), `commPanelOpen`, `settingsSection`, `sidebarCollapsed`, con las acciones
-`openHome`, `openProject(projectId, chatId?)`, `openSettings`, `setProjectMode`,
-`toggleCommPanel` y `toggleSidebarProject`. Todo eso se persiste en `localStorage` bajo la clave
+La navegación vive en el store: `screen` ("home" | "project"), `projectMode` ("chat" | "graph"),
+`commPanelOpen`, `settingsOpen` (booleano, no persistido: Configuración es un modal, no una
+pantalla), `settingsSection`, `sidebarCollapsed`, con las acciones `openHome`,
+`openProject(projectId, chatId?)`, `openSettings(section?)` (abre el modal), `closeSettings()`,
+`setProjectMode`, `toggleCommPanel` y `toggleSidebarProject`. Todo eso se persiste en `localStorage` bajo la clave
 `ais.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
 
 1. **Sidebar** — `components/shell/Sidebar.tsx` (260px): botones Inicio y Nuevo proyecto; lista de
@@ -289,14 +291,38 @@ La navegación vive en el store: `screen` ("home" | "project" | "settings"), `pr
    1100px) envuelve `CommunicationPanel.tsx`: feed de `messages` con filtros por agente y por tipo,
    cada mensaje con badge del agente (color), hora, tipo; los `delegation` resaltados; auto-scroll
    al final. Botón limpiar.
-5. **Configuración** — `components/shell/SettingsScreen.tsx`: dos pestañas, **Agentes**
-   (`AgentsPanel.tsx`: solo las cards de agentes, sin sección "IAs detectadas"; cabecera con
-   "Autodetectar" (corre `detectBinaries()` y muestra un resumen en toast) y "Nuevo agente".
-   `AgentDialog.tsx` para crear/editar: nombre, provider, rol, padre, modelo —`Select` con la
-   lista real de modelos del proveedor y la cuota que le queda, más "Otro…" para un id libre—,
-   autoApprove, descripción, systemPrompt, comando custom, y una sección "Ejecutable" con la ruta
-   detectada y "Cargar a mano"/"Limpiar override"; ver "Modelos y cuota") y **Recursos**
-   (`ResourcesPanel.tsx`: perfil, órdenes, skills, MCP, hooks, contexto, remoto).
+5. **Configuración** — `components/settings/SettingsDialog.tsx`: modal (`Dialog`) con un sidebar
+   interno de secciones (General, Agentes, Perfil, Órdenes, Skills, MCP, Hooks, Contexto, Remoto),
+   abierto/cerrado con `store.settingsOpen`/`openSettings(section?)`/`closeSettings()` (atajo
+   `Ctrl+,`). **General** (`components/settings/GeneralSettings.tsx`): card "Segundo plano" (tray y
+   notificaciones, ver abajo) y card "Orquestación" (`maxRounds`, auto-selección de modelos,
+   aprobar delegaciones). **Agentes** (`AgentsPanel.tsx`: solo las cards de agentes, sin sección
+   "IAs detectadas"; cabecera con "Autodetectar" (corre `detectBinaries()` y muestra un resumen en
+   toast) y "Nuevo agente". `AgentDialog.tsx` para crear/editar: nombre, provider, rol, padre,
+   modelo —`Select` con la lista real de modelos del proveedor y la cuota que le queda, más
+   "Otro…" para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una
+   sección "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override"; ver "Modelos y
+   cuota"). **Perfil / Órdenes / Skills / MCP / Hooks / Contexto / Remoto** —
+   `components/ResourcesPanel.tsx` exporta `ResourceSection({ section })`, que renderiza solo el
+   contenido de esa sección (perfil ya no tiene los switches de auto-modelo/aprobar delegaciones,
+   viven en General).
+
+## Bandeja y notificaciones
+
+`Cargo.toml` agrega la feature `tray-icon` a `tauri` y la dependencia `tauri-plugin-notification`.
+`src-tauri/src/tray.rs`: `TrayState { enabled: AtomicBool }` (default `true`, `manage`d en
+`lib.rs`), comando `set_tray_enabled`, `setup_tray(app)` (icono + menú "Mostrar AIS"/"Salir") y
+`on_window_event` (con la bandeja prendida, cerrar la ventana la oculta en vez de cerrarla;
+"Salir" hace `app.exit(0)` de verdad). Capability `notification:default` en
+`capabilities/default.json`.
+
+En el front, `AppConfig.tray: { enabled, notifyApprovals, notifyResults }` (default: los tres
+prendidos, migración a `version: 8`); `store.updateConfig` invoca `Transport.setTrayEnabled` (solo
+en Tauri) cuando cambia `tray.enabled`, y `runInit` lo hace una vez al arrancar. El hook
+`src/hooks/useSystemNotifications.ts` (montado en `App.tsx`) se suscribe al store y dispara
+notificaciones del sistema (`@tauri-apps/plugin-notification`, importado dinámicamente y solo
+dentro de `isTauri()` para no romper el CLI) cuando aparece una nueva aprobación pendiente o
+termina una tarea, en cualquier proyecto (no solo el actual).
 
 Helpers de formato en `src/lib/format.ts`: `formatTimeAgo`, `formatElapsed`, `truncate`,
 `formatClock`.

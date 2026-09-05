@@ -22,6 +22,9 @@ export interface Transport {
   remotePushState(snapshot: unknown): Promise<void>;
   /** Register the single handler that answers commands from remote clients. */
   onRemoteCommand(h: (cmd: { id: string; action: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>): Promise<() => void>;
+
+  /** Toggles closing the window to the system tray instead of quitting. No-op outside Tauri. */
+  setTrayEnabled(enabled: boolean): Promise<void>;
 }
 
 let currentTransport: Transport | null = null;
