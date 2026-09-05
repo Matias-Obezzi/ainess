@@ -1,5 +1,6 @@
 // The side panel of the hierarchy board: everything about the selected agent that does not fit
 // in its node — the full task, its live activity, its last runs and the actions with a label.
+import { AgentAvatar } from "@/components/ProviderLogo";
 import { useEffect, useRef, useState } from "react";
 import type { AgentConfig } from "@/types";
 import { useAppStore } from "@/store";
@@ -38,7 +39,6 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
   }, [onClose]);
 
   const color = agent.color || "#888888";
-  const initial = (agent.name.trim()[0] || "?").toUpperCase();
   const recentRuns = actions.runs.slice(0, RECENT_RUNS);
   const showLive = actions.status === "working" && !!actions.currentRunId;
 
@@ -57,13 +57,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
       className="absolute bottom-3 right-3 top-3 z-10 flex w-[360px] flex-col rounded-xl border border-border bg-card text-card-foreground shadow-lg outline-none"
     >
       <div className="flex items-start gap-2 border-b border-border p-3">
-        <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-          style={{ backgroundColor: color }}
-          aria-hidden
-        >
-          {initial}
-        </div>
+        <AgentAvatar provider={agent.provider} color={color} size={32} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{agent.name}</div>
           <div className="truncate text-[11px] text-muted-foreground">

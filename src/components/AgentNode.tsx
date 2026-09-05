@@ -1,5 +1,6 @@
 // One agent in the hierarchy graph: who it is, what it is doing right now and the actions
 // available on it, all as icons. The details live in the inspector (AgentInspector.tsx).
+import { AgentAvatar } from "@/components/ProviderLogo";
 import { useEffect, useMemo, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { AgentConfig, CommMessage } from "@/types";
@@ -142,7 +143,6 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
   const now = useNow(actions.busy);
 
   const color = agent.color || "#888888";
-  const initial = (agent.name.trim()[0] || "?").toUpperCase();
 
   const elapsed = status === "working" && runStartedAt ? formatElapsed((now - runStartedAt) / 1000) : null;
   const stateText =
@@ -169,13 +169,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
         <div className="flex flex-col gap-2 p-3">
           {/* Who */}
           <div className="flex items-start gap-2">
-            <div
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
-              style={{ backgroundColor: color }}
-              aria-hidden
-            >
-              {initial}
-            </div>
+            <AgentAvatar provider={agent.provider} color={color} size={28} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold" title={agent.name}>
                 {agent.name}
