@@ -256,7 +256,7 @@ async function runInit(): Promise<void> {
     }
     
     // Migration to version 2
-    if (config.version === 1 || !config.skills) {
+    if ((config.version as number) === 1 || !config.skills) {
       config = {
         ...config,
         version: 2,

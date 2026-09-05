@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -141,7 +141,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
             )}
 
             <div className="space-y-1 flex-1 flex flex-col min-h-[150px]">
-              <Label>Variables de Entorno (una por l�nea, CLAVE=valor)</Label>
+              <Label>Variables de Entorno (una por línea, CLAVE=valor)</Label>
               <Textarea 
                 className="flex-1 font-mono resize-none min-h-[150px]" 
                 value={env} 

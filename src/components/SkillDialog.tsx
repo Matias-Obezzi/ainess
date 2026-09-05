@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
             </div>
 
             <div className="space-y-1">
-              <Label>Descripci�n</Label>
+              <Label>Descripción</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 

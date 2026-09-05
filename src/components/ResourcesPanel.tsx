@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAppStore } from "@/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export function ResourcesPanel() {
   const handleSyncMcp = async () => {
     const res = await syncMcpToAntigravity(store.config.mcpServers);
     if (res.success) {
-      toast.success(`Sincronizaci�n exitosa: ${res.added} agregados, ${res.removed} removidos`);
+      toast.success(`Sincronización exitosa: ${res.added} agregados, ${res.removed} removidos`);
     } else {
       toast.error(res.error || "Error sincronizando MCP");
     }

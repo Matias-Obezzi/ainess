@@ -1,4 +1,4 @@
-import { McpServer } from "@/types";
+﻿import { McpServer } from "@/types";
 import { getTransport } from "./transport";
 import { useAppStore } from "@/store";
 
