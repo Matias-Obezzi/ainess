@@ -48,12 +48,23 @@ Referencias:
   `"url":"https://…ngrok…"` (campo `url` del evento `started tunnel`), o consultando
   `http://127.0.0.1:4040/api/tunnels` (`tunnels[0].public_url`). Requiere authtoken configurado por el usuario
   (`ngrok config add-authtoken …`); si falta, el proceso termina con error: mostrarlo.
-- Updates: no hay servidor de releases. "Buscar actualizaciones" consulta
-  `https://api.github.com/repos/Matias-Obezzi/ainess/releases/latest` (constante `UPDATE_REPO` en
-  `src/lib/updates.ts`, fácil de cambiar) con `httpGet`; compara `tag_name` (sin "v") con la versión actual
-  (semver simple); muestra "Estás al día (0.1.0)", "Hay una versión nueva: 0.2.0" con botón que abre
-  `html_url` (plugin opener, `openUrl` de `@tauri-apps/plugin-opener`, permiso `opener:default` ya está), o
-  "No se pudo consultar (404/sin red)". Nunca descarga ni instala nada.
+- Updates: el repo público es `https://github.com/Matias-Obezzi/ainess` y las releases las publica GitHub
+  Actions al mergear a `main`. Se usa el **updater oficial de Tauri 2**:
+  - Cargo: `tauri-plugin-updater = "2"`, `tauri-plugin-process = "2"`; npm: `@tauri-apps/plugin-updater`,
+    `@tauri-apps/plugin-process` (instalar con npm). `lib.rs`: `.plugin(tauri_plugin_updater::Builder::new().build())`
+    y `.plugin(tauri_plugin_process::init())`. Capabilities: `"updater:default"`, `"process:default"`.
+  - `tauri.conf.json`: `"bundle": { …, "createUpdaterArtifacts": true }` y
+    `"plugins": { "updater": { "pubkey": "<clave pública de abajo>", "endpoints": ["https://github.com/Matias-Obezzi/ainess/releases/latest/download/latest.json"] } }`.
+    Clave pública (ya generada; la privada está en `~/.tauri/ainess.key` de esta máquina y NO va al repo):
+    `dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBMjYwRTgxQzE5RkY3OTkKUldTWjk1L0JnUTRteWkrRDNSVmxpL0lkSjZMdVQrSWN4U0ZReTBxY3ZiTUVsWCt3SEhFRE5QcnAK`
+  - JS (`src/lib/updates.ts`): `import { check } from "@tauri-apps/plugin-updater"; import { relaunch } from
+    "@tauri-apps/plugin-process";` → `checkForUpdate()` devuelve `{ available: false }` o `{ available: true,
+    version, body, install: (onProgress) => update.downloadAndInstall(onProgress).then(relaunch) }`. Solo en
+    Tauri (`import()` dinámico dentro de `isTauri()`); en el CLI/preview devuelve `{ available: false,
+    unsupported: true }`. Errores → mensaje legible ("No se pudo consultar: …"), nunca lanza.
+  - Chequeo automático al iniciar: `config.autoUpdateCheck: boolean` (default `true`, switch en General "Buscar
+    actualizaciones al iniciar"); 5 s después de `loaded`, si hay update, `toast` persistente "ainess X.Y.Z
+    disponible" con botón "Instalar" (descarga con progreso en el toast y reinicia).
 
 ## Cambios
 
@@ -83,7 +94,9 @@ Referencias:
   constante `APP_VERSION` inyectada por Vite: `define: { __APP_VERSION__: JSON.stringify(pkg.version) }` en
   `vite.config.ts` y `vite.cli.config.ts`, declarada en `src/vite-env.d.ts`), "Creada por Matías Obezzi"
   con link a `https://github.com/Matias-Obezzi` (opener), y la lista de tecnologías (Tauri, React, Tailwind).
-- Botones: "Buscar actualizaciones" (spinner + resultado inline), "Abrir carpeta de logs" (`open_logs_dir`),
+- Botones: "Buscar actualizaciones" (spinner; resultado inline: "Estás al día (0.1.0)" / "Hay una versión nueva:
+  0.2.0" con las notas y botón "Descargar e instalar" que muestra progreso (`Progress`) y reinicia la app /
+  "No se pudo consultar: …"), "Abrir carpeta de logs" (`open_logs_dir`),
   y "Copiar diagnóstico" (versión, SO, binarios detectados, últimas 50 líneas del log al portapapeles).
 - Ampliar `SettingsSection` en el store con `"about"` y sanear en `loadUiPrefs`.
 
@@ -111,9 +124,28 @@ Referencias:
 - CLI: `ais serve --tunnel [cloudflared|ngrok]` imprime la URL pública; `ais remote url --tunnel`.
 - Página remota: sin cambios (rutas relativas).
 
-### 4. `PLAN.md`
+### 4. Releases y CI (`.github/workflows/`)
+- `release.yml`: `on: push: branches: [main]`. Job en `windows-latest` con `permissions: contents: write`:
+  checkout, `actions/setup-node@v4` (node 22, cache npm), `npm ci`, `dtolnay/rust-toolchain@stable`,
+  `swatinem/rust-cache@v2` (workspaces `src-tauri`), leer la versión de `src-tauri/tauri.conf.json`, y
+  **saltar** si ya existe el tag `v<versión>` (`git ls-remote --tags origin v<versión>`); si no existe,
+  `tauri-apps/tauri-action@v0` con `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}, TAURI_SIGNING_PRIVATE_KEY:
+  ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""` y `with: tagName: v__VERSION__,
+  releaseName: "ainess v__VERSION__", releaseBody: "Ver los cambios en el historial de commits.", releaseDraft:
+  false, prerelease: false, includeUpdaterJson: true, args: --bundles nsis`.
+- `ci.yml`: `on: pull_request` y push a ramas distintas de `main`: `windows-latest`, `npm ci`, `npx tsc
+  --noEmit`, `npm test`, `npm run build`, `npm run build:cli`, `cargo check` en `src-tauri` (con rust-cache), y
+  `npm run release:check`.
+- `scripts/release-check.mjs` + script npm `release:check`: falla si las versiones de `package.json`,
+  `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml` no coinciden.
+- `README.md`: sección "Publicar una versión": subir la versión en los tres archivos en la PR de `dev` a `main`;
+  al mergear, Actions crea el tag, el instalador NSIS, la firma y `latest.json`; la app instalada lo ve en el
+  próximo chequeo. Requisito único: el secret `TAURI_SIGNING_PRIVATE_KEY` en el repo (contenido de
+  `~/.tauri/ainess.key`).
+
+### 5. `PLAN.md`
 Secciones nuevas: "Logging" (archivos, formato, rotación, `log_append`, captura de consola), "Acerca de y
-actualizaciones" (repo de releases, política de no instalar), "Túnel" (comandos, parsing de URL, requisito
+actualizaciones" (updater de Tauri, endpoint latest.json, workflow de release, secret de firma), "Túnel" (comandos, parsing de URL, requisito
 del acceso local).
 
 ## Casos borde y decisiones ya tomadas
@@ -125,7 +157,7 @@ del acceso local).
 - Sin dependencias nuevas de npm; en Rust no hace falta ninguna (std + tokio ya presentes).
 
 ## Fuera de alcance
-- Auto-actualización real (updater firmado), autenticación adicional en el túnel.
+- Autenticación adicional en el túnel; firma de código (Authenticode) del instalador.
 
 ## Verificación
 Desde la raíz del repo:
