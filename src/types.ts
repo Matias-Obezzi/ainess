@@ -6,6 +6,9 @@ export type ProviderId =
   | "copilot"
   | "gemini"
   | "codex"
+  | "ollama"
+  | "aider"
+  | "opencode"
   | "custom";
 
 export type AgentRole = "planner" | "implementer" | "reviewer" | "custom";
@@ -71,7 +74,7 @@ export interface Project {
 }
 
 export interface AppConfig {
-  version: 3;
+  version: 4;
   agents: AgentConfig[];
   projects: Project[];
   lastProjectId: string | null;
@@ -80,6 +83,10 @@ export interface AppConfig {
   skills: Skill[];
   mcpServers: McpServer[];
   sharedContext: string;
+  binaryOverrides: Partial<Record<ProviderId, string>>;
+  profile: { name: string; about: string; preferences: string };
+  presets: Array<{ id: string; name: string; prompt: string; agentId?: string; model?: string }>;
+  autoModel: boolean;
 }
 
 export interface AgentRuntime {
@@ -114,6 +121,7 @@ export interface Run {
   childRunIds: string[];
   /** Continuation round, starts at 0. */
   round: number;
+  model?: string;
 }
 
 export type MessageKind =
@@ -141,6 +149,7 @@ export interface CommMessage {
 export interface Delegation {
   agent: string;
   task: string;
+  model?: string;
 }
 
 export interface BinaryInfo {
