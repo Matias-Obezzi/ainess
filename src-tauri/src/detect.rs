@@ -12,8 +12,15 @@ pub struct BinaryInfo {
     pub version: Option<String>,
 }
 
+/// Runs the detection off the main thread: `--version` probes can take up to 5 s each.
 #[tauri::command]
-pub fn detect_binaries() -> HashMap<String, Option<BinaryInfo>> {
+pub async fn detect_binaries() -> HashMap<String, Option<BinaryInfo>> {
+    tauri::async_runtime::spawn_blocking(detect_binaries_sync)
+        .await
+        .unwrap_or_default()
+}
+
+fn detect_binaries_sync() -> HashMap<String, Option<BinaryInfo>> {
     let mut results = HashMap::new();
 
     thread::scope(|s| {
