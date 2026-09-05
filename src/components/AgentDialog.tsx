@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
 import { formatResetsAt } from "@/lib/quota";
@@ -38,7 +39,7 @@ function quotaLine(item: QuotaItem): { text: string; percent?: number } {
   return { text: item.note || "" };
 }
 
-function QuotaBlock({ provider }: { provider: ProviderId }) {
+function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initialLoading?: boolean }) {
   const quotaState = useAppStore(state => state.quota[provider]);
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,15 @@ function QuotaBlock({ provider }: { provider: ProviderId }) {
         </Button>
       </div>
 
-      {!quotaState && (
+      {!quotaState && initialLoading && (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      )}
+
+      {!quotaState && !initialLoading && (
         <div className="text-sm text-muted-foreground">Sin datos todavía. Apretá "Actualizar".</div>
       )}
 
@@ -135,6 +144,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
   const [customProgram, setCustomProgram] = useState("");
   const [customArgs, setCustomArgs] = useState("");
   const [color, setColor] = useState("#888888");
+  const [modelsLoading, setModelsLoading] = useState(false);
 
   const setModelFromAgent = (providerId: ProviderId, modelValue: string | undefined, availableModels: { id: string }[]) => {
     if (!modelValue) {
@@ -189,8 +199,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
   // and the provider changes (covers both opening the dialog and switching providers).
   useEffect(() => {
     if (!dialogOpen || provider === "custom") return;
-    void refreshModels(provider);
-    void refreshQuota(provider);
+    setModelsLoading(true);
+    void Promise.all([refreshModels(provider), refreshQuota(provider)]).finally(() => setModelsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, provider]);
 
@@ -334,20 +344,26 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               </div>
               <div className="space-y-1">
                 <Label>Modelo</Label>
-                <Select value={modelOption} onValueChange={setModelOption}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={DEFAULT_MODEL_OPTION}>Por defecto del proveedor</SelectItem>
-                    {availableModels.map(m => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value={OTHER_MODEL_OPTION}>Otro…</SelectItem>
-                  </SelectContent>
-                </Select>
+                {modelsLoading && availableModels.length === 0 ? (
+                  <div className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                    Cargando modelos…
+                  </div>
+                ) : (
+                  <Select value={modelOption} onValueChange={setModelOption}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_MODEL_OPTION}>Por defecto del proveedor</SelectItem>
+                      {availableModels.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={OTHER_MODEL_OPTION}>Otro…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
                 {modelOption === OTHER_MODEL_OPTION && (
                   <Input
                     className="mt-1"
@@ -359,7 +375,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               </div>
             </div>
 
-            {provider !== "custom" && <QuotaBlock provider={provider} />}
+            {provider !== "custom" && <QuotaBlock provider={provider} initialLoading={modelsLoading} />}
 
             <div className="flex items-center gap-2">
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />

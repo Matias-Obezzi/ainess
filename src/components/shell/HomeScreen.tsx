@@ -3,12 +3,14 @@ import { useAppStore } from "@/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { island } from "@/components/ui/island";
 import { formatTimeAgo, truncate } from "@/lib/format";
 import type { Project, Run, RunStatus } from "@/types";
-import { Folder, PlayCircle } from "lucide-react";
+import { Folder, FolderKanban, PlayCircle } from "lucide-react";
 
 const runStatusLabel: Record<RunStatus, string> = {
   running: "En curso",
@@ -17,12 +19,27 @@ const runStatusLabel: Record<RunStatus, string> = {
   killed: "Detenida",
 };
 
+function ProjectCardSkeleton() {
+  return (
+    <Card className="flex flex-col gap-3 p-4">
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-3 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <Skeleton className="h-3 w-full" />
+      <Skeleton className="h-3 w-2/3" />
+      <Skeleton className="h-8 w-full" />
+    </Card>
+  );
+}
+
 /** Landing screen: every project as a card with what it is doing right now. */
 export function HomeScreen() {
   const projects = useAppStore(state => state.config.projects);
   const agents = useAppStore(state => state.config.agents);
   const runs = useAppStore(state => state.runs);
   const runtime = useAppStore(state => state.runtime);
+  const loaded = useAppStore(state => state.loaded);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const openProject = useAppStore(state => state.openProject);
   const removeProject = useAppStore(state => state.removeProject);
@@ -84,12 +101,20 @@ export function HomeScreen() {
         <Button onClick={newProject}>Nuevo proyecto</Button>
       </div>
 
-      {projects.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
-          <p>Todavía no hay proyectos.</p>
-          <p className="text-sm">Un proyecto es una carpeta de trabajo donde los agentes van a operar.</p>
-          <Button onClick={newProject}>Crear el primer proyecto</Button>
+      {!loaded ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ProjectCardSkeleton />
+          <ProjectCardSkeleton />
+          <ProjectCardSkeleton />
         </div>
+      ) : projects.length === 0 ? (
+        <EmptyState
+          icon={FolderKanban}
+          title="Todavía no hay proyectos"
+          description="Un proyecto es una carpeta de trabajo donde los agentes van a operar."
+          action={{ label: "Crear el primer proyecto", onClick: newProject }}
+          className="flex-1"
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(p => {
@@ -100,6 +125,7 @@ export function HomeScreen() {
             return (
               <Card
                 key={p.id}
+                role="button"
                 className={`p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-primary/50 ${isCurrent ? "ring-2 ring-primary" : ""}`}
                 onClick={() => openProject(p.id, null)}
               >

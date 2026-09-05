@@ -2,18 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ChatDialog } from "@/components/ChatDialog";
 import { island } from "@/components/ui/island";
 import { isChatActive } from "@/lib/chat";
 import { formatClock } from "@/lib/format";
 import type { ChatMessage } from "@/types";
-import { Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
   const chats = useAppStore(state => state.config.chats);
   const agents = useAppStore(state => state.config.agents);
   const chatMessages = useAppStore(state => state.chatMessages);
+  const chatLoading = useAppStore(state => state.chatLoading[chatId]);
   const loadChatMessages = useAppStore(state => state.loadChatMessages);
   const removeChat = useAppStore(state => state.removeChat);
   const openProject = useAppStore(state => state.openProject);
@@ -83,12 +86,21 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col gap-3 max-w-3xl mx-auto">
-          {messages.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-8">
-              Todavía no hay mensajes en este chat.
-            </div>
+          {chatLoading ? (
+            <>
+              <BubbleSkeleton align="start" />
+              <BubbleSkeleton align="end" />
+              <BubbleSkeleton align="start" />
+            </>
+          ) : messages.length === 0 ? (
+            <EmptyState
+              icon={MessageSquare}
+              title="Todavía no hay mensajes en este chat"
+              description="Escribí el primer mensaje abajo para arrancar la conversación."
+            />
+          ) : (
+            messages.map(msg => <ChatBubble key={msg.id} message={msg} />)
           )}
-          {messages.map(msg => <ChatBubble key={msg.id} message={msg} />)}
           {isActive && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
               <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" />
@@ -102,6 +114,15 @@ export function ChatThread({ chatId }: { chatId: string }) {
       {editOpen && (
         <ChatDialog key={chatId} open={editOpen} onOpenChange={setEditOpen} editChatId={chatId} />
       )}
+    </div>
+  );
+}
+
+function BubbleSkeleton({ align }: { align: "start" | "end" }) {
+  return (
+    <div className={`flex flex-col gap-1 ${align === "end" ? "items-end" : "items-start"}`}>
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-10 w-56 rounded-lg" />
     </div>
   );
 }
