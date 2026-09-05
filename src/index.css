@@ -72,3 +72,9 @@
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
 }
+
+.dark .react-flow__background { background: var(--background); }
+.dark .react-flow__controls-button { background: var(--card); border-color: var(--border); fill: var(--foreground); }
+.dark .react-flow__controls-button:hover { background: var(--muted); }
+.dark .react-flow__minimap { background: var(--card); border-color: var(--border); }
+.dark .react-flow__minimap-mask { fill: var(--background); opacity: 0.5; }
