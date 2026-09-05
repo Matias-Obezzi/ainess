@@ -4,15 +4,28 @@
 import { useAppStore, selectRoots } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
-import type { Approval, CommMessage } from "@/types";
+import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run } from "@/types";
 
+/**
+ * Everything the phone needs to render the same React UI as the desktop app: the page is a
+ * build of the app (see src/remote/), hydrates its store with this and never reads the disk.
+ */
 export interface RemoteSnapshot {
   serverTime: number;
-  projects: Array<{ id: string; name: string; workspaceDir: string; activeTaskRunId: string | null; running: number }>;
-  agents: Array<{ id: string; name: string; provider: string; role: string; parentId: string | null; color?: string }>;
-  runtime: Record<string, Record<string, { status: string; currentTask?: string }>>;
+  projects: Array<{ id: string; name: string; workspaceDir: string; color?: string; createdAt: number; activeTaskRunId: string | null; running: number }>;
+  agents: Array<Pick<AgentConfig, "id" | "name" | "provider" | "role" | "parentId" | "model" | "description" | "color">>;
+  runtime: Record<string, Record<string, { status: AgentStatus; currentTask?: string }>>;
   messages: CommMessage[];
   approvals: Approval[];
+  /** Recent runs of every project, newest first, without `rawLines` (they never leave the PC). */
+  runs: Array<Omit<Run, "rawLines">>;
+  chats: Chat[];
+  /** Only the chats already loaded in memory, newest messages last. */
+  chatMessages: Record<string, ChatMessage[]>;
+  /** Just the paths: the phone only uses this to know whether a provider's CLI exists. */
+  binaries: Binaries;
+  /** Chats with a turn in flight; `lib/chat.ts` keeps that in memory, out of reach of the phone. */
+  activeChats: string[];
 }
 
 export interface RemoteCommand {
@@ -36,15 +49,42 @@ export interface TunnelStatus {
   error?: string;
 }
 
-const MAX_MESSAGES = 150;
+const MAX_MESSAGES = 800;
+const MAX_RUNS_PER_PROJECT = 60;
+const MAX_CHAT_MESSAGES = 200;
+const MAX_MESSAGE_CHARS = 8000;
+const MAX_OUTPUT_CHARS = 20000;
+/** Over this, the snapshot is rebuilt with half the history: a phone on 4G has to keep up. */
+const MAX_SNAPSHOT_BYTES = 1_000_000;
+const TRIMMED_LIMITS = { messages: 400, runs: 30 };
 const PUSH_THROTTLE_MS = 300;
 
-export function buildSnapshot(): RemoteSnapshot {
+function clip(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
+function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapshot {
   const s = useAppStore.getState();
+
   const runningByProject: Record<string, number> = {};
+  const runsByProject = new Map<string, Run[]>();
   for (const r of Object.values(s.runs)) {
     if (r.status === "running") runningByProject[r.projectId] = (runningByProject[r.projectId] ?? 0) + 1;
+    const list = runsByProject.get(r.projectId);
+    if (list) list.push(r);
+    else runsByProject.set(r.projectId, [r]);
   }
+
+  // Newest runs win: an old task nobody scrolls to is not worth the bytes.
+  const runs: Array<Omit<Run, "rawLines">> = [];
+  for (const list of runsByProject.values()) {
+    list.sort((a, b) => b.startedAt - a.startedAt);
+    for (const run of list.slice(0, limits.runs)) {
+      const { rawLines: _rawLines, ...rest } = run;
+      runs.push({ ...rest, prompt: clip(run.prompt, MAX_OUTPUT_CHARS), output: clip(run.output, MAX_OUTPUT_CHARS) });
+    }
+  }
+
   const runtime: RemoteSnapshot["runtime"] = {};
   for (const [pid, agents] of Object.entries(s.runtime)) {
     runtime[pid] = {};
@@ -52,20 +92,53 @@ export function buildSnapshot(): RemoteSnapshot {
       runtime[pid][aid] = { status: rt.status, currentTask: rt.currentTask ? rt.currentTask.slice(0, 200) : undefined };
     }
   }
+
+  const chatMessages: Record<string, ChatMessage[]> = {};
+  const activeChats: string[] = [];
+  for (const [chatId, msgs] of Object.entries(s.chatMessages)) {
+    chatMessages[chatId] = msgs.slice(-MAX_CHAT_MESSAGES).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) }));
+    if (msgs.some(m => m.status === "pending")) activeChats.push(chatId);
+  }
+
+  const binaries: Binaries = {};
+  for (const [provider, info] of Object.entries(s.binaries)) {
+    binaries[provider as keyof Binaries] = info ? { path: info.path } : null;
+  }
+
   return {
     serverTime: Date.now(),
     projects: s.config.projects.map(p => ({
       id: p.id,
       name: p.name,
       workspaceDir: p.workspaceDir,
+      color: p.color,
+      createdAt: p.createdAt,
       activeTaskRunId: s.activeTaskRunId[p.id] ?? null,
       running: runningByProject[p.id] ?? 0,
     })),
-    agents: s.config.agents.map(a => ({ id: a.id, name: a.name, provider: a.provider, role: a.role, parentId: a.parentId, color: a.color })),
+    agents: s.config.agents.map(a => ({
+      id: a.id, name: a.name, provider: a.provider, role: a.role, parentId: a.parentId,
+      model: a.model, description: a.description, color: a.color,
+    })),
     runtime,
-    messages: s.messages.slice(-MAX_MESSAGES).map(m => ({ ...m, text: m.text.length > 2000 ? m.text.slice(0, 2000) + "…" : m.text })),
+    messages: s.messages.slice(-limits.messages).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) })),
     approvals: Object.values(s.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
+    runs,
+    chats: s.config.chats,
+    chatMessages,
+    binaries,
+    activeChats,
   };
+}
+
+export function buildSnapshot(): RemoteSnapshot {
+  const full = snapshotWith({ messages: MAX_MESSAGES, runs: MAX_RUNS_PER_PROJECT });
+  const size = JSON.stringify(full).length;
+  log.debug("remote", `snapshot de ${size} bytes (${full.messages.length} mensajes, ${full.runs.length} runs)`);
+  if (size <= MAX_SNAPSHOT_BYTES) return full;
+  const trimmed = snapshotWith(TRIMMED_LIMITS);
+  log.debug("remote", `snapshot recortado a ${JSON.stringify(trimmed).length} bytes`);
+  return trimmed;
 }
 
 /** Executes a command coming from the phone page. Never throws: errors are returned. */
@@ -95,6 +168,13 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         return { ok: true };
       }
       case "stop": {
+        // A chat turn is stopped on its own; everything else needs the project.
+        const chatId = str("chatId");
+        if (chatId) {
+          if (!s.config.chats.some(c => c.id === chatId)) return { error: "Chat inexistente" };
+          await s.stopChat(chatId);
+          return { ok: true };
+        }
         const projectId = str("projectId");
         const agentId = str("agentId");
         if (!projectId) return { error: "Falta el proyecto" };
@@ -143,7 +223,8 @@ export async function attachRemote(): Promise<void> {
   attached = true;
   useAppStore.subscribe((state, prev) => {
     if (state.runs !== prev.runs || state.messages !== prev.messages || state.runtime !== prev.runtime ||
-        state.approvals !== prev.approvals || state.activeTaskRunId !== prev.activeTaskRunId || state.config !== prev.config) {
+        state.approvals !== prev.approvals || state.activeTaskRunId !== prev.activeTaskRunId ||
+        state.chatMessages !== prev.chatMessages || state.binaries !== prev.binaries || state.config !== prev.config) {
       schedulePush();
     }
   });

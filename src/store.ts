@@ -46,6 +46,11 @@ export interface AppState {
   currentChatId: string | null;
   /** Whether a project's history is being loaded from disk for the first time (for a skeleton). */
   historyLoading: Record<string, boolean>;
+  /**
+   * Chats with a turn in flight, as reported by the snapshot. Only the phone build fills this:
+   * in the app (and the CLI) the real answer lives in `lib/chat.ts`, in this process's memory.
+   */
+  remoteActiveChats: string[];
 
   // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
   screen: Screen;
@@ -365,6 +370,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   historyLoading: {},
+  remoteActiveChats: [],
   approvals: {},
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,

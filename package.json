@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:cli": "vite build --config vite.cli.config.ts",
+    "build": "tsc && vite build && npm run build:remote",
+    "build:remote": "vite build --config vite.remote.config.ts",
+    "build:cli": "npm run build:remote && vite build --config vite.cli.config.ts",
     "cli": "node bin/ais.js",
     "preview": "vite preview",
     "tauri": "tauri",
@@ -54,6 +55,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.11"
   }
 }

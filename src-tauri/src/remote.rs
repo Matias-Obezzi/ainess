@@ -21,7 +21,9 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use crate::logging;
 
-const PAGE: &str = include_str!("../../src/remote/remote.html");
+/// The phone page, built by `npm run build:remote` into one self-contained HTML file.
+/// `build.rs` leaves a placeholder there when it is missing, so a fresh clone still compiles.
+const PAGE: &str = include_str!("../../dist-remote/index.html");
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 
 struct Inner {

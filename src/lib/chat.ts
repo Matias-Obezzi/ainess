@@ -361,5 +361,6 @@ export async function stopChat(chatId: string): Promise<void> {
 // ---- Helper to check if a chat has an active turn ----
 
 export function isChatActive(chatId: string): boolean {
-  return activeTurns.has(chatId);
+  // On the phone the turns run in the app's process, so the answer comes with the snapshot.
+  return activeTurns.has(chatId) || useAppStore.getState().remoteActiveChats.includes(chatId);
 }
