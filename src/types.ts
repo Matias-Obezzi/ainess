@@ -182,6 +182,8 @@ export interface AgentRuntime {
   currentRunId?: string;
   /** Claude session id / agy conversation id, used to resume. */
   sessionId?: string;
+  /** When `sessionId` last changed (set or cleared); newest wins when merging with disk. */
+  sessionUpdatedAt?: number;
   lastError?: string;
   queuedInstructions: string[];
 }

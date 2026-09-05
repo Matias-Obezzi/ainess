@@ -880,7 +880,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           ...state.runtime, 
           [projectId]: { 
             ...state.runtime[projectId], 
-            [agentId]: { ...r, sessionId: undefined } 
+            [agentId]: { ...r, sessionId: undefined, sessionUpdatedAt: Date.now() }
           } 
         } 
       };

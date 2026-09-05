@@ -206,7 +206,7 @@ function handleOutput(e: RunOutputEvent) {
       useAppStore.setState(state => {
         const pRuntime = state.runtime[run.projectId] || {};
         return {
-          runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId } } }
+          runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } }
         };
       });
     } else if (ev.type === "text") {
@@ -229,7 +229,7 @@ function handleOutput(e: RunOutputEvent) {
         const pRuntime = state.runtime[run.projectId] || {};
         return {
           runs: { ...state.runs, [e.runId]: { ...r, output: ev.text } },
-          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId } } } } : {})
+          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } } } : {})
         };
       });
     } else if (ev.type === "error") {
@@ -493,7 +493,9 @@ import { emitHookEvent } from "@/lib/hooks";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
-  const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model });
+  // A follow-up prompt continues the agent's conversation in this project (session resume), so
+  // "vamos por la B" still means something. "Nueva conversación" resets the session explicitly.
+  const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model, resume: true });
   if (runId) {
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
     const store = useAppStore.getState();

@@ -15,6 +15,11 @@ interface HistoryFile {
   messages: CommMessage[];
   /** Pending (and recently decided) approvals, so a restart does not lose them. */
   approvals?: Approval[];
+  /**
+   * Conversation ids per agent (Claude session / agy conversation), so a follow-up prompt
+   * after a restart still continues the same conversation. `null` = explicitly reset.
+   */
+  sessions?: Record<string, { sessionId: string | null; updatedAt: number }>;
 }
 
 const MAX_RUNS = 300;
@@ -37,8 +42,16 @@ export function attachHistoryPersistence(): void {
   if (subscribed) return;
   subscribed = true;
   useAppStore.subscribe((state, prev) => {
-    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals) return;
+    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals && state.runtime === prev.runtime) return;
     const changed = new Set<string>();
+    if (state.runtime !== prev.runtime) {
+      for (const [projectId, agents] of Object.entries(state.runtime)) {
+        const prevAgents = prev.runtime[projectId];
+        for (const [agentId, rt] of Object.entries(agents)) {
+          if (rt.sessionUpdatedAt !== prevAgents?.[agentId]?.sessionUpdatedAt) changed.add(projectId);
+        }
+      }
+    }
     if (state.runs !== prev.runs) {
       for (const [id, run] of Object.entries(state.runs)) {
         if (prev.runs[id] !== run) changed.add(run.projectId);
@@ -126,7 +139,20 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         changed = true;
       }
     }
-    return changed ? { runs, messages, approvals } : state;
+    // Sessions: the newest change wins, whether it came from this process or another one.
+    let runtime = state.runtime;
+    for (const [agentId, s] of Object.entries(parsed.sessions ?? {})) {
+      const mine = runtime[projectId]?.[agentId];
+      if (!mine) continue;
+      if (s.updatedAt > (mine.sessionUpdatedAt ?? 0) && (s.sessionId ?? undefined) !== mine.sessionId) {
+        runtime = {
+          ...runtime,
+          [projectId]: { ...runtime[projectId], [agentId]: { ...mine, sessionId: s.sessionId ?? undefined, sessionUpdatedAt: s.updatedAt } },
+        };
+        changed = true;
+      }
+    }
+    return changed ? { runs, messages, approvals, runtime } : state;
   });
 }
 
@@ -147,7 +173,11 @@ export async function saveHistory(projectId: string): Promise<void> {
     .filter(a => a.projectId === projectId)
     .sort((a, b) => a.createdAt - b.createdAt)
     .slice(-MAX_APPROVALS);
-  const file: HistoryFile = { version: 1, runs, messages, approvals };
+  const sessions: NonNullable<HistoryFile["sessions"]> = {};
+  for (const [agentId, rt] of Object.entries(state.runtime[projectId] ?? {})) {
+    if (rt.sessionUpdatedAt) sessions[agentId] = { sessionId: rt.sessionId ?? null, updatedAt: rt.sessionUpdatedAt };
+  }
+  const file: HistoryFile = { version: 1, runs, messages, approvals, sessions };
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
