@@ -211,6 +211,14 @@ Siempre se agrega `agent.systemPrompt` al final si existe.
 Todo mensaje va a `messages` (`CommMessage`), que es lo que muestra la pestaña Comunicación.
 Cada línea cruda de stdout/stderr se guarda en `run.rawLines` (para el detalle del run).
 
+Los eventos `tool` de cada provider llevan además del `detail` truncado el `input` completo
+(claude `item.input`, antigravity `tool_info.parameters`, copilot `req.arguments`). El
+orquestador guarda en el mensaje `meta: { tool, summary, input }`, donde `summary` sale de
+`src/lib/tool-summary.ts#summarizeTool(name, input, { workspaceDir })`: una línea corta e igual
+para todos los providers ("Edit src/lib/x.ts", "Bash npm test", `Grep "foo"`, "WebFetch
+example.com"), con la ruta relativa al workspace cuando cae adentro. El mismo módulo exporta
+`toolIcon(name)` (icono lucide por familia de herramienta) para la UI.
+
 ## Store (src/store.ts, zustand) — API que usa la UI
 
 ```ts
@@ -304,10 +312,33 @@ mismo color.
    Chat ↔ Jerarquía, "N trabajando", Comunicación, Terminal, Detener), `ApprovalsPanel`, el cuerpo y el
    `Composer` siempre abajo. El cuerpo es:
    - `OrchestratorThread.tsx` — la conversación principal: cada run raíz (`parentRunId === null`,
-     `kind !== "chat"`) como burbuja del usuario + respuesta del agente, con tiempo transcurrido
-     mientras corre, chips de delegaciones hijas y botón Detalles (`RunDetailDialog`). Los runs con
-     `round > 0` son continuaciones automáticas y no muestran burbuja de usuario.
-   - `ChatThread.tsx` — el hilo de un chat individual/compartido (`chatMessages[chatId]`).
+     `kind !== "chat"`) como burbuja del usuario + respuesta del agente, con `RunActivity` en vivo
+     mientras corre, chips de delegaciones hijas y botón Detalles (`RunDetailDialog`). Al terminar,
+     la respuesta va en markdown (`Markdown.tsx`, colapsada con "Ver más" si pasa de 12 líneas) y
+     arriba queda un desplegable "Actividad (N pasos · m:ss)", plegado, con el mismo `RunActivity`
+     sin pie. Los runs con `round > 0` son continuaciones automáticas y no muestran burbuja de
+     usuario. Mientras algo corre, el hilo sigue el fondo con un timer de 150 ms dentro de un
+     `requestAnimationFrame` (nunca un scroll por delta) y respeta "Nuevos mensajes ↓".
+   - `RunActivity.tsx` — lo que el agente está haciendo, leído de `messages` filtrado por `runId`
+     (`useMemo`, nunca un selector que devuelva arrays nuevos): el texto en curso (`text-<runId>`)
+     en markdown, cada `tool` como fila `icono + meta.summary` en mono, los `error` en rojo, los
+     `system` en itálica, y cada `delegation` como tarjeta anidada (agente + tarea + `StatusDot`)
+     con el `RunActivity compact` del run hijo (`parentRunId === runId && agentId === toAgentId`,
+     el más reciente). Pliega los pasos viejos ("… N pasos más"; 30 filas, 6 en `compact` con
+     "Ver todo") sin esconder nunca el texto, y mientras el run corre cierra con un pie de punto
+     verde pulsante + última herramienta (o "Pensando…") + cronómetro `m:ss` (`showFooter`).
+     Exporta `useActivityCount(runId)` para el encabezado del desplegable.
+   - `Markdown.tsx` — `react-markdown` + `remark-gfm` con estilos Tailwind propios (sin
+     `@tailwindcss/typography`): párrafos `whitespace-pre-wrap`, listas, `code` inline, bloques
+     `pre` con scroll horizontal, tablas con bordes y links `text-primary underline` que se abren
+     con `openUrl` del plugin opener cuando `isTauri()`. Los bloques ```delegate se muestran como
+     una tarjeta "Delegación" con la lista de tareas (parseadas con `parseDelegations`), no como
+     código crudo. Se usa en la respuesta final del run, en los mensajes del agente en el chat y
+     en el texto en vivo de `RunActivity`; los mensajes del usuario siguen en texto plano.
+   - `ChatThread.tsx` — el hilo de un chat individual/compartido (`chatMessages[chatId]`). El
+     mensaje pendiente del agente lleva `runId` (lo setea `lib/chat.ts` apenas `startRun` devuelve
+     el id) y muestra `RunActivity` dentro de la burbuja: no hay badge "escribiendo…" ni indicador
+     "Escribiendo…" al final del hilo.
    - `HierarchyGraph.tsx` con `@xyflow/react` (importar `@xyflow/react/dist/style.css`): árbol por
      `parentId`, layout por niveles calculado a mano (x por índice dentro del nivel, y por
      profundidad). Nodo custom `AgentNode.tsx`: nombre, provider, rol, estado (punto de color +
