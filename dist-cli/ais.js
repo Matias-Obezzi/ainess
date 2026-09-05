@@ -1750,7 +1750,7 @@ function startRun(opts) {
 		};
 	});
 	const provider = PROVIDERS[agent.provider];
-	const binary = store.binaries[agent.provider];
+	const binary = agent.provider === "custom" ? agent.customCommand?.program ? { path: agent.customCommand.program } : null : store.binaries[agent.provider];
 	if (!binary || !binary.path) {
 		const err = `No se encontró el CLI de ${provider.label}. Instalalo o configurá un comando custom.`;
 		useAppStore.setState((state) => ({

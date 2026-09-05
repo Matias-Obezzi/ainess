@@ -78,7 +78,10 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
   });
 
   const provider = PROVIDERS[agent.provider];
-  const binary = store.binaries[agent.provider];
+  // Custom agents bring their own program; every other provider needs a detected binary.
+  const binary = agent.provider === "custom"
+    ? (agent.customCommand?.program ? { path: agent.customCommand.program } : null)
+    : store.binaries[agent.provider];
 
   if (!binary || !binary.path) {
     const err = `No se encontró el CLI de ${provider.label}. Instalalo o configurá un comando custom.`;
