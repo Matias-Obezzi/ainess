@@ -4,17 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { StatusDot } from "@/components/StatusDot";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
-import { runDotStatus, runStatusLabel } from "@/lib/labels";
-import { formatClock, formatElapsed, truncate } from "@/lib/format";
+import { runStatusLabel } from "@/lib/labels";
+import { formatClock, formatElapsed } from "@/lib/format";
 import type { Run } from "@/types";
-import { ArrowDown, ChevronDown, ChevronRight, MessagesSquare } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, FileText, MessagesSquare } from "lucide-react";
 
-/** Output longer than this is folded behind "Ver más". */
-const COLLAPSED_OUTPUT_LINES = 12;
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
 
@@ -122,8 +119,6 @@ function RunBubbleSkeleton() {
 
 function RunBubble({ run }: { run: Run }) {
   const agents = useAppStore(state => state.config.agents);
-  const runs = useAppStore(state => state.runs);
-  const [expanded, setExpanded] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const steps = useActivityCount(run.id);
@@ -131,22 +126,14 @@ function RunBubble({ run }: { run: Run }) {
   const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
-
-  // Direct delegations of this run (a continuation round has its own children).
-  const children = useMemo(
-    () => Object.values(runs).filter(r => r.parentRunId === run.id).sort((a, b) => a.startedAt - b.startedAt),
-    [runs, run.id],
-  );
-
-  const isLong = (run.output || "").split("\n").length > COLLAPSED_OUTPUT_LINES;
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {/* A round > 0 run is an automatic continuation, not something the user typed. */}
       {run.round === 0 && (
         <div className="flex flex-col items-end gap-1">
-          <div className="rounded-lg px-3 py-2 max-w-[85%] text-sm whitespace-pre-wrap break-words bg-primary text-primary-foreground">
+          <div className="rounded-xl px-3.5 py-2 max-w-[85%] text-sm whitespace-pre-wrap break-words bg-muted">
             {run.prompt}
           </div>
           <span className="text-[11px] text-muted-foreground">
@@ -156,13 +143,11 @@ function RunBubble({ run }: { run: Run }) {
         </div>
       )}
 
-      <div
-        className="rounded-lg bg-muted px-3 py-2 flex flex-col gap-2 max-w-[95%] self-start w-full"
-        style={{ borderLeft: `3px solid ${agent?.color || "#888"}` }}
-      >
+      {/* The answer reads like a document, not a bubble: a header line and the content below it. */}
+      <div className="group flex flex-col gap-2">
         <div className="flex items-center gap-2 text-xs">
-          <StatusDot status={runDotStatus[run.status]} />
-          <span className="font-medium">{agent?.name ?? run.agentId}</span>
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: agent?.color || "#888" }} />
+          <span className="font-semibold">{agent?.name ?? run.agentId}</span>
           {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
           {(run.status === "error" || run.status === "killed") && (
             <Badge variant={run.status === "error" ? "destructive" : "secondary"} className="text-[10px]">
@@ -170,70 +155,47 @@ function RunBubble({ run }: { run: Run }) {
             </Badge>
           )}
           <span className="ml-auto text-muted-foreground">{formatClock(run.startedAt)}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            title="Ver salida cruda"
+            onClick={() => setDetailOpen(true)}
+          >
+            <FileText className="h-3.5 w-3.5" />
+          </Button>
         </div>
 
-        {isRunning ? (
-          <RunActivity runId={run.id} />
-        ) : (
-          <>
-            {steps > 0 && (
-              <div className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                  onClick={() => setActivityOpen(o => !o)}
-                >
-                  {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                  Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
-                </button>
-                {activityOpen && (
-                  <div className="rounded-md border border-border bg-background/40 p-2">
-                    <RunActivity runId={run.id} showFooter={false} />
-                  </div>
-                )}
-              </div>
-            )}
+        <div className="pl-[18px] flex flex-col gap-2">
+          {isRunning ? (
+            <RunActivity runId={run.id} />
+          ) : (
+            <>
+              {steps > 0 && (
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                    onClick={() => setActivityOpen(o => !o)}
+                  >
+                    {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
+                  </button>
+                  {activityOpen && (
+                    <div className="rounded-md border border-border bg-muted/40 p-2">
+                      <RunActivity runId={run.id} showFooter={false} />
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {run.output ? (
-              <div className={!expanded && isLong ? "max-h-64 overflow-hidden" : undefined}>
+              {run.output ? (
                 <Markdown text={run.output} />
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground italic">Sin salida</div>
-            )}
-
-            {isLong && (
-              <button
-                type="button"
-                className="self-start text-xs text-primary hover:underline"
-                onClick={() => setExpanded(e => !e)}
-              >
-                {expanded ? "Ver menos" : "Ver más"}
-              </button>
-            )}
-          </>
-        )}
-
-        {children.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {children.map(c => (
-              <span
-                key={c.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-[11px]"
-                title={c.prompt}
-              >
-                <StatusDot status={runDotStatus[c.status]} />
-                <span className="font-medium">{agentName(c.agentId)}:</span>
-                <span className="text-muted-foreground">{truncate(c.prompt, 60)}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex">
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => setDetailOpen(true)}>
-            Detalles
-          </Button>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">Sin salida</div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

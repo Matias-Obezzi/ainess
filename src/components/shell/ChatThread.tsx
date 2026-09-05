@@ -142,13 +142,14 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
         {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
       </div>
+      {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}
       <div
-        className={`rounded-lg px-3 py-2 max-w-[80%] text-sm break-words ${
+        className={`text-sm break-words ${
           isUser
-            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+            ? "rounded-xl px-3.5 py-2 max-w-[80%] bg-muted whitespace-pre-wrap"
             : message.status === "error"
-              ? "bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
-              : "bg-muted"
+              ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
+              : "pl-[18px] w-full"
         }`}
       >
         {isPending ? (
