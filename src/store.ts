@@ -3,6 +3,7 @@ import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
+import * as remote from "@/lib/remote";
 
 export interface AppState {
   loaded: boolean;
@@ -54,6 +55,13 @@ export interface AppState {
   approvals: Record<string, Approval>;
   approve(approvalId: string, note?: string): Promise<void>;
   reject(approvalId: string, note?: string): Promise<void>;
+
+  // LAN remote access
+  remoteStatus: { running: boolean; url?: string; ip?: string; clients: number; error?: string };
+  startRemote(portOverride?: number): Promise<void>;
+  stopRemote(): Promise<void>;
+  refreshRemoteStatus(): Promise<void>;
+  regenerateRemoteToken(): Promise<void>;
 
   // Chat actions
   createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
@@ -146,6 +154,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   approve: (approvalId, note) => orchestrator.approveApproval(approvalId, note),
   reject: (approvalId, note) => orchestrator.rejectApproval(approvalId, note),
+
+  remoteStatus: { running: false, clients: 0 },
+  startRemote: async (portOverride) => {
+    try {
+      const status = await remote.startRemote(portOverride);
+      set({ remoteStatus: status });
+    } catch (e) {
+      set({ remoteStatus: { running: false, clients: 0, error: e instanceof Error ? e.message : String(e) } });
+      throw e;
+    }
+  },
+  stopRemote: async () => {
+    await remote.stopRemote();
+    set({ remoteStatus: { running: false, clients: 0 } });
+  },
+  refreshRemoteStatus: async () => {
+    const status = await getTransport().remoteStatus();
+    set(state => ({ remoteStatus: { ...status, error: status.running ? undefined : state.remoteStatus.error } }));
+  },
+  regenerateRemoteToken: async () => {
+    const wasRunning = get().remoteStatus.running;
+    if (wasRunning) await get().stopRemote();
+    set(state => ({ config: { ...state.config, remote: { ...state.config.remote, token: crypto.randomUUID() } } }));
+    await get().saveConfig();
+    if (wasRunning) await get().startRemote();
+  },
 
   init: () => {
     // Idempotent: StrictMode mounts twice and both calls must share one initialization.
@@ -585,6 +619,11 @@ async function runInit(): Promise<void> {
     history.startHistorySync();
 
     set({ loaded: true });
+
+    // Remote access is opt-in; a failure (port busy) must not break startup.
+    if (config.remote?.enabled) {
+      await get().startRemote().catch(() => {});
+    }
 }
 
 export function selectChildren(state: AppState, agentId: string): AgentConfig[] {

@@ -7,6 +7,8 @@ import { nodeTransport, killAllSync } from "@/lib/transport-node";
 import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
+import { remoteUrl } from "@/lib/remote";
+import { localIp } from "@/lib/remote-node";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
@@ -49,13 +51,15 @@ async function main() {
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
+    console.log("  serve [--port N] [-w dir|-p proyecto]      Servidor para el celular (misma WiFi), Ctrl+C termina");
+    console.log("  remote url | token [--regenerate]          URL con token para el celular");
     console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
     console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
     console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status", "approvals"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -618,6 +622,68 @@ async function main() {
       if (r.output) console.log(`    < ${oneLine(r.output, 120)}`);
     }
     process.exit(0);
+  }
+
+  if (first === "remote") {
+    const sub = args[1] || "url";
+    const remote = store.config.remote;
+    if (sub === "url") {
+      const url = remoteUrl(localIp(), remote.port, remote.token);
+      print({ url, port: remote.port, ip: localIp(), enabled: remote.enabled }, url);
+      process.exit(0);
+    }
+    if (sub === "token") {
+      if (args.includes("--regenerate")) {
+        store.updateConfig({ remote: { ...remote, token: crypto.randomUUID() } });
+        await store.saveConfig();
+        print({ ok: true }, "Token regenerado. Nueva URL:\n" + remoteUrl(localIp(), remote.port, useAppStore.getState().config.remote.token));
+      } else {
+        print({ token: remote.token }, remote.token);
+      }
+      process.exit(0);
+    }
+    error("Uso: ais remote url | token [--regenerate]");
+  }
+
+  if (first === "serve") {
+    const { values: sv } = parseArgs({
+      args: args.slice(1),
+      options: { port: { type: "string" }, workspace: { type: "string", short: "w" }, project: { type: "string", short: "p" } },
+      allowPositionals: true,
+      strict: false,
+    });
+    const projectId = resolveProjectId(sv.project as string | undefined, sv.workspace as string | undefined);
+    store.setCurrentProject(projectId);
+    for (const p of store.config.projects) await loadHistory(p.id);
+    const port = sv.port ? parseInt(String(sv.port), 10) : undefined;
+    try {
+      await store.startRemote(port);
+    } catch (e) {
+      error(`No se pudo iniciar el servidor: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const st = useAppStore.getState().remoteStatus;
+    if (jsonOutput) console.log(JSON.stringify({ url: st.url, ip: st.ip, port: port ?? store.config.remote.port }));
+    else {
+      console.log(`Servidor remoto escuchando en ${st.ip}:${port ?? store.config.remote.port}`);
+      console.log(`Abrí desde el celular (misma WiFi):\n  ${st.url}\nCtrl+C para terminar.`);
+    }
+    // Live feed of what the phone triggers, same format as `run`.
+    const printedIds = new Set<string>(useAppStore.getState().messages.map(m => m.id));
+    useAppStore.subscribe((state) => {
+      for (const m of state.messages) {
+        if (printedIds.has(m.id) || m.kind === "text") continue;
+        printedIds.add(m.id);
+        if (jsonOutput) { console.log(JSON.stringify(m)); continue; }
+        const from = m.fromAgentId === "user" ? "user" : store.config.agents.find(a => a.id === m.fromAgentId)?.name || m.fromAgentId;
+        console.log(`${new Date(m.ts).toLocaleTimeString("en-GB", { hour12: false })}  ${from}  [${m.kind}]  ${m.text.replace(/\s+/g, " ").slice(0, 160)}`);
+      }
+    });
+    const shutdown = () => { void store.stopRemote().finally(() => flushHistory().finally(() => process.exit(0))); };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    process.on("exit", () => killAllSync());
+    setInterval(() => {}, 1 << 30); // keep the event loop alive
+    return;
   }
 
   if (first === "approvals") {

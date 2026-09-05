@@ -10,6 +10,15 @@ export interface Transport {
   readTextFile(relativePath: string): Promise<string | null>;
   exec(program: string, args: string[], cwd?: string): Promise<{ code: number | null, stdout: string, stderr: string }>;
   httpPost(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
+
+  // LAN remote access (see src/lib/remote.ts). The server lives in the transport because
+  // the orchestrator state lives in this process.
+  remoteStart(port: number, token: string): Promise<{ url: string; ip: string }>;
+  remoteStop(): Promise<void>;
+  remoteStatus(): Promise<{ running: boolean; url?: string; ip?: string; clients: number }>;
+  remotePushState(snapshot: unknown): Promise<void>;
+  /** Register the single handler that answers commands from remote clients. */
+  onRemoteCommand(h: (cmd: { id: string; action: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>): Promise<() => void>;
 }
 
 let currentTransport: Transport | null = null;

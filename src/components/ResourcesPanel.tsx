@@ -12,6 +12,7 @@ import { SkillDialog } from "./SkillDialog";
 import { McpDialog } from "./McpDialog";
 import { PresetDialog } from "./PresetDialog";
 import { HookDialog } from "./HookDialog";
+import { RemotePanel } from "./RemotePanel";
 import { Skill, McpServer, Hook } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
@@ -54,6 +55,7 @@ export function ResourcesPanel() {
           <TabsTrigger value="mcp">MCP</TabsTrigger>
           <TabsTrigger value="hooks">Hooks</TabsTrigger>
           <TabsTrigger value="context">Contexto</TabsTrigger>
+          <TabsTrigger value="remote">Remoto</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="flex-1 mt-4 flex flex-col gap-4 overflow-y-auto">
@@ -216,6 +218,10 @@ export function ResourcesPanel() {
               toast.success("Contexto guardado");
             }}>Guardar</Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="remote" className="flex-1 mt-4 overflow-y-auto">
+          <RemotePanel />
         </TabsContent>
 
         <TabsContent value="hooks" className="flex-1 mt-4 overflow-y-auto space-y-4">

@@ -139,3 +139,37 @@ ais status                            # runs guardados y último run por proyect
 ```
 
 El botón "Limpiar" de la pestaña Comunicación borra el historial del proyecto, en memoria y en disco.
+
+## Aprobaciones
+
+Podés exigir tu visto bueno antes de que un agente reciba una tarea delegada:
+
+- Por agente: en Agentes → Editar, activá "Requiere tu aprobación para recibir tareas delegadas".
+- Global: en Recursos → Perfil, activá "Aprobar todas las delegaciones".
+
+Cuando el planificador delega, la tarea queda en espera y aparece arriba en la app, en el celular y en `ais approvals list`. Aprobás o rechazás (con una nota opcional que el planificador recibe como resultado). Las pendientes se guardan con el historial, así que sobreviven un reinicio. El evento de hook `approval.requested` permite avisarte por Slack o Discord.
+
+```bash
+ais approvals list
+ais approvals approve 8bc8af51 --note "dale"
+ais approvals reject 8bc8af51 --note "primero los tests"
+```
+
+`ais run` termina con código 3 cuando una delegación queda esperando aprobación; al aprobar desde el CLI, el agente hijo corre en ese mismo proceso.
+
+## Acceso remoto desde el celular
+
+Con el celular en la misma WiFi podés ver el estado de agentes y proyectos en vivo, leer el feed, mandar prompts o instrucciones, detener y aprobar delegaciones.
+
+- En la app: Recursos → Remoto, activá el switch y escaneá el QR (o copiá la URL). La app lo levanta sola en cada arranque si queda activado.
+- Desde la terminal: `ais serve` deja el servidor corriendo con el orquestador del CLI e imprime la URL.
+
+```bash
+ais serve --port 4710 -w C:\repo
+ais remote url                  # URL con token
+ais remote token --regenerate   # invalida la URL anterior
+```
+
+La URL lleva un token: sin él el servidor responde 401. Solo escucha en la red local (no hay HTTPS ni acceso desde afuera); si no carga, permití el puerto en el firewall de Windows. La página móvil (`src/remote/remote.html`) no usa internet ni frameworks.
+
+Protocolo (para integrar otras herramientas): `GET /api/state`, `GET /api/events` (SSE con eventos `state`), `POST /api/prompt`, `/api/instruct`, `/api/stop`, `/api/approve`, `/api/chat`, todos con `Authorization: Bearer <token>` o `?token=`.

@@ -1,4 +1,5 @@
 import { Transport } from "./transport";
+import { nodeRemote } from "./remote-node";
 import type { AppConfig, BinaryInfo, RunExitEvent, RunOutputEvent, SpawnOptions } from "@/types";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import * as readline from "node:readline";
@@ -286,5 +287,7 @@ export const nodeTransport: Transport = {
   httpPost: async (url: string, body: string, headers: Record<string, string>) => {
     const res = await fetch(url, { method: "POST", body, headers });
     return { status: res.status, body: await res.text() };
-  }
+  },
+
+  ...nodeRemote,
 };
