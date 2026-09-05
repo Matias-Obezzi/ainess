@@ -7,7 +7,8 @@ export interface Transport {
   saveConfig(config: import("@/types").AppConfig): Promise<void>;
   detectBinaries(): Promise<import("@/types").Binaries>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
-  exec(program: string, args: string[]): Promise<{ code: number | null, stdout: string, stderr: string }>;
+  exec(program: string, args: string[], cwd?: string): Promise<{ code: number | null, stdout: string, stderr: string }>;
+  httpPost(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
 }
 
 let currentTransport: Transport | null = null;

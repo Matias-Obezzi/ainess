@@ -260,6 +260,15 @@ function onRunFinished(runId: string) {
   let agentStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
   let waitingForChildren = false;
 
+  const project = store.config.projects.find(p => p.id === run.projectId);
+  const rootRun = store.runs[run.rootRunId];
+  const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
+  const ctx = { project, agent, runId, round: run.round, prompt: run.prompt, output: run.output, taskPrompt, error: run.status === "error" ? run.output : "" };
+  
+  if (run.status === "done") void emitHookEvent("run.finished", {}, ctx);
+  else if (run.status === "error") void emitHookEvent("run.failed", {}, ctx);
+  else if (run.status === "killed") void emitHookEvent("agent.stopped", {}, ctx);
+
   if (run.status === "done" || run.status === "killed") {
     const children = selectChildren(store, agent.id);
     if (children.length > 0) {
@@ -284,6 +293,7 @@ function onRunFinished(runId: string) {
             }
             const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
             addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
+            void emitHookEvent("delegation", {}, { ...ctx, toAgent: childAgent.name, task: task.task, model: modelToUse || "" });
             startRun({ agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse });
           } else {
             addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
@@ -317,6 +327,12 @@ function onRunFinished(runId: string) {
       // Only runs belonging to the current task clear it; direct instructions don't.
       if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+        if (run.status === "error") {
+          void emitHookEvent("task.failed", {}, ctx);
+        } else {
+          void emitHookEvent("task.finished", {}, ctx);
+          void emitHookEvent("result", {}, ctx);
+        }
       }
     } else {
       maybeContinueParent(run.parentRunId);
@@ -373,6 +389,15 @@ function maybeContinueParent(parentRunId: string) {
 
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
+        const project = store.config.projects.find(p => p.id === parentRun.projectId);
+        const rootRun = store.runs[parentRun.rootRunId];
+        const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
+        if (cancelled || parentRun.status === "error") {
+          void emitHookEvent("task.failed", {}, ctx);
+        } else {
+          void emitHookEvent("task.finished", {}, ctx);
+          void emitHookEvent("result", {}, ctx);
+        }
       } else {
         maybeContinueParent(parentRun.parentRunId);
       }
@@ -410,11 +435,19 @@ function processQueuedInstructions(agentId: string, projectId: string) {
   }
 }
 
+import { emitHookEvent } from "@/lib/hooks";
+
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
   const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model });
   if (runId) {
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
+    const store = useAppStore.getState();
+    const project = store.config.projects.find(p => p.id === projectId);
+    const agent = selectAgent(store, targetAgentId);
+    if (project && agent) {
+      void emitHookEvent("task.started", {}, { project, agent, runId, prompt: text, taskPrompt: text });
+    }
   }
 }
 

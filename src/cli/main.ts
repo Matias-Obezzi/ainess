@@ -40,11 +40,11 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, context, projects, run");
+    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, run");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "context", "projects", "detect", "profile", "presets"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets"]);
   const first = args[0];
 
   if (!first.startsWith("-") && !KNOWN.has(first)) {
@@ -351,6 +351,119 @@ async function main() {
       } else {
         print(skill, skill.content);
       }
+      process.exit(0);
+    }
+  }
+
+  if (first === "hooks") {
+    const sub = args[1] || "list";
+    if (sub === "list") {
+      print(store.config.hooks, store.config.hooks?.map(h => `- ${h.name} [${h.enabled ? "ON" : "OFF"}] Event: ${h.event} -> Action: ${h.action.type}`).join("\n") || "");
+      process.exit(0);
+    } else if (sub === "add") {
+      const name = args[2];
+      if (!name || name.startsWith("-")) error("Falta nombre");
+      
+      const { values } = parseArgs({
+        args: args.slice(3),
+        options: {
+          event: { type: "string" },
+          action: { type: "string" },
+          url: { type: "string" },
+          template: { type: "string" },
+          program: { type: "string" },
+          args: { type: "string" },
+          agent: { type: "string" },
+          "filter-agent": { type: "string" },
+          "filter-project": { type: "string" },
+        },
+        strict: false
+      });
+      if (!values.event || !values.action) error("Faltan --event y --action");
+
+      let action: any = null;
+      switch (values.action) {
+        case "slack":
+        case "discord":
+          if (!values.url) error("Falta --url");
+          action = { type: values.action, webhookUrl: values.url, template: values.template || "{{output}}" };
+          break;
+        case "webhook":
+          if (!values.url) error("Falta --url");
+          action = { type: "webhook", url: values.url, bodyTemplate: values.template || "{}" };
+          break;
+        case "command":
+          if (!values.program) error("Falta --program");
+          const pArgs = (values.args as string || "").split(" ").filter(Boolean);
+          action = { type: "command", program: values.program, args: pArgs, cwd: "workspace" };
+          break;
+        case "instruct":
+          if (!values.agent) error("Falta --agent (el agente a instruir)");
+          const instrAgent = store.config.agents.find(a => a.name.toLowerCase() === String(values.agent).toLowerCase());
+          if (!instrAgent) error(`Agente "${values.agent}" no encontrado`);
+          action = { type: "instruct", agentId: instrAgent.id, template: values.template || "{{output}}" };
+          break;
+        case "notify":
+          action = { type: "notify", title: "Aviso", template: values.template || "{{output}}" };
+          break;
+        default:
+          error("Acción desconocida");
+      }
+
+      let filter: any = {};
+      if (values["filter-agent"]) {
+        const a = store.config.agents.find(x => x.name.toLowerCase() === String(values["filter-agent"]).toLowerCase());
+        if (!a) error("Filtro: Agente no encontrado");
+        filter.agentId = a.id;
+      }
+      if (values["filter-project"]) {
+        const p = store.config.projects.find(x => x.name.toLowerCase() === String(values["filter-project"]).toLowerCase());
+        if (!p) error("Filtro: Proyecto no encontrado");
+        filter.projectId = p.id;
+      }
+
+      const h: import("@/types").Hook = {
+        id: crypto.randomUUID(),
+        name,
+        event: values.event as any,
+        enabled: true,
+        action,
+        filter: Object.keys(filter).length > 0 ? filter : undefined
+      };
+      
+      store.upsertHook(h);
+      await store.saveConfig();
+      print(h, "Hook guardado.");
+      process.exit(0);
+    } else if (sub === "remove") {
+      const name = args[2];
+      const h = store.config.hooks?.find(x => x.name === name);
+      if (!h) error("No encontrado");
+      store.removeHook(h.id);
+      await store.saveConfig();
+      print({ ok: true }, "Hook eliminado.");
+      process.exit(0);
+    } else if (sub === "enable" || sub === "disable") {
+      const name = args[2];
+      const h = store.config.hooks?.find(x => x.name === name);
+      if (!h) error("No encontrado");
+      store.toggleHook(h.id, sub === "enable");
+      await store.saveConfig();
+      print({ ok: true }, `Hook ${sub === "enable" ? "habilitado" : "deshabilitado"}.`);
+      process.exit(0);
+    } else if (sub === "test") {
+      const name = args[2];
+      const h = store.config.hooks?.find(x => x.name === name);
+      if (!h) error("No encontrado");
+      await store.testHook(h.id);
+      await new Promise(r => setTimeout(r, 500));
+      const msgs = useAppStore.getState().messages;
+      for (const msg of msgs) {
+        if (msg.kind === "system") {
+          console.log(`[system] ${msg.text}`);
+        }
+      }
+      print({ ok: true }, "Test finalizado.");
       process.exit(0);
     }
   }

@@ -26,6 +26,10 @@ export interface AppState {
   removeSkill(skillId: string): void;
   upsertMcpServer(server: McpServer): void;
   removeMcpServer(serverId: string): void;
+  upsertHook(hook: import("@/types").Hook): void;
+  removeHook(id: string): void;
+  toggleHook(id: string, enabled: boolean): void;
+  testHook(id: string): Promise<void>;
   setSharedContext(text: string): void;
   detectBinaries(): Promise<void>;
   updateConfig(patch: Partial<AppConfig>): void;
@@ -44,12 +48,13 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 4,
+    version: 5,
     projects: [],
     lastProjectId: null,
     maxRounds: 6,
     skills: [],
     mcpServers: [],
+    hooks: [],
     sharedContext: "",
     binaryOverrides: {},
     profile: { name: "", about: "", preferences: "" },
@@ -101,7 +106,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 4, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false },
+  config: { version: 5, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false },
   binaries: {},
   runtime: {},
   runs: {},
@@ -269,6 +274,39 @@ export const useAppStore = create<AppState>()((set, get) => ({
     debouncedSave();
   },
 
+  upsertHook: (hook) => {
+    set((state) => {
+      const idx = state.config.hooks.findIndex(h => h.id === hook.id);
+      const newHooks = [...state.config.hooks];
+      if (idx >= 0) newHooks[idx] = hook;
+      else newHooks.push(hook);
+      return { config: { ...state.config, hooks: newHooks } };
+    });
+    debouncedSave();
+  },
+
+  removeHook: (id) => {
+    set((state) => ({ config: { ...state.config, hooks: state.config.hooks.filter(h => h.id !== id) } }));
+    debouncedSave();
+  },
+
+  toggleHook: (id, enabled) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        hooks: state.config.hooks.map(h => h.id === id ? { ...h, enabled } : h)
+      }
+    }));
+    debouncedSave();
+  },
+
+  testHook: async (id) => {
+    const hook = get().config.hooks.find(h => h.id === id);
+    if (!hook) return;
+    const { testHookAction } = await import("@/lib/hooks");
+    await testHookAction(hook);
+  },
+
   setSharedContext: (text) => {
     set((state) => ({ config: { ...state.config, sharedContext: text } }));
     debouncedSave();
@@ -388,7 +426,17 @@ async function runInit(): Promise<void> {
         profile: config.profile || { name: "", about: "", preferences: "" },
         presets: config.presets || [],
         autoModel: config.autoModel || false
-      } as AppConfig;
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 5
+    if ((config.version as number) < 5) {
+      config = {
+        ...config,
+        version: 5,
+        hooks: config.hooks || [],
+      } as unknown as AppConfig;
       isSeed = true;
     }
 

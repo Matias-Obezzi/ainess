@@ -83,9 +83,25 @@ El CLI permite elegir el proyecto donde ejecutar las tareas usando `-p <nombre>`
   -  is skills list
   -  is skills remove convenciones
 - **MCP**:
-  - is mcp add fetch --url https://api.example.com/sse
-  - is mcp sync (sincroniza con Antigravity)
+  -  is mcp add fetch --url https://api.example.com/sse
+  -  is mcp sync (sincroniza con Antigravity)
 - **Contexto**:
-  - is context set --file context.txt
-  - is context clear
+  -  is context set --file context.txt
+  -  is context clear
 
+## Hooks
+
+Puedes configurar reglas para reaccionar a eventos del orquestador mediante la pestaña "Hooks" en la UI o desde el CLI.
+
+**Variables disponibles en las plantillas**: `{{event}}`, `{{project}}`, `{{workspace}}`, `{{agent}}`, `{{agentRole}}`, `{{runId}}`, `{{round}}`, `{{prompt}}`, `{{output}}`, `{{error}}`, `{{taskPrompt}}`, `{{time}}`. Y para eventos `delegation`: `{{toAgent}}`, `{{task}}`, `{{model}}`.
+También puedes truncar variables, por ejemplo: `{{output|300}}`.
+
+**Ejemplos de comandos (CLI)**:
+- **Slack (webhook entrante)**:
+  `ais hooks add SlackNotify --event task.finished --action slack --url https://hooks.slack.com/services/T000... --template "✅ {{agent}} terminó en {{project}}: {{output|300}}"`
+- **Discord**:
+  `ais hooks add DiscordNotify --event task.failed --action discord --url https://discord.com/api/webhooks/... --template "❌ Error en {{project}}: {{error|500}}"`
+- **Comando local (abrir reporte)**:
+  `ais hooks add AbrirReporte --event result --action command --program code --args "{{workspace}}/report.md"`
+- **Instrucción encadenada**:
+  `ais hooks add Review --event run.finished --filter-agent Implementador --action instruct --agent Revisor --template "Revisá estos cambios: {{output}}"`

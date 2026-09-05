@@ -1,6 +1,7 @@
 mod config;
 mod detect;
 mod runner;
+mod http;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,7 +17,8 @@ pub fn run() {
             config::load_config,
             config::save_config,
             config::write_config_file,
-            detect::detect_binaries
+            detect::detect_binaries,
+            http::http_post
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

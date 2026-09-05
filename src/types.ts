@@ -73,8 +73,35 @@ export interface Project {
   createdAt: number;
 }
 
+export type HookEvent =
+  | "task.started"
+  | "task.finished"
+  | "task.failed"
+  | "delegation"
+  | "run.finished"
+  | "run.failed"
+  | "agent.stopped"
+  | "result";
+
+export type HookAction =
+  | { type: "slack"; webhookUrl: string; template: string }
+  | { type: "discord"; webhookUrl: string; template: string }
+  | { type: "webhook"; url: string; method?: "POST"; headers?: Record<string, string>; bodyTemplate: string }
+  | { type: "command"; program: string; args: string[]; cwd?: "workspace" | string }
+  | { type: "instruct"; agentId: string; template: string }
+  | { type: "notify"; title: string; template: string };
+
+export interface Hook {
+  id: string;
+  name: string;
+  event: HookEvent;
+  enabled: boolean;
+  filter?: { agentId?: string; projectId?: string };
+  action: HookAction;
+}
+
 export interface AppConfig {
-  version: 4;
+  version: 5;
   agents: AgentConfig[];
   projects: Project[];
   lastProjectId: string | null;
@@ -87,6 +114,7 @@ export interface AppConfig {
   profile: { name: string; about: string; preferences: string };
   presets: Array<{ id: string; name: string; prompt: string; agentId?: string; model?: string }>;
   autoModel: boolean;
+  hooks: Hook[];
 }
 
 export interface AgentRuntime {

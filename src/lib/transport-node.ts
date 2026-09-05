@@ -263,13 +263,18 @@ export const nodeTransport: Transport = {
     return p;
   },
 
-  exec: async (program: string, args: string[]) => {
+  exec: async (program: string, args: string[], cwd?: string) => {
     const resolved = resolveProgram(program, args);
-    const res = spawnSync(resolved.program, resolved.args, { encoding: "utf-8", timeout: 60000, windowsHide: true });
+    const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout: 60000, windowsHide: true });
     return {
       code: res.status,
       stdout: res.stdout || "",
       stderr: res.stderr || ""
     };
+  },
+
+  httpPost: async (url: string, body: string, headers: Record<string, string>) => {
+    const res = await fetch(url, { method: "POST", body, headers });
+    return { status: res.status, body: await res.text() };
   }
 };

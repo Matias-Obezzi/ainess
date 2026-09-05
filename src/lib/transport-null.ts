@@ -9,5 +9,6 @@ export const nullTransport: Transport = {
   saveConfig: async () => {},
   detectBinaries: async () => ({}),
   writeTextFile: async (path) => path,
-  exec: async () => ({ code: null, stdout: "", stderr: "" }),
+  exec: async (_program, _args, _cwd) => ({ code: null, stdout: "", stderr: "" }),
+  httpPost: async () => { throw new Error("null transport"); }
 };

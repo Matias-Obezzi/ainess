@@ -205,11 +205,17 @@ pub struct ExecResult {
 }
 
 #[tauri::command]
-pub fn exec_capture(program: String, args: Vec<String>) -> Result<ExecResult, String> {
+pub fn exec_capture(program: String, args: Vec<String>, cwd: Option<String>) -> Result<ExecResult, String> {
     let mut cmd = Command::new(&program);
     cmd.args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    
+    if let Some(c) = cwd {
+        if !c.is_empty() {
+            cmd.current_dir(c);
+        }
+    }
     
     // Use CREATE_NO_WINDOW on Windows to prevent flashing console windows
     #[cfg(windows)]

@@ -11,7 +11,8 @@ import { toast } from "@/components/ui/toast";
 import { SkillDialog } from "./SkillDialog";
 import { McpDialog } from "./McpDialog";
 import { PresetDialog } from "./PresetDialog";
-import { Skill, McpServer } from "@/types";
+import { HookDialog } from "./HookDialog";
+import { Skill, McpServer, Hook } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
 export function ResourcesPanel() {
@@ -31,6 +32,9 @@ export function ResourcesPanel() {
   const [editingPreset, setEditingPreset] = useState<any | null>(null);
   const [isPresetOpen, setIsPresetOpen] = useState(false);
 
+  const [editingHook, setEditingHook] = useState<Hook | null>(null);
+  const [isHookOpen, setIsHookOpen] = useState(false);
+
   const handleSyncMcp = async () => {
     const res = await syncMcpToAntigravity(store.config.mcpServers);
     if (res.success) {
@@ -43,11 +47,12 @@ export function ResourcesPanel() {
   return (
     <div className="h-full flex flex-col p-2 space-y-4">
       <Tabs defaultValue="profile" className="flex-1 flex flex-col">
-        <TabsList className="grid grid-cols-5 h-auto">
+        <TabsList className="grid grid-cols-6 h-auto">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="presets">Órdenes</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="mcp">MCP Servers</TabsTrigger>
+          <TabsTrigger value="mcp">MCP</TabsTrigger>
+          <TabsTrigger value="hooks">Hooks</TabsTrigger>
           <TabsTrigger value="context">Contexto</TabsTrigger>
         </TabsList>
 
@@ -202,6 +207,35 @@ export function ResourcesPanel() {
             }}>Guardar</Button>
           </div>
         </TabsContent>
+
+        <TabsContent value="hooks" className="flex-1 mt-4 overflow-y-auto space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setEditingHook(null); setIsHookOpen(true); }}>Nuevo Hook</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {store.config.hooks?.map(hook => (
+              <Card key={hook.id}>
+                <CardHeader>
+                  <CardTitle className="flex justify-between items-center">
+                    <span>{hook.name}</span>
+                    <Switch checked={hook.enabled} onCheckedChange={(v) => store.toggleHook(hook.id, v)} />
+                  </CardTitle>
+                  <CardDescription>Evento: {hook.event}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm">
+                    <strong>Acción:</strong> {hook.action.type}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => store.testHook(hook.id)}>Probar</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setEditingHook(hook); setIsHookOpen(true); }}>Editar</Button>
+                  <Button variant="destructive" size="sm" onClick={() => store.removeHook(hook.id)}>Eliminar</Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
       </Tabs>
 
       <SkillDialog 
@@ -221,6 +255,15 @@ export function ResourcesPanel() {
         onOpenChange={setIsPresetOpen} 
         preset={editingPreset} 
       />
+
+      {isHookOpen && (
+        <HookDialog 
+          open={isHookOpen} 
+          onClose={() => setIsHookOpen(false)} 
+          hook={editingHook!} 
+          onSave={(h) => { store.upsertHook(h); setIsHookOpen(false); }} 
+        />
+      )}
     </div>
   );
 }
