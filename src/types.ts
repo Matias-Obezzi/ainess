@@ -232,6 +232,8 @@ export interface CommMessage {
   toAgentId?: string | "user";
   kind: MessageKind;
   text: string;
+  /** Only on `tool` messages: what the agent called and a one-line summary of it. */
+  meta?: { tool: string; summary: string; input?: unknown };
 }
 
 export interface Delegation {
@@ -328,7 +330,7 @@ export interface RunExitEvent {
 export type ParsedEvent =
   | { type: "session"; sessionId: string }
   | { type: "text"; text: string }
-  | { type: "tool"; name: string; detail?: string }
+  | { type: "tool"; name: string; detail?: string; input?: unknown }
   | { type: "result"; text: string; sessionId?: string }
   | { type: "error"; text: string }
   | { type: "raw"; text: string };

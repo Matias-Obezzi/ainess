@@ -134,7 +134,9 @@ describe("copilot provider", () => {
 
   it("turns assistant.message into text and tool events", () => {
     const line = msg("", [{ toolCallId: "t1", name: "glob", arguments: { pattern: "*" }, type: "function" }]);
-    expect(copilot.parseLine(line, "stdout")).toEqual([{ type: "tool", name: "glob", detail: '{"pattern":"*"}' }]);
+    expect(copilot.parseLine(line, "stdout")).toEqual([
+      { type: "tool", name: "glob", detail: '{"pattern":"*"}', input: { pattern: "*" } },
+    ]);
     expect(copilot.parseLine(msg("hola"), "stdout")).toEqual([{ type: "text", text: "hola\n" }]);
   });
 

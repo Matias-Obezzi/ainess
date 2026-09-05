@@ -3,6 +3,7 @@ import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
+import { summarizeTool } from "@/lib/tool-summary";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
@@ -212,7 +213,16 @@ function handleOutput(e: RunOutputEvent) {
       appendCommText(run.agentId, e.runId, run.projectId, ev.text);
     } else if (ev.type === "tool") {
       const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
-      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "tool", text: text.substring(0, 300), runId: e.runId });
+      const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
+      const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
+      addMessage({
+        projectId: run.projectId,
+        fromAgentId: run.agentId,
+        kind: "tool",
+        text: text.substring(0, 300),
+        runId: e.runId,
+        meta: { tool: ev.name, summary, input: ev.input },
+      });
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];

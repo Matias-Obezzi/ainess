@@ -55,7 +55,7 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
         events.push({ type: "text", text: item.text });
       } else if (item.type === "tool_use") {
         const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
-        events.push({ type: "tool", name: item.name, detail });
+        events.push({ type: "tool", name: item.name, detail, input: item.input });
       }
     }
     return events;
@@ -86,7 +86,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     const name: string = tool_name || tool_info?.name || step_type;
     const params = tool_info?.parameters;
     const detail = params ? JSON.stringify(params).substring(0, 200) : undefined;
-    if (state === "ACTIVE") return [{ type: "tool", name, detail }];
+    if (state === "ACTIVE") return [{ type: "tool", name, detail, input: params }];
     if (state === "ERROR") return [{ type: "error", text: `Falló la herramienta ${name}` }];
     return [];
   }
@@ -120,7 +120,7 @@ function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEven
     for (const req of Array.isArray(obj.data?.toolRequests) ? obj.data.toolRequests : []) {
       const name = req?.name ?? req?.toolName ?? "tool";
       const detail = req?.arguments !== undefined ? JSON.stringify(req.arguments).substring(0, 200) : undefined;
-      events.push({ type: "tool", name, detail });
+      events.push({ type: "tool", name, detail, input: req?.arguments });
     }
     return events;
   }
