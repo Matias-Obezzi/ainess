@@ -51,8 +51,8 @@ export function HierarchyGraph() {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
-    const nodeWidth = 260;
-    const nodeHeight = 180;
+    const nodeWidth = 280;
+    const nodeHeight = 260;
 
     for (const [lvl, items] of levelItems.entries()) {
       const totalWidth = items.length * nodeWidth;
