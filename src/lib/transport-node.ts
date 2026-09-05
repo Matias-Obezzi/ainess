@@ -263,6 +263,16 @@ export const nodeTransport: Transport = {
     return p;
   },
 
+  readTextFile: async (relativePath: string) => {
+    if (relativePath.includes("..")) throw new Error("Invalid path");
+    const p = path.join(path.dirname(getConfigPath()), relativePath);
+    try {
+      return fs.readFileSync(p, "utf-8");
+    } catch {
+      return null;
+    }
+  },
+
   exec: async (program: string, args: string[], cwd?: string) => {
     const resolved = resolveProgram(program, args);
     const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout: 60000, windowsHide: true });

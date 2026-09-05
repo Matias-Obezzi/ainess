@@ -50,7 +50,8 @@ Leé el plan completo antes de tocar nada y ejecutalo de punta a punta. Reglas:
 EOF
 )
 
-ARGS=(--dangerously-skip-permissions --output-format json --print-timeout "$TIMEOUT" --effort "$EFFORT")
+ARGS=(--dangerously-skip-permissions --output-format json --print-timeout "$TIMEOUT")
+[ -n "$EFFORT" ] && [ "$EFFORT" != "none" ] && ARGS+=(--effort "$EFFORT")
 if [ "${AGY_NEW_PROJECT:-}" = "1" ]; then
   ARGS+=(--new-project)
 else

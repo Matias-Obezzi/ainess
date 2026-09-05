@@ -49,3 +49,20 @@ pub fn write_config_file(app: tauri::AppHandle, relative_path: String, content: 
 
     Ok(path.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub fn read_config_file(app: tauri::AppHandle, relative_path: String) -> Result<Option<String>, String> {
+    if relative_path.contains("..") {
+        return Err("Invalid path".into());
+    }
+
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let path = config_dir.join(&relative_path);
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    Ok(Some(content))
+}

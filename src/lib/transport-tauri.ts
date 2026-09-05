@@ -10,6 +10,13 @@ export const tauriTransport: Transport = {
   saveConfig: async (config) => ipc.saveConfig(config),
   detectBinaries: async () => ipc.detectBinaries(),
   writeTextFile: async (relativePath, content) => (window as any).__TAURI_INVOKE__("write_config_file", { relativePath, content }),
+  readTextFile: async (relativePath) => {
+    try {
+      return await (window as any).__TAURI_INVOKE__("read_config_file", { relativePath });
+    } catch {
+      return null;
+    }
+  },
   exec: async (program, args, cwd) => (window as any).__TAURI_INVOKE__("exec_capture", { program, args, cwd }),
   httpPost: async (url, body, headers) => (window as any).__TAURI_INVOKE__("http_post", { url, body, headers }),
 };

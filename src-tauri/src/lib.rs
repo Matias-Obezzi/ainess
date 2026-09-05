@@ -17,6 +17,7 @@ pub fn run() {
             config::load_config,
             config::save_config,
             config::write_config_file,
+            config::read_config_file,
             detect::detect_binaries,
             http::http_post
         ])

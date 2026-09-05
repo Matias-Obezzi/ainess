@@ -101,7 +101,7 @@ export interface Hook {
 }
 
 export interface AppConfig {
-  version: 5;
+  version: 6;
   agents: AgentConfig[];
   projects: Project[];
   lastProjectId: string | null;
@@ -115,6 +115,7 @@ export interface AppConfig {
   presets: Array<{ id: string; name: string; prompt: string; agentId?: string; model?: string }>;
   autoModel: boolean;
   hooks: Hook[];
+  chats: Chat[];
 }
 
 export interface AgentRuntime {
@@ -150,6 +151,8 @@ export interface Run {
   /** Continuation round, starts at 0. */
   round: number;
   model?: string;
+  /** "task" (default) or "chat" — chat runs skip delegation parsing. */
+  kind?: "task" | "chat";
 }
 
 export type MessageKind =
@@ -178,6 +181,31 @@ export interface Delegation {
   agent: string;
   task: string;
   model?: string;
+}
+
+export interface ChatParticipant {
+  agentId: string;
+  role: string;
+  model?: string;
+}
+
+export interface Chat {
+  id: string;
+  projectId: string;
+  name: string;
+  mode: "individual" | "shared";
+  participants: ChatParticipant[];
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  ts: number;
+  from: "user" | string; /* agentId */
+  text: string;
+  runId?: string;
+  status?: "pending" | "done" | "error";
 }
 
 export interface BinaryInfo {
