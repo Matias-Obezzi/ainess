@@ -35,7 +35,8 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
-      if (key === "`") {
+      // `code` covers layouts where the backtick is a dead key and never reaches `key`.
+      if (key === "`" || e.code === "Backquote") {
         e.preventDefault();
         const state = useAppStore.getState();
         state.toggleTermPanel();
