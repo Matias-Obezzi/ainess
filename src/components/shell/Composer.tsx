@@ -82,10 +82,29 @@ export function Composer() {
     else if (currentProjectId) void stopAll(currentProjectId);
   };
 
+  // Escape stops the running turn/task from anywhere in the project screen (dialogs keep it).
+  useEffect(() => {
+    if (!busy) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if ((e.target as HTMLElement | null)?.closest?.("[role=dialog]")) return;
+      e.preventDefault();
+      handleStop();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, chatMode, currentChatId, currentProjectId]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && e.ctrlKey) {
       e.preventDefault();
       handleSend();
+      return;
+    }
+    if (e.key === "Escape" && busy) {
+      e.preventDefault();
+      handleStop();
       return;
     }
     // Arrow up on an empty box walks back through the prompts sent in this session.

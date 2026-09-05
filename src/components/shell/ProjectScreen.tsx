@@ -17,7 +17,6 @@ export function ProjectScreen() {
   const setProjectMode = useAppStore(state => state.setProjectMode);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
-  const stopAll = useAppStore(state => state.stopAll);
   const runtime = useAppStore(state => state.runtime);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
 
@@ -79,19 +78,6 @@ export function ProjectScreen() {
             onClick={() => toggleCommPanel()}
           >
             <PanelRight className="h-3.5 w-3.5" /> Comunicación
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="h-7"
-            disabled={running === 0}
-            title="Click: detener este proyecto. Shift+Click: detener todos."
-            onClick={e => {
-              if (e.shiftKey) void stopAll();
-              else void stopAll(currentProjectId || undefined);
-            }}
-          >
-            Detener
           </Button>
         </div>
       </div>

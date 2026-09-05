@@ -131,10 +131,6 @@ export function Sidebar() {
     >
       <div className="w-[260px] h-full flex flex-col">
       <div className="p-3 flex flex-col gap-2 border-b border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold tracking-tight">ainess</span>
-          <span className="text-[10px] text-muted-foreground">Orquestador</span>
-        </div>
         <Button
           variant={screen === "home" ? "secondary" : "ghost"}
           size="sm"
@@ -148,7 +144,7 @@ export function Sidebar() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
         {projects.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-6">Sin proyectos</div>
         )}
@@ -159,7 +155,7 @@ export function Sidebar() {
           const isOpenProject = currentProjectId === p.id && screen === "project";
 
           return (
-            <div key={p.id} className="flex flex-col">
+            <div key={p.id} className="flex flex-col gap-0.5">
               <div
                 className={`group flex items-center gap-1 rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
                 onClick={() => openProject(p.id, null)}
@@ -205,7 +201,7 @@ export function Sidebar() {
               </div>
 
               {!collapsed && (
-                <div className="ml-4 flex flex-col">
+                <div className="ml-4 mt-0.5 mb-1 flex flex-col gap-0.5">
                   <button
                     type="button"
                     className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs text-left hover:bg-accent ${
