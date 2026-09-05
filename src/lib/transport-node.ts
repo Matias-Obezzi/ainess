@@ -69,17 +69,29 @@ function which(name: string): string | null {
   return null;
 }
 
+/** Folders where the Claude desktop app keeps its bundled Claude Code (`<dir>/<version>/claude.exe`). */
+export function claudeCandidateDirs(): string[] {
+  const roots = [
+    process.env.APPDATA,
+    path.join(os.homedir(), "AppData", "Roaming"),
+    process.env.LOCALAPPDATA,
+    path.join(os.homedir(), "AppData", "Local"),
+  ].filter((r): r is string => !!r);
+  const dirs = roots.map(r => path.join(r, "Claude", "claude-code"));
+  return [...new Set(dirs)];
+}
+
 function detectClaude(): BinaryInfo | null {
   let p = which("claude");
   if (p) return { path: p, version: getVersion(p) };
 
-  const appData = process.env.APPDATA ?? os.homedir();
-  const claudeCodeDir = path.join(appData, "Claude", "claude-code");
   let bestPath: string | null = null;
   let bestVersion: number[] = [0,0,0];
 
-  if (fs.existsSync(claudeCodeDir)) {
-    const entries = fs.readdirSync(claudeCodeDir, { withFileTypes: true });
+  for (const claudeCodeDir of claudeCandidateDirs()) {
+    if (!fs.existsSync(claudeCodeDir)) continue;
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(claudeCodeDir, { withFileTypes: true }); } catch { continue; }
     for (const entry of entries) {
       if (entry.isDirectory()) {
         const parsed = parseSemver(entry.name);

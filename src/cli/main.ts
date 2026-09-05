@@ -9,6 +9,8 @@ import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
 import { remoteUrl } from "@/lib/remote";
 import { localIp } from "@/lib/remote-node";
+import { claudeCandidateDirs } from "@/lib/transport-node";
+import * as os from "node:os";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
@@ -70,7 +72,16 @@ async function main() {
 
   if (first === "detect") {
     const sub = args[1] || "list";
-    if (sub === "list") {
+    if (sub === "list" || sub === "--verbose") {
+      if (args.includes("--verbose")) {
+        console.log(`Entorno: APPDATA=${process.env.APPDATA ?? "(sin definir)"}  USERPROFILE=${process.env.USERPROFILE ?? "(sin definir)"}  usuario=${os.userInfo().username}`);
+        for (const d of claudeCandidateDirs()) {
+          let entries: string[] = [];
+          try { entries = fs.readdirSync(d); } catch { /* missing */ }
+          console.log(`Carpeta Claude Code ${d}: ${fs.existsSync(d) ? entries.join(", ") || "(vacía)" : "no existe"}`);
+        }
+        console.log(`PATH tiene claude: ${process.env.PATH?.split(";").some(p => fs.existsSync(path.join(p, "claude.exe")) || fs.existsSync(path.join(p, "claude.cmd"))) ? "sí" : "no"}`);
+      }
       if (jsonOutput) {
         console.log(JSON.stringify(store.binaries));
       } else {

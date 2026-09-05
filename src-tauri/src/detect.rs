@@ -71,8 +71,18 @@ fn detect_claude() -> Option<BinaryInfo> {
     let mut best_path: Option<PathBuf> = None;
     let mut best_version = vec![0, 0, 0];
 
-    let appdata = dirs::config_dir().or_else(|| std::env::var("APPDATA").ok().map(PathBuf::from));
-    if let Some(appdata_path) = appdata {
+    // The desktop app keeps Claude Code under Roaming (and could move to Local): check
+    // every plausible root, not only APPDATA, so an odd terminal environment still finds it.
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Some(d) = dirs::config_dir() { roots.push(d); }
+    if let Ok(v) = std::env::var("APPDATA") { roots.push(PathBuf::from(v)); }
+    if let Some(h) = dirs::home_dir() {
+        roots.push(h.join("AppData").join("Roaming"));
+        roots.push(h.join("AppData").join("Local"));
+    }
+    if let Some(d) = dirs::data_local_dir() { roots.push(d); }
+    roots.dedup();
+    for appdata_path in roots {
         let claude_code_dir = appdata_path.join("Claude").join("claude-code");
         if let Ok(entries) = std::fs::read_dir(&claude_code_dir) {
             for entry in entries.flatten() {
