@@ -13,6 +13,7 @@ import { AgentsPanel } from "@/components/AgentsPanel";
 import { ResourcesPanel } from "@/components/ResourcesPanel";
 import { ProjectsPanel } from "@/components/ProjectsPanel";
 import { ChatPanel } from "@/components/ChatPanel";
+import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 
 export default function App() {
   const init = useAppStore(state => state.init);
@@ -49,8 +50,10 @@ export default function App() {
       <Island position="top" idle={false} />
       <Toaster position="bottom-right" richColors />
       
-      <main className="flex-1 overflow-hidden p-4">
-        <Tabs value={tab} onValueChange={setTab} className="h-full flex flex-col">
+      <main className="flex-1 overflow-hidden p-4 flex flex-col gap-3">
+        {/* Pending approvals are visible from every tab. */}
+        <ApprovalsPanel />
+        <Tabs value={tab} onValueChange={setTab} className="flex-1 min-h-0 flex flex-col">
           <TabsList>
             <TabsTrigger value="prompt">Prompt</TabsTrigger>
             <TabsTrigger value="comunicacion">Comunicación</TabsTrigger>

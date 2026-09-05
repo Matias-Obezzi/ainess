@@ -48,13 +48,14 @@ async function main() {
     console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
+    console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
     console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
     console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
     console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status"]);
+  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "profile", "presets", "chat", "history", "status", "approvals"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -619,6 +620,58 @@ async function main() {
     process.exit(0);
   }
 
+  if (first === "approvals") {
+    const sub = args[1] || "list";
+    for (const p of store.config.projects) await loadHistory(p.id);
+    const state = useAppStore.getState();
+    const name = (id?: string) => state.config.agents.find(a => a.id === id)?.name || id || "";
+    const pending = Object.values(state.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt);
+    if (sub === "list") {
+      if (jsonOutput) { console.log(JSON.stringify(pending)); process.exit(0); }
+      if (pending.length === 0) console.log("No hay aprobaciones pendientes.");
+      for (const a of pending) {
+        const proj = state.config.projects.find(p => p.id === a.projectId)?.name || a.projectId;
+        console.log(`${a.id.slice(0, 8)}  [${proj}]  ${name(a.agentId)} → ${name(a.toAgentId)}  ${new Date(a.createdAt).toLocaleTimeString("es-AR", { hour12: false })}`);
+        console.log(`    ${a.payload.prompt.replace(/\s+/g, " ").slice(0, 160)}`);
+      }
+      process.exit(0);
+    }
+    if (sub === "approve" || sub === "reject") {
+      const prefix = args[2];
+      if (!prefix) error(`Uso: ais approvals ${sub} <id> [--note "..."]`);
+      const { values: av } = parseArgs({ args: args.slice(3), options: { note: { type: "string" } }, strict: false });
+      const target = pending.find(a => a.id.startsWith(prefix));
+      if (!target) error(`No hay una aprobación pendiente que empiece con "${prefix}".`);
+      // Deciding may launch runs in THIS process (the child, or the parent's continuation
+      // after a rejection): stay alive until nothing is running any more.
+      const projectId = target.projectId;
+      const decidedAt = Date.now();
+      store.setCurrentProject(projectId);
+      if (sub === "reject") {
+        await store.reject(target.id, av.note as string | undefined);
+        print({ ok: true, id: target.id }, `Rechazada: ${target.summary}. Continuando en este proceso…`);
+      } else {
+        await store.approve(target.id, av.note as string | undefined);
+        print({ ok: true, id: target.id }, `Aprobada: ${target.summary}. Ejecutando en este proceso…`);
+      }
+      await new Promise<void>(resolve => {
+        const check = () => {
+          const running = Object.values(useAppStore.getState().runs).some(r => r.projectId === projectId && r.status === "running");
+          if (!running) resolve(); else setTimeout(check, 500);
+        };
+        setTimeout(check, 1000);
+      });
+      const after = useAppStore.getState();
+      const last = after.messages.filter(m => m.projectId === projectId && m.kind === "result" && m.toAgentId === "user" && m.ts >= decidedAt).pop();
+      if (last) console.log(`\n${last.text}`);
+      const stillPending = Object.values(after.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
+      for (const a of stillPending) console.log(`Nueva aprobación pendiente: ${a.id.slice(0, 8)}  ${a.summary}`);
+      await flushHistory();
+      process.exit(0);
+    }
+    error("Uso: ais approvals list | approve <id> [--note] | reject <id> [--note]");
+  }
+
   if (first === "projects") {
     const sub = args[1] || "list";
     if (sub === "list") {
@@ -928,6 +981,23 @@ async function main() {
             }
           }
         }
+      }
+    }
+
+    // A delegation waiting for approval parks the task: report it and exit so the user can
+    // decide with `ais approvals approve <id>` (or from the app / phone) later.
+    if (state.approvals !== prevState.approvals) {
+      const s = useAppStore.getState();
+      const pending = Object.values(s.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
+      const running = Object.values(s.runs).some(r => r.projectId === projectId && r.status === "running");
+      if (pending.length > 0 && !running) {
+        if (!values.json) {
+          console.log("\n\x1b[33mEsperando tu aprobación:\x1b[0m");
+          for (const a of pending) console.log(`  ${a.id.slice(0, 8)}  ${a.summary}`);
+          console.log("Aprobá con: ais approvals approve <id>   (o rechazá con reject)");
+        }
+        void flushHistory().finally(() => process.exit(3));
+        return;
       }
     }
 

@@ -94,6 +94,16 @@ export function ResourcesPanel() {
               <span className="text-sm text-muted-foreground">Si está activo, el planificador elegirá automáticamente el modelo adecuado (flash, pro, etc) para cada tarea delegada a los agentes.</span>
             </div>
           </div>
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+            <Switch
+              checked={store.config.approveDelegations}
+              onCheckedChange={(checked) => store.updateConfig({ approveDelegations: checked })}
+            />
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold">Aprobar todas las delegaciones</label>
+              <span className="text-sm text-muted-foreground">Cada tarea que el planificador delegue queda en espera hasta que la apruebes desde la app, el CLI o el celular.</span>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="presets" className="flex-1 mt-4 overflow-y-auto space-y-4">

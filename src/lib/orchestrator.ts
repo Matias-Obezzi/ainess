@@ -1,5 +1,6 @@
 import { useAppStore, selectChildren, selectAgent, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
+import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
@@ -319,7 +320,13 @@ function onRunFinished(runId: string) {
             const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
             addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
             void emitHookEvent("delegation", {}, { ...ctx, toAgent: childAgent.name, task: task.task, model: modelToUse || "" });
-            startRun({ agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse });
+            const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse };
+            if (store.config.approveDelegations || childAgent.requireApproval) {
+              // Gate: the child only runs once the user approves (app, CLI or phone).
+              requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
+            } else {
+              startRun(payload);
+            }
           } else {
             addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
           }
@@ -371,6 +378,8 @@ function maybeContinueParent(parentRunId: string) {
   const store = useAppStore.getState();
   const parentRun = store.runs[parentRunId];
   if (!parentRun) return;
+  // Delegations still waiting for approval count as unfinished children.
+  if (pendingApprovalsFor(parentRunId).length > 0) return;
 
   const allChildrenDone = parentRun.childRunIds.every(id => {
     const r = store.runs[id];
@@ -496,6 +505,92 @@ export async function instructAgent(agentId: string, text: string, projectId: st
 }
 
 /** True when `run` descends (through parentRunId) from a run of `agentId`. */
+// ---- Approvals: delegations that wait for the user's go-ahead ----
+
+function requestApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" | "summary" | "payload">): Approval {
+  const approval: Approval = {
+    id: crypto.randomUUID(),
+    projectId: input.payload.projectId,
+    createdAt: Date.now(),
+    status: "pending",
+    ...input,
+  };
+  useAppStore.setState(state => ({ approvals: { ...state.approvals, [approval.id]: approval } }));
+  addMessage({ projectId: approval.projectId, fromAgentId: "system", toAgentId: approval.agentId, kind: "system", text: `Esperando aprobación: ${approval.summary}`, runId: approval.payload.parentRunId ?? undefined });
+  const store = useAppStore.getState();
+  void emitHookEvent("approval.requested", { summary: approval.summary, approvalId: approval.id }, {
+    project: store.config.projects.find(p => p.id === approval.projectId),
+    agent: selectAgent(store, approval.agentId),
+    toAgent: approval.toAgentId ? selectAgent(store, approval.toAgentId)?.name : undefined,
+    task: approval.payload.prompt,
+  });
+  return approval;
+}
+
+function pendingApprovalsFor(parentRunId: string): Approval[] {
+  return Object.values(useAppStore.getState().approvals).filter(a => a.status === "pending" && a.payload.parentRunId === parentRunId);
+}
+
+function settleApproval(approvalId: string, status: "approved" | "rejected", note?: string): Approval | undefined {
+  const approval = useAppStore.getState().approvals[approvalId];
+  if (!approval || approval.status !== "pending") return undefined;
+  const settled: Approval = { ...approval, status, note, decidedAt: Date.now() };
+  useAppStore.setState(state => ({ approvals: { ...state.approvals, [approvalId]: settled } }));
+  return settled;
+}
+
+export async function approveApproval(approvalId: string, note?: string): Promise<void> {
+  const approval = settleApproval(approvalId, "approved", note);
+  if (!approval) return;
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Aprobado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  startRun(approval.payload);
+}
+
+export async function rejectApproval(approvalId: string, note?: string): Promise<void> {
+  const approval = settleApproval(approvalId, "rejected", note);
+  if (!approval) return;
+  const store = useAppStore.getState();
+  const { payload } = approval;
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Rechazado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  // Record the rejection as a finished child run so the planner gets it with the other results.
+  const runId = crypto.randomUUID();
+  const now = Date.now();
+  const rejected: Run = {
+    id: runId,
+    agentId: payload.agentId,
+    projectId: payload.projectId,
+    parentRunId: payload.parentRunId,
+    rootRunId: payload.rootRunId ?? runId,
+    prompt: payload.prompt,
+    status: "error",
+    startedAt: now,
+    endedAt: now,
+    exitCode: null,
+    output: `[rechazado por el usuario${note ? `: ${note}` : ""}]`,
+    rawLines: [],
+    childRunIds: [],
+    round: payload.round,
+  };
+  useAppStore.setState(state => {
+    const parent = payload.parentRunId ? state.runs[payload.parentRunId] : undefined;
+    return {
+      runs: {
+        ...state.runs,
+        [runId]: rejected,
+        ...(parent && payload.parentRunId ? { [payload.parentRunId]: { ...parent, childRunIds: [...parent.childRunIds, runId] } } : {}),
+      },
+    };
+  });
+  if (payload.parentRunId && store.runs[payload.parentRunId]) maybeContinueParent(payload.parentRunId);
+}
+
+/** Reject every pending approval that belongs to a run of this agent (used by stopAgent). */
+function rejectPendingApprovalsOf(agentId: string, projectId: string): number {
+  const pending = Object.values(useAppStore.getState().approvals).filter(a => a.status === "pending" && a.projectId === projectId && a.agentId === agentId);
+  for (const a of pending) settleApproval(a.id, "rejected", "detenido por el usuario");
+  return pending.length;
+}
+
 function descendsFromAgent(runs: Record<string, Run>, run: Run, agentId: string): boolean {
   let cursor = run.parentRunId ? runs[run.parentRunId] : undefined;
   while (cursor) {
@@ -528,13 +623,20 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
     }
   }
   await Promise.all(descendants.map(r => getTransport().killRun(r.id).catch(() => {})));
+  // Delegations still waiting for approval are dropped too; the task ends here.
+  const rejected = rejectPendingApprovalsOf(agentId, projectId);
   if (descendants.length === 0) {
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {
-        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], status: "idle" } } }
+        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], status: "idle" } } },
+        ...(rejected > 0 ? { activeTaskRunId: { ...state.activeTaskRunId, [projectId]: null } } : {}),
       };
     });
+    if (rejected > 0) {
+      const agent = selectAgent(store, agentId);
+      addMessage({ projectId, fromAgentId: "system", toAgentId: agentId, kind: "system", text: `Tarea de ${agent?.name ?? agentId} detenida: ${rejected} delegación(es) pendientes de aprobación descartadas` });
+    }
   }
 }
 

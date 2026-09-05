@@ -102,8 +102,8 @@ describe("claude provider", () => {
 });
 
 describe("plain-text providers and system prompt", () => {
-  it("joins stdout lines as the final output", () => {
-    expect(finalOutputFromLines(["a\n", "b\n"])).toBe("a\nb\n");
+  it("joins raw stdout lines (stored without line breaks) as the final output", () => {
+    expect(finalOutputFromLines(["a", "```delegate", "{}", "```"])).toBe("a\n```delegate\n{}\n```");
   });
 
   it("tells planners how to delegate and lists their children", () => {

@@ -44,6 +44,8 @@ export interface AgentConfig {
   customCommand?: CustomCommand;
   /** Hex color used for badges and graph nodes. */
   color?: string;
+  /** Tasks delegated to this agent wait for the user's approval before running. */
+  requireApproval?: boolean;
 }
 
 export interface Skill {
@@ -74,6 +76,7 @@ export interface Project {
 }
 
 export type HookEvent =
+  | "approval.requested"
   | "task.started"
   | "task.finished"
   | "task.failed"
@@ -100,8 +103,35 @@ export interface Hook {
   action: HookAction;
 }
 
+/** A delegated task (or instruction) waiting for the user's go-ahead. */
+export interface Approval {
+  id: string;
+  projectId: string;
+  kind: "delegation" | "instruction";
+  /** Agent that requested it (the planner). */
+  agentId: string;
+  /** Agent that would receive the task. */
+  toAgentId?: string;
+  summary: string;
+  /** Everything needed to launch the run once approved. */
+  payload: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; rootRunId?: string; model?: string };
+  createdAt: number;
+  status: "pending" | "approved" | "rejected";
+  note?: string;
+  decidedAt?: number;
+}
+
+export interface RemoteConfig {
+  enabled: boolean;
+  port: number;
+  token: string;
+}
+
 export interface AppConfig {
-  version: 6;
+  version: 7;
+  /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
+  approveDelegations: boolean;
+  remote: RemoteConfig;
   agents: AgentConfig[];
   projects: Project[];
   lastProjectId: string | null;

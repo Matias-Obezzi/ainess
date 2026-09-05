@@ -29,6 +29,7 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
   const [parentId, setParentId] = useState<string | null>(null);
   const [model, setModel] = useState("");
   const [autoApprove, setAutoApprove] = useState(false);
+  const [requireApproval, setRequireApproval] = useState(false);
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [customProgram, setCustomProgram] = useState("");
@@ -45,6 +46,7 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
         setParentId(agent.parentId);
         setModel(agent.model || "");
         setAutoApprove(agent.autoApprove);
+        setRequireApproval(agent.requireApproval ?? false);
         setDescription(agent.description || "");
         setSystemPrompt(agent.systemPrompt || "");
         setCustomProgram(agent.customCommand?.program || "");
@@ -89,6 +91,7 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
       parentId,
       model: model || undefined,
       autoApprove,
+      requireApproval: requireApproval || undefined,
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
       color
@@ -186,6 +189,11 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
             <div className="flex items-center gap-2">
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
               <Label htmlFor="auto-approve">Auto-aprobar herramientas</Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch checked={requireApproval} onCheckedChange={setRequireApproval} id="require-approval" />
+              <Label htmlFor="require-approval">Requiere tu aprobación para recibir tareas delegadas</Label>
             </div>
 
             <div className="space-y-1">

@@ -12,6 +12,8 @@ export function Header() {
   const setCurrentProject = useAppStore(state => state.setCurrentProject);
   const stopAll = useAppStore(state => state.stopAll);
   
+  const approvals = useAppStore(state => state.approvals);
+  const pendingApprovals = Object.values(approvals).filter(a => a.status === "pending").length;
   const currentRunningCount = selectRunningCount(useAppStore.getState(), currentProjectId || undefined);
   const totalRunningCount = selectRunningCount(useAppStore.getState());
   const otherRunningCount = totalRunningCount - currentRunningCount;
@@ -64,6 +66,11 @@ export function Header() {
           )}
         </div>
         
+        {pendingApprovals > 0 && (
+          <Badge className="bg-amber-500 text-black hover:bg-amber-500" title="Delegaciones esperando tu aprobación">
+            {pendingApprovals} {pendingApprovals === 1 ? "aprobación pendiente" : "aprobaciones pendientes"}
+          </Badge>
+        )}
         <div className="text-sm">
           {currentRunningCount} trabajando
         </div>

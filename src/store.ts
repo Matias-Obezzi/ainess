@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
@@ -50,6 +50,11 @@ export interface AppState {
   /** Drops a project's runs and feed, in memory and on disk. */
   clearHistory(projectId: string): Promise<void>;
 
+  // Approvals (delegations waiting for the user's go-ahead)
+  approvals: Record<string, Approval>;
+  approve(approvalId: string, note?: string): Promise<void>;
+  reject(approvalId: string, note?: string): Promise<void>;
+
   // Chat actions
   createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
   updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
@@ -66,7 +71,9 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 6,
+    version: 7,
+    approveDelegations: false,
+    remote: { enabled: false, port: 4710, token: crypto.randomUUID() },
     projects: [],
     lastProjectId: null,
     maxRounds: 6,
@@ -125,7 +132,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 6, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
+  config: { version: 7, approveDelegations: false, remote: { enabled: false, port: 4710, token: "" }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
   binaries: {},
   runtime: {},
   runs: {},
@@ -135,6 +142,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatMessages: {},
   chatSessions: {},
   currentChatId: null,
+  approvals: {},
+
+  approve: (approvalId, note) => orchestrator.approveApproval(approvalId, note),
+  reject: (approvalId, note) => orchestrator.rejectApproval(approvalId, note),
 
   init: () => {
     // Idempotent: StrictMode mounts twice and both calls must share one initialization.
@@ -536,6 +547,17 @@ async function runInit(): Promise<void> {
       isSeed = true;
     }
 
+    // Migration to version 7: approvals gate and LAN remote access.
+    if ((config.version as number) < 7 || !config.remote) {
+      config = {
+        ...config,
+        version: 7,
+        approveDelegations: config.approveDelegations ?? false,
+        remote: config.remote ?? { enabled: false, port: 4710, token: crypto.randomUUID() },
+      } as AppConfig;
+      isSeed = true;
+    }
+
     
     const runtime: Record<string, Record<string, AgentRuntime>> = {};
     for (const p of config.projects) {
@@ -560,6 +582,7 @@ async function runInit(): Promise<void> {
       ? config.projects.map(p => p.id)
       : (config.lastProjectId ? [config.lastProjectId] : []);
     await Promise.all(toLoad.map(id => history.loadHistory(id)));
+    history.startHistorySync();
 
     set({ loaded: true });
 }

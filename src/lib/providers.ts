@@ -290,7 +290,8 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
 };
 
 export function finalOutputFromLines(lines: string[]): string {
-  return lines.join("");
+  // rawLines are stored without their line breaks, so put them back.
+  return lines.join("\n");
 }
 
 export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean }): string {
