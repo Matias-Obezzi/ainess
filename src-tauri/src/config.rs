@@ -66,3 +66,21 @@ pub fn read_config_file(app: tauri::AppHandle, relative_path: String) -> Result<
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     Ok(Some(content))
 }
+
+/// Reads a file relative to the user's home directory (read-only, rejects `..`).
+#[tauri::command]
+pub fn read_home_file(relative_path: String) -> Result<Option<String>, String> {
+    if relative_path.contains("..") {
+        return Err("Invalid path".into());
+    }
+
+    let home_dir = dirs::home_dir().ok_or_else(|| "No se pudo determinar el directorio home".to_string())?;
+    let path = home_dir.join(&relative_path);
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    Ok(Some(content))
+}

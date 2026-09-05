@@ -25,6 +25,15 @@ export const tauriTransport: Transport = {
     invoke<{ code: number | null; stdout: string; stderr: string }>("exec_capture", { program, args, cwd }),
   httpPost: async (url, body, headers) =>
     invoke<{ status: number; body: string }>("http_post", { url, body, headers }),
+  httpGet: async (url, headers) =>
+    invoke<{ status: number; body: string }>("http_get", { url, headers }),
+  readHomeFile: async (relativePath) => {
+    try {
+      return await invoke<string | null>("read_home_file", { relativePath });
+    } catch {
+      return null;
+    }
+  },
 
   // The Rust server (src-tauri/src/remote.rs) bridges HTTP requests to this webview:
   // commands arrive as `remote-command` events and are answered with `remote_reply`.

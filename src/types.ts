@@ -245,6 +245,35 @@ export interface BinaryInfo {
 
 export type Binaries = Partial<Record<ProviderId, BinaryInfo | null>>;
 
+export interface ModelInfo {
+  id: string;
+  label: string;
+}
+
+export interface QuotaItem {
+  /** "Premium requests", "Ventana de 5 h", "Pool Gemini"… */
+  label: string;
+  /** Id of the model (or pool prefix) this item applies to; no model = global. */
+  model?: string;
+  remaining?: number;
+  entitlement?: number;
+  percentRemaining?: number;
+  /** For window-style items (Claude Code). */
+  usedPercent?: number;
+  unlimited?: boolean;
+  /** Epoch ms. */
+  resetsAt?: number;
+  note?: string;
+}
+
+export interface ProviderQuota {
+  provider: ProviderId;
+  status: "ok" | "unavailable" | "error";
+  message?: string;
+  fetchedAt: number;
+  items: QuotaItem[];
+}
+
 // ---- Rust IPC contracts (see src-tauri/src/runner.rs) ----
 
 export interface SpawnOptions {
