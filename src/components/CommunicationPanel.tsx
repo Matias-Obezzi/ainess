@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useAppStore } from "@/store";
 import { MessageItem } from "./MessageItem";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { MessageKind } from "@/types";
 import { kindLabel } from "@/lib/labels";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Trash2 } from "lucide-react";
 
 const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
 
@@ -82,9 +82,9 @@ export function CommunicationPanel() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div className="p-2 border-b border-border flex items-center gap-2 flex-wrap">
+      <div className="p-2 border-b border-border flex items-center gap-2">
         <Select value={filterAgent} onValueChange={setFilterAgent}>
-          <SelectTrigger className="w-[150px] h-8 text-xs">
+          <SelectTrigger className="flex-1 h-8 text-xs">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
@@ -95,21 +95,27 @@ export function CommunicationPanel() {
           </SelectContent>
         </Select>
 
-        <div className="flex gap-1 flex-wrap flex-1">
-          {allKinds.map(kind => (
-            <Badge
-              key={kind}
-              variant={filterKinds.has(kind) ? "default" : "outline"}
-              className="cursor-pointer text-xs"
-              onClick={() => toggleKind(kind)}
-            >
-              {kindLabel[kind]}
-            </Badge>
-          ))}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              {filterKinds.size === allKinds.length ? "Tipos" : `Tipos (${filterKinds.size}/${allKinds.length})`}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {allKinds.map(kind => (
+              <DropdownMenuCheckboxItem
+                key={kind}
+                checked={filterKinds.has(kind)}
+                onCheckedChange={() => toggleKind(kind)}
+              >
+                {kindLabel[kind]}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <Button variant="ghost" size="sm" onClick={() => clearMessages(currentProjectId || undefined)}>
-          Limpiar
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearMessages(currentProjectId || undefined)} title="Limpiar">
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
