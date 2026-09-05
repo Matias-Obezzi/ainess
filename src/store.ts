@@ -13,6 +13,13 @@ export type Screen = "home" | "project";
 export type ProjectMode = "chat" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
 export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote";
+/** One visited view in the shell back/forward history. */
+export interface NavEntry {
+  screen: Screen;
+  projectId: string | null;
+  chatId: string | null;
+  projectMode: ProjectMode;
+}
 
 export interface AppState {
   loaded: boolean;
@@ -43,6 +50,13 @@ export interface AppState {
   settingsSection: SettingsSection;
   /** projectId -> collapsed in the sidebar. */
   sidebarCollapsed: Record<string, boolean>;
+  /** Whether the main sidebar rail is expanded (persisted). */
+  sidebarOpen: boolean;
+  /** Back/forward stack of visited views. Not persisted. */
+  navHistory: NavEntry[];
+  navIndex: number;
+  /** Whether the Ctrl+K search palette is open. Not persisted. */
+  searchOpen: boolean;
   openHome(): void;
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
   openProject(projectId: string, chatId?: string | null): void;
@@ -51,6 +65,10 @@ export interface AppState {
   setProjectMode(mode: ProjectMode): void;
   toggleCommPanel(open?: boolean): void;
   toggleSidebarProject(projectId: string): void;
+  toggleSidebar(open?: boolean): void;
+  toggleSearch(open?: boolean): void;
+  goBack(): void;
+  goForward(): void;
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
@@ -171,6 +189,7 @@ interface UiPrefs {
   commPanelOpen: boolean;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
+  sidebarOpen: boolean;
 }
 
 const UI_PREFS_KEY = "ais.ui";
@@ -180,6 +199,7 @@ const defaultUiPrefs: UiPrefs = {
   commPanelOpen: false,
   settingsSection: "general",
   sidebarCollapsed: {},
+  sidebarOpen: true,
 };
 
 const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote"];
@@ -204,6 +224,7 @@ function loadUiPrefs(): UiPrefs {
       commPanelOpen: parsed.commPanelOpen === true,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
+      sidebarOpen: parsed.sidebarOpen !== false,
     };
   } catch {
     return { ...defaultUiPrefs };
@@ -220,12 +241,52 @@ function saveUiPrefs(): void {
       commPanelOpen: s.commPanelOpen,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
+      sidebarOpen: s.sidebarOpen,
     };
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
   } catch {
     // Private mode / quota: layout preferences are not worth failing over.
   }
 }
+
+/** Cap on the back/forward stack: enough for a session, small enough to stay cheap. */
+const MAX_NAV = 50;
+
+function sameNavEntry(a: NavEntry, b: NavEntry): boolean {
+  return a.screen === b.screen && a.projectId === b.projectId && a.chatId === b.chatId && a.projectMode === b.projectMode;
+}
+
+/** Records a view the user navigated to, dropping whatever was ahead in the stack. */
+function pushNav(entry: NavEntry): void {
+  useAppStore.setState(s => {
+    const current = s.navHistory[s.navIndex];
+    if (current && sameNavEntry(current, entry)) return {};
+    const navHistory = [...s.navHistory.slice(0, s.navIndex + 1), entry].slice(-MAX_NAV);
+    return { navHistory, navIndex: navHistory.length - 1 };
+  });
+}
+
+/** Restores a recorded view without touching the history stack. */
+function applyNav(entry: NavEntry): void {
+  const state = useAppStore.getState();
+  const projectExists = !!entry.projectId && state.config.projects.some(p => p.id === entry.projectId);
+  // The project may have been deleted since it was visited; fall back to home instead of a blank screen.
+  const screen: Screen = entry.screen === "project" && !projectExists ? "home" : entry.screen;
+  if (entry.projectId && projectExists && entry.projectId !== state.currentProjectId) {
+    state.setCurrentProject(entry.projectId);
+  }
+  useAppStore.setState({
+    screen,
+    currentChatId: screen === "project" ? entry.chatId : state.currentChatId,
+    projectMode: entry.projectMode,
+  });
+  if (screen === "project" && entry.chatId) void state.loadChatMessages(entry.chatId);
+  saveUiPrefs();
+}
+
+/** Derived flags for the title bar arrows. */
+export const canGoBack = (s: AppState): boolean => s.navIndex > 0;
+export const canGoForward = (s: AppState): boolean => s.navIndex < s.navHistory.length - 1;
 
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -251,6 +312,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   approvals: {},
+  navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
+  navIndex: 0,
+  searchOpen: false,
 
   ...(() => {
     const prefs = loadUiPrefs();
@@ -259,7 +323,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   })(),
 
   openHome: () => {
+    const state = get();
     set({ screen: "home" });
+    pushNav({ screen: "home", projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: state.projectMode });
     saveUiPrefs();
   },
 
@@ -276,6 +342,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
     if (!sameProject) state.setCurrentProject(projectId);
     set({ currentChatId: nextChatId, screen: "project" });
+    pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: state.projectMode });
     if (nextChatId) void state.loadChatMessages(nextChatId);
     saveUiPrefs();
   },
@@ -290,7 +357,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   setProjectMode: (mode) => {
+    const state = get();
     set({ projectMode: mode });
+    pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
     saveUiPrefs();
   },
 
@@ -302,6 +371,31 @@ export const useAppStore = create<AppState>()((set, get) => ({
   toggleSidebarProject: (projectId) => {
     set(s => ({ sidebarCollapsed: { ...s.sidebarCollapsed, [projectId]: !s.sidebarCollapsed[projectId] } }));
     saveUiPrefs();
+  },
+
+  toggleSidebar: (open) => {
+    set(s => ({ sidebarOpen: open ?? !s.sidebarOpen }));
+    saveUiPrefs();
+  },
+
+  toggleSearch: (open) => {
+    set(s => ({ searchOpen: open ?? !s.searchOpen }));
+  },
+
+  goBack: () => {
+    const { navIndex, navHistory } = get();
+    if (navIndex <= 0) return;
+    const next = navIndex - 1;
+    set({ navIndex: next });
+    applyNav(navHistory[next]);
+  },
+
+  goForward: () => {
+    const { navIndex, navHistory } = get();
+    if (navIndex >= navHistory.length - 1) return;
+    const next = navIndex + 1;
+    set({ navIndex: next });
+    applyNav(navHistory[next]);
   },
 
   approve: (approvalId, note) => orchestrator.approveApproval(approvalId, note),
@@ -687,7 +781,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   setCurrentChat: (id) => {
+    const state = get();
+    if (state.currentChatId === id) return;
     set({ currentChatId: id });
+    if (state.screen === "project" && state.currentProjectId) {
+      pushNav({ screen: "project", projectId: state.currentProjectId, chatId: id, projectMode: state.projectMode });
+    }
   },
 
   sendChatMessage: async (chatId, text) => {
@@ -818,6 +917,14 @@ async function runInit(): Promise<void> {
       commPanelOpen: prefs.commPanelOpen,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
+      sidebarOpen: prefs.sidebarOpen,
+      navHistory: [{
+        screen,
+        projectId: lastProjectValid ? config.lastProjectId : null,
+        chatId: null,
+        projectMode: prefs.projectMode,
+      }],
+      navIndex: 0,
     });
 
     if (isTauri()) {
