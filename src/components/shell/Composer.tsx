@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ProviderLogo } from "@/components/ProviderLogo";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,7 +163,9 @@ export function Composer() {
                 </SelectTrigger>
                 <SelectContent>
                   {config.agents.map(a => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

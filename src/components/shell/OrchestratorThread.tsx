@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,7 +147,7 @@ function RunBubble({ run }: { run: Run }) {
       {/* The answer reads like a document, not a bubble: a header line and the content below it. */}
       <div className="group flex flex-col gap-2">
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: agent?.color || "#888" }} />
+          {agent ? <AgentAvatar provider={agent.provider} color={agent.color} size={22} /> : <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground" />}
           <span className="font-semibold">{agent?.name ?? run.agentId}</span>
           {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
           {(run.status === "error" || run.status === "killed") && (

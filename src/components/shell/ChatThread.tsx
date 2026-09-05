@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
       <div className="flex items-center gap-1.5 mb-1">
-        {!isUser && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />}
+        {!isUser && (agent ? <AgentAvatar provider={agent.provider} color={color} size={22} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />)}
         <span className="text-xs font-medium">{name}</span>
         <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
         {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}

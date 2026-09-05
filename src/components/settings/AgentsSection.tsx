@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store";
+import { AgentAvatar } from "@/components/ProviderLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +112,10 @@ export function AgentsSection() {
         return (
           <Card key={a.id} className="flex flex-col gap-2 p-4" style={{ borderLeft: `4px solid ${a.color || "#888"}` }}>
             <div className="flex items-start justify-between">
-              <div className="font-bold">{a.name}</div>
+              <div className="flex items-center gap-2 font-bold">
+                <AgentAvatar provider={a.provider} color={a.color} size={26} />
+                {a.name}
+              </div>
               <div className="flex gap-1">
                 <Badge variant="outline">{roleLabel[a.role] || a.role}</Badge>
                 <Badge>{PROVIDERS[a.provider]?.label || a.provider}</Badge>

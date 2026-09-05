@@ -1,5 +1,6 @@
 // What an agent is doing right now (and what it did): streamed text, every tool call and the
 // nested activity of the agents it delegated to. Fed by the `messages` feed, filtered by runId.
+import { ProviderLogo } from "@/components/ProviderLogo";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
@@ -140,6 +141,7 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
       <div className="flex items-center gap-1.5 text-xs">
         <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         {childRun && <StatusDot status={runDotStatus[childRun.status]} />}
+        {agent && <ProviderLogo provider={agent.provider} size={14} />}
         <span className="font-medium shrink-0">{name}</span>
         <span className="text-muted-foreground truncate" title={msg.text}>{truncate(msg.text, 90)}</span>
         {childRun && childRun.status !== "running" && (
