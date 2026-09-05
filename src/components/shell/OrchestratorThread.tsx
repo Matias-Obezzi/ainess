@@ -6,32 +6,26 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { Markdown } from "@/components/shell/Markdown";
+import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
+import { runDotStatus, runStatusLabel } from "@/lib/labels";
 import { formatClock, formatElapsed, truncate } from "@/lib/format";
-import type { AgentStatus, Run, RunStatus } from "@/types";
-import { ArrowDown, MessagesSquare } from "lucide-react";
+import type { Run } from "@/types";
+import { ArrowDown, ChevronDown, ChevronRight, MessagesSquare } from "lucide-react";
 
-/** How a run's status shows up on the little colored dot. */
-const dotStatus: Record<RunStatus, AgentStatus> = {
-  running: "working",
-  done: "idle",
-  error: "error",
-  killed: "stopped",
-};
-
-const runStatusLabel: Record<RunStatus, string> = {
-  running: "En curso",
-  done: "Terminada",
-  error: "Error",
-  killed: "Detenida",
-};
-
-const MAX_COLLAPSED_LINES = 12;
+/** Output longer than this is folded behind "Ver más". */
+const COLLAPSED_OUTPUT_LINES = 12;
+/** While something streams in, follow the bottom at most this often. */
+const FOLLOW_INTERVAL_MS = 150;
 
 /** The project's main conversation: what the user asked and what the team answered. */
 export function OrchestratorThread() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const runs = useAppStore(state => state.runs);
   const historyLoading = useAppStore(state => currentProjectId ? state.historyLoading[currentProjectId] : false);
+  const hasRunning = useAppStore(state =>
+    Object.values(state.runs).some(r => r.projectId === currentProjectId && r.status === "running"),
+  );
 
   const rootRuns = useMemo(
     () => Object.values(runs)
@@ -53,6 +47,21 @@ export function OrchestratorThread() {
     }
     prevCount.current = rootRuns.length;
   }, [rootRuns.length, stickToBottom]);
+
+  // A run streams dozens of deltas per second: follow the bottom on a timer (and inside a frame)
+  // instead of scrolling on every one of them.
+  useEffect(() => {
+    if (!hasRunning || !stickToBottom) return;
+    const interval = setInterval(() => {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 4) return;
+        bottomRef.current?.scrollIntoView({ block: "end" });
+      });
+    }, FOLLOW_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [hasRunning, stickToBottom]);
 
   const onScroll = () => {
     if (!scrollRef.current) return;
@@ -115,16 +124,11 @@ function RunBubble({ run }: { run: Run }) {
   const agents = useAppStore(state => state.config.agents);
   const runs = useAppStore(state => state.runs);
   const [expanded, setExpanded] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const steps = useActivityCount(run.id);
 
   const isRunning = run.status === "running";
-  useEffect(() => {
-    if (!isRunning) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [isRunning]);
-
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
 
@@ -134,9 +138,8 @@ function RunBubble({ run }: { run: Run }) {
     [runs, run.id],
   );
 
-  const lines = (run.output || "").split("\n");
-  const isLong = lines.length > MAX_COLLAPSED_LINES;
-  const shownOutput = !expanded && isLong ? lines.slice(0, MAX_COLLAPSED_LINES).join("\n") : run.output;
+  const isLong = (run.output || "").split("\n").length > COLLAPSED_OUTPUT_LINES;
+  const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
 
   return (
     <div className="flex flex-col gap-2">
@@ -158,7 +161,7 @@ function RunBubble({ run }: { run: Run }) {
         style={{ borderLeft: `3px solid ${agent?.color || "#888"}` }}
       >
         <div className="flex items-center gap-2 text-xs">
-          <StatusDot status={dotStatus[run.status]} />
+          <StatusDot status={runDotStatus[run.status]} />
           <span className="font-medium">{agent?.name ?? run.agentId}</span>
           {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
           {(run.status === "error" || run.status === "killed") && (
@@ -170,24 +173,45 @@ function RunBubble({ run }: { run: Run }) {
         </div>
 
         {isRunning ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Trabajando… <span className="tabular-nums">{formatElapsed((now - run.startedAt) / 1000)}</span>
-          </div>
+          <RunActivity runId={run.id} />
         ) : (
-          <div className="text-sm whitespace-pre-wrap break-words">
-            {shownOutput || <span className="text-muted-foreground italic">Sin salida</span>}
-          </div>
-        )}
+          <>
+            {steps > 0 && (
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => setActivityOpen(o => !o)}
+                >
+                  {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
+                </button>
+                {activityOpen && (
+                  <div className="rounded-md border border-border bg-background/40 p-2">
+                    <RunActivity runId={run.id} showFooter={false} />
+                  </div>
+                )}
+              </div>
+            )}
 
-        {!isRunning && isLong && (
-          <button
-            type="button"
-            className="self-start text-xs text-primary hover:underline"
-            onClick={() => setExpanded(e => !e)}
-          >
-            {expanded ? "Ver menos" : `Ver más (${lines.length} líneas)`}
-          </button>
+            {run.output ? (
+              <div className={!expanded && isLong ? "max-h-64 overflow-hidden" : undefined}>
+                <Markdown text={run.output} />
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground italic">Sin salida</div>
+            )}
+
+            {isLong && (
+              <button
+                type="button"
+                className="self-start text-xs text-primary hover:underline"
+                onClick={() => setExpanded(e => !e)}
+              >
+                {expanded ? "Ver menos" : "Ver más"}
+              </button>
+            )}
+          </>
         )}
 
         {children.length > 0 && (
@@ -198,7 +222,7 @@ function RunBubble({ run }: { run: Run }) {
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-[11px]"
                 title={c.prompt}
               >
-                <StatusDot status={dotStatus[c.status]} />
+                <StatusDot status={runDotStatus[c.status]} />
                 <span className="font-medium">{agentName(c.agentId)}:</span>
                 <span className="text-muted-foreground">{truncate(c.prompt, 60)}</span>
               </span>

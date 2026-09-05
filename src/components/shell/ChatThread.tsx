@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChatDialog } from "@/components/ChatDialog";
+import { Markdown } from "@/components/shell/Markdown";
+import { RunActivity } from "@/components/shell/RunActivity";
 import { island } from "@/components/ui/island";
-import { isChatActive } from "@/lib/chat";
 import { formatClock } from "@/lib/format";
 import type { ChatMessage } from "@/types";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
@@ -27,13 +28,6 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const chat = chats.find(c => c.id === chatId);
   const messages: ChatMessage[] = chatMessages[chatId] || [];
 
-  // The active-turn flag lives outside the store, so poll it while a reply streams in.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 500);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     void loadChatMessages(chatId);
   }, [chatId, loadChatMessages]);
@@ -42,6 +36,17 @@ export function ChatThread({ chatId }: { chatId: string }) {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, messages[messages.length - 1]?.text]);
 
+  // While an agent answers, its activity grows inside the bubble: follow the bottom on a timer
+  // instead of reacting to every streamed delta.
+  const answering = messages.some(m => m.status === "pending");
+  useEffect(() => {
+    if (!answering) return;
+    const interval = setInterval(() => {
+      requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
+    }, 150);
+    return () => clearInterval(interval);
+  }, [answering]);
+
   if (!chat) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
@@ -49,8 +54,6 @@ export function ChatThread({ chatId }: { chatId: string }) {
       </div>
     );
   }
-
-  const isActive = isChatActive(chatId);
 
   const handleRemove = async () => {
     const confirmed = await island.confirm({
@@ -101,12 +104,6 @@ export function ChatThread({ chatId }: { chatId: string }) {
           ) : (
             messages.map(msg => <ChatBubble key={msg.id} message={msg} />)
           )}
-          {isActive && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-              <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" />
-              Escribiendo…
-            </div>
-          )}
           <div ref={endRef} />
         </div>
       </div>
@@ -133,6 +130,9 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   const agent = !isUser ? agents.find(a => a.id === message.from) : undefined;
   const name = isUser ? "Vos" : (agent?.name || message.from);
   const color = agent?.color || "#888";
+  const isPending = message.status === "pending";
+  // A pending bubble left behind by a closed app has no run to stream from.
+  const hasRun = useAppStore(state => (message.runId ? !!state.runs[message.runId] : false));
 
   return (
     <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
@@ -140,21 +140,27 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         {!isUser && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />}
         <span className="text-xs font-medium">{name}</span>
         <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
-        {message.status === "pending" && (
-          <Badge variant="secondary" className="text-[9px] animate-pulse">escribiendo…</Badge>
-        )}
         {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
       </div>
       <div
-        className={`rounded-lg px-3 py-2 max-w-[80%] text-sm whitespace-pre-wrap break-words ${
+        className={`rounded-lg px-3 py-2 max-w-[80%] text-sm break-words ${
           isUser
-            ? "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
             : message.status === "error"
-              ? "bg-destructive/10 text-destructive border border-destructive/20"
+              ? "bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
               : "bg-muted"
         }`}
       >
-        {message.status === "pending" && !message.text ? "…" : message.text}
+        {isPending ? (
+          // Live: what the agent is writing plus every tool it uses, with its own footer.
+          message.runId && hasRun
+            ? <RunActivity runId={message.runId} />
+            : <span className="text-muted-foreground">…</span>
+        ) : isUser || message.status === "error" ? (
+          message.text
+        ) : (
+          <Markdown text={message.text} />
+        )}
       </div>
     </div>
   );

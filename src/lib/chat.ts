@@ -229,6 +229,18 @@ async function startTurn(
     responses: previousResponses,
     runId: runId,
   });
+
+  // The bubble needs the runId to show the agent's live activity while it answers.
+  if (runId) {
+    useAppStore.setState(state => {
+      const msgs = state.chatMessages[chatId] || [];
+      const idx = msgs.findIndex(m => m.id === pendingMsg.id);
+      if (idx < 0) return state;
+      const newMsgs = [...msgs];
+      newMsgs[idx] = { ...newMsgs[idx], runId };
+      return { chatMessages: { ...state.chatMessages, [chatId]: newMsgs } };
+    });
+  }
 }
 
 // ---- Called from orchestrator when a chat run finishes ----
