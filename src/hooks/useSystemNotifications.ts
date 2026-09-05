@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "@/store";
 import { isTauri } from "@/lib/tauri";
+import { log } from "@/lib/logger";
 
 /** Truncates to `max` chars, adding an ellipsis when it cuts the text short. */
 function truncate(text: string, max: number): string {
@@ -21,7 +22,7 @@ async function ensureNotificationsGranted(): Promise<boolean> {
     }
     return granted;
   } catch (e) {
-    console.warn("No se pudo verificar el permiso de notificaciones", e);
+    log.warn("notifications", "No se pudo verificar el permiso de notificaciones", e);
     return false;
   }
 }
@@ -33,7 +34,7 @@ async function notify(title: string, body: string): Promise<void> {
     const mod = await import("@tauri-apps/plugin-notification");
     mod.sendNotification({ title, body });
   } catch (e) {
-    console.warn("No se pudo enviar la notificación del sistema", e);
+    log.warn("notifications", "No se pudo enviar la notificación del sistema", e);
   }
 }
 

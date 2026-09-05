@@ -395,10 +395,121 @@ switch, separator, dialog, tooltip, select, tabs, scroll-area, alert, island, to
 skeleton, avatar, dropdown-menu. Iconos: `lucide-react`. Helper `cn` en `@/lib/utils`.
 Tema oscuro por defecto: poner `class="dark"` en `<html>` (index.html).
 
+## Logging
+
+Todo lo que pasa por `console.log/info/warn/error/debug`, los errores no capturados y los
+`unhandledrejection` del front, más los eventos del backend, se escriben en
+`<app_log_dir>/ainess-YYYY-MM-DD.log` (en Windows `%LOCALAPPDATA%\com.matias.ais\logs`, el mismo
+lugar para la app y para el CLI). Formato de línea:
+
+```
+2026-09-05T14:03:22.123Z [info] [runner] run 8bc8af51 inicia: claude.exe -p
+```
+
+`src-tauri/src/logging.rs`: `LogState { file: Mutex<Option<(String /*fecha*/, File)>> }` (`manage`d
+en `lib.rs`), `append(app, level, source, message)` (crea la carpeta, rota al cambiar el día,
+enmascara `token=…` / `"token":"…"` / `Bearer …` con `***`, trunca a 10 kB y nunca propaga un
+error), `prune_old(app)` (borra archivos de más de 14 días, se llama en `setup`) y los comandos
+`log_append`, `logs_dir`, `open_logs_dir` (usa `tauri_plugin_opener::open_path`, así el scope del
+plugin no cambia) y `read_recent_logs`. Loguean desde Rust: arranque y cierre de la app con la
+versión, spawn y exit de cada run (`runner.rs`), fallas de `exec_capture` y de `http_*`,
+`remote_start`/`remote_stop`, los eventos de la bandeja y todo el ciclo del túnel.
+
+`src/lib/logger.ts`: `log.debug/info/warn/error(source, ...args)` formatea (`JSON.stringify` para
+objetos, `name: message` + stack para `Error`), enmascara secretos, trunca a 10 kB, guarda las
+últimas 500 líneas en memoria (`getRecentLogs()`, lo usa "Copiar diagnóstico") y manda todo por
+`Transport.logAppend(level, source, message)`. En Tauri es `invoke("log_append")`; en el CLI el
+`nodeTransport` escribe el mismo archivo con `fs.appendFileSync` (y poda a los 14 días); en el
+navegador es no-op. `installConsoleCapture()` envuelve `console.*` (los originales siguen
+imprimiendo) y engancha `window.onerror` + `unhandledrejection` (en node,
+`uncaughtExceptionMonitor`, que observa sin cambiar el exit code); se llama en `src/main.tsx` y en
+`src/cli/main.ts`. El logger nunca usa `console`, para no recursar.
+
+Nivel mínimo: `AppConfig.logLevel` (`"debug" | "info" | "warn" | "error"`, default `"info"`), switch
+"Registrar detalles (debug)" en Configuración → General; `store.updateConfig` y `runInit` llaman a
+`setLogLevel`.
+
+## Acerca de y actualizaciones
+
+Sección `about` (última de `SETTINGS_SECTIONS`, icono `Info`,
+`src/components/settings/AboutSection.tsx`): nombre y versión, autor con link al perfil de GitHub
+(`tauri_plugin_opener`), tecnologías, "Buscar actualizaciones" (resultado inline: al día / versión
+nueva con notas y botón "Descargar e instalar" con `Progress` / "No se pudo consultar: …"), "Abrir
+carpeta de logs" (`open_logs_dir`, deshabilitado fuera de Tauri) y "Copiar diagnóstico" (versión,
+entorno, binarios detectados y las últimas 50 líneas del buffer del logger).
+
+La versión sale de `getVersion()` de `@tauri-apps/api/app` en la app y de la constante
+`__APP_VERSION__` (inyectada con `define` en `vite.config.ts` y `vite.cli.config.ts`, declarada en
+`src/vite-env.d.ts`) en el CLI y en el preview.
+
+Updater oficial de Tauri 2: `tauri-plugin-updater` + `tauri-plugin-process` en `Cargo.toml` y en
+npm, registrados en `lib.rs`, con las capabilities `updater:default` y `process:default`.
+`tauri.conf.json` tiene `bundle.createUpdaterArtifacts: true` y
+`plugins.updater { pubkey, endpoints: ["https://github.com/Matias-Obezzi/ainess/releases/latest/download/latest.json"] }`.
+`src/lib/updates.ts` expone `appVersion()` y `checkForUpdate()`, que nunca lanza: devuelve
+`{ available: false }`, `{ available: false, unsupported: true }` fuera de Tauri, `{ available:
+false, error }` si falla la consulta, o `{ available: true, version, body, install }` (descarga con
+progreso y `relaunch()`). El hook `src/hooks/useUpdateCheck.ts` (montado en `App.tsx`) consulta 5 s
+después de `loaded` si `config.autoUpdateCheck` está prendido y muestra un toast persistente
+"ainess X.Y.Z disponible" con botón "Instalar".
+
+Releases: `.github/workflows/release.yml` corre en cada push a `main` (windows-latest), verifica que
+las versiones de `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml` coincidan
+(`npm run release:check` → `scripts/release-check.mjs`), saltea si ya existe el tag `v<versión>` y,
+si no, usa `tauri-apps/tauri-action@v0` para publicar el instalador NSIS, su firma y `latest.json`.
+Único requisito del repo: el secret `TAURI_SIGNING_PRIVATE_KEY`. `.github/workflows/ci.yml` corre en
+PRs y en pushes a ramas que no son `main`: typecheck, tests, `npm run build`, `npm run build:cli`,
+`release:check` y `cargo check`.
+
+## Túnel público
+
+`AppConfig.remote.tunnel: { provider: "cloudflared" | "ngrok"; enabled: boolean }` (migración a
+`version: 9`, junto con `logLevel` y `autoUpdateCheck`; default `{ provider: "cloudflared", enabled:
+false }`).
+
+`src-tauri/src/tunnel.rs`: `TunnelState { child, url, provider }` (`Mutex`), comandos
+`tunnel_start(provider, port)`, `tunnel_stop()`, `tunnel_status()` y `tunnel_detect()`.
+`tunnel_start` es `async` y hace el trabajo bloqueante en `spawn_blocking`: resuelve el binario con
+`detect::find_path` (PATH + carpetas de winget), lo lanza oculto (`CREATE_NO_WINDOW`), lee stdout y
+stderr en hilos y espera hasta 30 s a que aparezca la URL pública; si el proceso muere antes,
+devuelve el error con las últimas líneas (y el consejo del authtoken si es ngrok). `tunnel_status`
+detecta con `try_wait` que el túnel se cayó solo, para que la UI muestre "Se cayó el túnel" con
+botón "Reintentar". `tunnel::shutdown` se llama en `RunEvent::Exit`, así no queda ningún proceso
+huérfano al salir por la bandeja.
+
+Comandos y parsing:
+
+- cloudflared: `cloudflared tunnel --url http://127.0.0.1:<port>`, imprime la URL en **stderr**
+  (`https://<algo>.trycloudflare.com`). Sin cuenta; la URL cambia cada vez.
+- ngrok: `ngrok http <port> --log=stdout --log-format=json`, la URL sale en el campo `url` del
+  evento `started tunnel`. Necesita `ngrok config add-authtoken …`.
+
+`src/lib/tunnel.ts` tiene la parte compartida y testeada (`extractTunnelUrl`, `tunnelArgs`,
+`tunnelBinary`, `tunnelInstallCommand`, `tunnelDescription`); `src/lib/tunnel-node.ts` es la misma
+lógica con `child_process` para `ais serve --tunnel`. `src/lib/remote.ts` agrega `startTunnel()`
+(exige que el servidor local esté corriendo, si no lanza "Prendé primero el acceso remoto local"),
+`stopTunnel()` y `tunnelUrl(publicUrl, token)`. El store tiene `tunnelStatus` y las acciones
+`startTunnel/stopTunnel/refreshTunnelStatus`; `stopRemote` apaga el túnel primero y `runInit` lo
+levanta al arrancar si `remote.enabled && remote.tunnel.enabled`.
+
+`RemoteSection` suma el bloque "Acceso desde afuera (túnel)": select de proveedor con su
+explicación, estado de detección del binario con el `winget install …` y botón "Volver a detectar",
+switch deshabilitado (con tooltip) si el acceso local está apagado o falta el binario, URL pública
+con QR y Copiar, y el aviso de seguridad. La página remota (`src/remote/remote.html`) no cambia:
+usa rutas relativas y funciona igual detrás del túnel.
+
+CLI: `ais serve --tunnel [cloudflared|ngrok]` levanta el túnel junto con el servidor e imprime la
+URL pública; `ais remote url --tunnel` devuelve la URL pública del túnel de ese proceso.
+
 ## Verificación
 
 ```
-npx tsc --noEmit            # frontend
-cd src-tauri && cargo check # backend
-npm run tauri dev           # app completa
+npx tsc --noEmit               # frontend
+npm test                       # unit tests (vitest)
+npm run build                  # bundle web
+npm run build:cli              # bundle del CLI
+npm run release:check          # las tres versiones coinciden
+cd src-tauri && cargo check    # backend
+cd src-tauri && cargo test     # unit tests de Rust (logging, tunnel)
+npm run tauri dev              # app completa
 ```

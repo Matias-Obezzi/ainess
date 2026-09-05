@@ -173,3 +173,53 @@ ais remote token --regenerate   # invalida la URL anterior
 La URL lleva un token: sin él el servidor responde 401. Solo escucha en la red local (no hay HTTPS ni acceso desde afuera); si no carga, permití el puerto en el firewall de Windows. La página móvil (`src/remote/remote.html`) no usa internet ni frameworks.
 
 Protocolo (para integrar otras herramientas): `GET /api/state`, `GET /api/events` (SSE con eventos `state`), `POST /api/prompt`, `/api/instruct`, `/api/stop`, `/api/approve`, `/api/chat`, todos con `Authorization: Bearer <token>` o `?token=`.
+
+### Acceso desde afuera (tunel publico)
+
+Ademas de la LAN, la app puede publicar el servidor local en una URL de internet con
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+o [ngrok](https://ngrok.com/). El tunel solo se puede prender con el acceso local ya prendido:
+lo unico que hace es reenviar `127.0.0.1:<puerto>`.
+
+- cloudflared: no necesita cuenta, la URL publica cambia cada vez. `winget install Cloudflare.cloudflared`
+- ngrok: necesita cuenta y authtoken (`ngrok config add-authtoken <token>`). `winget install Ngrok.Ngrok`
+
+En la app: Configuracion -> Remoto -> "Acceso desde afuera (tunel)". Desde la terminal:
+
+```bash
+ais serve --tunnel                # usa el proveedor guardado en la configuracion
+ais serve --tunnel ngrok          # fuerza uno
+ais remote url --tunnel           # URL publica del tunel de este proceso
+```
+
+Cualquiera con la URL publica y el token puede operar la app: si la compartiste, regenera el token.
+
+## Logs
+
+Todo lo que pasa por `console.*`, los errores no capturados del front y los eventos del backend
+(runs que arrancan y terminan, fallas de comandos, servidor remoto, tunel, bandeja) se escriben en
+`%LOCALAPPDATA%\com.matias.ais\logs\ainess-<fecha>.log`, con una linea por evento:
+
+```
+2026-09-05T14:03:22.123Z [info] [runner] run 8bc8af51 inicia: claude.exe -p
+```
+
+Rotan por dia y se borran solos a los 14 dias. Los tokens se enmascaran (`token=***`) antes de
+escribir. El nivel minimo se cambia en Configuracion -> General ("Registrar detalles (debug)") y la
+carpeta se abre desde Configuracion -> Acerca de.
+
+## Publicar una version
+
+Las releases las publica GitHub Actions (`.github/workflows/release.yml`) al mergear a `main`:
+
+1. En la PR de `dev` a `main`, subi la version en los tres archivos: `package.json`,
+   `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml` (`npm run release:check` verifica que
+   coincidan; CI lo corre solo).
+2. Al mergear, Actions crea el tag `v<version>`, compila el instalador NSIS, lo firma y publica
+   `latest.json` en la release. Si el tag ya existe, el workflow no hace nada.
+3. La app instalada ve la version nueva en el proximo chequeo (al iniciar, si esta activado en
+   Configuracion -> General, o con "Buscar actualizaciones" en Acerca de) y la instala desde ahi.
+
+Requisito unico del repo: el secret `TAURI_SIGNING_PRIVATE_KEY` con el contenido de
+`~/.tauri/ainess.key` (la clave publica ya esta en `src-tauri/tauri.conf.json`). Sin ese secret el
+workflow falla al firmar.

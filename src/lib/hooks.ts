@@ -1,6 +1,7 @@
 import { Hook, HookEvent, Project, AgentConfig } from "@/types";
 import { getTransport } from "./transport";
 import { useAppStore } from "@/store";
+import { log } from "@/lib/logger";
 
 export interface HookContext {
   project?: Project;
@@ -56,7 +57,7 @@ export async function emitHookEvent(event: HookEvent, vars: Record<string, any>,
     executeHookAction(hook, templateVars, ctx).catch(err => {
       // report error in system feed
       const msg = `Hook ${hook.name} falló: ${err.message}`;
-      console.error(msg, err);
+      log.error("hooks", msg, err);
       if (ctx.project) {
         useAppStore.setState(s => ({
           messages: [...s.messages, {
