@@ -16,6 +16,7 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string }> = [
   { id: "hooks", label: "Hooks" },
   { id: "context", label: "Contexto" },
   { id: "remote", label: "Remoto" },
+  { id: "about", label: "Acerca de" },
 ];
 
 /** Lowercases and strips accents so "orquestacion" matches "Orquestación". */
