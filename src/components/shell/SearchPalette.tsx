@@ -96,7 +96,8 @@ export function SearchPalette() {
       });
     }
 
-    for (const s of SETTINGS_SECTIONS.filter(s => matches(s.label))) {
+    // "conf" should also find every settings section, not only its own label.
+    for (const s of SETTINGS_SECTIONS.filter(s => matches(`Configuración ${s.label}`))) {
       out.push({
         key: `section:${s.id}`,
         group: "Configuración",
