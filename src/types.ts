@@ -127,11 +127,21 @@ export interface RemoteConfig {
   token: string;
 }
 
+export interface TrayConfig {
+  /** Keep the app running in the system tray when the window is closed. */
+  enabled: boolean;
+  /** Send a system notification when an agent needs approval. */
+  notifyApprovals: boolean;
+  /** Send a system notification when a task finishes. */
+  notifyResults: boolean;
+}
+
 export interface AppConfig {
-  version: 7;
+  version: 8;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
   approveDelegations: boolean;
   remote: RemoteConfig;
+  tray: TrayConfig;
   agents: AgentConfig[];
   projects: Project[];
   lastProjectId: string | null;

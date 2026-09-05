@@ -1,17 +1,18 @@
 import { create } from "zustand";
 import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, ModelInfo, ProviderQuota } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 
-/** Which top-level screen the shell is showing. */
-export type Screen = "home" | "project" | "settings";
+/** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
+export type Screen = "home" | "project";
 /** Project screen body: conversation or agent graph. */
 export type ProjectMode = "chat" | "graph";
-/** Which tab of the settings screen is open. */
-export type SettingsSection = "agents" | "resources";
+/** Which section of the settings dialog's sidebar is open. */
+export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote";
 
 export interface AppState {
   loaded: boolean;
@@ -37,6 +38,8 @@ export interface AppState {
   screen: Screen;
   projectMode: ProjectMode;
   commPanelOpen: boolean;
+  /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
+  settingsOpen: boolean;
   settingsSection: SettingsSection;
   /** projectId -> collapsed in the sidebar. */
   sidebarCollapsed: Record<string, boolean>;
@@ -44,6 +47,7 @@ export interface AppState {
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
   openProject(projectId: string, chatId?: string | null): void;
   openSettings(section?: SettingsSection): void;
+  closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
   toggleCommPanel(open?: boolean): void;
   toggleSidebarProject(projectId: string): void;
@@ -109,9 +113,10 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 7,
+    version: 8,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID() },
+    tray: { enabled: true, notifyApprovals: true, notifyResults: true },
     projects: [],
     lastProjectId: null,
     maxRounds: 6,
@@ -173,9 +178,18 @@ const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "chat",
   commPanelOpen: false,
-  settingsSection: "agents",
+  settingsSection: "general",
   sidebarCollapsed: {},
 };
+
+const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote"];
+
+/** Old builds stored "settings" as a screen and "resources" as a settings tab; both were removed. */
+function sanitizeSettingsSection(value: unknown): SettingsSection {
+  if (value === "resources") return "profile";
+  if (typeof value === "string" && (VALID_SETTINGS_SECTIONS as string[]).includes(value)) return value as SettingsSection;
+  return "general";
+}
 
 /** localStorage does not exist in the CLI/node build, so every access is guarded. */
 function loadUiPrefs(): UiPrefs {
@@ -185,10 +199,10 @@ function loadUiPrefs(): UiPrefs {
     if (!raw) return { ...defaultUiPrefs };
     const parsed = JSON.parse(raw) as Partial<UiPrefs>;
     return {
-      screen: parsed.screen === "project" || parsed.screen === "settings" ? parsed.screen : "home",
+      screen: parsed.screen === "project" ? "project" : "home",
       projectMode: parsed.projectMode === "graph" ? "graph" : "chat",
       commPanelOpen: parsed.commPanelOpen === true,
-      settingsSection: parsed.settingsSection === "resources" ? "resources" : "agents",
+      settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
     };
   } catch {
@@ -224,7 +238,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 7, approveDelegations: false, remote: { enabled: false, port: 4710, token: "" }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
+  config: { version: 8, approveDelegations: false, remote: { enabled: false, port: 4710, token: "" }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [] } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -241,7 +255,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   ...(() => {
     const prefs = loadUiPrefs();
     // The saved screen is only restored once the project list is known (see runInit).
-    return { ...prefs, screen: "home" as Screen };
+    return { ...prefs, screen: "home" as Screen, settingsOpen: false };
   })(),
 
   openHome: () => {
@@ -267,8 +281,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   openSettings: (section) => {
-    set(s => ({ screen: "settings", settingsSection: section ?? s.settingsSection }));
+    set(s => ({ settingsOpen: true, settingsSection: section ?? s.settingsSection }));
     saveUiPrefs();
+  },
+
+  closeSettings: () => {
+    set({ settingsOpen: false });
   },
 
   setProjectMode: (mode) => {
@@ -532,6 +550,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   updateConfig: (patch) => {
     set((state) => ({ config: { ...state.config, ...patch } }));
+    if (patch.tray && isTauri()) {
+      void getTransport().setTrayEnabled(patch.tray.enabled).catch(() => {});
+    }
     debouncedSave();
   },
 
@@ -761,6 +782,16 @@ async function runInit(): Promise<void> {
         version: 7,
         approveDelegations: config.approveDelegations ?? false,
         remote: config.remote ?? { enabled: false, port: 4710, token: crypto.randomUUID() },
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 8: system tray and notifications, on by default.
+    if ((config.version as number) < 8 || !config.tray) {
+      config = {
+        ...config,
+        version: 8,
+        tray: config.tray ?? { enabled: true, notifyApprovals: true, notifyResults: true },
       } as AppConfig;
       isSeed = true;
     }
@@ -777,7 +808,7 @@ async function runInit(): Promise<void> {
     // Restore the shell layout; the saved screen only counts when its project still exists.
     const prefs = loadUiPrefs();
     const lastProjectValid = !!config.lastProjectId && config.projects.some(p => p.id === config.lastProjectId);
-    const screen: Screen = prefs.screen === "settings" ? "settings" : lastProjectValid ? "project" : "home";
+    const screen: Screen = lastProjectValid ? "project" : "home";
     set({
       config,
       runtime,
@@ -789,6 +820,9 @@ async function runInit(): Promise<void> {
       sidebarCollapsed: prefs.sidebarCollapsed,
     });
 
+    if (isTauri()) {
+      void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
+    }
 
     if (isSeed) {
       await get().saveConfig();

@@ -3,14 +3,22 @@ mod detect;
 mod runner;
 mod http;
 mod remote;
+mod tray;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(runner::RunnerState::default())
         .manage(remote::RemoteState::default())
+        .manage(tray::TrayState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            tray::setup_tray(app)?;
+            Ok(())
+        })
+        .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             runner::spawn_run,
             runner::kill_run,
@@ -28,7 +36,8 @@ pub fn run() {
             remote::remote_stop,
             remote::remote_status,
             remote::remote_push_state,
-            remote::remote_reply
+            remote::remote_reply,
+            tray::set_tray_enabled
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

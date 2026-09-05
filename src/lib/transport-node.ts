@@ -357,4 +357,6 @@ export const nodeTransport: Transport = {
   },
 
   ...nodeRemote,
+
+  setTrayEnabled: async () => {},
 };

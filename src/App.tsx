@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { useAppStore } from "@/store";
 import { useActivityIsland } from "@/hooks/useActivityIsland";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useSystemNotifications } from "@/hooks/useSystemNotifications";
 import { Island } from "@/components/ui/island";
 import { Toaster } from "@/components/ui/toast";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectScreen } from "@/components/shell/ProjectScreen";
-import { SettingsScreen } from "@/components/shell/SettingsScreen";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { CommSidePanel } from "@/components/shell/CommSidePanel";
 
 export default function App() {
@@ -23,6 +24,19 @@ export default function App() {
 
   useActivityIsland();
   useNotifications();
+  useSystemNotifications();
+
+  // Ctrl+, opens Configuración, same shortcut as most desktop apps.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === ",") {
+        e.preventDefault();
+        useAppStore.getState().openSettings();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   if (!loaded) return null;
 
@@ -44,10 +58,10 @@ export default function App() {
           </>
         )}
         {screen === "project" && <ProjectScreen />}
-        {screen === "settings" && <SettingsScreen />}
       </main>
 
       {commPanelOpen && screen === "project" && <CommSidePanel />}
+      <SettingsDialog />
     </div>
   );
 }

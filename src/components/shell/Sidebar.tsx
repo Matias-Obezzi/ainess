@@ -35,6 +35,7 @@ export function Sidebar() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
   const screen = useAppStore(state => state.screen);
+  const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
   const openHome = useAppStore(state => state.openHome);
   const openProject = useAppStore(state => state.openProject);
@@ -279,7 +280,7 @@ export function Sidebar() {
           )}
         </div>
         <Button
-          variant={screen === "settings" ? "secondary" : "ghost"}
+          variant={settingsOpen ? "secondary" : "ghost"}
           size="sm"
           className="justify-start"
           onClick={() => openSettings()}

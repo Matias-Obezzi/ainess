@@ -52,4 +52,6 @@ export const tauriTransport: Transport = {
       }
       await invoke("remote_reply", { id: cmd.id, result }).catch(() => {});
     }),
+
+  setTrayEnabled: async (enabled) => invoke<void>("set_tray_enabled", { enabled }),
 };
