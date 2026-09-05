@@ -47,8 +47,11 @@ export function ProjectScreen() {
           {project.workspaceDir}
         </span>
 
-        {/* Right of centre on purpose: the <Island /> floats over the middle of the top edge. */}
-        <div className="ml-auto flex items-center gap-1 rounded-md border border-border p-0.5">
+        <Badge variant={running > 0 ? "default" : "outline"} className="ml-auto text-[10px]">
+          {running} trabajando
+        </Badge>
+
+        <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
           <Button
             variant={projectMode === "chat" ? "secondary" : "ghost"}
             size="sm"
@@ -68,9 +71,6 @@ export function ProjectScreen() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant={running > 0 ? "default" : "outline"} className="text-[10px]">
-            {running} trabajando
-          </Badge>
           <Button
             variant={commPanelOpen ? "secondary" : "ghost"}
             size="sm"
