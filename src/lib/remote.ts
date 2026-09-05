@@ -192,6 +192,7 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const chatId = str("chatId");
         const text = str("text")?.trim();
         if (!chatId || !text) return { error: "Faltan datos" };
+        if (!s.config.chats.some(c => c.id === chatId)) return { error: "Chat inexistente" };
         await s.sendChatMessage(chatId, text);
         return { ok: true };
       }

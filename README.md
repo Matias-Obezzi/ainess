@@ -27,6 +27,10 @@ AIS es una aplicaciÃ³n de escritorio que orquesta agentes de IA (como Claude C
    npm run tauri build
    ```
 
+Otros comandos útiles: `npm run build` (bundle web + página del celular), `npm run build:remote`
+(solo la página del celular, `dist-remote/index.html`), `npm run build:cli` (bundle del CLI, que la
+incrusta), `npm test` y `npx tsc --noEmit`.
+
 ## CÃ³mo funciona la delegaciÃ³n
 
 AIS utiliza una arquitectura jerÃ¡rquica de agentes, donde los agentes se dividen por roles:
@@ -170,9 +174,11 @@ ais remote url                  # URL con token
 ais remote token --regenerate   # invalida la URL anterior
 ```
 
-La URL lleva un token: sin él el servidor responde 401. Solo escucha en la red local (no hay HTTPS ni acceso desde afuera); si no carga, permití el puerto en el firewall de Windows. La página móvil (`src/remote/remote.html`) no usa internet ni frameworks.
+La URL lleva un token: sin él el servidor responde 401. Solo escucha en la red local (no hay HTTPS ni acceso desde afuera); si no carga, permití el puerto en el firewall de Windows. El token se guarda en el `sessionStorage` del celular y se borra de la barra de direcciones apenas se lee.
 
-Protocolo (para integrar otras herramientas): `GET /api/state`, `GET /api/events` (SSE con eventos `state`), `POST /api/prompt`, `/api/instruct`, `/api/stop`, `/api/approve`, `/api/chat`, todos con `Authorization: Bearer <token>` o `?token=`.
+La página móvil es la misma app React en layout de una columna (`src/remote/`), compilada con `npm run build:remote` a un único archivo `dist-remote/index.html` con el JS y el CSS adentro. Ese archivo lo incrustan los dos servidores (`src-tauri/src/remote.rs` y `src/lib/remote-node.ts`), así que hay que generarlo antes de compilar; `npm run build` y `npm run build:cli` ya lo hacen.
+
+Protocolo (para integrar otras herramientas): `GET /api/state`, `GET /api/events` (SSE con eventos `state`), `POST /api/prompt` (`{projectId, agentId?, text, model?}`), `/api/instruct` (`{projectId, agentId, text, model?}`), `/api/stop` (`{projectId, agentId?}` o `{chatId}`), `/api/approve` (`{approvalId, decision: "approve"|"reject", note?}`) y `/api/chat` (`{chatId, text}`), todos con `Authorization: Bearer <token>` o `?token=`.
 
 ### Acceso desde afuera (tunel publico)
 

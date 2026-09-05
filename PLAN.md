@@ -557,6 +557,75 @@ si no, usa `tauri-apps/tauri-action@v0` para publicar el instalador NSIS, su fir
 PRs y en pushes a ramas que no son `main`: typecheck, tests, `npm run build`, `npm run build:cli`,
 `release:check` y `cargo check`.
 
+## Acceso remoto (celular)
+
+La página que se abre desde el QR **es la misma app React**, en layout de una columna. Vive en
+`src/remote/` y se compila aparte con `vite.remote.config.ts` (`npm run build:remote`): mismo
+`react`/`tailwind`/alias `@` que `vite.config.ts`, `root: "src/remote"` y `vite-plugin-singlefile`
++ `assetsInlineLimit`/`cssCodeSplit: false` para que salga **un solo** `dist-remote/index.html` con
+el JS y el CSS adentro (~650 kB, ~206 kB gzip). Ese archivo lo incrustan los dos servidores
+(`include_str!` en `src-tauri/src/remote.rs`, `?raw` en `src/lib/remote-node.ts`), así que es una
+dependencia de compilación: `npm run build` lo genera al final, `build:cli` lo genera primero y
+`beforeDevCommand` es `npm run build:remote && npm run dev`. `src-tauri/build.rs` escribe un
+placeholder en `dist-remote/index.html` cuando falta, para que un clon limpio pase `cargo check`.
+`dist-remote/` está en `.gitignore`.
+
+Piezas:
+
+- `src/remote/index.html`: el tema sigue a `prefers-color-scheme` (script inline que pone la clase
+  `dark` en `<html>`), `viewport-fit=cover`.
+- `src/remote/main.tsx`: instala `remoteTransport` **antes** de tocar el store y monta `RemoteApp`.
+  No hay `installConsoleCapture()`: en el celular no hay archivo de log.
+- `src/lib/transport-remote.ts`: `Transport` inerte (como `transport-null.ts`) salvo `httpGet`/
+  `httpPost`, que son `fetch` reales. Nada spawnea, lee ni persiste: el orquestador vive en la PC.
+- `src/remote/remote-client.ts`: `getToken()` (de `?token=`, guardado en `sessionStorage` y borrado
+  de la URL con `history.replaceState`), `api(path, body?)` (fetch con `Authorization: Bearer`,
+  tira `RemoteError` con el status), `connectEvents()` (EventSource sobre `/api/events` con backoff
+  1→10 s), `hydrate(snapshot)` (vuelca el snapshot en el store con `setState`, respetando
+  `currentProjectId`/`currentChatId` del celular) e `installRemoteActions()`, que **sobrescribe en
+  el store** las acciones que ejecutan algo: `submitPrompt`/`instructAgent`/`stopAll`/`stopAgent`/
+  `approve`/`reject`/`sendChatMessage`/`stopChat` pasan a ser POSTs y muestran `toast.error` con el
+  `error` que devuelva la PC. `saveConfig` y `loadChatMessages` quedan en no-op; `createChat`/
+  `updateChat`/`removeChat` avisan que eso se edita desde el escritorio.
+- `src/remote/RemoteApp.tsx`: pantallas de conexión (sin token / token inválido / conectando) y
+  banner "Reconectando…" arriba mientras el SSE está caído. **Inicio**: lista de proyectos (color,
+  nombre, última tarea, "N trabajando") y botón con las aprobaciones pendientes. **Proyecto**:
+  cabecera fija (volver, nombre, puntitos de estado) y pestañas inferiores fijas — Orquestador
+  (`OrchestratorThread` + `Composer`), Chats (lista → `ChatThread` + `Composer`), Aprobaciones
+  (`ApprovalsPanel` o empty state) y Agentes (avatar, rol, estado, tarea, Detener e Indicar con
+  `InstructDialog`). Los componentes se reusan **sin tocarlos**; no hay sidebar, terminales,
+  jerarquía ni configuración.
+
+Snapshot (`RemoteSnapshot` en `src/lib/remote.ts`) — todo lo que los componentes necesitan para
+renderizar sin leer el disco: `projects` (con `activeTaskRunId` y `running`), `agents`, `runtime`,
+`messages` (últimos 800, con `meta` y `runId`, texto recortado a 8000), `approvals` pendientes con
+`payload`, `runs` (últimos 60 por proyecto, sin `rawLines`, `prompt`/`output` a 20 000), `chats`,
+`chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`) y `activeChats`. Si el JSON
+pasa 1 MB se rearma con 400 mensajes y 30 runs por proyecto; el tamaño se loguea en nivel `debug`.
+`attachRemote` pushea con throttle de 300 ms cuando cambian `runs`, `messages`, `runtime`,
+`approvals`, `activeTaskRunId`, `chatMessages`, `binaries` o `config`.
+
+`isChatActive` (`src/lib/chat.ts`) vive en la memoria del proceso que corre los turnos, así que en
+el celular consulta además `useAppStore.getState().remoteActiveChats`, campo del store que solo
+llena la hidratación del remoto (en la app queda `[]` y nada cambia).
+
+Protocolo HTTP (mismas rutas en `src-tauri/src/remote.rs` y `src/lib/remote-node.ts`, ambos solo
+pasan el JSON; todo exige `Authorization: Bearer <token>` o `?token=`):
+
+```
+GET  /                 la página (dist-remote/index.html)
+GET  /api/state        el snapshot
+GET  /api/events       SSE, evento `state` con el snapshot entero
+POST /api/prompt       { projectId, agentId?, text, model? }
+POST /api/instruct     { projectId, agentId, text, model? }
+POST /api/stop         { projectId, agentId? } | { chatId }
+POST /api/approve      { approvalId, decision: "approve" | "reject", note? }
+POST /api/chat         { chatId, text }
+```
+
+Errores: `{ error }` con 400; token inválido, 401. El token nunca se loguea (`maskSecrets`) ni
+queda en la barra de direcciones.
+
 ## Túnel público
 
 `AppConfig.remote.tunnel: { provider: "cloudflared" | "ngrok"; enabled: boolean }` (migración a
@@ -591,8 +660,8 @@ levanta al arrancar si `remote.enabled && remote.tunnel.enabled`.
 `RemoteSection` suma el bloque "Acceso desde afuera (túnel)": select de proveedor con su
 explicación, estado de detección del binario con el `winget install …` y botón "Volver a detectar",
 switch deshabilitado (con tooltip) si el acceso local está apagado o falta el binario, URL pública
-con QR y Copiar, y el aviso de seguridad. La página remota (`src/remote/remote.html`) no cambia:
-usa rutas relativas y funciona igual detrás del túnel.
+con QR y Copiar, y el aviso de seguridad. La página remota usa rutas relativas, así que funciona
+igual detrás del túnel.
 
 CLI: `ais serve --tunnel [cloudflared|ngrok]` levanta el túnel junto con el servidor e imprime la
 URL pública; `ais remote url --tunnel` devuelve la URL pública del túnel de ese proceso.
@@ -602,8 +671,9 @@ URL pública; `ais remote url --tunnel` devuelve la URL pública del túnel de e
 ```
 npx tsc --noEmit               # frontend
 npm test                       # unit tests (vitest)
-npm run build                  # bundle web
-npm run build:cli              # bundle del CLI
+npm run build                  # bundle web + dist-remote/index.html
+npm run build:remote           # solo la página del celular
+npm run build:cli              # bundle del CLI (incrusta la página del celular)
 npm run release:check          # las tres versiones coinciden
 cd src-tauri && cargo check    # backend
 cd src-tauri && cargo test     # unit tests de Rust (logging, tunnel)

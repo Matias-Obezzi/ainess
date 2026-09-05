@@ -304,9 +304,11 @@ function TabButton({ icon: Icon, label, active, badge, onClick }: {
 // ---- Chats tab ----
 
 function ChatList({ projectId }: { projectId: string }) {
-  const chats = useAppStore(state => state.config.chats.filter(c => c.projectId === projectId));
+  const allChats = useAppStore(state => state.config.chats);
   const agents = useAppStore(state => state.config.agents);
   const active = useAppStore(state => state.remoteActiveChats);
+  // Filtering inside the selector would hand zustand a new array on every render (infinite loop).
+  const chats = useMemo(() => allChats.filter(c => c.projectId === projectId), [allChats, projectId]);
 
   if (chats.length === 0) {
     return (
