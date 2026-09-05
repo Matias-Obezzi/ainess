@@ -249,6 +249,9 @@ export const nodeTransport: Transport = {
       copilot: detectGeneric("copilot"),
       gemini: detectGeneric("gemini"),
       codex: detectGeneric("codex"),
+      ollama: detectGeneric("ollama"),
+      aider: detectGeneric("aider"),
+      opencode: detectGeneric("opencode"),
     };
   },
 

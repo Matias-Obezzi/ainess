@@ -29,12 +29,18 @@ fn detect_binaries_sync() -> HashMap<String, Option<BinaryInfo>> {
         let copilot_handle = s.spawn(|| detect_generic("copilot"));
         let gemini_handle = s.spawn(|| detect_generic("gemini"));
         let codex_handle = s.spawn(|| detect_generic("codex"));
+        let ollama_handle = s.spawn(|| detect_generic("ollama"));
+        let aider_handle = s.spawn(|| detect_generic("aider"));
+        let opencode_handle = s.spawn(|| detect_generic("opencode"));
 
         results.insert("claude".to_string(), claude_handle.join().unwrap());
         results.insert("antigravity".to_string(), agy_handle.join().unwrap());
         results.insert("copilot".to_string(), copilot_handle.join().unwrap());
         results.insert("gemini".to_string(), gemini_handle.join().unwrap());
         results.insert("codex".to_string(), codex_handle.join().unwrap());
+        results.insert("ollama".to_string(), ollama_handle.join().unwrap());
+        results.insert("aider".to_string(), aider_handle.join().unwrap());
+        results.insert("opencode".to_string(), opencode_handle.join().unwrap());
     });
 
     results
