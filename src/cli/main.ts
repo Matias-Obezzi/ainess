@@ -117,6 +117,7 @@ async function main() {
           preferences: values.preferences !== undefined ? String(values.preferences) : current.preferences,
         }
       });
+      await store.saveConfig();
       print({ ok: true }, "Perfil guardado.");
       process.exit(0);
     }
@@ -157,6 +158,7 @@ async function main() {
       const idx = presets.findIndex(x => x.name === name);
       if (idx >= 0) presets[idx] = p; else presets.push(p);
       store.updateConfig({ presets });
+      await store.saveConfig();
       print(p, "Orden guardada");
       process.exit(0);
     } else if (sub === "remove") {
@@ -164,6 +166,7 @@ async function main() {
       if (!name) error("Falta nombre");
       const presets = (store.config.presets || []).filter(p => p.name !== name);
       store.updateConfig({ presets });
+      await store.saveConfig();
       print({ ok: true }, "Orden eliminada");
       process.exit(0);
     }
