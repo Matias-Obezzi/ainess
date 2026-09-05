@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer } from "@/types";
 import { getTransport } from "@/lib/transport";
 import * as orchestrator from "@/lib/orchestrator";
 
@@ -18,6 +18,11 @@ export interface AppState {
   setMaxRounds(n: number): void;
   upsertAgent(agent: AgentConfig): void;
   removeAgent(agentId: string): void;
+  upsertSkill(skill: Skill): void;
+  removeSkill(skillId: string): void;
+  upsertMcpServer(server: McpServer): void;
+  removeMcpServer(serverId: string): void;
+  setSharedContext(text: string): void;
   detectBinaries(): Promise<void>;
 
   submitPrompt(text: string, targetAgentId: string): Promise<void>;
@@ -34,9 +39,12 @@ function generateSeedConfig(): AppConfig {
   const copilotId = crypto.randomUUID();
 
   return {
-    version: 1,
+    version: 2,
     workspaceDir: null,
     maxRounds: 6,
+    skills: [],
+    mcpServers: [],
+    sharedContext: "",
     agents: [
       {
         id: claudeId,
@@ -83,7 +91,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 1, agents: [], workspaceDir: null, maxRounds: 6 },
+  config: { version: 2, agents: [], workspaceDir: null, maxRounds: 6, skills: [], mcpServers: [], sharedContext: "" },
   binaries: {},
   runtime: {},
   runs: {},
@@ -137,10 +145,72 @@ export const useAppStore = create<AppState>()((set, get) => ({
         }
         return a;
       });
+      // Cleanup enabledFor in skills and mcpServers
+      const newSkills = state.config.skills.map(s => {
+        if (s.enabledFor !== "all") {
+          return { ...s, enabledFor: s.enabledFor.filter(id => id !== agentId) };
+        }
+        return s;
+      });
+      const newMcp = state.config.mcpServers.map(s => {
+        if (s.enabledFor !== "all") {
+          return { ...s, enabledFor: s.enabledFor.filter(id => id !== agentId) };
+        }
+        return s;
+      });
       const newRuntime = { ...state.runtime };
       delete newRuntime[agentId];
-      return { config: { ...state.config, agents: newAgents }, runtime: newRuntime };
+      return { config: { ...state.config, agents: newAgents, skills: newSkills, mcpServers: newMcp }, runtime: newRuntime };
     });
+    debouncedSave();
+  },
+
+  upsertSkill: (skill) => {
+    set((state) => {
+      const idx = state.config.skills.findIndex(s => s.id === skill.id || s.name.toLowerCase() === skill.name.toLowerCase());
+      const newSkills = [...state.config.skills];
+      if (idx >= 0) {
+        newSkills[idx] = skill;
+      } else {
+        newSkills.push(skill);
+      }
+      return { config: { ...state.config, skills: newSkills } };
+    });
+    debouncedSave();
+  },
+
+  removeSkill: (skillId) => {
+    set((state) => {
+      const newSkills = state.config.skills.filter(s => s.id !== skillId && s.name.toLowerCase() !== skillId.toLowerCase());
+      return { config: { ...state.config, skills: newSkills } };
+    });
+    debouncedSave();
+  },
+
+  upsertMcpServer: (server) => {
+    set((state) => {
+      const idx = state.config.mcpServers.findIndex(s => s.id === server.id || s.name.toLowerCase() === server.name.toLowerCase());
+      const newMcp = [...state.config.mcpServers];
+      if (idx >= 0) {
+        newMcp[idx] = server;
+      } else {
+        newMcp.push(server);
+      }
+      return { config: { ...state.config, mcpServers: newMcp } };
+    });
+    debouncedSave();
+  },
+
+  removeMcpServer: (serverId) => {
+    set((state) => {
+      const newMcp = state.config.mcpServers.filter(s => s.id !== serverId && s.name.toLowerCase() !== serverId.toLowerCase());
+      return { config: { ...state.config, mcpServers: newMcp } };
+    });
+    debouncedSave();
+  },
+
+  setSharedContext: (text) => {
+    set((state) => ({ config: { ...state.config, sharedContext: text } }));
     debouncedSave();
   },
 
@@ -185,6 +255,18 @@ async function runInit(): Promise<void> {
       isSeed = true;
     }
     
+    // Migration to version 2
+    if (config.version === 1 || !config.skills) {
+      config = {
+        ...config,
+        version: 2,
+        skills: config.skills || [],
+        mcpServers: config.mcpServers || [],
+        sharedContext: config.sharedContext || ""
+      } as AppConfig;
+      isSeed = true; // force save
+    }
+    
     const runtime: Record<string, AgentRuntime> = {};
     for (const a of config.agents) {
       runtime[a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
@@ -212,6 +294,14 @@ export function selectRoots(state: AppState): AgentConfig[] {
 
 export function selectAgent(state: AppState, id: string): AgentConfig | undefined {
   return state.config.agents.find(a => a.id === id);
+}
+
+export function selectSkillsFor(state: AppState, agentId: string): Skill[] {
+  return state.config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agentId));
+}
+
+export function selectMcpFor(state: AppState, agentId: string): McpServer[] {
+  return state.config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agentId));
 }
 
 // Dev-only hook so the app can be driven from a debugger / e2e script.

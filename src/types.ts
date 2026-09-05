@@ -43,12 +43,34 @@ export interface AgentConfig {
   color?: string;
 }
 
+export interface Skill {
+  id: string;
+  name: string;
+  description?: string;
+  content: string;
+  enabledFor: "all" | string[];
+}
+
+export interface McpServer {
+  id: string;
+  name: string;
+  transport: "stdio" | "http";
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  enabledFor: "all" | string[];
+}
+
 export interface AppConfig {
-  version: 1;
+  version: 2;
   agents: AgentConfig[];
   workspaceDir: string | null;
   /** Max planner continuation rounds per user task. */
   maxRounds: number;
+  skills: Skill[];
+  mcpServers: McpServer[];
+  sharedContext: string;
 }
 
 export interface AgentRuntime {
