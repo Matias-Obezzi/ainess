@@ -12,6 +12,7 @@ import {
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { ChatDialog } from "@/components/ChatDialog";
 import { island } from "@/components/ui/island";
+import { toast } from "@/components/ui/toast";
 import { isChatActive } from "@/lib/chat";
 import type { Project } from "@/types";
 import {
@@ -192,6 +193,15 @@ export function Sidebar() {
                   <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
                     <DropdownMenuItem onSelect={() => editProject(p)}>Editar proyecto</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => newChat(p.id)}>Nuevo chat</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const s = useAppStore.getState();
+                        for (const a of s.config.agents) s.resetSession(a.id, p.id);
+                        toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
+                      }}
+                    >
+                      Nueva conversación
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onSelect={() => void deleteProject(p)}>
                       Eliminar

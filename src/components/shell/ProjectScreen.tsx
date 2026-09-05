@@ -7,8 +7,7 @@ import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
-import { GitBranch, MessageSquare, MessageSquarePlus, PanelRight, TerminalSquare } from "lucide-react";
-import { toast } from "@/components/ui/toast";
+import { GitBranch, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
 
 /** The working screen for one project: top bar, thread or graph, and the composer. */
 export function ProjectScreen() {
@@ -73,20 +72,6 @@ export function ProjectScreen() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7"
-            title="Nueva conversación: los agentes arrancan de cero (el historial queda)"
-            onClick={() => {
-              if (!currentProjectId) return;
-              const s = useAppStore.getState();
-              for (const a of s.config.agents) s.resetSession(a.id, currentProjectId);
-              toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
-            }}
-          >
-            <MessageSquarePlus className="h-3.5 w-3.5" /> Nueva conversación
-          </Button>
           <Button
             variant={commPanelOpen ? "secondary" : "ghost"}
             size="sm"

@@ -74,6 +74,7 @@ pub fn run() {
     // Quitting from the tray or closing the last window must not leave the tunnel process alive.
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {
+            runner::shutdown(handle);
             tunnel::shutdown(handle);
             pty::shutdown(handle);
             logging::append(handle, "info", "app", "ainess cerrando");

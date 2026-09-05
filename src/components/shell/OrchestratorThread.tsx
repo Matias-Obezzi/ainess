@@ -9,6 +9,7 @@ import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
 import { runStatusLabel } from "@/lib/labels";
+import { INTERRUPTED_OUTPUT } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
 import type { Run } from "@/types";
 import { ArrowDown, ChevronDown, ChevronRight, FileText, MessagesSquare } from "lucide-react";
@@ -37,6 +38,13 @@ export function OrchestratorThread() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevCount = useRef(rootRuns.length);
+
+  // Opening a project (or finishing its first load) lands on the newest turn, not the oldest.
+  useEffect(() => {
+    if (historyLoading) return;
+    const id = requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: "end" }));
+    return () => cancelAnimationFrame(id);
+  }, [currentProjectId, historyLoading]);
 
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
@@ -190,7 +198,19 @@ function RunBubble({ run }: { run: Run }) {
                 </div>
               )}
 
-              {run.output ? (
+              {run.output === INTERRUPTED_OUTPUT ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+                  <span>Se cortó: la app se cerró mientras el agente trabajaba.</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model })}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              ) : run.output ? (
                 <Markdown text={run.output} />
               ) : (
                 <div className="text-sm text-muted-foreground italic">Sin salida</div>

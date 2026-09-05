@@ -33,6 +33,13 @@ export function ChatThread({ chatId }: { chatId: string }) {
     void loadChatMessages(chatId);
   }, [chatId, loadChatMessages]);
 
+  // Opening a chat (or finishing its load) lands on the last message, instantly.
+  useEffect(() => {
+    if (chatLoading) return;
+    const id = requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
+    return () => cancelAnimationFrame(id);
+  }, [chatId, chatLoading]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, messages[messages.length - 1]?.text]);

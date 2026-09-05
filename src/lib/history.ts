@@ -22,6 +22,9 @@ interface HistoryFile {
   sessions?: Record<string, { sessionId: string | null; updatedAt: number }>;
 }
 
+/** Output of a run that was still running when the app (or CLI) that owned it went away. */
+export const INTERRUPTED_OUTPUT = "[interrumpido: la aplicación se cerró mientras el agente trabajaba]";
+
 const MAX_RUNS = 300;
 const MAX_MESSAGES = 3000;
 const MAX_RAW_LINES = 300;
@@ -123,7 +126,7 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     for (const r of parsed.runs) {
       if (runs[r.id]) continue;
       runs[r.id] = r.status === "running"
-        ? { ...r, status: "error", output: "[interrumpido: la aplicación se cerró]", endedAt: now }
+        ? { ...r, status: "killed", output: INTERRUPTED_OUTPUT, endedAt: now }
         : r;
       changed = true;
     }

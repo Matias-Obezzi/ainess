@@ -207,6 +207,28 @@ pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, S
     }
 }
 
+/// Kills every agent process still running (whole trees on Windows). Called when the app exits so
+/// no implementer keeps editing a workspace with nobody watching.
+pub fn shutdown(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    let state = app.state::<RunnerState>();
+    let children: Vec<(String, Arc<Mutex<Child>>)> = state.children.lock().unwrap().drain().collect();
+    for (run_id, child) in children {
+        let mut c = child.lock().unwrap();
+        #[cfg(windows)]
+        {
+            let pid = c.id();
+            let _ = Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/T", "/F"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
+        let _ = c.kill();
+        crate::logging::append(app, "warn", "runner", &format!("run {run_id} matado al cerrar la app"));
+    }
+}
+
 #[tauri::command]
 pub fn running_runs(state: State<'_, RunnerState>) -> Vec<String> {
     state.children.lock().unwrap().keys().cloned().collect()
