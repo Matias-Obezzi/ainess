@@ -7,6 +7,7 @@ import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 import { setLogLevel, log } from "@/lib/logger";
+import { forgetPty } from "@/lib/pty-bus";
 
 /** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
 export type Screen = "home" | "project";
@@ -556,6 +557,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     const index = state.terminals.findIndex(t => t.id === id);
     if (index === -1) return;
+    forgetPty(id);
     void getTransport().ptyKill(id).catch(e => log.warn("terminal", `no se pudo cerrar ${id}: ${e}`));
     const terminals = state.terminals.filter(t => t.id !== id);
     let activeTerminalId = state.activeTerminalId;

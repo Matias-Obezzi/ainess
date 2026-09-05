@@ -6,6 +6,7 @@ import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
 import { tokenColor } from "@/lib/color";
+import { ensurePtyListeners, subscribePty } from "@/lib/pty-bus";
 import type { TerminalTab } from "@/types";
 
 interface Props {
@@ -84,18 +85,17 @@ export function TerminalView({ terminal, active }: Props) {
     });
 
     let disposed = false;
-    const unsubs: Array<() => void> = [];
-
-    void transport.onPtyOutput(e => {
-      if (disposed || e.id !== id) return;
-      term.write(e.data);
-    }).then(un => (disposed ? un() : unsubs.push(un)));
-
-    void transport.onPtyExit(e => {
-      if (disposed || e.id !== id) return;
-      term.write(`\r\n\x1b[90m[proceso terminado con código ${e.code ?? "?"}]\x1b[0m\r\n`);
-      useAppStore.getState().markTerminalExited(id, e.code);
-    }).then(un => (disposed ? un() : unsubs.push(un)));
+    // Subscribing before spawning is what guarantees the prompt is not missed.
+    const unsubscribe = subscribePty(id, {
+      onData: data => {
+        if (!disposed) term.write(data);
+      },
+      onExit: code => {
+        if (disposed) return;
+        term.write(`\r\n\x1b[90m[proceso terminado con código ${code ?? "?"}]\x1b[0m\r\n`);
+        useAppStore.getState().markTerminalExited(id, code);
+      },
+    });
 
     const observer = new ResizeObserver(() => {
       try {
@@ -108,13 +108,15 @@ export function TerminalView({ terminal, active }: Props) {
 
     if (!spawnedRef.current) {
       spawnedRef.current = true;
-      void transport
-        .ptySpawn({ id, shell: shellPath, cwd, cols: term.cols, rows: term.rows })
-        .then(() => term.focus())
+      void ensurePtyListeners()
+        .then(() => transport.ptySpawn({ id, shell: shellPath, cwd, cols: term.cols, rows: term.rows }))
+        .then(() => {
+          if (!disposed) term.focus();
+        })
         .catch((e: unknown) => {
           const message = e instanceof Error ? e.message : String(e);
           log.error("terminal", `no se pudo iniciar ${id}: ${message}`);
-          term.write(`\x1b[31m${message}\x1b[0m\r\n`);
+          if (!disposed) term.write(`\x1b[31m${message}\x1b[0m\r\n`);
           useAppStore.getState().markTerminalExited(id, -1);
         });
     }
@@ -124,7 +126,7 @@ export function TerminalView({ terminal, active }: Props) {
       observer.disconnect();
       dataSub.dispose();
       resizeSub.dispose();
-      for (const un of unsubs) un();
+      unsubscribe();
       term.dispose();
       termRef.current = null;
       fitRef.current = null;

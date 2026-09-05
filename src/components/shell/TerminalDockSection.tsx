@@ -55,16 +55,18 @@ export function TerminalDockSection() {
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="text-sm font-semibold">Terminales</span>
         <div className="ml-auto flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            title={addTitle}
-            disabled={atLimit || noShells}
-            onClick={() => openTerminal()}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          {/* A disabled button has `pointer-events: none`, so the tooltip lives on the wrapper. */}
+          <span title={addTitle} className="inline-flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              disabled={atLimit || noShells}
+              onClick={() => openTerminal()}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

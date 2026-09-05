@@ -250,18 +250,18 @@ Seed por defecto (primer arranque): `Claude` (planner, provider claude, raíz),
 ## UI (src/App.tsx + src/components/)
 
 Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex.flex-col`:
-`<TitleBar/>` + una fila `flex-1` con `<Sidebar/>` + columna principal + `<CommSidePanel/>`
+`<TitleBar/>` + una fila `flex-1` con `<Sidebar/>` + columna principal + `<RightDock/>`
 opcional, más `<SettingsDialog/>` y `<SearchPalette/>` (modales, siempre montados). Encima flotan
 `<Island />` de `@/components/ui/island` (cuántos agentes están trabajando) y `<Toaster />` de
 `@/components/ui/toast` (delegación enviada, error de un agente, tarea terminada).
 
 La navegación vive en el store: `screen` ("home" | "project"), `projectMode` ("chat" | "graph"),
-`commPanelOpen`, `settingsOpen` (booleano, no persistido: Configuración es un modal, no una
-pantalla), `settingsSection`, `sidebarCollapsed`, `sidebarOpen`, `searchOpen` (no persistido),
-`navHistory`/`navIndex` (no persistidos), con las acciones `openHome`,
+`commPanelOpen`, `termPanelOpen`, `dockSplit` (0.3–0.8), `settingsOpen` (booleano, no persistido:
+Configuración es un modal, no una pantalla), `settingsSection`, `sidebarCollapsed`, `sidebarOpen`,
+`searchOpen` (no persistido), `navHistory`/`navIndex` (no persistidos), con las acciones `openHome`,
 `openProject(projectId, chatId?)`, `openSettings(section?)` (abre el modal), `closeSettings()`,
-`setProjectMode`, `toggleCommPanel`, `toggleSidebarProject`, `toggleSidebar(open?)`,
-`toggleSearch(open?)`, `goBack()` y `goForward()`. Lo persistible va a `localStorage` bajo la clave
+`setProjectMode`, `toggleCommPanel`, `toggleTermPanel(open?)`, `setDockSplit(value)`,
+`toggleSidebarProject`, `toggleSidebar(open?)`, `toggleSearch(open?)`, `goBack()` y `goForward()`. Lo persistible va a `localStorage` bajo la clave
 `ais.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
 
 **Barra de título** — `components/shell/TitleBar.tsx` (`h-10`, `bg-card border-b`). La ventana usa
@@ -301,7 +301,7 @@ mismo color.
    de actividad (agentes trabajando con su tarea, o la última tarea raíz con su estado y "hace X"),
    tareas activas, runs guardados y botones Abrir / Editar / Eliminar.
 3. **Proyecto** — `components/shell/ProjectScreen.tsx`: barra superior (proyecto, toggle
-   Chat ↔ Jerarquía, "N trabajando", Comunicación, Detener), `ApprovalsPanel`, el cuerpo y el
+   Chat ↔ Jerarquía, "N trabajando", Comunicación, Terminal, Detener), `ApprovalsPanel`, el cuerpo y el
    `Composer` siempre abajo. El cuerpo es:
    - `OrchestratorThread.tsx` — la conversación principal: cada run raíz (`parentRunId === null`,
      `kind !== "chat"`) como burbuja del usuario + respuesta del agente, con tiempo transcurrido
@@ -317,10 +317,15 @@ mismo color.
    - `Composer.tsx` — textarea (Ctrl+Enter para enviar, flecha arriba recupera el último prompt).
      Sin chat abierto manda `submitPrompt` con selects de destino, modelo y órdenes predefinidas;
      con un chat abierto manda `sendChatMessage`. Mientras algo corre, el botón pasa a Detener.
-4. **Comunicación** — `components/shell/CommSidePanel.tsx` (380px a la derecha, se superpone bajo
-   1100px) envuelve `CommunicationPanel.tsx`: feed de `messages` con filtros por agente y por tipo,
-   cada mensaje con badge del agente (color), hora, tipo; los `delegation` resaltados; auto-scroll
-   al final. Botón limpiar.
+4. **Dock derecho** — `components/shell/RightDock.tsx` (380px a la derecha, se superpone bajo
+   1100px) aloja dos secciones y se muestra si `(commPanelOpen || termPanelOpen) && screen ===
+   "project"`. Con una sola abierta ocupa todo el alto; con las dos, una columna con la sección de
+   Comunicación (alto `dockSplit`), un divisor de 6px `cursor-row-resize` (arrastre con
+   `pointerdown/move/up`, límites 0.3–0.8, persistido) y la de Terminales.
+   - **Comunicación** — `components/shell/CommDockSection.tsx` envuelve `CommunicationPanel.tsx`:
+     feed de `messages` con filtros por agente y por tipo, cada mensaje con badge del agente
+     (color), hora, tipo; los `delegation` resaltados; auto-scroll al final. Botón limpiar.
+   - **Terminales** — `components/shell/TerminalDockSection.tsx` (ver la sección "Terminales").
 5. **Configuración** — `components/settings/SettingsDialog.tsx`: modal (`Dialog`, `showCloseButton`
    `false`) con un sidebar interno de secciones y un router `SETTINGS_SECTIONS: SettingsSectionDef[]`
    (`id`, `label`, `help`, `icon`, `component`, `actions?`, `provider?`). Cada sección es su propio
@@ -369,6 +374,41 @@ mismo color.
    - `src/index.css` agrega, dentro de `@layer base`, reglas de `cursor: pointer` para todo elemento
      clickeable (`button`, `[role="button"]`, `a[href]`, `label[for]`, `select`, `summary`, y los
      `data-slot` de select/dropdown/tabs/switch) y `cursor: not-allowed` para `button:disabled`.
+
+## Terminales
+
+Terminales reales dentro del dock derecho, con pestañas. Backend `src-tauri/src/pty.rs` sobre el
+crate `portable-pty = "0.9"` (ConPTY en Windows), estado `PtyState { sessions: Mutex<HashMap<String,
+PtySession>> }` (`master` + `writer` + `child`) `manage`d en `lib.rs`.
+
+Comandos: `pty_spawn(id, shell, cwd?, cols?, rows?)` (valida que el shell exista, cae al home si el
+cwd no está), `pty_write(id, data)`, `pty_resize(id, cols, rows)` (no-op si la sesión ya murió),
+`pty_kill(id)` y `pty_list_shells() -> ShellInfo[]` (`{ id, label, path }`; en Windows busca `pwsh`
+en el PATH y en WindowsApps, `powershell.exe`, `cmd.exe` y Git Bash en Program Files o
+`%LOCALAPPDATA%\Programs\Git`; en otros SO `$SHELL`, `/bin/bash`, `/bin/sh`). Un hilo lector por
+sesión emite `pty-output` `{ id, data }` y, al cerrarse el pipe, `pty-exit` `{ id, code }` y quita
+la sesión. `pty::shutdown` mata todo en `RunEvent::Exit` (también al salir desde la bandeja).
+
+En el front, `Transport` agrega `ptySpawn/ptyWrite/ptyResize/ptyKill/ptyListShells/onPtyOutput/
+onPtyExit`; fuera de la app de escritorio `ptyListShells` devuelve `[]` y el resto tira
+"Las terminales solo están disponibles en la app de escritorio". El store guarda `terminals:
+TerminalTab[]` (`{ id, title, shellId, shellPath, cwd, projectId, exited }`), `activeTerminalId` y
+`shells` (cargados una vez en `runInit`, solo con `isTauri()`), con `openTerminal({ shellId?, cwd? })`
+(cwd por defecto: el workspace del proyecto actual; máximo `MAX_TERMINALS = 8`), `closeTerminal`,
+`setActiveTerminal`, `renameTerminal` y `markTerminalExited`. Las terminales viven solo en memoria.
+
+`TerminalDockSection.tsx` tiene la cabecera ("Terminales", `+`, chevron con `DropdownMenu` de shells,
+cerrar), la barra de pestañas scrolleable (icono, título, punto rojo si terminó, `X` al hover, doble
+click para renombrar inline) y el cuerpo, con todos los `TerminalView` montados y solo el activo
+visible para no perder el scrollback. `TerminalView.tsx` monta `@xterm/xterm` + `@xterm/addon-fit`
+(13px, `Cascadia Code`, tema tomado de los tokens `--card`/`--foreground`/`--accent` convertidos a
+hex con `src/lib/color.ts`), se suscribe a su sesión por `src/lib/pty-bus.ts` (un solo `listen` para
+toda la app, que bufferea lo que llega antes de que la vista se monte para no perder el prompt),
+hace `ptySpawn` una sola vez, `onData → ptyWrite`, `ResizeObserver →
+fit() + ptyResize`, y escribe el error en rojo si el spawn falla. Copiar y pegar con
+`Ctrl+Shift+C`/`Ctrl+Shift+V` (`Ctrl+C` va al proceso); `Escape` dentro de `.xterm` no dispara el
+"detener" global del `Composer`. Se abre y cierra con el botón "Terminal" de la barra del proyecto o
+con `` Ctrl+` ``, que además abre una terminal si no hay ninguna.
 
 ## Bandeja y notificaciones
 
