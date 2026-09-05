@@ -12,8 +12,10 @@ pub fn run() {
             runner::spawn_run,
             runner::kill_run,
             runner::running_runs,
+            runner::exec_capture,
             config::load_config,
             config::save_config,
+            config::write_config_file,
             detect::detect_binaries
         ])
         .run(tauri::generate_context!())

@@ -1,4 +1,4 @@
-import { useAppStore, selectChildren, selectAgent } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
@@ -95,19 +95,41 @@ function startRun(opts: { agentId: string; prompt: string; parentRunId: string |
   }
 
   const children = selectChildren(store, agent.id);
-  const systemPrompt = buildSystemPrompt(agent, children);
+  const skills = selectSkillsFor(store, agent.id);
+  const sharedContext = store.config.sharedContext;
+  const systemPrompt = buildSystemPrompt(agent, children, { skills, sharedContext });
   const sessionId = opts.resume ? store.runtime[opts.agentId]?.sessionId : undefined;
 
-  const spawnOpts = provider.buildCommand({
-    agent,
-    prompt: opts.prompt,
-    systemPrompt,
-    sessionId,
-    cwd: store.config.workspaceDir ?? undefined,
-    binaryPath: binary.path
-  });
+  const mcpServers = selectMcpFor(store, agent.id);
 
-  getTransport().spawnRun({ runId, ...spawnOpts }).catch(err => {
+  const doSpawn = async () => {
+    let mcpConfigPath: string | undefined;
+    if (agent.provider === "claude" && mcpServers.length > 0) {
+      const obj: any = { mcpServers: {} };
+      for (const s of mcpServers) {
+        if (s.transport === "http") {
+          obj.mcpServers[s.name] = { type: "http", url: s.url };
+        } else {
+          obj.mcpServers[s.name] = { command: s.command, args: s.args || [], env: s.env || {} };
+        }
+      }
+      mcpConfigPath = await getTransport().writeTextFile(`mcp/${agent.id}.json`, JSON.stringify(obj, null, 2));
+    }
+
+    const spawnOpts = provider.buildCommand({
+      agent,
+      prompt: opts.prompt,
+      systemPrompt,
+      sessionId,
+      cwd: store.config.workspaceDir ?? undefined,
+      binaryPath: binary.path,
+      mcpConfigPath
+    });
+
+    await getTransport().spawnRun({ runId, ...spawnOpts });
+  };
+
+  doSpawn().catch(err => {
     useAppStore.setState(state => ({
       runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: String(err), endedAt: Date.now() } },
       runtime: { ...state.runtime, [opts.agentId]: { ...state.runtime[opts.agentId], status: "error", lastError: String(err), currentRunId: undefined } }

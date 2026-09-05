@@ -31,3 +31,21 @@ pub fn save_config(app: tauri::AppHandle, config: serde_json::Value) -> Result<(
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn write_config_file(app: tauri::AppHandle, relative_path: String, content: String) -> Result<String, String> {
+    if relative_path.contains("..") {
+        return Err("Invalid path".into());
+    }
+
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let path = config_dir.join(&relative_path);
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+
+    Ok(path.to_string_lossy().to_string())
+}

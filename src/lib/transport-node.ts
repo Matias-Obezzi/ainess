@@ -250,5 +250,23 @@ export const nodeTransport: Transport = {
       gemini: detectGeneric("gemini"),
       codex: detectGeneric("codex"),
     };
+  },
+
+  writeTextFile: async (relativePath: string, content: string) => {
+    if (relativePath.includes("..")) throw new Error("Invalid path");
+    const p = path.join(path.dirname(getConfigPath()), relativePath);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, content, "utf-8");
+    return p;
+  },
+
+  exec: async (program: string, args: string[]) => {
+    const resolved = resolveProgram(program, args);
+    const res = spawnSync(resolved.program, resolved.args, { encoding: "utf-8", timeout: 60000, windowsHide: true });
+    return {
+      code: res.status,
+      stdout: res.stdout || "",
+      stderr: res.stderr || ""
+    };
   }
 };

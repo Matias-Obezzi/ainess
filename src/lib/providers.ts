@@ -1,4 +1,4 @@
-import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation } from "@/types";
+import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill } from "@/types";
 
 export interface BuildInput {
   agent: AgentConfig;
@@ -7,6 +7,7 @@ export interface BuildInput {
   sessionId?: string;
   cwd?: string;
   binaryPath: string;
+  mcpConfigPath?: string;
 }
 
 export interface ProviderSpec {
@@ -110,6 +111,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       if (input.agent.model) args.push("--model", input.agent.model);
       if (input.sessionId) args.push("--resume", input.sessionId);
       if (input.systemPrompt) args.push("--append-system-prompt", input.systemPrompt);
+      if (input.mcpConfigPath) args.push("--mcp-config", input.mcpConfigPath);
       
       if (input.agent.autoApprove) {
         args.push("--dangerously-skip-permissions");
@@ -243,7 +245,7 @@ export function finalOutputFromLines(lines: string[]): string {
   return lines.join("");
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[]): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string }): string {
   let prompt = "";
   
   if (agent.role === "planner") {
@@ -267,6 +269,19 @@ Cada task debe ser autocontenida (el agente no ve esta conversación). Cuando re
     prompt = "Sos REVISOR. Revisás cambios y respondés hallazgos o sugerencias de mejora.";
   } else if (agent.role === "custom") {
     // Only use agent.systemPrompt (appended at the end)
+  }
+
+  if (extras) {
+    if (extras.sharedContext && extras.sharedContext.trim()) {
+      prompt += (prompt ? "\n\n" : "") + "## Contexto compartido del equipo\n" + extras.sharedContext;
+    }
+    const validSkills = extras.skills?.filter(s => s.content.trim()) || [];
+    if (validSkills.length > 0) {
+      prompt += (prompt ? "\n\n" : "") + "## Skills";
+      for (const skill of validSkills) {
+        prompt += `\n### ${skill.name}\n${skill.content}`;
+      }
+    }
   }
 
   if (agent.systemPrompt) {

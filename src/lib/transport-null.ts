@@ -8,4 +8,6 @@ export const nullTransport: Transport = {
   loadConfig: async () => null,
   saveConfig: async () => {},
   detectBinaries: async () => ({}),
+  writeTextFile: async (path) => path,
+  exec: async () => ({ code: null, stdout: "", stderr: "" }),
 };
