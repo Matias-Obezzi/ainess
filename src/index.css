@@ -74,11 +74,28 @@
     --ring: oklch(0.556 0 0);
 }
 
-.dark .react-flow__background { background: var(--background); }
-.dark .react-flow__controls-button { background: var(--card); border-color: var(--border); fill: var(--foreground); }
-.dark .react-flow__controls-button:hover { background: var(--muted); }
-.dark .react-flow__minimap { background: var(--card); border-color: var(--border); }
-.dark .react-flow__minimap-mask { fill: var(--background); opacity: 0.5; }
+/* React Flow (hierarchy board) in the app's tokens, so it works in both themes without a
+   `.dark` copy of every rule. The graph draws its own edge colors inline; these are defaults. */
+.react-flow {
+  --xy-background-color-default: var(--background);
+  --xy-background-pattern-dots-color-default: color-mix(in oklch, var(--foreground) 20%, transparent);
+  --xy-edge-stroke-default: var(--border);
+  --xy-edge-stroke-selected-default: var(--primary);
+  --xy-edge-label-background-color-default: var(--card);
+  --xy-edge-label-color-default: var(--muted-foreground);
+  --xy-handle-background-color-default: var(--muted-foreground);
+  --xy-handle-border-color-default: transparent;
+}
+.react-flow__background { background: var(--background); }
+.react-flow__edge-path { stroke: var(--border); }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--primary); }
+.react-flow__edge-textbg { fill: var(--card); }
+.react-flow__edge-text { fill: var(--muted-foreground); }
+.react-flow__handle { background: var(--muted-foreground); border: none; }
+.react-flow__node { outline: none; }
+.react-flow__node:focus,
+.react-flow__node:focus-visible { outline: none; }
+.react-flow__attribution { display: none; }
 
 /* Portaled content (dialogs, selects, tooltips) lives outside the app root: give the whole
    document the theme colors so text is never black-on-dark. */
