@@ -210,6 +210,32 @@ export function AgentDialog({ open, onOpenChange, agent }: Props) {
                 </div>
               </div>
             )}
+            
+            {agent && (
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Recursos compartidos que recibe</Label>
+                <div className="text-sm text-muted-foreground flex gap-4">
+                  <div className="flex-1">
+                    <strong>Skills:</strong>
+                    <ul className="list-disc ml-4">
+                      {config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).map(s => (
+                        <li key={s.id}>{s.name}</li>
+                      ))}
+                      {config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>Ninguno</li>}
+                    </ul>
+                  </div>
+                  <div className="flex-1">
+                    <strong>MCP Servers:</strong>
+                    <ul className="list-disc ml-4">
+                      {config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).map(s => (
+                        <li key={s.id}>{s.name}</li>
+                      ))}
+                      {config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>Ninguno</li>}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
         

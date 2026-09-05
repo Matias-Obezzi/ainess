@@ -10,6 +10,7 @@ import { PromptPanel } from "@/components/PromptPanel";
 import { CommunicationPanel } from "@/components/CommunicationPanel";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { AgentsPanel } from "@/components/AgentsPanel";
+import { ResourcesPanel } from "@/components/ResourcesPanel";
 
 export default function App() {
   const init = useAppStore(state => state.init);
@@ -37,6 +38,7 @@ export default function App() {
             <TabsTrigger value="comunicacion">Comunicación</TabsTrigger>
             <TabsTrigger value="jerarquia">Jerarquía</TabsTrigger>
             <TabsTrigger value="agentes">Agentes</TabsTrigger>
+            <TabsTrigger value="recursos">Recursos</TabsTrigger>
           </TabsList>
           
           <TabsContent value="prompt" className="flex-1 mt-2 overflow-hidden">
@@ -50,6 +52,9 @@ export default function App() {
           </TabsContent>
           <TabsContent value="agentes" className="flex-1 mt-2 overflow-hidden overflow-y-auto">
             <AgentsPanel />
+          </TabsContent>
+          <TabsContent value="recursos" className="flex-1 mt-2 overflow-hidden overflow-y-auto">
+            <ResourcesPanel />
           </TabsContent>
         </Tabs>
       </main>
