@@ -301,7 +301,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               <div className="space-y-1">
                 <Label>Provider</Label>
                 <Select value={provider} onValueChange={v => setProvider(v as ProviderId)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -314,7 +314,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               <div className="space-y-1">
                 <Label>Rol</Label>
                 <Select value={role} onValueChange={v => setRole(v as AgentRole)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -330,7 +330,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               <div className="space-y-1">
                 <Label>Padre</Label>
                 <Select value={parentId || "null"} onValueChange={v => setParentId(v === "null" ? null : v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -349,7 +349,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
                   </div>
                 ) : (
                   <Select value={modelOption} onValueChange={setModelOption}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

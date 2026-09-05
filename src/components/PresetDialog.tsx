@@ -77,7 +77,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
             <div className="flex flex-col gap-2">
               <Label>Agente destino (opcional)</Label>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger><SelectValue placeholder="Cualquiera" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Cualquiera" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Cualquiera</SelectItem>
                   {store.config.agents.map(a => (
@@ -89,7 +89,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
             <div className="flex flex-col gap-2">
               <Label>Modelo (opcional)</Label>
               <Select value={model} onValueChange={setModel} disabled={agentId === "none"}>
-                <SelectTrigger><SelectValue placeholder={agentId === "none" ? "Elegí agente primero" : "Predeterminado del agente"} /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder={agentId === "none" ? "Elegí agente primero" : "Predeterminado del agente"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Predeterminado del agente</SelectItem>
                   {providerSpec?.defaultModels.map(m => (

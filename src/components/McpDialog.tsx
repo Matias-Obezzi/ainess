@@ -116,7 +116,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               <div className="space-y-1">
                 <Label>Transporte</Label>
                 <Select value={transport} onValueChange={v => setTransport(v as "stdio" | "http")}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
