@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skill } from "@/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   open: boolean;
@@ -74,7 +73,7 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
           <DialogTitle>{skill ? "Editar Skill" : "Nuevo Skill"}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-4 -mx-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="space-y-1">
               <Label>Nombre</Label>
@@ -117,7 +116,7 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

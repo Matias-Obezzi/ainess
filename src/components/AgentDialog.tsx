@@ -14,7 +14,6 @@ import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabel } from "@/lib/labels";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2 } from "lucide-react";
 
@@ -280,12 +279,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{agent ? "Editar agente" : "Nuevo agente"}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-4 -mx-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="flex gap-4">
               <div className="flex-1 space-y-1">
@@ -453,7 +452,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

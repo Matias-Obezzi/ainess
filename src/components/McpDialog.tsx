@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { McpServer } from "@/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   open: boolean;
@@ -107,7 +106,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
           <DialogTitle>{server ? "Editar Servidor MCP" : "Nuevo Servidor MCP"}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-4 -mx-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -172,7 +171,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
