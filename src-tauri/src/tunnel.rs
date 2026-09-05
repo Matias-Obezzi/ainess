@@ -102,20 +102,21 @@ pub async fn tunnel_start(
 }
 
 #[tauri::command]
-pub fn tunnel_stop(app: AppHandle, state: TauriState<'_, TunnelState>) -> Result<(), String> {
+pub async fn tunnel_stop(app: AppHandle, state: TauriState<'_, TunnelState>) -> Result<(), String> {
     let child = state.child.lock().unwrap().take();
     *state.url.lock().unwrap() = None;
     *state.provider.lock().unwrap() = None;
     if let Some(c) = child {
-        kill_child(c);
+        // `taskkill /T /F` can take a moment: keep it off the main thread.
+        let _ = tauri::async_runtime::spawn_blocking(move || kill_child(c)).await;
         logging::append(&app, "info", "tunnel", "túnel detenido");
     }
     Ok(())
 }
 
-#[tauri::command]
-pub fn tunnel_status(state: TauriState<'_, TunnelState>) -> TunnelStatus {
-    // Notice a tunnel that died on its own so the UI can offer "Reintentar".
+/// Clears the stored child when the tunnel process died on its own, so the UI can show
+/// "Se cayó el túnel" and a start does not hand back a dead URL. Returns whether it is alive.
+fn reap(state: &TauriState<'_, TunnelState>) -> bool {
     let mut died = false;
     if let Ok(mut guard) = state.child.lock() {
         if let Some(child) = guard.as_mut() {
@@ -129,7 +130,12 @@ pub fn tunnel_status(state: TauriState<'_, TunnelState>) -> TunnelStatus {
         *state.url.lock().unwrap() = None;
         *state.provider.lock().unwrap() = None;
     }
-    let running = state.child.lock().unwrap().is_some();
+    state.child.lock().unwrap().is_some()
+}
+
+#[tauri::command]
+pub fn tunnel_status(state: TauriState<'_, TunnelState>) -> TunnelStatus {
+    let running = reap(&state);
     TunnelStatus {
         running,
         url: if running { state.url.lock().unwrap().clone() } else { None },
@@ -149,7 +155,7 @@ pub fn shutdown(app: &AppHandle) {
 }
 
 fn current_url(state: &TauriState<'_, TunnelState>) -> Option<String> {
-    if state.child.lock().unwrap().is_some() {
+    if reap(state) {
         state.url.lock().unwrap().clone()
     } else {
         None
