@@ -771,4 +771,12 @@ export const es: Dictionary = {
   "phone.noChats": "Este proyecto no tiene chats",
   "phone.answering": "Respondiendo…",
   "phone.noAgents": "No hay agentes configurados",
+
+  // ---- Interrupted runs ----
+  "notify.leftHalfway": "{name} quedó a medias",
+  "notify.leftHalfwayIn": "{name} quedó a medias en {project}",
+  "notify.runsLeftHalfway": "{n} corridas quedaron a medias",
+  "notify.runsLeftHalfwayIn": "{n} corridas quedaron a medias en {project}",
+  "notify.interruptedOne": "La corrida se cortó cuando se cerró la aplicación.",
+  "notify.interruptedMany": "Se cortaron cuando se cerró la aplicación.",
 };
