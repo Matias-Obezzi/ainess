@@ -42,14 +42,8 @@ export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void):
   try {
     res = await transport.exec(
       "winget",
-      [
-        "install",
-        "--id", "Ngrok.Ngrok",
-        "-e",
-        "--accept-package-agreements",
-        "--accept-source-agreements",
-        "--disable-interactivity",
-      ],
+      // What ngrok documents: the Microsoft Store package.
+      ["install", "ngrok", "-s", "msstore", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"],
       undefined,
       INSTALL_TIMEOUT_SECS,
     );

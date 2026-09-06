@@ -712,8 +712,10 @@ mostrando el mismo indicador `tunnelBusy` que usa el switch. La página remota u
 del túnel.
 
 Instalación desde la app: cuando ngrok no está, la fila Proveedor ofrece "Instalar ngrok", que corre
-`winget install --id Ngrok.Ngrok -e --accept-package-agreements --accept-source-agreements
---disable-interactivity` (con timeout de 300 s vía el parámetro nuevo de `Transport.exec`), vuelve a
+`winget install ngrok -s msstore --accept-package-agreements --accept-source-agreements
+--disable-interactivity` (el comando que documenta ngrok; el paquete de la Store deja un alias en
+`%LOCALAPPDATA%\Microsoft\WindowsApps`, que la detección ahora mira explícitamente y acepta aunque
+pedirle metadata falle, como pasa con los alias de ejecución) (con timeout de 300 s vía el parámetro nuevo de `Transport.exec`), vuelve a
 detectar y termina con `ensureNgrokUpToDate`. Va narrando las fases (`installNgrok(onPhase)`:
 instalando → detectando → actualizando). Un "already installed" de winget no cuenta como error.
 

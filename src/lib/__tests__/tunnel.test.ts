@@ -38,7 +38,7 @@ describe("tunnel helpers", () => {
 
   it("suggests the winget command", () => {
     expect(tunnelInstallCommand("cloudflared")).toContain("Cloudflare.cloudflared");
-    expect(tunnelInstallCommand("ngrok")).toContain("Ngrok.Ngrok");
+    expect(tunnelInstallCommand("ngrok")).toContain("msstore");
   });
 
   it("appends the token to the public URL, with or without a trailing slash", () => {

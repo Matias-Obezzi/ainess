@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -92,7 +92,7 @@ fn find_winget(name: &str) -> Option<BinaryInfo> {
     let path = winget_candidates(name)
         .into_iter()
         .chain(registry_path_candidates(name))
-        .find(|p| p.is_file())?;
+        .find(|p| is_program_file(p))?;
     let path_str = path.to_string_lossy().into_owned();
     Some(BinaryInfo {
         version: get_version(&path_str),
@@ -274,13 +274,60 @@ pub fn find_path(name: &str) -> Option<String> {
     winget_candidates(name)
         .into_iter()
         .chain(registry_path_candidates(name))
-        .find(|p| p.is_file())
+        .find(|p| is_program_file(p))
         .map(|p| p.to_string_lossy().into_owned())
 }
 
 /// Installers (winget, MSIs) add their folder to the *registry* PATH; this process keeps the PATH it
 /// was born with, so a tool installed after the app started is invisible to `which`. Read the machine
 /// and user PATH from the registry and look there, plus the usual `Program Files` folders.
+/// Windows keeps PATH entries with variables in them (`%LOCALAPPDATA%\…`); resolve them, leaving
+/// anything it cannot expand untouched.
+fn expand_env(raw: &str) -> String {
+    let mut out = String::new();
+    let mut rest = raw;
+    while let Some(start) = rest.find('%') {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 1..];
+        match after.find('%') {
+            Some(end) => {
+                let name = &after[..end];
+                match std::env::var(name) {
+                    Ok(value) => out.push_str(&value),
+                    Err(_) => {
+                        out.push('%');
+                        out.push_str(name);
+                        out.push('%');
+                    }
+                }
+                rest = &after[end + 1..];
+            }
+            None => {
+                out.push('%');
+                rest = after;
+                break;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Whether there is a program at `path`. `is_file` is not enough on its own: a Microsoft Store
+/// install (`winget … -s msstore`) is reached through an app execution alias in `WindowsApps`,
+/// and asking those for metadata can fail even though the entry is there and runnable.
+fn is_program_file(path: &Path) -> bool {
+    if path.is_file() {
+        return true;
+    }
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name()) else {
+        return false;
+    };
+    std::fs::read_dir(dir)
+        .map(|entries| entries.flatten().any(|e| e.file_name() == name))
+        .unwrap_or(false)
+}
+
 fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
     let mut out = Vec::new();
     if !cfg!(windows) {
@@ -305,7 +352,7 @@ fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
             let Some(idx) = line.find("REG_") else { continue };
             let rest = line[idx..].splitn(2, char::is_whitespace).nth(1).unwrap_or("").trim();
             for dir in rest.split(';').map(str::trim).filter(|d| !d.is_empty()) {
-                out.push(PathBuf::from(dir).join(&exe));
+                out.push(PathBuf::from(expand_env(dir)).join(&exe));
             }
         }
     }
@@ -315,6 +362,10 @@ fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
             out.push(base.join(name).join(&exe));
             out.push(base.join("Programs").join(name).join(&exe));
         }
+    }
+    // A Microsoft Store install (winget -s msstore) is reached through its alias here.
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        out.push(PathBuf::from(local).join("Microsoft").join("WindowsApps").join(&exe));
     }
     out
 }

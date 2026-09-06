@@ -144,7 +144,7 @@ export function registryPathCandidates(name: string): string[] {
         const idx = line.indexOf("REG_");
         if (idx < 0) continue;
         const rest = line.slice(idx).split(/\s+/).slice(1).join(" ").trim();
-        for (const dir of rest.split(";").map(d => d.trim()).filter(Boolean)) out.push(path.join(dir, exe));
+        for (const dir of rest.split(";").map(d => d.trim()).filter(Boolean)) out.push(path.join(expandEnv(dir), exe));
       }
     } catch { /* reg not available */ }
   }
@@ -152,7 +152,14 @@ export function registryPathCandidates(name: string): string[] {
     if (!root) continue;
     out.push(path.join(root, name, exe), path.join(root, "Programs", name, exe));
   }
+  // A Microsoft Store install (winget -s msstore) is reached through its alias here.
+  if (process.env.LOCALAPPDATA) out.push(path.join(process.env.LOCALAPPDATA, "Microsoft", "WindowsApps", exe));
   return out;
+}
+
+/** Windows keeps PATH entries with variables in them (`%LOCALAPPDATA%\...`); resolve them. */
+function expandEnv(raw: string): string {
+  return raw.replace(/%([^%]+)%/g, (whole, name: string) => process.env[name] ?? whole);
 }
 
 /**

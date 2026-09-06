@@ -16,7 +16,8 @@ export function tunnelBinary(provider: TunnelProvider): string {
 
 /** winget command shown in the UI when the binary is missing. */
 export function tunnelInstallCommand(provider: TunnelProvider): string {
-  return provider === "ngrok" ? "winget install Ngrok.Ngrok" : "winget install Cloudflare.cloudflared";
+  // The command ngrok documents on its own site; the Store build lands in WindowsApps.
+  return provider === "ngrok" ? "winget install ngrok -s msstore" : "winget install Cloudflare.cloudflared";
 }
 
 export function tunnelDescription(provider: TunnelProvider): string {
