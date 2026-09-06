@@ -15,14 +15,19 @@ import {
   type Node
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { AgentNode } from "./AgentNode";
+import { AgentDialog } from "./AgentDialog";
 import { AgentInspector } from "./shell/AgentInspector";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { Crosshair, Maximize2, Network, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, Crosshair, Maximize2, Network, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import type { AgentStatus } from "@/types";
 
 const nodeTypes = { agent: AgentNode };
@@ -123,12 +128,14 @@ export function HierarchyGraph() {
 }
 
 function HierarchyBoard() {
-  const agents = useAppStore(state => state.config.agents);
-  const runtime = useAppStore(state => state.runtime);
   const currentProjectId = useAppStore(state => state.currentProjectId);
-  const openSettings = useAppStore(state => state.openSettings);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const runtime = useAppStore(state => state.runtime);
+  const projectName = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId)?.name);
 
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [formationOpen, setFormationOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
@@ -234,10 +241,11 @@ function HierarchyBoard() {
       <div className="flex h-full w-full items-center justify-center">
         <EmptyState
           icon={Network}
-          title="Todavía no hay agentes"
-          description="La jerarquía muestra quién delega a quién. Creá el primer agente para empezar."
-          action={{ label: "Crear un agente", onClick: () => openSettings("agents") }}
+          title="Este proyecto todavía no tiene agentes"
+          description="La jerarquía muestra quién delega a quién. Agregá el primero para empezar."
+          action={{ label: "Agregar agente", onClick: () => setCreateOpen(true) }}
         />
+        <AgentDialog open={createOpen} onOpenChange={setCreateOpen} />
       </div>
     );
   }
@@ -280,6 +288,16 @@ function HierarchyBoard() {
 
       {!selectedAgent && (
         <div className="absolute right-3 top-3 flex gap-0.5 rounded-lg border border-border bg-card/90 p-0.5 shadow-sm backdrop-blur">
+          <ToolbarButton label="Agregar agente" disabled={!currentProjectId} onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Guardar como formación"
+            disabled={!currentProjectId}
+            onClick={() => setFormationOpen(true)}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+          </ToolbarButton>
           <ToolbarButton label="Ajustar vista" onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
             <Maximize2 className="h-3.5 w-3.5" />
           </ToolbarButton>
@@ -300,7 +318,68 @@ function HierarchyBoard() {
       )}
 
       {selectedAgent && <AgentInspector agent={selectedAgent} onClose={clearSelection} />}
+
+      <AgentDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <SaveFormationDialog
+        open={formationOpen}
+        onOpenChange={setFormationOpen}
+        projectId={currentProjectId}
+        projectName={projectName}
+      />
     </div>
+  );
+}
+
+/** Keeps the team of this project as a template other projects can start from. */
+function SaveFormationDialog({
+  open,
+  onOpenChange,
+  projectId,
+  projectName
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId: string | null;
+  projectName?: string;
+}) {
+  const saveProjectAsFormation = useAppStore(state => state.saveProjectAsFormation);
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    if (open) setName(projectName ? `Equipo de ${projectName}` : "");
+  }, [open, projectName]);
+
+  const save = () => {
+    if (!projectId || !name.trim()) return;
+    saveProjectAsFormation(projectId, name.trim());
+    toast.success(`Formación "${name.trim()}" guardada`);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Guardar como formación</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-2 py-2">
+          <Label>Nombre</Label>
+          <Input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && save()}
+            placeholder="Ej: Equipo de backend"
+          />
+          <p className="text-xs text-muted-foreground">
+            Vas a poder elegir este equipo al crear un proyecto, desde Configuración → Agentes.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save} disabled={!name.trim()}>Guardar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { toast } from "@/components/ui/toast";
 
 export function useNotifications() {
@@ -19,8 +19,8 @@ export function useNotifications() {
       for (const msg of newMessages) {
         if (msg.projectId && msg.projectId !== state.currentProjectId) continue;
         if (msg.kind === "delegation") {
-          const from = state.config.agents.find(a => a.id === msg.fromAgentId)?.name || "Alguien";
-          const to = state.config.agents.find(a => a.id === msg.toAgentId)?.name || "Alguien";
+          const from = selectAllAgents(state).find(a => a.id === msg.fromAgentId)?.name || "Alguien";
+          const to = selectAllAgents(state).find(a => a.id === msg.toAgentId)?.name || "Alguien";
           toast.info(`${from} delegó a ${to}`);
         } else if (msg.kind === "error") {
           toast.error(msg.text);

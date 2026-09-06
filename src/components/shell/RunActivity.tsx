@@ -2,7 +2,7 @@
 // nested activity of the agents it delegated to. Fed by the `messages` feed, filtered by runId.
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
 import { Markdown } from "@/components/shell/Markdown";
 import { toolIcon } from "@/lib/tool-summary";
@@ -123,7 +123,7 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
 
 /** A delegation: who got the task, plus that agent's own activity nested underneath. */
 function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: string }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
 
   const childRun = useMemo(() => {

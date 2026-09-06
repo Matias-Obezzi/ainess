@@ -119,19 +119,28 @@ export function hydrate(snapshot: RemoteSnapshot): void {
   const approvals: Record<string, Approval> = {};
   for (const approval of snapshot.approvals) approvals[approval.id] = approval;
 
+  // The phone never edits agents, so the fields it does not get can take their safe default.
+  const agentsByProject = new Map<string, AgentConfig[]>();
+  for (const { projectId, ...a } of snapshot.agents) {
+    const agent: AgentConfig = { ...a, autoApprove: false };
+    const list = agentsByProject.get(projectId);
+    if (list) list.push(agent);
+    else agentsByProject.set(projectId, [agent]);
+  }
+
   const activeTaskRunId: Record<string, string | null> = {};
   const projects: Project[] = [];
   for (const p of snapshot.projects) {
     activeTaskRunId[p.id] = p.activeTaskRunId;
-    projects.push({ id: p.id, name: p.name, workspaceDir: p.workspaceDir, color: p.color, createdAt: p.createdAt });
+    projects.push({
+      id: p.id, name: p.name, workspaceDir: p.workspaceDir, color: p.color, createdAt: p.createdAt,
+      agents: agentsByProject.get(p.id) ?? [],
+    });
   }
-
-  // The phone never edits agents, so the fields it does not get can take their safe default.
-  const agents: AgentConfig[] = snapshot.agents.map(a => ({ ...a, autoApprove: false }));
 
   useAppStore.setState(state => ({
     loaded: true,
-    config: { ...state.config, projects, agents, chats: snapshot.chats },
+    config: { ...state.config, projects, chats: snapshot.chats },
     runtime,
     runs,
     messages: snapshot.messages,

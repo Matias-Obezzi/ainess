@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -128,7 +128,7 @@ export function Sidebar() {
   // Starting over: every agent forgets this project's session, so the next prompt has no context.
   const newConversation = (projectId: string) => {
     const s = useAppStore.getState();
-    for (const a of s.config.agents) s.resetSession(a.id, projectId);
+    for (const a of selectProjectAgents(s, projectId)) s.resetSession(a.id, projectId);
     toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
   };
 

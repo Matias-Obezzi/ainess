@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.started", label: "task.started" },
@@ -33,6 +33,7 @@ const PRESET_SLACK = "✅ {{agent}} terminó en {{project}}: {{output|300}}";
 export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onClose: () => void, hook?: Hook, onSave: (h: Hook) => void }) {
   const isEditing = !!hook;
   const store = useAppStore();
+  const agents = useAppStore(selectAllAgents);
   const [name, setName] = useState(hook?.name || "");
   const [event, setEvent] = useState<HookEvent>(hook?.event || "task.finished");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
@@ -135,7 +136,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
                   <SelectItem value="all">Todos</SelectItem>
-                  {store.config.agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -178,7 +179,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#1e1e1e] border-[#333]">
-                    {store.config.agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

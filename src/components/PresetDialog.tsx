@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ interface Preset {
 
 export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, onOpenChange: (open: boolean) => void, preset: Preset | null }) {
   const store = useAppStore();
+  const agents = useAppStore(selectAllAgents);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agentId, setAgentId] = useState<string>("none");
@@ -55,7 +56,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
     onOpenChange(false);
   };
 
-  const selectedAgent = store.config.agents.find(a => a.id === agentId);
+  const selectedAgent = agents.find(a => a.id === agentId);
   const providerSpec = selectedAgent ? PROVIDERS[selectedAgent.provider] : null;
 
   return (
@@ -80,7 +81,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
                 <SelectTrigger className="w-full"><SelectValue placeholder="Cualquiera" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Cualquiera</SelectItem>
-                  {store.config.agents.map(a => (
+                  {agents.map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
                 </SelectContent>

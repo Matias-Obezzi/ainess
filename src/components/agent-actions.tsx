@@ -1,11 +1,13 @@
 // The actions an agent exposes in the hierarchy view (node and inspector share them so the
 // semantics never drift): stop, instruct, view output, chat, reset session and edit.
 import { useMemo, useState } from "react";
-import { FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square } from "lucide-react";
-import { useAppStore } from "@/store";
+import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square, Trash2 } from "lucide-react";
+import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
 import type { AgentConfig, AgentStatus, Run } from "@/types";
+import { confirmDelete } from "@/lib/confirm";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { AgentDialog } from "./AgentDialog";
 import { InstructDialog } from "./InstructDialog";
 import { RunDetailDialog } from "./RunDetailDialog";
 
@@ -27,11 +29,17 @@ export interface AgentActions {
   viewOutput(): void;
   openChat(): void;
   resetSession(): void;
+  /** Opens the agent dialog on this agent, in the project it belongs to. */
   editAgent(): void;
+  /** Another agent with the same provider, model and parent, under a free name. */
+  duplicate(): void;
+  removeAgent(): void;
   instructOpen: boolean;
   setInstructOpen(open: boolean): void;
   runDetailOpen: boolean;
   setRunDetailOpen(open: boolean): void;
+  editOpen: boolean;
+  setEditOpen(open: boolean): void;
 }
 
 export function useAgentActions(agent: AgentConfig): AgentActions {
@@ -42,10 +50,12 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
   const allRuns = useAppStore(state => state.runs);
   const stopAgent = useAppStore(state => state.stopAgent);
   const resetSession = useAppStore(state => state.resetSession);
-  const openSettings = useAppStore(state => state.openSettings);
+  const addAgent = useAppStore(state => state.addAgent);
+  const removeAgentFromProject = useAppStore(state => state.removeAgent);
 
   const [instructOpen, setInstructOpen] = useState(false);
   const [runDetailOpen, setRunDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const runs = useMemo(
     () =>
@@ -99,11 +109,27 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
     resetSession: () => {
       if (currentProjectId) resetSession(agent.id, currentProjectId);
     },
-    editAgent: () => openSettings("agents"),
+    editAgent: () => setEditOpen(true),
+    duplicate: () => {
+      if (!currentProjectId) return;
+      const roster = selectProjectAgents(useAppStore.getState(), currentProjectId);
+      addAgent(currentProjectId, {
+        ...agent,
+        id: crypto.randomUUID(),
+        name: nextAgentName(roster, agent.name),
+      });
+    },
+    removeAgent: () => {
+      if (!currentProjectId) return;
+      void confirmDelete("el agente", agent.name, "Sus tareas quedan en el historial y sus hijos pasan a colgar de su padre.")
+        .then(ok => ok && removeAgentFromProject(currentProjectId, agent.id));
+    },
     instructOpen,
     setInstructOpen,
     runDetailOpen,
-    setRunDetailOpen
+    setRunDetailOpen,
+    editOpen,
+    setEditOpen
   };
 }
 
@@ -137,7 +163,16 @@ export function agentMenuActions(actions: AgentActions, onViewOutput?: () => voi
       separatorBefore: true,
       onSelect: actions.resetSession
     },
-    { key: "edit", label: "Editar agente", icon: Pencil, onSelect: actions.editAgent }
+    { key: "edit", label: "Editar agente", icon: Pencil, onSelect: actions.editAgent },
+    { key: "duplicate", label: "Duplicar", icon: Copy, disabled: !actions.ready, onSelect: actions.duplicate },
+    {
+      key: "remove",
+      label: "Eliminar",
+      icon: Trash2,
+      destructive: true,
+      disabled: !actions.ready,
+      onSelect: actions.removeAgent
+    }
   ];
 }
 
@@ -165,6 +200,7 @@ export function AgentContextMenu({
 export function AgentActionDialogs({ agent, actions, runId }: { agent: AgentConfig; actions: AgentActions; runId?: string | null }) {
   return (
     <>
+      <AgentDialog open={actions.editOpen} onOpenChange={actions.setEditOpen} agent={agent} />
       <InstructDialog
         agentId={agent.id}
         open={actions.instructOpen}

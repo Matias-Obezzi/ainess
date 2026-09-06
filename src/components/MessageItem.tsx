@@ -1,5 +1,5 @@
 import { CommMessage } from "@/types";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { kindLabel } from "@/lib/labels";
@@ -9,7 +9,7 @@ import { useState } from "react";
 import { RunDetailDialog } from "./RunDetailDialog";
 
 export function MessageItem({ message }: { message: CommMessage }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   
   const fromAgent = message.fromAgentId === "user" ? null : agents.find(a => a.id === message.fromAgentId);
   const toAgent = message.toAgentId === "user" ? null : agents.find(a => a.id === message.toAgentId);

@@ -1,4 +1,4 @@
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { confirmDelete } from "@/lib/confirm";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export function PresetsSectionActions() {
 
 export function PresetsSection() {
   const config = useAppStore(state => state.config);
+  const agents = useAppStore(selectAllAgents);
   const updateConfig = useAppStore(state => state.updateConfig);
   const { open, editing, openEdit, openCreate, close } = PresetDialogCtx.useDialogState();
 
@@ -47,7 +48,7 @@ export function PresetsSection() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {config.presets.map(preset => {
-          const targetAgent = config.agents.find(a => a.id === preset.agentId);
+          const targetAgent = agents.find(a => a.id === preset.agentId);
           return (
             <Card key={preset.id}>
               <CardHeader>

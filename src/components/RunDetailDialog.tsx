@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const runs = useAppStore(state => state.runs);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
 
   const run = runId ? runs[runId] : null;
   const agent = run ? agents.find(a => a.id === run.agentId) : null;

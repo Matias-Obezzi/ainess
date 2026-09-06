@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { MessageItem } from "./MessageItem";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +22,7 @@ export function CommunicationPanel() {
       : [],
     [allMessages, currentProjectId],
   );
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const clearMessages = useAppStore(state => state.clearMessages);
   
   const [filterAgent, setFilterAgent] = useState<string>("all");

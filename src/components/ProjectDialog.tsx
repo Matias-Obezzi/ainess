@@ -3,11 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AgentAvatar } from "@/components/ProviderLogo";
+import { AgentDialog } from "@/components/AgentDialog";
 import { open } from "@tauri-apps/plugin-dialog";
 import { isTauri } from "@/lib/tauri";
-import { useAppStore } from "@/store";
-import { Project } from "@/types";
+import { useAppStore, cloneAgents } from "@/store";
+import { PROVIDERS } from "@/lib/providers";
+import { roleLabel } from "@/lib/labels";
+import { AgentConfig, Project } from "@/types";
 import { toast } from "@/components/ui/toast";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+
+/** Value of the formation select when the project starts with no agents at all. */
+const NO_FORMATION = "__none__";
 
 export function ProjectDialog({
   isOpen,
@@ -21,21 +30,55 @@ export function ProjectDialog({
   const [name, setName] = useState("");
   const [workspaceDir, setWorkspaceDir] = useState("");
   const [color, setColor] = useState("#4f8cff");
+  const [formationId, setFormationId] = useState<string>(NO_FORMATION);
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
   const store = useAppStore();
+  const formations = useAppStore(state => state.config.formations);
+  const defaultFormationId = useAppStore(state => state.config.defaultFormationId);
 
   useEffect(() => {
-    if (isOpen) {
-      if (editProject) {
-        setName(editProject.name);
-        setWorkspaceDir(editProject.workspaceDir);
-        setColor(editProject.color || "#4f8cff");
-      } else {
-        setName("");
-        setWorkspaceDir("");
-        setColor("#4f8cff");
-      }
+    if (!isOpen) return;
+    setEditingAgent(null);
+    if (editProject) {
+      setName(editProject.name);
+      setWorkspaceDir(editProject.workspaceDir);
+      setColor(editProject.color || "#4f8cff");
+      // The team of an existing project is managed from its hierarchy, not from here.
+      setFormationId(NO_FORMATION);
+      setAgents([]);
+      return;
     }
+    setName("");
+    setWorkspaceDir("");
+    setColor("#4f8cff");
+    const initial = defaultFormationId && formations.some(f => f.id === defaultFormationId) ? defaultFormationId : NO_FORMATION;
+    setFormationId(initial);
+    const formation = formations.find(f => f.id === initial);
+    setAgents(formation ? cloneAgents(formation.agents) : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editProject]);
+
+  /** Picking a formation refills the list, dropping whatever was edited before. */
+  const pickFormation = (value: string) => {
+    setFormationId(value);
+    const formation = formations.find(f => f.id === value);
+    setAgents(formation ? cloneAgents(formation.agents) : []);
+  };
+
+  const saveAgent = (agent: AgentConfig) => {
+    setAgents(prev => (prev.some(a => a.id === agent.id) ? prev.map(a => (a.id === agent.id ? agent : a)) : [...prev, agent]));
+  };
+
+  const removeAgent = (agentId: string) => {
+    setAgents(prev => {
+      const target = prev.find(a => a.id === agentId);
+      return prev
+        .filter(a => a.id !== agentId)
+        .map(a => (a.parentId === agentId ? { ...a, parentId: target?.parentId ?? null } : a));
+    });
+  };
 
   const handleSelectDir = async () => {
     if (!isTauri()) {
@@ -58,49 +101,140 @@ export function ProjectDialog({
 
   const handleSave = () => {
     if (!name || !workspaceDir) return;
-    
+
     if (editProject) {
       store.updateProject(editProject.id, { name, workspaceDir, color });
     } else {
-      store.addProject({ name, workspaceDir, color });
+      // What the user left in the list is the team, formation or not.
+      store.addProject({ name, workspaceDir, color, agents });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
-    
+
     onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{editProject ? "Editar Proyecto" : "Nuevo Proyecto"}</DialogTitle>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>Carpeta (Workspace)</Label>
-            <div className="flex gap-2">
-              <Input value={workspaceDir} readOnly placeholder="Ruta de la carpeta..." />
-              <Button type="button" variant="outline" onClick={handleSelectDir}>Examinar...</Button>
+
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Carpeta (Workspace)</Label>
+              <div className="flex gap-2">
+                <Input value={workspaceDir} readOnly placeholder="Ruta de la carpeta..." />
+                <Button type="button" variant="outline" onClick={handleSelectDir}>Examinar...</Button>
+              </div>
             </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label>Nombre</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Mi proyecto" />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label>Color (opcional)</Label>
-            <Input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-16 h-8 p-1" />
+
+            <div className="grid gap-2">
+              <Label>Nombre</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Mi proyecto" />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Color (opcional)</Label>
+              <Input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-16 h-8 p-1" />
+            </div>
+
+            {/* Only when creating: an existing project's team is managed from its hierarchy. */}
+            {!editProject && (
+              <>
+                <div className="grid gap-2">
+                  <Label>Formación</Label>
+                  <Select value={formationId} onValueChange={pickFormation}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_FORMATION}>Sin agentes</SelectItem>
+                      {formations.map(f => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.name}{f.id === defaultFormationId ? " (predeterminada)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Equipo del proyecto</Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setEditingAgent(null); setAgentDialogOpen(true); }}
+                    >
+                      <Plus className="mr-1 size-3" /> Agregar agente
+                    </Button>
+                  </div>
+
+                  {agents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      El proyecto arranca sin agentes; podés armar el equipo después desde la jerarquía.
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col gap-2">
+                      {agents.map(a => {
+                        const parent = agents.find(p => p.id === a.parentId);
+                        return (
+                          <li key={a.id} className="flex items-center gap-2 rounded-md border border-border p-2">
+                            <AgentAvatar provider={a.provider} color={a.color} size={22} />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium">{a.name}</div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {PROVIDERS[a.provider]?.label || a.provider} · {roleLabel[a.role] || a.role}
+                                {a.model ? ` · ${a.model}` : ""} · {parent ? `bajo ${parent.name}` : "raíz"}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              aria-label={`Editar ${a.name}`}
+                              onClick={() => { setEditingAgent(a); setAgentDialogOpen(true); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              aria-label={`Quitar ${a.name}`}
+                              onClick={() => removeAgent(a.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={!name || !workspaceDir}>Guardar</Button>
         </DialogFooter>
+
+        <AgentDialog
+          open={agentDialogOpen}
+          onOpenChange={setAgentDialogOpen}
+          agent={editingAgent ?? undefined}
+          agents={agents}
+          onSave={saveAgent}
+        />
       </DialogContent>
     </Dialog>
   );

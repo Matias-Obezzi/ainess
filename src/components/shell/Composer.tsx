@@ -3,7 +3,7 @@ import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ const sentHistory: string[] = [];
 /** The input pinned at the bottom of the project screen: orchestrator prompt or chat message. */
 export function Composer() {
   const config = useAppStore(state => state.config);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  // A chat can name an agent of another project, so its ring looks the roster up everywhere.
+  const allAgents = useAppStore(selectAllAgents);
   const binaries = useAppStore(state => state.binaries);
   const runtime = useAppStore(state => state.runtime);
   const currentProjectId = useAppStore(state => state.currentProjectId);
@@ -31,7 +34,7 @@ export function Composer() {
   const [text, setText] = useState("");
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
 
-  const roots = config.agents.filter(a => a.parentId === null);
+  const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
   const [targetModel, setTargetModel] = useState<string>("none");
@@ -39,10 +42,10 @@ export function Composer() {
 
   // Agents can be created or deleted from Settings; keep the target pointing at something real.
   useEffect(() => {
-    if (!config.agents.some(a => a.id === targetId)) {
+    if (!agents.some(a => a.id === targetId)) {
       setTargetId(defaultAgent?.id || "");
     }
-  }, [config.agents, targetId, defaultAgent?.id]);
+  }, [agents, targetId, defaultAgent?.id]);
 
   // Chat activity lives outside the store, so poll it while a chat is open.
   const [, setTick] = useState(0);
@@ -56,7 +59,7 @@ export function Composer() {
   const chatMode = !!currentChatId;
   const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
 
-  const targetAgent = config.agents.find(a => a.id === targetId);
+  const targetAgent = agents.find(a => a.id === targetId);
   const targetRuntime = targetAgent && currentProjectId ? runtime[currentProjectId]?.[targetId] : undefined;
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
@@ -79,7 +82,7 @@ export function Composer() {
   // (the orchestrator unless the destination select says otherwise).
   const chatAgentId = chat?.participants.length === 1 ? chat.participants[0].agentId : undefined;
   const quotaAgent = chatMode
-    ? config.agents.find(a => a.id === chatAgentId)
+    ? allAgents.find(a => a.id === chatAgentId)
     : targetAgent || defaultAgent;
 
   const busy = chatMode ? chatBusy : targetWorking;
@@ -154,17 +157,26 @@ export function Composer() {
     }
   };
 
+  const noTeam = !chatMode && agents.length === 0;
   const placeholder = chatMode
     ? `Mensaje para ${chat?.name ?? "el chat"}…  (Ctrl+Enter para enviar)`
-    : "Pedile algo al equipo… (Ctrl+Enter para enviar)";
+    : noTeam
+      ? "Este proyecto todavía no tiene agentes…"
+      : "Pedile algo al equipo… (Ctrl+Enter para enviar)";
 
   return (
     <div className="border-t border-border p-3 shrink-0 bg-background">
       <div className="max-w-3xl mx-auto flex flex-col gap-2">
+        {noTeam && (
+          <Alert className="text-xs py-2">
+            Este proyecto todavía no tiene agentes. Armá el equipo desde la vista de Jerarquía.
+          </Alert>
+        )}
+
         {!chatMode && targetAgent && binaryInfo === null && (
           <Alert variant="destructive" className="text-xs py-2">
             No se detectó el CLI de {PROVIDERS[targetAgent.provider]?.label ?? targetAgent.provider}.
-            Configuralo en Configuración → Agentes.
+            Revisalo en Configuración → Agentes.
           </Alert>
         )}
 
@@ -216,7 +228,7 @@ export function Composer() {
                     <SelectValue placeholder="Destino" />
                   </SelectTrigger>
                   <SelectContent>
-                    {config.agents.map(a => (
+                    {agents.map(a => (
                       <SelectItem key={a.id} value={a.id}>
                         <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
                       </SelectItem>

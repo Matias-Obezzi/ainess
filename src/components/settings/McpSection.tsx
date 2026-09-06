@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { confirmDelete } from "@/lib/confirm";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +59,7 @@ export function McpSectionActions() {
 
 export function McpSection() {
   const config = useAppStore(state => state.config);
+  const agents = useAppStore(selectAllAgents);
   const removeMcpServer = useAppStore(state => state.removeMcpServer);
   const { open, editing, openEdit, close } = McpDialogCtx.useDialogState();
   const { open: suggestedOpen, hide: hideSuggested, show: showSuggested } = SuggestedCtx.useToggleState();
@@ -99,7 +100,7 @@ export function McpSection() {
                   <Badge variant="secondary">Todos</Badge>
                 ) : (
                   server.enabledFor.map(id => {
-                    const agent = config.agents.find(a => a.id === id);
+                    const agent = agents.find(a => a.id === id);
                     return <Badge key={id} variant="outline">{agent?.name || id}</Badge>;
                   })
                 )}

@@ -23,13 +23,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   AlertTriangle,
+  Copy,
   FileText,
   MessageCircle,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
   RotateCcw,
-  Square
+  Square,
+  Trash2
 } from "lucide-react";
 import { useAgentActions, AgentActionDialogs, AgentContextMenu, type AgentActions } from "./agent-actions";
 
@@ -300,6 +302,16 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => actions.editAgent()}>
                   <Pencil /> Editar agente
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!actions.ready} onSelect={() => actions.duplicate()}>
+                  <Copy /> Duplicar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!actions.ready}
+                  onSelect={() => actions.removeAgent()}
+                >
+                  <Trash2 /> Eliminar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

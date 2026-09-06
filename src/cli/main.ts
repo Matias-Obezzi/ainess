@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { useAppStore, selectRoots } from "@/store";
+import { useAppStore, selectRoots, selectAllAgents, selectProjectAgents, cloneAgents } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nodeTransport, killAllSync, wingetCandidates } from "@/lib/transport-node";
 import * as readline from "node:readline";
@@ -29,6 +29,17 @@ async function main() {
   const args = process.argv.slice(2);
   const jsonOutput = args.includes("--json");
 
+  /** Fresh state: the actions replace `config`, so the snapshot above goes stale after a write. */
+  const live = () => useAppStore.getState();
+  /** Every agent of every project: ids are unique, so an id alone is enough to find one. */
+  const allAgents = () => selectAllAgents(live());
+  const agentById = (id?: string) => (id ? allAgents().find(a => a.id === id) : undefined);
+  /** By name, anywhere: for the global config (hooks, órdenes, skills, MCP). */
+  const agentByName = (name: string) => allAgents().find(a => a.name.toLowerCase() === name.trim().toLowerCase());
+  /** By name inside one project's team: that is the scope a delegation resolves in. */
+  const projectAgentByName = (projectId: string, name: string) =>
+    selectProjectAgents(live(), projectId).find(a => a.name.toLowerCase() === name.trim().toLowerCase());
+
   function print(obj: any, text: string) {
     if (jsonOutput) {
       console.log(JSON.stringify(obj));
@@ -54,7 +65,9 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, run");
+    console.log("Subcomandos: agents, formations, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, run");
+    console.log("  agents list|add|edit|remove|init [-p proyecto|-w dir]   Equipo de un proyecto");
+    console.log("  formations list | apply <nombre> [-p proyecto|-w dir]   Equipos guardados");
     console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
@@ -68,7 +81,7 @@ async function main() {
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
+  const KNOWN = new Set(["run", "agents", "formations", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -132,7 +145,7 @@ async function main() {
     const requested = args[1] && !args[1].startsWith("-") ? (args[1] as ProviderId) : undefined;
     const providers: ProviderId[] = requested
       ? [requested]
-      : (Array.from(new Set(store.config.agents.map(a => a.provider))) as ProviderId[]);
+      : (Array.from(new Set(allAgents().map(a => a.provider))) as ProviderId[]);
 
     const results: Record<string, unknown> = {};
     for (const p of providers) {
@@ -205,7 +218,7 @@ async function main() {
       if (!values.prompt) error("Falta --prompt");
       let agentId: string | undefined = undefined;
       if (values.agent) {
-        const a = store.config.agents.find(x => x.name.toLowerCase() === String(values.agent).toLowerCase());
+        const a = agentByName(String(values.agent));
         if (!a) error(`Agente "${values.agent}" no encontrado`);
         agentId = a.id;
       }
@@ -236,12 +249,24 @@ async function main() {
 
   if (first === "agents") {
     const sub = args[1] || "list";
+    // Agents belong to a project, so every subcommand needs one (-p <nombre> / -w <dir>, else cwd).
+    const { values: av } = parseArgs({
+      args: args.slice(2),
+      options: { project: { type: "string", short: "p" }, workspace: { type: "string", short: "w" } },
+      allowPositionals: true,
+      strict: false,
+    });
+    const agentsProjectId = resolveProjectId(av.project as string | undefined, av.workspace as string | undefined);
+    const teamOf = () => selectProjectAgents(live(), agentsProjectId);
+
     if (sub === "list") {
+      const team = teamOf();
       if (jsonOutput) {
-        console.log(JSON.stringify(store.config.agents));
+        console.log(JSON.stringify(team));
       } else {
-        for (const a of store.config.agents) {
-          const parent = a.parentId ? store.config.agents.find(x => x.id === a.parentId)?.name || a.parentId : "root";
+        if (team.length === 0) console.log("Este proyecto no tiene agentes. Aplicá una formación: ais formations apply <nombre>");
+        for (const a of team) {
+          const parent = a.parentId ? team.find(x => x.id === a.parentId)?.name || a.parentId : "root";
           console.log(`- ${a.name} [${a.role}] (Provider: ${a.provider}, Parent: ${parent})`);
         }
       }
@@ -249,13 +274,13 @@ async function main() {
     } else if (sub === "init") {
       const providerKeys = Object.keys(store.binaries) as ProviderId[];
       const detectables = providerKeys.filter(p => p !== "custom");
-      const rootPlanner = store.config.agents.find(a => a.parentId === null && a.role === "planner");
+      const rootPlanner = teamOf().find(a => a.parentId === null && a.role === "planner");
       let added = 0;
       for (const p of detectables) {
         const bin = store.binaries[p];
-        const hasAgent = store.config.agents.some(a => a.provider === p);
+        const hasAgent = teamOf().some(a => a.provider === p);
         if (bin && bin.path && bin.version !== null && !hasAgent) {
-          store.upsertAgent({
+          store.addAgent(agentsProjectId, {
             id: crypto.randomUUID(),
             name: p.charAt(0).toUpperCase() + p.slice(1),
             provider: p,
@@ -285,29 +310,31 @@ async function main() {
           color: { type: "string" },
           program: { type: "string" },
           args: { type: "string" },
+          project: { type: "string", short: "p" },
+          workspace: { type: "string", short: "w" },
         },
         allowPositionals: true
       });
       const targetName = (sub === "add" ? values.name : positionals[0]) as string | undefined;
       if (!targetName) error("Falta nombre");
-      
-      let agent = store.config.agents.find(a => a.name.toLowerCase() === targetName.toLowerCase());
-      if (sub === "add" && agent) error("Agente ya existe");
-      if (sub === "edit" && !agent) error("Agente no encontrado");
+
+      let agent = projectAgentByName(agentsProjectId, targetName);
+      if (sub === "add" && agent) error("Agente ya existe en este proyecto");
+      if (sub === "edit" && !agent) error("Agente no encontrado en este proyecto");
 
       const id = agent ? agent.id : crypto.randomUUID();
       const name = (values.name as string) || (agent ? agent.name : targetName);
-      if (sub === "edit" && values.name) {
-        const existing = store.config.agents.find(a => a.name.toLowerCase() === (values.name as string).toLowerCase() && a.id !== id);
-        if (existing) error("Ya existe otro agente con ese nombre");
+      if (values.name) {
+        const existing = projectAgentByName(agentsProjectId, String(values.name));
+        if (existing && existing.id !== id) error("Ya existe otro agente con ese nombre en este proyecto");
       }
 
       let parentId: string | null = agent ? agent.parentId : null;
       if (values.parent) {
         if (String(values.parent).toLowerCase() === "null" || values.parent === "") parentId = null;
         else {
-          const p = store.config.agents.find(a => a.name.toLowerCase() === String(values.parent).toLowerCase());
-          if (!p) error("Padre no encontrado");
+          const p = projectAgentByName(agentsProjectId, String(values.parent));
+          if (!p) error("Padre no encontrado en este proyecto");
           parentId = p.id;
         }
       }
@@ -337,19 +364,57 @@ async function main() {
         };
       }
 
-      store.upsertAgent(newAgent);
+      store.addAgent(agentsProjectId, newAgent);
       await store.saveConfig();
       print(newAgent, `Agente ${sub === "add" ? "agregado" : "editado"}: ${name}`);
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
-      const agent = store.config.agents.find(a => a.name.toLowerCase() === name.toLowerCase());
-      if (!agent) error("No encontrado");
-      store.removeAgent(agent.id);
+      if (!name || name.startsWith("-")) error("Falta nombre");
+      const agent = projectAgentByName(agentsProjectId, name);
+      if (!agent) error("No encontrado en este proyecto");
+      store.removeAgent(agentsProjectId, agent.id);
       await store.saveConfig();
       print({ id: agent.id }, `Agente eliminado`);
       process.exit(0);
     }
+  }
+
+  // Formations: saved teams a project can be started from (or topped up with).
+  if (first === "formations") {
+    const sub = args[1] || "list";
+    if (sub === "list") {
+      const formations = live().config.formations;
+      if (jsonOutput) {
+        console.log(JSON.stringify(formations));
+      } else {
+        if (formations.length === 0) console.log("No hay formaciones guardadas.");
+        for (const f of formations) {
+          const mark = f.id === live().config.defaultFormationId ? " (predeterminada)" : "";
+          const who = f.agents.map(a => `${a.name} [${a.provider}]`).join(", ") || "sin agentes";
+          console.log(`- ${f.name}${mark}: ${who}`);
+        }
+      }
+      process.exit(0);
+    } else if (sub === "apply") {
+      const { values: fv, positionals: fp } = parseArgs({
+        args: args.slice(2),
+        options: { project: { type: "string", short: "p" }, workspace: { type: "string", short: "w" } },
+        allowPositionals: true,
+        strict: false,
+      });
+      const wanted = fp[0];
+      if (!wanted) error("Uso: ais formations apply <nombre> [-p proyecto | -w dir]");
+      const formation = live().config.formations.find(f => f.name.toLowerCase() === wanted.toLowerCase());
+      if (!formation) error(`Formación "${wanted}" no encontrada.`);
+      const projectId = resolveProjectId(fv.project as string | undefined, fv.workspace as string | undefined);
+      store.applyFormation(projectId, formation.id);
+      await store.saveConfig();
+      const added = cloneAgents(formation.agents).length;
+      print({ ok: true, added }, `Formación "${formation.name}" aplicada: ${added} agentes agregados.`);
+      process.exit(0);
+    }
+    error("Uso: ais formations list | apply <nombre> [-p proyecto | -w dir]");
   }
 
   if (first === "skills") {
@@ -383,7 +448,7 @@ async function main() {
         if (values.agents === "all") enabledFor = "all";
         else {
           enabledFor = String(values.agents).split(",").map((n: string) => {
-            const a = store.config.agents.find(x => x.name.toLowerCase() === n.trim().toLowerCase());
+            const a = agentByName(n);
             if (!a) error(`Agente ${n} no encontrado`);
             return a.id;
           });
@@ -461,7 +526,7 @@ async function main() {
           break;
         case "instruct":
           if (!values.agent) error("Falta --agent (el agente a instruir)");
-          const instrAgent = store.config.agents.find(a => a.name.toLowerCase() === String(values.agent).toLowerCase());
+          const instrAgent = agentByName(String(values.agent));
           if (!instrAgent) error(`Agente "${values.agent}" no encontrado`);
           action = { type: "instruct", agentId: instrAgent.id, template: values.template || "{{output}}" };
           break;
@@ -474,7 +539,7 @@ async function main() {
 
       let filter: any = {};
       if (values["filter-agent"]) {
-        const a = store.config.agents.find(x => x.name.toLowerCase() === String(values["filter-agent"]).toLowerCase());
+        const a = agentByName(String(values["filter-agent"]));
         if (!a) error("Filtro: Agente no encontrado");
         filter.agentId = a.id;
       }
@@ -572,7 +637,7 @@ async function main() {
         if (values.agents === "all") enabledFor = "all";
         else {
           enabledFor = String(values.agents).split(",").map((n: string) => {
-            const a = store.config.agents.find(x => x.name.toLowerCase() === n.trim().toLowerCase());
+            const a = agentByName(n);
             if (!a) error(`Agente ${n} no encontrado`);
             return a.id;
           });
@@ -619,7 +684,7 @@ async function main() {
       allowPositionals: true,
       strict: false,
     });
-    const agentName = (id: string) => store.config.agents.find(a => a.id === id)?.name || id;
+    const agentName = (id: string) => agentById(id)?.name || id;
     const fmt = (ts: number) => new Date(ts).toLocaleString("es-AR", { hour12: false });
     const oneLine = (s: string, n: number) => s.replace(/\s+/g, " ").trim().slice(0, n);
 
@@ -761,7 +826,7 @@ async function main() {
         if (printedIds.has(m.id) || m.kind === "text") continue;
         printedIds.add(m.id);
         if (jsonOutput) { console.log(JSON.stringify(m)); continue; }
-        const from = m.fromAgentId === "user" ? "user" : store.config.agents.find(a => a.id === m.fromAgentId)?.name || m.fromAgentId;
+        const from = m.fromAgentId === "user" ? "user" : agentById(m.fromAgentId)?.name || m.fromAgentId;
         console.log(`${new Date(m.ts).toLocaleTimeString("en-GB", { hour12: false })}  ${from}  [${m.kind}]  ${m.text.replace(/\s+/g, " ").slice(0, 160)}`);
       }
     });
@@ -777,7 +842,7 @@ async function main() {
     const sub = args[1] || "list";
     for (const p of store.config.projects) await loadHistory(p.id);
     const state = useAppStore.getState();
-    const name = (id?: string) => state.config.agents.find(a => a.id === id)?.name || id || "";
+    const name = (id?: string) => agentById(id)?.name || id || "";
     const pending = Object.values(state.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt);
     if (sub === "list") {
       if (jsonOutput) { console.log(JSON.stringify(pending)); process.exit(0); }
@@ -907,12 +972,13 @@ async function main() {
       allowPositionals: true,
       strict: false,
     });
+    const projectId = resolveProjectId(cv.project as string | undefined, cv.workspace as string | undefined);
+    // A chat runs inside a project, so its participants come from that project's team.
     const findAgent = (name: string) => {
-      const a = store.config.agents.find(x => x.name.toLowerCase() === name.trim().toLowerCase());
-      if (!a) error(`Agente "${name}" no encontrado.`);
+      const a = projectAgentByName(projectId, name);
+      if (!a) error(`Agente "${name}" no encontrado en este proyecto.`);
       return a;
     };
-    const projectId = resolveProjectId(cv.project as string | undefined, cv.workspace as string | undefined);
     store.setCurrentProject(projectId);
 
     // Participants from --shared "A:rol,B:rol" or -a <agente>.
@@ -938,7 +1004,7 @@ async function main() {
       if (participants.length === 0) {
         error(isSend ? `Chat "${chatName}" no encontrado. Indicá -a <agente> o --shared para crearlo.` : "Indicá -a <agente> o --shared \"A:rol,B:rol\".");
       }
-      const names = participants.map(p => store.config.agents.find(a => a.id === p.agentId)?.name).join(", ");
+      const names = participants.map(p => agentById(p.agentId)?.name).join(", ");
       const id = store.createChat({
         projectId,
         name: chatName || `CLI: ${names}`,
@@ -951,7 +1017,7 @@ async function main() {
     await store.loadChatMessages(chat.id);
 
     const agentLabel = (agentId: string) => {
-      const a = store.config.agents.find(x => x.id === agentId);
+      const a = agentById(agentId);
       const role = chat!.participants.find(p => p.agentId === agentId)?.role;
       return `\x1b[36m${a?.name || agentId}\x1b[0m${role ? ` (${role})` : ""}`;
     };
@@ -1044,7 +1110,7 @@ async function main() {
     if (!presetObj) error(`Orden predefinida "${values.preset}" no encontrada.`);
     prompt = presetObj.prompt + (prompt ? "\n" + prompt : "");
     if (!values.agent && presetObj.agentId) {
-      const a = store.config.agents.find(x => x.id === presetObj.agentId);
+      const a = agentById(presetObj.agentId);
       if (a) values.agent = a.name;
     }
     if (!values.model && presetObj.model) {
@@ -1060,19 +1126,7 @@ async function main() {
     error("Falta el prompt");
   }
 
-  let agentId = "";
-  const roots = selectRoots(store);
-  
-  if (values.agent) {
-    const a = store.config.agents.find(x => x.name.toLowerCase() === String(values.agent).toLowerCase());
-    if (!a) error(`Agente "${values.agent}" no encontrado.`);
-    agentId = a.id;
-  } else {
-    const planner = roots.find(r => r.role === "planner");
-    agentId = (planner || roots[0])?.id;
-    if (!agentId) error("No hay agentes configurados.");
-  }
-
+  // The team belongs to the project, so the project is resolved first.
   let projectId = "";
   if (values.project) {
     const p = store.config.projects.find(x => x.name.toLowerCase() === String(values.project).toLowerCase());
@@ -1089,6 +1143,19 @@ async function main() {
     projectId = p!.id;
   }
   store.setCurrentProject(projectId);
+
+  let agentId = "";
+  const roots = selectRoots(live(), projectId);
+
+  if (values.agent) {
+    const a = projectAgentByName(projectId, String(values.agent));
+    if (!a) error(`Agente "${values.agent}" no encontrado en este proyecto.`);
+    agentId = a.id;
+  } else {
+    const planner = roots.find(r => r.role === "planner");
+    agentId = (planner || roots[0])?.id;
+    if (!agentId) error("Este proyecto no tiene agentes. Aplicá una formación: ais formations apply <nombre>");
+  }
 
   if (values["max-rounds"]) store.setMaxRounds(parseInt(String(values["max-rounds"]), 10));
 
@@ -1109,8 +1176,8 @@ async function main() {
             } else if (!values.quiet || (msg.kind === "result" && msg.toAgentId === "user")) {
               if (msg.kind !== "text" || prevLen === 0) {
                 const date = new Date(msg.ts).toLocaleTimeString("en-GB", { hour12: false });
-                const fromName = msg.fromAgentId === "user" ? "user" : msg.fromAgentId === "system" ? "system" : store.config.agents.find(a => a.id === msg.fromAgentId)?.name || msg.fromAgentId;
-                const toName = msg.toAgentId === "user" ? "user" : msg.toAgentId ? store.config.agents.find(a => a.id === msg.toAgentId)?.name || msg.toAgentId : "";
+                const fromName = msg.fromAgentId === "user" ? "user" : msg.fromAgentId === "system" ? "system" : agentById(msg.fromAgentId)?.name || msg.fromAgentId;
+                const toName = msg.toAgentId === "user" ? "user" : msg.toAgentId ? agentById(msg.toAgentId)?.name || msg.toAgentId : "";
                 
                 let colorPrefix = "\x1b[0m";
                 if (msg.kind === "error" || msg.kind === "stderr") colorPrefix = "\x1b[31m";
@@ -1118,7 +1185,7 @@ async function main() {
                 else if (msg.kind === "tool") colorPrefix = "\x1b[90m";
                 else if (msg.kind === "result") colorPrefix = "\x1b[32m";
                 
-                const agent = store.config.agents.find(a => a.id === msg.fromAgentId);
+                const agent = agentById(msg.fromAgentId);
                 const agentColor = agent?.color ? `\x1b[36m` : `\x1b[34m`;
 
                 const header = `${date}  ${agentColor}${fromName}\x1b[0m ${toName ? `? ${toName}` : ""}  [${msg.kind}]`;

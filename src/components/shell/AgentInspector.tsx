@@ -13,7 +13,7 @@ import { statusLabel, roleLabel, runDotStatus, runStatusLabel } from "@/lib/labe
 import { PROVIDERS } from "@/lib/providers";
 import { formatClock, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square, X } from "lucide-react";
+import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
 
 const RECENT_RUNS = 3;
 
@@ -198,7 +198,27 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             className="h-7 px-2 text-xs text-muted-foreground"
             onClick={actions.editAgent}
           >
-            <Pencil className="h-3.5 w-3.5" /> Editar agente
+            <Pencil className="h-3.5 w-3.5" /> Editar
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground"
+            disabled={!actions.ready}
+            onClick={actions.duplicate}
+          >
+            <Copy className="h-3.5 w-3.5" /> Duplicar
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={!actions.ready}
+            onClick={actions.removeAgent}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
           </Button>
         </div>
       </div>

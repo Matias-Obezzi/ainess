@@ -114,7 +114,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     return runId;
   }
 
-  const children = selectChildren(store, agent.id);
+  const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, { 
@@ -315,7 +315,7 @@ function onRunFinished(runId: string) {
   else if (run.status === "killed") void emitHookEvent("agent.stopped", {}, ctx);
 
   if (run.status === "done" || run.status === "killed") {
-    const children = selectChildren(store, agent.id);
+    const children = selectChildren(store, run.projectId, agent.id);
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
       if (delegations.length > 0) {

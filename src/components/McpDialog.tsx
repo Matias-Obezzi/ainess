@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function McpDialog({ open, onOpenChange, server }: Props) {
-  const config = useAppStore(state => state.config);
+  const agents = useAppStore(selectAllAgents);
   const upsertMcpServer = useAppStore(state => state.upsertMcpServer);
 
   const [id, setId] = useState("");
@@ -157,7 +157,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
 
               {!allAgents && (
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {config.agents.map(a => (
+                  {agents.map(a => (
                     <Button 
                       key={a.id} 
                       variant={enabledAgents.has(a.id) ? "default" : "outline"} 

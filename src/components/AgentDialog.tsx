@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,15 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agent?: AgentConfig;
+  /**
+   * Project the agent belongs to. Defaults to the open one; ignored when `onSave` is given
+   * (a formation, or the team a project is about to be created with, has no project yet).
+   */
+  projectId?: string | null;
+  /** The team this agent lives in: parent options and the unique name are checked against it. */
+  agents?: AgentConfig[];
+  /** When set, the dialog hands the agent back instead of writing it to the project. */
+  onSave?: (agent: AgentConfig) => void;
 }
 
 const DEFAULT_MODEL_OPTION = "__default__";
@@ -118,9 +127,14 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
   );
 }
 
-export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
+export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, agents: rosterProp, onSave }: Props) {
   const config = useAppStore(state => state.config);
-  const upsertAgent = useAppStore(state => state.upsertAgent);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const targetProjectId = projectId !== undefined ? projectId : currentProjectId;
+  const projectAgents = useAppStore(state => selectProjectAgents(state, targetProjectId));
+  const roster = rosterProp ?? projectAgents;
+  const addAgent = useAppStore(state => state.addAgent);
+  const updateAgent = useAppStore(state => state.updateAgent);
   const binaries = useAppStore(state => state.binaries);
   const models = useAppStore(state => state.models);
   const quotaByProvider = useAppStore(state => state.quota);
@@ -144,6 +158,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
   const [customArgs, setCustomArgs] = useState("");
   const [color, setColor] = useState("#888888");
   const [modelsLoading, setModelsLoading] = useState(false);
+  // While the name is still the one the dialog proposed, changing the provider renames it too.
+  const [suggestedName, setSuggestedName] = useState("");
 
   const setModelFromAgent = (providerId: ProviderId, modelValue: string | undefined, availableModels: { id: string }[]) => {
     if (!modelValue) {
@@ -163,6 +179,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
       if (agent) {
         setId(agent.id);
         setName(agent.name);
+        setSuggestedName("");
         setProvider(agent.provider);
         setRole(agent.role);
         setParentId(agent.parentId);
@@ -175,8 +192,10 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
         setCustomArgs(agent.customCommand?.args.join(" ") || "");
         setColor(agent.color || "#888888");
       } else {
+        const proposed = nextAgentName(roster, PROVIDERS.claude.label);
         setId(crypto.randomUUID());
-        setName("");
+        setName(proposed);
+        setSuggestedName(proposed);
         setProvider("claude");
         setRole("implementer");
         setParentId(null);
@@ -210,11 +229,26 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
     while (queue.length > 0) {
       const cur = queue.shift()!;
       descendants.add(cur);
-      const children = config.agents.filter(a => a.parentId === cur);
+      const children = roster.filter(a => a.parentId === cur);
       for (const c of children) queue.push(c.id);
     }
   }
-  const validParents = config.agents.filter(a => !descendants.has(a.id));
+  const validParents = roster.filter(a => !descendants.has(a.id));
+
+  /**
+   * Two agents of the same provider are fine (a planner Claude and a reviewer Claude); what a
+   * delegation resolves is the name, so that is what has to be unique inside the team.
+   */
+  const duplicateName = roster.some(a => a.id !== id && a.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+  const handleProviderChange = (value: ProviderId) => {
+    setProvider(value);
+    if (!agent && (name.trim() === "" || name === suggestedName)) {
+      const proposed = nextAgentName(roster, PROVIDERS[value]?.label || value);
+      setName(proposed);
+      setSuggestedName(proposed);
+    }
+  };
 
   const resolvedModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
 
@@ -238,7 +272,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
         args: customArgs.split(" ").filter(s => s.trim() !== "")
       };
     }
-    upsertAgent(newAgent);
+    if (onSave) {
+      onSave(newAgent);
+    } else if (targetProjectId) {
+      if (agent) updateAgent(targetProjectId, agent.id, newAgent);
+      else addAgent(targetProjectId, newAgent);
+    }
     onOpenChange(false);
   };
 
@@ -289,7 +328,10 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
             <div className="flex gap-4">
               <div className="flex-1 space-y-1">
                 <Label>Nombre</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} />
+                <Input value={name} onChange={e => { setName(e.target.value); setSuggestedName(""); }} />
+                {duplicateName && (
+                  <p className="text-xs text-destructive">Ya hay otro agente con ese nombre en este equipo.</p>
+                )}
               </div>
               <div className="w-20 space-y-1">
                 <Label>Color</Label>
@@ -300,7 +342,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Provider</Label>
-                <Select value={provider} onValueChange={v => setProvider(v as ProviderId)}>
+                <Select value={provider} onValueChange={v => handleProviderChange(v as ProviderId)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -459,7 +501,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent }: Props) {
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>Guardar</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || duplicateName}>Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,4 @@
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { confirmDelete } from "@/lib/confirm";
 import type { ReactNode } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -37,6 +37,7 @@ export function SkillsSectionActions() {
 
 export function SkillsSection() {
   const config = useAppStore(state => state.config);
+  const agents = useAppStore(selectAllAgents);
   const removeSkill = useAppStore(state => state.removeSkill);
   const { open, editing, openEdit, close } = SkillDialogCtx.useDialogState();
   const { open: suggestedOpen, hide: hideSuggested, show: showSuggested } = SuggestedCtx.useToggleState();
@@ -77,7 +78,7 @@ export function SkillsSection() {
                   <Badge variant="secondary">Todos</Badge>
                 ) : (
                   skill.enabledFor.map(id => {
-                    const agent = config.agents.find(a => a.id === id);
+                    const agent = agents.find(a => a.id === id);
                     return <Badge key={id} variant="outline">{agent?.name || id}</Badge>;
                   })
                 )}

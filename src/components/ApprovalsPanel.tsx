@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ function firstLine(text: string): string {
 /** Pending approvals of the current project (or all projects when `all` is set). */
 export function ApprovalsPanel({ all = false }: { all?: boolean }) {
   const approvals = useAppStore(state => state.approvals);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const projects = useAppStore(state => state.config.projects);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const approve = useAppStore(state => state.approve);
