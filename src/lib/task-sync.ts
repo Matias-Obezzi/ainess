@@ -1,0 +1,118 @@
+// Keeps the task board in step with what the orchestrator is actually doing: a prompt sent to the
+// planner becomes a root task, every delegation becomes a task that depends on it, and each run's
+// outcome moves its task along. Called from src/lib/orchestrator.ts.
+//
+// The board is a view of the work, never a gate on it: every entry point swallows its own errors so
+// a broken task file can never stop a run from starting or finishing.
+import { useAppStore } from "@/store";
+import { truncate } from "@/lib/format";
+import type { Run, Task } from "@/types";
+
+/** Title of a task: its first meaningful line, without markdown decoration. */
+function titleFrom(text: string): string {
+  const line = text.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? "";
+  return truncate(line.replace(/^[#>*\-\s]+/, ""), 120) || "Tarea sin título";
+}
+
+function tasksOf(projectId: string): Task[] {
+  return useAppStore.getState().tasks[projectId] ?? [];
+}
+
+function findByRun(projectId: string, runId: string): Task | undefined {
+  return tasksOf(projectId).find(t => t.runId === runId);
+}
+
+/** True when the roster has someone who reviews, so finished work waits for a look. */
+function hasReviewer(): boolean {
+  return useAppStore.getState().config.agents.some(a => a.role === "reviewer");
+}
+
+function guard(fn: () => void): void {
+  try {
+    fn();
+  } catch {
+    // The board is never allowed to break a run.
+  }
+}
+
+/** The user sent a prompt to the orchestrator: that whole task gets a card. */
+export function taskForPrompt(opts: { projectId: string; agentId: string; runId: string; prompt: string }): void {
+  guard(() => {
+    useAppStore.getState().addTask(opts.projectId, {
+      title: titleFrom(opts.prompt),
+      detail: opts.prompt,
+      status: "working",
+      agentId: opts.agentId,
+      runId: opts.runId,
+    });
+  });
+}
+
+/**
+ * A planner delegated a task. It hangs off the root task of the same user request, so the graph
+ * shows what came from where. Waiting for approval means it starts in "needs-you".
+ */
+export function taskForDelegation(opts: {
+  projectId: string;
+  agentId: string;
+  task: string;
+  rootRunId: string;
+  runId?: string;
+  approvalId?: string;
+}): void {
+  guard(() => {
+    const store = useAppStore.getState();
+    const root = findByRun(opts.projectId, opts.rootRunId);
+    store.addTask(opts.projectId, {
+      title: titleFrom(opts.task),
+      detail: opts.task,
+      status: opts.approvalId ? "needs-you" : "working",
+      agentId: opts.agentId,
+      runId: opts.runId,
+      approvalId: opts.approvalId,
+      dependsOn: root ? [root.id] : [],
+    });
+  });
+}
+
+/** The user decided on a gated delegation: it either starts working or goes back to the backlog. */
+export function taskOnApprovalSettled(approvalId: string, approved: boolean, runId?: string): void {
+  guard(() => {
+    const store = useAppStore.getState();
+    const task = Object.values(store.tasks).flat().find(t => t.approvalId === approvalId);
+    if (!task) return;
+    store.updateTask(task.id, approved
+      ? { status: "working", runId, approvalId: undefined }
+      : { status: "backlog", approvalId: undefined, detail: [task.detail, "[rechazada por el usuario]"].filter(Boolean).join("\n\n") });
+  });
+}
+
+/**
+ * A delegated run ended: to review when somebody reviews around here, ready otherwise. A failure
+ * goes back to the user with the error in the detail. Root runs are left alone: their task closes
+ * when the whole user request does (see `taskOnRootFinished`).
+ */
+export function taskOnRunFinished(run: Run): void {
+  guard(() => {
+    if (!run.parentRunId) return;
+    const task = findByRun(run.projectId, run.id);
+    if (!task) return;
+    const failed = run.status === "error" || run.status === "killed";
+    useAppStore.getState().updateTask(task.id, {
+      status: failed ? "needs-you" : hasReviewer() ? "in-review" : "ready",
+      detail: failed ? [task.detail, `Error: ${run.output || "la corrida terminó sin salida"}`].filter(Boolean).join("\n\n") : task.detail,
+    });
+  });
+}
+
+/** The user's request is over (every round and every child included). */
+export function taskOnRootFinished(projectId: string, rootRunId: string, failed: boolean, error?: string): void {
+  guard(() => {
+    const task = findByRun(projectId, rootRunId);
+    if (!task) return;
+    useAppStore.getState().updateTask(task.id, {
+      status: failed ? "needs-you" : "ready",
+      detail: failed && error ? [task.detail, `Error: ${error}`].filter(Boolean).join("\n\n") : task.detail,
+    });
+  });
+}
