@@ -4,6 +4,7 @@ import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
+import { truncate } from "@/lib/format";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
@@ -271,6 +272,26 @@ function handleExit(e: RunExitEvent) {
   onRunFinished(e.runId);
 }
 
+/**
+ * One line for the bell when a user task ends: "Claude terminó en uiness". Runs the user stopped
+ * on purpose say nothing: they already know.
+ */
+function notifyTaskOutcome(run: Run, failed: boolean) {
+  const store = useAppStore.getState();
+  const agent = selectAgent(store, run.agentId);
+  const project = store.config.projects.find(p => p.id === run.projectId);
+  const where = project ? ` en ${project.name}` : "";
+  const body = truncate(run.output ?? "", 140);
+  store.notify({
+    kind: failed ? "task-failed" : "task-done",
+    title: `${agent?.name ?? "Un agente"} ${failed ? "falló" : "terminó"}${where}`,
+    body: body || undefined,
+    projectId: run.projectId,
+    agentId: run.agentId,
+    runId: run.id,
+  });
+}
+
 function onRunFinished(runId: string) {
   const store = useAppStore.getState();
   const run = store.runs[runId];
@@ -388,9 +409,11 @@ function onRunFinished(runId: string) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
         if (run.status === "error") {
           void emitHookEvent("task.failed", {}, ctx);
+          notifyTaskOutcome(run, true);
         } else {
           void emitHookEvent("task.finished", {}, ctx);
           void emitHookEvent("result", {}, ctx);
+          if (run.status !== "killed") notifyTaskOutcome(run, false);
         }
       }
     } else {
@@ -455,9 +478,11 @@ function maybeContinueParent(parentRunId: string) {
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
         if (cancelled || parentRun.status === "error") {
           void emitHookEvent("task.failed", {}, ctx);
+          if (!cancelled) notifyTaskOutcome(parentRun, true);
         } else {
           void emitHookEvent("task.finished", {}, ctx);
           void emitHookEvent("result", {}, ctx);
+          notifyTaskOutcome(parentRun, false);
         }
       } else {
         maybeContinueParent(parentRun.parentRunId);
@@ -548,11 +573,21 @@ function requestApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" 
   useAppStore.setState(state => ({ approvals: { ...state.approvals, [approval.id]: approval } }));
   addMessage({ projectId: approval.projectId, fromAgentId: "system", toAgentId: approval.agentId, kind: "system", text: `Esperando aprobación: ${approval.summary}`, runId: approval.payload.parentRunId ?? undefined });
   const store = useAppStore.getState();
+  const project = store.config.projects.find(p => p.id === approval.projectId);
+  const agent = selectAgent(store, approval.agentId);
   void emitHookEvent("approval.requested", { summary: approval.summary, approvalId: approval.id }, {
-    project: store.config.projects.find(p => p.id === approval.projectId),
-    agent: selectAgent(store, approval.agentId),
+    project,
+    agent,
     toAgent: approval.toAgentId ? selectAgent(store, approval.toAgentId)?.name : undefined,
     task: approval.payload.prompt,
+  });
+  store.notify({
+    kind: "approval",
+    title: `${agent?.name ?? "Un agente"} pide tu permiso${project ? ` en ${project.name}` : ""}`,
+    body: truncate(approval.summary, 140) || undefined,
+    projectId: approval.projectId,
+    agentId: approval.agentId,
+    approvalId: approval.id,
   });
   return approval;
 }
@@ -566,6 +601,8 @@ function settleApproval(approvalId: string, status: "approved" | "rejected", not
   if (!approval || approval.status !== "pending") return undefined;
   const settled: Approval = { ...approval, status, note, decidedAt: Date.now() };
   useAppStore.setState(state => ({ approvals: { ...state.approvals, [approvalId]: settled } }));
+  // The user already decided: the bell has nothing left to ask about this one.
+  useAppStore.getState().markApprovalNotificationsRead(approvalId);
   return settled;
 }
 

@@ -120,14 +120,20 @@ async function mergeFromDisk(projectId: string): Promise<void> {
   const parsed = await readFile(projectId);
   if (!parsed) return;
   const now = Date.now();
+  /** Runs another process left hanging: the bell tells the user about them once they are closed. */
+  const interrupted: Run[] = [];
   useAppStore.setState(state => {
     let changed = false;
     const runs = { ...state.runs };
     for (const r of parsed.runs) {
       if (runs[r.id]) continue;
-      runs[r.id] = r.status === "running"
-        ? { ...r, status: "killed", output: INTERRUPTED_OUTPUT, endedAt: now }
-        : r;
+      if (r.status === "running") {
+        const closed: Run = { ...r, status: "killed", output: INTERRUPTED_OUTPUT, endedAt: now };
+        runs[r.id] = closed;
+        interrupted.push(closed);
+      } else {
+        runs[r.id] = r;
+      }
       changed = true;
     }
     const known = new Set(state.messages.map(m => m.id));
@@ -156,6 +162,34 @@ async function mergeFromDisk(projectId: string): Promise<void> {
       }
     }
     return changed ? { runs, messages, approvals, runtime } : state;
+  });
+  notifyInterrupted(projectId, interrupted);
+}
+
+/** One entry when a single run was cut short, one summary line when several were. */
+function notifyInterrupted(projectId: string, interrupted: Run[]): void {
+  if (interrupted.length === 0) return;
+  const store = useAppStore.getState();
+  const project = store.config.projects.find(p => p.id === projectId);
+  const where = project ? ` en ${project.name}` : "";
+  if (interrupted.length === 1) {
+    const run = interrupted[0];
+    const agent = store.config.agents.find(a => a.id === run.agentId);
+    store.notify({
+      kind: "interrupted",
+      title: `${agent?.name ?? "Un agente"} quedó a medias${where}`,
+      body: "La corrida se cortó cuando se cerró la aplicación.",
+      projectId,
+      agentId: run.agentId,
+      runId: run.id,
+    });
+    return;
+  }
+  store.notify({
+    kind: "interrupted",
+    title: `${interrupted.length} corridas quedaron a medias${where}`,
+    body: "Se cortaron cuando se cerró la aplicación.",
+    projectId,
   });
 }
 

@@ -390,3 +390,30 @@ export interface PtyExitEvent {
   id: string;
   code: number | null;
 }
+
+// ---- In-app notification center (src/lib/notifications.ts) ----
+
+export type NotificationKind =
+  | "approval" // a delegation is waiting for the user's go-ahead
+  | "task-done" // a task finished
+  | "task-failed" // a task failed
+  | "interrupted" // a run was cut short when the app went away
+  | "tunnel" // the public tunnel fell or changed state
+  | "update" // a newer version is available
+  | "info";
+
+/** One entry of the bell's history. Session-only: never written to disk. */
+export interface AppNotification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  /** One line of detail; no markdown. */
+  body?: string;
+  ts: number;
+  read: boolean;
+  /** So the panel can take the user to where it happened. */
+  projectId?: string;
+  agentId?: string;
+  runId?: string;
+  approvalId?: string;
+}
