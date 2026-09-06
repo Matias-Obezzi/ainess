@@ -4,7 +4,7 @@ import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
-import { trimMessagesInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
+import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
@@ -323,16 +323,21 @@ function handleExit(e: RunExitEvent) {
   const output = e.killed ? "[detenido por el usuario]" : collected;
 
   useAppStore.setState(state => ({
-    runs: {
-      ...state.runs,
-      [e.runId]: {
-        ...state.runs[e.runId],
-        status,
-        output,
-        endedAt: Date.now(),
-        exitCode: e.code
-      }
-    }
+    // The run is closed and then the project's runs are brought back to the size the file keeps:
+    // without this every run of the session stayed in memory with its whole raw buffer.
+    runs: trimRunsInMemory(
+      {
+        ...state.runs,
+        [e.runId]: {
+          ...state.runs[e.runId],
+          status,
+          output,
+          endedAt: Date.now(),
+          exitCode: e.code
+        }
+      },
+      run.projectId,
+    ),
   }));
 
   taskSync.taskOnRunFinished({ ...run, status, output, endedAt: Date.now(), exitCode: e.code });

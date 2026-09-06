@@ -287,6 +287,31 @@ export function trimMessagesInMemory(messages: CommMessage[]): CommMessage[] {
   return keep.size === messages.length ? messages : messages.filter(m => keep.has(m.id));
 }
 
+/**
+ * Drops what a finished project no longer needs in memory: the oldest runs past `MAX_RUNS` and,
+ * for every run that already ended, the raw lines past `MAX_RAW_LINES`. A run still going keeps its
+ * whole buffer, which is what the live view reads. Everything dropped is on disk already.
+ */
+export function trimRunsInMemory(runs: Record<string, Run>, projectId: string): Record<string, Run> {
+  const mine = Object.values(runs).filter(r => r.projectId === projectId);
+  if (mine.length === 0) return runs;
+  const finished = mine.filter(r => r.status !== "running").sort((a, b) => (a.endedAt ?? a.startedAt) - (b.endedAt ?? b.startedAt));
+  const drop = new Set(finished.slice(0, Math.max(0, finished.length - MAX_RUNS)).map(r => r.id));
+
+  let changed = drop.size > 0;
+  const out: Record<string, Run> = {};
+  for (const [id, run] of Object.entries(runs)) {
+    if (drop.has(id)) continue;
+    if (run.projectId === projectId && run.status !== "running" && run.rawLines.length > MAX_RAW_LINES) {
+      out[id] = { ...run, rawLines: run.rawLines.slice(-MAX_RAW_LINES) };
+      changed = true;
+    } else {
+      out[id] = run;
+    }
+  }
+  return changed ? out : runs;
+}
+
 /** Past this many, `addMessage` trims: often enough to bound memory, rare enough to stay cheap. */
 export const TRIM_MESSAGES_AT = MAX_MESSAGES * 2;
 
