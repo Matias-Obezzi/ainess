@@ -5,25 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { ContextActionItems, DropdownActionItems, type MenuAction } from "@/components/menu-actions";
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { ChatDialog } from "@/components/ChatDialog";
 import { island } from "@/components/ui/island";
 import { toast } from "@/components/ui/toast";
+import { copyText } from "@/lib/clipboard";
 import { isChatActive } from "@/lib/chat";
-import type { Project } from "@/types";
+import type { Chat, Project } from "@/types";
 import {
   Bot,
   ChevronDown,
   ChevronRight,
+  Copy,
   Home,
   MessageCircle,
   MoreHorizontal,
+  Pencil,
   Plus,
+  RotateCcw,
   Settings,
+  Trash2,
   Users,
 } from "lucide-react";
 
@@ -110,6 +119,13 @@ export function Sidebar() {
     setChatDialogOpen(true);
   };
 
+  // Starting over: every agent forgets this project's session, so the next prompt has no context.
+  const newConversation = (projectId: string) => {
+    const s = useAppStore.getState();
+    for (const a of s.config.agents) s.resetSession(a.id, projectId);
+    toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
+  };
+
   const deleteChat = async (chatId: string, name: string, projectId: string) => {
     const confirmed = await island.confirm({
       title: "¿Eliminar chat?",
@@ -122,6 +138,55 @@ export function Sidebar() {
     // Deleting the open chat falls back to the project's orchestrator thread.
     if (wasCurrent) openProject(projectId, null);
   };
+
+  // The three-dot menu and the right click on a project row share these actions; only the right
+  // click, where the pointer is already on the row, offers the path.
+  const projectActions = (p: Project, opts?: { copyPath?: boolean }): MenuAction[] => [
+    { key: "edit", label: "Editar proyecto", icon: Pencil, onSelect: () => editProject(p) },
+    { key: "new-chat", label: "Nuevo chat", icon: Plus, onSelect: () => newChat(p.id) },
+    { key: "new-conversation", label: "Nueva conversación", icon: RotateCcw, onSelect: () => newConversation(p.id) },
+    ...(opts?.copyPath
+      ? [
+          {
+            key: "copy-path",
+            label: "Copiar ruta del proyecto",
+            icon: Copy,
+            disabled: !p.workspaceDir,
+            onSelect: () => void copyText(p.workspaceDir, "Ruta copiada"),
+          } satisfies MenuAction,
+        ]
+      : []),
+    {
+      key: "delete",
+      label: "Eliminar",
+      icon: Trash2,
+      destructive: true,
+      separatorBefore: true,
+      onSelect: () => void deleteProject(p),
+    },
+  ];
+
+  const chatActions = (chat: Chat, projectId: string, opts?: { open?: boolean }): MenuAction[] => [
+    ...(opts?.open
+      ? [
+          {
+            key: "open",
+            label: "Abrir",
+            icon: MessageCircle,
+            onSelect: () => openProject(projectId, chat.id),
+          } satisfies MenuAction,
+        ]
+      : []),
+    { key: "rename", label: "Renombrar", icon: Pencil, onSelect: () => editChat(chat.id) },
+    {
+      key: "delete",
+      label: "Eliminar",
+      icon: Trash2,
+      destructive: true,
+      separatorBefore: true,
+      onSelect: () => void deleteChat(chat.id, chat.name, projectId),
+    },
+  ];
 
   return (
     <aside
@@ -157,58 +222,53 @@ export function Sidebar() {
 
           return (
             <div key={p.id} className="flex flex-col gap-0.5">
-              <div
-                className={`group flex items-center gap-1 rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
-                onClick={() => openProject(p.id, null)}
-              >
-                <button
-                  type="button"
-                  className="p-0.5 text-muted-foreground hover:text-foreground"
-                  title={collapsed ? "Expandir" : "Colapsar"}
-                  onClick={e => {
-                    e.stopPropagation();
-                    toggleSidebarProject(p.id);
-                  }}
-                >
-                  {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                </button>
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
-                <span className="truncate flex-1 font-medium">{p.name}</span>
-                {running > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/30">
-                    {running}
-                  </Badge>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <div
+                    className={`group flex items-center gap-1 rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
+                    onClick={() => openProject(p.id, null)}
+                    // Right clicking a row selects it first, the way a file explorer does.
+                    onContextMenu={() => openProject(p.id, null)}
+                  >
                     <button
                       type="button"
-                      className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
-                      title="Opciones del proyecto"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                    <DropdownMenuItem onSelect={() => editProject(p)}>Editar proyecto</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => newChat(p.id)}>Nuevo chat</DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        const s = useAppStore.getState();
-                        for (const a of s.config.agents) s.resetSession(a.id, p.id);
-                        toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
+                      className="p-0.5 text-muted-foreground hover:text-foreground"
+                      title={collapsed ? "Expandir" : "Colapsar"}
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleSidebarProject(p.id);
                       }}
                     >
-                      Nueva conversación
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => void deleteProject(p)}>
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                      {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
+                    <span className="truncate flex-1 font-medium">{p.name}</span>
+                    {running > 0 && (
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/30">
+                        {running}
+                      </Badge>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                          title="Opciones del proyecto"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        <DropdownActionItems actions={projectActions(p)} />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-56">
+                  <ContextActionItems actions={projectActions(p, { copyPath: true })} />
+                </ContextMenuContent>
+              </ContextMenu>
 
               {!collapsed && (
                 <div className="ml-4 mt-0.5 mb-1 flex flex-col gap-0.5">
@@ -227,41 +287,40 @@ export function Sidebar() {
                     const active = isChatActive(chat.id);
                     const selected = currentProjectId === p.id && currentChatId === chat.id && screen === "project";
                     return (
-                      <div
-                        key={chat.id}
-                        className={`group/chat flex items-center gap-2 rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-accent ${
-                          selected ? "bg-accent font-medium" : "text-muted-foreground"
-                        }`}
-                        onClick={() => openProject(p.id, chat.id)}
-                      >
-                        {chat.mode === "shared"
-                          ? <Users className="h-3.5 w-3.5 shrink-0" />
-                          : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
-                        <span className="truncate flex-1">{chat.name}</span>
-                        {active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="p-0.5 opacity-0 group-hover/chat:opacity-100 focus:opacity-100 hover:text-foreground"
-                              title="Opciones del chat"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                            <DropdownMenuItem onSelect={() => editChat(chat.id)}>Renombrar</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onSelect={() => void deleteChat(chat.id, chat.name, p.id)}
-                            >
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      <ContextMenu key={chat.id}>
+                        <ContextMenuTrigger asChild>
+                          <div
+                            className={`group/chat flex items-center gap-2 rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-accent ${
+                              selected ? "bg-accent font-medium" : "text-muted-foreground"
+                            }`}
+                            onClick={() => openProject(p.id, chat.id)}
+                          >
+                            {chat.mode === "shared"
+                              ? <Users className="h-3.5 w-3.5 shrink-0" />
+                              : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
+                            <span className="truncate flex-1">{chat.name}</span>
+                            {active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="p-0.5 opacity-0 group-hover/chat:opacity-100 focus:opacity-100 hover:text-foreground"
+                                  title="Opciones del chat"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                                <DropdownActionItems actions={chatActions(chat, p.id)} />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-48">
+                          <ContextActionItems actions={chatActions(chat, p.id, { open: true })} />
+                        </ContextMenuContent>
+                      </ContextMenu>
                     );
                   })}
 

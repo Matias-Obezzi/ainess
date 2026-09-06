@@ -31,7 +31,7 @@ import {
   RotateCcw,
   Square
 } from "lucide-react";
-import { useAgentActions, AgentActionDialogs, type AgentActions } from "./agent-actions";
+import { useAgentActions, AgentActionDialogs, AgentContextMenu, type AgentActions } from "./agent-actions";
 
 const HANDLE_STYLE = {
   width: 8,
@@ -161,149 +161,151 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
     <>
       <Handle type="target" position={Position.Top} style={HANDLE_STYLE} />
 
-      <div
-        className={cn(
-          "w-[260px] rounded-xl border bg-card text-card-foreground shadow-sm",
-          selected && "ring-2 ring-primary/60"
-        )}
-        style={{ borderLeftWidth: 3, borderLeftColor: color }}
-      >
-        <div className="flex flex-col gap-2 p-3">
-          {/* Who */}
-          <div className="flex items-start gap-2">
-            <AgentAvatar provider={agent.provider} color={color} size={28} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold" title={agent.name}>
-                {agent.name}
+      <AgentContextMenu actions={actions}>
+        <div
+          className={cn(
+            "w-[260px] rounded-xl border bg-card text-card-foreground shadow-sm",
+            selected && "ring-2 ring-primary/60"
+          )}
+          style={{ borderLeftWidth: 3, borderLeftColor: color }}
+        >
+          <div className="flex flex-col gap-2 p-3">
+            {/* Who */}
+            <div className="flex items-start gap-2">
+              <AgentAvatar provider={agent.provider} color={color} size={28} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold" title={agent.name}>
+                  {agent.name}
+                </div>
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+                </div>
               </div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+              <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+                {binaryInfo === null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>CLI no encontrado: configuralo en Agentes</TooltipContent>
+                  </Tooltip>
+                )}
+                <StatusDot status={status} className={cn("h-2.5 w-2.5", status === "working" && "animate-pulse")} />
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-              {binaryInfo === null && (
+
+            {/* What it is doing */}
+            <div className="flex items-center gap-1.5">
+              {status === "error" && actions.lastError ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="flex items-center">
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    </span>
+                    <span className="cursor-help text-xs text-destructive">Error</span>
                   </TooltipTrigger>
-                  <TooltipContent>CLI no encontrado: configuralo en Agentes</TooltipContent>
+                  <TooltipContent className="max-w-xs whitespace-pre-wrap">{actions.lastError}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <span
+                  className={cn(
+                    "text-xs tabular-nums",
+                    status === "working" ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {stateText}
+                </span>
+              )}
+              {/* How much quota is left for this agent, from what the store already knows. */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="ml-auto flex cursor-help items-center gap-1">
+                    <QuotaRing fraction={quota.fraction} label={quota.label} size={14} />
+                    {quota.fraction !== null && (
+                      <span className="text-[10px] text-muted-foreground tabular-nums">{quota.label}</span>
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Cuota: {quota.detail}</TooltipContent>
+              </Tooltip>
+              {busyElsewhere.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="max-w-[110px] truncate border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
+                    >
+                      en {busyElsewhere[0]}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>Ocupado en: {busyElsewhere.join(", ")}</TooltipContent>
                 </Tooltip>
               )}
-              <StatusDot status={status} className={cn("h-2.5 w-2.5", status === "working" && "animate-pulse")} />
             </div>
-          </div>
 
-          {/* What it is doing */}
-          <div className="flex items-center gap-1.5">
-            {status === "error" && actions.lastError ? (
+            {actions.currentTask && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="cursor-help text-xs text-destructive">Error</span>
+                  <p className="line-clamp-2 cursor-help text-xs text-muted-foreground">{actions.currentTask}</p>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs whitespace-pre-wrap">{actions.lastError}</TooltipContent>
-              </Tooltip>
-            ) : (
-              <span
-                className={cn(
-                  "text-xs tabular-nums",
-                  status === "working" ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {stateText}
-              </span>
-            )}
-            {/* How much quota is left for this agent, from what the store already knows. */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-auto flex cursor-help items-center gap-1">
-                  <QuotaRing fraction={quota.fraction} label={quota.label} size={14} />
-                  {quota.fraction !== null && (
-                    <span className="text-[10px] text-muted-foreground tabular-nums">{quota.label}</span>
+                {/* A delegated brief can be pages long: the popover shows a taste, the inspector the rest. */}
+                <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                  {truncate(actions.currentTask, 240)}
+                  {actions.currentTask.length > 240 && (
+                    <span className="mt-1 block text-[10px] opacity-70">Click en el nodo para ver la tarea completa</span>
                   )}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Cuota: {quota.detail}</TooltipContent>
-            </Tooltip>
-            {busyElsewhere.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="max-w-[110px] truncate border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
-                  >
-                    en {busyElsewhere[0]}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>Ocupado en: {busyElsewhere.join(", ")}</TooltipContent>
+                </TooltipContent>
               </Tooltip>
+            )}
+
+            {lastTool && LastToolIcon && (
+              <div
+                className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground"
+                title={lastTool.summary}
+              >
+                <LastToolIcon className="h-3 w-3 shrink-0" />
+                <span className="truncate">{lastTool.summary}</span>
+              </div>
             )}
           </div>
 
-          {actions.currentTask && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="line-clamp-2 cursor-help text-xs text-muted-foreground">{actions.currentTask}</p>
-              </TooltipTrigger>
-              {/* A delegated brief can be pages long: the popover shows a taste, the inspector the rest. */}
-              <TooltipContent className="max-w-sm whitespace-pre-wrap">
-                {truncate(actions.currentTask, 240)}
-                {actions.currentTask.length > 240 && (
-                  <span className="mt-1 block text-[10px] opacity-70">Click en el nodo para ver la tarea completa</span>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {lastTool && LastToolIcon && (
-            <div
-              className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground"
-              title={lastTool.summary}
-            >
-              <LastToolIcon className="h-3 w-3 shrink-0" />
-              <span className="truncate">{lastTool.summary}</span>
-            </div>
-          )}
+          {/* Actions: the click belongs to the button, not to the canvas. */}
+          <div
+            className="nodrag nopan flex items-center gap-0.5 border-t border-border px-2 py-1"
+            onClick={e => e.stopPropagation()}
+          >
+            {actions.busy && <IconAction {...items.stop} />}
+            <IconAction {...items.instruct} />
+            <IconAction {...items.output} />
+            <IconAction {...items.chat} />
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="ml-auto h-7 w-7"
+                      aria-label="Más acciones"
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Más acciones</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={!actions.ready} onSelect={() => actions.resetSession()}>
+                  <RotateCcw /> Reiniciar sesión
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => actions.editAgent()}>
+                  <Pencil /> Editar agente
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-
-        {/* Actions: the click belongs to the button, not to the canvas. */}
-        <div
-          className="nodrag nopan flex items-center gap-0.5 border-t border-border px-2 py-1"
-          onClick={e => e.stopPropagation()}
-        >
-          {actions.busy && <IconAction {...items.stop} />}
-          <IconAction {...items.instruct} />
-          <IconAction {...items.output} />
-          <IconAction {...items.chat} />
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="ml-auto h-7 w-7"
-                    aria-label="Más acciones"
-                  >
-                    <MoreHorizontal className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Más acciones</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!actions.ready} onSelect={() => actions.resetSession()}>
-                <RotateCcw /> Reiniciar sesión
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => actions.editAgent()}>
-                <Pencil /> Editar agente
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      </AgentContextMenu>
 
       <Handle type="source" position={Position.Bottom} style={HANDLE_STYLE} />
 

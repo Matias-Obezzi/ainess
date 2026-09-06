@@ -8,10 +8,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { TerminalView } from "./TerminalView";
 import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Plus, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, Pencil, Plus, TerminalSquare, X } from "lucide-react";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
 export function TerminalDockSection() {
@@ -53,6 +59,27 @@ export function TerminalDockSection() {
     if (renamingId) renameTerminal(renamingId, draft);
     setRenamingId(null);
   };
+
+  // Right click on a tab: what the tab bar itself offers, without hijacking the xterm area below
+  // (there the right click belongs to the terminal, for pasting).
+  const tabActions = (id: string, title: string): MenuAction[] => [
+    {
+      key: "new",
+      label: "Nueva terminal",
+      icon: Plus,
+      disabled: atLimit || noShells,
+      onSelect: () => openTerminal(),
+    },
+    { key: "rename", label: "Renombrar", icon: Pencil, onSelect: () => startRename(id, title) },
+    {
+      key: "close",
+      label: "Cerrar",
+      icon: X,
+      destructive: true,
+      separatorBefore: true,
+      onSelect: () => closeTerminal(id),
+    },
+  ];
 
   const addTitle = noShells
     ? "No se detectó ningún shell en esta máquina"
@@ -112,62 +139,72 @@ export function TerminalDockSection() {
       {terminals.length > 0 && (
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1">
           {terminals.map(tab => (
-            <div
-              key={tab.id}
-              role="button"
-              tabIndex={0}
-              title={`${tab.title} — ${tab.cwd || "home"}`}
-              onClick={() => setActiveTerminal(tab.id)}
-              onDoubleClick={() => startRename(tab.id, tab.title)}
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setActiveTerminal(tab.id);
-                }
-              }}
-              className={cn(
-                "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs",
-                tab.id === activeTerminalId
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50",
-              )}
-            >
-              <TerminalSquare className="h-3.5 w-3.5 shrink-0" />
-              {renamingId === tab.id ? (
-                <input
-                  ref={renameInputRef}
-                  value={draft}
-                  autoFocus
-                  onChange={e => setDraft(e.target.value)}
-                  onBlur={commitRename}
+            <ContextMenu key={tab.id}>
+              <ContextMenuTrigger asChild>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  title={`${tab.title} — ${tab.cwd || "home"}`}
+                  onClick={() => setActiveTerminal(tab.id)}
+                  // Right clicking a tab brings it to the front first, like any tabbed editor.
+                  onContextMenu={() => setActiveTerminal(tab.id)}
+                  onDoubleClick={() => startRename(tab.id, tab.title)}
                   onKeyDown={e => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") commitRename();
-                    else if (e.key === "Escape") setRenamingId(null);
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveTerminal(tab.id);
+                    }
                   }}
-                  className="w-24 bg-transparent text-xs outline-none"
-                />
-              ) : (
-                <span className="max-w-[120px] truncate">{tab.title}</span>
-              )}
-              {tab.exited != null && (
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-                  title={`Terminado con código ${tab.exited}`}
-                />
-              )}
-              <button
-                type="button"
-                title="Cerrar terminal"
-                className="ml-0.5 shrink-0 rounded opacity-0 group-hover:opacity-100 focus:opacity-100"
-                onClick={e => {
-                  e.stopPropagation();
-                  closeTerminal(tab.id);
-                }}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
+                  className={cn(
+                    "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs",
+                    tab.id === activeTerminalId
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50",
+                  )}
+                >
+                  <TerminalSquare className="h-3.5 w-3.5 shrink-0" />
+                  {renamingId === tab.id ? (
+                    <input
+                      ref={renameInputRef}
+                      value={draft}
+                      autoFocus
+                      onChange={e => setDraft(e.target.value)}
+                      onBlur={commitRename}
+                      onKeyDown={e => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") commitRename();
+                        else if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      // Inside a field the right click belongs to the browser, for pasting.
+                      onContextMenu={e => e.stopPropagation()}
+                      className="w-24 bg-transparent text-xs outline-none"
+                    />
+                  ) : (
+                    <span className="max-w-[120px] truncate">{tab.title}</span>
+                  )}
+                  {tab.exited != null && (
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
+                      title={`Terminado con código ${tab.exited}`}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    title="Cerrar terminal"
+                    className="ml-0.5 shrink-0 rounded opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    onClick={e => {
+                      e.stopPropagation();
+                      closeTerminal(tab.id);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextActionItems actions={tabActions(tab.id, tab.title)} />
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
       )}

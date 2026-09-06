@@ -8,9 +8,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { island } from "@/components/ui/island";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
+import { copyText } from "@/lib/clipboard";
 import { formatTimeAgo, truncate } from "@/lib/format";
 import type { Project, Run, RunStatus } from "@/types";
-import { Folder, FolderKanban, PlayCircle } from "lucide-react";
+import { Copy, Folder, FolderKanban, FolderOpen, Pencil, PlayCircle, Trash2 } from "lucide-react";
 
 const runStatusLabel: Record<RunStatus, string> = {
   running: "En curso",
@@ -94,6 +101,31 @@ export function HomeScreen() {
 
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
 
+  const editProject = (p: Project) => {
+    setEditingProject(p);
+    setProjectDialogOpen(true);
+  };
+
+  const projectActions = (p: Project): MenuAction[] => [
+    { key: "open", label: "Abrir", icon: FolderOpen, onSelect: () => openProject(p.id, null) },
+    { key: "edit", label: "Editar", icon: Pencil, onSelect: () => editProject(p) },
+    {
+      key: "copy-path",
+      label: "Copiar ruta",
+      icon: Copy,
+      disabled: !p.workspaceDir,
+      onSelect: () => void copyText(p.workspaceDir, "Ruta copiada"),
+    },
+    {
+      key: "delete",
+      label: "Eliminar",
+      icon: Trash2,
+      destructive: true,
+      separatorBefore: true,
+      onSelect: () => void handleRemove(p),
+    },
+  ];
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-6 gap-4">
       <div className="flex justify-between items-center">
@@ -123,63 +155,69 @@ export function HomeScreen() {
             const isCurrent = p.id === currentProjectId;
 
             return (
-              <Card
-                key={p.id}
-                role="button"
-                className={`p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-primary/50 ${isCurrent ? "ring-2 ring-primary" : ""}`}
-                onClick={() => openProject(p.id, null)}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
-                  <h3 className="font-bold truncate">{p.name}</h3>
-                  {isCurrent && <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Actual</span>}
-                </div>
+              <ContextMenu key={p.id}>
+                <ContextMenuTrigger asChild>
+                  <Card
+                    role="button"
+                    className={`p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-primary/50 ${isCurrent ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => openProject(p.id, null)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
+                      <h3 className="font-bold truncate">{p.name}</h3>
+                      {isCurrent && <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Actual</span>}
+                    </div>
 
-                <div className="text-sm text-muted-foreground flex items-center gap-1.5 truncate">
-                  <Folder className="w-4 h-4 shrink-0" />
-                  <span className="truncate" title={p.workspaceDir}>{p.workspaceDir}</span>
-                </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1.5 truncate">
+                      <Folder className="w-4 h-4 shrink-0" />
+                      <span className="truncate" title={p.workspaceDir}>{p.workspaceDir}</span>
+                    </div>
 
-                <div className="text-xs flex flex-col gap-1 min-h-[2.5rem]">
-                  {busy.length > 0 ? (
-                    busy.slice(0, 2).map(b => (
-                      <div key={b.agentId} className="flex items-center gap-1.5">
-                        <StatusDot status="working" />
-                        <span className="truncate">
-                          Trabajando: {agentName(b.agentId)}
-                          {b.task ? ` — ${truncate(b.task, 80)}` : ""}
-                        </span>
-                      </div>
-                    ))
-                  ) : last ? (
-                    <>
-                      <span className="truncate text-muted-foreground">Última tarea: {truncate(last.prompt, 80)}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={last.status === "error" ? "destructive" : "outline"} className="text-[10px]">
-                          {runStatusLabel[last.status]}
-                        </Badge>
-                        <span className="text-muted-foreground">{formatTimeAgo(last.endedAt ?? last.startedAt, now)}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">Sin actividad todavía</span>
-                  )}
-                </div>
+                    <div className="text-xs flex flex-col gap-1 min-h-[2.5rem]">
+                      {busy.length > 0 ? (
+                        busy.slice(0, 2).map(b => (
+                          <div key={b.agentId} className="flex items-center gap-1.5">
+                            <StatusDot status="working" />
+                            <span className="truncate">
+                              Trabajando: {agentName(b.agentId)}
+                              {b.task ? ` — ${truncate(b.task, 80)}` : ""}
+                            </span>
+                          </div>
+                        ))
+                      ) : last ? (
+                        <>
+                          <span className="truncate text-muted-foreground">Última tarea: {truncate(last.prompt, 80)}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={last.status === "error" ? "destructive" : "outline"} className="text-[10px]">
+                              {runStatusLabel[last.status]}
+                            </Badge>
+                            <span className="text-muted-foreground">{formatTimeAgo(last.endedAt ?? last.startedAt, now)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Sin actividad todavía</span>
+                      )}
+                    </div>
 
-                <div className="text-sm flex items-center gap-1.5">
-                  <PlayCircle className="w-4 h-4 text-orange-500" />
-                  {busy.length} tareas activas
-                  <span className="text-muted-foreground">· {savedRuns[p.id] ?? 0} runs guardados</span>
-                </div>
+                    <div className="text-sm flex items-center gap-1.5">
+                      <PlayCircle className="w-4 h-4 text-orange-500" />
+                      {busy.length} tareas activas
+                      <span className="text-muted-foreground">· {savedRuns[p.id] ?? 0} runs guardados</span>
+                    </div>
 
-                <div className="flex gap-2 mt-auto pt-2" onClick={e => e.stopPropagation()}>
-                  <Button size="sm" className="flex-1" onClick={() => openProject(p.id, null)}>Abrir</Button>
-                  <Button size="sm" variant="outline" onClick={() => { setEditingProject(p); setProjectDialogOpen(true); }}>
-                    Editar
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => void handleRemove(p)}>Eliminar</Button>
-                </div>
-              </Card>
+                    <div className="flex gap-2 mt-auto pt-2" onClick={e => e.stopPropagation()}>
+                      <Button size="sm" className="flex-1" onClick={() => openProject(p.id, null)}>Abrir</Button>
+                      <Button size="sm" variant="outline" onClick={() => editProject(p)}>
+                        Editar
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => void handleRemove(p)}>Eliminar</Button>
+                    </div>
+                  </Card>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <ContextActionItems actions={projectActions(p)} />
+                </ContextMenuContent>
+              </ContextMenu>
             );
           })}
         </div>

@@ -1,8 +1,11 @@
 // The actions an agent exposes in the hierarchy view (node and inspector share them so the
 // semantics never drift): stop, instruct, view output, chat, reset session and edit.
 import { useMemo, useState } from "react";
+import { FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square } from "lucide-react";
 import { useAppStore } from "@/store";
 import type { AgentConfig, AgentStatus, Run } from "@/types";
+import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { InstructDialog } from "./InstructDialog";
 import { RunDetailDialog } from "./RunDetailDialog";
 
@@ -102,6 +105,60 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
     runDetailOpen,
     setRunDetailOpen
   };
+}
+
+/**
+ * The same actions as a menu list. `onViewOutput` lets a host that tracks which run it is showing
+ * (the inspector) take over "Ver salida".
+ */
+export function agentMenuActions(actions: AgentActions, onViewOutput?: () => void): MenuAction[] {
+  return [
+    {
+      key: "stop",
+      label: "Detener",
+      icon: Square,
+      disabled: !actions.ready || !actions.busy,
+      onSelect: actions.stop
+    },
+    { key: "instruct", label: "Indicar", icon: MessageSquareText, disabled: !actions.ready, onSelect: actions.instruct },
+    {
+      key: "output",
+      label: "Ver salida",
+      icon: FileText,
+      disabled: !actions.lastRunId,
+      onSelect: onViewOutput ?? actions.viewOutput
+    },
+    { key: "chat", label: "Chatear", icon: MessageCircle, disabled: !actions.ready, onSelect: actions.openChat },
+    {
+      key: "reset",
+      label: "Reiniciar sesión",
+      icon: RotateCcw,
+      disabled: !actions.ready,
+      separatorBefore: true,
+      onSelect: actions.resetSession
+    },
+    { key: "edit", label: "Editar agente", icon: Pencil, onSelect: actions.editAgent }
+  ];
+}
+
+/** Right click on an agent — its node, its row in the inspector — opens the actions above. */
+export function AgentContextMenu({
+  actions,
+  onViewOutput,
+  children
+}: {
+  actions: AgentActions;
+  onViewOutput?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <ContextActionItems actions={agentMenuActions(actions, onViewOutput)} />
+      </ContextMenuContent>
+    </ContextMenu>
+  );
 }
 
 /** The dialogs the actions open. Rendered once next to whatever hosts the buttons. */
