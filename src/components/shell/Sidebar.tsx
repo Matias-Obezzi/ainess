@@ -18,10 +18,13 @@ import { ChatDialog } from "@/components/ChatDialog";
 import { island } from "@/components/ui/island";
 import { toast } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
+import { openExternal } from "@/lib/open-external";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isChatActive } from "@/lib/chat";
 import type { Chat, Project } from "@/types";
 import {
   Bot,
+  Bug,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -35,6 +38,9 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+
+/** Where bug reports go, opened in the user's own browser. */
+const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues";
 
 /** Left rail: home, the project tree with its chats, and the settings gear. */
 export function Sidebar() {
@@ -351,14 +357,30 @@ export function Sidebar() {
             </Badge>
           )}
         </div>
-        <Button
-          variant={settingsOpen ? "secondary" : "ghost"}
-          size="sm"
-          className="justify-start"
-          onClick={() => openSettings()}
-        >
-          <Settings className="h-4 w-4" /> Configuración
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant={settingsOpen ? "secondary" : "ghost"}
+            size="sm"
+            className="flex-1 justify-start"
+            onClick={() => openSettings()}
+          >
+            <Settings className="h-4 w-4" /> Configuración
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                aria-label="Reportar un problema"
+                onClick={() => void openExternal(ISSUES_URL)}
+              >
+                <Bug className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Reportar un problema</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
       <ProjectDialog

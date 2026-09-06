@@ -1,0 +1,86 @@
+name: Reportar un problema
+description: Algo no funciona como debería
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportarlo. Con el paso a paso y la versión suele alcanzar para reproducirlo.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Qué pasó
+      description: Contá qué viste, con tus palabras.
+      placeholder: Al prender el túnel la app queda "creando el túnel" para siempre.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas que pasara
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Cómo lo reproduzco
+      description: Los pasos, de a uno.
+      placeholder: |
+        1. Abrir Configuración → Remoto
+        2. Prender el acceso en la red local
+        3. Prender el túnel público
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de ainess
+      description: Está en Configuración → Acerca de.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema operativo
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Agentes involucrados
+      description: Marcá los que estaban en juego, si el problema tiene que ver con alguno.
+      options:
+        - label: Claude Code
+        - label: Antigravity
+        - label: GitHub Copilot
+        - label: Otro / ninguno en particular
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Configuración → Acerca de → Copiar diagnóstico trae la versión y las últimas líneas del log.
+        Se pega tal cual acá.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: Revisé que lo que pego no tenga tokens, authtokens ni claves de API.
+          required: true

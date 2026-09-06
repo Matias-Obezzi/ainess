@@ -1,0 +1,55 @@
+name: Proponer una mejora
+description: Algo que te gustaría que la app haga
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Contá qué querrías hacer y por qué. El "para qué" ayuda más que el "cómo".
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué te gustaría poder hacer
+      placeholder: Ver la cuota que le queda a cada agente sin abrir la configuración.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Qué problema te resuelve
+      description: Qué estás intentando lograr y qué te lo complica hoy.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Parte de la app
+      options:
+        - Orquestación y delegación
+        - Chat
+        - Jerarquía de agentes
+        - Terminales
+        - Acceso remoto y celular
+        - Configuración
+        - Otra / no sé
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Cómo lo imaginás
+      description: Opcional. Si ya tenés una idea de la interfaz o del flujo, contala.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Qué probaste mientras tanto
+      description: Opcional. Vueltas o herramientas externas que estés usando hoy para eso.
+    validations:
+      required: false
