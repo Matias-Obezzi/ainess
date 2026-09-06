@@ -157,6 +157,26 @@ abrir el diálogo de un agente, al apretar "Actualizar" ahí, o desde `ais quota
 pegarle a las APIs sin necesidad. El CLI `ais quota [provider] [--json]` sin argumento recorre los
 providers usados por algún agente configurado.
 
+**Dónde se ve la cuota**: `summarizeAgentQuota` (`src/lib/quota-summary.ts`, puro y testeado)
+reduce el `ProviderQuota` de un proveedor a lo que le queda a **un agente**: se queda con los items
+globales del proveedor más los de su modelo (matchea el id exacto, la familia —`opus`/`sonnet` de
+las ventanas de Claude— y el pool de Antigravity vía `poolOf`) y devuelve `{ fraction, label,
+detail, status }`. Prioridad de cálculo: `remaining`/`entitlement` sumados → promedio de
+`percentRemaining` → `1 - usedPercent/100` de la ventana más ajustada → todos `unlimited` = `∞`.
+Sin números (los pools de Antigravity, que solo dicen "Agotado"/"Disponible") `fraction` queda en
+`null` y el anillo se ve apagado; `fraction <= 0` es `status: "exhausted"`. Con `config.autoModel`
+en true el modelo lo elige el orquestador, así que el resumen usa `allModels` (los modelos que
+reportó el proveedor en `store.models`, con respaldo en `PROVIDERS[provider].defaultModels`): lo que
+queda sobre el total de todos los modelos de ese agente.
+
+`QuotaRing` (`src/components/QuotaRing.tsx`, SVG a mano, sin dependencias) dibuja el arco —verde
+arriba de 50%, ámbar entre 20% y 50%, rojo abajo— y exporta el hook `useAgentQuota(agent)`, que lee
+lo que ya está en el store y **nunca** dispara un fetch. Se muestra en dos lugares: en cada nodo de
+la jerarquía (`AgentNode.tsx`, al lado del estado, con el `label` y el `detail` en el tooltip) y al
+final de la fila de selects del `Composer` (`QuotaIndicator.tsx`, con el agente destino), donde el
+click abre un popover con una fila por agente y un botón "Actualizar" que llama a `refreshQuota` de
+cada proveedor involucrado: ese botón es el único punto de la vista que pega a las APIs.
+
 ## Protocolo de delegación
 
 El orquestador arma el system prompt según el rol:

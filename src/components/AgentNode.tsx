@@ -1,6 +1,7 @@
 // One agent in the hierarchy graph: who it is, what it is doing right now and the actions
 // available on it, all as icons. The details live in the inspector (AgentInspector.tsx).
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { QuotaRing, useAgentQuota } from "@/components/QuotaRing";
 import { useEffect, useMemo, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { AgentConfig, CommMessage } from "@/types";
@@ -140,6 +141,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
   const { status } = actions;
   const busyElsewhere = useBusyElsewhere(agent.id);
   const lastTool = useLastTool(status === "working" ? actions.currentRunId : undefined);
+  const quota = useAgentQuota(agent);
   const now = useNow(actions.busy);
 
   const color = agent.color || "#888888";
@@ -212,12 +214,24 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                 {stateText}
               </span>
             )}
+            {/* How much quota is left for this agent, from what the store already knows. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="ml-auto flex cursor-help items-center gap-1">
+                  <QuotaRing fraction={quota.fraction} label={quota.label} size={14} />
+                  {quota.fraction !== null && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{quota.label}</span>
+                  )}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Cuota: {quota.detail}</TooltipContent>
+            </Tooltip>
             {busyElsewhere.length > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="ml-auto max-w-[110px] truncate border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
+                    className="max-w-[110px] truncate border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
                   >
                     en {busyElsewhere[0]}
                   </Badge>
