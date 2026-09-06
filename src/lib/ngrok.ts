@@ -84,6 +84,14 @@ export function ngrokUpdateOutcome(output: string, code: number | null): NgrokUp
   return "current";
 }
 
+/**
+ * Whether a failed exec means the program is not where we thought it was. ngrok's own updater
+ * replaces the binary and an uninstall leaves the old path behind, so a stale path is normal.
+ */
+export function isMissingBinaryError(message: string): boolean {
+  return /os error 2|cannot find the file|no such file|ENOENT/i.test(message);
+}
+
 /** Cheap paste check before shelling out: non-empty, no whitespace, at least 20 chars. */
 export function looksLikeNgrokCredential(value: string): boolean {
   return value.length >= 20 && !/\s/.test(value);

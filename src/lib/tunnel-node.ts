@@ -54,8 +54,12 @@ function which(name: string): string | null {
 async function detect(): Promise<{ cloudflared: string | null; ngrok: string | null }> {
   const { wingetCandidates, registryPathCandidates } = await import("@/lib/transport-node");
   const fs = await import("node:fs");
+  // An uninstall can leave the folder or a dangling link behind: only a real file counts.
+  const isFile = (p: string): boolean => {
+    try { return fs.statSync(p).isFile(); } catch { return false; }
+  };
   const find = (name: string): string | null =>
-    which(name) ?? [...wingetCandidates(name), ...registryPathCandidates(name)].find(p => fs.existsSync(p)) ?? null;
+    which(name) ?? [...wingetCandidates(name), ...registryPathCandidates(name)].find(isFile) ?? null;
   return { cloudflared: find("cloudflared"), ngrok: find("ngrok") };
 }
 

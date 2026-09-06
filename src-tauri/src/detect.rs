@@ -88,10 +88,11 @@ fn winget_candidates(name: &str) -> Vec<PathBuf> {
 }
 
 fn find_winget(name: &str) -> Option<BinaryInfo> {
+    // `is_file` and not `exists`: an uninstall can leave the folder (or a dangling link) behind.
     let path = winget_candidates(name)
         .into_iter()
         .chain(registry_path_candidates(name))
-        .find(|p| p.exists())?;
+        .find(|p| p.is_file())?;
     let path_str = path.to_string_lossy().into_owned();
     Some(BinaryInfo {
         version: get_version(&path_str),
@@ -273,7 +274,7 @@ pub fn find_path(name: &str) -> Option<String> {
     winget_candidates(name)
         .into_iter()
         .chain(registry_path_candidates(name))
-        .find(|p| p.exists())
+        .find(|p| p.is_file())
         .map(|p| p.to_string_lossy().into_owned())
 }
 

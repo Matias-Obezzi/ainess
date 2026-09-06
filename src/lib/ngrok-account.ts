@@ -8,6 +8,7 @@ import {
   NGROK_CONFIG_HOME_PATH,
   looksLikeNgrokCredential,
   ngrokApiKey,
+  isMissingBinaryError,
   ngrokConfigKeys,
   ngrokUpdateOutcome,
   parseNgrokConfigPath,
@@ -69,8 +70,10 @@ export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void):
   }
 
   onPhase("updating");
-  // winget's package lags behind, so the fresh install is brought up to date right away.
+  // winget's package lags behind, so the fresh install is brought up to date right away. The
+  // updater replaces the binary, so where it ends up is only known after it runs.
   const updated = await ensureNgrokUpToDate(found.ngrok);
+  await transport.tunnelDetect().catch(() => null);
   return updated.version;
 }
 
@@ -101,41 +104,63 @@ export function ensureNgrokUpToDate(ngrokPath = "ngrok"): Promise<NgrokUpdateSta
   return updatePromise;
 }
 
-async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
-  const transport = getTransport();
+type ExecOutcome = { ok: true; stdout: string; stderr: string; code: number | null } | { ok: false; missing: boolean; message: string };
+
+async function runNgrok(path: string, args: string[]): Promise<ExecOutcome> {
   try {
-    const res = await transport.exec(ngrokPath, ["update"]);
-    const outcome = ngrokUpdateOutcome(`${res.stdout}\n${res.stderr}`, res.code);
-    const versionRes = await transport.exec(ngrokPath, ["--version"]).catch(() => null);
-    const version = versionRes ? parseNgrokVersion(`${versionRes.stdout}\n${versionRes.stderr}`) : null;
-    if (outcome === "failed") {
-      const message = maskSecrets((res.stderr || res.stdout || "").trim().split(/\r?\n/).slice(-2).join(" ")) || "no se pudo actualizar";
-      log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
-      return { status: "failed", version, message };
-    }
-    log.info("tunnel", outcome === "updated" ? `ngrok actualizado${version ? ` a ${version}` : ""}` : "ngrok ya estaba al día");
-    return { status: outcome, version };
+    const res = await getTransport().exec(path, args);
+    return { ok: true, stdout: res.stdout, stderr: res.stderr, code: res.code };
   } catch (e) {
     const message = maskSecrets(e instanceof Error ? e.message : String(e));
-    log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
-    return { status: "failed", version: null, message };
+    return { ok: false, missing: isMissingBinaryError(message), message };
   }
+}
+
+async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
+  let path = ngrokPath;
+  let res = await runNgrok(path, ["update"]);
+  if (!res.ok && res.missing) {
+    // ngrok's own updater replaces the file, and an uninstall leaves the old path behind, so a
+    // path from an earlier detection can be stale. Look the binary up again before giving up.
+    const found = await getTransport().tunnelDetect().catch(() => ({ ngrok: null, cloudflared: null }));
+    if (!found.ngrok) {
+      log.warn("tunnel", "no se pudo actualizar ngrok: no está instalado");
+      return { status: "failed", version: null, message: "ngrok no está instalado" };
+    }
+    path = found.ngrok;
+    res = await runNgrok(path, ["update"]);
+  }
+  if (!res.ok) {
+    log.warn("tunnel", `no se pudo actualizar ngrok: ${res.message}`);
+    return { status: "failed", version: null, message: res.message };
+  }
+
+  const outcome = ngrokUpdateOutcome(`${res.stdout}\n${res.stderr}`, res.code);
+  const versionRes = await runNgrok(path, ["--version"]);
+  const version = versionRes.ok ? parseNgrokVersion(`${versionRes.stdout}\n${versionRes.stderr}`) : null;
+  if (outcome === "failed") {
+    const message = maskSecrets((res.stderr || res.stdout || "").trim().split(/\r?\n/).slice(-2).join(" ")) || "no se pudo actualizar";
+    log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
+    return { status: "failed", version, message };
+  }
+  log.info("tunnel", outcome === "updated" ? `ngrok actualizado${version ? ` a ${version}` : ""}` : "ngrok ya estaba al día");
+  return { status: outcome, version };
 }
 
 /** Runs `ngrok config check`, reads the file and reports which credentials are there. */
 export async function ngrokAccountStatus(ngrokPath: string): Promise<NgrokAccountStatus> {
   const transport = getTransport();
-  let res;
-  try {
-    res = await transport.exec(ngrokPath, ["config", "check"]);
-  } catch (e) {
+  const probe = await runNgrok(ngrokPath, ["config", "check"]);
+  if (!probe.ok) {
+    // A missing binary is "not installed", which the Proveedor row already says: no error here.
     return {
       configPath: null,
       hasAuthtoken: false,
       hasApiKey: false,
-      error: e instanceof Error ? maskSecrets(e.message) : String(e),
+      error: probe.missing ? undefined : probe.message,
     };
   }
+  const res = probe;
 
   const configPath = parseNgrokConfigPath(res.stdout) ?? parseNgrokConfigPath(res.stderr);
 

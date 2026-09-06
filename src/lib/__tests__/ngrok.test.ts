@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isMissingBinaryError,
   looksLikeNgrokCredential,
   ngrokApiKey,
   ngrokConfigKeys,
@@ -14,6 +15,12 @@ describe("ngrok update", () => {
     expect(parseNgrokVersion("ngrok version 3.20.1")).toBe("3.20.1");
     expect(parseNgrokVersion("ngrok version 3.3.1\n")).toBe("3.3.1");
     expect(parseNgrokVersion("command not found")).toBeNull();
+  });
+
+  it("recognises the error of a binary that is no longer where it was", () => {
+    expect(isMissingBinaryError("No se pudo ejecutar C:\\x\\ngrok.exe: The system cannot find the file specified. (os error 2)")).toBe(true);
+    expect(isMissingBinaryError("spawn ngrok ENOENT")).toBe(true);
+    expect(isMissingBinaryError("ngrok terminó con código 1")).toBe(false);
   });
 
   it("tells apart an update, an already current agent and a failure", () => {
