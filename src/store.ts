@@ -13,6 +13,7 @@ import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
+import { translateNow } from "@/i18n/useT";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -688,7 +689,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         : { running: false, error: state.tunnelStatus.running ? "Se cayó el túnel" : state.tunnelStatus.error },
     }));
     if (fell) {
-      get().notify({ kind: "tunnel", title: "Se cayó el túnel", body: "El acceso público quedó apagado." });
+      get().notify({ kind: "tunnel", title: translateNow("notify.tunnelDown"), body: translateNow("notify.tunnelDownBody") });
     }
   },
   refreshRemoteStatus: async () => {

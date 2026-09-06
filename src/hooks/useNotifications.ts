@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { toast } from "@/components/ui/toast";
+import { translateNow } from "@/i18n/useT";
 
 export function useNotifications() {
   const lastProcessedId = useRef<string | null>(null);
@@ -19,13 +20,14 @@ export function useNotifications() {
       for (const msg of newMessages) {
         if (msg.projectId && msg.projectId !== state.currentProjectId) continue;
         if (msg.kind === "delegation") {
-          const from = selectAllAgents(state).find(a => a.id === msg.fromAgentId)?.name || "Alguien";
-          const to = selectAllAgents(state).find(a => a.id === msg.toAgentId)?.name || "Alguien";
-          toast.info(`${from} delegó a ${to}`);
+          const someone = translateNow("notify.someone");
+          const from = selectAllAgents(state).find(a => a.id === msg.fromAgentId)?.name || someone;
+          const to = selectAllAgents(state).find(a => a.id === msg.toAgentId)?.name || someone;
+          toast.info(translateNow("notify.delegated", { from, to }));
         } else if (msg.kind === "error") {
           toast.error(msg.text);
         } else if (msg.kind === "result" && msg.toAgentId === "user") {
-          toast.success("Tarea terminada");
+          toast.success(translateNow("notify.taskDone"));
         }
       }
       
