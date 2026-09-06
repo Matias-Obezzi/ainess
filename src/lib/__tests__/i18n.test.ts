@@ -92,6 +92,14 @@ describe("dictionaries", () => {
     }
   });
 
+  it("lists the keys in the same order as Spanish, so the files stay easy to compare", () => {
+    const baseOrder = Object.keys(es);
+    for (const lang of LANGUAGES) {
+      if (lang === "es") continue;
+      expect({ lang, keys: Object.keys(dictionaries[lang]) }).toEqual({ lang, keys: baseOrder });
+    }
+  });
+
   it("keeps the same placeholders in every language", () => {
     const holders = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
     for (const lang of LANGUAGES) {
