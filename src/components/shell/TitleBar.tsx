@@ -5,6 +5,7 @@ import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isTauri } from "@/lib/tauri";
+import { Logo } from "@/components/Logo";
 
 /** Window controls are Windows-sized (46x40) and never carry the drag region. */
 function WindowControls() {
@@ -147,8 +148,9 @@ export function TitleBar() {
 
       <span
         data-tauri-drag-region
-        className="absolute left-1/2 -translate-x-1/2 pointer-events-none text-xs font-semibold tracking-wide text-muted-foreground"
+        className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 pointer-events-none text-xs font-semibold tracking-wide text-muted-foreground"
       >
+        <Logo size={14} />
         ainess
       </span>
 

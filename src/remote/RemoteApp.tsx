@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { Logo } from "@/components/Logo";
 import { StatusDot } from "@/components/StatusDot";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { InstructDialog } from "@/components/InstructDialog";
@@ -151,6 +152,7 @@ function HomeView() {
   return (
     <>
       <header className="shrink-0 flex items-center gap-2 px-4 h-14 border-b border-border">
+        <Logo size={20} />
         <h1 className="font-semibold">ainess</h1>
         {pending.length > 0 && (
           <Button

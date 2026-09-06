@@ -9,6 +9,7 @@ import { isTauri } from "@/lib/tauri";
 import { appVersion, checkForUpdate, type UpdateCheck } from "@/lib/updates";
 import { getRecentLogs, log } from "@/lib/logger";
 import { getTransport } from "@/lib/transport";
+import { Logo } from "@/components/Logo";
 import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw } from "lucide-react";
 
 const REPO_URL = "https://github.com/Matias-Obezzi/ainess";
@@ -97,6 +98,7 @@ export function AboutSection() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <Logo size={24} />
             ainess {version && <Badge variant="secondary">v{version}</Badge>}
           </CardTitle>
           <CardDescription>Orquestador local de agentes de IA.</CardDescription>
