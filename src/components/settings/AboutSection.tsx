@@ -9,25 +9,13 @@ import { isTauri } from "@/lib/tauri";
 import { appVersion, checkForUpdate, type UpdateCheck } from "@/lib/updates";
 import { getRecentLogs, log } from "@/lib/logger";
 import { getTransport } from "@/lib/transport";
+import { openExternal } from "@/lib/open-external";
 import { Logo } from "@/components/Logo";
 import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw } from "lucide-react";
 
 const REPO_URL = "https://github.com/Matias-Obezzi/ainess";
 const AUTHOR_URL = "https://github.com/Matias-Obezzi";
 const TECHNOLOGIES = ["Tauri 2", "React 19", "TypeScript", "Tailwind 4", "Rust"];
-
-async function openExternal(url: string): Promise<void> {
-  if (isTauri()) {
-    try {
-      const { openUrl } = await import("@tauri-apps/plugin-opener");
-      await openUrl(url);
-      return;
-    } catch {
-      /* fall through to the browser */
-    }
-  }
-  window.open(url, "_blank", "noopener");
-}
 
 /** Configuración > Acerca de: versión, actualizaciones, carpeta de logs y diagnóstico. */
 export function AboutSection() {

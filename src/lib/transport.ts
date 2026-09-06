@@ -13,6 +13,8 @@ export interface Transport {
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */
   readHomeFile(relativePath: string): Promise<string | null>;
+  /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
+  readFileAbs(path: string): Promise<string | null>;
 
   // LAN remote access (see src/lib/remote.ts). The server lives in the transport because
   // the orchestrator state lives in this process.
