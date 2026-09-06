@@ -9,10 +9,12 @@ import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
+import { useT } from "@/i18n/useT";
 import { GitBranch, ListTodo, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
 
 /** The working screen for one project: top bar, task board / thread / hierarchy, and the composer. */
 export function ProjectScreen() {
+  const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
   const projectMode = useAppStore(state => state.projectMode);
@@ -35,8 +37,8 @@ export function ProjectScreen() {
   if (!project) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground gap-2">
-        <p>No hay un proyecto seleccionado.</p>
-        <p className="text-sm">Elegí uno en el panel izquierdo o creá uno nuevo.</p>
+        <p>{t("projectScreen.noProject.title")}</p>
+        <p className="text-sm">{t("projectScreen.noProject.body")}</p>
       </div>
     );
   }
@@ -52,7 +54,7 @@ export function ProjectScreen() {
         <GitBranchButton projectId={project.id} />
 
         <Badge variant={running > 0 ? "default" : "outline"} className="ml-auto text-[10px]">
-          {running} trabajando
+          {t("projectScreen.working", { n: running })}
         </Badge>
 
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
@@ -62,7 +64,7 @@ export function ProjectScreen() {
             className="h-7"
             onClick={() => setProjectMode("tasks")}
           >
-            <ListTodo className="h-3.5 w-3.5" /> Tareas
+            <ListTodo className="h-3.5 w-3.5" /> {t("projectScreen.tasks")}
           </Button>
           <Button
             variant={projectMode === "chat" ? "secondary" : "ghost"}
@@ -70,7 +72,7 @@ export function ProjectScreen() {
             className="h-7"
             onClick={() => setProjectMode("chat")}
           >
-            <MessageSquare className="h-3.5 w-3.5" /> Chat
+            <MessageSquare className="h-3.5 w-3.5" /> {t("projectScreen.chat")}
           </Button>
           <Button
             variant={projectMode === "graph" ? "secondary" : "ghost"}
@@ -78,7 +80,7 @@ export function ProjectScreen() {
             className="h-7"
             onClick={() => setProjectMode("graph")}
           >
-            <GitBranch className="h-3.5 w-3.5" /> Jerarquía
+            <GitBranch className="h-3.5 w-3.5" /> {t("projectScreen.hierarchy")}
           </Button>
         </div>
 
@@ -87,16 +89,16 @@ export function ProjectScreen() {
             variant={commPanelOpen ? "secondary" : "ghost"}
             size="sm"
             className="h-7"
-            title="Mostrar u ocultar el panel de comunicación"
+            title={t("projectScreen.toggleComm")}
             onClick={() => toggleCommPanel()}
           >
-            <PanelRight className="h-3.5 w-3.5" /> Comunicación
+            <PanelRight className="h-3.5 w-3.5" /> {t("projectScreen.comm")}
           </Button>
           <Button
             variant={termPanelOpen ? "secondary" : "ghost"}
             size="sm"
             className="h-7"
-            title="Mostrar u ocultar las terminales (Ctrl+`)"
+            title={t("projectScreen.toggleTerminals")}
             onClick={() => {
               const wasOpen = termPanelOpen;
               toggleTermPanel();
@@ -105,7 +107,7 @@ export function ProjectScreen() {
               }
             }}
           >
-            <TerminalSquare className="h-3.5 w-3.5" /> Terminal
+            <TerminalSquare className="h-3.5 w-3.5" /> {t("projectScreen.terminal")}
           </Button>
         </div>
       </div>

@@ -19,11 +19,13 @@ import { island } from "@/components/ui/island";
 import { confirmDelete } from "@/lib/confirm";
 import { revealPath } from "@/lib/open-external";
 import { hasUncommittedChanges, mergeWorktree, removeWorktree } from "@/lib/worktree";
+import { useT } from "@/i18n/useT";
 
 /** `null` while it is being read, `undefined` when it could not be read at all. */
 type DirtyMap = Record<string, boolean | null | undefined>;
 
 export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const projectId = useAppStore(state => state.currentProjectId);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
@@ -55,15 +57,15 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectId]);
 
-  const agentName = (agentId: string) => agents.find(a => a.id === agentId)?.name ?? "Agente eliminado";
-  const target = repoBranch || worktrees[0]?.base || "la rama del proyecto";
+  const agentName = (agentId: string) => agents.find(a => a.id === agentId)?.name ?? t("worktrees.deletedAgent");
+  const target = repoBranch || worktrees[0]?.base || t("worktrees.projectBranch");
 
   const merge = async (worktree: AgentWorktree) => {
     if (!project) return;
     const ok = await island.confirm({
-      title: `¿Mergear ${worktree.branch}?`,
-      description: `Se va a mergear en ${target}, sin fast-forward. Si quedan conflictos vas a tener que resolverlos a mano en la carpeta del proyecto.`,
-      confirmText: "Mergear",
+      title: t("worktrees.merge.title", { branch: worktree.branch }),
+      description: t("worktrees.merge.body", { target }),
+      confirmText: t("worktrees.merge.confirm"),
     });
     if (!ok) return;
     setBusyAgentId(worktree.agentId);
@@ -84,11 +86,11 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
   const remove = async (worktree: AgentWorktree, deleteBranch: boolean) => {
     if (!project || !projectId) return;
     const ok = await confirmDelete(
-      "el worktree",
+      t("worktrees.delete.title"),
       agentName(worktree.agentId),
       deleteBranch
-        ? `Se borran la carpeta ${worktree.path} y la rama ${worktree.branch}, con todo lo que no esté mergeado.`
-        : `Se borra la carpeta ${worktree.path}. La rama ${worktree.branch} queda.`,
+        ? t("worktrees.delete.withBranch", { path: worktree.path, branch: worktree.branch })
+        : t("worktrees.delete.keepBranch", { path: worktree.path, branch: worktree.branch }),
     );
     if (!ok) return;
     setBusyAgentId(worktree.agentId);
@@ -112,19 +114,16 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Worktrees</DialogTitle>
-            <DialogDescription>
-              Cada agente con worktree trabaja en su propia rama, en una carpeta hermana del proyecto. Vos decidís
-              qué pasa con esa rama cuando termina.
-            </DialogDescription>
+            <DialogTitle>{t("worktrees.title")}</DialogTitle>
+            <DialogDescription>{t("worktrees.description")}</DialogDescription>
           </DialogHeader>
 
           <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
             {worktrees.length === 0 ? (
               <EmptyState
                 icon={GitMerge}
-                title="Todavía no hay worktrees"
-                description="Activá «Trabajar en su propio worktree» en un agente: la carpeta se crea en su primera corrida."
+                title={t("worktrees.empty.title")}
+                description={t("worktrees.empty.body")}
               />
             ) : (
               <div className="flex flex-col gap-2 py-2">
@@ -139,22 +138,22 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
                             <span className="truncate text-sm font-semibold">{agentName(worktree.agentId)}</span>
                             {state === true && (
                               <Badge variant="outline" className="border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400">
-                                sin commitear
+                                {t("worktrees.dirty")}
                               </Badge>
                             )}
                             {state === false && (
                               <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
-                                limpio
+                                {t("worktrees.clean")}
                               </Badge>
                             )}
                             {state === undefined && !reading && (
                               <Badge variant="outline" className="border-destructive/40 px-1.5 py-0 text-[10px] text-destructive">
-                                no se pudo leer
+                                {t("worktrees.unreadable")}
                               </Badge>
                             )}
                           </div>
                           <div className="truncate font-mono text-[11px] text-muted-foreground" title={worktree.branch}>
-                            {worktree.branch} <span className="opacity-60">· desde {worktree.base}</span>
+                            {worktree.branch} <span className="opacity-60">· {t("worktrees.from", { base: worktree.base })}</span>
                           </div>
                           <div className="truncate font-mono text-[11px] text-muted-foreground" title={worktree.path}>
                             {worktree.path}
@@ -164,23 +163,23 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
                           {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                           <RowAction
                             icon={FolderOpen}
-                            label="Abrir carpeta"
+                            label={t("worktrees.openFolder")}
                             disabled={busy}
                             onClick={() => {
                               void revealPath(worktree.path).then(ok => {
-                                if (!ok) toast.error("No se pudo abrir la carpeta.");
+                                if (!ok) toast.error(t("worktrees.openFolderFailed"));
                               });
                             }}
                           />
                           <RowAction
                             icon={GitMerge}
-                            label={`Mergear a ${target}`}
+                            label={t("worktrees.mergeTo", { target })}
                             disabled={busy || !project}
                             onClick={() => void merge(worktree)}
                           />
                           <RowAction
                             icon={Trash2}
-                            label="Eliminar"
+                            label={t("common.delete")}
                             destructive
                             disabled={busy || !project}
                             onClick={() => setToRemove(worktree)}
@@ -197,9 +196,9 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
           <DialogFooter className="mt-2 sm:justify-between">
             <Button variant="outline" size="sm" disabled={reading || worktrees.length === 0} onClick={() => void readDirty(worktrees)}>
               {reading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}
-              Actualizar estado
+              {t("worktrees.refreshState")}
             </Button>
-            <Button onClick={() => onOpenChange(false)}>Cerrar</Button>
+            <Button onClick={() => onOpenChange(false)}>{t("common.close")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -230,6 +229,7 @@ function RemoveWorktreeDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: (deleteBranch: boolean) => void;
 }) {
+  const t = useT();
   const [deleteBranch, setDeleteBranch] = useState(false);
 
   useEffect(() => {
@@ -240,22 +240,17 @@ function RemoveWorktreeDialog({
     <Dialog open={!!worktree} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Eliminar el worktree de {agentName}</DialogTitle>
-          <DialogDescription>
-            Se borra la carpeta <span className="font-mono">{worktree?.path}</span>. El agente vuelve a trabajar en la
-            carpeta del proyecto, salvo que le crees otro worktree.
-          </DialogDescription>
+          <DialogTitle>{t("worktrees.remove.title", { name: agentName })}</DialogTitle>
+          <DialogDescription>{t("worktrees.remove.body", { path: worktree?.path ?? "" })}</DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2 py-2">
           <Switch checked={deleteBranch} onCheckedChange={setDeleteBranch} id="delete-branch" />
-          <Label htmlFor="delete-branch">
-            Borrar también la rama <span className="font-mono">{worktree?.branch}</span>
-          </Label>
+          <Label htmlFor="delete-branch">{t("worktrees.remove.deleteBranch", { branch: worktree?.branch ?? "" })}</Label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           {/* The ellipsis is honest: the final confirmation still comes, as for anything destructive. */}
-          <Button variant="destructive" onClick={() => onConfirm(deleteBranch)}>Eliminar…</Button>
+          <Button variant="destructive" onClick={() => onConfirm(deleteBranch)}>{t("worktrees.remove.confirm")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

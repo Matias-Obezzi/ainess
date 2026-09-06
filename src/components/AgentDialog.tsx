@@ -14,7 +14,8 @@ import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
-import { roleLabel } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/labels";
+import { useT, type TFunction } from "@/i18n/useT";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2 } from "lucide-react";
 
@@ -36,19 +37,20 @@ interface Props {
 const DEFAULT_MODEL_OPTION = "__default__";
 const OTHER_MODEL_OPTION = "__other__";
 
-function quotaLine(item: QuotaItem): { text: string; percent?: number } {
-  if (item.unlimited) return { text: "Ilimitado" };
+function quotaLine(item: QuotaItem, t: TFunction): { text: string; percent?: number } {
+  if (item.unlimited) return { text: t("agentDialog.quotaUnlimited") };
   if (item.entitlement !== undefined && item.remaining !== undefined) {
     const percent = item.percentRemaining ?? Math.round((item.remaining / item.entitlement) * 100);
     return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
   }
   if (item.usedPercent !== undefined) {
-    return { text: `${item.usedPercent}% usado`, percent: 100 - item.usedPercent };
+    return { text: t("agentDialog.quotaUsedPercent", { percent: item.usedPercent }), percent: 100 - item.usedPercent };
   }
   return { text: item.note || "" };
 }
 
 function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initialLoading?: boolean }) {
+  const t = useT();
   const quotaState = useAppStore(state => state.quota[provider]);
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const [loading, setLoading] = useState(false);
@@ -65,10 +67,10 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
   return (
     <Card className="p-3 space-y-2">
       <div className="flex justify-between items-center">
-        <span className="font-semibold text-sm">Cuota de {PROVIDERS[provider]?.label}</span>
+        <span className="font-semibold text-sm">{t("agentDialog.quotaOf", { provider: PROVIDERS[provider]?.label ?? provider })}</span>
         <Button size="sm" variant="outline" onClick={() => void handleRefresh()} disabled={loading}>
           {loading && <Loader2 className="size-3 mr-1 animate-spin" />}
-          Actualizar
+          {t("agentDialog.quotaRefresh")}
         </Button>
       </div>
 
@@ -81,7 +83,7 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
       )}
 
       {!quotaState && !initialLoading && (
-        <div className="text-sm text-muted-foreground">Sin datos todavía. Apretá "Actualizar".</div>
+        <div className="text-sm text-muted-foreground">{t("agentDialog.quotaNoData")}</div>
       )}
 
       {quotaState && quotaState.status !== "ok" && (
@@ -94,12 +96,14 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
             <div key={item.label} className="flex justify-between text-sm">
               <span>{item.label}</span>
               <span className="text-muted-foreground">
-                {item.resetsAt ? `Agotado, se libera a las ${formatResetsAt(item.resetsAt)}` : "Disponible"}
+                {item.resetsAt
+                  ? t("agentDialog.quotaExhaustedUntil", { time: formatResetsAt(item.resetsAt) ?? "" })
+                  : t("agentDialog.quotaAvailable")}
               </span>
             </div>
           ))}
           <div className="text-xs text-muted-foreground pt-1">
-            Antigravity no expone la cuota: se infiere de los errores de los runs.
+            {t("agentDialog.quotaAntigravityHint")}
           </div>
         </div>
       )}
@@ -107,7 +111,7 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
       {quotaState?.status === "ok" && provider !== "antigravity" && (
         <div className="space-y-2">
           {quotaState.items.map(item => {
-            const { text, percent } = quotaLine(item);
+            const { text, percent } = quotaLine(item, t);
             return (
               <div key={item.label} className="space-y-1">
                 <div className="flex justify-between text-sm">
@@ -116,12 +120,12 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
                 </div>
                 {percent !== undefined && <Progress value={Math.max(0, Math.min(100, percent))} />}
                 {item.resetsAt !== undefined && (
-                  <div className="text-xs text-muted-foreground">se renueva {formatResetsAt(item.resetsAt)}</div>
+                  <div className="text-xs text-muted-foreground">{t("agentDialog.quotaRenews", { time: formatResetsAt(item.resetsAt) ?? "" })}</div>
                 )}
               </div>
             );
           })}
-          {quotaState.items.length === 0 && <div className="text-sm text-muted-foreground">Sin información.</div>}
+          {quotaState.items.length === 0 && <div className="text-sm text-muted-foreground">{t("agentDialog.quotaNoInfo")}</div>}
         </div>
       )}
     </Card>
@@ -129,6 +133,7 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
 }
 
 export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, agents: rosterProp, onSave }: Props) {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const targetProjectId = projectId !== undefined ? projectId : currentProjectId;
@@ -303,16 +308,18 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     if (provider === "antigravity") {
       const pool = providerQuota.items.find(i => modelId.startsWith(i.model || "___"));
       if (!pool) return "";
-      return pool.resetsAt ? ` · agotado hasta ${formatResetsAt(pool.resetsAt)}` : " · disponible";
+      return pool.resetsAt
+        ? ` · ${t("agentDialog.quotaExhaustedShort", { time: formatResetsAt(pool.resetsAt) ?? "" })}`
+        : ` · ${t("agentDialog.quotaAvailableShort")}`;
     }
     const item = providerQuota.items.find(i => i.model === modelId);
     if (!item) return "";
-    const { text } = quotaLine(item);
+    const { text } = quotaLine(item, t);
     return text ? ` · ${text}` : "";
   };
 
   const handlePickExecutable = async () => {
-    const selected = await open({ multiple: false, filters: [{ name: "Ejecutable", extensions: ["exe", "cmd", "bat"] }] });
+    const selected = await open({ multiple: false, filters: [{ name: t("agents.executable"), extensions: ["exe", "cmd", "bat"] }] });
     if (selected && typeof selected === "string") {
       const overrides = { ...config.binaryOverrides, [provider]: selected };
       updateConfig({ binaryOverrides: overrides });
@@ -337,28 +344,28 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{agent ? "Editar agente" : "Nuevo agente"}</DialogTitle>
+          <DialogTitle>{agent ? t("agentActions.editAgent") : t("agentDialog.newAgent")}</DialogTitle>
         </DialogHeader>
         
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="flex gap-4">
               <div className="flex-1 space-y-1">
-                <Label>Nombre</Label>
+                <Label>{t("common.name")}</Label>
                 <Input value={name} onChange={e => { setName(e.target.value); setSuggestedName(""); }} />
                 {duplicateName && (
-                  <p className="text-xs text-destructive">Ya hay otro agente con ese nombre en este equipo.</p>
+                  <p className="text-xs text-destructive">{t("agentDialog.duplicateName")}</p>
                 )}
               </div>
               <div className="w-20 space-y-1">
-                <Label>Color</Label>
+                <Label>{t("agentDialog.color")}</Label>
                 <Input type="color" value={color} onChange={e => setColor(e.target.value)} className="h-9 px-1" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Provider</Label>
+                <Label>{t("agentDialog.provider")}</Label>
                 <Select value={provider} onValueChange={v => handleProviderChange(v as ProviderId)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -371,14 +378,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Rol</Label>
+                <Label>{t("agentDialog.role")}</Label>
                 <Select value={role} onValueChange={v => setRole(v as AgentRole)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(roleLabel) as [AgentRole, string][]).map(([r, label]) => (
-                      <SelectItem key={r} value={r}>{label}</SelectItem>
+                    {(Object.entries(roleLabelKey) as [AgentRole, string][]).map(([r, key]) => (
+                      <SelectItem key={r} value={r}>{t(key)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -387,13 +394,13 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Padre</Label>
+                <Label>{t("agentDialog.parent")}</Label>
                 <Select value={parentId || "null"} onValueChange={v => setParentId(v === "null" ? null : v)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="null">Ninguno (raíz)</SelectItem>
+                    <SelectItem value="null">{t("agentDialog.noParent")}</SelectItem>
                     {validParents.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
@@ -401,10 +408,10 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Modelo</Label>
+                <Label>{t("common.model")}</Label>
                 {modelsLoading && availableModels.length === 0 ? (
                   <div className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                    Cargando modelos…
+                    {t("agentDialog.loadingModels")}
                   </div>
                 ) : (
                   <Select value={modelOption} onValueChange={setModelOption}>
@@ -412,13 +419,13 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={DEFAULT_MODEL_OPTION}>Por defecto del proveedor</SelectItem>
+                      <SelectItem value={DEFAULT_MODEL_OPTION}>{t("agentDialog.providerDefault")}</SelectItem>
                       {availableModels.map(m => (
                         <SelectItem key={m.id} value={m.id}>
                           {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
                         </SelectItem>
                       ))}
-                      <SelectItem value={OTHER_MODEL_OPTION}>Otro…</SelectItem>
+                      <SelectItem value={OTHER_MODEL_OPTION}>{t("agentDialog.otherModel")}</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -427,7 +434,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     className="mt-1"
                     value={otherModel}
                     onChange={e => setOtherModel(e.target.value)}
-                    placeholder="Ej: gemini-3.1-pro-high"
+                    placeholder={t("agentDialog.otherModelPlaceholder")}
                   />
                 )}
               </div>
@@ -437,12 +444,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
             <div className="flex items-center gap-2">
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
-              <Label htmlFor="auto-approve">Auto-aprobar herramientas</Label>
+              <Label htmlFor="auto-approve">{t("agentDialog.autoApprove")}</Label>
             </div>
 
             <div className="flex items-center gap-2">
               <Switch checked={requireApproval} onCheckedChange={setRequireApproval} id="require-approval" />
-              <Label htmlFor="require-approval">Requiere tu aprobación para recibir tareas delegadas</Label>
+              <Label htmlFor="require-approval">{t("agentDialog.requireApproval")}</Label>
             </div>
 
             <div className="space-y-1">
@@ -453,36 +460,36 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                   id="worktree"
                   disabled={!isRepo}
                 />
-                <Label htmlFor="worktree">Trabajar en su propio worktree</Label>
+                <Label htmlFor="worktree">{t("agentDialog.worktree")}</Label>
               </div>
               <p className="text-xs text-muted-foreground">
                 {isRepo
-                  ? <>Se crea la rama <span className="font-mono">{worktreeBranch(name || "agente")}</span> y una carpeta hermana del proyecto. Las dependencias se instalan ahí la primera vez, así que la primera corrida tarda más.</>
-                  : "El proyecto no es un repositorio git: no se puede crear un worktree."}
+                  ? t("agentDialog.worktreeHint", { branch: worktreeBranch(name || "agente") })
+                  : t("agentDialog.notARepo")}
               </p>
             </div>
 
             {/* The description is what the parent reads to pick who to delegate to: no parent, no field. */}
             {parentId !== null && (
               <div className="space-y-1">
-                <Label>Descripción (para el planificador padre)</Label>
+                <Label>{t("agentDialog.description")}</Label>
                 <Input value={description} onChange={e => setDescription(e.target.value)} />
               </div>
             )}
 
             <div className="space-y-1">
-              <Label>Instrucciones extra (System prompt)</Label>
+              <Label>{t("agentDialog.systemPrompt")}</Label>
               <Textarea value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} />
             </div>
 
             {provider === "custom" && (
               <div className="grid grid-cols-2 gap-4 p-4 border rounded">
                 <div className="space-y-1">
-                  <Label>Programa (ej: npx)</Label>
+                  <Label>{t("agentDialog.program")}</Label>
                   <Input value={customProgram} onChange={e => setCustomProgram(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Argumentos (separados por espacio)</Label>
+                  <Label>{t("agentDialog.args")}</Label>
                   <Input value={customArgs} onChange={e => setCustomArgs(e.target.value)} placeholder="agy --prompt {prompt}" />
                 </div>
               </div>
@@ -490,16 +497,16 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
             {provider !== "custom" && (
               <div className="space-y-2 p-3 border rounded">
-                <Label>Ejecutable</Label>
+                <Label>{t("agents.executable")}</Label>
                 <div className="text-sm">
                   {currentBinary?.path
                     ? <span>{currentBinary.path}{currentBinary.version ? ` (${currentBinary.version})` : ""}</span>
-                    : <span className="text-destructive">No detectado</span>}
+                    : <span className="text-destructive">{t("agents.notFound")}</span>}
                 </div>
                 <div className="flex gap-2 items-center">
-                  <Button size="sm" variant="outline" onClick={() => void handlePickExecutable()}>Cargar a mano</Button>
+                  <Button size="sm" variant="outline" onClick={() => void handlePickExecutable()}>{t("agents.setPath")}</Button>
                   {hasOverride && (
-                    <Button size="sm" variant="ghost" onClick={() => void handleClearOverride()}>Limpiar override</Button>
+                    <Button size="sm" variant="ghost" onClick={() => void handleClearOverride()}>{t("agents.clearOverride")}</Button>
                   )}
                 </div>
               </div>
@@ -507,24 +514,24 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
             
             {agent && (
               <div className="space-y-2 pt-4 border-t">
-                <Label>Recursos compartidos que recibe</Label>
+                <Label>{t("agentDialog.sharedResources")}</Label>
                 <div className="text-sm text-muted-foreground flex gap-4">
                   <div className="flex-1">
-                    <strong>Skills:</strong>
+                    <strong>{t("agentDialog.skills")}</strong>
                     <ul className="list-disc ml-4">
                       {config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).map(s => (
                         <li key={s.id}>{s.name}</li>
                       ))}
-                      {config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>Ninguno</li>}
+                      {config.skills.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>{t("common.none")}</li>}
                     </ul>
                   </div>
                   <div className="flex-1">
-                    <strong>MCP Servers:</strong>
+                    <strong>{t("agentDialog.mcpServers")}</strong>
                     <ul className="list-disc ml-4">
                       {config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).map(s => (
                         <li key={s.id}>{s.name}</li>
                       ))}
-                      {config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>Ninguno</li>}
+                      {config.mcpServers.filter(s => s.enabledFor === "all" || s.enabledFor.includes(agent.id)).length === 0 && <li>{t("common.none")}</li>}
                     </ul>
                   </div>
                 </div>
@@ -534,8 +541,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         </div>
         
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || duplicateName || (!onSave && !targetProjectId)}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || duplicateName || (!onSave && !targetProjectId)}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
