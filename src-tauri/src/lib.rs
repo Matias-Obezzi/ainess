@@ -33,6 +33,9 @@ pub fn run() {
                 &format!("ainess {} iniciando", handle.package_info().version),
             );
             tray::setup_tray(app)?;
+            // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
+            // one agent session per account: whatever the last session left behind goes now.
+            tunnel::kill_orphan(&handle);
             Ok(())
         })
         .on_window_event(tray::on_window_event)

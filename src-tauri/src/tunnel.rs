@@ -3,13 +3,15 @@
 //! Same protocol as the node implementation in src/lib/tunnel-node.ts.
 
 use serde::Serialize;
+use std::fs;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, State as TauriState};
+use tauri::{AppHandle, Manager, State as TauriState};
 
 use crate::logging;
 
@@ -115,6 +117,8 @@ pub async fn tunnel_start(
     let program = crate::detect::find_path(binary_for(&provider))
         .ok_or_else(|| format!("No se encontró `{}`. Instalalo y volvé a detectar.", binary_for(&provider)))?;
 
+    // A tunnel from a session that ended badly still holds the account's only agent session.
+    kill_orphan(&app);
     logging::append(&app, "info", "tunnel", &format!("iniciando túnel {provider} en el puerto {port} ({program})"));
 
     let p = provider.clone();
@@ -133,6 +137,7 @@ pub async fn tunnel_start(
                 kill_child(child);
                 return Ok(TunnelInfo { url: existing });
             }
+            write_pid_file(&app, &provider, child.id());
             *state.child.lock().unwrap() = Some(child);
             *state.url.lock().unwrap() = Some(url.clone());
             *state.provider.lock().unwrap() = Some(provider.clone());
@@ -158,6 +163,8 @@ pub async fn tunnel_stop(app: AppHandle, state: TauriState<'_, TunnelState>) -> 
         let _ = tauri::async_runtime::spawn_blocking(move || kill_child(c)).await;
         logging::append(&app, "info", "tunnel", "túnel detenido");
     }
+    // Last, so that a crash while killing still leaves the pid behind to be cleaned up.
+    clear_pid_file(&app);
     Ok(())
 }
 
@@ -194,13 +201,13 @@ pub fn tunnel_status(state: TauriState<'_, TunnelState>) -> TunnelStatus {
 
 /// Kills the tunnel when the app exits, so no orphan cloudflared/ngrok is left behind.
 pub fn shutdown(app: &AppHandle) {
-    use tauri::Manager;
     if let Some(state) = app.try_state::<TunnelState>() {
         let child = state.child.lock().ok().and_then(|mut g| g.take());
         if let Some(c) = child {
             kill_child(c);
         }
     }
+    clear_pid_file(app);
 }
 
 fn current_url(state: &TauriState<'_, TunnelState>) -> Option<String> {
@@ -212,18 +219,138 @@ fn current_url(state: &TauriState<'_, TunnelState>) -> Option<String> {
 }
 
 fn kill_child(mut child: Child) {
-    #[cfg(windows)]
-    {
-        // cloudflared and ngrok can spawn helpers: kill the whole tree.
-        let pid = child.id();
-        let _ = Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-    }
+    kill_tree(child.id());
     let _ = child.kill();
     let _ = child.wait();
+}
+
+/// cloudflared and ngrok can spawn helpers, so the whole tree goes.
+fn kill_tree(pid: u32) {
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    #[cfg(not(windows))]
+    let _ = Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+/// The image name in `tasklist /NH /FO CSV` output: a match prints `"ngrok.exe","1234",...`, and
+/// with none tasklist prints an INFO line instead (some builds pad with blank lines), so what is
+/// looked for is the quoted row.
+fn parse_tasklist_image(text: &str) -> Option<String> {
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix('"'))
+        .filter_map(|row| row.split('"').next())
+        .find(|name| !name.is_empty())
+        .map(|name| name.to_string())
+}
+
+/// `<tunnel pid> <provider> <pid of the app that started it>`, as written by `write_pid_file`.
+/// The owner is optional so a file from an older version still reads.
+fn parse_pid_entry(raw: &str) -> Option<(u32, String, Option<u32>)> {
+    let mut parts = raw.split_whitespace();
+    let pid = parts.next()?.parse::<u32>().ok()?;
+    let provider = parts.next()?.to_string();
+    Some((pid, provider, parts.next().and_then(|p| p.parse::<u32>().ok())))
+}
+
+/// Image name of a live process, or None when nothing runs under that pid. Pids get reused, so
+/// this is what keeps a stale number from killing whatever inherited it.
+fn process_image(pid: u32) -> Option<String> {
+    #[cfg(windows)]
+    {
+        let out = Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        parse_tasklist_image(&String::from_utf8_lossy(&out.stdout))
+    }
+    #[cfg(not(windows))]
+    {
+        let out = Command::new("ps")
+            .args(["-p", &pid.to_string(), "-o", "comm="])
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if name.is_empty() {
+            None
+        } else {
+            Some(name)
+        }
+    }
+}
+
+/// Where the pid of the running tunnel is written, next to the config.
+///
+/// `shutdown` covers the app closing on its own, but not the ways it can go without running any
+/// code of ours: a crash, or the dev process killed from the terminal. The tunnel then keeps
+/// running with nobody holding it, and ngrok allows a single agent session per account, so the
+/// next start is refused with "kill the previous instance". Writing the pid down is what lets the
+/// next launch find that process and finish the job.
+fn pid_file(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_config_dir().ok().map(|dir| dir.join("tunnel.pid"))
+}
+
+/// Holds `<tunnel pid> <provider> <pid of the app that started it>`.
+fn write_pid_file(app: &AppHandle, provider: &str, pid: u32) {
+    let Some(path) = pid_file(app) else { return };
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(path, format!("{pid} {provider} {}", std::process::id()));
+}
+
+fn clear_pid_file(app: &AppHandle) {
+    if let Some(path) = pid_file(app) {
+        let _ = fs::remove_file(path);
+    }
+}
+
+/// This executable's file name, to tell a live copy of the app from a reused pid.
+fn own_image() -> Option<String> {
+    Some(std::env::current_exe().ok()?.file_name()?.to_str()?.to_string())
+}
+
+/// Kills a tunnel left behind by an app that never got to run its `shutdown`. Called at startup
+/// and before opening one; it only ever touches the pid it wrote itself.
+pub fn kill_orphan(app: &AppHandle) {
+    let Some(path) = pid_file(app) else { return };
+    let Ok(raw) = fs::read_to_string(&path) else { return };
+    let Some((pid, provider, owner)) = parse_pid_entry(&raw) else {
+        let _ = fs::remove_file(&path);
+        return;
+    };
+
+    // Another copy of the app is up and this is its tunnel, not an orphan: leave both alone.
+    if let (Some(owner), Some(mine)) = (owner, own_image()) {
+        if owner != std::process::id()
+            && process_image(owner).is_some_and(|image| image.eq_ignore_ascii_case(&mine))
+        {
+            return;
+        }
+    }
+
+    let expected = binary_for(&provider);
+    if let Some(image) = process_image(pid) {
+        if image.to_ascii_lowercase().starts_with(expected) {
+            logging::append(
+                app,
+                "info",
+                "tunnel",
+                &format!("matando {expected} huérfano (pid {pid}) de una sesión anterior"),
+            );
+            kill_tree(pid);
+        }
+    }
+    let _ = fs::remove_file(&path);
 }
 
 /// True when a line of `--help` output *starts* with `--url`, so a description that merely
@@ -412,6 +539,12 @@ fn exit_message(provider: &str, code: Option<i32>, tail: &[String]) -> String {
             hint.push_str(
                 " Tu agente de ngrok es más viejo que el mínimo que pide tu cuenta: actualizalo con `ngrok update` o `winget upgrade Ngrok.Ngrok`.",
             );
+        } else if joined_lower.contains("err_ngrok_108")
+            || (joined_lower.contains("simultaneous") && joined_lower.contains("session"))
+        {
+            hint.push_str(
+                " Tu cuenta de ngrok admite una sola sesión del agente a la vez. ainess mata la que haya quedado colgada al abrir el túnel; si la otra sesión está en otra máquina, cerrala desde dashboard.ngrok.com → Agents.",
+            );
         } else if tail.iter().any(|l| l.contains("authtoken")) {
             hint.push_str(" Configurá tu cuenta con `ngrok config add-authtoken <token>`.");
         } else if joined_lower.contains("domain")
@@ -503,7 +636,36 @@ fn is_registered_connection_line(line: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_url;
+    use super::{extract_url, parse_pid_entry, parse_tasklist_image};
+
+    #[test]
+    fn reads_the_image_name_of_a_live_pid() {
+        assert_eq!(
+            parse_tasklist_image("\"ngrok.exe\",\"1234\",\"Console\",\"1\",\"12.345 K\"").as_deref(),
+            Some("ngrok.exe")
+        );
+        // Nothing running under that pid: the number is free to be someone else's.
+        assert_eq!(
+            parse_tasklist_image("INFO: No tasks are running which match the specified criteria."),
+            None
+        );
+        assert_eq!(parse_tasklist_image(""), None);
+    }
+
+    #[test]
+    fn reads_the_pid_file() {
+        assert_eq!(
+            parse_pid_entry("36692 ngrok 25416"),
+            Some((36692, "ngrok".to_string(), Some(25416)))
+        );
+        // Written by a version that did not record the owner yet.
+        assert_eq!(
+            parse_pid_entry("12 cloudflared\n"),
+            Some((12, "cloudflared".to_string(), None))
+        );
+        assert_eq!(parse_pid_entry(""), None);
+        assert_eq!(parse_pid_entry("no-es-un-pid ngrok"), None);
+    }
 
     #[test]
     fn finds_cloudflare_url() {
@@ -536,6 +698,16 @@ mod tests {
         assert!(msg.contains("ngrok update"), "{msg}");
         // The help noise around the error is dropped.
         assert!(!msg.contains("--websocket-tcp-converter"), "{msg}");
+    }
+
+    #[test]
+    fn a_session_left_running_elsewhere_says_where_to_close_it() {
+        let tail = vec![
+            "ERROR: authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions. ERR_NGROK_108".to_string(),
+        ];
+        let msg = super::exit_message("ngrok", Some(1), &tail);
+        assert!(msg.contains("dashboard.ngrok.com"), "{msg}");
+        assert!(!msg.contains("add-authtoken"), "{msg}");
     }
 
     #[test]
