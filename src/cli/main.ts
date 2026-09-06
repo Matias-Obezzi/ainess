@@ -714,6 +714,9 @@ async function main() {
     for (const p of store.config.projects) await loadHistory(p.id);
     const port = sv.port ? parseInt(String(sv.port), 10) : undefined;
     try {
+      // With `remote.enabled` the store already started the server on the config port at init;
+      // an explicit --port must win (the app may own the config port), so restart on it.
+      if (port !== undefined && useAppStore.getState().remoteStatus.running) await store.stopRemote();
       await store.startRemote(port);
     } catch (e) {
       error(`No se pudo iniciar el servidor: ${e instanceof Error ? e.message : String(e)}`);
