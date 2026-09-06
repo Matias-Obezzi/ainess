@@ -1,10 +1,13 @@
 // Pure task logic: creation defaults, column ordering, dependency checks and the layered layout
 // used by the dependency graph. Nothing here touches the store or the disk, so it is all testable
 // (see src/lib/__tests__/tasks.test.ts). Persistence lives in src/lib/task-store.ts.
-import type { Task, TaskStatus } from "@/types";
+import type { Task, TaskPriority, TaskStatus } from "@/types";
 
 /** Columns of the board, left to right. */
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "in-review", "ready", "done"];
+
+/** Priorities offered in the UI, from the calmest to the most urgent. */
+export const TASK_PRIORITIES: TaskPriority[] = ["low", "normal", "high"];
 
 /** A dependency is satisfied once its task reached one of these. */
 const SATISFIED: TaskStatus[] = ["ready", "done"];
@@ -17,6 +20,7 @@ export function createTask(partial: Partial<Task> & { projectId: string }): Task
     title: (partial.title ?? "Tarea sin título").trim() || "Tarea sin título",
     detail: partial.detail,
     status: partial.status ?? "backlog",
+    priority: TASK_PRIORITIES.includes(partial.priority as TaskPriority) ? partial.priority : undefined,
     agentId: partial.agentId,
     dependsOn: partial.dependsOn ? [...partial.dependsOn] : [],
     runId: partial.runId,
@@ -29,11 +33,19 @@ export function createTask(partial: Partial<Task> & { projectId: string }): Task
   };
 }
 
-/** The live (non archived) tasks of one column, in board order. */
+/**
+ * Urgent first, everything else next. "low" is not pushed down: it is a note for the reader, not a
+ * way of hiding work at the bottom of the column.
+ */
+function priorityRank(task: Task): number {
+  return task.priority === "high" ? 0 : 1;
+}
+
+/** The live (non archived) tasks of one column, in board order: high priority first, then `order`. */
 export function sortColumn(tasks: Task[], status: TaskStatus): Task[] {
   return tasks
     .filter(t => !t.archived && t.status === status)
-    .sort((a, b) => (a.order - b.order) || (a.createdAt - b.createdAt));
+    .sort((a, b) => (priorityRank(a) - priorityRank(b)) || (a.order - b.order) || (a.createdAt - b.createdAt));
 }
 
 /**
@@ -120,6 +132,98 @@ export function removeTask(tasks: Task[], id: string): Task[] {
   return tasks
     .filter(t => t.id !== id)
     .map(t => (t.dependsOn.includes(id) ? { ...t, dependsOn: t.dependsOn.filter(d => d !== id) } : t));
+}
+
+// ---- Board filter ----
+
+/** What the board bar is filtering by. An empty query and no agent means "show everything". */
+export interface TaskFilter {
+  /** Free text matched against the title and the detail. */
+  query: string;
+  /** Agent id, or null for every agent. */
+  agentId: string | null;
+}
+
+export const EMPTY_TASK_FILTER: TaskFilter = { query: "", agentId: null };
+
+/** Lowercase and without accents, so "migracion" finds "migración". */
+function normalize(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+export function isFiltering(filter: TaskFilter): boolean {
+  return filter.query.trim().length > 0 || filter.agentId !== null;
+}
+
+/** The tasks the board and the graph should draw. A view level filter: nothing is persisted. */
+export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
+  if (!isFiltering(filter)) return tasks;
+  const needle = normalize(filter.query.trim());
+  return tasks.filter(task => {
+    if (filter.agentId !== null && task.agentId !== filter.agentId) return false;
+    if (!needle) return true;
+    return normalize(`${task.title} ${task.detail ?? ""}`).includes(needle);
+  });
+}
+
+// ---- Automatic archiving ----
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The done tasks nobody touched for `days` days, which the board archives on its own. Anything in
+ * another column, or already archived, is left alone; `days` null or below one turns it off. A task
+ * that is exactly at the limit still counts as fresh, so the sweep only ever acts on older work.
+ */
+export function tasksToAutoArchive(tasks: Task[], days: number | null | undefined, now: number): Task[] {
+  if (days === null || days === undefined || !Number.isFinite(days) || days < 1) return [];
+  const cutoff = now - days * DAY_MS;
+  return tasks.filter(t => t.status === "done" && !t.archived && t.updatedAt < cutoff);
+}
+
+// ---- Task from a message ----
+
+/** Title of a task written from a message: its first non empty line, trimmed to `max` characters. */
+export function taskTitleFromText(text: string, max = 80): string {
+  const line = text.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? "";
+  const clean = line.replace(/^[#>*\-\s]+/, "").trim();
+  if (!clean) return "";
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
+// ---- Export ----
+
+/** Everything `boardMarkdown` needs to write in the user's language without importing the i18n layer. */
+export interface BoardMarkdownLabels {
+  /** Name of a column, as its header. */
+  status(status: TaskStatus): string;
+  /** Name of the agent in charge, or undefined when it is gone or unassigned. */
+  agent(agentId: string): string | undefined;
+  /** Word before the list of unfinished dependencies, without the colon ("bloqueada por"). */
+  blockedBy: string;
+}
+
+/**
+ * The live board as a markdown checklist, one section per column. Done tasks are ticked, empty
+ * columns are skipped and archived work is left out: what you copy is what you see.
+ */
+export function boardMarkdown(tasks: Task[], labels: BoardMarkdownLabels): string {
+  const sections: string[] = [];
+  for (const status of TASK_STATUSES) {
+    const items = sortColumn(tasks, status);
+    if (items.length === 0) continue;
+    const lines = items.map(task => {
+      const agent = task.agentId ? labels.agent(task.agentId) : undefined;
+      const extras: string[] = [];
+      if (task.branch) extras.push(task.branch);
+      const missing = blockedBy(task, tasks);
+      if (missing.length > 0) extras.push(`${labels.blockedBy}: ${missing.map(m => m.title).join(", ")}`);
+      const tail = extras.length > 0 ? ` — ${extras.join(" — ")}` : "";
+      return `- [${status === "done" ? "x" : " "}] ${task.title}${agent ? ` (${agent})` : ""}${tail}`;
+    });
+    sections.push(`## ${labels.status(status)}\n${lines.join("\n")}`);
+  }
+  return sections.join("\n\n");
 }
 
 // ---- Dependency graph layout ----

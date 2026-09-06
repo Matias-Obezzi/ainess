@@ -1,6 +1,6 @@
 // One table for how a task status looks and reads, so the board, the cards and the graph can never
 // drift apart. `color` is a plain hex because React Flow paints edges and borders with inline SVG.
-import type { TaskStatus } from "@/types";
+import type { TaskPriority, TaskStatus } from "@/types";
 
 export interface TaskStatusMeta {
   /** Dictionary key of the column name; render it with `t(meta.labelKey)`. */
@@ -18,4 +18,11 @@ export const taskStatusMeta: Record<TaskStatus, TaskStatusMeta> = {
   "in-review": { labelKey: "task.status.inReview", dot: "bg-violet-500", color: "#8b5cf6" },
   ready: { labelKey: "task.status.ready", dot: "bg-sky-500", color: "#38bdf8" },
   done: { labelKey: "task.status.done", dot: "bg-slate-500", color: "#64748b" },
+};
+
+/** Dictionary key of each priority, so the card, the detail and the menus read the same. */
+export const taskPriorityLabelKey: Record<TaskPriority, string> = {
+  low: "task.priority.low",
+  normal: "task.priority.normal",
+  high: "task.priority.high",
 };

@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
-import { blockedBy, layoutTaskGraph, TASK_NODE_HEIGHT, TASK_NODE_WIDTH } from "@/lib/tasks";
+import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, layoutTaskGraph, TASK_NODE_HEIGHT, TASK_NODE_WIDTH, type TaskFilter } from "@/lib/tasks";
 import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
@@ -78,7 +78,15 @@ function TaskGraphNode({ data }: NodeProps<Node<TaskNodeData>>) {
 
 const nodeTypes = { task: TaskGraphNode };
 
-export function TaskGraph(props: { projectId: string; onOpenTask(id: string): void; onNewTask(): void }) {
+interface TaskGraphProps {
+  projectId: string;
+  /** Same view filter as the board, so both views count the same work. */
+  filter?: TaskFilter;
+  onOpenTask(id: string): void;
+  onNewTask(): void;
+}
+
+export function TaskGraph(props: TaskGraphProps) {
   return (
     <ReactFlowProvider>
       <TaskGraphBoard {...props} />
@@ -86,15 +94,15 @@ export function TaskGraph(props: { projectId: string; onOpenTask(id: string): vo
   );
 }
 
-function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: string; onOpenTask(id: string): void; onNewTask(): void }) {
+function TaskGraphBoard({ projectId, filter = EMPTY_TASK_FILTER, onOpenTask, onNewTask }: TaskGraphProps) {
   const t = useT();
   const all = useAppStore(state => selectTasks(state, projectId));
   const linkTaskDependency = useAppStore(state => state.linkTaskDependency);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
-  // The archive belongs to the board; the graph only shows live work.
-  const tasks = useMemo(() => all.filter(task => !task.archived), [all]);
+  // The archive belongs to the board; the graph only shows live work, and only what passes the filter.
+  const tasks = useMemo(() => filterTasks(all.filter(task => !task.archived), filter), [all, filter]);
   const positions = useMemo(() => layoutTaskGraph(tasks), [tasks]);
   const blocked = useMemo(() => {
     const map = new Map<string, number>();
@@ -169,7 +177,9 @@ function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: strin
   }, [fitView]);
 
   if (tasks.length === 0) {
-    return (
+    return isFiltering(filter) ? (
+      <EmptyState icon={ListTodo} title={t("tasks.noMatches")} description={t("tasks.noMatchesBody")} />
+    ) : (
       <EmptyState
         icon={ListTodo}
         title={t("tasks.empty.title")}

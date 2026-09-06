@@ -18,11 +18,11 @@ import {
 } from "@/components/ui/context-menu";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { TASK_STATUSES } from "@/lib/tasks";
-import { taskStatusMeta } from "./task-meta";
+import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/types";
-import { Archive, ArchiveRestore, Ban, Trash2 } from "lucide-react";
+import type { Task, TaskPriority } from "@/types";
+import { Archive, ArchiveRestore, Ban, ChevronsUp, Trash2 } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 
 interface Props {
@@ -69,6 +69,12 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
             <AgentAvatar provider={agent.provider} color={agent.color} size={22} />
           ) : (
             <span className="mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full border border-dashed border-border" title={t("tasks.unassigned")} />
+          )}
+          {/* Urgency reads as a mark next to the title, never as a background that would hide the status. */}
+          {task.priority === "high" && (
+            <span className="mt-0.5 inline-flex shrink-0 items-center text-amber-600 dark:text-amber-400" title={t("tasks.priorityHigh")}>
+              <ChevronsUp className="h-4 w-4" aria-label={t("tasks.priorityHigh")} />
+            </span>
           )}
           <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">{task.title}</p>
         </div>
@@ -124,6 +130,22 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
                 onSelect={() => moveTask(task.id, status, Number.MAX_SAFE_INTEGER)}
               >
                 {t(taskStatusMeta[status].labelKey)}
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>{t("tasks.priority")}</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            {TASK_PRIORITIES.map(priority => (
+              <ContextMenuItem
+                key={priority}
+                disabled={priority === (task.priority ?? "normal")}
+                // "normal" is the absence of a priority, so it is stored as nothing.
+                onSelect={() => updateTask(task.id, { priority: priority === "normal" ? undefined : (priority as TaskPriority) })}
+              >
+                {t(taskPriorityLabelKey[priority])}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>

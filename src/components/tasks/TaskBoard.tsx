@@ -7,7 +7,7 @@ import { useAppStore, selectTasks } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { blockedBy, sortColumn, TASK_STATUSES } from "@/lib/tasks";
+import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, sortColumn, TASK_STATUSES, type TaskFilter } from "@/lib/tasks";
 import { TaskCard, TaskContextMenu } from "./TaskCard";
 import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
@@ -19,9 +19,25 @@ interface DropTarget {
   status: TaskStatus;
   /** Position inside the column, counting the cards as they are drawn right now. */
   index: number;
+  /**
+   * The same spot counted over the whole column, filtered cards included. With no filter it is the
+   * same number as `index`; with one, it is what `moveTask` has to be told.
+   */
+  target: number;
 }
 
-export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: string; onOpenTask(id: string): void; onNewTask(status?: TaskStatus): void }) {
+export function TaskBoard({
+  projectId,
+  filter = EMPTY_TASK_FILTER,
+  onOpenTask,
+  onNewTask,
+}: {
+  projectId: string;
+  /** What the board bar is filtering by; it only hides cards, it never touches them. */
+  filter?: TaskFilter;
+  onOpenTask(id: string): void;
+  onNewTask(status?: TaskStatus): void;
+}) {
   const t = useT();
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const moveTask = useAppStore(state => state.moveTask);
@@ -30,13 +46,20 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
   const [over, setOver] = useState<DropTarget | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
+  const filtering = isFiltering(filter);
+  const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
+  // `total` is the whole column, so a filtered header can say "3 / 12" instead of just "3".
   const columns = useMemo(
-    () => TASK_STATUSES.map(status => ({ status, items: sortColumn(tasks, status) })),
-    [tasks]
+    () => TASK_STATUSES.map(status => ({
+      status,
+      items: sortColumn(visible, status),
+      total: sortColumn(tasks, status).length,
+    })),
+    [tasks, visible]
   );
   const archived = useMemo(
-    () => tasks.filter(t => t.archived).sort((a, b) => b.updatedAt - a.updatedAt),
-    [tasks]
+    () => visible.filter(t => t.archived).sort((a, b) => b.updatedAt - a.updatedAt),
+    [visible]
   );
   // One pass for the whole board instead of one `blockedBy` per card on every render.
   const blocked = useMemo(() => {
@@ -66,29 +89,30 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
     e.dataTransfer.dropEffect = "move";
     const rect = e.currentTarget.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
-    const items = sortColumn(tasks, task.status);
-    const index = items.findIndex(t => t.id === task.id) + (after ? 1 : 0);
-    setOver(prev => (prev?.status === task.status && prev.index === index ? prev : { status: task.status, index }));
-  }, [dragId, tasks]);
+    const index = sortColumn(visible, task.status).findIndex(t => t.id === task.id) + (after ? 1 : 0);
+    const target = sortColumn(tasks, task.status).findIndex(t => t.id === task.id) + (after ? 1 : 0);
+    setOver(prev => (prev?.status === task.status && prev.index === index ? prev : { status: task.status, index, target }));
+  }, [dragId, tasks, visible]);
 
   /** Over the empty part of a column: drop at the end. */
   const onColumnDragOver = useCallback((e: DragEvent<HTMLElement>, status: TaskStatus, count: number) => {
     if (!dragId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setOver(prev => (prev?.status === status && prev.index === count ? prev : { status, index: count }));
-  }, [dragId]);
+    const target = sortColumn(tasks, status).length;
+    setOver(prev => (prev?.status === status && prev.index === count ? prev : { status, index: count, target }));
+  }, [dragId, tasks]);
 
-  const onDrop = useCallback((e: DragEvent<HTMLElement>, status: TaskStatus, count: number) => {
+  const onDrop = useCallback((e: DragEvent<HTMLElement>, status: TaskStatus) => {
     e.preventDefault();
     const id = dragId ?? e.dataTransfer.getData("text/plain");
     setDragId(null);
     setOver(null);
     if (!id) return;
-    const target = over && over.status === status ? over.index : count;
     // The drawn index counts the dragged card itself, so moving it down its own column would
     // otherwise land one slot too far.
     const items = sortColumn(tasks, status);
+    const target = over && over.status === status ? over.target : items.length;
     const current = items.findIndex(t => t.id === id);
     moveTask(id, status, current >= 0 && target > current ? target - 1 : target);
   }, [dragId, over, tasks, moveTask]);
@@ -107,19 +131,21 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-3">
-        {columns.map(({ status, items }) => {
+        {columns.map(({ status, items, total }) => {
           const meta = taskStatusMeta[status];
           return (
             <section
               key={status}
               className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/30"
               onDragOver={e => onColumnDragOver(e, status, items.length)}
-              onDrop={e => onDrop(e, status, items.length)}
+              onDrop={e => onDrop(e, status)}
             >
               <header className="flex items-center gap-2 px-3 py-2">
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", meta.dot)} />
                 <h3 className="truncate text-xs font-semibold uppercase tracking-wide">{t(meta.labelKey)}</h3>
-                <Badge variant="outline" className="ml-auto text-[10px]">{items.length}</Badge>
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {filtering ? `${items.length} / ${total}` : total}
+                </Badge>
               </header>
 
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-3">
@@ -138,7 +164,11 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
                   </div>
                 ))}
                 {over?.status === status && over.index >= items.length && <DropLine />}
-                {items.length === 0 && !over && (
+                {items.length === 0 && !over && (filtering ? (
+                  <p className="rounded-lg border border-dashed border-border py-4 text-center text-xs text-muted-foreground">
+                    {t("tasks.noMatches")}
+                  </p>
+                ) : (
                   <button
                     type="button"
                     className="w-full rounded-lg border border-dashed border-border py-4 text-xs text-muted-foreground transition-colors hover:border-ring/50 hover:text-foreground"
@@ -146,7 +176,7 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
                   >
                     {t("tasks.addOne")}
                   </button>
-                )}
+                ))}
               </div>
             </section>
           );

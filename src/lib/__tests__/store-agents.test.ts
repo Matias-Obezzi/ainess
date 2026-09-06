@@ -61,8 +61,10 @@ describe("migration 9 -> 10", () => {
     const { store } = await boot(legacyConfig());
     const config = store.useAppStore.getState().config;
 
-    expect(config.version).toBe(11);
+    expect(config.version).toBe(12);
     expect((config as unknown as { agents?: unknown }).agents).toBeUndefined();
+    // Version 12 only adds a setting, and it starts off.
+    expect(config.autoArchiveDoneDays).toBeNull();
 
     // The project the user was last on keeps the ids the runtime and the history already name.
     const p1 = config.projects.find(p => p.id === "p1")!;
@@ -99,7 +101,7 @@ describe("migration 9 -> 10", () => {
     const p2 = state.config.projects.find(p => p.id === "p2")!;
     for (const agent of p2.agents) expect(state.runtime.p2[agent.id]).toBeDefined();
     expect(saved.length).toBeGreaterThan(0);
-    expect(saved[saved.length - 1].version).toBe(11);
+    expect(saved[saved.length - 1].version).toBe(12);
   });
 
   it("leaves the per-agent skill assignments of the first project alone", async () => {

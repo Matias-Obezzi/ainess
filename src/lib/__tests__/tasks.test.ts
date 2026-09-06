@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   blockedBy,
+  boardMarkdown,
   canStart,
   createTask,
+  filterTasks,
   hasCycle,
+  isFiltering,
   layoutTaskGraph,
   linkDependency,
   moveTask,
@@ -11,6 +14,8 @@ import {
   sortColumn,
   TASK_GAP_X,
   TASK_NODE_WIDTH,
+  taskTitleFromText,
+  tasksToAutoArchive,
   unlinkDependency,
 } from "@/lib/tasks";
 import type { Task, TaskStatus } from "@/types";
@@ -46,6 +51,154 @@ describe("sortColumn", () => {
     ];
     expect(column(tasks, "backlog")).toEqual(["b", "a"]);
     expect(column(tasks, "working")).toEqual(["c"]);
+  });
+});
+
+describe("sortColumn priority", () => {
+  it("puts the urgent ones first and keeps `order` between equals", () => {
+    const tasks = [
+      task("a", { status: "backlog", order: 0 }),
+      task("b", { status: "backlog", order: 1, priority: "high" }),
+      task("c", { status: "backlog", order: 2 }),
+      task("d", { status: "backlog", order: 3, priority: "high" }),
+    ];
+    expect(column(tasks, "backlog")).toEqual(["b", "d", "a", "c"]);
+  });
+
+  it("leaves the low ones where they are", () => {
+    const tasks = [
+      task("a", { status: "backlog", order: 0, priority: "low" }),
+      task("b", { status: "backlog", order: 1 }),
+      task("c", { status: "backlog", order: 2, priority: "normal" }),
+    ];
+    expect(column(tasks, "backlog")).toEqual(["a", "b", "c"]);
+  });
+
+  it("drops a priority the file should never have held", () => {
+    const t = createTask({ projectId: "p", title: "x", priority: "urgentisima" as never });
+    expect(t.priority).toBeUndefined();
+  });
+});
+
+const DAY = 24 * 60 * 60 * 1000;
+
+describe("tasksToAutoArchive", () => {
+  const now = 10 * DAY;
+  const done = (id: string, ageDays: number, over: Partial<Task> = {}) =>
+    task(id, { status: "done", updatedAt: now - ageDays * DAY, ...over });
+
+  it("takes the done tasks nobody touched for long enough", () => {
+    const tasks = [done("old", 8), done("fresh", 2)];
+    expect(tasksToAutoArchive(tasks, 7, now).map(t => t.id)).toEqual(["old"]);
+  });
+
+  it("leaves a task that is exactly at the limit alone", () => {
+    const tasks = [done("edge", 7), done("past", 7.5)];
+    expect(tasksToAutoArchive(tasks, 7, now).map(t => t.id)).toEqual(["past"]);
+  });
+
+  it("only ever looks at the done column", () => {
+    const tasks = [
+      done("done", 30),
+      task("backlog", { status: "backlog", updatedAt: now - 30 * DAY }),
+      task("working", { status: "working", updatedAt: now - 30 * DAY }),
+      task("ready", { status: "ready", updatedAt: now - 30 * DAY }),
+    ];
+    expect(tasksToAutoArchive(tasks, 7, now).map(t => t.id)).toEqual(["done"]);
+  });
+
+  it("skips what is already archived", () => {
+    expect(tasksToAutoArchive([done("gone", 30, { archived: true })], 7, now)).toEqual([]);
+  });
+
+  it("does nothing when the setting is off", () => {
+    const tasks = [done("old", 90)];
+    expect(tasksToAutoArchive(tasks, null, now)).toEqual([]);
+    expect(tasksToAutoArchive(tasks, undefined, now)).toEqual([]);
+    expect(tasksToAutoArchive(tasks, 0, now)).toEqual([]);
+    expect(tasksToAutoArchive(tasks, Number.NaN, now)).toEqual([]);
+  });
+});
+
+describe("filterTasks", () => {
+  const tasks = [
+    task("a", { title: "Migración de la configuración", agentId: "ag1" }),
+    task("b", { title: "Revisar el diff", detail: "Mirar la MIGRACIÓN de la config", agentId: "ag2" }),
+    task("c", { title: "Escribir el changelog" }),
+  ];
+
+  it("shows everything when nothing is filtered", () => {
+    expect(isFiltering({ query: "   ", agentId: null })).toBe(false);
+    expect(filterTasks(tasks, { query: "", agentId: null })).toBe(tasks);
+  });
+
+  it("matches the title and the detail without accents or case", () => {
+    expect(filterTasks(tasks, { query: "migracion", agentId: null }).map(t => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("narrows by agent", () => {
+    expect(filterTasks(tasks, { query: "", agentId: "ag2" }).map(t => t.id)).toEqual(["b"]);
+    expect(filterTasks(tasks, { query: "migracion", agentId: "ag1" }).map(t => t.id)).toEqual(["a"]);
+  });
+
+  it("finds nothing when nothing matches", () => {
+    expect(filterTasks(tasks, { query: "kubernetes", agentId: null })).toEqual([]);
+  });
+});
+
+describe("taskTitleFromText", () => {
+  it("takes the first meaningful line", () => {
+    expect(taskTitleFromText("\n\n  ## Arreglar el login\ny algo mas")).toBe("Arreglar el login");
+  });
+
+  it("trims a long line to 80 characters", () => {
+    const title = taskTitleFromText("x".repeat(200));
+    expect(title).toHaveLength(80);
+    expect(title.endsWith("\u2026")).toBe(true);
+  });
+
+  it("returns nothing for a message with no text", () => {
+    expect(taskTitleFromText("   \n\n ")).toBe("");
+  });
+});
+
+describe("boardMarkdown", () => {
+  const labels = {
+    status: (status: TaskStatus) => ({ backlog: "Pendiente", working: "Trabajando", done: "Hecho" } as Record<string, string>)[status] ?? status,
+    agent: (id: string) => (id === "ag1" ? "Implementador" : undefined),
+    blockedBy: "bloqueada por",
+  };
+
+  it("writes one section per column, ticking the done ones", () => {
+    const tasks = [
+      task("a", { title: "Migrar la configuración", status: "working", agentId: "ag1", branch: "ainess/implementador" }),
+      task("b", { title: "Revisar el diff", status: "working", order: 1, dependsOn: ["a"] }),
+      task("c", { title: "Escribir el changelog", status: "done" }),
+    ];
+    expect(boardMarkdown(tasks, labels)).toBe(
+      [
+        "## Trabajando",
+        "- [ ] Migrar la configuración (Implementador) — ainess/implementador",
+        "- [ ] Revisar el diff — bloqueada por: Migrar la configuración",
+        "",
+        "## Hecho",
+        "- [x] Escribir el changelog",
+      ].join("\n")
+    );
+  });
+
+  it("skips the empty columns and the archive", () => {
+    const tasks = [task("a", { title: "Vieja", status: "done", archived: true }), task("b", { title: "Nueva" })];
+    expect(boardMarkdown(tasks, labels)).toBe("## Pendiente\n- [ ] Nueva");
+  });
+
+  it("writes nothing for an empty board", () => {
+    expect(boardMarkdown([], labels)).toBe("");
+  });
+
+  it("says nothing about an agent it does not know", () => {
+    const tasks = [task("a", { title: "Suelta", agentId: "ghost" })];
+    expect(boardMarkdown(tasks, labels)).toBe("## Pendiente\n- [ ] Suelta");
   });
 });
 
