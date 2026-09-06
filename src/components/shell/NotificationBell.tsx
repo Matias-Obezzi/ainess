@@ -18,6 +18,8 @@ import type { AppNotification, NotificationKind } from "@/types";
 import { useAppStore } from "@/store";
 import { unreadBadge, unreadCount } from "@/lib/notifications";
 import { formatTimeAgo } from "@/lib/format";
+import { useT, useLocale } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,6 +57,7 @@ function NotificationRow({
   now: number;
   onOpen: (item: AppNotification) => void;
 }) {
+  const locale = useLocale();
   const Icon = ICONS[item.kind] ?? Info;
   const goes = Boolean(item.projectId || item.runId);
 
@@ -66,7 +69,7 @@ function NotificationRow({
           <span className={cn("min-w-0 flex-1 truncate text-xs", item.read ? "font-normal" : "font-semibold")}>
             {item.title}
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{formatTimeAgo(item.ts, now)}</span>
+          <span className="shrink-0 text-[10px] text-muted-foreground">{formatTimeAgo(item.ts, now, locale)}</span>
         </span>
         {item.body && <span className="block truncate text-[11px] text-muted-foreground">{item.body}</span>}
       </span>
@@ -91,6 +94,7 @@ function NotificationRow({
 
 /** Bell + panel. Always visible, with or without an open project. */
 export function NotificationBell() {
+  const t = useT();
   const items = useAppStore(state => state.notifications);
   const open = useAppStore(state => state.notificationsOpen);
   const toggleNotifications = useAppStore(state => state.toggleNotifications);
@@ -130,7 +134,7 @@ export function NotificationBell() {
                 variant="ghost"
                 size="icon"
                 className="relative h-7 w-7"
-                aria-label={unread > 0 ? `Notificaciones (${unread} sin leer)` : "Notificaciones"}
+                aria-label={unread > 0 ? t("notifications.withUnread", { n: unread }) : t("notifications.title")}
               >
                 <Bell className={cn("h-4 w-4", unread === 0 && "text-muted-foreground")} />
                 {badge && (
@@ -142,28 +146,28 @@ export function NotificationBell() {
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {unread > 0 ? `${unread} notificación${unread === 1 ? "" : "es"} sin leer` : "Notificaciones"}
+            {unread > 0 ? plural(unread, t("notifications.unread.one", { n: unread }), t("notifications.unread.other", { n: unread })) : t("notifications.title")}
           </TooltipContent>
         </Tooltip>
 
         {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
         <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0">
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
-            <span className="flex-1 text-xs font-semibold">Notificaciones</span>
+            <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  aria-label="Marcar todas como leídas"
+                  aria-label={t("notifications.markAllRead")}
                   disabled={unread === 0}
                   onClick={() => markNotificationsRead()}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Marcar todas como leídas</TooltipContent>
+              <TooltipContent side="bottom">{t("notifications.markAllRead")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -171,22 +175,22 @@ export function NotificationBell() {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  aria-label="Vaciar notificaciones"
+                  aria-label={t("notifications.clearAll")}
                   disabled={items.length === 0}
                   onClick={() => clearNotifications()}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Vaciar</TooltipContent>
+              <TooltipContent side="bottom">{t("notifications.clear")}</TooltipContent>
             </Tooltip>
           </div>
 
           {items.length === 0 ? (
             <EmptyState
               icon={Bell}
-              title="Todo tranquilo"
-              description="Acá van a aparecer las aprobaciones pendientes y las tareas que terminen."
+              title={t("notifications.empty.title")}
+              description={t("notifications.empty.body")}
               className="py-8"
             />
           ) : (

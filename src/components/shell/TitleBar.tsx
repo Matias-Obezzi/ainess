@@ -8,12 +8,14 @@ import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/shell/NotificationBell";
+import { useT } from "@/i18n/useT";
 
 /**
  * Turns the remote server on and off from the window bar, so the phone can be let in without
  * opening Configuración. The state comes from `remoteStatus`, which the app keeps in sync.
  */
 function RemoteButton() {
+  const t = useT();
   const running = useAppStore(state => state.remoteStatus.running);
   const ip = useAppStore(state => state.remoteStatus.ip);
   const port = useAppStore(state => state.config.remote.port);
@@ -24,7 +26,7 @@ function RemoteButton() {
     const turningOn = !running;
     try {
       await toggleRemote(turningOn);
-      toast.success(turningOn ? "Acceso remoto activo" : "Acceso remoto apagado");
+      toast.success(turningOn ? t("titlebar.remoteOn") : t("titlebar.remoteOff"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
@@ -37,7 +39,7 @@ function RemoteButton() {
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          aria-label={running ? "Apagar el acceso remoto" : "Prender el acceso remoto"}
+          aria-label={running ? t("titlebar.remoteTurnOff") : t("titlebar.remoteTurnOn")}
           disabled={busy}
           onClick={() => void click()}
         >
@@ -49,7 +51,7 @@ function RemoteButton() {
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {busy ? "Un momento…" : running ? `Acceso remoto activo en ${ip ?? "la red local"}:${port}` : "Prender el acceso remoto"}
+        {busy ? t("titlebar.remoteBusy") : running ? t("titlebar.remoteAt", { host: ip ?? t("titlebar.localNetwork"), port }) : t("titlebar.remoteTurnOn")}
       </TooltipContent>
     </Tooltip>
   );
@@ -57,6 +59,7 @@ function RemoteButton() {
 
 /** Window controls are Windows-sized (46x40) and never carry the drag region. */
 function WindowControls() {
+  const t = useT();
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -85,8 +88,8 @@ function WindowControls() {
     <div className="flex items-stretch">
       <button
         type="button"
-        title="Minimizar"
-        aria-label="Minimizar"
+        title={t("titlebar.minimize")}
+        aria-label={t("titlebar.minimize")}
         className={`${base} hover:bg-accent hover:text-accent-foreground`}
         onClick={() => void getCurrentWindow().minimize().catch(() => {})}
       >
@@ -94,8 +97,8 @@ function WindowControls() {
       </button>
       <button
         type="button"
-        title={maximized ? "Restaurar" : "Maximizar"}
-        aria-label={maximized ? "Restaurar" : "Maximizar"}
+        title={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
+        aria-label={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
         className={`${base} hover:bg-accent hover:text-accent-foreground`}
         onClick={() => void getCurrentWindow().toggleMaximize().catch(() => {})}
       >
@@ -103,8 +106,8 @@ function WindowControls() {
       </button>
       <button
         type="button"
-        title="Cerrar"
-        aria-label="Cerrar"
+        title={t("common.close")}
+        aria-label={t("common.close")}
         className={`${base} hover:bg-destructive hover:text-white`}
         // Goes through close() so the tray's CloseRequested handler still decides what happens.
         onClick={() => void getCurrentWindow().close().catch(() => {})}
@@ -117,6 +120,7 @@ function WindowControls() {
 
 /** Custom title bar: drag region, sidebar toggle, search, back/forward and the window controls. */
 export function TitleBar() {
+  const t = useT();
   const sidebarOpen = useAppStore(state => state.sidebarOpen);
   const toggleSidebar = useAppStore(state => state.toggleSidebar);
   const toggleSearch = useAppStore(state => state.toggleSearch);
@@ -137,13 +141,13 @@ export function TitleBar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label={sidebarOpen ? "Ocultar sidebar" : "Mostrar sidebar"}
+              aria-label={sidebarOpen ? t("titlebar.hideSidebar") : t("titlebar.showSidebar")}
               onClick={() => toggleSidebar()}
             >
               <PanelLeft className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">{sidebarOpen ? "Ocultar sidebar" : "Mostrar sidebar"}</TooltipContent>
+          <TooltipContent side="bottom">{sidebarOpen ? t("titlebar.hideSidebar") : t("titlebar.showSidebar")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -152,13 +156,13 @@ export function TitleBar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label="Buscar"
+              aria-label={t("common.search")}
               onClick={() => toggleSearch(true)}
             >
               <Search className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Buscar (Ctrl+K)</TooltipContent>
+          <TooltipContent side="bottom">{t("titlebar.searchHint")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -167,14 +171,14 @@ export function TitleBar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label="Atrás"
+              aria-label={t("common.back")}
               disabled={!backEnabled}
               onClick={goBack}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Atrás</TooltipContent>
+          <TooltipContent side="bottom">{t("common.back")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -183,14 +187,14 @@ export function TitleBar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label="Adelante"
+              aria-label={t("titlebar.forward")}
               disabled={!forwardEnabled}
               onClick={goForward}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Adelante</TooltipContent>
+          <TooltipContent side="bottom">{t("titlebar.forward")}</TooltipContent>
         </Tooltip>
       </div>
 

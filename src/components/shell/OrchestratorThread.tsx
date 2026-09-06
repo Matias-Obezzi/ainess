@@ -10,7 +10,9 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
-import { runStatusLabel } from "@/lib/labels";
+import { runStatusLabelKey } from "@/lib/labels";
+import { useT, useLocale, type TFunction } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { INTERRUPTED_OUTPUT } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
 import { copyText } from "@/lib/clipboard";
@@ -23,9 +25,10 @@ const FOLLOW_INTERVAL_MS = 150;
 
 /** The project's main conversation: what the user asked and what the team answered. */
 /** History can name an agent that the project no longer has (a rebuilt team, a deleted agent). */
-const PAST_AGENT = "Agente anterior";
+const pastAgent = (t: TFunction) => t("home.formerAgent");
 
 export function OrchestratorThread() {
+  const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const runs = useAppStore(state => state.runs);
   const historyLoading = useAppStore(state => currentProjectId ? state.historyLoading[currentProjectId] : false);
@@ -101,8 +104,8 @@ export function OrchestratorThread() {
         ) : rootRuns.length === 0 ? (
           <EmptyState
             icon={MessagesSquare}
-            title="Todavía no hay tareas en este proyecto"
-            description='Escribí abajo qué querés que haga el equipo. El planificador (Claude) analiza, delega a los implementadores y te responde acá. Ejemplo: «Agregá tests para el módulo de autenticación y arreglá lo que falle.»'
+            title={t("thread.empty.title")}
+            description={t("thread.empty.body")}
             className="h-full"
           />
         ) : (
@@ -115,7 +118,7 @@ export function OrchestratorThread() {
 
       {!stickToBottom && hasNewMessages && (
         <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
-          <ArrowDown className="h-4 w-4" /> Nuevos mensajes
+          <ArrowDown className="h-4 w-4" /> {t("thread.newMessages")}
         </Button>
       )}
     </div>
@@ -134,6 +137,8 @@ function RunBubbleSkeleton() {
 }
 
 function RunBubble({ run }: { run: Run }) {
+  const t = useT();
+  const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
   const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -141,7 +146,7 @@ function RunBubble({ run }: { run: Run }) {
 
   const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
-  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? PAST_AGENT;
+  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? pastAgent(t);
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
   const interrupted = run.output === INTERRUPTED_OUTPUT;
   const output = interrupted ? "" : (run.output ?? "");
@@ -152,21 +157,21 @@ function RunBubble({ run }: { run: Run }) {
   const messageActions: MenuAction[] = [
     {
       key: "copy",
-      label: "Copiar texto",
+      label: t("message.copyText"),
       icon: Copy,
       disabled: !output,
-      onSelect: () => void copyText(toPlainText(output), "Texto copiado"),
+      onSelect: () => void copyText(toPlainText(output), t("message.textCopied")),
     },
     {
       key: "copy-markdown",
-      label: "Copiar como markdown",
+      label: t("message.copyMarkdown"),
       icon: FileCode,
       disabled: !output || !hasMarkdown(output),
-      onSelect: () => void copyText(output, "Markdown copiado"),
+      onSelect: () => void copyText(output, t("message.markdownCopied")),
     },
-    { key: "detail", label: "Ver detalle", icon: FileText, separatorBefore: true, onSelect: () => setDetailOpen(true) },
+    { key: "detail", label: t("message.viewDetail"), icon: FileText, separatorBefore: true, onSelect: () => setDetailOpen(true) },
     // Retrying only means something on a run the app cut short.
-    ...(interrupted ? [{ key: "retry", label: "Reintentar", icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
+    ...(interrupted ? [{ key: "retry", label: t("common.retry"), icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
   ];
 
   return (
@@ -179,7 +184,7 @@ function RunBubble({ run }: { run: Run }) {
           </div>
           <span className="text-[11px] text-muted-foreground">
             → {agentName(run.agentId)}
-            {run.model ? ` · ${run.model}` : ""} · {formatClock(run.startedAt)}
+            {run.model ? ` · ${run.model}` : ""} · {formatClock(run.startedAt, locale)}
           </span>
         </div>
       )}
@@ -190,19 +195,19 @@ function RunBubble({ run }: { run: Run }) {
           <div className="group flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs">
               {agent ? <AgentAvatar provider={agent.provider} color={agent.color} size={22} /> : <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground" />}
-              <span className="font-semibold">{agent?.name ?? PAST_AGENT}</span>
-              {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
+              <span className="font-semibold">{agent?.name ?? pastAgent(t)}</span>
+              {run.round > 0 && <Badge variant="outline" className="text-[10px]">{t("thread.round", { n: run.round + 1 })}</Badge>}
               {(run.status === "error" || run.status === "killed") && (
                 <Badge variant={run.status === "error" ? "destructive" : "secondary"} className="text-[10px]">
-                  {runStatusLabel[run.status]}
+                  {t(runStatusLabelKey[run.status])}
                 </Badge>
               )}
-              <span className="ml-auto text-muted-foreground">{formatClock(run.startedAt)}</span>
+              <span className="ml-auto text-muted-foreground">{formatClock(run.startedAt, locale)}</span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                title="Ver salida cruda"
+                title={t("thread.rawOutput")}
                 onClick={() => setDetailOpen(true)}
               >
                 <FileText className="h-3.5 w-3.5" />
@@ -222,7 +227,7 @@ function RunBubble({ run }: { run: Run }) {
                         onClick={() => setActivityOpen(o => !o)}
                       >
                         {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
+                        {plural(steps, t("thread.activity.one", { n: steps, elapsed }), t("thread.activity.other", { n: steps, elapsed }))}
                       </button>
                       {activityOpen && (
                         <div className="rounded-md border border-border bg-muted/40 p-2">
@@ -234,20 +239,20 @@ function RunBubble({ run }: { run: Run }) {
 
                   {interrupted ? (
                     <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-                      <span>Se cortó: la app se cerró mientras el agente trabajaba.</span>
+                      <span>{t("thread.interrupted")}</span>
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-6 px-2 text-xs"
                         onClick={retry}
                       >
-                        Reintentar
+                        {t("common.retry")}
                       </Button>
                     </div>
                   ) : run.output ? (
                     <Markdown text={run.output} />
                   ) : (
-                    <div className="text-sm text-muted-foreground italic">Sin salida</div>
+                    <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}
                 </>
               )}

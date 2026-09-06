@@ -13,6 +13,7 @@ import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { formatClock } from "@/lib/format";
+import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
 import type { ChatMessage } from "@/types";
@@ -20,6 +21,7 @@ import { Copy, FileCode, FileText, MessageSquare, Pencil, Trash2 } from "lucide-
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
+  const t = useT();
   const chats = useAppStore(state => state.config.chats);
   const agents = useAppStore(selectAllAgents);
   const chatMessages = useAppStore(state => state.chatMessages);
@@ -63,15 +65,15 @@ export function ChatThread({ chatId }: { chatId: string }) {
   if (!chat) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-        El chat ya no existe.
+        {t("chat.gone")}
       </div>
     );
   }
 
   const handleRemove = async () => {
     const confirmed = await island.confirm({
-      title: "¿Eliminar chat?",
-      description: `Se eliminará ${chat.name} y sus mensajes.`,
+      title: t("sidebar.deleteChat.title"),
+      description: t("sidebar.deleteChat.body", { name: chat.name }),
       destructive: true,
     });
     if (!confirmed) return;
@@ -85,16 +87,16 @@ export function ChatThread({ chatId }: { chatId: string }) {
       <div className="px-4 py-2 border-b border-border flex items-center gap-2 shrink-0">
         <span className="font-semibold text-sm truncate">{chat.name}</span>
         <Badge variant="outline" className="text-[10px]">
-          {chat.mode === "shared" ? "Compartido" : "Individual"}
+          {chat.mode === "shared" ? t("chat.shared") : t("chat.individual")}
         </Badge>
         <span className="text-xs text-muted-foreground truncate">
           {chat.participants.map(p => `${agents.find(a => a.id === p.agentId)?.name ?? "?"} (${p.role})`).join(" · ")}
         </span>
         <div className="ml-auto flex gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar chat" onClick={() => setEditOpen(true)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title={t("chat.edit")} onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Eliminar chat" onClick={() => void handleRemove()}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title={t("chat.delete")} onClick={() => void handleRemove()}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -111,8 +113,8 @@ export function ChatThread({ chatId }: { chatId: string }) {
           ) : messages.length === 0 ? (
             <EmptyState
               icon={MessageSquare}
-              title="Todavía no hay mensajes en este chat"
-              description="Escribí el primer mensaje abajo para arrancar la conversación."
+              title={t("chat.empty.title")}
+              description={t("chat.empty.body")}
             />
           ) : (
             messages.map(msg => <ChatBubble key={msg.id} message={msg} />)
@@ -138,10 +140,12 @@ function BubbleSkeleton({ align }: { align: "start" | "end" }) {
 }
 
 function ChatBubble({ message }: { message: ChatMessage }) {
+  const t = useT();
+  const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
   const isUser = message.from === "user";
   const agent = !isUser ? agents.find(a => a.id === message.from) : undefined;
-  const name = isUser ? "Vos" : (agent?.name || message.from);
+  const name = isUser ? t("chat.you") : (agent?.name || message.from);
   const color = agent?.color || "#888";
   const isPending = message.status === "pending";
   // A pending bubble left behind by a closed app has no run to stream from.
@@ -151,17 +155,17 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   const messageActions: MenuAction[] = [
     {
       key: "copy",
-      label: "Copiar texto",
+      label: t("message.copyText"),
       icon: Copy,
       disabled: !message.text,
-      onSelect: () => void copyText(toPlainText(message.text), "Texto copiado"),
+      onSelect: () => void copyText(toPlainText(message.text), t("message.textCopied")),
     },
     {
       key: "copy-markdown",
-      label: "Copiar como markdown",
+      label: t("message.copyMarkdown"),
       icon: FileCode,
       disabled: !message.text || !hasMarkdown(message.text),
-      onSelect: () => void copyText(message.text, "Markdown copiado"),
+      onSelect: () => void copyText(message.text, t("message.markdownCopied")),
     },
     // Only an agent's turn comes from a run, so only it has a detail to show.
     ...(isUser
@@ -169,7 +173,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       : [
           {
             key: "detail",
-            label: "Ver detalle",
+            label: t("message.viewDetail"),
             icon: FileText,
             separatorBefore: true,
             disabled: !message.runId || !hasRun,
@@ -185,7 +189,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
           <div className="flex items-center gap-1.5 mb-1">
             {!isUser && (agent ? <AgentAvatar provider={agent.provider} color={color} size={22} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />)}
             <span className="text-xs font-medium">{name}</span>
-            <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
+            <span className="text-xs text-muted-foreground">{formatClock(message.ts, locale)}</span>
             {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
           </div>
           {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}

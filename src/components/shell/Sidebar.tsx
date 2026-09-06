@@ -22,6 +22,8 @@ import { copyText } from "@/lib/clipboard";
 import { openExternal } from "@/lib/open-external";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isChatActive } from "@/lib/chat";
+import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import type { Chat, Project } from "@/types";
 import {
   Bot,
@@ -45,6 +47,7 @@ const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues/new/choose";
 
 /** Left rail: home, the project tree with its chats, and the settings gear. */
 export function Sidebar() {
+  const t = useT();
   const projects = useAppStore(state => state.config.projects);
   const chats = useAppStore(state => state.config.chats);
   const runtime = useAppStore(state => state.runtime);
@@ -107,8 +110,8 @@ export function Sidebar() {
 
   const deleteProject = async (p: Project) => {
     const confirmed = await island.confirm({
-      title: "¿Eliminar proyecto?",
-      description: `Se eliminará ${p.name} y se perderán sus mensajes y runs.`,
+      title: t("sidebar.deleteProject.title"),
+      description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,
     });
     if (confirmed) removeProject(p.id);
@@ -130,13 +133,13 @@ export function Sidebar() {
   const newConversation = (projectId: string) => {
     const s = useAppStore.getState();
     for (const a of selectProjectAgents(s, projectId)) s.resetSession(a.id, projectId);
-    toast.success("Nueva conversación: la próxima consigna arranca sin contexto previo");
+    toast.success(t("sidebar.newConversationDone"));
   };
 
   const deleteChat = async (chatId: string, name: string, projectId: string) => {
     const confirmed = await island.confirm({
-      title: "¿Eliminar chat?",
-      description: `Se eliminará ${name} y sus mensajes.`,
+      title: t("sidebar.deleteChat.title"),
+      description: t("sidebar.deleteChat.body", { name }),
       destructive: true,
     });
     if (!confirmed) return;
@@ -149,23 +152,23 @@ export function Sidebar() {
   // The three-dot menu and the right click on a project row share these actions; only the right
   // click, where the pointer is already on the row, offers the path.
   const projectActions = (p: Project, opts?: { copyPath?: boolean }): MenuAction[] => [
-    { key: "edit", label: "Editar proyecto", icon: Pencil, onSelect: () => editProject(p) },
-    { key: "new-chat", label: "Nuevo chat", icon: Plus, onSelect: () => newChat(p.id) },
-    { key: "new-conversation", label: "Nueva conversación", icon: RotateCcw, onSelect: () => newConversation(p.id) },
+    { key: "edit", label: t("sidebar.editProject"), icon: Pencil, onSelect: () => editProject(p) },
+    { key: "new-chat", label: t("sidebar.newChat"), icon: Plus, onSelect: () => newChat(p.id) },
+    { key: "new-conversation", label: t("sidebar.newConversation"), icon: RotateCcw, onSelect: () => newConversation(p.id) },
     ...(opts?.copyPath
       ? [
           {
             key: "copy-path",
-            label: "Copiar ruta del proyecto",
+            label: t("sidebar.copyPath"),
             icon: Copy,
             disabled: !p.workspaceDir,
-            onSelect: () => void copyText(p.workspaceDir, "Ruta copiada"),
+            onSelect: () => void copyText(p.workspaceDir, t("sidebar.pathCopied")),
           } satisfies MenuAction,
         ]
       : []),
     {
       key: "delete",
-      label: "Eliminar",
+      label: t("common.delete"),
       icon: Trash2,
       destructive: true,
       separatorBefore: true,
@@ -178,16 +181,16 @@ export function Sidebar() {
       ? [
           {
             key: "open",
-            label: "Abrir",
+            label: t("common.open"),
             icon: MessageCircle,
             onSelect: () => openProject(projectId, chat.id),
           } satisfies MenuAction,
         ]
       : []),
-    { key: "rename", label: "Renombrar", icon: Pencil, onSelect: () => editChat(chat.id) },
+    { key: "rename", label: t("common.rename"), icon: Pencil, onSelect: () => editChat(chat.id) },
     {
       key: "delete",
-      label: "Eliminar",
+      label: t("common.delete"),
       icon: Trash2,
       destructive: true,
       separatorBefore: true,
@@ -210,16 +213,16 @@ export function Sidebar() {
           className="justify-start"
           onClick={openHome}
         >
-          <Home className="h-4 w-4" /> Inicio
+          <Home className="h-4 w-4" /> {t("sidebar.home")}
         </Button>
         <Button variant="ghost" size="sm" className="justify-start" onClick={newProject}>
-          <Plus className="h-4 w-4" /> Nuevo proyecto
+          <Plus className="h-4 w-4" /> {t("sidebar.newProject")}
         </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
         {projects.length === 0 && (
-          <div className="text-xs text-muted-foreground text-center py-6">Sin proyectos</div>
+          <div className="text-xs text-muted-foreground text-center py-6">{t("sidebar.noProjects")}</div>
         )}
         {projects.map(p => {
           const collapsed = !!sidebarCollapsed[p.id];
@@ -241,7 +244,7 @@ export function Sidebar() {
                       <button
                         type="button"
                         className="p-0.5 text-muted-foreground hover:text-foreground"
-                        title={collapsed ? "Expandir" : "Colapsar"}
+                        title={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
                         onClick={e => {
                           e.stopPropagation();
                           toggleSidebarProject(p.id);
@@ -261,7 +264,7 @@ export function Sidebar() {
                           <button
                             type="button"
                             className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
-                            title="Opciones del proyecto"
+                            title={t("sidebar.projectOptions")}
                             onClick={e => e.stopPropagation()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
@@ -290,7 +293,7 @@ export function Sidebar() {
                     onClick={() => openProject(p.id, null)}
                   >
                     <Bot className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">Orquestador</span>
+                    <span className="truncate">{t("sidebar.orchestrator")}</span>
                   </button>
 
                   {projectChats.map(chat => {
@@ -315,7 +318,7 @@ export function Sidebar() {
                                 <button
                                   type="button"
                                   className="p-0.5 opacity-0 group-hover/chat:opacity-100 focus:opacity-100 hover:text-foreground"
-                                  title="Opciones del chat"
+                                  title={t("sidebar.chatOptions")}
                                   onClick={e => e.stopPropagation()}
                                 >
                                   <MoreHorizontal className="h-3.5 w-3.5" />
@@ -339,7 +342,7 @@ export function Sidebar() {
                     className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground text-left hover:bg-accent hover:text-foreground"
                     onClick={() => newChat(p.id)}
                   >
-                    <Plus className="h-3.5 w-3.5 shrink-0" /> Nuevo chat
+                    <Plus className="h-3.5 w-3.5 shrink-0" /> {t("sidebar.newChat")}
                   </button>
                 </div>
               )}
@@ -350,14 +353,14 @@ export function Sidebar() {
 
       <div className="border-t border-border p-2 flex flex-col gap-1.5">
         <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-          <span>{totalRunning} trabajando</span>
+          <span>{t("sidebar.working", { n: totalRunning })}</span>
           {pendingApprovals > 0 && (
             <Badge
               className="ml-auto cursor-pointer bg-amber-500 text-black hover:bg-amber-500"
-              title="Delegaciones esperando tu aprobación"
+              title={t("sidebar.pendingTitle")}
               onClick={() => currentProjectId && openProject(currentProjectId)}
             >
-              {pendingApprovals} pendiente{pendingApprovals === 1 ? "" : "s"}
+              {plural(pendingApprovals, t("sidebar.pending.one", { n: pendingApprovals }), t("sidebar.pending.other", { n: pendingApprovals }))}
             </Badge>
           )}
         </div>
@@ -368,7 +371,7 @@ export function Sidebar() {
             className="flex-1 justify-start"
             onClick={() => openSettings()}
           >
-            <Settings className="h-4 w-4" /> Configuración
+            <Settings className="h-4 w-4" /> {t("sidebar.settings")}
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -376,13 +379,13 @@ export function Sidebar() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
-                aria-label="Reportar un problema"
+                aria-label={t("sidebar.reportIssue")}
                 onClick={() => void openExternal(ISSUES_URL)}
               >
                 <Bug className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">Reportar un problema</TooltipContent>
+            <TooltipContent side="top">{t("sidebar.reportIssue")}</TooltipContent>
           </Tooltip>
         </div>
       </div>

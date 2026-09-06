@@ -2,12 +2,14 @@ import { useCallback, useRef } from "react";
 import { useAppStore, MIN_DOCK_SPLIT, MAX_DOCK_SPLIT } from "@/store";
 import { CommDockSection } from "./CommDockSection";
 import { TerminalDockSection } from "./TerminalDockSection";
+import { useT } from "@/i18n/useT";
 
 /**
  * Right dock: Comunicación on top, Terminales below. With only one section open it
  * takes the whole height; with both, a draggable divider splits it (`dockSplit`).
  */
 export function RightDock() {
+  const t = useT();
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
   const dockSplit = useAppStore(state => state.dockSplit);
@@ -53,7 +55,7 @@ export function RightDock() {
           <div
             role="separator"
             aria-orientation="horizontal"
-            title="Arrastrá para repartir el alto"
+            title={t("dock.dragToSplit")}
             onPointerDown={onDividerDown}
             className="h-1.5 shrink-0 cursor-row-resize bg-border hover:bg-accent"
           />

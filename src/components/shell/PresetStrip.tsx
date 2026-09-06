@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Preset } from "@/types";
+import { useT } from "@/i18n/useT";
 
 interface Props {
   presets: Preset[];
@@ -21,6 +22,7 @@ const STEP = 160;
  * more to show.
  */
 export function PresetStrip({ presets, onPick, className }: Props) {
+  const t = useT();
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [overflow, setOverflow] = useState({ left: false, right: false });
 
@@ -91,7 +93,7 @@ export function PresetStrip({ presets, onPick, className }: Props) {
             variant="ghost"
             size="icon"
             className="absolute left-0 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-background/80 shadow-sm"
-            aria-label="Ver las órdenes anteriores"
+            aria-label={t("presetStrip.previous")}
             onClick={() => scrollBy(-STEP)}
           >
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -105,7 +107,7 @@ export function PresetStrip({ presets, onPick, className }: Props) {
             variant="ghost"
             size="icon"
             className="absolute right-0 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-background/80 shadow-sm"
-            aria-label="Ver las órdenes siguientes"
+            aria-label={t("presetStrip.next")}
             onClick={() => scrollBy(STEP)}
           >
             <ChevronRight className="h-3.5 w-3.5" />

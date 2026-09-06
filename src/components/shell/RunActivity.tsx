@@ -6,7 +6,8 @@ import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
 import { Markdown } from "@/components/shell/Markdown";
 import { toolIcon } from "@/lib/tool-summary";
-import { runDotStatus, runStatusLabel } from "@/lib/labels";
+import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
+import { useT } from "@/i18n/useT";
 import { formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
 import { CornerDownRight } from "lucide-react";
@@ -67,6 +68,7 @@ export function visibleActivityRows<T extends { kind: string }>(rows: T[], limit
 }
 
 export function RunActivity({ runId, compact = false, showFooter = true }: { runId: string; compact?: boolean; showFooter?: boolean }) {
+  const t = useT();
   const rows = useRunMessages(runId);
   const run = useAppStore(state => state.runs[runId]);
   const [expanded, setExpanded] = useState(false);
@@ -88,7 +90,7 @@ export function RunActivity({ runId, compact = false, showFooter = true }: { run
           className="self-start text-[11px] text-muted-foreground hover:text-foreground hover:underline"
           onClick={() => setExpanded(true)}
         >
-          {compact ? `Ver todo (${hiddenCount} pasos más)` : `… ${hiddenCount} pasos más`}
+          {compact ? t("activity.showAll", { n: hiddenCount }) : t("activity.moreSteps", { n: hiddenCount })}
         </button>
       )}
 
@@ -123,6 +125,7 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
 
 /** A delegation: who got the task, plus that agent's own activity nested underneath. */
 function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: string }) {
+  const t = useT();
   const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
 
@@ -145,13 +148,13 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
         <span className="font-medium shrink-0">{name}</span>
         <span className="text-muted-foreground truncate" title={msg.text}>{truncate(msg.text, 90)}</span>
         {childRun && childRun.status !== "running" && (
-          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{runStatusLabel[childRun.status]}</span>
+          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{t(runStatusLabelKey[childRun.status])}</span>
         )}
       </div>
       {childRun ? (
         <RunActivity runId={childRun.id} compact />
       ) : (
-        <div className="text-[11px] text-muted-foreground italic">Esperando a que arranque…</div>
+        <div className="text-[11px] text-muted-foreground italic">{t("activity.waitingToStart")}</div>
       )}
     </div>
   );
@@ -159,6 +162,7 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
 
 /** Pulsing footer with the current step and the elapsed time. */
 function ActivityFooter({ startedAt, label }: { startedAt: number; label?: string }) {
+  const t = useT();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -168,7 +172,7 @@ function ActivityFooter({ startedAt, label }: { startedAt: number; label?: strin
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-      <span className="truncate">{label ? truncate(label, 70) : "Pensando…"}</span>
+      <span className="truncate">{label ? truncate(label, 70) : t("activity.thinking")}</span>
       <span className="ml-auto shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>
     </div>
   );

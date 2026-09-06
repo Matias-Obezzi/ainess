@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
 import { ChevronDown, ChevronRight, Share2 } from "lucide-react";
 import { truncate } from "@/lib/format";
+import { useT } from "@/i18n/useT";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -36,6 +37,7 @@ function firstLine(text: string): string {
  * text is usually a long brief); expanded, each task renders as markdown.
  */
 function DelegationCard({ tasks }: { tasks: Delegation[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className="my-2 rounded-md border border-border bg-background/60">
@@ -47,7 +49,7 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
       >
         {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
         <Share2 className="h-3.5 w-3.5 shrink-0" />
-        <span>Delegación</span>
+        <span>{t("label.kind.delegation")}</span>
         <span className="text-muted-foreground font-normal truncate">
           → {tasks.map(t => t.agent).join(", ")}
         </span>
@@ -70,6 +72,17 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** A ```delegate block whose JSON did not parse: the raw text, never passed off as an answer. */
+function InvalidDelegation({ text }: { text: string }) {
+  const t = useT();
+  return (
+    <div className="my-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs">
+      <span className="font-medium text-destructive">{t("markdown.invalidDelegation")}</span>
+      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground">{text.trim()}</pre>
     </div>
   );
 }
@@ -115,12 +128,7 @@ const components: Components = {
       const tasks = parseDelegations("```delegate\n" + text.trimEnd() + "\n```");
       if (tasks.length > 0) return <DelegationCard tasks={tasks} />;
       // Even when the JSON is broken, raw JSON is never what the user wants to read.
-      return (
-        <div className="my-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs">
-          <span className="font-medium text-destructive">Delegación con formato inválido</span>
-          <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground">{text.trim()}</pre>
-        </div>
-      );
+      return <InvalidDelegation text={text} />;
     }
     return (
       <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
