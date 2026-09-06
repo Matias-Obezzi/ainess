@@ -1,4 +1,5 @@
 // Shared types for the AIS orchestrator. Keep in sync with PLAN.md and src-tauri/src/*.rs.
+import type { Language } from "@/i18n";
 
 export type ProviderId =
   | "claude"
@@ -184,7 +185,9 @@ export interface Preset {
 }
 
 export interface AppConfig {
-  version: 10;
+  version: 11;
+  /** UI language; null follows the system. */
+  language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
   approveDelegations: boolean;
   remote: RemoteConfig;

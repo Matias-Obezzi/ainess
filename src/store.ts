@@ -271,7 +271,8 @@ function generateSeedConfig(): AppConfig {
   };
 
   return {
-    version: 10,
+    version: 11,
+    language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
     tray: { enabled: true, notifyApprovals: true, notifyResults: true },
@@ -468,7 +469,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 10, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
+  config: { version: 11, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -1476,8 +1477,18 @@ async function runInit(): Promise<void> {
         projects: migratedProjects,
         formations,
         defaultFormationId,
-      } as AppConfig;
+      } as unknown as AppConfig;
       delete (config as unknown as { agents?: AgentConfig[] }).agents;
+      isSeed = true;
+    }
+
+    // Migration to version 11: the UI can be read in several languages.
+    if ((config.version as number) < 11) {
+      config = {
+        ...config,
+        version: 11,
+        language: config.language ?? null,
+      } as AppConfig;
       isSeed = true;
     }
 

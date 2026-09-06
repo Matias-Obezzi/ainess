@@ -1,15 +1,16 @@
 /** Small display helpers shared by the shell components. */
 
-/** "hace 12 seg" / "hace 3 min" / "hace 2 h". */
-export function formatTimeAgo(ts: number, now: number): string {
+/** "hace 12 segundos" / "12 seconds ago", in the locale that is active. */
+export function formatTimeAgo(ts: number, now: number, locale = "es"): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "always", style: "short" });
   const diffSecs = Math.max(0, Math.floor((now - ts) / 1000));
-  if (diffSecs < 60) return `hace ${diffSecs} seg`;
+  if (diffSecs < 60) return rtf.format(-diffSecs, "second");
   const diffMins = Math.floor(diffSecs / 60);
-  if (diffMins < 60) return `hace ${diffMins} min`;
+  if (diffMins < 60) return rtf.format(-diffMins, "minute");
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `hace ${diffHours} h`;
+  if (diffHours < 24) return rtf.format(-diffHours, "hour");
   const diffDays = Math.floor(diffHours / 24);
-  return `hace ${diffDays} d`;
+  return rtf.format(-diffDays, "day");
 }
 
 /** Seconds as "m:ss". */
@@ -27,8 +28,17 @@ export function truncate(text: string, n: number): string {
   return clean.slice(0, n).trimEnd() + "…";
 }
 
-/** "14:05" in 24h format. */
-export function formatClock(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+/** The time of day, the way the active locale writes it. */
+export function formatClock(ts: number, locale = "es"): string {
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(new Date(ts));
+}
+
+/** A whole date, short, in the active locale. */
+export function formatDate(ts: number, locale = "es"): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(ts));
+}
+
+/** A number with the active locale's separators. */
+export function formatNumber(value: number, locale = "es"): string {
+  return new Intl.NumberFormat(locale).format(value);
 }
