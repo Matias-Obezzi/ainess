@@ -79,7 +79,7 @@ Total: 862 claves por idioma, sin duplicados. El CLI queda en español
 | `67c6d2f` | The palette finds tasks and the diagnostics get their own settings section |
 | `88fa6a9` | ais doctor prints the same checks, and the checks learn where they run |
 | `1362003` | Document the shortcut table, the diagnostics and ais doctor in PLAN.md |
-| (pendiente de commit al escribir esto) | masking de todos los resultados + tests de secretos |
+| `4d53a99` | Mask every diagnostic result, and write the handoff report |
 
 ## Verificación
 
