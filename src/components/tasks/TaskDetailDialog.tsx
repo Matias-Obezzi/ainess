@@ -21,6 +21,8 @@ import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TaskStatus } from "@/types";
 import { Archive, ArchiveRestore, Link2, Terminal, Trash2, X } from "lucide-react";
+import { useT, useLocale } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
 const UNASSIGNED = "__none__";
 
@@ -33,6 +35,8 @@ export function TaskDetailDialog({
   taskId: string | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const updateTask = useAppStore(state => state.updateTask);
@@ -88,7 +92,7 @@ export function TaskDetailDialog({
 
   const remove = async () => {
     if (!task) return;
-    if (!(await confirmDelete("la tarea", task.title))) return;
+    if (!(await confirmDelete(t("tasks.delete"), task.title))) return;
     removeTask(task.id);
     onOpenChange(false);
   };
@@ -104,7 +108,7 @@ export function TaskDetailDialog({
                 <DialogDescription className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5">
                     <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
-                    {meta.label}
+                    {t(meta.labelKey)}
                   </span>
                   {agent && (
                     <span className="inline-flex items-center gap-1.5">
@@ -112,15 +116,15 @@ export function TaskDetailDialog({
                       {agent.name}
                     </span>
                   )}
-                  <span>Actualizada {formatTimeAgo(task.updatedAt, Date.now())}</span>
-                  {task.archived && <Badge variant="outline">Archivada</Badge>}
+                  <span>{t("tasks.updated", { when: formatTimeAgo(task.updatedAt, Date.now(), locale) })}</span>
+                  {task.archived && <Badge variant="outline">{t("tasks.archived")}</Badge>}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="task-title">Título</Label>
+                    <Label htmlFor="task-title">{t("tasks.title")}</Label>
                     <Input
                       id="task-title"
                       value={title}
@@ -132,17 +136,17 @@ export function TaskDetailDialog({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="task-branch">Rama</Label>
+                    <Label htmlFor="task-branch">{t("git.branch")}</Label>
                     <Input
                       id="task-branch"
                       className="font-mono text-xs"
-                      placeholder="sin rama"
+                      placeholder={t("git.noBranch")}
                       value={task.branch ?? ""}
                       onChange={e => updateTask(task.id, { branch: e.target.value || undefined })}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Estado</Label>
+                    <Label>{t("tasks.status")}</Label>
                     <Select value={task.status} onValueChange={value => updateTask(task.id, { status: value as TaskStatus })}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -150,14 +154,14 @@ export function TaskDetailDialog({
                       <SelectContent>
                         {TASK_STATUSES.map(status => (
                           <SelectItem key={status} value={status}>
-                            {taskStatusMeta[status].label}
+                            {t(taskStatusMeta[status].labelKey)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Agente</Label>
+                    <Label>{t("chatDialog.agent")}</Label>
                     <Select
                       value={task.agentId ?? UNASSIGNED}
                       onValueChange={value => updateTask(task.id, { agentId: value === UNASSIGNED ? undefined : value })}
@@ -166,7 +170,7 @@ export function TaskDetailDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+                        <SelectItem value={UNASSIGNED}>{t("tasks.unassigned")}</SelectItem>
                         {agents.map(a => (
                           <SelectItem key={a.id} value={a.id}>
                             {a.name}
@@ -181,16 +185,16 @@ export function TaskDetailDialog({
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label>Detalle</Label>
+                    <Label>{t("tasks.detail")}</Label>
                     <Button variant="ghost" size="sm" className="h-7" onClick={() => (editingDetail ? commitDetail() : setEditingDetail(true))}>
-                      {editingDetail ? "Guardar" : "Editar"}
+                      {editingDetail ? t("common.save") : t("common.edit")}
                     </Button>
                   </div>
                   {editingDetail ? (
                     <Textarea
                       autoFocus
                       className="min-h-32"
-                      placeholder="Qué hay que hacer, en markdown"
+                      placeholder={t("tasks.detailLongPlaceholder")}
                       value={detail}
                       onChange={e => setDetail(e.target.value)}
                       onBlur={commitDetail}
@@ -200,25 +204,25 @@ export function TaskDetailDialog({
                       <Markdown text={task.detail} />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Sin detalle.</p>
+                    <p className="text-sm text-muted-foreground">{t("tasks.noDetail")}</p>
                   )}
                 </div>
 
                 <Separator />
 
                 <div className="space-y-2">
-                  <Label>Depende de</Label>
-                  {dependencies.length === 0 && <p className="text-sm text-muted-foreground">No depende de nada.</p>}
+                  <Label>{t("tasks.dependsOn")}</Label>
+                  {dependencies.length === 0 && <p className="text-sm text-muted-foreground">{t("tasks.noDependencies")}</p>}
                   {dependencies.map(dep => (
                     <div key={dep.id} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5">
                       <span className={cn("h-2 w-2 shrink-0 rounded-full", taskStatusMeta[dep.status].dot)} />
                       <span className="min-w-0 flex-1 truncate text-sm">{dep.title}</span>
-                      <span className="text-[11px] text-muted-foreground">{taskStatusMeta[dep.status].label}</span>
+                      <span className="text-[11px] text-muted-foreground">{t(taskStatusMeta[dep.status].labelKey)}</span>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        aria-label={`Quitar la dependencia ${dep.title}`}
+                        aria-label={t("tasks.removeDependency", { title: dep.title })}
                         onClick={() => unlinkTaskDependency(task.id, dep.id)}
                       >
                         <X className="h-3.5 w-3.5" />
@@ -227,19 +231,19 @@ export function TaskDetailDialog({
                   ))}
                   {missing.length > 0 && (
                     <p className="text-xs text-amber-600 dark:text-amber-400">
-                      Bloqueada por {missing.length} tarea{missing.length === 1 ? "" : "s"} sin terminar.
+                      {plural(missing.length, t("tasks.blockedByTasks.one", { n: missing.length }), t("tasks.blockedByTasks.other", { n: missing.length }))}
                     </p>
                   )}
                   {candidates.length > 0 && (
                     <Select
                       value=""
                       onValueChange={value => {
-                        if (!linkTaskDependency(task.id, value)) toast.error("Esa dependencia haría un círculo.");
+                        if (!linkTaskDependency(task.id, value)) toast.error(t("tasks.cycle"));
                       }}
                     >
                       <SelectTrigger className="w-full">
                         <span className="flex items-center gap-2 text-muted-foreground">
-                          <Link2 className="h-3.5 w-3.5" /> Agregar una dependencia
+                          <Link2 className="h-3.5 w-3.5" /> {t("tasks.addDependency")}
                         </span>
                       </SelectTrigger>
                       <SelectContent>
@@ -258,11 +262,11 @@ export function TaskDetailDialog({
                     <Separator />
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <Label>Corrida</Label>
+                        <Label>{t("tasks.run")}</Label>
                         <p className="truncate font-mono text-[11px] text-muted-foreground">{task.runId}</p>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
-                        <Terminal className="h-3.5 w-3.5" /> Ver la corrida
+                        <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}
                       </Button>
                     </div>
                   </>
@@ -272,7 +276,7 @@ export function TaskDetailDialog({
               <DialogFooter className="sm:justify-between">
                 <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
                   {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                  {task.archived ? "Desarchivar" : "Archivar"}
+                  {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -280,7 +284,7 @@ export function TaskDetailDialog({
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => void remove()}
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                  <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
                 </Button>
               </DialogFooter>
             </>

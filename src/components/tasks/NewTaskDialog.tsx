@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { taskStatusMeta } from "./task-meta";
 import type { TaskStatus } from "@/types";
+import { useT } from "@/i18n/useT";
 
 const UNASSIGNED = "__none__";
 
@@ -26,6 +27,7 @@ export function NewTaskDialog({
   status?: TaskStatus;
   onOpenChange(open: boolean): void;
 }) {
+  const t = useT();
   const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const addTask = useAppStore(state => state.addTask);
 
@@ -58,17 +60,17 @@ export function NewTaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nueva tarea</DialogTitle>
-          <DialogDescription>Se suma al tablero del proyecto. Podés asignarla después.</DialogDescription>
+          <DialogTitle>{t("tasks.new")}</DialogTitle>
+          <DialogDescription>{t("tasks.newHint")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="new-task-title">Título</Label>
+            <Label htmlFor="new-task-title">{t("tasks.title")}</Label>
             <Input
               id="new-task-title"
               autoFocus
-              placeholder="Qué hay que hacer"
+              placeholder={t("tasks.titlePlaceholder")}
               value={title}
               onChange={e => setTitle(e.target.value)}
               onKeyDown={e => {
@@ -78,11 +80,11 @@ export function NewTaskDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="new-task-detail">Detalle</Label>
+            <Label htmlFor="new-task-detail">{t("tasks.detail")}</Label>
             <Textarea
               id="new-task-detail"
               className="min-h-24"
-              placeholder="Opcional, en markdown"
+              placeholder={t("tasks.detailPlaceholder")}
               value={detail}
               onChange={e => setDetail(e.target.value)}
             />
@@ -90,7 +92,7 @@ export function NewTaskDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Columna</Label>
+              <Label>{t("tasks.column")}</Label>
               <Select value={column} onValueChange={value => setColumn(value as TaskStatus)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -98,20 +100,20 @@ export function NewTaskDialog({
                 <SelectContent>
                   {TASK_STATUSES.map(s => (
                     <SelectItem key={s} value={s}>
-                      {taskStatusMeta[s].label}
+                      {t(taskStatusMeta[s].labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Agente</Label>
+              <Label>{t("chatDialog.agent")}</Label>
               <Select value={agentId} onValueChange={setAgentId}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+                  <SelectItem value={UNASSIGNED}>{t("tasks.unassigned")}</SelectItem>
                   {agents.map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
@@ -124,8 +126,8 @@ export function NewTaskDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={!title.trim()} onClick={create}>Crear</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button disabled={!title.trim()} onClick={create}>{t("common.create")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

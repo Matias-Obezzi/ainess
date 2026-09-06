@@ -10,8 +10,11 @@ import { TaskDetailDialog } from "./TaskDetailDialog";
 import { NewTaskDialog } from "./NewTaskDialog";
 import type { TaskStatus } from "@/types";
 import { Columns3, Network, Plus } from "lucide-react";
+import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
 export function TasksView({ projectId }: { projectId: string }) {
+  const t = useT();
   const taskView = useAppStore(state => state.taskView);
   const setTaskView = useAppStore(state => state.setTaskView);
   const loaded = useAppStore(state => state.loaded);
@@ -36,7 +39,7 @@ export function TasksView({ projectId }: { projectId: string }) {
             className="h-7"
             onClick={() => setTaskView("board")}
           >
-            <Columns3 className="h-3.5 w-3.5" /> Tablero
+            <Columns3 className="h-3.5 w-3.5" /> {t("tasks.board")}
           </Button>
           <Button
             variant={taskView === "graph" ? "secondary" : "ghost"}
@@ -44,14 +47,14 @@ export function TasksView({ projectId }: { projectId: string }) {
             className="h-7"
             onClick={() => setTaskView("graph")}
           >
-            <Network className="h-3.5 w-3.5" /> Grafo
+            <Network className="h-3.5 w-3.5" /> {t("tasks.graph")}
           </Button>
         </div>
         <span className="text-xs text-muted-foreground">
-          {tasks.length} tarea{tasks.length === 1 ? "" : "s"}
+          {plural(tasks.length, t("tasks.count.one", { n: tasks.length }), t("tasks.count.other", { n: tasks.length }))}
         </span>
         <Button size="sm" className="ml-auto h-7" onClick={() => openNew()}>
-          <Plus className="h-3.5 w-3.5" /> Nueva tarea
+          <Plus className="h-3.5 w-3.5" /> {t("tasks.new")}
         </Button>
       </div>
 

@@ -3,7 +3,8 @@
 import type { TaskStatus } from "@/types";
 
 export interface TaskStatusMeta {
-  label: string;
+  /** Dictionary key of the column name; render it with `t(meta.labelKey)`. */
+  labelKey: string;
   /** Tailwind classes for the little dot on a card. */
   dot: string;
   /** Hex used for graph node borders and edges. */
@@ -11,10 +12,10 @@ export interface TaskStatusMeta {
 }
 
 export const taskStatusMeta: Record<TaskStatus, TaskStatusMeta> = {
-  backlog: { label: "Pendiente", dot: "bg-slate-400", color: "#94a3b8" },
-  working: { label: "Trabajando", dot: "bg-emerald-500 animate-pulse", color: "#22c55e" },
-  "needs-you": { label: "Necesita tu atención", dot: "bg-amber-500", color: "#f59e0b" },
-  "in-review": { label: "En revisión", dot: "bg-violet-500", color: "#8b5cf6" },
-  ready: { label: "Listo", dot: "bg-sky-500", color: "#38bdf8" },
-  done: { label: "Hecho", dot: "bg-slate-500", color: "#64748b" },
+  backlog: { labelKey: "task.status.backlog", dot: "bg-slate-400", color: "#94a3b8" },
+  working: { labelKey: "task.status.working", dot: "bg-emerald-500 animate-pulse", color: "#22c55e" },
+  "needs-you": { labelKey: "task.status.needsYou", dot: "bg-amber-500", color: "#f59e0b" },
+  "in-review": { labelKey: "task.status.inReview", dot: "bg-violet-500", color: "#8b5cf6" },
+  ready: { labelKey: "task.status.ready", dot: "bg-sky-500", color: "#38bdf8" },
+  done: { labelKey: "task.status.done", dot: "bg-slate-500", color: "#64748b" },
 };
