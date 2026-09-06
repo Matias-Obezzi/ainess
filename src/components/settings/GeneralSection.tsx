@@ -7,7 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LANGUAGES, languageNames, type Language } from "@/i18n";
 import { useT } from "@/i18n/useT";
 
-/** Language, "Segundo plano" (tray/notifications) and "Orquestación" (maxRounds, approvals, models). */
+/** Value of the auto-archive select that means "never"; a Select cannot hold null. */
+const NEVER = "never";
+
+/** How long a done task can sit on the board before it archives itself. */
+const AUTO_ARCHIVE_DAYS = [7, 14, 30, 90];
+
+/** Language, "Segundo plano", "Orquestación" and how the board tidies itself up. */
 export function GeneralSection() {
   const t = useT();
   const config = useAppStore(state => state.config);
@@ -161,6 +167,31 @@ export function GeneralSection() {
               <span className="text-sm text-muted-foreground">{t("settings.general.approveDelegationsHint")}</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.general.boardTitle")}</CardTitle>
+          <CardDescription>{t("settings.general.boardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <label className="text-sm font-semibold">{t("settings.option.general.autoArchive")}</label>
+          <Select
+            value={config.autoArchiveDoneDays === null ? NEVER : String(config.autoArchiveDoneDays)}
+            onValueChange={value => updateConfig({ autoArchiveDoneDays: value === NEVER ? null : Number(value) })}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NEVER}>{t("settings.general.autoArchiveNever")}</SelectItem>
+              {AUTO_ARCHIVE_DAYS.map(days => (
+                <SelectItem key={days} value={String(days)}>{t("settings.general.autoArchiveDays", { n: days })}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">{t("settings.general.autoArchiveHint")}</span>
         </CardContent>
       </Card>
     </div>

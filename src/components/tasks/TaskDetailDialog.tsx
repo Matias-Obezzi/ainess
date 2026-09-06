@@ -15,11 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { blockedBy, hasCycle, TASK_STATUSES } from "@/lib/tasks";
-import { taskStatusMeta } from "./task-meta";
+import { blockedBy, hasCycle, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import type { TaskStatus } from "@/types";
+import type { TaskPriority, TaskStatus } from "@/types";
 import { Archive, ArchiveRestore, Link2, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
@@ -155,6 +155,25 @@ export function TaskDetailDialog({
                         {TASK_STATUSES.map(status => (
                           <SelectItem key={status} value={status}>
                             {t(taskStatusMeta[status].labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("tasks.priority")}</Label>
+                    {/* "normal" is stored as no priority at all, so an untouched task stays untouched. */}
+                    <Select
+                      value={task.priority ?? "normal"}
+                      onValueChange={value => updateTask(task.id, { priority: value === "normal" ? undefined : (value as TaskPriority) })}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TASK_PRIORITIES.map(priority => (
+                          <SelectItem key={priority} value={priority}>
+                            {t(taskPriorityLabelKey[priority])}
                           </SelectItem>
                         ))}
                       </SelectContent>

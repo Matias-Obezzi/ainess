@@ -16,8 +16,9 @@ import { formatClock } from "@/lib/format";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
+import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { ChatMessage } from "@/types";
-import { Copy, FileCode, FileText, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
@@ -117,7 +118,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
               description={t("chat.empty.body")}
             />
           ) : (
-            messages.map(msg => <ChatBubble key={msg.id} message={msg} />)
+            messages.map(msg => <ChatBubble key={msg.id} message={msg} projectId={chat?.projectId} />)
           )}
           <div ref={endRef} />
         </div>
@@ -139,7 +140,7 @@ function BubbleSkeleton({ align }: { align: "start" | "end" }) {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: string }) {
   const t = useT();
   const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
@@ -167,6 +168,25 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       disabled: !message.text || !hasMarkdown(message.text),
       onSelect: () => void copyText(message.text, t("message.markdownCopied")),
     },
+    // A chat outside a project has no board to put the card on.
+    ...(projectId
+      ? [
+          {
+            key: "task",
+            label: t("message.createTask"),
+            icon: ListTodo,
+            separatorBefore: true,
+            disabled: !message.text,
+            onSelect: () =>
+              createTaskFromMessage({
+                projectId,
+                text: message.text,
+                agentId: isUser ? undefined : message.from,
+                runId: message.runId,
+              }),
+          } satisfies MenuAction,
+        ]
+      : []),
     // Only an agent's turn comes from a run, so only it has a detail to show.
     ...(isUser
       ? []

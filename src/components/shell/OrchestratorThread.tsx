@@ -17,8 +17,9 @@ import { INTERRUPTED_OUTPUT } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
+import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
-import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, MessagesSquare, RotateCw } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw } from "lucide-react";
 
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
@@ -168,6 +169,14 @@ function RunBubble({ run }: { run: Run }) {
       icon: FileCode,
       disabled: !output || !hasMarkdown(output),
       onSelect: () => void copyText(output, t("message.markdownCopied")),
+    },
+    {
+      key: "task",
+      label: t("message.createTask"),
+      icon: ListTodo,
+      separatorBefore: true,
+      disabled: !output,
+      onSelect: () => createTaskFromMessage({ projectId: run.projectId, text: output, agentId: run.agentId, runId: run.id }),
     },
     { key: "detail", label: t("message.viewDetail"), icon: FileText, separatorBefore: true, onSelect: () => setDetailOpen(true) },
     // Retrying only means something on a run the app cut short.
