@@ -128,6 +128,34 @@ export function claudeCandidateDirs(): string[] {
 }
 
 /**
+ * Folders on the *registry* PATH (machine + user) plus the usual Program Files spots. Installers add
+ * themselves there, but a running process keeps the PATH it started with, so `which` misses a tool
+ * installed a minute ago.
+ */
+export function registryPathCandidates(name: string): string[] {
+  if (process.platform !== "win32") return [];
+  const exe = `${name}.exe`;
+  const out: string[] = [];
+  const keys = ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", "HKCU\\Environment"];
+  for (const key of keys) {
+    try {
+      const res = spawnSync("reg", ["query", key, "/v", "Path"], { encoding: "utf8", windowsHide: true, timeout: 5000 });
+      for (const line of (res.stdout || "").split(/\r?\n/)) {
+        const idx = line.indexOf("REG_");
+        if (idx < 0) continue;
+        const rest = line.slice(idx).split(/\s+/).slice(1).join(" ").trim();
+        for (const dir of rest.split(";").map(d => d.trim()).filter(Boolean)) out.push(path.join(dir, exe));
+      }
+    } catch { /* reg not available */ }
+  }
+  for (const root of [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA]) {
+    if (!root) continue;
+    out.push(path.join(root, name, exe), path.join(root, "Programs", name, exe));
+  }
+  return out;
+}
+
+/**
  * winget installs portable CLIs under `%LOCALAPPDATA%\Microsoft\WinGet\Packages\<id>\` (or a
  * subfolder) and puts that folder on the *registry* PATH. A process started before the install
  * keeps its old PATH, so scan those folders directly instead of asking the user to restart.
@@ -153,7 +181,7 @@ export function wingetCandidates(name: string): string[] {
 }
 
 function findWinget(name: string): BinaryInfo | null {
-  for (const candidate of wingetCandidates(name)) {
+  for (const candidate of [...wingetCandidates(name), ...registryPathCandidates(name)]) {
     if (fs.existsSync(candidate)) return { path: candidate, version: getVersion(candidate) };
   }
   return null;

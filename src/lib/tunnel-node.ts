@@ -43,10 +43,10 @@ function which(name: string): string | null {
 }
 
 async function detect(): Promise<{ cloudflared: string | null; ngrok: string | null }> {
-  const { wingetCandidates } = await import("@/lib/transport-node");
+  const { wingetCandidates, registryPathCandidates } = await import("@/lib/transport-node");
   const fs = await import("node:fs");
   const find = (name: string): string | null =>
-    which(name) ?? wingetCandidates(name).find(p => fs.existsSync(p)) ?? null;
+    which(name) ?? [...wingetCandidates(name), ...registryPathCandidates(name)].find(p => fs.existsSync(p)) ?? null;
   return { cloudflared: find("cloudflared"), ngrok: find("ngrok") };
 }
 

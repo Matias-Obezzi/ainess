@@ -88,7 +88,10 @@ fn winget_candidates(name: &str) -> Vec<PathBuf> {
 }
 
 fn find_winget(name: &str) -> Option<BinaryInfo> {
-    let path = winget_candidates(name).into_iter().find(|p| p.exists())?;
+    let path = winget_candidates(name)
+        .into_iter()
+        .chain(registry_path_candidates(name))
+        .find(|p| p.exists())?;
     let path_str = path.to_string_lossy().into_owned();
     Some(BinaryInfo {
         version: get_version(&path_str),
@@ -269,6 +272,48 @@ pub fn find_path(name: &str) -> Option<String> {
     }
     winget_candidates(name)
         .into_iter()
+        .chain(registry_path_candidates(name))
         .find(|p| p.exists())
         .map(|p| p.to_string_lossy().into_owned())
+}
+
+/// Installers (winget, MSIs) add their folder to the *registry* PATH; this process keeps the PATH it
+/// was born with, so a tool installed after the app started is invisible to `which`. Read the machine
+/// and user PATH from the registry and look there, plus the usual `Program Files` folders.
+fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if !cfg!(windows) {
+        return out;
+    }
+    let exe = format!("{name}.exe");
+    let keys = [
+        (r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path"),
+        (r"HKCU\Environment", "Path"),
+    ];
+    for (key, value) in keys {
+        let mut cmd = Command::new("reg");
+        cmd.args(["query", key, "/v", value]).stdout(Stdio::piped()).stderr(Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000);
+        }
+        let Ok(res) = cmd.output() else { continue };
+        let text = String::from_utf8_lossy(&res.stdout);
+        for line in text.lines() {
+            let Some(idx) = line.find("REG_") else { continue };
+            let rest = line[idx..].splitn(2, char::is_whitespace).nth(1).unwrap_or("").trim();
+            for dir in rest.split(';').map(str::trim).filter(|d| !d.is_empty()) {
+                out.push(PathBuf::from(dir).join(&exe));
+            }
+        }
+    }
+    for root in ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"] {
+        if let Ok(base) = std::env::var(root) {
+            let base = PathBuf::from(base);
+            out.push(base.join(name).join(&exe));
+            out.push(base.join("Programs").join(name).join(&exe));
+        }
+    }
+    out
 }
