@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
+import { useT } from "@/i18n/useT";
 
 interface Preset {
   id: string;
@@ -17,6 +18,7 @@ interface Preset {
 }
 
 export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, onOpenChange: (open: boolean) => void, preset: Preset | null }) {
+  const t = useT();
   const store = useAppStore();
   const agents = useAppStore(selectAllAgents);
   const [name, setName] = useState("");
@@ -63,12 +65,12 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{preset ? "Editar orden" : "Nueva orden predefinida"}</DialogTitle>
+          <DialogTitle>{preset ? t("presetDialog.edit") : t("presetDialog.new")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label>Nombre (identificador corto)</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: refactor, test" />
+            <Label>{t("presetDialog.name")}</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("presetDialog.namePlaceholder")} />
           </div>
           <div className="flex flex-col gap-2">
             <Label>Prompt</Label>
@@ -76,11 +78,11 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label>Agente destino (opcional)</Label>
+              <Label>{t("presetDialog.targetAgent")}</Label>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Cualquiera" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder={t("presetDialog.anyAgent")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Cualquiera</SelectItem>
+                  <SelectItem value="none">{t("presetDialog.anyAgent")}</SelectItem>
                   {agents.map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
@@ -88,11 +90,11 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <Label>Modelo (opcional)</Label>
+              <Label>{t("presetDialog.model")}</Label>
               <Select value={model} onValueChange={setModel} disabled={agentId === "none"}>
-                <SelectTrigger className="w-full"><SelectValue placeholder={agentId === "none" ? "Elegí agente primero" : "Predeterminado del agente"} /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder={agentId === "none" ? t("presetDialog.pickAgentFirst") : t("presetDialog.agentDefault")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Predeterminado del agente</SelectItem>
+                  <SelectItem value="none">{t("presetDialog.agentDefault")}</SelectItem>
                   {providerSpec?.defaultModels.map(m => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
                   ))}
@@ -105,8 +107,8 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name || !prompt}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!name || !prompt}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

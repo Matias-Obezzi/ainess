@@ -10,7 +10,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { isTauri } from "@/lib/tauri";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
-import { roleLabel } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/labels";
+import { useT } from "@/i18n/useT";
 import { AgentConfig, Project } from "@/types";
 import { toast } from "@/components/ui/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ export function ProjectDialog({
   onOpenChange: (open: boolean) => void;
   editProject?: Project;
 }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [workspaceDir, setWorkspaceDir] = useState("");
   const [color, setColor] = useState("#4f8cff");
@@ -82,7 +84,7 @@ export function ProjectDialog({
 
   const handleSelectDir = async () => {
     if (!isTauri()) {
-      toast.error("No disponible en la web");
+      toast.error(t("projectDialog.webUnavailable"));
       return;
     }
     try {
@@ -95,7 +97,7 @@ export function ProjectDialog({
         }
       }
     } catch {
-      toast.error("Error al abrir diálogo");
+      toast.error(t("projectDialog.dialogFailed"));
     }
   };
 
@@ -118,26 +120,26 @@ export function ProjectDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{editProject ? "Editar Proyecto" : "Nuevo Proyecto"}</DialogTitle>
+          <DialogTitle>{editProject ? t("sidebar.editProject") : t("sidebar.newProject")}</DialogTitle>
         </DialogHeader>
 
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Carpeta (Workspace)</Label>
+              <Label>{t("projectDialog.folder")}</Label>
               <div className="flex gap-2">
-                <Input value={workspaceDir} readOnly placeholder="Ruta de la carpeta..." />
-                <Button type="button" variant="outline" onClick={handleSelectDir}>Examinar...</Button>
+                <Input value={workspaceDir} readOnly placeholder={t("projectDialog.folderPlaceholder")} />
+                <Button type="button" variant="outline" onClick={handleSelectDir}>{t("projectDialog.browse")}</Button>
               </div>
             </div>
 
             <div className="grid gap-2">
-              <Label>Nombre</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Mi proyecto" />
+              <Label>{t("common.name")}</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("projectDialog.namePlaceholder")} />
             </div>
 
             <div className="grid gap-2">
-              <Label>Color (opcional)</Label>
+              <Label>{t("projectDialog.color")}</Label>
               <Input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-16 h-8 p-1" />
             </div>
 
@@ -145,16 +147,16 @@ export function ProjectDialog({
             {!editProject && (
               <>
                 <div className="grid gap-2">
-                  <Label>Formación</Label>
+                  <Label>{t("projectDialog.formation")}</Label>
                   <Select value={formationId} onValueChange={pickFormation}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_FORMATION}>Sin agentes</SelectItem>
+                      <SelectItem value={NO_FORMATION}>{t("agents.noAgents")}</SelectItem>
                       {formations.map(f => (
                         <SelectItem key={f.id} value={f.id}>
-                          {f.name}{f.id === defaultFormationId ? " (predeterminada)" : ""}
+                          {f.id === defaultFormationId ? t("projectDialog.defaultFormation", { name: f.name }) : f.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -163,20 +165,20 @@ export function ProjectDialog({
 
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
-                    <Label>Equipo del proyecto</Label>
+                    <Label>{t("projectDialog.team")}</Label>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       onClick={() => { setEditingAgent(null); setAgentDialogOpen(true); }}
                     >
-                      <Plus className="mr-1 size-3" /> Agregar agente
+                      <Plus className="mr-1 size-3" /> {t("agents.addAgent")}
                     </Button>
                   </div>
 
                   {agents.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      El proyecto arranca sin agentes; podés armar el equipo después desde la jerarquía.
+                      {t("projectDialog.noAgentsHint")}
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2">
@@ -188,8 +190,8 @@ export function ProjectDialog({
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-medium">{a.name}</div>
                               <div className="truncate text-xs text-muted-foreground">
-                                {PROVIDERS[a.provider]?.label || a.provider} · {roleLabel[a.role] || a.role}
-                                {a.model ? ` · ${a.model}` : ""} · {parent ? `bajo ${parent.name}` : "raíz"}
+                                {PROVIDERS[a.provider]?.label || a.provider} · {t(roleLabelKey[a.role]) || a.role}
+                                {a.model ? ` · ${a.model}` : ""} · {parent ? t("agents.underParent", { name: parent.name }) : t("agents.root")}
                               </div>
                             </div>
                             <Button
@@ -197,7 +199,7 @@ export function ProjectDialog({
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7"
-                              aria-label={`Editar ${a.name}`}
+                              aria-label={t("agents.editNamed", { name: a.name })}
                               onClick={() => { setEditingAgent(a); setAgentDialogOpen(true); }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -207,7 +209,7 @@ export function ProjectDialog({
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              aria-label={`Quitar ${a.name}`}
+                              aria-label={t("agents.removeNamed", { name: a.name })}
                               onClick={() => removeAgent(a.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -224,8 +226,8 @@ export function ProjectDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name || !workspaceDir}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!name || !workspaceDir}>{t("common.save")}</Button>
         </DialogFooter>
 
         <AgentDialog

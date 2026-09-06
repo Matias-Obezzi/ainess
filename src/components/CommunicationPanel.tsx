@@ -6,12 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageKind } from "@/types";
-import { kindLabel } from "@/lib/labels";
+import { kindLabelKey } from "@/lib/labels";
+import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
 const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
 
 export function CommunicationPanel() {
+  const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   // Select the stable array and filter in useMemo: a selector that returns a fresh
   // array on every call makes useSyncExternalStore re-render forever.
@@ -86,10 +88,10 @@ export function CommunicationPanel() {
       <div className="p-2 border-b border-border flex items-center gap-2">
         <Select value={filterAgent} onValueChange={setFilterAgent}>
           <SelectTrigger className="flex-1 h-8 text-xs">
-            <SelectValue placeholder="Todos" />
+            <SelectValue placeholder={t("common.all")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
             {agents.map(a => (
               <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
             ))}
@@ -99,7 +101,7 @@ export function CommunicationPanel() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 text-xs">
-              {filterKinds.size === allKinds.length ? "Tipos" : `Tipos (${filterKinds.size}/${allKinds.length})`}
+              {filterKinds.size === allKinds.length ? t("comm.kinds") : t("comm.kindsSome", { n: filterKinds.size, total: allKinds.length })}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -109,13 +111,13 @@ export function CommunicationPanel() {
                 checked={filterKinds.has(kind)}
                 onCheckedChange={() => toggleKind(kind)}
               >
-                {kindLabel[kind]}
+                {t(kindLabelKey[kind])}
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearMessages(currentProjectId || undefined)} title="Limpiar">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearMessages(currentProjectId || undefined)} title={t("comm.clear")}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
@@ -128,8 +130,8 @@ export function CommunicationPanel() {
         {filteredMessages.length === 0 ? (
           <EmptyState
             icon={Radio}
-            title="Todavía no hay actividad"
-            description="Acá vas a ver lo que se dicen los agentes entre sí a medida que trabajan."
+            title={t("comm.empty.title")}
+            description={t("comm.empty.body")}
             className="h-full"
           />
         ) : (
@@ -149,7 +151,7 @@ export function CommunicationPanel() {
           onClick={scrollToBottom}
         >
           <ArrowDown className="h-4 w-4" />
-          Ir al final
+          {t("comm.goToEnd")}
         </Button>
       )}
     </div>

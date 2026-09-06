@@ -5,6 +5,7 @@ import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Sq
 import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
 import type { AgentConfig, AgentStatus, Run } from "@/types";
 import { confirmDelete } from "@/lib/confirm";
+import { useT, type TFunction } from "@/i18n/useT";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { AgentDialog } from "./AgentDialog";
@@ -43,6 +44,7 @@ export interface AgentActions {
 }
 
 export function useAgentActions(agent: AgentConfig): AgentActions {
+  const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const runtime = useAppStore(state =>
     state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id] : undefined
@@ -123,7 +125,7 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
     },
     removeAgent: () => {
       if (!currentProjectId) return;
-      void confirmDelete("el agente", agent.name, "Sus tareas quedan en el historial y sus hijos pasan a colgar de su padre.")
+      void confirmDelete(t("agentActions.delete.title"), agent.name, t("agentActions.delete.detail"))
         .then(ok => ok && removeAgentFromProject(currentProjectId, agent.id));
     },
     instructOpen,
@@ -139,37 +141,37 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
  * The same actions as a menu list. `onViewOutput` lets a host that tracks which run it is showing
  * (the inspector) take over "Ver salida".
  */
-export function agentMenuActions(actions: AgentActions, onViewOutput?: () => void): MenuAction[] {
+export function agentMenuActions(t: TFunction, actions: AgentActions, onViewOutput?: () => void): MenuAction[] {
   return [
     {
       key: "stop",
-      label: "Detener",
+      label: t("composer.stop"),
       icon: Square,
       disabled: !actions.ready || !actions.busy,
       onSelect: actions.stop
     },
-    { key: "instruct", label: "Indicar", icon: MessageSquareText, disabled: !actions.ready, onSelect: actions.instruct },
+    { key: "instruct", label: t("agentActions.instruct"), icon: MessageSquareText, disabled: !actions.ready, onSelect: actions.instruct },
     {
       key: "output",
-      label: "Ver salida",
+      label: t("agentActions.viewOutput"),
       icon: FileText,
       disabled: !actions.lastRunId,
       onSelect: onViewOutput ?? actions.viewOutput
     },
-    { key: "chat", label: "Chatear", icon: MessageCircle, disabled: !actions.ready, onSelect: actions.openChat },
+    { key: "chat", label: t("agentActions.chat"), icon: MessageCircle, disabled: !actions.ready, onSelect: actions.openChat },
     {
       key: "reset",
-      label: "Reiniciar sesión",
+      label: t("agentActions.resetSession"),
       icon: RotateCcw,
       disabled: !actions.ready,
       separatorBefore: true,
       onSelect: actions.resetSession
     },
-    { key: "edit", label: "Editar agente", icon: Pencil, onSelect: actions.editAgent },
-    { key: "duplicate", label: "Duplicar", icon: Copy, disabled: !actions.ready, onSelect: actions.duplicate },
+    { key: "edit", label: t("agentActions.editAgent"), icon: Pencil, onSelect: actions.editAgent },
+    { key: "duplicate", label: t("agentActions.duplicate"), icon: Copy, disabled: !actions.ready, onSelect: actions.duplicate },
     {
       key: "remove",
-      label: "Eliminar",
+      label: t("common.delete"),
       icon: Trash2,
       destructive: true,
       disabled: !actions.ready,
@@ -188,11 +190,12 @@ export function AgentContextMenu({
   onViewOutput?: () => void;
   children: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextActionItems actions={agentMenuActions(actions, onViewOutput)} />
+        <ContextActionItems actions={agentMenuActions(t, actions, onViewOutput)} />
       </ContextMenuContent>
     </ContextMenu>
   );

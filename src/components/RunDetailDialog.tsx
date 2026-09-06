@@ -2,8 +2,11 @@ import { useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useT, useLocale } from "@/i18n/useT";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
+  const locale = useLocale();
   const runs = useAppStore(state => state.runs);
   const agents = useAppStore(selectAllAgents);
 
@@ -16,25 +19,25 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Run no encontrado</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("runDetail.notFound")}</DialogTitle></DialogHeader>
         </DialogContent>
       </Dialog>
     );
   }
 
   const duration = run.endedAt ? ((run.endedAt - run.startedAt) / 1000).toFixed(1) + "s" : "-";
-  const startStr = new Date(run.startedAt).toLocaleTimeString();
-  const endStr = run.endedAt ? new Date(run.endedAt).toLocaleTimeString() : "-";
+  const startStr = new Date(run.startedAt).toLocaleTimeString(locale);
+  const endStr = run.endedAt ? new Date(run.endedAt).toLocaleTimeString(locale) : "-";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Detalle del Run</DialogTitle>
+          <DialogTitle>{t("runDetail.title")}</DialogTitle>
           <DialogDescription className="flex gap-2 items-center flex-wrap">
             <Badge>{agent?.name || run.agentId}</Badge>
             <Badge variant="outline">{run.status}</Badge>
-            <span className="text-xs">Ronda {run.round}</span>
+            <span className="text-xs">{t("thread.round", { n: run.round })}</span>
             <span className="text-xs text-muted-foreground">
               {startStr} - {endStr} ({duration})
             </span>
@@ -47,8 +50,8 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
               className="font-semibold text-sm mb-1 cursor-pointer flex justify-between items-center bg-muted p-2 rounded"
               onClick={() => setPromptOpen(!promptOpen)}
             >
-              <span>Prompt</span>
-              <span>{promptOpen ? "Ocultar" : "Mostrar"}</span>
+              <span>{t("runDetail.prompt")}</span>
+              <span>{promptOpen ? t("runDetail.hide") : t("runDetail.show")}</span>
             </div>
             {promptOpen && (
               <div className="whitespace-pre-wrap text-sm border p-2 rounded bg-background">
@@ -58,16 +61,16 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm mb-1">Salida final</h4>
+            <h4 className="font-semibold text-sm mb-1">{t("runDetail.finalOutput")}</h4>
             <div className="whitespace-pre-wrap text-sm border p-2 rounded bg-background">
-              {run.output || "Sin salida"}
+              {run.output || t("thread.noOutput")}
             </div>
           </div>
 
           <div className="flex-1 min-h-[200px] flex flex-col">
-            <h4 className="font-semibold text-sm mb-1">Salida cruda (stdout/stderr)</h4>
+            <h4 className="font-semibold text-sm mb-1">{t("runDetail.rawOutput")}</h4>
             <div className="flex-1 border p-2 rounded bg-muted overflow-auto font-mono text-xs whitespace-pre-wrap">
-              {run.rawLines?.join("\n") || "Sin logs"}
+              {run.rawLines?.join("\n") || t("runDetail.noLogs")}
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { McpServer } from "@/types";
+import { useT } from "@/i18n/useT";
 
 interface Props {
   open: boolean;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function McpDialog({ open, onOpenChange, server }: Props) {
+  const t = useT();
   const agents = useAppStore(selectAllAgents);
   const upsertMcpServer = useAppStore(state => state.upsertMcpServer);
 
@@ -103,18 +105,18 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{server ? "Editar Servidor MCP" : "Nuevo Servidor MCP"}</DialogTitle>
+          <DialogTitle>{server ? t("mcpDialog.edit") : t("mcpDialog.new")}</DialogTitle>
         </DialogHeader>
         
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Nombre</Label>
+                <Label>{t("common.name")}</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>Transporte</Label>
+                <Label>{t("mcpDialog.transport")}</Label>
                 <Select value={transport} onValueChange={v => setTransport(v as "stdio" | "http")}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -129,7 +131,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
 
             {transport === "stdio" ? (
               <div className="space-y-1">
-                <Label>Comando y Argumentos (ej: npx -y @modelcontextprotocol/server-filesystem /dir)</Label>
+                <Label>{t("mcpDialog.commandAndArgs")}</Label>
                 <Input value={command} onChange={e => setCommand(e.target.value)} />
               </div>
             ) : (
@@ -140,7 +142,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
             )}
 
             <div className="space-y-1 flex-1 flex flex-col min-h-[150px]">
-              <Label>Variables de Entorno (una por línea, CLAVE=valor)</Label>
+              <Label>{t("mcpDialog.env")}</Label>
               <Textarea 
                 className="flex-1 font-mono resize-none min-h-[150px]" 
                 value={env} 
@@ -152,7 +154,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
             <div className="space-y-2 border p-4 rounded-md">
               <div className="flex items-center gap-2">
                 <Switch checked={allAgents} onCheckedChange={setAllAgents} id="mcp-all-agents" />
-                <Label htmlFor="mcp-all-agents">Habilitado para todos los agentes</Label>
+                <Label htmlFor="mcp-all-agents">{t("mcpDialog.enabledForAll")}</Label>
               </div>
 
               {!allAgents && (
@@ -174,8 +176,8 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         </div>
         
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || (transport === "stdio" ? !command.trim() : !url.trim())}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || (transport === "stdio" ? !command.trim() : !url.trim())}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

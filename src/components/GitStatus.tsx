@@ -12,19 +12,21 @@ import { openExternal } from "@/lib/open-external";
 import { cn } from "@/lib/utils";
 import type { PullRequest, PullRequestChecks, PullRequestReview } from "@/lib/git";
 import type { RepoState } from "@/lib/git-repo";
+import { useT, type TFunction } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
-const CHECKS_LABEL: Record<PullRequestChecks, string> = {
-  passing: "CI en verde",
-  failing: "CI con fallas",
-  pending: "CI en curso",
-  none: "Sin CI",
+const CHECKS_LABEL_KEY: Record<PullRequestChecks, string> = {
+  passing: "git.checks.passing",
+  failing: "git.checks.failing",
+  pending: "git.checks.pending",
+  none: "git.checks.none",
 };
 
-const REVIEW_LABEL: Record<PullRequestReview, string> = {
-  approved: "Aprobado",
-  "changes-requested": "Cambios pedidos",
-  pending: "Revisión pendiente",
-  none: "Sin revisión",
+const REVIEW_LABEL_KEY: Record<PullRequestReview, string> = {
+  approved: "git.review.approved",
+  "changes-requested": "git.review.changesRequested",
+  pending: "git.review.pending",
+  none: "git.review.none",
 };
 
 /** Red when something is broken, amber when something is waiting, green when it is all fine. */
@@ -65,42 +67,42 @@ function worstTone(pullRequests: PullRequest[]): Tone {
 }
 
 /** Why the pull requests are missing, said in words. */
-function unavailableText(reason: RepoState["prsUnavailable"]): string | null {
+function unavailableText(t: TFunction, reason: RepoState["prsUnavailable"]): string | null {
   switch (reason) {
     case "no-gh":
-      return "Instalá la CLI de GitHub para ver los pull requests:";
+      return t("git.prs.noGh");
     case "no-auth":
-      return "Iniciá sesión con `gh auth login` para ver los pull requests.";
+      return t("git.prs.noAuth");
     case "no-remote":
-      return "Este repo no tiene un remoto de GitHub, así que no hay pull requests para mostrar.";
+      return t("git.prs.noRemote");
     default:
       return null;
   }
 }
 
 /** Sentences for the sidebar tooltip: one per number actually shown. */
-function statusSentences(repo: RepoState): string[] {
+function statusSentences(t: TFunction, repo: RepoState): string[] {
   const lines: string[] = [];
   const status = repo.status;
-  if (status?.branch) lines.push(`Rama ${status.branch}`);
-  if (status?.upstream) lines.push(`Sigue a ${status.upstream}`);
+  if (status?.branch) lines.push(t("git.branchIs", { branch: status.branch }));
+  if (status?.upstream) lines.push(t("git.tracks", { upstream: status.upstream }));
   if (status && status.dirty > 0) {
-    lines.push(`${status.dirty} archivo${status.dirty === 1 ? "" : "s"} con cambios sin commitear`);
+    lines.push(plural(status.dirty, t("git.dirty.one", { n: status.dirty }), t("git.dirty.other", { n: status.dirty })));
   }
   if (status && status.ahead > 0) {
-    lines.push(`${status.ahead} commit${status.ahead === 1 ? "" : "s"} por subir`);
+    lines.push(plural(status.ahead, t("git.ahead.one", { n: status.ahead }), t("git.ahead.other", { n: status.ahead })));
   }
   if (status && status.behind > 0) {
-    lines.push(`${status.behind} commit${status.behind === 1 ? "" : "s"} por bajar`);
+    lines.push(plural(status.behind, t("git.behind.one", { n: status.behind }), t("git.behind.other", { n: status.behind })));
   }
   const prs = repo.pullRequests;
   if (prs.length > 0) {
     const failing = prs.filter(pr => pr.checks === "failing").length;
     const waiting = prs.filter(pr => pr.review === "pending" || pr.review === "changes-requested").length;
-    let detail = "todo en verde";
-    if (failing > 0) detail = `${failing} con el CI en rojo`;
-    else if (waiting > 0) detail = `${waiting} esperando revisión`;
-    lines.push(`${prs.length} pull request${prs.length === 1 ? "" : "s"} abierto${prs.length === 1 ? "" : "s"}: ${detail}`);
+    let detail = t("git.prs.allGreen");
+    if (failing > 0) detail = t("git.prs.failing", { n: failing });
+    else if (waiting > 0) detail = t("git.prs.waiting", { n: waiting });
+    lines.push(plural(prs.length, t("git.prs.open.one", { n: prs.length, detail }), t("git.prs.open.other", { n: prs.length, detail })));
   }
   return lines;
 }
@@ -124,6 +126,7 @@ function Signals({ repo, className }: { repo: RepoState; className?: string }) {
  * repo or has not been read yet: an error there would only be noise.
  */
 export function GitStatusLine({ projectId }: { projectId: string }) {
+  const t = useT();
   const repo = useAppStore(state => state.repoState[projectId]);
   if (!repo?.isRepo || !repo.status?.branch) return null;
 
@@ -138,7 +141,7 @@ export function GitStatusLine({ projectId }: { projectId: string }) {
       </TooltipTrigger>
       <TooltipContent side="right" className="max-w-[260px]">
         <div className="flex flex-col gap-0.5">
-          {statusSentences(repo).map(line => (
+          {statusSentences(t, repo).map(line => (
             <span key={line}>{line}</span>
           ))}
         </div>
@@ -149,6 +152,7 @@ export function GitStatusLine({ projectId }: { projectId: string }) {
 
 /** One open pull request inside the header popover. Clicking it opens the PR in the browser. */
 function PullRequestRow({ pr }: { pr: PullRequest }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -160,20 +164,20 @@ function PullRequestRow({ pr }: { pr: PullRequest }) {
       <span className="flex items-center gap-1.5 text-xs">
         <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <span className="shrink-0 text-muted-foreground tabular-nums">#{pr.number}</span>
-        <span className="truncate font-medium">{pr.title || "(sin título)"}</span>
+        <span className="truncate font-medium">{pr.title || t("git.untitled")}</span>
         {pr.state === "draft" && (
           <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
-            Borrador
+            {t("git.draft")}
           </span>
         )}
       </span>
       <span className="flex items-center gap-1.5 pl-5 text-[10px]">
         <span className="truncate text-muted-foreground">{pr.head}</span>
         <span className={cn("ml-auto shrink-0 rounded-full border px-1.5", TONE_CHIP[checksTone(pr.checks)])}>
-          {CHECKS_LABEL[pr.checks]}
+          {t(CHECKS_LABEL_KEY[pr.checks])}
         </span>
         <span className={cn("shrink-0 rounded-full border px-1.5", TONE_CHIP[reviewTone(pr.review)])}>
-          {REVIEW_LABEL[pr.review]}
+          {t(REVIEW_LABEL_KEY[pr.review])}
         </span>
       </span>
     </button>
@@ -195,6 +199,7 @@ function Detail({ label, value }: { label: string; value: string }) {
  * the open pull requests.
  */
 export function GitBranchButton({ projectId }: { projectId: string }) {
+  const t = useT();
   const repo = useAppStore(state => state.repoState[projectId]);
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
   const [refreshing, setRefreshing] = useState(false);
@@ -202,7 +207,7 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
   if (!repo?.isRepo || !repo.status) return null;
   const status = repo.status;
   const prs = repo.pullRequests;
-  const unavailable = unavailableText(repo.prsUnavailable);
+  const unavailable = unavailableText(t, repo.prsUnavailable);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -221,16 +226,16 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
           variant="ghost"
           size="sm"
           className="h-7 shrink-0 gap-1.5 px-2 text-xs font-normal"
-          title="Estado del repositorio"
+          title={t("git.repoStatus")}
         >
           <GitBranch className="h-3.5 w-3.5" />
-          <span className="max-w-[140px] truncate">{status.branch ?? "sin rama"}</span>
+          <span className="max-w-[140px] truncate">{status.branch ?? t("git.noBranch")}</span>
           <Signals repo={repo} />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-96 p-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold">Estado del repositorio</span>
+          <span className="text-xs font-semibold">{t("git.repoStatus")}</span>
           <Button
             type="button"
             variant="ghost"
@@ -239,30 +244,34 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
             disabled={refreshing}
             onClick={() => void refresh()}
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} /> Actualizar
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} /> {t("git.refresh")}
           </Button>
         </div>
 
         <div className="mt-2 flex flex-col gap-1 rounded-md border border-border p-2">
-          <Detail label="Rama" value={status.branch ?? "HEAD suelto"} />
-          <Detail label="Remoto" value={status.upstream ?? "sin remoto"} />
+          <Detail label={t("git.branch")} value={status.branch ?? t("git.detachedHead")} />
+          <Detail label={t("git.remote")} value={status.upstream ?? t("git.noRemote")} />
           <Detail
-            label="Cambios sin commitear"
-            value={status.dirty === 0 ? "ninguno" : `${status.dirty} archivo${status.dirty === 1 ? "" : "s"}`}
+            label={t("git.uncommitted")}
+            value={
+              status.dirty === 0
+                ? t("git.none")
+                : plural(status.dirty, t("git.files.one", { n: status.dirty }), t("git.files.other", { n: status.dirty }))
+            }
           />
           <Detail
-            label="Adelante / atrás"
+            label={t("git.aheadBehind")}
             value={
               status.ahead === 0 && status.behind === 0
-                ? "al día"
-                : `${status.ahead} por subir · ${status.behind} por bajar`
+                ? t("git.upToDate")
+                : t("git.aheadBehindValue", { ahead: status.ahead, behind: status.behind })
             }
           />
         </div>
 
         <div className="mt-3 flex flex-col gap-1">
           <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Pull requests abiertos
+            {t("git.openPullRequests")}
           </span>
           {prs.length > 0 ? (
             <div className="max-h-64 overflow-y-auto">
@@ -272,7 +281,7 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
             </div>
           ) : (
             <p className="px-2 text-xs text-muted-foreground">
-              {unavailable ?? "No hay pull requests abiertos."}
+              {unavailable ?? t("git.noOpenPullRequests")}
             </p>
           )}
           {repo.prsUnavailable === "no-gh" && (

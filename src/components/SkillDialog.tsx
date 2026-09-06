@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skill } from "@/types";
+import { useT } from "@/i18n/useT";
 
 interface Props {
   open: boolean;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function SkillDialog({ open, onOpenChange, skill }: Props) {
+  const t = useT();
   const agents = useAppStore(selectAllAgents);
   const upsertSkill = useAppStore(state => state.upsertSkill);
 
@@ -70,23 +72,23 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] flex flex-col max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{skill ? "Editar Skill" : "Nuevo Skill"}</DialogTitle>
+          <DialogTitle>{skill ? t("skillDialog.edit") : t("skills.new")}</DialogTitle>
         </DialogHeader>
         
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-4 py-4 px-1">
             <div className="space-y-1">
-              <Label>Nombre</Label>
+              <Label>{t("common.name")}</Label>
               <Input value={name} onChange={e => setName(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <Label>Descripción</Label>
+              <Label>{t("common.description")}</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 
             <div className="space-y-1 flex-1 flex flex-col min-h-[200px]">
-              <Label>Contenido</Label>
+              <Label>{t("skillDialog.content")}</Label>
               <Textarea 
                 className="flex-1 font-mono resize-none min-h-[200px]" 
                 value={content} 
@@ -97,7 +99,7 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
             <div className="space-y-2 border p-4 rounded-md">
               <div className="flex items-center gap-2">
                 <Switch checked={allAgents} onCheckedChange={setAllAgents} id="all-agents" />
-                <Label htmlFor="all-agents">Habilitado para todos los agentes</Label>
+                <Label htmlFor="all-agents">{t("mcpDialog.enabledForAll")}</Label>
               </div>
 
               {!allAgents && (
@@ -119,8 +121,8 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
         </div>
         
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!name.trim()}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

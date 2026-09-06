@@ -9,6 +9,7 @@ import { QuotaRing, useAgentQuota } from "@/components/QuotaRing";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/useT";
 
 /** One agent's quota inside the popover. */
 function QuotaRow({ agent }: { agent: AgentConfig }) {
@@ -34,6 +35,7 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
 
 /** Trigger + breakdown. `agent` is who the composer is talking to right now. */
 export function QuotaIndicator({ agent, className }: { agent: AgentConfig; className?: string }) {
+  const t = useT();
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const autoModel = useAppStore(state => state.config.autoModel);
   const refreshQuota = useAppStore(state => state.refreshQuota);
@@ -58,8 +60,8 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
           variant="ghost"
           size="sm"
           className={cn("h-8 gap-1.5 px-2 text-xs", className)}
-          aria-label={`Cuota de ${agent.name}: ${quota.detail}`}
-          title={`Cuota de ${agent.name}: ${quota.detail}`}
+          aria-label={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
+          title={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
         >
           <QuotaRing fraction={quota.fraction} label={quota.label} size={16} />
           {quota.fraction !== null && (
@@ -69,7 +71,7 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold">Cuota por agente</span>
+          <span className="text-xs font-semibold">{t("quota.perAgent")}</span>
           <Button
             type="button"
             variant="ghost"
@@ -79,13 +81,12 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
             onClick={() => void refresh()}
           >
             <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-            Actualizar
+            {t("git.refresh")}
           </Button>
         </div>
         {autoModel && (
           <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-            El modelo lo elige el orquestador, así que se muestra el total que queda sobre el total de
-            todos los modelos de cada agente.
+            {t("quota.autoModelHint")}
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">

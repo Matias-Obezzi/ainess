@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore, selectAllAgents } from "@/store";
+import { useT } from "@/i18n/useT";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.started", label: "task.started" },
@@ -20,17 +21,18 @@ const EVENTS: { value: HookEvent; label: string }[] = [
 ];
 
 const ACTIONS = [
-  { value: "slack", label: "Slack" },
-  { value: "discord", label: "Discord" },
-  { value: "webhook", label: "Webhook" },
-  { value: "command", label: "Comando Local" },
-  { value: "instruct", label: "Instruir Agente" },
-  { value: "notify", label: "Notificación" }
+  { value: "slack", labelKey: "hookDialog.action.slack" },
+  { value: "discord", labelKey: "hookDialog.action.discord" },
+  { value: "webhook", labelKey: "hookDialog.action.webhook" },
+  { value: "command", labelKey: "hookDialog.action.command" },
+  { value: "instruct", labelKey: "hookDialog.action.instruct" },
+  { value: "notify", labelKey: "hookDialog.action.notify" }
 ];
 
 const PRESET_SLACK = "✅ {{agent}} terminó en {{project}}: {{output|300}}";
 
 export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onClose: () => void, hook?: Hook, onSave: (h: Hook) => void }) {
+  const t = useT();
   const isEditing = !!hook;
   const store = useAppStore();
   const agents = useAppStore(selectAllAgents);
@@ -47,7 +49,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
     hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
     hook?.action.type === "webhook" ? hook.action.bodyTemplate : PRESET_SLACK
   );
-  const [title, setTitle] = useState(hook?.action.type === "notify" ? hook.action.title : "Aviso");
+  const [title, setTitle] = useState(hook?.action.type === "notify" ? hook.action.title : t("hookDialog.defaultNotifyTitle"));
   const [program, setProgram] = useState(hook?.action.type === "command" ? hook.action.program : "");
   const [argsStr, setArgsStr] = useState(hook?.action.type === "command" ? hook.action.args.join(" ") : "");
   const [agentId, setAgentId] = useState(hook?.action.type === "instruct" ? hook.action.agentId : "");
@@ -92,25 +94,25 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1e1e1e] border-[#333] text-gray-200">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Hook" : "Nuevo Hook"}</DialogTitle>
+          <DialogTitle>{isEditing ? t("hookDialog.edit") : t("hooks.new")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Nombre</Label>
+              <Label>{t("common.name")}</Label>
               <Input value={name} onChange={e => setName(e.target.value)} required className="bg-[#111] border-[#333]" />
             </div>
             <div className="space-y-2 flex flex-col justify-end">
               <div className="flex items-center space-x-2 pb-2">
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
-                <Label>Habilitado</Label>
+                <Label>{t("hookDialog.enabled")}</Label>
               </div>
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Evento</Label>
+              <Label>{t("hookDialog.event")}</Label>
               <Select value={event} onValueChange={(v) => setEvent(v as HookEvent)}>
                 <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
@@ -119,11 +121,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Acción</Label>
+              <Label>{t("hookDialog.actionLabel")}</Label>
               <Select value={actionType} onValueChange={setActionType}>
                 <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
-                  {ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+                  {ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{t(a.labelKey)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -131,21 +133,21 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Filtro: Agente (Opcional)</Label>
+              <Label>{t("hookDialog.filterAgent")}</Label>
               <Select value={filterAgentId} onValueChange={setFilterAgentId}>
                 <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all">{t("common.all")}</SelectItem>
                   {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Filtro: Proyecto (Opcional)</Label>
+              <Label>{t("hookDialog.filterProject")}</Label>
               <Select value={filterProjectId} onValueChange={setFilterProjectId}>
                 <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-[#1e1e1e] border-[#333]">
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all">{t("common.all")}</SelectItem>
                   {store.config.projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -163,11 +165,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             {actionType === "command" && (
               <>
                 <div className="space-y-2">
-                  <Label>Comando</Label>
+                  <Label>{t("hookDialog.command")}</Label>
                   <Input value={program} onChange={e => setProgram(e.target.value)} required className="bg-[#111] border-[#333]" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Argumentos (separados por espacio)</Label>
+                  <Label>{t("hookDialog.args")}</Label>
                   <Input value={argsStr} onChange={e => setArgsStr(e.target.value)} className="bg-[#111] border-[#333]" />
                 </div>
               </>
@@ -175,7 +177,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
 
             {actionType === "instruct" && (
               <div className="space-y-2">
-                <Label>Agente a instruir</Label>
+                <Label>{t("hookDialog.agentToInstruct")}</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#1e1e1e] border-[#333]">
@@ -187,23 +189,23 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
 
             {actionType === "notify" && (
               <div className="space-y-2">
-                <Label>Título</Label>
+                <Label>{t("hookDialog.title")}</Label>
                 <Input value={title} onChange={e => setTitle(e.target.value)} required className="bg-[#111] border-[#333]" />
               </div>
             )}
 
             {actionType !== "command" && (
               <div className="space-y-2">
-                <Label>Plantilla</Label>
+                <Label>{t("hookDialog.template")}</Label>
                 <Input value={template} onChange={e => setTemplate(e.target.value)} required className="bg-[#111] border-[#333]" />
-                <p className="text-xs text-gray-500">Variables: {'{{event}}'}, {'{{project}}'}, {'{{agent}}'}, {'{{output|300}}'}, {'{{error}}'}, {'{{time}}'}...</p>
+                <p className="text-xs text-gray-500">{t("hookDialog.variables")} {'{{event}}'}, {'{{project}}'}, {'{{agent}}'}, {'{{output|300}}'}, {'{{error}}'}, {'{{time}}'}…</p>
               </div>
             )}
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="ghost" type="button" onClick={onClose} className="text-gray-400 hover:text-white">Cancelar</Button>
-            <Button type="submit" className="bg-[#007acc] hover:bg-[#0098ff] text-white">Guardar</Button>
+            <Button variant="ghost" type="button" onClick={onClose} className="text-gray-400 hover:text-white">{t("common.cancel")}</Button>
+            <Button type="submit" className="bg-[#007acc] hover:bg-[#0098ff] text-white">{t("common.save")}</Button>
           </div>
         </form>
       </DialogContent>
