@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
@@ -36,15 +36,13 @@ function QrCanvas({ value }: { value: string }) {
   return <canvas ref={ref} />;
 }
 
-/** One labelled row of the tunnel card: label on the left, control and its hint on the right. */
+/** One setting: its name, the control and the line that explains it, like the other sections. */
 function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5 px-3 py-3 sm:flex-row sm:gap-4">
-      <div className="w-32 shrink-0 pt-1.5 text-sm font-medium">{label}</div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        {children}
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
-      </div>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-semibold">{label}</label>
+      {children}
+      {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
     </div>
   );
 }
@@ -354,12 +352,16 @@ export function RemoteSection() {
       : null;
 
   return (
-    <div className="flex max-w-2xl flex-col gap-5">
-      <p className="text-sm text-muted-foreground">
-        Abrí la app desde el celular en la misma red WiFi: ves el estado de los agentes y el feed en vivo, mandás prompts
-        o instrucciones, detenés y aprobás delegaciones. La URL lleva un token: no la compartas.
-      </p>
-
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Acceso en la red local</CardTitle>
+          <CardDescription>
+            Abrí la app desde el celular en la misma red WiFi: ves el estado de los agentes y el feed en vivo, mandás
+            prompts o instrucciones, detenés y aprobás delegaciones. La URL lleva un token: no la compartas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
       {initialLoading ? (
         <div className="flex items-center gap-3">
           <Skeleton className="h-5 w-9 rounded-full" />
@@ -369,11 +371,11 @@ export function RemoteSection() {
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Switch checked={status.running} disabled={busy} onCheckedChange={(c) => void toggle(c)} />
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">Acceso remoto en la red local</span>
-            <span className="text-xs text-muted-foreground">
+            <label className="text-sm font-semibold">Acceso remoto en la red local</label>
+            <span className="text-sm text-muted-foreground">
               {status.running ? `Escuchando en ${status.ip}:${remote.port}` : status.error ? `Error: ${status.error}` : "Apagado"}
             </span>
           </div>
@@ -381,15 +383,14 @@ export function RemoteSection() {
         </div>
       )}
 
-      <div className="flex items-end gap-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Puerto</label>
+      <Field label="Puerto" hint="El puerto en el que escucha el servidor local. Cambiarlo lo reinicia.">
+        <div className="flex items-center gap-2">
           <Input className="w-28" value={port} onChange={e => setPort(e.target.value)} onBlur={applyPort} onKeyDown={e => e.key === "Enter" && applyPort()} />
+          <Button variant="outline" size="sm" onClick={() => void regenerateRemoteToken().then(() => toast.success("Token regenerado"))}>
+            <RefreshCw className="mr-1 h-4 w-4" /> Regenerar token
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void regenerateRemoteToken().then(() => toast.success("Token regenerado"))}>
-          <RefreshCw className="mr-1 h-4 w-4" /> Regenerar token
-        </Button>
-      </div>
+      </Field>
 
       {initialLoading ? (
         <div className="flex flex-col items-start gap-4 md:flex-row">
@@ -418,17 +419,19 @@ export function RemoteSection() {
         </div>
       )}
 
-      <Separator />
+        </CardContent>
+      </Card>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="flex items-center gap-2 text-sm font-semibold"><Globe className="h-4 w-4" /> Acceso desde afuera (túnel)</span>
-          <span className="text-xs text-muted-foreground">
-            Publica el servidor local en una URL de internet, para usar la app fuera de tu red. Necesita el acceso local prendido.
-          </span>
-        </div>
-
-        <div className="divide-y divide-border overflow-hidden rounded-lg border">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> Acceso desde afuera (túnel)</CardTitle>
+          <CardDescription>
+            Publica el servidor local en una URL de internet, para usar la app fuera de tu red. Necesita el acceso local
+            prendido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <Field
             label="Proveedor"
             hint={
@@ -632,7 +635,7 @@ export function RemoteSection() {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex w-fit items-center gap-3">
+            <div className="flex w-fit items-center gap-2">
               <Switch
                 checked={remote.tunnel.enabled && tunnel.running}
                 disabled={tunnelBusy || !!tunnelDisabledReason}
@@ -643,7 +646,7 @@ export function RemoteSection() {
                   Túnel público
                   {isFixed && <Badge variant="secondary">URL fija</Badge>}
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   {tunnelBusy ? (
                     <>
                       <RefreshCw className="h-3 w-3 animate-spin" />
@@ -686,7 +689,8 @@ export function RemoteSection() {
             </p>
           </>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
