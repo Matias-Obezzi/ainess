@@ -20,6 +20,22 @@ import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/li
 import { ensureNgrokUpToDate, installNgrok, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokInstallPhase, type NgrokUpdateState } from "@/lib/ngrok-account";
 import { Copy, Download, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 
+/**
+ * QR of one URL. It has to be a component and not an effect on a ref of this section: the canvas
+ * only enters the DOM once the initial load finishes, so an effect keyed on the URL never found it
+ * on a reopen (the URL was already known) and the QR stayed blank.
+ */
+function QrCanvas({ value }: { value: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    QRCode.toCanvas(ref.current, value, { width: 220, margin: 1, color: { dark: "#000000", light: "#ffffff" } }).catch(() => {});
+  }, [value]);
+
+  return <canvas ref={ref} />;
+}
+
 /** One labelled row of the tunnel card: label on the left, control and its hint on the right. */
 function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
@@ -122,8 +138,6 @@ export function RemoteSection() {
   const stopTunnel = useAppStore(state => state.stopTunnel);
   const refreshTunnelStatus = useAppStore(state => state.refreshTunnelStatus);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const tunnelCanvasRef = useRef<HTMLCanvasElement>(null);
   const [port, setPort] = useState(String(remote.port));
   const [installing, setInstalling] = useState<NgrokInstallPhase | null>(null);
   const [tunnelBusy, setTunnelBusy] = useState(false);
@@ -172,16 +186,6 @@ export function RemoteSection() {
     }, 3000);
     return () => clearInterval(t);
   }, [status.running, refreshRemoteStatus, refreshTunnelStatus]);
-
-  useEffect(() => {
-    if (!status.url || !canvasRef.current) return;
-    QRCode.toCanvas(canvasRef.current, status.url, { width: 220, margin: 1, color: { dark: "#000000", light: "#ffffff" } }).catch(() => {});
-  }, [status.url]);
-
-  useEffect(() => {
-    if (!publicUrl || !tunnelCanvasRef.current) return;
-    QRCode.toCanvas(tunnelCanvasRef.current, publicUrl, { width: 220, margin: 1, color: { dark: "#000000", light: "#ffffff" } }).catch(() => {});
-  }, [publicUrl]);
 
   const toggle = async (enabled: boolean) => {
     try {
@@ -399,7 +403,7 @@ export function RemoteSection() {
       ) : status.running && status.url && (
         <div className="flex flex-col items-start gap-4 md:flex-row">
           <div className="self-start rounded-lg bg-white p-2">
-            <canvas ref={canvasRef} />
+            <QrCanvas value={status.url} />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-center gap-2 text-sm font-medium"><Smartphone className="h-4 w-4" /> Escaneá el QR o abrí:</div>
@@ -666,7 +670,7 @@ export function RemoteSection() {
           <>
             <div className="flex flex-col items-start gap-4 md:flex-row">
               <div className="self-start rounded-lg bg-white p-2">
-                <canvas ref={tunnelCanvasRef} />
+                <QrCanvas value={publicUrl} />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className="text-sm font-medium">URL pública:</div>
