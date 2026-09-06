@@ -202,8 +202,6 @@ function HomeView() {
 function ProjectView({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("thread");
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
-  const agents = useAppStore(state => state.config.agents);
-  const runtime = useAppStore(state => state.runtime[projectId]);
   const approvals = useAppStore(state => state.approvals);
   const currentChatId = useAppStore(state => state.currentChatId);
 
@@ -233,18 +231,6 @@ function ProjectView({ projectId }: { projectId: string }) {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold truncate">{project.name}</span>
-        {/* One dot per agent with its live status; tapping it opens the Agentes tab. */}
-        <button
-          type="button"
-          className="ml-auto flex h-10 items-center gap-1.5 rounded-md px-2 hover:bg-accent"
-          aria-label="Estado de los agentes"
-          title="Estado de los agentes"
-          onClick={() => selectTab("agents")}
-        >
-          {agents.map(agent => (
-            <StatusDot key={agent.id} status={runtime?.[agent.id]?.status ?? "idle"} />
-          ))}
-        </button>
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col">
