@@ -16,6 +16,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
 import { useQuotaSync } from "@/hooks/useQuotaSync";
+import { useRepoSync } from "@/hooks/useRepoSync";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 
@@ -49,6 +50,7 @@ export default function App() {
   useRemoteSync();
   useNoDefaultContextMenu();
   useQuotaSync();
+  useRepoSync();
 
   // Ctrl+, opens Configuración, Ctrl+K the search palette, Ctrl+B toggles the sidebar
   // and Ctrl+` the terminals dock.

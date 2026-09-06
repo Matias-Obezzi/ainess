@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, DropdownActionItems, type MenuAction } from "@/components/menu-actions";
 import { ProjectDialog } from "@/components/ProjectDialog";
+import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
 import { island } from "@/components/ui/island";
 import { toast } from "@/components/ui/toast";
@@ -231,44 +232,47 @@ export function Sidebar() {
               <ContextMenu>
                 <ContextMenuTrigger asChild>
                   <div
-                    className={`group flex items-center gap-1 rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
+                    className={`group flex flex-col rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
                     onClick={() => openProject(p.id, null)}
                     // Right clicking a row selects it first, the way a file explorer does.
                     onContextMenu={() => openProject(p.id, null)}
                   >
-                    <button
-                      type="button"
-                      className="p-0.5 text-muted-foreground hover:text-foreground"
-                      title={collapsed ? "Expandir" : "Colapsar"}
-                      onClick={e => {
-                        e.stopPropagation();
-                        toggleSidebarProject(p.id);
-                      }}
-                    >
-                      {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
-                    <span className="truncate flex-1 font-medium">{p.name}</span>
-                    {running > 0 && (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/30">
-                        {running}
-                      </Badge>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
-                          title="Opciones del proyecto"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                        <DropdownActionItems actions={projectActions(p)} />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="p-0.5 text-muted-foreground hover:text-foreground"
+                        title={collapsed ? "Expandir" : "Colapsar"}
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleSidebarProject(p.id);
+                        }}
+                      >
+                        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
+                      <span className="truncate flex-1 font-medium">{p.name}</span>
+                      {running > 0 && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/30">
+                          {running}
+                        </Badge>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                            title="Opciones del proyecto"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                          <DropdownActionItems actions={projectActions(p)} />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <GitStatusLine projectId={p.id} />
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-56">

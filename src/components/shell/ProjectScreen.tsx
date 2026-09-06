@@ -3,6 +3,7 @@ import { useAppStore, selectProject } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
+import { GitBranchButton } from "@/components/GitStatus";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
@@ -47,6 +48,7 @@ export function ProjectScreen() {
         <span className="text-xs text-muted-foreground truncate max-w-[280px]" title={project.workspaceDir}>
           {project.workspaceDir}
         </span>
+        <GitBranchButton projectId={project.id} />
 
         <Badge variant={running > 0 ? "default" : "outline"} className="ml-auto text-[10px]">
           {running} trabajando
