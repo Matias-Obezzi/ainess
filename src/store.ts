@@ -8,6 +8,10 @@ import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
+import { mergeConfig } from "@/lib/config-merge";
+
+/** The config as this process last loaded or saved it: the base for the three-way merge on save. */
+let lastSavedConfig: AppConfig | null = null;
 
 /** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
 export type Screen = "home" | "project";
@@ -596,7 +600,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   saveConfig: async () => {
-    await getTransport().saveConfig(get().config);
+    // Several processes share the file (app, `ais run`, `ais serve`): merge with what is on disk
+    // so a project or chat another process added since we loaded is not wiped by our copy.
+    let disk: AppConfig | null = null;
+    try { disk = await getTransport().loadConfig(); } catch { /* unreadable: our copy wins */ }
+    const merged = mergeConfig(disk, get().config, lastSavedConfig);
+    await getTransport().saveConfig(merged);
+    lastSavedConfig = merged;
+    if (merged !== get().config) set({ config: merged });
   },
 
   addProject: (project) => {
@@ -1086,6 +1097,7 @@ async function runInit(): Promise<void> {
     const prefs = loadUiPrefs();
     const lastProjectValid = !!config.lastProjectId && config.projects.some(p => p.id === config.lastProjectId);
     const screen: Screen = lastProjectValid ? "project" : "home";
+    lastSavedConfig = config;
     set({
       config,
       runtime,
