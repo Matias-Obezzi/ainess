@@ -255,12 +255,34 @@ export async function attachRemote(): Promise<void> {
   await getTransport().onRemoteCommand(cmd => handleRemoteCommand(cmd.action, cmd.payload ?? {}));
 }
 
-export async function startRemote(portOverride?: number): Promise<RemoteStatus> {
-  await attachRemote();
-  // The boards are read lazily when a project is opened, and `ais serve` opens none: without this
-  // the phone would get an empty Tasks tab from a CLI server.
+/**
+ * The boards are read lazily when a project is opened, and `ais serve` opens none: without this
+ * the phone would get an empty Tasks tab from a CLI server.
+ */
+async function loadEveryBoard(): Promise<void> {
   const store = useAppStore.getState();
   await Promise.all(store.config.projects.map(p => store.loadTasks(p.id).catch(() => {})));
+}
+
+/**
+ * Wires this process to a server that is already listening instead of starting a second one.
+ *
+ * The server lives in the backend, so it survives a reload of the frontend — but `attached` and
+ * `running` are module state that comes back false, and `schedulePush` does nothing while
+ * `running` is false. Adopting the server is what keeps the phone updated: without it the page
+ * sat on the snapshot from before the reload and never saw, say, a project created afterwards.
+ */
+export async function adoptRemote(): Promise<void> {
+  if (running) return;
+  await attachRemote();
+  await loadEveryBoard();
+  running = true;
+  await getTransport().remotePushState(buildSnapshot()).catch(() => {});
+}
+
+export async function startRemote(portOverride?: number): Promise<RemoteStatus> {
+  await attachRemote();
+  await loadEveryBoard();
   const { remote } = useAppStore.getState().config;
   const port = portOverride ?? remote.port;
   const info = await getTransport().remoteStart(port, remote.token);

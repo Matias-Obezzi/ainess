@@ -769,6 +769,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   refreshRemoteStatus: async () => {
     const status = await getTransport().remoteStatus();
+    // The server outlives a reload of the frontend, and this process comes back not knowing it:
+    // adopt it here, or it would never push another snapshot to the phone (see adoptRemote).
+    if (status.running) await remote.adoptRemote().catch(() => {});
     set(state => ({ remoteStatus: { ...status, error: status.running ? undefined : state.remoteStatus.error } }));
   },
   regenerateRemoteToken: async () => {
