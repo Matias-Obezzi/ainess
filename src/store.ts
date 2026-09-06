@@ -1369,13 +1369,13 @@ export function selectRunningCount(state: AppState, projectId?: string): number 
   return count;
 }
 
+/** A stable empty array, so `selectTasks` never makes a subscribed component re-render. */
+const EMPTY_TASKS: Task[] = [];
+
 export function selectTasks(state: AppState, projectId: string | null | undefined): Task[] {
   if (!projectId) return EMPTY_TASKS;
   return state.tasks[projectId] ?? EMPTY_TASKS;
 }
-
-/** A stable empty array, so `selectTasks` never makes a subscribed component re-render. */
-const EMPTY_TASKS: Task[] = [];
 
 export function selectProject(state: AppState, id: string | null | undefined): Project | undefined {
   if (!id) return undefined;
