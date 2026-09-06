@@ -81,8 +81,34 @@ export function OrchestratorThread() {
     return () => clearInterval(interval);
   }, [hasRunning, stickToBottom]);
 
+  /**
+   * A change of height (the phone's keyboard or URL bar, a rotation, the dock being resized)
+   * moves the content under the viewport and the browser fires a scroll for it. Read as a user
+   * scrolling up, that unpinned the thread and left the conversation jumping around mid-task, so
+   * the scroll that belongs to a resize is ignored and the bottom is taken back.
+   */
+  const stickRef = useRef(stickToBottom);
+  stickRef.current = stickToBottom;
+  const lastHeight = useRef(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      lastHeight.current = el.clientHeight;
+      if (stickRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const onScroll = () => {
     if (!scrollRef.current) return;
+    // A frame fires the scroll before the observer above runs, so telling the two apart cannot
+    // wait for it: a different height means this scroll came with the resize, not from a finger.
+    if (scrollRef.current.clientHeight !== lastHeight.current) {
+      lastHeight.current = scrollRef.current.clientHeight;
+      return;
+    }
     const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
     const atBottom = scrollHeight - scrollTop - clientHeight < 40;
     setStickToBottom(atBottom);

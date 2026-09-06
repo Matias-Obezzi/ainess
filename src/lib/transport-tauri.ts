@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { Transport } from "./transport";
-import { ipc, onRunOutput, onRunExit } from "./tauri";
+import { ipc, listenOnce, onRunOutput, onRunExit } from "./tauri";
 import type { PtyExitEvent, PtyOutputEvent, ShellInfo, StorageStat } from "@/types";
 
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
@@ -65,8 +64,7 @@ export const tauriTransport: Transport = {
   remoteStatus: async () => invoke<{ running: boolean; url?: string; ip?: string; clients: number }>("remote_status"),
   remotePushState: async (snapshot) => invoke<void>("remote_push_state", { snapshot }),
   onRemoteCommand: async (h) =>
-    listen<{ id: string; action: string; payload: Record<string, unknown> }>("remote-command", async (ev) => {
-      const cmd = ev.payload;
+    listenOnce<{ id: string; action: string; payload: Record<string, unknown> }>("remote-command", async (cmd) => {
       let result: Record<string, unknown>;
       try {
         result = await h(cmd);
@@ -100,6 +98,6 @@ export const tauriTransport: Transport = {
   ptyResize: async (id, cols, rows) => invoke<void>("pty_resize", { id, cols, rows }),
   ptyKill: async (id) => invoke<void>("pty_kill", { id }),
   ptyListShells: async () => invoke<ShellInfo[]>("pty_list_shells"),
-  onPtyOutput: async (h) => listen<PtyOutputEvent>("pty-output", ev => h(ev.payload)),
-  onPtyExit: async (h) => listen<PtyExitEvent>("pty-exit", ev => h(ev.payload)),
+  onPtyOutput: async (h) => listenOnce<PtyOutputEvent>("pty-output", h),
+  onPtyExit: async (h) => listenOnce<PtyExitEvent>("pty-exit", h),
 };
