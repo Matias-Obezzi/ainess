@@ -333,6 +333,17 @@ export interface ChatMessage {
   status?: "pending" | "done" | "error";
 }
 
+/** What one folder of the app's own storage holds (see `Transport.storageStat`). */
+export interface StorageStat {
+  /** Absolute path of the folder that was measured. */
+  path: string;
+  exists: boolean;
+  /** Whether a file could actually be created in it. Always false when it does not exist. */
+  writable: boolean;
+  files: number;
+  bytes: number;
+}
+
 export interface BinaryInfo {
   path: string;
   version?: string | null;

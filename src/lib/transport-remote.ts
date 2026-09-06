@@ -29,6 +29,8 @@ export const remoteTransport: Transport = {
   },
   readHomeFile: async () => null,
   readFileAbs: async () => null,
+  storageStat: async () => null,
+  portAvailable: async () => null,
   remoteStart: async () => { throw new Error(NOT_AVAILABLE); },
   remoteStop: async () => {},
   remoteStatus: async () => ({ running: false, clients: 0 }),

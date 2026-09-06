@@ -1,12 +1,13 @@
 import { Transport } from "./transport";
 import { nodeRemote } from "./remote-node";
 import { nodeTunnel } from "./tunnel-node";
-import type { AppConfig, BinaryInfo, RunExitEvent, RunOutputEvent, SpawnOptions } from "@/types";
+import type { AppConfig, BinaryInfo, RunExitEvent, RunOutputEvent, SpawnOptions, StorageStat } from "@/types";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import * as readline from "node:readline";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import * as net from "node:net";
 
 const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app de escritorio";
 
@@ -19,6 +20,31 @@ const exitHandlers = new Set<(e: RunExitEvent) => void>();
 function getConfigPath() {
   const appData = process.env.APPDATA ?? os.homedir();
   return path.join(appData, "com.ainess", "config.json");
+}
+
+/** Deep enough for `history/` and `tasks/`, shallow enough that a link loop cannot hang the CLI. */
+const STAT_MAX_DEPTH = 4;
+const WRITE_PROBE = ".ainess-write-check";
+
+/** Files and bytes under `dir`, recursively. Anything unreadable is skipped. */
+function walkStorage(dir: string, depth: number, acc: { files: number; bytes: number }): void {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (depth < STAT_MAX_DEPTH) walkStorage(full, depth + 1, acc);
+    } else if (entry.isFile()) {
+      try {
+        acc.bytes += fs.statSync(full).size;
+        acc.files += 1;
+      } catch { /* it vanished between the listing and the stat */ }
+    }
+  }
 }
 
 /** Same folder Tauri's `app_log_dir` points at: `%LOCALAPPDATA%\com.ainess\logs`. */
@@ -445,6 +471,33 @@ export const nodeTransport: Transport = {
       return null;
     }
   },
+
+  storageStat: async (scope: "logs" | "config", relativePath?: string): Promise<StorageStat | null> => {
+    if (relativePath?.includes("..")) return null;
+    const base = scope === "logs" ? getLogsDir() : path.dirname(getConfigPath());
+    const dir = relativePath ? path.join(base, relativePath) : base;
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+      return { path: dir, exists: false, writable: false, files: 0, bytes: 0 };
+    }
+    const acc = { files: 0, bytes: 0 };
+    walkStorage(dir, 0, acc);
+    // A probe file, removed right away: the diagnostics never leave anything behind.
+    let writable = false;
+    const probe = path.join(dir, WRITE_PROBE);
+    try {
+      fs.writeFileSync(probe, "");
+      writable = true;
+      fs.unlinkSync(probe);
+    } catch { /* not writable */ }
+    return { path: dir, exists: true, writable, files: acc.files, bytes: acc.bytes };
+  },
+
+  portAvailable: (port: number) => new Promise<boolean | null>(resolve => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => probe.close(() => resolve(true)));
+    probe.listen(port, "0.0.0.0");
+  }),
 
   ...nodeRemote,
   ...nodeTunnel,

@@ -25,7 +25,7 @@ export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "about";
+export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -92,6 +92,10 @@ export interface AppState {
   navIndex: number;
   /** Whether the Ctrl+K search palette is open. Not persisted. */
   searchOpen: boolean;
+  /** Whether the Ctrl+/ shortcuts dialog is open. Not persisted. */
+  shortcutsOpen: boolean;
+  /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
+  focusedTaskId: string | null;
   openHome(): void;
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
   openProject(projectId: string, chatId?: string | null): void;
@@ -105,6 +109,9 @@ export interface AppState {
   toggleSidebarProject(projectId: string): void;
   toggleSidebar(open?: boolean): void;
   toggleSearch(open?: boolean): void;
+  toggleShortcuts(open?: boolean): void;
+  /** Asks the task board to open (or close, with null) one task's detail. */
+  focusTask(taskId: string | null): void;
   goBack(): void;
   goForward(): void;
 
@@ -391,7 +398,7 @@ const defaultUiPrefs: UiPrefs = {
 
 const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
 
-const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote", "about"];
+const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote", "diagnostics", "about"];
 
 /** Old builds stored "settings" as a screen and "resources" as a settings tab; both were removed. */
 function sanitizeSettingsSection(value: unknown): SettingsSection {
@@ -539,6 +546,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,
   searchOpen: false,
+  shortcutsOpen: false,
+  focusedTaskId: null,
   terminals: [],
   activeTerminalId: null,
   shells: [],
@@ -625,6 +634,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleSearch: (open) => {
     set(s => ({ searchOpen: open ?? !s.searchOpen }));
+  },
+
+  toggleShortcuts: (open) => {
+    set(s => ({ shortcutsOpen: open ?? !s.shortcutsOpen }));
+  },
+
+  focusTask: (taskId) => {
+    set({ focusedTaskId: taskId });
   },
 
   goBack: () => {
