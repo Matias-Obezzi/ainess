@@ -17,15 +17,24 @@ import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/compo
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
 import { RemoteSection } from "@/components/settings/RemoteSection";
 import { AboutSection } from "@/components/settings/AboutSection";
+import { useT } from "@/i18n/useT";
 
 /** Sidebar groups, in the order they are shown. */
-export const SETTINGS_GROUPS = ["General", "Agentes", "Automatización", "Acceso", "Aplicación"] as const;
+export const SETTINGS_GROUPS = ["general", "agents", "automation", "access", "app"] as const;
 export type SettingsGroup = (typeof SETTINGS_GROUPS)[number];
+
+export const SETTINGS_GROUP_KEY: Record<SettingsGroup, string> = {
+  general: "settings.group.general",
+  agents: "settings.group.agents",
+  automation: "settings.group.automation",
+  access: "settings.group.access",
+  app: "settings.group.app",
+};
 
 export interface SettingsSectionDef {
   id: SettingsSection;
-  label: string;
-  help: string;
+  labelKey: string;
+  helpKey: string;
   icon: LucideIcon;
   /** Which block of the sidebar it belongs to. */
   group: SettingsGroup;
@@ -33,7 +42,7 @@ export interface SettingsSectionDef {
    * The individual options inside the section, by their real name in the UI. The search returns
    * these as results of their own, so "puerto" lands on the option and not just on the section.
    */
-  options: string[];
+  optionKeys: string[];
   /** Body of the section. */
   component: ComponentType;
   /** Header actions (buttons) rendered right of the title, before the close button. */
@@ -44,17 +53,20 @@ export interface SettingsSectionDef {
 
 const PassThrough = ({ children }: { children: ReactNode }) => children;
 
+/** Search keys of a section's options, named after the option they stand for. */
+const options = (section: SettingsSection, names: string[]) => names.map(n => `settings.option.${section}.${n}`);
+
 export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
-  { id: "general", label: "General", help: "Segundo plano, notificaciones y orquestación.", group: "General", options: ["Seguir en la bandeja al cerrar la ventana", "Notificar cuando un agente necesita permiso", "Notificar cuando termina una tarea", "Buscar actualizaciones al iniciar", "Registrar detalles (debug)", "Rondas máximas por tarea", "Auto-selección de modelos por el Orquestador", "Aprobar todas las delegaciones"], icon: Settings2, component: GeneralSection },
-  { id: "agents", label: "Agentes", help: "Qué IAs hay instaladas y las formaciones para armar equipos.", group: "Agentes", options: ["IAs instaladas", "Autodetectar las IAs instaladas", "Versión del CLI", "Cuota por proveedor", "Ruta del ejecutable", "Formaciones", "Nueva formación", "Formación predeterminada"], icon: Bot, component: AgentsSection, actions: AgentsSectionActions, provider: AgentsSectionProvider },
-  { id: "profile", label: "Perfil", help: "Información que se inyecta en el prompt del sistema.", group: "Agentes", options: ["Tu nombre", "Sobre vos (rol, seniority, contexto)", "Preferencias de trabajo"], icon: User, component: ProfileSection, actions: ProfileSectionActions, provider: ProfileSectionProvider },
-  { id: "presets", label: "Órdenes", help: "Prompts predefinidos para lanzar tareas rápido.", group: "Automatización", options: ["Órdenes rápidas", "Nueva orden"], icon: ListChecks, component: PresetsSection, actions: PresetsSectionActions, provider: PresetsSectionProvider },
-  { id: "skills", label: "Skills", help: "Habilidades reutilizables para los agentes.", group: "Automatización", options: ["Skills de los agentes", "Skills sugeridas"], icon: Sparkles, component: SkillsSection, actions: SkillsSectionActions, provider: SkillsSectionProvider },
-  { id: "mcp", label: "MCP", help: "Servidores MCP disponibles para los agentes.", group: "Automatización", options: ["Servidores MCP", "MCP sugeridos"], icon: Plug, component: McpSection, actions: McpSectionActions, provider: McpSectionProvider },
-  { id: "hooks", label: "Hooks", help: "Acciones automáticas en eventos del orquestador.", group: "Automatización", options: ["Hooks por evento", "Acción: Slack", "Acción: comando", "Filtro por agente o proyecto"], icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
-  { id: "context", label: "Contexto", help: "Texto compartido agregado al system prompt de todos los agentes.", group: "Agentes", options: ["Contexto compartido entre todos los agentes"], icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
-  { id: "remote", label: "Remoto", help: "Acceso desde el celular en la misma red local.", group: "Acceso", options: ["Acceso remoto en la red local", "Puerto", "Regenerar token", "Código QR", "Túnel público", "Proveedor del túnel", "Tipo de dominio", "Dominio", "Authtoken de ngrok", "API key de ngrok", "Instalar ngrok", "Volver a detectar"], icon: Smartphone, component: RemoteSection },
-  { id: "about", label: "Acerca de", help: "Versión, actualizaciones y archivos de log.", group: "Aplicación", options: ["Versión de la app", "Buscar actualizaciones", "Abrir la carpeta de logs", "Copiar diagnóstico", "Repositorio"], icon: Info, component: AboutSection },
+  { id: "general", labelKey: "settings.section.general", helpKey: "settings.help.general", group: "general", optionKeys: options("general", ["tray", "notifyApprovals", "notifyResults", "updateCheck", "debugLog", "maxRounds", "autoModel", "approveDelegations", "language"]), icon: Settings2, component: GeneralSection },
+  { id: "agents", labelKey: "settings.section.agents", helpKey: "settings.help.agents", group: "agents", optionKeys: options("agents", ["installed", "detect", "cliVersion", "quota", "binaryPath", "formations", "newFormation", "defaultFormation"]), icon: Bot, component: AgentsSection, actions: AgentsSectionActions, provider: AgentsSectionProvider },
+  { id: "profile", labelKey: "settings.section.profile", helpKey: "settings.help.profile", group: "agents", optionKeys: options("profile", ["name", "about", "preferences"]), icon: User, component: ProfileSection, actions: ProfileSectionActions, provider: ProfileSectionProvider },
+  { id: "presets", labelKey: "settings.section.presets", helpKey: "settings.help.presets", group: "automation", optionKeys: options("presets", ["quickOrders", "newOrder"]), icon: ListChecks, component: PresetsSection, actions: PresetsSectionActions, provider: PresetsSectionProvider },
+  { id: "skills", labelKey: "settings.section.skills", helpKey: "settings.help.skills", group: "automation", optionKeys: options("skills", ["agentSkills", "suggested"]), icon: Sparkles, component: SkillsSection, actions: SkillsSectionActions, provider: SkillsSectionProvider },
+  { id: "mcp", labelKey: "settings.section.mcp", helpKey: "settings.help.mcp", group: "automation", optionKeys: options("mcp", ["servers", "suggested"]), icon: Plug, component: McpSection, actions: McpSectionActions, provider: McpSectionProvider },
+  { id: "hooks", labelKey: "settings.section.hooks", helpKey: "settings.help.hooks", group: "automation", optionKeys: options("hooks", ["byEvent", "slackAction", "commandAction", "filter"]), icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
+  { id: "context", labelKey: "settings.section.context", helpKey: "settings.help.context", group: "agents", optionKeys: options("context", ["shared"]), icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
+  { id: "remote", labelKey: "settings.section.remote", helpKey: "settings.help.remote", group: "access", optionKeys: options("remote", ["lan", "port", "token", "qr", "tunnel", "tunnelProvider", "domainType", "domain", "ngrokAuthtoken", "ngrokApiKey", "installNgrok", "detectAgain"]), icon: Smartphone, component: RemoteSection },
+  { id: "about", labelKey: "settings.section.about", helpKey: "settings.help.about", group: "app", optionKeys: options("about", ["version", "checkUpdates", "openLogs", "copyDiagnostics", "repository"]), icon: Info, component: AboutSection },
 ];
 
 /** Lowercase and without accents, so "orquestacion" finds "orquestación". */
@@ -64,6 +76,7 @@ function normalize(text: string): string {
 
 /** Configuración, as a modal with an internal sidebar of sections (replaces the old settings screen). */
 export function SettingsDialog() {
+  const t = useT();
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const settingsSection = useAppStore(state => state.settingsSection);
   const openSettings = useAppStore(state => state.openSettings);
@@ -84,17 +97,20 @@ export function SettingsDialog() {
     if (!needle) return [];
     const out: Array<{ key: string; section: SettingsSectionDef; label: string; sub: string }> = [];
     for (const section of SETTINGS_SECTIONS) {
-      if (normalize(`${section.group} ${section.label} ${section.help}`).includes(needle)) {
-        out.push({ key: `s:${section.id}`, section, label: section.label, sub: section.group });
+      const group = t(SETTINGS_GROUP_KEY[section.group]);
+      const sectionLabel = t(section.labelKey);
+      if (normalize(`${group} ${sectionLabel} ${t(section.helpKey)}`).includes(needle)) {
+        out.push({ key: `s:${section.id}`, section, label: sectionLabel, sub: group });
       }
-      for (const option of section.options) {
+      for (const optionKey of section.optionKeys) {
+        const option = t(optionKey);
         if (normalize(option).includes(needle)) {
-          out.push({ key: `${section.id}:${option}`, section, label: option, sub: section.label });
+          out.push({ key: `${section.id}:${optionKey}`, section, label: option, sub: sectionLabel });
         }
       }
     }
     return out.slice(0, 24);
-  }, [query]);
+  }, [query, t]);
 
   const go = (id: SettingsSection) => {
     openSettings(id);
@@ -122,22 +138,22 @@ export function SettingsDialog() {
                       if (e.key === "Escape") closeSearch();
                       else if (e.key === "Enter" && results[0]) go(results[0].section.id);
                     }}
-                    placeholder="Buscar una opción…"
+                    placeholder={t("settings.searchPlaceholder")}
                     className="h-8 px-2.5"
                   />
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Cerrar la búsqueda" onClick={closeSearch}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={t("settings.closeSearch")} onClick={closeSearch}>
                     <X className="h-4 w-4" />
                   </Button>
                 </>
               ) : (
                 <>
-                  <DialogTitle className="font-semibold text-sm">Configuración</DialogTitle>
+                  <DialogTitle className="font-semibold text-sm">{t("settings.title")}</DialogTitle>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="ml-auto h-7 w-7"
-                    aria-label="Buscar una opción"
-                    title="Buscar una opción"
+                    aria-label={t("settings.searchOption")}
+                    title={t("settings.searchOption")}
                     onClick={() => setSearching(true)}
                   >
                     <Search className="h-4 w-4" />
@@ -148,7 +164,7 @@ export function SettingsDialog() {
             <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
               {query ? (
                 results.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">Nada coincide con “{query}”.</p>
+                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">{t("settings.noMatches", { query })}</p>
                 ) : (
                   results.map(result => (
                     <button
@@ -169,7 +185,7 @@ export function SettingsDialog() {
                   return (
                     <div key={group} className="flex flex-col gap-1">
                       <span className="mt-2 px-3 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground/70 first:mt-0">
-                        {group}
+                        {t(SETTINGS_GROUP_KEY[group])}
                       </span>
                       {inGroup.map(section => {
                         const Icon = section.icon;
@@ -186,7 +202,7 @@ export function SettingsDialog() {
                             )}
                           >
                             <Icon className="h-4 w-4 shrink-0" />
-                            {section.label}
+                            {t(section.labelKey)}
                           </button>
                         );
                       })}
@@ -201,13 +217,13 @@ export function SettingsDialog() {
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6">
                 <div className="flex flex-col justify-center">
-                  <h3 className="font-semibold text-sm">{active.label}</h3>
-                  <p className="text-xs text-muted-foreground">{active.help}</p>
+                  <h3 className="font-semibold text-sm">{t(active.labelKey)}</h3>
+                  <p className="text-xs text-muted-foreground">{t(active.helpKey)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {Actions && <Actions />}
                   {Actions && <Separator orientation="vertical" className="h-6" />}
-                  <Button variant="ghost" size="icon" aria-label="Cerrar" onClick={closeSettings}>
+                  <Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={closeSettings}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>

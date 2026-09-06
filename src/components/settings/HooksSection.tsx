@@ -8,16 +8,19 @@ import { HookDialog } from "@/components/HookDialog";
 import { Hook } from "@/types";
 import { Webhook } from "lucide-react";
 import { createDialogContext } from "@/components/settings/section-context";
+import { useT } from "@/i18n/useT";
 
 const HookDialogCtx = createDialogContext<Hook>();
 export const HooksSectionProvider = HookDialogCtx.Provider;
 
 export function HooksSectionActions() {
+  const t = useT();
   const { openCreate } = HookDialogCtx.useDialogState();
-  return <Button size="sm" onClick={openCreate}>Nuevo hook</Button>;
+  return <Button size="sm" onClick={openCreate}>{t("hooks.new")}</Button>;
 }
 
 export function HooksSection() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const upsertHook = useAppStore(state => state.upsertHook);
   const removeHook = useAppStore(state => state.removeHook);
@@ -39,9 +42,9 @@ export function HooksSection() {
       <>
         <EmptyState
           icon={Webhook}
-          title="Todavía no hay hooks"
-          description="Un hook dispara una acción (Slack, webhook, comando…) cuando pasa algo en el orquestador."
-          action={{ label: "Creá tu primer hook", onClick: openCreate }}
+          title={t("hooks.empty.title")}
+          description={t("hooks.empty.body")}
+          action={{ label: t("hooks.empty.action"), onClick: openCreate }}
         />
         {dialog}
       </>
@@ -58,17 +61,17 @@ export function HooksSection() {
                 <span>{hook.name}</span>
                 <Switch checked={hook.enabled} onCheckedChange={(v) => toggleHook(hook.id, v)} />
               </CardTitle>
-              <CardDescription>Evento: {hook.event}</CardDescription>
+              <CardDescription>{t("hooks.event", { event: hook.event })}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-sm">
-                <strong>Acción:</strong> {hook.action.type}
+                <strong>{t("hooks.action")}</strong> {hook.action.type}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => testHook(hook.id)}>Probar</Button>
-              <Button variant="outline" size="sm" onClick={() => openEdit(hook)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("el hook", hook.name).then(ok => ok && removeHook(hook.id))}>Eliminar</Button>
+              <Button variant="outline" size="sm" onClick={() => testHook(hook.id)}>{t("hooks.test")}</Button>
+              <Button variant="outline" size="sm" onClick={() => openEdit(hook)}>{t("common.edit")}</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete(t("hooks.delete"), hook.name).then(ok => ok && removeHook(hook.id))}>{t("common.delete")}</Button>
             </CardFooter>
           </Card>
         ))}

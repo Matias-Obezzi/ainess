@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PresetDialog } from "@/components/PresetDialog";
 import { ListChecks } from "lucide-react";
 import { createDialogContext } from "@/components/settings/section-context";
+import { useT } from "@/i18n/useT";
 
 interface Preset {
   id: string;
@@ -20,11 +21,13 @@ const PresetDialogCtx = createDialogContext<Preset>();
 export const PresetsSectionProvider = PresetDialogCtx.Provider;
 
 export function PresetsSectionActions() {
+  const t = useT();
   const { openCreate } = PresetDialogCtx.useDialogState();
-  return <Button size="sm" onClick={openCreate}>Nueva orden</Button>;
+  return <Button size="sm" onClick={openCreate}>{t("presets.new")}</Button>;
 }
 
 export function PresetsSection() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const agents = useAppStore(selectAllAgents);
   const updateConfig = useAppStore(state => state.updateConfig);
@@ -35,9 +38,9 @@ export function PresetsSection() {
       <>
         <EmptyState
           icon={ListChecks}
-          title="Todavía no hay órdenes predefinidas"
-          description="Una orden es un prompt guardado para lanzar una tarea rápido, con agente y modelo fijos."
-          action={{ label: "Creá tu primera orden", onClick: openCreate }}
+          title={t("presets.empty.title")}
+          description={t("presets.empty.body")}
+          action={{ label: t("presets.empty.action"), onClick: openCreate }}
         />
         <PresetDialog open={open} onOpenChange={(o) => !o && close()} preset={editing} />
       </>
@@ -57,16 +60,16 @@ export function PresetsSection() {
               <CardContent>
                 <p className="whitespace-pre-wrap text-sm">{preset.prompt}</p>
                 <div className="mt-2 flex gap-2">
-                  {targetAgent && <Badge variant="outline">Agente: {targetAgent.name}</Badge>}
-                  {preset.model && <Badge variant="outline">Modelo: {preset.model}</Badge>}
+                  {targetAgent && <Badge variant="outline">{t("presets.agent", { name: targetAgent.name })}</Badge>}
+                  {preset.model && <Badge variant="outline">{t("presets.model", { model: preset.model })}</Badge>}
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEdit(preset)}>Editar</Button>
-                <Button variant="destructive" size="sm" onClick={() => void confirmDelete("la orden", preset.name).then(ok => {
+                <Button variant="outline" size="sm" onClick={() => openEdit(preset)}>{t("common.edit")}</Button>
+                <Button variant="destructive" size="sm" onClick={() => void confirmDelete(t("presets.delete"), preset.name).then(ok => {
                   if (!ok) return;
                   updateConfig({ presets: config.presets.filter(p => p.id !== preset.id) });
-                })}>Eliminar</Button>
+                })}>{t("common.delete")}</Button>
               </CardFooter>
             </Card>
           );

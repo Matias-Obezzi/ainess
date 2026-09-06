@@ -13,6 +13,7 @@ import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 import { McpServer } from "@/types";
 import { Plug, MoreHorizontal } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
+import { useT } from "@/i18n/useT";
 
 const McpDialogCtx = createDialogContext<McpServer>();
 const SuggestedCtx = createToggleContext();
@@ -26,6 +27,7 @@ export function McpSectionProvider({ children }: { children: ReactNode }) {
 }
 
 export function McpSectionActions() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const { openCreate } = McpDialogCtx.useDialogState();
   const { show } = SuggestedCtx.useToggleState();
@@ -33,9 +35,9 @@ export function McpSectionActions() {
   const handleSyncMcp = async () => {
     const res = await syncMcpToAntigravity(config.mcpServers);
     if (res.success) {
-      toast.success(`Sincronización exitosa: ${res.added} agregados, ${res.removed} removidos`);
+      toast.success(t("mcp.syncDone", { added: res.added, removed: res.removed }));
     } else {
-      toast.error(res.error || "Error sincronizando MCP");
+      toast.error(res.error || t("mcp.syncFailed"));
     }
   };
 
@@ -48,16 +50,17 @@ export function McpSectionActions() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={show}>Sugeridos</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void handleSyncMcp()}>Sincronizar con Antigravity</DropdownMenuItem>
+          <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void handleSyncMcp()}>{t("mcp.syncWithAntigravity")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button size="sm" onClick={openCreate}>Nuevo MCP</Button>
+      <Button size="sm" onClick={openCreate}>{t("mcp.new")}</Button>
     </div>
   );
 }
 
 export function McpSection() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const agents = useAppStore(selectAllAgents);
   const removeMcpServer = useAppStore(state => state.removeMcpServer);
@@ -76,9 +79,9 @@ export function McpSection() {
       <>
         <EmptyState
           icon={Plug}
-          title="Todavía no hay servidores MCP"
-          description="Un servidor MCP le da a los agentes herramientas extra: archivos, GitHub, búsqueda web, etc."
-          action={{ label: "Agregar sugerido", onClick: showSuggested }}
+          title={t("mcp.empty.title")}
+          description={t("mcp.empty.body")}
+          action={{ label: t("mcp.empty.action"), onClick: showSuggested }}
         />
         {dialogs}
       </>
@@ -97,7 +100,7 @@ export function McpSection() {
             <CardContent>
               <div className="flex flex-wrap gap-1">
                 {server.enabledFor === "all" ? (
-                  <Badge variant="secondary">Todos</Badge>
+                  <Badge variant="secondary">{t("common.all")}</Badge>
                 ) : (
                   server.enabledFor.map(id => {
                     const agent = agents.find(a => a.id === id);
@@ -107,8 +110,8 @@ export function McpSection() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => openEdit(server)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("el servidor MCP", server.name).then(ok => ok && removeMcpServer(server.id))}>Eliminar</Button>
+              <Button variant="outline" size="sm" onClick={() => openEdit(server)}>{t("common.edit")}</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete(t("mcp.delete"), server.name).then(ok => ok && removeMcpServer(server.id))}>{t("common.delete")}</Button>
             </CardFooter>
           </Card>
         ))}

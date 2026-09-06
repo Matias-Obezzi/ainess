@@ -1,13 +1,17 @@
 import { island } from "@/components/ui/island";
+import { translateNow } from "@/i18n/useT";
 
 /**
- * Asks before a destructive action, in the same voice everywhere:
- * `confirmDelete("la skill", "Commits convencionales")`.
+ * Asks before a destructive action, in the same voice everywhere. The title is a whole sentence
+ * already translated by the caller: `confirmDelete(t("skills.delete.title"), skill.name)`.
  */
-export function confirmDelete(what: string, name?: string, detail?: string): Promise<boolean> {
+export function confirmDelete(title: string, name?: string, detail?: string): Promise<boolean> {
   return island.confirm({
-    title: `¿Eliminar ${what}?`,
-    description: [name ? `Se eliminará «${name}».` : "", detail ?? "Esta acción no se puede deshacer."].filter(Boolean).join(" "),
+    title,
+    description: [
+      name ? translateNow("confirm.willDelete", { name }) : "",
+      detail ?? translateNow("confirm.cannotUndo"),
+    ].filter(Boolean).join(" "),
     destructive: true,
   });
 }
