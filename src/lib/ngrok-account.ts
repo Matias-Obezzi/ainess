@@ -24,6 +24,56 @@ export interface NgrokAccountStatus {
   error?: string;
 }
 
+/** What `installNgrok` is doing, so the UI can narrate it. */
+export type NgrokInstallPhase = "installing" | "updating" | "detecting";
+
+/** winget can take a while on a cold source; a version probe never should. */
+const INSTALL_TIMEOUT_SECS = 300;
+
+/**
+ * Installs ngrok with winget and leaves it on the latest version. Reports each phase as it
+ * starts. Throws with the reason when winget is missing or the install fails.
+ */
+export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void): Promise<string | null> {
+  const transport = getTransport();
+  onPhase("installing");
+  let res;
+  try {
+    res = await transport.exec(
+      "winget",
+      [
+        "install",
+        "--id", "Ngrok.Ngrok",
+        "-e",
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+        "--disable-interactivity",
+      ],
+      undefined,
+      INSTALL_TIMEOUT_SECS,
+    );
+  } catch (e) {
+    throw new Error(`No se pudo ejecutar winget: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const output = `${res.stdout}\n${res.stderr}`;
+  // winget answers "already installed" with a non-zero code, which is not a failure here.
+  if (res.code !== 0 && !/already installed|ya está instalado/i.test(output)) {
+    const detail = output.trim().split(/\r?\n/).filter(Boolean).slice(-2).join(" ");
+    throw new Error(detail || `winget terminó con código ${res.code}`);
+  }
+
+  onPhase("detecting");
+  const found = await transport.tunnelDetect();
+  if (!found.ngrok) {
+    throw new Error("winget terminó pero ngrok sigue sin aparecer. Reiniciá la app y probá de nuevo.");
+  }
+
+  onPhase("updating");
+  // winget's package lags behind, so the fresh install is brought up to date right away.
+  const updated = await ensureNgrokUpToDate(found.ngrok);
+  return updated.version;
+}
+
 export interface NgrokUpdateState {
   /** `checking` while `ngrok update` runs; the rest is what it ended up doing. */
   status: "checking" | "updated" | "current" | "failed";

@@ -1,11 +1,58 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ChevronLeft, ChevronRight, Copy, Minus, PanelLeft, Search, Square, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Loader2, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
 import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
+
+/**
+ * Turns the remote server on and off from the window bar, so the phone can be let in without
+ * opening Configuración. The state comes from `remoteStatus`, which the app keeps in sync.
+ */
+function RemoteButton() {
+  const running = useAppStore(state => state.remoteStatus.running);
+  const ip = useAppStore(state => state.remoteStatus.ip);
+  const port = useAppStore(state => state.config.remote.port);
+  const busy = useAppStore(state => state.remoteBusy);
+  const toggleRemote = useAppStore(state => state.toggleRemote);
+
+  const click = async () => {
+    const turningOn = !running;
+    try {
+      await toggleRemote(turningOn);
+      toast.success(turningOn ? "Acceso remoto activo" : "Acceso remoto apagado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          aria-label={running ? "Apagar el acceso remoto" : "Prender el acceso remoto"}
+          disabled={busy}
+          onClick={() => void click()}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Smartphone className={running ? "h-4 w-4 text-emerald-500" : "h-4 w-4"} />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        {busy ? "Un momento…" : running ? `Acceso remoto activo en ${ip ?? "la red local"}:${port}` : "Prender el acceso remoto"}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 /** Window controls are Windows-sized (46x40) and never carry the drag region. */
 function WindowControls() {
@@ -154,7 +201,10 @@ export function TitleBar() {
         ainess
       </span>
 
-      {isTauri() ? <WindowControls /> : <div className="w-2" />}
+      <div className="flex items-center">
+        <RemoteButton />
+        {isTauri() ? <WindowControls /> : <div className="w-2" />}
+      </div>
     </div>
   );
 }

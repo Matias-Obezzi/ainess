@@ -8,7 +8,8 @@ export interface Transport {
   detectBinaries(): Promise<import("@/types").Binaries>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
   readTextFile(relativePath: string): Promise<string | null>;
-  exec(program: string, args: string[], cwd?: string): Promise<{ code: number | null, stdout: string, stderr: string }>;
+  /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */
+  exec(program: string, args: string[], cwd?: string, timeoutSecs?: number): Promise<{ code: number | null, stdout: string, stderr: string }>;
   httpPost(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */

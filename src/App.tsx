@@ -13,6 +13,7 @@ import { ProjectScreen } from "@/components/shell/ProjectScreen";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 
@@ -43,6 +44,7 @@ export default function App() {
   useNotifications();
   useSystemNotifications();
   useUpdateCheck();
+  useRemoteSync();
 
   // Ctrl+, opens Configuración, Ctrl+K the search palette, Ctrl+B toggles the sidebar
   // and Ctrl+` the terminals dock.

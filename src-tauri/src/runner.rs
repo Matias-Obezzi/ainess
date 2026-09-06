@@ -248,7 +248,15 @@ pub struct ExecResult {
 }
 
 #[tauri::command]
-pub fn exec_capture(app: AppHandle, program: String, args: Vec<String>, cwd: Option<String>) -> Result<ExecResult, String> {
+pub fn exec_capture(
+    app: AppHandle,
+    program: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    timeout_secs: Option<u64>,
+) -> Result<ExecResult, String> {
+    // Installers and updaters legitimately take longer than a version probe.
+    let timeout = timeout_secs.map(Duration::from_secs).unwrap_or(EXEC_TIMEOUT);
     let mut cmd = Command::new(&program);
     cmd.args(&args)
         .stdout(Stdio::piped())
@@ -274,7 +282,7 @@ pub fn exec_capture(app: AppHandle, program: String, args: Vec<String>, cwd: Opt
         msg
     })?;
 
-    match wait_with_timeout(child, EXEC_TIMEOUT) {
+    match wait_with_timeout(child, timeout) {
         Ok(output) => Ok(ExecResult {
             code: output.status.code(),
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
@@ -289,7 +297,7 @@ pub fn exec_capture(app: AppHandle, program: String, args: Vec<String>, cwd: Opt
             let msg = format!(
                 "{} no respondió en {} s: se canceló la ejecución.",
                 program,
-                EXEC_TIMEOUT.as_secs()
+                timeout.as_secs()
             );
             logging::append(&app, "error", "exec", &msg);
             Err(msg)

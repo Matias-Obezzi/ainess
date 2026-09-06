@@ -711,6 +711,21 @@ dominio o el nombre del túnel mientras el túnel está corriendo lo reinicia so
 mostrando el mismo indicador `tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
 del túnel.
 
+Instalación desde la app: cuando ngrok no está, la fila Proveedor ofrece "Instalar ngrok", que corre
+`winget install --id Ngrok.Ngrok -e --accept-package-agreements --accept-source-agreements
+--disable-interactivity` (con timeout de 300 s vía el parámetro nuevo de `Transport.exec`), vuelve a
+detectar y termina con `ensureNgrokUpToDate`. Va narrando las fases (`installNgrok(onPhase)`:
+instalando → detectando → actualizando). Un "already installed" de winget no cuenta como error.
+
+Estado remoto sincronizado: `useRemoteSync` (montado en `App`) refresca `remoteStatus` y
+`tunnelStatus` cada 4 s para toda la app, no solo con el modal de configuración abierto; antes el
+store quedaba viejo al cerrarlo y el switch aparecía apagado con el servidor andando. El switch se
+liga a `remoteStatus.running` (la realidad) y no a `config.remote.enabled` (la intención, que es lo
+que hace que arranque solo). `toggleRemote(enabled)` vive en el store y lo comparten el switch y el
+botón nuevo de la barra de ventana (`RemoteButton` en `TitleBar`), con `remoteBusy` para que los dos
+se deshabiliten mientras tanto. En `runInit`, si el servidor ya está levantado (recarga del front),
+se adopta ese estado en vez de intentar arrancar otro.
+
 Actualización automática del agente: ngrok rechaza la conexión cuando la versión es menor que el
 mínimo que pide la cuenta (`ERR_NGROK_121`) y el paquete de winget queda atrasado, así que la app
 corre `ngrok update` sola. `ensureNgrokUpToDate` (en `ngrok-account.ts`) lo hace una vez por sesión,

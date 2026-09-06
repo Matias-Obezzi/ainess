@@ -22,8 +22,8 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
-  exec: async (program, args, cwd) =>
-    invoke<{ code: number | null; stdout: string; stderr: string }>("exec_capture", { program, args, cwd }),
+  exec: async (program, args, cwd, timeoutSecs) =>
+    invoke<{ code: number | null; stdout: string; stderr: string }>("exec_capture", { program, args, cwd, timeoutSecs }),
   httpPost: async (url, body, headers) =>
     invoke<{ status: number; body: string }>("http_post", { url, body, headers }),
   httpGet: async (url, headers) =>

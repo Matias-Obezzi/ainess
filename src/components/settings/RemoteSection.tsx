@@ -17,8 +17,8 @@ import { tunnelUrl } from "@/lib/remote";
 import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
 import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
-import { ensureNgrokUpToDate, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokUpdateState } from "@/lib/ngrok-account";
-import { Copy, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
+import { ensureNgrokUpToDate, installNgrok, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokInstallPhase, type NgrokUpdateState } from "@/lib/ngrok-account";
+import { Copy, Download, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 
 /** One labelled row of the tunnel card: label on the left, control and its hint on the right. */
 function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
@@ -112,6 +112,8 @@ export function RemoteSection() {
   const status = useAppStore(state => state.remoteStatus);
   const tunnel = useAppStore(state => state.tunnelStatus);
   const updateConfig = useAppStore(state => state.updateConfig);
+  const toggleRemote = useAppStore(state => state.toggleRemote);
+  const busy = useAppStore(state => state.remoteBusy);
   const startRemote = useAppStore(state => state.startRemote);
   const stopRemote = useAppStore(state => state.stopRemote);
   const refreshRemoteStatus = useAppStore(state => state.refreshRemoteStatus);
@@ -123,7 +125,7 @@ export function RemoteSection() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tunnelCanvasRef = useRef<HTMLCanvasElement>(null);
   const [port, setPort] = useState(String(remote.port));
-  const [busy, setBusy] = useState(false);
+  const [installing, setInstalling] = useState<NgrokInstallPhase | null>(null);
   const [tunnelBusy, setTunnelBusy] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [detected, setDetected] = useState<{ cloudflared: string | null; ngrok: string | null } | null>(null);
@@ -182,22 +184,24 @@ export function RemoteSection() {
   }, [publicUrl]);
 
   const toggle = async (enabled: boolean) => {
-    setBusy(true);
     try {
-      updateConfig({ remote: { ...remote, enabled } });
-      if (enabled) {
-        await startRemote();
-        toast.success("Acceso remoto activo");
-      } else {
-        await stopRemote();
-        // The tunnel cannot outlive the local server it forwards to.
-        if (remote.tunnel.enabled) updateConfig({ remote: { ...remote, enabled: false, tunnel: { ...remote.tunnel, enabled: false } } });
-      }
+      await toggleRemote(enabled);
+      if (enabled) toast.success("Acceso remoto activo");
     } catch (e) {
-      updateConfig({ remote: { ...remote, enabled: false } });
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const install = async () => {
+    setInstalling("installing");
+    try {
+      const version = await installNgrok(setInstalling);
+      await detect();
+      toast.success(version ? `ngrok ${version} instalado` : "ngrok instalado");
+    } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setInstalling(null);
     }
   };
 
@@ -362,7 +366,7 @@ export function RemoteSection() {
         </div>
       ) : (
         <div className="flex items-center gap-3">
-          <Switch checked={remote.enabled} disabled={busy} onCheckedChange={(c) => void toggle(c)} />
+          <Switch checked={status.running} disabled={busy} onCheckedChange={(c) => void toggle(c)} />
           <div className="flex flex-col">
             <span className="text-sm font-semibold">Acceso remoto en la red local</span>
             <span className="text-xs text-muted-foreground">
@@ -440,6 +444,23 @@ export function RemoteSection() {
                   {provider === "ngrok" && ngrokUpdate?.status === "failed" && (
                     <span className="text-destructive">No se pudo actualizar: {ngrokUpdate.message}</span>
                   )}
+                </span>
+              ) : installing ? (
+                <span className="flex flex-wrap items-center gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  {installing === "installing"
+                    ? "Instalando ngrok con winget…"
+                    : installing === "detecting"
+                      ? "Buscando el binario recién instalado…"
+                      : "Actualizando ngrok a la última versión…"}
+                </span>
+              ) : provider === "ngrok" ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  No está instalado.
+                  <Button size="sm" variant="secondary" onClick={() => void install()}>
+                    <Download className="mr-1 h-3.5 w-3.5" /> Instalar ngrok
+                  </Button>
+                  <span>Corre <code className="rounded bg-muted px-1 py-0.5">{tunnelInstallCommand(provider)}</code> por vos.</span>
                 </span>
               ) : (
                 <span className="flex flex-wrap items-center gap-1">

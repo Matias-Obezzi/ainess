@@ -395,13 +395,14 @@ export const nodeTransport: Transport = {
     }
   },
 
-  exec: async (program: string, args: string[], cwd?: string) => {
+  exec: async (program: string, args: string[], cwd?: string, timeoutSecs?: number) => {
     const resolved = resolveProgram(program, args);
-    const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout: EXEC_TIMEOUT_MS, killSignal: "SIGKILL", windowsHide: true });
+    const timeout = timeoutSecs ? timeoutSecs * 1000 : EXEC_TIMEOUT_MS;
+    const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout, killSignal: "SIGKILL", windowsHide: true });
     // A program that outlives the timeout is an error, not an empty result: `exec_capture`
     // in src-tauri/src/runner.rs rejects with the same message.
     if ((res.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
-      throw new Error(`${program} no respondió en ${EXEC_TIMEOUT_MS / 1000} s: se canceló la ejecución.`);
+      throw new Error(`${program} no respondió en ${timeout / 1000} s: se canceló la ejecución.`);
     }
     return {
       code: res.status,

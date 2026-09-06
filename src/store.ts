@@ -143,6 +143,10 @@ export interface AppState {
 
   // LAN remote access
   remoteStatus: { running: boolean; url?: string; ip?: string; clients: number; error?: string };
+  /** True while the remote server is starting or stopping, so every UI can disable its toggle. */
+  remoteBusy: boolean;
+  /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
+  toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
   stopRemote(): Promise<void>;
   refreshRemoteStatus(): Promise<void>;
@@ -479,6 +483,29 @@ export const useAppStore = create<AppState>()((set, get) => ({
   reject: (approvalId, note) => orchestrator.rejectApproval(approvalId, note),
 
   remoteStatus: { running: false, clients: 0 },
+  remoteBusy: false,
+  toggleRemote: async (enabled) => {
+    const before = get().config.remote;
+    set({ remoteBusy: true });
+    get().updateConfig({ remote: { ...before, enabled } });
+    try {
+      if (enabled) {
+        await get().startRemote();
+      } else {
+        await get().stopRemote();
+        // The tunnel forwards to this server: it cannot outlive it.
+        const remote = get().config.remote;
+        if (remote.tunnel.enabled) {
+          get().updateConfig({ remote: { ...remote, tunnel: { ...remote.tunnel, enabled: false } } });
+        }
+      }
+    } catch (e) {
+      get().updateConfig({ remote: { ...get().config.remote, enabled: false } });
+      throw e;
+    } finally {
+      set({ remoteBusy: false });
+    }
+  },
   startRemote: async (portOverride) => {
     try {
       const status = await remote.startRemote(portOverride);
@@ -1149,9 +1176,11 @@ async function runInit(): Promise<void> {
 
     set({ loaded: true });
 
-    // Remote access is opt-in; a failure (port busy) must not break startup.
+    // Remote access is opt-in; a failure (port busy) must not break startup. A reload of the
+    // frontend finds the server already up: adopt it instead of trying to start a second one.
     if (config.remote?.enabled) {
-      await get().startRemote().catch(() => {});
+      await get().refreshRemoteStatus().catch(() => {});
+      if (!get().remoteStatus.running) await get().startRemote().catch(() => {});
       if (config.remote.tunnel?.enabled && get().remoteStatus.running) {
         await get().startTunnel().catch(() => {});
       }
