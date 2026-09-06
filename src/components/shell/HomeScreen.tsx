@@ -99,7 +99,7 @@ export function HomeScreen() {
     if (confirmed) removeProject(p.id);
   };
 
-  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
+  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? "Agente anterior";
 
   const editProject = (p: Project) => {
     setEditingProject(p);

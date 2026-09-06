@@ -41,7 +41,7 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
   );
   if (pending.length === 0) return null;
 
-  const name = (id?: string) => agents.find(a => a.id === id)?.name ?? id ?? "";
+  const name = (id?: string) => agents.find(a => a.id === id)?.name ?? (id ? "Agente anterior" : "");
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
 
   const approvalActions = (a: Approval): MenuAction[] => [

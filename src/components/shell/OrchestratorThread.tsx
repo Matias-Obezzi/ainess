@@ -22,6 +22,9 @@ import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, Message
 const FOLLOW_INTERVAL_MS = 150;
 
 /** The project's main conversation: what the user asked and what the team answered. */
+/** History can name an agent that the project no longer has (a rebuilt team, a deleted agent). */
+const PAST_AGENT = "Agente anterior";
+
 export function OrchestratorThread() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const runs = useAppStore(state => state.runs);
@@ -138,7 +141,7 @@ function RunBubble({ run }: { run: Run }) {
 
   const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
-  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
+  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? PAST_AGENT;
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
   const interrupted = run.output === INTERRUPTED_OUTPUT;
   const output = interrupted ? "" : (run.output ?? "");
@@ -187,7 +190,7 @@ function RunBubble({ run }: { run: Run }) {
           <div className="group flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs">
               {agent ? <AgentAvatar provider={agent.provider} color={agent.color} size={22} /> : <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground" />}
-              <span className="font-semibold">{agent?.name ?? run.agentId}</span>
+              <span className="font-semibold">{agent?.name ?? PAST_AGENT}</span>
               {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
               {(run.status === "error" || run.status === "killed") && (
                 <Badge variant={run.status === "error" ? "destructive" : "secondary"} className="text-[10px]">
