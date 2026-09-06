@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTunnelUrl, fixedUrl, hasFixedUrl, isTunnelProvider, normalizeDomain, tunnelArgs, tunnelInstallCommand } from "@/lib/tunnel";
+import { extractTunnelUrl, fixedUrl, hasFixedUrl, isTunnelProvider, ngrokDomainFlag, normalizeDomain, tunnelArgs, tunnelInstallCommand } from "@/lib/tunnel";
 import { maskSecrets } from "@/lib/logger";
 import { tunnelUrl } from "@/lib/remote";
 
@@ -59,6 +59,23 @@ describe("fixed tunnel URLs", () => {
     expect(tunnelArgs("ngrok", 4710, { domain: "algo.ngrok-free.app" })).toEqual([
       "http", "4710", "--log=stdout", "--log-format=json", "--url", "https://algo.ngrok-free.app",
     ]);
+  });
+
+  it("uses the old --domain flag when that is what the binary takes", () => {
+    expect(tunnelArgs("ngrok", 4710, { domain: "algo.ngrok-free.app", ngrokFlag: "--domain" })).toEqual([
+      "http", "4710", "--log=stdout", "--log-format=json", "--domain", "algo.ngrok-free.app",
+    ]);
+  });
+
+  it("reads the fixed-hostname flag off `ngrok http --help`", () => {
+    const modern = ["      --url string        host endpoint on a URL", "      --scheme strings   schemes"].join("\n");
+    const old = [
+      "      --domain string    host tunnel on a custom subdomain or hostname",
+      "      --oidc string      oidc issuer url, e.g. https://accounts.google.com",
+    ].join("\n");
+    expect(ngrokDomainFlag(modern)).toBe("--url");
+    expect(ngrokDomainFlag(old)).toBe("--domain");
+    expect(ngrokDomainFlag("")).toBe("--domain");
   });
 
   it("builds cloudflared named-tunnel args when domain and tunnelName are set", () => {

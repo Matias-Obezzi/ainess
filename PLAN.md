@@ -679,7 +679,13 @@ Comandos y parsing (sin URL fija, el caso por defecto):
 - cloudflared: `cloudflared tunnel --url http://127.0.0.1:<port>`, imprime la URL en **stderr**
   (`https://<algo>.trycloudflare.com`). Sin cuenta; la URL cambia cada vez.
 - ngrok: `ngrok http <port> --log=stdout --log-format=json`, la URL sale en el campo `url` del
-  evento `started tunnel`. Necesita `ngrok config add-authtoken …`.
+  evento `started tunnel`. Necesita `ngrok config add-authtoken …`. Para el dominio fijo, la bandera
+  depende de la versión del agente: `--domain <host>` hasta 3.15 y `--url <url>` de 3.16 en adelante
+  (`--domain` sigue andando pero está deprecada). Pasar la que no es aborta el túnel con
+  `unknown flag`, así que antes de lanzar se lee `ngrok http --help` y se elige: `ngrokDomainFlag`
+  en `src/lib/tunnel.ts` (`TunnelOptions.ngrokFlag`), `help_has_url_flag`/`ngrok_domain_flag` en
+  `src-tauri/src/tunnel.rs` y `probeNgrokFlag` en `src/lib/tunnel-node.ts`. Si la sonda falla, se usa
+  la sintaxis vieja.
 
 `src/lib/remote.ts` agrega `startTunnel()` (exige que el servidor local esté corriendo, si no lanza
 "Prendé primero el acceso remoto local"; pasa `{ domain, tunnelName }` de la config al transport),

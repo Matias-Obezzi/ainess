@@ -3,7 +3,16 @@
 // URL shows up (30 s timeout) and keep the child so it can be stopped and killed on exit.
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import * as readline from "node:readline";
-import { extractTunnelUrl, isTunnelProvider, tunnelArgs, tunnelBinary, type TunnelOptions, type TunnelProvider } from "@/lib/tunnel";
+import {
+  extractTunnelUrl,
+  isTunnelProvider,
+  ngrokDomainFlag,
+  tunnelArgs,
+  tunnelBinary,
+  type NgrokDomainFlag,
+  type TunnelOptions,
+  type TunnelProvider,
+} from "@/lib/tunnel";
 
 const URL_TIMEOUT_MS = 30_000;
 
@@ -50,6 +59,16 @@ async function detect(): Promise<{ cloudflared: string | null; ngrok: string | n
   return { cloudflared: find("cloudflared"), ngrok: find("ngrok") };
 }
 
+/**
+ * Which fixed-hostname flag this ngrok build takes. Asking the binary beats guessing from the
+ * version: passing the wrong one kills the tunnel with "unknown flag".
+ */
+function probeNgrokFlag(program: string): NgrokDomainFlag {
+  const res = spawnSync(program, ["http", "--help"], { encoding: "utf-8", windowsHide: true });
+  const help = `${res.stdout ?? ""}${res.stderr ?? ""}`;
+  return help ? ngrokDomainFlag(help) : "--domain";
+}
+
 export const nodeTunnel = {
   tunnelStart: async (provider: string, port: number, opts?: TunnelOptions): Promise<{ url: string }> => {
     if (child && publicUrl) return { url: publicUrl };
@@ -59,7 +78,8 @@ export const nodeTunnel = {
     const program = p === "ngrok" ? paths.ngrok : paths.cloudflared;
     if (!program) throw new Error(`No se encontró \`${bin}\`. Instalalo y volvé a intentar.`);
 
-    const proc = spawn(program, tunnelArgs(p, port, opts), { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const args = tunnelArgs(p, port, p === "ngrok" ? { ...opts, ngrokFlag: probeNgrokFlag(program) } : opts);
+    const proc = spawn(program, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     const tail: string[] = [];
 
     const url = await new Promise<string>((resolve, reject) => {

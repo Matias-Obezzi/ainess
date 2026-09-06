@@ -226,6 +226,48 @@ fn kill_child(mut child: Child) {
     let _ = child.wait();
 }
 
+/// True when a line of `--help` output *starts* with `--url`, so a description that merely
+/// mentions a url does not count. Mirrors `ngrokDomainFlag` in src/lib/tunnel.ts.
+fn help_has_url_flag(help: &str) -> bool {
+    help.lines().any(|line| {
+        let t = line.trim_start();
+        t.strip_prefix("--url")
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(' ') || rest.starts_with('\t') || rest.starts_with('='))
+    })
+}
+
+/// Which flag this ngrok build takes for a fixed hostname: `--domain <host>` up to 3.15,
+/// `--url <url>` from 3.16 on. Asking the binary beats guessing from the version string, and the
+/// older syntax is the safer fallback when the probe itself fails.
+fn ngrok_domain_flag(program: &str) -> &'static str {
+    let mut cmd = Command::new(program);
+    cmd.args(["http", "--help"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    match cmd.output() {
+        Ok(out) => {
+            let help = format!(
+                "{}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            );
+            if help_has_url_flag(&help) {
+                "--url"
+            } else {
+                "--domain"
+            }
+        }
+        Err(_) => "--domain",
+    }
+}
+
 /// Spawns the tunnel binary and blocks until it prints a public URL (or fails / times out).
 fn start_process(
     program: &str,
@@ -239,6 +281,10 @@ fn start_process(
         let d = normalize_domain(domain);
         if d.is_empty() {
             cmd.args(["http", &port.to_string(), "--log=stdout", "--log-format=json"]);
+        } else if ngrok_domain_flag(program) == "--domain" {
+            // Up to ngrok 3.15 the flag is `--domain <host>`; `--url` there aborts with
+            // "unknown flag".
+            cmd.args(["http", &port.to_string(), "--log=stdout", "--log-format=json", "--domain", &d]);
         } else {
             cmd.args(["http", &port.to_string(), "--log=stdout", "--log-format=json", "--url", &format!("https://{d}")]);
         }
@@ -441,6 +487,15 @@ mod tests {
             Some("https://abc-1-2-3.ngrok-free.app")
         );
         assert_eq!(extract_url("ngrok", r#"{"url":"http://localhost:4040"}"#, None, None), None);
+    }
+
+    #[test]
+    fn reads_the_ngrok_fixed_hostname_flag_from_help() {
+        let modern = "      --url string        host endpoint on a URL\n      --scheme strings   schemes";
+        let old = "      --domain string   host tunnel on a custom subdomain\n      --oidc string   oidc issuer url, e.g. https://x";
+        assert!(super::help_has_url_flag(modern));
+        assert!(!super::help_has_url_flag(old));
+        assert!(!super::help_has_url_flag(""));
     }
 
     #[test]

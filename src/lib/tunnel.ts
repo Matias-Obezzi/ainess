@@ -30,6 +30,23 @@ export interface TunnelOptions {
   domain?: string;
   /** cloudflared named tunnel. */
   tunnelName?: string;
+  /**
+   * Which flag this ngrok build takes for a fixed hostname. ngrok renamed it: `--domain` up to
+   * 3.15, `--url` from 3.16 on (`--domain` still works but is deprecated). The caller probes the
+   * binary with `ngrokDomainFlag` instead of guessing, because the wrong one aborts the tunnel
+   * with "unknown flag".
+   */
+  ngrokFlag?: NgrokDomainFlag;
+}
+
+export type NgrokDomainFlag = "--url" | "--domain";
+
+/**
+ * Reads `ngrok http --help` and says which fixed-hostname flag that build understands. Only a
+ * line that *starts* with the flag counts, so descriptions mentioning "url" do not match.
+ */
+export function ngrokDomainFlag(helpOutput: string): NgrokDomainFlag {
+  return /^[ \t]*--url([ \t=]|$)/m.test(helpOutput) ? "--url" : "--domain";
 }
 
 /** `https://Algo.Ngrok-Free.App/` → `algo.ngrok-free.app`. Returns "" when nothing is left. */
@@ -60,10 +77,13 @@ export function fixedUrl(provider: TunnelProvider, opts?: TunnelOptions): string
 /** Arguments used to launch the tunnel against the local remote server. */
 export function tunnelArgs(provider: TunnelProvider, port: number, opts?: TunnelOptions): string[] {
   if (provider === "ngrok") {
+    const base = ["http", String(port), "--log=stdout", "--log-format=json"];
     const domain = normalizeDomain(opts?.domain);
-    return domain
-      ? ["http", String(port), "--log=stdout", "--log-format=json", "--url", `https://${domain}`]
-      : ["http", String(port), "--log=stdout", "--log-format=json"];
+    if (!domain) return base;
+    // `--url` wants a full URL, `--domain` the bare hostname.
+    return opts?.ngrokFlag === "--domain"
+      ? [...base, "--domain", domain]
+      : [...base, "--url", `https://${domain}`];
   }
   if (hasFixedUrl(provider, opts)) {
     return ["tunnel", "--url", `http://127.0.0.1:${port}`, "run", opts!.tunnelName!.trim()];
