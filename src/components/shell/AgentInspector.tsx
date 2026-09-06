@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { StatusDot } from "@/components/StatusDot";
 import { RunActivity } from "@/components/shell/RunActivity";
-import { AgentActionDialogs, useAgentActions } from "@/components/agent-actions";
+import { AgentActionDialogs, AgentContextMenu, useAgentActions } from "@/components/agent-actions";
 import { statusLabel, roleLabel, runDotStatus, runStatusLabel } from "@/lib/labels";
 import { PROVIDERS } from "@/lib/providers";
 import { formatClock, truncate } from "@/lib/format";
@@ -56,22 +56,25 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
       aria-label={`Detalle de ${agent.name}`}
       className="absolute bottom-3 right-3 top-3 z-10 flex w-[360px] flex-col rounded-xl border border-border bg-card text-card-foreground shadow-lg outline-none"
     >
-      <div className="flex items-start gap-2 border-b border-border p-3">
-        <AgentAvatar provider={agent.provider} color={color} size={32} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{agent.name}</div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+      {/* The header stands for the agent itself, so it carries the same actions on right click. */}
+      <AgentContextMenu actions={actions} onViewOutput={() => openDetail(actions.lastRunId)}>
+        <div className="flex items-start gap-2 border-b border-border p-3">
+          <AgentAvatar provider={agent.provider} color={color} size={32} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{agent.name}</div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <StatusDot status={actions.status} />
+              <span>{actions.status === "waiting" ? "Esperando a sus hijos" : statusLabel[actions.status]}</span>
+            </div>
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <StatusDot status={actions.status} />
-            <span>{actions.status === "waiting" ? "Esperando a sus hijos" : statusLabel[actions.status]}</span>
-          </div>
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Cerrar" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Cerrar" onClick={onClose}>
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      </AgentContextMenu>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
         {binaryInfo === null && (
