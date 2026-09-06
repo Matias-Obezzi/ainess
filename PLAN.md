@@ -697,10 +697,11 @@ las acciones `startTunnel/stopTunnel/refreshTunnelStatus`; `stopRemote` apaga el
 
 `RemoteSection` suma el bloque "Acceso desde afuera (túnel)": select de proveedor con su
 explicación, estado de detección del binario con el `winget install …` y botón "Volver a detectar",
-y después dos formas distintas según el proveedor. Con **ngrok** manda el select "Tipo de dominio"
+y después un formulario en una sola tarjeta, con filas (etiqueta a la izquierda, control y ayuda a la derecha, componente local Field) que cambian según el proveedor. Con **ngrok** manda el select "Tipo de dominio"
 (`TunnelConfig.domainType`, que en una config vieja se deduce de si hay `domain`): en *dinámico* el
 campo "Dominio" es un input deshabilitado que muestra el host que generó ngrok en esta corrida; en
-*estático* aparece el bloque "Cuenta de ngrok" (authtoken y API key) y el campo "Dominio" pasa a ser
+*estático* aparecen las filas de authtoken y API key (estado, editor inline y link al dashboard, en
+el componente local `NgrokCredential`) y el campo "Dominio" pasa a ser
 un select con los dominios de la cuenta, que se traen solos apenas hay API key. Sin API key el campo
 queda deshabilitado con la leyenda "Autenticate para configurar". Con **cloudflared** sigue el bloque
 "URL fija (opcional)" con nombre de túnel + hostname y los tres comandos de referencia. Además:

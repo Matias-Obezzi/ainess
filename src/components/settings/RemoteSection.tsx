@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
@@ -11,77 +11,97 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { getTransport } from "@/lib/transport";
+import { cn } from "@/lib/utils";
 import { openExternal } from "@/lib/open-external";
 import { tunnelUrl } from "@/lib/remote";
-import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelDescription, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
+import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
 import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
 import { ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus } from "@/lib/ngrok-account";
 import { Copy, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 
+/** One labelled row of the tunnel card: label on the left, control and its hint on the right. */
+function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 px-3 py-3 sm:flex-row sm:gap-4">
+      <div className="w-32 shrink-0 pt-1.5 text-sm font-medium">{label}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        {children}
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
 /**
- * One ngrok credential (authtoken or API key). The value only lives in this component's state
- * until it is handed to the ngrok CLI: it is never stored in ainess's config nor logged.
+ * State and editor of one ngrok credential (authtoken or API key). The value only lives in this
+ * component until it is handed to the ngrok CLI: it never reaches ainess's config nor the log.
  */
-function NgrokCredential({ label, hint, configured, dashboardUrl, disabled, onSave }: {
-  label: string;
-  hint: string;
+function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
   configured: boolean;
   dashboardUrl: string;
   disabled: boolean;
   onSave: (value: string) => Promise<boolean>;
 }) {
-  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const close = () => {
+    setValue("");
+    setEditing(false);
+  };
 
   const save = async () => {
     setSaving(true);
     try {
-      if (await onSave(value.trim())) {
-        setValue("");
-        setOpen(false);
-      }
+      if (await onSave(value.trim())) close();
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="flex flex-col gap-1.5">
+  if (editing) {
+    return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">{label}</span>
-        <Badge variant={configured ? "secondary" : "outline"}>{configured ? "Configurado" : "Falta"}</Badge>
-        <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setOpen(o => !o)}>
-          {configured ? "Cambiar" : "Configurar"}
+        <Input
+          type="password"
+          autoComplete="off"
+          autoFocus
+          className="max-w-xs"
+          placeholder="Pegá el valor del dashboard"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !saving) void save();
+            else if (e.key === "Escape") close();
+          }}
+        />
+        <Button size="sm" disabled={saving || !value.trim()} onClick={() => void save()}>
+          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Guardar
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          aria-label={`Abrir ${label} en el dashboard de ngrok`}
-          onClick={() => void openExternal(dashboardUrl)}
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Button>
+        <Button size="sm" variant="ghost" disabled={saving} onClick={close}>Cancelar</Button>
       </div>
-      <span className="text-xs text-muted-foreground">{hint}</span>
-      {open && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="password"
-            autoComplete="off"
-            className="w-72"
-            placeholder="Pegá el valor del dashboard"
-            value={value}
-            onChange={e => setValue(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !saving) void save(); }}
-          />
-          <Button size="sm" disabled={saving || !value.trim()} onClick={() => void save()}>
-            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Guardar
-          </Button>
-        </div>
-      )}
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={cn("h-2 w-2 rounded-full", configured ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+      <span className="text-sm">{configured ? "Configurado" : "Sin configurar"}</span>
+      <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setEditing(true)}>
+        {configured ? "Cambiar" : "Configurar"}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        aria-label="Abrirlo en el dashboard de ngrok"
+        title="Abrirlo en el dashboard de ngrok"
+        onClick={() => void openExternal(dashboardUrl)}
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
@@ -383,92 +403,126 @@ export function RemoteSection() {
           </span>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Proveedor</label>
-          <Select
-            value={provider}
-            onValueChange={(v) => updateConfig({ remote: { ...remote, tunnel: { ...remote.tunnel, provider: v as TunnelProvider } } })}
+        <div className="divide-y divide-border overflow-hidden rounded-lg border">
+          <Field
+            label="Proveedor"
+            hint={
+              binaryPath ? (
+                <span className="flex flex-wrap items-center gap-1">
+                  Detectado en <code className="break-all">{binaryPath}</code>
+                </span>
+              ) : (
+                <span className="flex flex-wrap items-center gap-1">
+                  No está instalado. Instalalo con
+                  <code className="rounded bg-muted px-1 py-0.5">{tunnelInstallCommand(provider)}</code>
+                </span>
+              )
+            }
           >
-            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TUNNEL_PROVIDERS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <span className="text-xs text-muted-foreground">{tunnelDescription(provider)}</span>
-        </div>
-
-        {provider === "ngrok" ? (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Tipo de dominio</label>
+            <div className="flex flex-wrap items-center gap-2">
               <Select
-                value={domainType}
-                onValueChange={v =>
-                  void applyTunnelFixedFields(
-                    v === "static" ? { domainType: "static" } : { domainType: "dynamic", domain: "" },
-                  )
-                }
+                value={provider}
+                onValueChange={(v) => updateConfig({ remote: { ...remote, tunnel: { ...remote.tunnel, provider: v as TunnelProvider } } })}
               >
-                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dynamic">Dinámico</SelectItem>
-                  <SelectItem value="static">Estático</SelectItem>
+                  {TUNNEL_PROVIDERS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <span className="text-xs text-muted-foreground">
-                {domainType === "static"
-                  ? "Siempre la misma URL, usando un dominio de tu cuenta de ngrok."
-                  : "ngrok genera una URL nueva cada vez que prendés el túnel."}
-              </span>
+              <Button variant="ghost" size="sm" onClick={() => void detect()}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Volver a detectar
+              </Button>
             </div>
+          </Field>
 
-            {domainType === "static" && (
-              <div className="flex flex-col gap-3 rounded-md border p-3">
-                <span className="text-xs font-semibold text-muted-foreground">Cuenta de ngrok</span>
-                <NgrokCredential
-                  label="Authtoken"
-                  hint="Lo necesita ngrok para conectarse. La app solo mira si está presente: si es inválido, el error aparece al prender el túnel."
-                  configured={!!ngrokAccount?.hasAuthtoken}
-                  dashboardUrl={NGROK_AUTHTOKEN_URL}
-                  disabled={!ngrokPath}
-                  onSave={v => saveCredential("authtoken", v)}
-                />
-                <NgrokCredential
-                  label="API key"
-                  hint="Distinta del authtoken: con ella la app trae los dominios de tu cuenta."
-                  configured={!!ngrokAccount?.hasApiKey}
-                  dashboardUrl={NGROK_API_KEYS_URL}
-                  disabled={!ngrokPath}
-                  onSave={v => saveCredential("api-key", v)}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {!ngrokPath
-                    ? "Instalá ngrok para poder configurar la cuenta desde acá."
-                    : ngrokAccount?.error
-                      ? `No se pudo leer la configuración de ngrok: ${ngrokAccount.error}`
-                      : "Las dos credenciales se guardan en el archivo de configuración de ngrok, nunca en ainess."}
-                </span>
-              </div>
-            )}
+          {provider === "ngrok" ? (
+            <>
+              <Field
+                label="Tipo de dominio"
+                hint={
+                  domainType === "static"
+                    ? "La URL es siempre la misma, con un dominio de tu cuenta."
+                    : "ngrok genera una URL nueva cada vez que prendés el túnel."
+                }
+              >
+                <Select
+                  value={domainType}
+                  onValueChange={v =>
+                    void applyTunnelFixedFields(
+                      v === "static" ? { domainType: "static" } : { domainType: "dynamic", domain: "" },
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dynamic">Dinámico</SelectItem>
+                    <SelectItem value="static">Estático</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
 
-            <div className="flex flex-col gap-2 rounded-md border p-3">
-              <span className="text-xs font-semibold text-muted-foreground">Dominio</span>
-              {domainType === "dynamic" ? (
+              {domainType === "static" && (
                 <>
-                  <Input className="w-72" disabled value={runningHost} placeholder="Lo genera ngrok al prender el túnel" />
-                  <span className="text-xs text-muted-foreground">
-                    {runningHost ? "Es la URL de esta corrida: cambia la próxima vez." : "Se completa cuando el túnel esté activo."}
-                  </span>
+                  <Field label="Authtoken" hint="Es lo que ngrok necesita para conectarse.">
+                    <NgrokCredential
+                      configured={!!ngrokAccount?.hasAuthtoken}
+                      dashboardUrl={NGROK_AUTHTOKEN_URL}
+                      disabled={!ngrokPath}
+                      onSave={v => saveCredential("authtoken", v)}
+                    />
+                  </Field>
+                  <Field label="API key" hint="Distinta del authtoken: con ella la app trae los dominios de tu cuenta.">
+                    <NgrokCredential
+                      configured={!!ngrokAccount?.hasApiKey}
+                      dashboardUrl={NGROK_API_KEYS_URL}
+                      disabled={!ngrokPath}
+                      onSave={v => saveCredential("api-key", v)}
+                    />
+                  </Field>
                 </>
-              ) : ngrokVerified ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-2">
+              )}
+
+              <Field
+                label="Dominio"
+                hint={
+                  domainType === "dynamic"
+                    ? "Lo elige ngrok y cambia en cada arranque."
+                    : !ngrokVerified
+                      ? "Cargá el authtoken y la API key para poder elegirlo."
+                      : ngrokDomains?.length === 0
+                        ? (
+                          <span className="flex flex-wrap items-center gap-1">
+                            Tu cuenta no tiene dominios reservados.
+                            <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
+                              Reclamá el gratis en el dashboard
+                            </button>
+                          </span>
+                        )
+                        : "Es el dominio en el que se va a publicar la app."
+                }
+              >
+                {domainType === "dynamic" ? (
+                  <Input
+                    disabled
+                    className="max-w-xs"
+                    value={runningHost}
+                    placeholder="Lo genera ngrok al prender el túnel"
+                  />
+                ) : !ngrokVerified ? (
+                  <Input
+                    disabled
+                    className="max-w-xs"
+                    value={normalizeDomain(remote.tunnel.domain)}
+                    placeholder="Autenticate para configurar"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
                     <Select
                       value={selectedNgrokDomain}
                       disabled={loadingDomains || !ngrokDomains?.length}
                       onValueChange={v => void applyTunnelFixedFields({ domain: normalizeDomain(v) })}
                     >
-                      <SelectTrigger className="w-72">
+                      <SelectTrigger className="w-64">
                         <SelectValue placeholder={loadingDomains ? "Buscando tus dominios…" : "Elegí uno de tus dominios"} />
                       </SelectTrigger>
                       <SelectContent>
@@ -486,77 +540,45 @@ export function RemoteSection() {
                       {loadingDomains ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     </Button>
                   </div>
-                  {ngrokDomains?.length === 0 && (
-                    <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                      Tu cuenta no tiene dominios reservados todavía.
-                      <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
-                        Reclamá el gratis en el dashboard
-                      </button>
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Input className="w-72" disabled placeholder="Autenticate para configurar" />
-                  <span className="text-xs text-muted-foreground">
-                    Autenticate para configurar: cargá el authtoken y la API key acá arriba.
-                  </span>
-                </>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2 rounded-md border p-3">
-            <span className="text-xs font-semibold text-muted-foreground">URL fija (opcional)</span>
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Nombre del túnel</label>
+                )}
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field
+                label="Nombre del túnel"
+                hint={
+                  missingTunnelName
+                    ? <span className="text-destructive">Sin esto la URL no queda fija.</span>
+                    : "El que creaste con `cloudflared tunnel create`. Vacío usa un túnel de un solo uso."
+                }
+              >
                 <Input
-                  className="w-72"
+                  className="max-w-xs"
                   placeholder="ainess"
                   value={tunnelNameInput}
                   onChange={e => setTunnelNameInput(e.target.value)}
                   onBlur={applyTunnelName}
                   onKeyDown={e => e.key === "Enter" && applyTunnelName()}
                 />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Hostname</label>
+              </Field>
+              <Field label="Hostname" hint="El subdominio de tu dominio en Cloudflare que apunta a ese túnel.">
                 <Input
-                  className="w-72"
+                  className="max-w-xs"
                   placeholder="ainess.midominio.com"
                   value={domainInput}
                   onChange={e => setDomainInput(e.target.value)}
                   onBlur={applyDomain}
                   onKeyDown={e => e.key === "Enter" && applyDomain()}
                 />
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Necesitás una cuenta de Cloudflare con tu dominio. Corré una vez estos comandos y completá los campos:
-              </span>
-              <code className="whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
-                {"cloudflared tunnel login\ncloudflared tunnel create ainess\ncloudflared tunnel route dns ainess ainess.midominio.com"}
-              </code>
-              {missingTunnelName && <span className="text-xs text-destructive">Falta el nombre del túnel.</span>}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {binaryPath ? (
-            <>
-              <Badge variant="secondary">Detectado</Badge>
-              <code className="break-all text-muted-foreground">{binaryPath}</code>
-            </>
-          ) : (
-            <>
-              <Badge variant="outline">No instalado</Badge>
-              <code className="rounded-md bg-muted px-2 py-1">{tunnelInstallCommand(provider)}</code>
+              </Field>
+              <Field label="Cómo se crea" hint="Se corre una sola vez, con tu cuenta de Cloudflare.">
+                <code className="block whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
+                  {"cloudflared tunnel login\ncloudflared tunnel create ainess\ncloudflared tunnel route dns ainess ainess.midominio.com"}
+                </code>
+              </Field>
             </>
           )}
-          <Button variant="ghost" size="sm" onClick={() => void detect()}>
-            <RefreshCw className="mr-1 h-3.5 w-3.5" /> Volver a detectar
-          </Button>
         </div>
 
         <Tooltip>
