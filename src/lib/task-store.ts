@@ -90,10 +90,40 @@ export async function saveTasks(projectId: string): Promise<void> {
   dirtyProjects.delete(projectId);
   const state = useAppStore.getState();
   if (!state.config.projects.some(p => p.id === projectId)) return;
-  const file: TaskFile = { version: 1, tasks: trimTasks(state.tasks[projectId] ?? []) };
+  const mine = trimTasks(state.tasks[projectId] ?? []);
+  const file: TaskFile = { version: 1, tasks: await mergeWithDisk(projectId, mine) };
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
+}
+
+/**
+ * The app and a `ais` process can have the same board open. Writing our copy flat would drop what
+ * the other one added, so the file is re-read first: cards only we know about are kept, cards only
+ * it knows about come along, and for the ones both have the newer `updatedAt` wins.
+ */
+async function mergeWithDisk(projectId: string, mine: Task[]): Promise<Task[]> {
+  let onDisk: Task[] = [];
+  try {
+    const raw = await getTransport().readTextFile(filePath(projectId));
+    if (raw) onDisk = sanitize((JSON.parse(raw) as Partial<TaskFile>)?.tasks, projectId);
+  } catch {
+    return mine;
+  }
+  if (onDisk.length === 0) return mine;
+
+  const byId = new Map(mine.map(t => [t.id, t]));
+  for (const task of onDisk) {
+    const ours = byId.get(task.id);
+    // A card we deleted in this process is gone on purpose: `loadTasks` already put the file's
+    // cards in memory, so anything missing here was removed rather than never seen.
+    if (!ours) {
+      if (!loadedProjects.has(projectId)) byId.set(task.id, task);
+      continue;
+    }
+    if (task.updatedAt > ours.updatedAt) byId.set(task.id, task);
+  }
+  return trimTasks([...byId.values()]);
 }
 
 /** Read a project's tasks from disk into the store. Safe to call repeatedly. */
