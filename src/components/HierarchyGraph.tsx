@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/useT";
 import { Bookmark, Crosshair, GitBranch, Maximize2, Network, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import type { AgentStatus } from "@/types";
 
@@ -129,6 +130,7 @@ export function HierarchyGraph() {
 }
 
 function HierarchyBoard() {
+  const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const runtime = useAppStore(state => state.runtime);
@@ -183,7 +185,7 @@ function HierarchyBoard() {
         markerEnd: { type: MarkerType.ArrowClosed, color },
         ...(working || status === "waiting"
           ? {
-              label: "delegado",
+              label: t("hierarchy.delegated"),
               labelStyle: { fill: "var(--muted-foreground)", fontSize: 10 },
               labelBgStyle: { fill: "var(--card)" },
               labelBgPadding: [4, 2] as [number, number],
@@ -193,7 +195,7 @@ function HierarchyBoard() {
       });
     }
     setEdges(next);
-  }, [agents, statusOf, setEdges]);
+  }, [agents, statusOf, setEdges, t]);
 
   const clearSelection = useCallback(() => {
     setSelectedAgentId(null);
@@ -244,9 +246,9 @@ function HierarchyBoard() {
       <div className="flex h-full w-full items-center justify-center">
         <EmptyState
           icon={Network}
-          title="Este proyecto todavía no tiene agentes"
-          description="La jerarquía muestra quién delega a quién. Agregá el primero para empezar."
-          action={{ label: "Agregar agente", onClick: () => setCreateOpen(true) }}
+          title={t("hierarchy.empty.title")}
+          description={t("hierarchy.empty.body")}
+          action={{ label: t("agents.addAgent"), onClick: () => setCreateOpen(true) }}
         />
         <AgentDialog open={createOpen} onOpenChange={setCreateOpen} />
       </div>
@@ -276,52 +278,50 @@ function HierarchyBoard() {
 
       <div className="pointer-events-none absolute left-3 top-3 flex gap-1">
         <CountBadge
-          label="trabajando"
-          count={counts.working}
+          label={t("hierarchy.working", { n: counts.working })}
           className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
           pulse={counts.working > 0}
         />
         <CountBadge
-          label="esperando"
-          count={counts.waiting}
+          label={t("hierarchy.waiting", { n: counts.waiting })}
           className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
         />
-        <CountBadge label="inactivos" count={counts.idle} className="border-border bg-card text-muted-foreground" />
+        <CountBadge label={t("hierarchy.idle", { n: counts.idle })} className="border-border bg-card text-muted-foreground" />
       </div>
 
       {!selectedAgent && (
         <div className="absolute right-3 top-3 flex gap-0.5 rounded-lg border border-border bg-card/90 p-0.5 shadow-sm backdrop-blur">
-          <ToolbarButton label="Agregar agente" disabled={!currentProjectId} onClick={() => setCreateOpen(true)}>
+          <ToolbarButton label={t("agents.addAgent")} disabled={!currentProjectId} onClick={() => setCreateOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
-            label="Guardar como formación"
+            label={t("hierarchy.saveFormation")}
             disabled={!currentProjectId}
             onClick={() => setFormationOpen(true)}
           >
             <Bookmark className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
-            label={worktrees.length > 0 ? `Worktrees (${worktrees.length})` : "Worktrees"}
+            label={worktrees.length > 0 ? t("hierarchy.worktreesCount", { n: worktrees.length }) : t("worktrees.title")}
             disabled={!currentProjectId}
             onClick={() => setWorktreesOpen(true)}
           >
             <GitBranch className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <ToolbarButton label="Ajustar vista" onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
+          <ToolbarButton label={t("hierarchy.fitView")} onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
             <Maximize2 className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
-            label="Centrar en el activo"
+            label={t("hierarchy.centerActive")}
             disabled={workingIds.length === 0}
             onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200, nodes: workingIds, maxZoom: 1.2 })}
           >
             <Crosshair className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <ToolbarButton label="Acercar" onClick={() => zoomIn({ duration: 150 })}>
+          <ToolbarButton label={t("hierarchy.zoomIn")} onClick={() => zoomIn({ duration: 150 })}>
             <ZoomIn className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <ToolbarButton label="Alejar" onClick={() => zoomOut({ duration: 150 })}>
+          <ToolbarButton label={t("hierarchy.zoomOut")} onClick={() => zoomOut({ duration: 150 })}>
             <ZoomOut className="h-3.5 w-3.5" />
           </ToolbarButton>
         </div>
@@ -353,17 +353,20 @@ function SaveFormationDialog({
   projectId: string | null;
   projectName?: string;
 }) {
+  const t = useT();
   const saveProjectAsFormation = useAppStore(state => state.saveProjectAsFormation);
   const [name, setName] = useState("");
 
   useEffect(() => {
-    if (open) setName(projectName ? `Equipo de ${projectName}` : "");
+    if (open) setName(projectName ? t("hierarchy.formationDefaultName", { project: projectName }) : "");
+    // The proposed name follows the project, not a language switch made while the dialog is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectName]);
 
   const save = () => {
     if (!projectId || !name.trim()) return;
     saveProjectAsFormation(projectId, name.trim());
-    toast.success(`Formación "${name.trim()}" guardada`);
+    toast.success(t("hierarchy.formationSaved", { name: name.trim() }));
     onOpenChange(false);
   };
 
@@ -371,23 +374,23 @@ function SaveFormationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Guardar como formación</DialogTitle>
+          <DialogTitle>{t("hierarchy.saveFormation")}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-2 py-2">
-          <Label>Nombre</Label>
+          <Label>{t("common.name")}</Label>
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === "Enter" && save()}
-            placeholder="Ej: Equipo de backend"
+            placeholder={t("agents.namePlaceholder")}
           />
           <p className="text-xs text-muted-foreground">
-            Vas a poder elegir este equipo al crear un proyecto, desde Configuración → Agentes.
+            {t("hierarchy.formationHint")}
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save} disabled={!name.trim()}>Guardar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={save} disabled={!name.trim()}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -396,12 +399,10 @@ function SaveFormationDialog({
 
 function CountBadge({
   label,
-  count,
   className,
   pulse
 }: {
   label: string;
-  count: number;
   className?: string;
   pulse?: boolean;
 }) {
@@ -413,7 +414,7 @@ function CountBadge({
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full bg-current opacity-70", pulse && "animate-pulse opacity-100")} />
-      {count} {label}
+      {label}
     </span>
   );
 }

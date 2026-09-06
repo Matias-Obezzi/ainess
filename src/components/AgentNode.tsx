@@ -9,7 +9,8 @@ import { useAppStore, selectWorktree } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
-import { statusLabel, roleLabel } from "@/lib/labels";
+import { statusLabelKey, roleLabelKey } from "@/lib/labels";
+import { useT, type TFunction } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 import { formatElapsed, truncate } from "@/lib/format";
 import { toolIcon } from "@/lib/tool-summary";
@@ -71,6 +72,7 @@ function useLastTool(runId: string | undefined): { tool: string; summary: string
 
 /** Projects other than the current one where this agent is busy right now. */
 function useBusyElsewhere(agentId: string): string[] {
+  const t = useT();
   const runtime = useAppStore(state => state.runtime);
   const projects = useAppStore(state => state.config.projects);
   const currentProjectId = useAppStore(state => state.currentProjectId);
@@ -80,10 +82,10 @@ function useBusyElsewhere(agentId: string): string[] {
       if (projectId === currentProjectId) continue;
       const status = projectRuntime[agentId]?.status;
       if (status !== "working" && status !== "waiting") continue;
-      names.push(projects.find(p => p.id === projectId)?.name ?? "otro proyecto");
+      names.push(projects.find(p => p.id === projectId)?.name ?? t("agentNode.otherProject"));
     }
     return names;
-  }, [runtime, projects, currentProjectId, agentId]);
+  }, [runtime, projects, currentProjectId, agentId, t]);
 }
 
 /** A ghost icon button with its tooltip: every action in the hierarchy view looks like this. */
@@ -121,17 +123,18 @@ export function IconAction({
 }
 
 /** The four actions an agent always has, so the node and the inspector never drift apart. */
-export function agentActionItems(actions: AgentActions) {
+export function agentActionItems(actions: AgentActions, t: TFunction) {
   return {
-    stop: { icon: Square, label: "Detener", onClick: actions.stop, disabled: !actions.ready, destructive: true },
-    instruct: { icon: MessageSquareText, label: "Indicar", onClick: actions.instruct, disabled: !actions.ready },
-    output: { icon: FileText, label: "Ver salida", onClick: actions.viewOutput, disabled: !actions.lastRunId },
-    chat: { icon: MessageCircle, label: "Chatear", onClick: actions.openChat, disabled: !actions.ready }
+    stop: { icon: Square, label: t("composer.stop"), onClick: actions.stop, disabled: !actions.ready, destructive: true },
+    instruct: { icon: MessageSquareText, label: t("agentActions.instruct"), onClick: actions.instruct, disabled: !actions.ready },
+    output: { icon: FileText, label: t("agentActions.viewOutput"), onClick: actions.viewOutput, disabled: !actions.lastRunId },
+    chat: { icon: MessageCircle, label: t("agentActions.chat"), onClick: actions.openChat, disabled: !actions.ready }
   };
 }
 
 export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; selected?: boolean }) {
   const { agent } = data;
+  const t = useT();
   const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
   const runStartedAt = useAppStore(state => {
     const projectId = state.currentProjectId;
@@ -161,12 +164,12 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
     preparing
       ? preparing
       : status === "working"
-      ? `Trabajando${elapsed ? ` · ${elapsed}` : ""}`
+      ? (elapsed ? t("agentNode.workingElapsed", { elapsed }) : t("label.status.working"))
       : status === "waiting"
-        ? "Esperando a sus hijos"
-        : statusLabel[status];
+        ? t("inspector.waitingForChildren")
+        : t(statusLabelKey[status]);
 
-  const items = agentActionItems(actions);
+  const items = agentActionItems(actions, t);
   const LastToolIcon = lastTool ? toolIcon(lastTool.tool) : null;
 
   return (
@@ -190,7 +193,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                   {agent.name}
                 </div>
                 <div className="truncate text-[11px] text-muted-foreground">
-                  {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+                  {PROVIDERS[agent.provider]?.label || agent.provider} · {t(roleLabelKey[agent.role]) || agent.role}
                 </div>
                 {branch && (
                   <Tooltip>
@@ -200,7 +203,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {worktree ? `Trabaja en ${worktree.path}` : "Trabaja en su propio worktree (se crea en la primera corrida)"}
+                      {worktree ? t("agentNode.worksIn", { path: worktree.path }) : t("agentNode.ownWorktree")}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -213,7 +216,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                         <AlertTriangle className="h-4 w-4 text-destructive" />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent>CLI no encontrado: configuralo en Agentes</TooltipContent>
+                    <TooltipContent>{t("agentNode.cliMissing")}</TooltipContent>
                   </Tooltip>
                 )}
                 <StatusDot status={status} className={cn("h-2.5 w-2.5", status === "working" && "animate-pulse")} />
@@ -225,7 +228,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
               {status === "error" && actions.lastError ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-help text-xs text-destructive">Error</span>
+                    <span className="cursor-help text-xs text-destructive">{t("label.status.error")}</span>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs whitespace-pre-wrap">{actions.lastError}</TooltipContent>
                 </Tooltip>
@@ -249,7 +252,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                     )}
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>Cuota: {quota.detail}</TooltipContent>
+                <TooltipContent>{t("agents.quota", { detail: quota.detail })}</TooltipContent>
               </Tooltip>
               {busyElsewhere.length > 0 && (
                 <Tooltip>
@@ -258,10 +261,10 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                       variant="outline"
                       className="max-w-[110px] truncate border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
                     >
-                      en {busyElsewhere[0]}
+                      {t("agentNode.busyIn", { name: busyElsewhere[0] })}
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>Ocupado en: {busyElsewhere.join(", ")}</TooltipContent>
+                  <TooltipContent>{t("agentNode.busyInList", { names: busyElsewhere.join(", ") })}</TooltipContent>
                 </Tooltip>
               )}
             </div>
@@ -275,7 +278,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                 <TooltipContent className="max-w-sm whitespace-pre-wrap">
                   {truncate(actions.currentTask, 240)}
                   {actions.currentTask.length > 240 && (
-                    <span className="mt-1 block text-[10px] opacity-70">Click en el nodo para ver la tarea completa</span>
+                    <span className="mt-1 block text-[10px] opacity-70">{t("agentNode.clickForFullTask")}</span>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -310,30 +313,30 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                       variant="ghost"
                       size="icon"
                       className="ml-auto h-7 w-7"
-                      aria-label="Más acciones"
+                      aria-label={t("agentNode.moreActions")}
                     >
                       <MoreHorizontal className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Más acciones</TooltipContent>
+                <TooltipContent>{t("agentNode.moreActions")}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem disabled={!actions.ready} onSelect={() => actions.resetSession()}>
-                  <RotateCcw /> Reiniciar sesión
+                  <RotateCcw /> {t("agentActions.resetSession")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => actions.editAgent()}>
-                  <Pencil /> Editar agente
+                  <Pencil /> {t("agentActions.editAgent")}
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={!actions.ready} onSelect={() => actions.duplicate()}>
-                  <Copy /> Duplicar
+                  <Copy /> {t("agentActions.duplicate")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={!actions.ready}
                   onSelect={() => actions.removeAgent()}
                 >
-                  <Trash2 /> Eliminar
+                  <Trash2 /> {t("common.delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
