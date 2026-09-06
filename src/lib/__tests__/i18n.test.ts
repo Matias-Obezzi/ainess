@@ -92,6 +92,17 @@ describe("dictionaries", () => {
     }
   });
 
+  it("declares the keys in the same order in every language", () => {
+    const baseOrder = Object.keys(es);
+    for (const lang of LANGUAGES) {
+      if (lang === "es") continue;
+      const order = Object.keys(dictionaries[lang]);
+      const firstDiff = baseOrder.findIndex((key, i) => order[i] !== key);
+      expect({ lang, at: firstDiff, key: firstDiff === -1 ? null : order[firstDiff] })
+        .toEqual({ lang, at: -1, key: null });
+    }
+  });
+
   it("keeps the same placeholders in every language", () => {
     const holders = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
     for (const lang of LANGUAGES) {

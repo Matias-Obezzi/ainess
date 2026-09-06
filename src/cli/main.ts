@@ -78,6 +78,7 @@ async function main() {
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
     console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
+    console.log("  doctor [--json]                            Chequeos del sistema; termina con código 1 si algo está mal");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
     console.log("  serve [--port N] [--tunnel [prov]] [--tunnel-domain dominio] [--tunnel-name nombre] [-w dir|-p proyecto]  Servidor para el celular, Ctrl+C termina");
     console.log("  remote url [--tunnel] | token [--regenerate]             URL con token para el celular"); 
@@ -87,7 +88,7 @@ async function main() {
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "formations", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
+  const KNOWN = new Set(["run", "agents", "formations", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "doctor", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -169,6 +170,24 @@ async function main() {
     }
     if (jsonOutput) console.log(JSON.stringify(results));
     process.exit(0);
+  }
+
+  // `ais doctor`: the same checks the app's Diagnóstico section runs, printed in Spanish. Exit
+  // code 1 when any of them is an error, so a script can gate on it.
+  if (first === "doctor") {
+    const { collectDiagnostics, formatDiagnosticsReport, worstLevel } = await import("@/lib/diagnostics");
+    const { translate, es } = await import("@/i18n");
+    const t = (key: string, vars?: Record<string, string | number>) => translate(es, es, key, vars);
+
+    const results = await collectDiagnostics(t, { refreshQuota: true });
+    if (jsonOutput) {
+      console.log(JSON.stringify(results));
+    } else {
+      const stamp = new Date().toLocaleString("es-AR", { hour12: false });
+      console.log(formatDiagnosticsReport(results, t, `${t("diagnostics.reportTitle")} — ${stamp}`));
+    }
+    // Nothing was modified, so there is nothing to flush: exiting drops the pending load timers.
+    process.exit(worstLevel(results) === "error" ? 1 : 0);
   }
 
   if (first === "profile") {
