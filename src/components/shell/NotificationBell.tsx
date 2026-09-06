@@ -21,7 +21,6 @@ import { formatTimeAgo } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { cn } from "@/lib/utils";
@@ -147,7 +146,8 @@ export function NotificationBell() {
           </TooltipContent>
         </Tooltip>
 
-        <PopoverContent align="end" className="w-[360px] p-0">
+        {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
+        <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0">
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             <span className="flex-1 text-xs font-semibold">Notificaciones</span>
             <Tooltip>
@@ -190,13 +190,11 @@ export function NotificationBell() {
               className="py-8"
             />
           ) : (
-            <ScrollArea className="max-h-[70vh]">
-              <div className="divide-y divide-border">
-                {items.map(item => (
-                  <NotificationRow key={item.id} item={item} now={now} onOpen={goTo} />
-                ))}
-              </div>
-            </ScrollArea>
+            <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
+              {items.map(item => (
+                <NotificationRow key={item.id} item={item} now={now} onOpen={goTo} />
+              ))}
+            </div>
           )}
         </PopoverContent>
       </Popover>
