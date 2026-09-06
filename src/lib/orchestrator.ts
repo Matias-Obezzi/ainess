@@ -294,9 +294,11 @@ function handleOutput(e: RunOutputEvent) {
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
+        if (!r) return state;
         const pRuntime = state.runtime[run.projectId] || {};
         return {
-          runs: { ...state.runs, [e.runId]: { ...r, output: ev.text } },
+          // Copilot's result carries usage but no text: keep whatever answer we already had.
+          runs: { ...state.runs, [e.runId]: { ...r, output: ev.text || r.output, ...(ev.usage ? { usage: ev.usage } : {}) } },
           ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } } } : {})
         };
       });
