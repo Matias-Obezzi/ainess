@@ -175,8 +175,9 @@ function HomeView() {
               .filter(r => r.projectId === project.id && r.parentRunId === null && r.kind !== "chat")
               .sort((a, b) => b.startedAt - a.startedAt)[0];
             return (
-              <button key={project.id} type="button" className="text-left" onClick={() => openProject(project.id)}>
-                <Card className="p-3 flex items-center gap-3 min-h-16">
+              <button key={project.id} type="button" className="w-full text-left" onClick={() => openProject(project.id)}>
+                {/* Card is a column by default: force the row, or the dot, name and chevron stack up. */}
+                <Card className="flex-row items-center gap-3 px-3 py-3 min-h-16">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: project.color || "#888" }} />
                   <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                     <span className="font-medium truncate">{project.name}</span>
@@ -232,11 +233,18 @@ function ProjectView({ projectId }: { projectId: string }) {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold truncate">{project.name}</span>
-        <div className="ml-auto flex items-center gap-1 pr-2">
+        {/* One dot per agent with its live status; tapping it opens the Agentes tab. */}
+        <button
+          type="button"
+          className="ml-auto flex h-10 items-center gap-1.5 rounded-md px-2 hover:bg-accent"
+          aria-label="Estado de los agentes"
+          title="Estado de los agentes"
+          onClick={() => selectTab("agents")}
+        >
           {agents.map(agent => (
             <StatusDot key={agent.id} status={runtime?.[agent.id]?.status ?? "idle"} />
           ))}
-        </div>
+        </button>
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col">

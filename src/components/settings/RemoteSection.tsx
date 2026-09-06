@@ -250,8 +250,13 @@ export function RemoteSection() {
               />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold">Túnel público</span>
-                <span className="text-xs text-muted-foreground">
-                  {tunnel.running ? `Activo con ${tunnel.provider ?? provider}` : tunnel.error ? tunnel.error : "Apagado"}
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {tunnelBusy ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      {remote.tunnel.enabled ? "Creando el túnel… puede tardar unos segundos" : "Cerrando el túnel…"}
+                    </>
+                  ) : tunnel.running ? `Activo con ${tunnel.provider ?? provider}` : tunnel.error ? tunnel.error : "Apagado"}
                 </span>
               </div>
             </div>
