@@ -156,7 +156,9 @@ async function hasNodeModules(dir: string): Promise<boolean> {
   if (marker !== null) return true;
   // pnpm and yarn write their own marker; either one means "someone already installed here".
   const yarn = await getTransport().readFileAbs(joinPath(dir, "node_modules", ".yarn-state.yml"));
-  return yarn !== null;
+  if (yarn !== null) return true;
+  const pnpm = await getTransport().readFileAbs(joinPath(dir, "node_modules", ".modules.yaml"));
+  return pnpm !== null;
 }
 
 // ---- The three things the app does with a worktree --------------------------------------------
