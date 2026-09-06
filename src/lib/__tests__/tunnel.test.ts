@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTunnelUrl, isTunnelProvider, tunnelArgs, tunnelInstallCommand } from "@/lib/tunnel";
+import { extractTunnelUrl, fixedUrl, hasFixedUrl, isTunnelProvider, normalizeDomain, tunnelArgs, tunnelInstallCommand } from "@/lib/tunnel";
 import { maskSecrets } from "@/lib/logger";
 import { tunnelUrl } from "@/lib/remote";
 
@@ -44,6 +44,55 @@ describe("tunnel helpers", () => {
   it("appends the token to the public URL, with or without a trailing slash", () => {
     expect(tunnelUrl("https://x.trycloudflare.com", "a b")).toBe("https://x.trycloudflare.com/?token=a%20b");
     expect(tunnelUrl("https://x.trycloudflare.com/", "tok")).toBe("https://x.trycloudflare.com/?token=tok");
+  });
+});
+
+describe("fixed tunnel URLs", () => {
+  it("normalizes a domain: scheme, trailing slash and case", () => {
+    expect(normalizeDomain("https://Algo.Ngrok-Free.App/")).toBe("algo.ngrok-free.app");
+    expect(normalizeDomain(" ")).toBe("");
+    expect(normalizeDomain(undefined)).toBe("");
+    expect(normalizeDomain("ainess.midominio.com")).toBe("ainess.midominio.com");
+  });
+
+  it("builds ngrok args with a static domain", () => {
+    expect(tunnelArgs("ngrok", 4710, { domain: "algo.ngrok-free.app" })).toEqual([
+      "http", "4710", "--log=stdout", "--log-format=json", "--url", "https://algo.ngrok-free.app",
+    ]);
+  });
+
+  it("builds cloudflared named-tunnel args when domain and tunnelName are set", () => {
+    expect(tunnelArgs("cloudflared", 4710, { domain: "x.midominio.com", tunnelName: "ainess" })).toEqual([
+      "tunnel", "--url", "http://127.0.0.1:4710", "run", "ainess",
+    ]);
+  });
+
+  it("falls back to the quick tunnel when cloudflared has a domain but no tunnel name", () => {
+    expect(tunnelArgs("cloudflared", 4710, { domain: "x.midominio.com" })).toEqual([
+      "tunnel", "--url", "http://127.0.0.1:4710",
+    ]);
+  });
+
+  it("detects a registered named-tunnel connection line and returns the fixed URL", () => {
+    const opts = { domain: "x.midominio.com", tunnelName: "ainess" };
+    const line = "2026-09-05T14:05:00Z INF Registered tunnel connection connection=ab12cd34-ef56-7890-abcd-ef1234567890";
+    expect(extractTunnelUrl("cloudflared", line, opts)).toBe("https://x.midominio.com");
+    expect(extractTunnelUrl("cloudflared", "INF some unrelated line", opts)).toBeNull();
+  });
+
+  it("hasFixedUrl / fixedUrl for ngrok", () => {
+    expect(hasFixedUrl("ngrok", { domain: "algo.ngrok-free.app" })).toBe(true);
+    expect(hasFixedUrl("ngrok", {})).toBe(false);
+    expect(fixedUrl("ngrok", { domain: "algo.ngrok-free.app" })).toBe("https://algo.ngrok-free.app");
+    expect(fixedUrl("ngrok", {})).toBeNull();
+  });
+
+  it("hasFixedUrl / fixedUrl for cloudflared", () => {
+    expect(hasFixedUrl("cloudflared", { domain: "x.midominio.com", tunnelName: "ainess" })).toBe(true);
+    expect(hasFixedUrl("cloudflared", { domain: "x.midominio.com" })).toBe(false);
+    expect(hasFixedUrl("cloudflared", { tunnelName: "ainess" })).toBe(false);
+    expect(fixedUrl("cloudflared", { domain: "x.midominio.com", tunnelName: "ainess" })).toBe("https://x.midominio.com");
+    expect(fixedUrl("cloudflared", { domain: "x.midominio.com" })).toBeNull();
   });
 });
 
