@@ -824,7 +824,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const formation = state.config.formations.find(f => f.id === formationId);
       const project = state.config.projects.find(p => p.id === projectId);
       if (!formation || !project) return state;
-      const agents = cloneAgents(formation.agents);
+      // A delegation resolves by name, so an agent joining a team that already has that name
+      // comes in as "Claude 2" instead of making both ambiguous.
+      const team = [...project.agents];
+      const agents = cloneAgents(formation.agents).map(agent => {
+        const named = { ...agent, name: nextAgentName(team, agent.name) };
+        team.push(named);
+        return named;
+      });
       return {
         config: {
           ...state.config,

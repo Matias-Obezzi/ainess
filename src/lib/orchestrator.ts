@@ -1,4 +1,4 @@
-import { useAppStore, selectChildren, selectAgent, selectSkillsFor, selectMcpFor } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
@@ -517,12 +517,13 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
 
 export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void> {
   const store = useAppStore.getState();
+  // The agent has to belong to this project's team: nobody else can be given work here.
+  if (!selectProjectAgents(store, projectId).some(a => a.id === agentId)) return;
   const runtime = store.runtime[projectId]?.[agentId];
-  if (!runtime) return;
 
   addMessage({ projectId, fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
 
-  if (runtime.status === "working") {
+  if (runtime?.status === "working") {
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {

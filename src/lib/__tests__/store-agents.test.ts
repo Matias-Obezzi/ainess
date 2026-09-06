@@ -152,6 +152,28 @@ describe("addProject", () => {
   });
 });
 
+describe("applyFormation", () => {
+  it("adds the formation's team without colliding with the names already there", async () => {
+    const { store } = await boot(legacyConfig());
+    const { useAppStore } = store;
+    const formation = useAppStore.getState().config.formations[0];
+
+    useAppStore.getState().applyFormation("p1", formation.id);
+
+    const state = useAppStore.getState();
+    const p1 = state.config.projects.find(p => p.id === "p1")!;
+    // The three that were already there plus the three of the formation, renamed to stay unique.
+    expect(p1.agents.map(a => a.name)).toEqual([
+      "Claude", "Antigravity", "Copilot", "Claude 2", "Antigravity 2", "Copilot 2",
+    ]);
+    const added = p1.agents.slice(3);
+    expect(added[1].parentId).toBe(added[0].id);
+    for (const agent of added) expect(state.runtime.p1[agent.id]).toBeDefined();
+    // Nothing that was already running loses its runtime row.
+    expect(state.runtime.p1["root-1"]).toBeDefined();
+  });
+});
+
 describe("removeAgent", () => {
   it("re-parents the children instead of deleting them, and only in that project", async () => {
     const { store } = await boot(legacyConfig());

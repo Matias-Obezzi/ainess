@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { useAppStore, selectRoots, selectAllAgents, selectProjectAgents, cloneAgents } from "@/store";
+import { useAppStore, selectRoots, selectAllAgents, selectProjectAgents } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nodeTransport, killAllSync, wingetCandidates } from "@/lib/transport-node";
 import * as readline from "node:readline";
@@ -410,7 +410,7 @@ async function main() {
       const projectId = resolveProjectId(fv.project as string | undefined, fv.workspace as string | undefined);
       store.applyFormation(projectId, formation.id);
       await store.saveConfig();
-      const added = cloneAgents(formation.agents).length;
+      const added = formation.agents.length;
       print({ ok: true, added }, `Formación "${formation.name}" aplicada: ${added} agentes agregados.`);
       process.exit(0);
     }

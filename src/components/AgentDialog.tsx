@@ -501,7 +501,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || duplicateName}>Guardar</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || duplicateName || (!onSave && !targetProjectId)}>Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
