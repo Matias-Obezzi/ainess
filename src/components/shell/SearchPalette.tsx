@@ -87,7 +87,7 @@ export function SearchPalette() {
     }
 
     for (const a of agents.filter(a => matches(a.name) || matches(a.provider)).slice(0, PER_GROUP)) {
-      const project = projects.find(p => p.agents.some(x => x.id === a.id));
+      const project = projects.find(p => (p.agents ?? []).some(x => x.id === a.id));
       out.push({
         key: `agent:${a.id}`,
         group: "Agentes",

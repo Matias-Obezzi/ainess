@@ -760,7 +760,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => {
       const project = state.config.projects.find(p => p.id === projectId);
       if (!project) return state;
-      const agents = [...project.agents];
+      const agents = [...(project.agents ?? [])];
       const idx = agents.findIndex(a => a.id === agent.id);
       if (idx >= 0) agents[idx] = agent;
       else agents.push(agent);
@@ -783,7 +783,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       config: {
         ...state.config,
         projects: state.config.projects.map(p => p.id === projectId
-          ? { ...p, agents: p.agents.map(a => a.id === agentId ? { ...a, ...patch, id: a.id } : a) }
+          ? { ...p, agents: (p.agents ?? []).map(a => a.id === agentId ? { ...a, ...patch, id: a.id } : a) }
           : p),
       },
     }));
@@ -794,9 +794,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => {
       const project = state.config.projects.find(p => p.id === projectId);
       if (!project) return state;
-      const agent = project.agents.find(a => a.id === agentId);
+      const agent = (project.agents ?? []).find(a => a.id === agentId);
       // Orphans would disappear from the board: the children move up to their grandparent.
-      const agents = project.agents
+      const agents = (project.agents ?? [])
         .filter(a => a.id !== agentId)
         .map(a => (a.parentId === agentId ? { ...a, parentId: agent?.parentId ?? null } : a));
       // The agent is gone, so are the per-agent assignments that named it.
@@ -826,7 +826,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       if (!formation || !project) return state;
       // A delegation resolves by name, so an agent joining a team that already has that name
       // comes in as "Claude 2" instead of making both ambiguous.
-      const team = [...project.agents];
+      const team = [...(project.agents ?? [])];
       const agents = cloneAgents(formation.agents).map(agent => {
         const named = { ...agent, name: nextAgentName(team, agent.name) };
         team.push(named);
@@ -835,7 +835,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       return {
         config: {
           ...state.config,
-          projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents: [...p.agents, ...agents] } : p),
+          projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents: [...(p.agents ?? []), ...agents] } : p),
         },
         // The history and the runtime of the agents already there are left alone.
         runtime: { ...state.runtime, [projectId]: { ...(state.runtime[projectId] ?? {}), ...runtimeFor(agents) } },
@@ -878,7 +878,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       id: crypto.randomUUID(),
       name: name.trim() || project.name,
       description: `Equipo de ${project.name}`,
-      agents: cloneAgents(project.agents),
+      agents: cloneAgents(project.agents ?? []),
     };
     set((state) => ({ config: { ...state.config, formations: [...state.config.formations, formation] } }));
     debouncedSave();
@@ -1367,7 +1367,7 @@ let allAgentsCache: { projects: Project[]; agents: AgentConfig[] } | null = null
 export function selectAllAgents(state: AppState): AgentConfig[] {
   const projects = state.config.projects;
   if (allAgentsCache && allAgentsCache.projects === projects) return allAgentsCache.agents;
-  const agents = projects.flatMap(p => p.agents);
+  const agents = projects.flatMap(p => p.agents ?? []);
   allAgentsCache = { projects, agents };
   return agents;
 }
@@ -1382,7 +1382,7 @@ export function selectRoots(state: AppState, projectId: string | null | undefine
 
 export function selectAgent(state: AppState, id: string): AgentConfig | undefined {
   for (const p of state.config.projects) {
-    const agent = p.agents.find(a => a.id === id);
+    const agent = (p.agents ?? []).find(a => a.id === id);
     if (agent) return agent;
   }
   return undefined;
@@ -1390,7 +1390,7 @@ export function selectAgent(state: AppState, id: string): AgentConfig | undefine
 
 /** The project an agent belongs to, for the callers that only carry its id. */
 export function selectProjectOfAgent(state: AppState, agentId: string): Project | undefined {
-  return state.config.projects.find(p => p.agents.some(a => a.id === agentId));
+  return state.config.projects.find(p => (p.agents ?? []).some(a => a.id === agentId));
 }
 
 export function selectFormation(state: AppState, id: string | null | undefined): Formation | undefined {

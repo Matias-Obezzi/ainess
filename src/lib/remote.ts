@@ -119,7 +119,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
       activeTaskRunId: s.activeTaskRunId[p.id] ?? null,
       running: runningByProject[p.id] ?? 0,
     })),
-    agents: s.config.projects.flatMap(p => p.agents.map(a => ({
+    agents: s.config.projects.flatMap(p => (p.agents ?? []).map(a => ({
       id: a.id, name: a.name, provider: a.provider, role: a.role, parentId: a.parentId,
       model: a.model, description: a.description, color: a.color, projectId: p.id,
     }))),
