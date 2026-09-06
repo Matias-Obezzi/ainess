@@ -37,7 +37,8 @@ export function ShortcutsDialog() {
                 </span>
                 {items.map(shortcut => (
                   <div key={shortcut.id} className="flex items-center gap-3 rounded-md px-2 py-1.5 odd:bg-muted/40">
-                    <span className="flex shrink-0 items-center gap-1">
+                    {/* A fixed column, so every description starts at the same place. */}
+                    <span className="flex w-28 shrink-0 items-center gap-1">
                       {formatShortcut(shortcut.keys, platform).map((part, i) => (
                         <kbd
                           key={`${shortcut.id}-${i}`}

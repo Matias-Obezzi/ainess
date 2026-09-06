@@ -64,7 +64,8 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
   const id = tab.id;
   const transport = getTransport();
 
-  // Ctrl+C must reach the process, so copy/paste use the Ctrl+Shift+… variants.
+  // Ctrl+C must reach the process, so copy/paste use the Ctrl+Shift+… variants. Both are declared
+  // in src/lib/shortcuts.ts (group "terminal"), which is what the Ctrl+/ dialog documents.
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== "keydown" || !e.ctrlKey || !e.shiftKey) return true;
     const key = e.key.toLowerCase();

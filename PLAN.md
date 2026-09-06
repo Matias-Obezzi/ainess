@@ -339,7 +339,7 @@ git. La app nunca mergea sola: cuando el agente termina, el usuario decide.
 
 Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex.flex-col`:
 `<TitleBar/>` + una fila `flex-1` con `<Sidebar/>` + columna principal + `<RightDock/>`
-opcional, más `<SettingsDialog/>` y `<SearchPalette/>` (modales, siempre montados). Encima flotan
+opcional, más `<SettingsDialog/>`, `<SearchPalette/>` y `<ShortcutsDialog/>` (modales, siempre montados). Encima flotan
 `<Island />` de `@/components/ui/island` (cuántos agentes están trabajando) y `<Toaster />` de
 `@/components/ui/toast` (delegación enviada, error de un agente, tarea terminada).
 
@@ -371,7 +371,21 @@ que corta el futuro, ignora la entrada idéntica consecutiva y guarda 50 como m�
 input autofocus y resultados agrupados en Proyectos / Chats / Agentes / Configuración, filtrados por
 substring sin acentos ni mayúsculas. Flechas para moverse, Enter o click para abrir (proyecto →
 `openProject(id, null)`, chat → `openProject(projectId, chatId)`, agente → abre su proyecto en la
-vista de jerarquía, sección → `openSettings(id)`).
+vista de jerarquía, sección → `openSettings(id)`). Además busca **tareas** del proyecto actual (abre
+su detalle: `openProject(projectId, null)` + `setProjectMode("tasks")` + `focusTask(id)`, que
+`TasksView` consume y limpia) y ofrece dos **acciones**: "Crear tarea: «lo tipeado»" (`addTask` en
+`backlog`, solo cuando hay proyecto actual y ninguna tarea coincide exacto) y "Atajos de teclado"
+(`toggleShortcuts(true)`).
+
+**Atajos de teclado** — la tabla única está en `src/lib/shortcuts.ts`: `SHORTCUTS`
+(`{ id, keys, descriptionKey, group, global }`), `SHORTCUT_GROUPS`
+(`general | project | composer | terminal`), `matchesShortcut`, `resolveGlobalShortcut`,
+`formatShortcut(keys, platform)` (Ctrl en Windows/Linux, ⌘ ⌥ ⇧ en macOS) y `shortcutPlatform()`.
+`App.tsx` resuelve los globales de esa tabla (Ctrl+K paleta, Ctrl+, Configuración, Ctrl+/ atajos,
+Ctrl+B sidebar, Ctrl+` terminales) y `components/shell/ShortcutsDialog.tsx` (Ctrl+/, store
+`shortcutsOpen`/`toggleShortcuts`) documenta todos, agrupados, con `<kbd>` a la izquierda. Los que
+no son globales los sigue manejando su componente (`Composer.tsx`, `lib/terminal-registry.ts`), pero
+la tabla es la única documentación: agregar un atajo allí es lo que lo hace visible.
 
 **Scrollbars** — `src/index.css` define barras finas (`scrollbar-width: thin` y
 `::-webkit-scrollbar` de 10px con thumb `color-mix(in oklch, var(--foreground) 22%, transparent)`,
@@ -663,6 +677,43 @@ si no, usa `tauri-apps/tauri-action@v0` para publicar el instalador NSIS, su fir
 Único requisito del repo: el secret `TAURI_SIGNING_PRIVATE_KEY`. `.github/workflows/ci.yml` corre en
 PRs y en pushes a ramas que no son `main`: typecheck, tests, `npm run build`, `npm run build:cli`,
 `release:check` y `cargo check`.
+
+## Diagnóstico del sistema
+
+`src/lib/diagnostics.ts` corre seis chequeos de solo lectura y devuelve
+`{ id, level: "ok" | "warn" | "error", title, detail, hint? }` por cada uno: `clis` (qué CLIs se
+detectaron y cuáles usan los agentes sin estar instalados → eso es error), `quota` (si se pudo leer
+la de cada proveedor en uso y el motivo si no), `remote` (si el servidor escucha y en qué dirección,
+o si el puerto está libre cuando está apagado), `tunnel` (cloudflared/ngrok instalados y si ngrok
+tiene authtoken y API key), `logs` (carpeta escribible y su tamaño) y `data` (proyectos, agentes,
+tareas, corridas y tamaño del historial).
+
+Cada `check*(input, t)` es puro: recibe un `DiagnosticsInput` ya recolectado y un traductor con la
+firma de `useT()`, así la UI sale traducida y el CLI en español (`translate(es, es, …)`).
+`collectDiagnosticsInput()` es la única parte con I/O. **Nunca imprime tokens ni claves**: el input
+lleva booleanos para las credenciales de ngrok, la dirección del servidor se arma como `ip:puerto`
+(nunca la URL, que lleva el token) y `formatDiagnosticsReport` pasa todo por `maskSecrets`.
+`runDiagnostics` devuelve la lista y `worstLevel` el peor nivel.
+
+Un chequeo que no se puede correr acá sale como aviso con el motivo, no como error: sin backend
+(preview del navegador, celular) `storageStat` devuelve `null` y eso apaga la detección de binarios
+y de túnel; el servidor remoto solo se puede observar desde la app (`canObserveRemote`), así que
+`ais doctor` avisa en vez de fallar cuando está prendido en la configuración.
+
+Dos comandos Rust nuevos, en `src-tauri/src/diagnostics.rs`, más sus métodos de `Transport`:
+
+```
+storage_stat(scope: "logs" | "config", relative_path?) -> StorageStat  // { path, exists, writable, files, bytes }
+port_available(port: u16) -> bool
+```
+
+`storage_stat` no crea carpetas y prueba la escritura con un archivo `.ainess-write-check` que borra
+enseguida; camina como mucho 4 niveles. En `nodeTransport` son `fs` y `net.createServer`; en los
+transports del navegador y del celular devuelven `null`.
+
+UI: `src/components/settings/DiagnosticsSection.tsx`, sección `diagnostics` de `SETTINGS_SECTIONS`
+(grupo `app`, icono `Stethoscope`), con "Volver a chequear" y "Copiar informe". CLI: `ais doctor
+[--json]` imprime el mismo informe en español y termina con código 1 si hay algún error.
 
 ## Acceso remoto (celular)
 
