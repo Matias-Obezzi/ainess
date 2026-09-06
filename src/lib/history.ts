@@ -5,7 +5,7 @@
 // Several processes may write the same file (the app, `ais run`, `ais approvals approve`,
 // `ais serve`), so every save first merges what is on disk, and the app re-syncs the
 // current project periodically to see decisions taken elsewhere.
-import { useAppStore } from "@/store";
+import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, Approval } from "@/types";
 
@@ -174,7 +174,7 @@ function notifyInterrupted(projectId: string, interrupted: Run[]): void {
   const where = project ? ` en ${project.name}` : "";
   if (interrupted.length === 1) {
     const run = interrupted[0];
-    const agent = store.config.agents.find(a => a.id === run.agentId);
+    const agent = selectAgent(store, run.agentId);
     store.notify({
       kind: "interrupted",
       title: `${agent?.name ?? "Un agente"} quedó a medias${where}`,

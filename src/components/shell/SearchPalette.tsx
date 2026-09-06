@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, FolderOpen, MessageCircle, Settings2, Users } from "lucide-react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents, selectProjectOfAgent } from "@/store";
 import type { SettingsSection } from "@/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export function SearchPalette() {
   const toggleSearch = useAppStore(state => state.toggleSearch);
   const projects = useAppStore(state => state.config.projects);
   const chats = useAppStore(state => state.config.chats);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const openProject = useAppStore(state => state.openProject);
   const openSettings = useAppStore(state => state.openSettings);
 
@@ -87,13 +87,20 @@ export function SearchPalette() {
     }
 
     for (const a of agents.filter(a => matches(a.name) || matches(a.provider)).slice(0, PER_GROUP)) {
+      const project = projects.find(p => (p.agents ?? []).some(x => x.id === a.id));
       out.push({
         key: `agent:${a.id}`,
         group: "Agentes",
         label: a.name,
-        hint: a.provider,
+        hint: project ? `${project.name} · ${a.provider}` : a.provider,
         icon: Bot,
-        run: () => openSettings("agents"),
+        // The team lives in the project's hierarchy board, so that is where an agent opens.
+        run: () => {
+          const target = project ?? selectProjectOfAgent(useAppStore.getState(), a.id);
+          if (!target) return;
+          openProject(target.id, null);
+          useAppStore.getState().setProjectMode("graph");
+        },
       });
     }
 

@@ -2,7 +2,7 @@
 // thumb. The store is filled by the snapshot (see remote-client.ts) and every action that runs
 // something is an HTTP call to the PC.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Logo } from "@/components/Logo";
 import { StatusDot } from "@/components/StatusDot";
@@ -304,7 +304,7 @@ function TabButton({ icon: Icon, label, active, badge, onClick }: {
 
 function ChatList({ projectId }: { projectId: string }) {
   const allChats = useAppStore(state => state.config.chats);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const active = useAppStore(state => state.remoteActiveChats);
   // Filtering inside the selector would hand zustand a new array on every render (infinite loop).
   const chats = useMemo(() => allChats.filter(c => c.projectId === projectId), [allChats, projectId]);
@@ -340,7 +340,7 @@ function ChatList({ projectId }: { projectId: string }) {
 // ---- Agents tab ----
 
 function AgentsTab({ projectId }: { projectId: string }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const runtime = useAppStore(state => state.runtime[projectId]);
   const stopAgent = useAppStore(state => state.stopAgent);
   const [instructing, setInstructing] = useState<string | null>(null);

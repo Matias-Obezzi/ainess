@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { AgentConfig, ProviderId } from "@/types";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { QuotaRing, useAgentQuota } from "@/components/QuotaRing";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
 
 /** Trigger + breakdown. `agent` is who the composer is talking to right now. */
 export function QuotaIndicator({ agent, className }: { agent: AgentConfig; className?: string }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const autoModel = useAppStore(state => state.config.autoModel);
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const quota = useAgentQuota(agent);

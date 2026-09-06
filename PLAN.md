@@ -255,8 +255,9 @@ interface AppState {
   saveConfig(): Promise<void>;
   setWorkspaceDir(dir: string | null): void;
   setMaxRounds(n: number): void;
-  upsertAgent(agent: AgentConfig): void;
-  removeAgent(agentId: string): void;
+  addAgent(projectId: string, agent: AgentConfig): void;
+  updateAgent(projectId: string, agentId: string, patch: Partial<AgentConfig>): void;
+  removeAgent(projectId: string, agentId: string): void;
   detectBinaries(): Promise<void>;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;   // ver "Modelos y cuota"
   refreshQuota(provider: ProviderId): Promise<ProviderQuota>;  // ver "Modelos y cuota"
@@ -271,9 +272,37 @@ interface AppState {
 export const useAppStore = create<AppState>()(…)
 ```
 
-Seed por defecto (primer arranque): `Claude` (planner, provider claude, raíz),
-`Antigravity` (implementer, provider antigravity, hijo de Claude, model `gemini-3.1-pro-high`),
-`Copilot` (implementer, provider copilot, hijo de Claude). `maxRounds = 6`.
+## Agentes por proyecto y formaciones (config version 10)
+
+Los agentes **no** son una lista global: cada proyecto lleva su propio equipo en `Project.agents`,
+con su propia jerarquía. Las plantillas de equipo viven en `AppConfig.formations: Formation[]`
+(`{ id, name, description?, agents }`), con `defaultFormationId` marcando la que se preselecciona al
+crear un proyecto. `AppConfig.agents` ya no existe.
+
+- Selectores: `selectProjectAgents(state, projectId)` (el equipo de un proyecto),
+  `selectAllAgents(state)` (la unión de todos, cacheada por identidad de `config.projects`, para los
+  lugares que solo tienen un id: mensajes, runs, cuota), `selectAgent(state, id)` (busca en todos los
+  proyectos, los ids son únicos), `selectProjectOfAgent`, `selectChildren(state, projectId, agentId)`
+  y `selectRoots(state, projectId)`.
+- Acciones: `addAgent`/`updateAgent`/`removeAgent` por proyecto (al borrar, los hijos pasan a colgar
+  del padre del borrado y se limpia su runtime), `addProject(project, opts?)` (copia la formación
+  elegida —o la predeterminada— con `cloneAgents`, que renumera ids y remapea `parentId`),
+  `applyFormation`, `upsertFormation`, `removeFormation`, `setDefaultFormation` y
+  `saveProjectAsFormation(projectId, name)`.
+- Migración 9 → 10: cada proyecto recibe una copia del equipo global; el proyecto de `lastProjectId`
+  (o el primero) **conserva los ids originales**, así el `runtime`, el historial y los `enabledFor`
+  de skills/MCP siguen apuntando a algo. El equipo global además se guarda como la formación
+  "Mi equipo", que queda de predeterminada.
+- El equipo se gestiona desde la **jerarquía del proyecto** (agregar, duplicar, editar, eliminar,
+  "Guardar como formación"); Configuración → Agentes es detección de CLIs + formaciones.
+- Dos agentes del mismo provider en un proyecto son válidos (dos Claude con roles distintos); lo
+  único único dentro del equipo es el **nombre** (case-insensitive), que es lo que resuelve el
+  bloque `delegate`.
+
+Seed por defecto (primer arranque): la formación "Mi equipo" con `Claude` (planner, provider claude,
+raíz), `Antigravity` (implementer, provider antigravity, hijo de Claude, model
+`gemini-3.1-pro-high`) y `Copilot` (implementer, provider copilot, hijo de Claude), marcada como
+predeterminada. `maxRounds = 6`.
 
 ## UI (src/App.tsx + src/components/)
 
@@ -310,8 +339,8 @@ que corta el futuro, ignora la entrada idéntica consecutiva y guarda 50 como m�
 **Paleta de búsqueda** — `components/shell/SearchPalette.tsx`: `Dialog` arriba (`top-[15%]`) con un
 input autofocus y resultados agrupados en Proyectos / Chats / Agentes / Configuración, filtrados por
 substring sin acentos ni mayúsculas. Flechas para moverse, Enter o click para abrir (proyecto →
-`openProject(id, null)`, chat → `openProject(projectId, chatId)`, agente → `openSettings("agents")`,
-sección → `openSettings(id)`).
+`openProject(id, null)`, chat → `openProject(projectId, chatId)`, agente → abre su proyecto en la
+vista de jerarquía, sección → `openSettings(id)`).
 
 **Scrollbars** — `src/index.css` define barras finas (`scrollbar-width: thin` y
 `::-webkit-scrollbar` de 10px con thumb `color-mix(in oklch, var(--foreground) 22%, transparent)`,
@@ -370,7 +399,8 @@ mismo color.
      label "delegado" mientras el hijo está `working`/`waiting`. Sin `<Controls/>`: arriba a la
      izquierda un resumen ("N trabajando / esperando / inactivos") y arriba a la derecha una toolbar
      de iconos (Ajustar vista, Centrar en el activo, Acercar, Alejar) que se esconde con el
-     inspector abierto. Sin agentes, `EmptyState` con CTA a Configuración > Agentes.
+     inspector abierto, más "Agregar agente" (abre `AgentDialog` sobre el proyecto actual) y
+     "Guardar como formación". Sin agentes, `EmptyState` con CTA a "Agregar agente".
      - Nodo custom `AgentNode.tsx` (260px, borde superior del color del agente, `ring` si está
        seleccionado): avatar con la inicial, nombre, "{provider} · {rol}", `StatusDot` (pulso si
        trabaja) y `AlertTriangle` si falta el CLI; una línea de estado con cronómetro
@@ -387,7 +417,7 @@ mismo color.
        estado y "Ver", y las mismas acciones con texto.
      - `agent-actions.tsx` — `useAgentActions(agent)` y `AgentActionDialogs`, la semántica compartida
        por el nodo y el inspector (`stopAgent`, `instructAgent`, último run, chat individual,
-       `resetSession`, `openSettings("agents")`).
+       `resetSession`, editar el agente con `AgentDialog`, duplicarlo y eliminarlo).
      - Los estilos de React Flow viven en `src/index.css` sobre los tokens del tema (variables
        `--xy-*` y reglas `.react-flow__*`), sin duplicar reglas para `.dark`.
    - `Composer.tsx` — textarea (Ctrl+Enter para enviar, flecha arriba recupera el último prompt).
@@ -418,14 +448,19 @@ mismo color.
    - **General** (`GeneralSection.tsx`, sin acciones): card "Segundo plano" (tray y notificaciones,
      ver abajo) y card "Orquestación" (`maxRounds`, auto-selección de modelos, aprobar
      delegaciones).
-   - **Agentes** (`AgentsSection.tsx` + `AgentsSectionActions` + `AgentsSectionProvider`): cards de
-     agentes (skeleton mientras `!loaded`, `EmptyState` si no hay agentes); acciones del header:
-     "Autodetectar" (`detectBinaries()` + toast resumen) y "Nuevo agente". `AgentDialog.tsx` para
-     crear/editar: nombre, provider, rol, padre, modelo —`Select` con la lista real de modelos del
-     proveedor y la cuota que le queda (skeleton mientras se cargan modelos/cuota la primera vez;
-     el `Select` se reemplaza por un placeholder "Cargando modelos…" deshabilitado), más "Otro…"
-     para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una sección
-     "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override".
+   - **Agentes** (`AgentsSection.tsx` + `AgentsSectionActions` + `AgentsSectionProvider`): ya no
+     lista agentes (eso vive en la jerarquía de cada proyecto). Arriba, **IAs instaladas**: una card
+     por provider detectable con logo, si está detectado y dónde, la versión, la cuota
+     (`QuotaRing` + `summarizeAgentQuota`), "Cargar a mano"/"Limpiar override" y "Actualizar cuota";
+     acción del header "Autodetectar" (`detectBinaries()` + toast resumen). Abajo, **Formaciones**:
+     cada equipo guardado con su resumen (cuántos agentes y de qué providers), Editar, Duplicar,
+     Predeterminada y Eliminar, más "Nueva formación" en el header. `FormationDialog` edita nombre,
+     descripción y la lista de agentes reusando `AgentDialog.tsx` en modo controlado (`agents` +
+     `onSave`, sin tocar el store): nombre, provider, rol, padre, modelo —`Select` con la lista real
+     de modelos del proveedor y la cuota que le queda (skeleton mientras se cargan modelos/cuota la
+     primera vez; el `Select` se reemplaza por un placeholder "Cargando modelos…" deshabilitado),
+     más "Otro…" para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una
+     sección "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override".
    - **Perfil** (`ProfileSection.tsx` + acción "Guardar" en el header): nombre/sobre vos/preferencias
      en un borrador local que se persiste solo al guardar.
    - **Órdenes** (`PresetsSection.tsx` + acción "Nueva orden"), **Skills** (`SkillsSection.tsx` +
@@ -638,7 +673,8 @@ Piezas:
   jerarquía ni configuración.
 
 Snapshot (`RemoteSnapshot` en `src/lib/remote.ts`) — todo lo que los componentes necesitan para
-renderizar sin leer el disco: `projects` (con `activeTaskRunId` y `running`), `agents`, `runtime`,
+renderizar sin leer el disco: `projects` (con `activeTaskRunId` y `running`), `agents` (los de todos
+los proyectos, cada uno con su `projectId`), `runtime`,
 `messages` (últimos 800, con `meta` y `runId`, texto recortado a 8000), `approvals` pendientes con
 `payload`, `runs` (últimos 60 por proyecto, sin `rawLines`, `prompt`/`output` a 20 000), `chats`,
 `chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`) y `activeChats`. Si el JSON

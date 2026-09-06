@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ const DEFAULT_MODEL = "__default__";
 const OTHER_MODEL = "__other_model__";
 
 export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const models = useAppStore(state => state.models);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const chats = useAppStore(state => state.config.chats);

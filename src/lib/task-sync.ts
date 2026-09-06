@@ -4,7 +4,7 @@
 //
 // The board is a view of the work, never a gate on it: every entry point swallows its own errors so
 // a broken task file can never stop a run from starting or finishing.
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { truncate } from "@/lib/format";
 import type { Run, Task } from "@/types";
 
@@ -22,9 +22,9 @@ function findByRun(projectId: string, runId: string): Task | undefined {
   return tasksOf(projectId).find(t => t.runId === runId);
 }
 
-/** True when the roster has someone who reviews, so finished work waits for a look. */
-function hasReviewer(): boolean {
-  return useAppStore.getState().config.agents.some(a => a.role === "reviewer");
+/** True when this project has someone who reviews, so finished work waits for a look. */
+function hasReviewer(projectId: string): boolean {
+  return selectProjectAgents(useAppStore.getState(), projectId).some(a => a.role === "reviewer");
 }
 
 function guard(fn: () => void): void {
@@ -99,7 +99,7 @@ export function taskOnRunFinished(run: Run): void {
     if (!task) return;
     const failed = run.status === "error" || run.status === "killed";
     useAppStore.getState().updateTask(task.id, {
-      status: failed ? "needs-you" : hasReviewer() ? "in-review" : "ready",
+      status: failed ? "needs-you" : hasReviewer(run.projectId) ? "in-review" : "ready",
       detail: failed ? [task.detail, `Error: ${run.output || "la corrida terminó sin salida"}`].filter(Boolean).join("\n\n") : task.detail,
     });
   });

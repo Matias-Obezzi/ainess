@@ -1,7 +1,7 @@
 // "Nueva tarea": the little that a task needs to exist. Everything else is edited afterwards in
 // the detail dialog.
 import { useEffect, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ export function NewTaskDialog({
   status?: TaskStatus;
   onOpenChange(open: boolean): void;
 }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const addTask = useAppStore(state => state.addTask);
 
   const [title, setTitle] = useState("");

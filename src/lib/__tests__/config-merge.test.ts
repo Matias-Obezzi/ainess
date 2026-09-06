@@ -3,11 +3,11 @@ import { mergeConfig } from "@/lib/config-merge";
 import type { AppConfig } from "@/types";
 
 const cfg = (over: Partial<AppConfig>): AppConfig => ({
-  projects: [], agents: [], chats: [], skills: [], mcpServers: [], hooks: [], presets: [],
+  projects: [], formations: [], chats: [], skills: [], mcpServers: [], hooks: [], presets: [],
   ...over,
 } as unknown as AppConfig);
 
-const p = (id: string) => ({ id, name: id, workspaceDir: `C:\\${id}`, createdAt: 1 });
+const p = (id: string) => ({ id, name: id, workspaceDir: `C:\\${id}`, createdAt: 1, agents: [] });
 
 describe("mergeConfig", () => {
   it("keeps a project another process added while this one was running", () => {

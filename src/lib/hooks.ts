@@ -193,7 +193,8 @@ export async function testHookAction(hook: Hook): Promise<void> {
       id: "test",
       name: "Proyecto Test",
       workspaceDir: "/test/workspace",
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      agents: []
     }
   };
   await executeHookAction(hook, vars, ctx);

@@ -73,6 +73,17 @@ export interface Project {
   workspaceDir: string;
   color?: string;
   createdAt: number;
+  /** The team that works on this project. Empty means the project has no agents yet. */
+  agents: AgentConfig[];
+}
+
+/** A saved team template: what a new project starts with. */
+export interface Formation {
+  id: string;
+  name: string;
+  description?: string;
+  /** Same shape as a project's agents; ids are regenerated when it is applied. */
+  agents: AgentConfig[];
 }
 
 export type HookEvent =
@@ -173,13 +184,16 @@ export interface Preset {
 }
 
 export interface AppConfig {
-  version: 9;
+  version: 10;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
-  agents: AgentConfig[];
   projects: Project[];
+  /** Saved team templates offered when a project is created. */
+  formations: Formation[];
+  /** Formation preselected in the project dialog; null = start with no agents. */
+  defaultFormationId: string | null;
   lastProjectId: string | null;
   /** Max planner continuation rounds per user task. */
   maxRounds: number;

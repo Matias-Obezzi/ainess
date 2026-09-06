@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -119,13 +119,28 @@ export interface AppState {
 
   init(): Promise<void>;
   saveConfig(): Promise<void>;
-  addProject(project: Omit<Project, "id" | "createdAt">): void;
+  /**
+   * Creates a project and its team. `agents` wins when given (the project dialog hands over the
+   * list the user edited); otherwise the formation applies: `formationId` when set, the default
+   * one when the option is absent, and none when it is explicitly null.
+   */
+  addProject(project: Omit<Project, "id" | "createdAt" | "agents"> & { agents?: AgentConfig[] }, opts?: { formationId?: string | null }): void;
   updateProject(id: string, patch: Partial<Project>): void;
   removeProject(id: string): void;
   setCurrentProject(id: string | null): void;
   setMaxRounds(n: number): void;
-  upsertAgent(agent: AgentConfig): void;
-  removeAgent(agentId: string): void;
+  /** Adds an agent to a project's team (replacing the one with the same id, if any). */
+  addAgent(projectId: string, agent: AgentConfig): void;
+  updateAgent(projectId: string, agentId: string, patch: Partial<AgentConfig>): void;
+  /** Removes an agent; its children are re-parented to its own parent, never deleted. */
+  removeAgent(projectId: string, agentId: string): void;
+  /** Copies the agents of a formation into a project's team, with fresh ids. */
+  applyFormation(projectId: string, formationId: string): void;
+  upsertFormation(formation: Formation): void;
+  removeFormation(formationId: string): void;
+  setDefaultFormation(formationId: string | null): void;
+  /** Saves a project's current team as a reusable formation and returns its id. */
+  saveProjectAsFormation(projectId: string, name: string): string | undefined;
   upsertSkill(skill: Skill): void;
   removeSkill(skillId: string): void;
   upsertMcpServer(server: McpServer): void;
@@ -210,17 +225,59 @@ export interface AppState {
   loadChatMessages(chatId: string): Promise<void>;
 }
 
-function generateSeedConfig(): AppConfig {
+/** The team every new install starts from, saved as the default formation. */
+function seedAgents(): AgentConfig[] {
   const claudeId = crypto.randomUUID();
-  const antigravityId = crypto.randomUUID();
-  const copilotId = crypto.randomUUID();
+  return [
+    {
+      id: claudeId,
+      name: "Claude",
+      provider: "claude",
+      role: "planner",
+      parentId: null,
+      autoApprove: false,
+      color: "#d97757",
+    },
+    {
+      id: crypto.randomUUID(),
+      name: "Antigravity",
+      provider: "antigravity",
+      role: "implementer",
+      parentId: claudeId,
+      model: "gemini-3.1-pro-high",
+      autoApprove: true,
+      description: "Implementa cambios de código en el workspace usando Antigravity (Gemini)",
+      color: "#4f8cff",
+    },
+    {
+      id: crypto.randomUUID(),
+      name: "Copilot",
+      provider: "copilot",
+      role: "implementer",
+      parentId: claudeId,
+      autoApprove: true,
+      description: "Implementa cambios de código usando GitHub Copilot CLI",
+      color: "#8b5cf6",
+    },
+  ];
+}
+
+function generateSeedConfig(): AppConfig {
+  const formation: Formation = {
+    id: crypto.randomUUID(),
+    name: "Mi equipo",
+    description: "Un planificador con dos implementadores",
+    agents: seedAgents(),
+  };
 
   return {
-    version: 9,
+    version: 10,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
     tray: { enabled: true, notifyApprovals: true, notifyResults: true },
     projects: [],
+    formations: [formation],
+    defaultFormationId: formation.id,
     lastProjectId: null,
     maxRounds: 6,
     skills: [],
@@ -234,39 +291,27 @@ function generateSeedConfig(): AppConfig {
     chats: [],
     logLevel: "info",
     autoUpdateCheck: true,
-    agents: [
-      {
-        id: claudeId,
-        name: "Claude",
-        provider: "claude",
-        role: "planner",
-        parentId: null,
-        autoApprove: false,
-        color: "#d97757",
-      },
-      {
-        id: antigravityId,
-        name: "Antigravity",
-        provider: "antigravity",
-        role: "implementer",
-        parentId: claudeId,
-        model: "gemini-3.1-pro-high",
-        autoApprove: true,
-        description: "Implementa cambios de código en el workspace usando Antigravity (Gemini)",
-        color: "#4f8cff",
-      },
-      {
-        id: copilotId,
-        name: "Copilot",
-        provider: "copilot",
-        role: "implementer",
-        parentId: claudeId,
-        autoApprove: true,
-        description: "Implementa cambios de código usando GitHub Copilot CLI",
-        color: "#8b5cf6",
-      }
-    ]
   };
+}
+
+/**
+ * Copies a team keeping its shape: every agent gets a new id and every `parentId` is remapped to
+ * the new id of its parent (a parent that is not in the list becomes a root, so nothing is lost).
+ */
+export function cloneAgents(agents: AgentConfig[]): AgentConfig[] {
+  const ids = new Map(agents.map(a => [a.id, crypto.randomUUID()]));
+  return agents.map(a => ({
+    ...a,
+    id: ids.get(a.id)!,
+    parentId: a.parentId ? ids.get(a.parentId) ?? null : null,
+  }));
+}
+
+/** A runtime entry per agent: without it the first run of a project crashes. */
+function runtimeFor(agents: AgentConfig[]): Record<string, AgentRuntime> {
+  const runtime: Record<string, AgentRuntime> = {};
+  for (const a of agents) runtime[a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
+  return runtime;
 }
 
 /** Shell layout preferences, kept out of the config file (per-machine, not per-project). */
@@ -423,7 +468,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 9, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, agents: [], projects: [], lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
+  config: { version: 10, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -736,18 +781,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (merged !== get().config) set({ config: merged });
   },
 
-  addProject: (project) => {
+  addProject: (project, opts) => {
     set((state) => {
       const id = crypto.randomUUID();
-      const newProject: Project = { ...project, id, createdAt: Date.now() };
-      // Every agent needs a runtime entry in the new project, or the first run there crashes.
-      const projectRuntime: Record<string, AgentRuntime> = {};
-      for (const agent of state.config.agents) {
-        projectRuntime[agent.id] = { agentId: agent.id, status: "idle", queuedInstructions: [] };
+      // The dialog hands over the team the user edited; without one, the formation decides.
+      let agents: AgentConfig[];
+      if (project.agents) {
+        agents = project.agents;
+      } else {
+        const formationId = opts && "formationId" in opts ? opts.formationId : state.config.defaultFormationId;
+        const formation = formationId ? state.config.formations.find(f => f.id === formationId) : undefined;
+        agents = formation ? cloneAgents(formation.agents) : [];
       }
+      const newProject: Project = { ...project, agents, id, createdAt: Date.now() };
       return {
         config: { ...state.config, projects: [...state.config.projects, newProject] },
-        runtime: { ...state.runtime, [id]: projectRuntime },
+        runtime: { ...state.runtime, [id]: runtimeFor(agents) },
       };
     });
     debouncedSave();
@@ -816,57 +865,133 @@ export const useAppStore = create<AppState>()((set, get) => ({
     debouncedSave();
   },
 
-  upsertAgent: (agent) => {
+  addAgent: (projectId, agent) => {
     set((state) => {
-      const idx = state.config.agents.findIndex(a => a.id === agent.id);
-      const newAgents = [...state.config.agents];
-      if (idx >= 0) {
-        newAgents[idx] = agent;
-      } else {
-        newAgents.push(agent);
-      }
-      const newRuntime = { ...state.runtime };
-      for (const p of state.config.projects) {
-        if (!newRuntime[p.id]) newRuntime[p.id] = {};
-        if (!newRuntime[p.id][agent.id]) {
-          newRuntime[p.id][agent.id] = { agentId: agent.id, status: "idle", queuedInstructions: [] };
-        }
-      }
-      return { config: { ...state.config, agents: newAgents }, runtime: newRuntime };
+      const project = state.config.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      const agents = [...(project.agents ?? [])];
+      const idx = agents.findIndex(a => a.id === agent.id);
+      if (idx >= 0) agents[idx] = agent;
+      else agents.push(agent);
+      return {
+        config: { ...state.config, projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents } : p) },
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...(state.runtime[projectId] ?? {}),
+            [agent.id]: state.runtime[projectId]?.[agent.id] ?? { agentId: agent.id, status: "idle", queuedInstructions: [] },
+          },
+        },
+      };
     });
     debouncedSave();
   },
 
-  removeAgent: (agentId) => {
+  updateAgent: (projectId, agentId, patch) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p => p.id === projectId
+          ? { ...p, agents: (p.agents ?? []).map(a => a.id === agentId ? { ...a, ...patch, id: a.id } : a) }
+          : p),
+      },
+    }));
+    debouncedSave();
+  },
+
+  removeAgent: (projectId, agentId) => {
     set((state) => {
-      const agent = state.config.agents.find(a => a.id === agentId);
-      const newAgents = state.config.agents.filter(a => a.id !== agentId).map(a => {
-        if (a.parentId === agentId) {
-          return { ...a, parentId: agent?.parentId || null };
-        }
-        return a;
-      });
-      // Cleanup enabledFor in skills and mcpServers
-      const newSkills = state.config.skills.map(s => {
-        if (s.enabledFor !== "all") {
-          return { ...s, enabledFor: s.enabledFor.filter(id => id !== agentId) };
-        }
-        return s;
-      });
-      const newMcp = state.config.mcpServers.map(s => {
-        if (s.enabledFor !== "all") {
-          return { ...s, enabledFor: s.enabledFor.filter(id => id !== agentId) };
-        }
-        return s;
-      });
-      const newRuntime = { ...state.runtime };
-      for (const pId of Object.keys(newRuntime)) {
-        newRuntime[pId] = { ...newRuntime[pId] };
-        delete newRuntime[pId][agentId];
-      }
-      return { config: { ...state.config, agents: newAgents, skills: newSkills, mcpServers: newMcp }, runtime: newRuntime };
+      const project = state.config.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      const agent = (project.agents ?? []).find(a => a.id === agentId);
+      // Orphans would disappear from the board: the children move up to their grandparent.
+      const agents = (project.agents ?? [])
+        .filter(a => a.id !== agentId)
+        .map(a => (a.parentId === agentId ? { ...a, parentId: agent?.parentId ?? null } : a));
+      // The agent is gone, so are the per-agent assignments that named it.
+      const newSkills = state.config.skills.map(sk =>
+        sk.enabledFor === "all" ? sk : { ...sk, enabledFor: sk.enabledFor.filter(id => id !== agentId) });
+      const newMcp = state.config.mcpServers.map(m =>
+        m.enabledFor === "all" ? m : { ...m, enabledFor: m.enabledFor.filter(id => id !== agentId) });
+      const projectRuntime = { ...(state.runtime[projectId] ?? {}) };
+      delete projectRuntime[agentId];
+      return {
+        config: {
+          ...state.config,
+          projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents } : p),
+          skills: newSkills,
+          mcpServers: newMcp,
+        },
+        runtime: { ...state.runtime, [projectId]: projectRuntime },
+      };
     });
     debouncedSave();
+  },
+
+  applyFormation: (projectId, formationId) => {
+    set((state) => {
+      const formation = state.config.formations.find(f => f.id === formationId);
+      const project = state.config.projects.find(p => p.id === projectId);
+      if (!formation || !project) return state;
+      // A delegation resolves by name, so an agent joining a team that already has that name
+      // comes in as "Claude 2" instead of making both ambiguous.
+      const team = [...(project.agents ?? [])];
+      const agents = cloneAgents(formation.agents).map(agent => {
+        const named = { ...agent, name: nextAgentName(team, agent.name) };
+        team.push(named);
+        return named;
+      });
+      return {
+        config: {
+          ...state.config,
+          projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents: [...(p.agents ?? []), ...agents] } : p),
+        },
+        // The history and the runtime of the agents already there are left alone.
+        runtime: { ...state.runtime, [projectId]: { ...(state.runtime[projectId] ?? {}), ...runtimeFor(agents) } },
+      };
+    });
+    debouncedSave();
+  },
+
+  upsertFormation: (formation) => {
+    set((state) => {
+      const formations = [...state.config.formations];
+      const idx = formations.findIndex(f => f.id === formation.id);
+      if (idx >= 0) formations[idx] = formation;
+      else formations.push(formation);
+      return { config: { ...state.config, formations } };
+    });
+    debouncedSave();
+  },
+
+  removeFormation: (formationId) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        formations: state.config.formations.filter(f => f.id !== formationId),
+        defaultFormationId: state.config.defaultFormationId === formationId ? null : state.config.defaultFormationId,
+      },
+    }));
+    debouncedSave();
+  },
+
+  setDefaultFormation: (formationId) => {
+    set((state) => ({ config: { ...state.config, defaultFormationId: formationId } }));
+    debouncedSave();
+  },
+
+  saveProjectAsFormation: (projectId, name) => {
+    const project = get().config.projects.find(p => p.id === projectId);
+    if (!project) return undefined;
+    const formation: Formation = {
+      id: crypto.randomUUID(),
+      name: name.trim() || project.name,
+      description: `Equipo de ${project.name}`,
+      agents: cloneAgents(project.agents ?? []),
+    };
+    set((state) => ({ config: { ...state.config, formations: [...state.config.formations, formation] } }));
+    debouncedSave();
+    return formation.id;
   },
 
   upsertSkill: (skill) => {
@@ -1233,7 +1358,8 @@ async function runInit(): Promise<void> {
           id: lastProjectId,
           name: "Principal",
           workspaceDir: oldConfig.workspaceDir,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          agents: []
         });
       }
       config = {
@@ -1314,17 +1440,53 @@ async function runInit(): Promise<void> {
           ...config.remote,
           tunnel: config.remote?.tunnel ?? { provider: "cloudflared", enabled: false },
         },
-      } as AppConfig;
+      } as unknown as AppConfig;
       isSeed = true;
     }
 
     
+    // Migration to version 10: agents stop being global and become each project's own team.
+    if ((config.version as number) < 10) {
+      const legacy: AgentConfig[] = ((config as unknown as { agents?: AgentConfig[] }).agents) ?? [];
+      const projects: Project[] = config.projects ?? [];
+      // The runtime, the history and the `enabledFor` on disk name the old ids: the project the
+      // user was last on keeps them, so nothing of what it was doing is lost.
+      const lastProjectId = config.lastProjectId;
+      const keepIds = projects.some(p => p.id === lastProjectId) ? lastProjectId : projects[0]?.id;
+      const migratedProjects = projects.map(p => ({
+        ...p,
+        agents: p.agents ?? (p.id === keepIds ? legacy.map(a => ({ ...a })) : cloneAgents(legacy)),
+      }));
+      const formations: Formation[] = config.formations ?? [];
+      let defaultFormationId = config.defaultFormationId ?? null;
+      if (legacy.length > 0 && formations.length === 0) {
+        // The team that used to be global survives as the template new projects start from.
+        const formation: Formation = {
+          id: crypto.randomUUID(),
+          name: "Mi equipo",
+          description: "El equipo que compartían todos los proyectos",
+          agents: cloneAgents(legacy),
+        };
+        formations.push(formation);
+        defaultFormationId = formation.id;
+      }
+      config = {
+        ...config,
+        version: 10,
+        projects: migratedProjects,
+        formations,
+        defaultFormationId,
+      } as AppConfig;
+      delete (config as unknown as { agents?: AgentConfig[] }).agents;
+      isSeed = true;
+    }
+
+    // A project written by an older build (or by a partial merge) may still have no team.
+    config.projects = config.projects.map(p => (p.agents ? p : { ...p, agents: [] }));
+
     const runtime: Record<string, Record<string, AgentRuntime>> = {};
     for (const p of config.projects) {
-      runtime[p.id] = {};
-      for (const a of config.agents) {
-        runtime[p.id][a.id] = { agentId: a.id, status: "idle", queuedInstructions: [] };
-      }
+      runtime[p.id] = runtimeFor(p.agents);
     }
 
     // Restore the shell layout; the saved screen only counts when its project still exists.
@@ -1355,7 +1517,8 @@ async function runInit(): Promise<void> {
     });
 
     setLogLevel(config.logLevel ?? "info");
-    log.info("app", `configuración cargada (${config.projects.length} proyectos, ${config.agents.length} agentes)`);
+    const agentCount = config.projects.reduce((n, p) => n + p.agents.length, 0);
+    log.info("app", `configuración cargada (${config.projects.length} proyectos, ${agentCount} agentes)`);
 
     if (isTauri()) {
       void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
@@ -1396,16 +1559,66 @@ async function runInit(): Promise<void> {
     }
 }
 
-export function selectChildren(state: AppState, agentId: string): AgentConfig[] {
-  return state.config.agents.filter(a => a.parentId === agentId);
+/** Shared empty roster: a fresh array per call would re-render every subscriber forever. */
+const NO_AGENTS: AgentConfig[] = [];
+
+export function selectProjectAgents(state: AppState, projectId: string | null | undefined): AgentConfig[] {
+  if (!projectId) return NO_AGENTS;
+  return state.config.projects.find(p => p.id === projectId)?.agents ?? NO_AGENTS;
 }
 
-export function selectRoots(state: AppState): AgentConfig[] {
-  return state.config.agents.filter(a => a.parentId === null);
+/**
+ * Every agent of every project, for the places that only have an id (a message, a run, the quota
+ * sync). Ids are unique across projects. Cached on the `projects` array so the reference stays
+ * stable between renders: zustand compares by identity.
+ */
+let allAgentsCache: { projects: Project[]; agents: AgentConfig[] } | null = null;
+export function selectAllAgents(state: AppState): AgentConfig[] {
+  const projects = state.config.projects;
+  if (allAgentsCache && allAgentsCache.projects === projects) return allAgentsCache.agents;
+  const agents = projects.flatMap(p => p.agents ?? []);
+  allAgentsCache = { projects, agents };
+  return agents;
+}
+
+export function selectChildren(state: AppState, projectId: string | null | undefined, agentId: string): AgentConfig[] {
+  return selectProjectAgents(state, projectId).filter(a => a.parentId === agentId);
+}
+
+export function selectRoots(state: AppState, projectId: string | null | undefined): AgentConfig[] {
+  return selectProjectAgents(state, projectId).filter(a => a.parentId === null);
 }
 
 export function selectAgent(state: AppState, id: string): AgentConfig | undefined {
-  return state.config.agents.find(a => a.id === id);
+  for (const p of state.config.projects) {
+    const agent = (p.agents ?? []).find(a => a.id === id);
+    if (agent) return agent;
+  }
+  return undefined;
+}
+
+/** The project an agent belongs to, for the callers that only carry its id. */
+export function selectProjectOfAgent(state: AppState, agentId: string): Project | undefined {
+  return state.config.projects.find(p => (p.agents ?? []).some(a => a.id === agentId));
+}
+
+export function selectFormation(state: AppState, id: string | null | undefined): Formation | undefined {
+  if (!id) return undefined;
+  return state.config.formations.find(f => f.id === id);
+}
+
+/**
+ * A free name inside a group: "Claude", then "Claude 2"… Names are what a delegation block
+ * resolves, so two agents of a project never share one (formations reuse it for their own names).
+ */
+export function nextAgentName(named: { name: string }[], label: string): string {
+  const taken = new Set(named.map(a => a.name.trim().toLowerCase()));
+  if (!taken.has(label.toLowerCase())) return label;
+  for (let n = 2; n < 100; n++) {
+    const candidate = `${label} ${n}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  return `${label} ${crypto.randomUUID().slice(0, 4)}`;
 }
 
 export function selectSkillsFor(state: AppState, agentId: string): Skill[] {

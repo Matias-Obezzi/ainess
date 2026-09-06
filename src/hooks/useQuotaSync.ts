@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import type { ProviderId } from "@/types";
 
 /** Quota moves slowly; asking every ten minutes is enough to keep the rings honest. */
@@ -12,7 +12,7 @@ const REFRESH_MS = 10 * 60 * 1000;
  * the numbers have just changed.
  */
 export function useQuotaSync(): void {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const binaries = useAppStore(state => state.binaries);
   const refreshQuota = useAppStore(state => state.refreshQuota);
 

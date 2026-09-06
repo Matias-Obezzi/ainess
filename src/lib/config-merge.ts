@@ -5,7 +5,7 @@ import type { AppConfig } from "@/types";
  * processes (the app, `ais run`, `ais serve`) can each add or remove entries without one wiping
  * the other's work when it saves its own copy of the file.
  */
-const ID_COLLECTIONS = ["projects", "agents", "chats", "skills", "mcpServers", "hooks", "presets"] as const;
+const ID_COLLECTIONS = ["projects", "formations", "chats", "skills", "mcpServers", "hooks", "presets"] as const;
 type IdCollection = (typeof ID_COLLECTIONS)[number];
 
 type Item = { id: string };

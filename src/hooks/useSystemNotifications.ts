@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { isTauri } from "@/lib/tauri";
 import { log } from "@/lib/logger";
 
@@ -79,7 +79,7 @@ export function useSystemNotifications() {
           for (const msg of newMessages) {
             if (msg.kind !== "result" || msg.toAgentId !== "user") continue;
             const project = state.config.projects.find(p => p.id === msg.projectId);
-            const agent = config.agents.find(a => a.id === msg.fromAgentId);
+            const agent = selectAllAgents(state).find(a => a.id === msg.fromAgentId);
             const prefix = [project?.name, agent?.name].filter(Boolean).join(" · ");
             const body = `${prefix ? `${prefix}: ` : ""}${truncate(msg.text, 150)}`;
             void notify("AIS: tarea terminada", body);

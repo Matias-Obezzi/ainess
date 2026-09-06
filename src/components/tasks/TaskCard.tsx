@@ -3,7 +3,7 @@
 // draggable and hand its id to the board.
 import { memo } from "react";
 import type { DragEvent } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAgent, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,8 +36,7 @@ interface Props {
 }
 
 export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
-  const agents = useAppStore(state => state.config.agents);
-  const agent = task.agentId ? agents.find(a => a.id === task.agentId) : undefined;
+  const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
 
   return (
@@ -95,7 +94,7 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
 
 /** Right click on a card: move it, hand it to somebody, archive it or drop it. */
 export function TaskContextMenu({ task, children }: { task: Task; children: React.ReactNode }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, task.projectId));
   const updateTask = useAppStore(state => state.updateTask);
   const moveTask = useAppStore(state => state.moveTask);
   const archiveTask = useAppStore(state => state.archiveTask);

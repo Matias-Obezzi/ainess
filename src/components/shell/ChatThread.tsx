@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +21,7 @@ import { Copy, FileCode, FileText, MessageSquare, Pencil, Trash2 } from "lucide-
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
   const chats = useAppStore(state => state.config.chats);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const chatMessages = useAppStore(state => state.chatMessages);
   const chatLoading = useAppStore(state => state.chatLoading[chatId]);
   const loadChatMessages = useAppStore(state => state.loadChatMessages);
@@ -138,7 +138,7 @@ function BubbleSkeleton({ align }: { align: "start" | "end" }) {
 }
 
 function ChatBubble({ message }: { message: ChatMessage }) {
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const isUser = message.from === "user";
   const agent = !isUser ? agents.find(a => a.id === message.from) : undefined;
   const name = isUser ? "Vos" : (agent?.name || message.from);

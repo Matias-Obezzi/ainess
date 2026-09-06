@@ -1,7 +1,7 @@
 // LAN remote access: what the phone page sees (snapshot) and what it can do (commands).
 // The HTTP server itself lives in the transport (Rust in the app, node:http in the CLI);
 // this module is the shared, transport-agnostic part.
-import { useAppStore, selectRoots } from "@/store";
+import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
 import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run } from "@/types";
@@ -13,7 +13,8 @@ import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, C
 export interface RemoteSnapshot {
   serverTime: number;
   projects: Array<{ id: string; name: string; workspaceDir: string; color?: string; createdAt: number; activeTaskRunId: string | null; running: number }>;
-  agents: Array<Pick<AgentConfig, "id" | "name" | "provider" | "role" | "parentId" | "model" | "description" | "color">>;
+  /** Every project's team, flattened; `projectId` says which one each agent belongs to. */
+  agents: Array<Pick<AgentConfig, "id" | "name" | "provider" | "role" | "parentId" | "model" | "description" | "color"> & { projectId: string }>;
   runtime: Record<string, Record<string, { status: AgentStatus; currentTask?: string }>>;
   messages: CommMessage[];
   approvals: Approval[];
@@ -118,10 +119,10 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
       activeTaskRunId: s.activeTaskRunId[p.id] ?? null,
       running: runningByProject[p.id] ?? 0,
     })),
-    agents: s.config.agents.map(a => ({
+    agents: s.config.projects.flatMap(p => (p.agents ?? []).map(a => ({
       id: a.id, name: a.name, provider: a.provider, role: a.role, parentId: a.parentId,
-      model: a.model, description: a.description, color: a.color,
-    })),
+      model: a.model, description: a.description, color: a.color, projectId: p.id,
+    }))),
     runtime,
     messages: s.messages.slice(-limits.messages).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) })),
     approvals: Object.values(s.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
@@ -155,9 +156,9 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: "Proyecto inválido" };
         if (!text) return { error: "Falta el texto" };
         if (s.activeTaskRunId[projectId]) return { error: "Ya hay una tarea en curso en este proyecto. Usá una instrucción o detenela." };
-        const roots = selectRoots(s);
+        const roots = selectRoots(s, projectId);
         const agentId = str("agentId") ?? (roots.find(a => a.role === "planner") ?? roots[0])?.id;
-        if (!agentId || !s.config.agents.some(a => a.id === agentId)) return { error: "Agente inválido" };
+        if (!agentId || !selectProjectAgents(s, projectId).some(a => a.id === agentId)) return { error: "Agente inválido" };
         await s.submitPrompt(text, agentId, projectId, { model: str("model") });
         return { ok: true, runId: useAppStore.getState().activeTaskRunId[projectId] };
       }

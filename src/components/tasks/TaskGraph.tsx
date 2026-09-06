@@ -19,7 +19,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useAppStore, selectTasks } from "@/store";
+import { useAppStore, selectTasks, selectAgent } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -42,8 +42,7 @@ interface TaskNodeData extends Record<string, unknown> {
 
 function TaskGraphNode({ data }: NodeProps<Node<TaskNodeData>>) {
   const { task, blocked } = data;
-  const agents = useAppStore(state => state.config.agents);
-  const agent = task.agentId ? agents.find(a => a.id === task.agentId) : undefined;
+  const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
 
   return (

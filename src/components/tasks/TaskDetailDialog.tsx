@@ -1,7 +1,7 @@
 // Everything about one task that does not fit on its card: the long detail, who is on it, what it
 // waits for and the run that carried it out. The board and the graph both open this one dialog.
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore, selectTasks } from "@/store";
+import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
@@ -34,7 +34,7 @@ export function TaskDetailDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const tasks = useAppStore(state => selectTasks(state, projectId));
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const updateTask = useAppStore(state => state.updateTask);
   const removeTask = useAppStore(state => state.removeTask);
   const archiveTask = useAppStore(state => state.archiveTask);

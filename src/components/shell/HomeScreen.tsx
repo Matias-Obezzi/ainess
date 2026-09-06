@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectAllAgents } from "@/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +43,7 @@ function ProjectCardSkeleton() {
 /** Landing screen: every project as a card with what it is doing right now. */
 export function HomeScreen() {
   const projects = useAppStore(state => state.config.projects);
-  const agents = useAppStore(state => state.config.agents);
+  const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
   const runtime = useAppStore(state => state.runtime);
   const loaded = useAppStore(state => state.loaded);
