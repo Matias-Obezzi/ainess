@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +59,13 @@ export function Composer() {
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+
+  // Whose quota the ring shows: the agent of a one-on-one chat, or the one the prompt is aimed at
+  // (the orchestrator unless the destination select says otherwise).
+  const chatAgentId = chat?.participants.length === 1 ? chat.participants[0].agentId : undefined;
+  const quotaAgent = chatMode
+    ? config.agents.find(a => a.id === chatAgentId)
+    : targetAgent || defaultAgent;
 
   const busy = chatMode ? chatBusy : targetWorking;
   const canSend = !!text.trim() && !busy && (chatMode
@@ -145,93 +153,111 @@ export function Composer() {
           </Alert>
         )}
 
-        {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
-        <Textarea
-          value={text}
-          onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          rows={2}
-          className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto"
-        />
-
-        <div className="flex gap-2 items-center flex-wrap">
-          {!chatMode && (
-            <>
-              <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger className="w-[150px] h-8 text-xs">
-                  <SelectValue placeholder="Destino" />
-                </SelectTrigger>
-                <SelectContent>
-                  {config.agents.map(a => (
-                    <SelectItem key={a.id} value={a.id}>
-                      <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={targetModel} onValueChange={setTargetModel}>
-                <SelectTrigger className="w-[170px] h-8 text-xs">
-                  <SelectValue placeholder="Modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Modelo por defecto</SelectItem>
-                  {modelOptions.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                  <SelectItem value="custom">Otro…</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {targetModel === "custom" && (
-                <Input
-                  className="h-8 w-[150px] text-xs"
-                  placeholder="Escribí el modelo…"
-                  value={customModel}
-                  onChange={e => setCustomModel(e.target.value)}
-                />
-              )}
-
-              <Select
-                value="none"
-                onValueChange={val => {
-                  if (val === "none") return;
-                  const preset = config.presets?.find(p => p.id === val);
-                  if (!preset) return;
-                  setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
-                  if (preset.agentId) setTargetId(preset.agentId);
-                  if (preset.model) {
-                    setTargetModel(preset.model);
-                    setCustomModel("");
-                  }
-                }}
-              >
-                <SelectTrigger className="w-[170px] h-8 text-xs">
-                  <SelectValue placeholder="Órdenes predefinidas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Seleccionar orden…</SelectItem>
-                  {config.presets?.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
+        {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
+        <div className="relative">
+          {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
+          <Textarea
+            value={text}
+            onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            rows={2}
+            className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
+          />
+          {busy ? (
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute bottom-2 right-2 h-8 w-8"
+              onClick={handleStop}
+              title="Detener (Esc)"
+              aria-label="Detener"
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="absolute bottom-2 right-2 h-8 w-8"
+              onClick={handleSend}
+              disabled={!canSend}
+              title="Enviar (Ctrl+Enter)"
+              aria-label="Enviar"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           )}
-
-          <div className="ml-auto">
-            {busy ? (
-              <Button variant="destructive" size="sm" onClick={handleStop}>
-                <Square className="h-4 w-4" /> Detener
-              </Button>
-            ) : (
-              <Button size="sm" onClick={handleSend} disabled={!canSend}>
-                <Send className="h-4 w-4" /> Enviar
-              </Button>
-            )}
-          </div>
         </div>
+
+        {(!chatMode || quotaAgent) && (
+          <div className="flex gap-2 items-center flex-wrap">
+            {!chatMode && (
+              <>
+                <Select value={targetId} onValueChange={setTargetId}>
+                  <SelectTrigger className="w-[150px] h-8 text-xs">
+                    <SelectValue placeholder="Destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {config.agents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={targetModel} onValueChange={setTargetModel}>
+                  <SelectTrigger className="w-[170px] h-8 text-xs">
+                    <SelectValue placeholder="Modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Modelo por defecto</SelectItem>
+                    {modelOptions.map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                    <SelectItem value="custom">Otro…</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {targetModel === "custom" && (
+                  <Input
+                    className="h-8 w-[150px] text-xs"
+                    placeholder="Escribí el modelo…"
+                    value={customModel}
+                    onChange={e => setCustomModel(e.target.value)}
+                  />
+                )}
+
+                <Select
+                  value="none"
+                  onValueChange={val => {
+                    if (val === "none") return;
+                    const preset = config.presets?.find(p => p.id === val);
+                    if (!preset) return;
+                    setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
+                    if (preset.agentId) setTargetId(preset.agentId);
+                    if (preset.model) {
+                      setTargetModel(preset.model);
+                      setCustomModel("");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[170px] h-8 text-xs">
+                    <SelectValue placeholder="Órdenes predefinidas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Seleccionar orden…</SelectItem>
+                    {config.presets?.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
+            {quotaAgent && <QuotaIndicator agent={quotaAgent} className="ml-auto" />}
+          </div>
+        )}
       </div>
     </div>
   );
