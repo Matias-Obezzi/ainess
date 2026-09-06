@@ -75,16 +75,20 @@ cd src-tauri && cargo check && cargo test
 
 ## Inside the app
 
-**Projects.** Each project points at a workspace folder and keeps its own agents' state, history and
-chats. The sidebar lists them with their chats; the home screen shows them as cards.
+**Projects.** Each project points at a workspace folder and keeps its own team of agents, their
+state, history and chats. The sidebar lists them with their chats; the home screen shows them as
+cards. A new project starts from a **formation** — a saved team you pick (and can edit) as you
+create it; Settings → Agents is where formations live, next to what each CLI reports about itself.
 
 **The thread.** The main view is a conversation with the orchestrator: its text as it arrives, the
 tools it uses, the tasks it delegates (collapsible, rendered as markdown) and its final answer.
 Saved **orders** — prompts you reuse — sit as chips above the input, filtered to the agent that will
 run them.
 
-**Hierarchy.** The same team as a graph: who delegates to whom, who is working right now, what each
-agent is doing and how much quota it has left.
+**Hierarchy.** The project's team as a graph: who delegates to whom, who is working right now, what
+each agent is doing and how much quota it has left. It is also where the team is managed: add an
+agent, duplicate one (two Claudes with different roles is a normal setup), remove one, or save the
+whole team as a formation.
 
 **Communication and terminals.** A right dock with the raw event feed and real terminals (PTY, tabs,
 your shells). Closing the panel does not kill anything: a terminal only dies from its tab's close
@@ -204,7 +208,10 @@ The same orchestrator without the window. `npm run build:cli` produces it; run i
 ais "Add tests for the auth module" -w C:\repo    # run a task
 ais -a Claude -p MyProject --max-rounds 4 "..."   # pick agent, project, rounds
 ais projects add MyProject --dir C:\repo
-ais agents add --name QA --provider antigravity --role reviewer --parent Claude
+ais agents list -p MyProject                       # the team of a project
+ais agents add --name QA --provider antigravity --role reviewer --parent Claude -p MyProject
+ais formations list                               # saved teams
+ais formations apply "Mi equipo" -p MyProject     # copy one into a project
 ais detect                                        # what is installed, and where
 ais quota [provider] [--json]                     # what is left
 ais history -w C:\repo --limit 20                 # recent runs
