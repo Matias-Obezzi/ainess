@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
+import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
-import { GitBranch, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
+import { GitBranch, ListTodo, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
 
-/** The working screen for one project: top bar, thread or graph, and the composer. */
+/** The working screen for one project: top bar, task board / thread / hierarchy, and the composer. */
 export function ProjectScreen() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
@@ -53,6 +54,14 @@ export function ProjectScreen() {
         </Badge>
 
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+          <Button
+            variant={projectMode === "tasks" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7"
+            onClick={() => setProjectMode("tasks")}
+          >
+            <ListTodo className="h-3.5 w-3.5" /> Tareas
+          </Button>
           <Button
             variant={projectMode === "chat" ? "secondary" : "ghost"}
             size="sm"
@@ -104,14 +113,17 @@ export function ProjectScreen() {
       </div>
 
       <div className="flex-1 min-h-0">
-        {projectMode === "graph"
-          ? <HierarchyGraph />
-          : currentChatId
-            ? <ChatThread chatId={currentChatId} />
-            : <OrchestratorThread />}
+        {projectMode === "tasks"
+          ? <TasksView projectId={project.id} />
+          : projectMode === "graph"
+            ? <HierarchyGraph />
+            : currentChatId
+              ? <ChatThread chatId={currentChatId} />
+              : <OrchestratorThread />}
       </div>
 
-      <Composer />
+      {/* Only the conversation takes a prompt: the board and the hierarchy are not places to type. */}
+      {projectMode === "chat" && <Composer />}
     </div>
   );
 }
