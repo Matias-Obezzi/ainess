@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, parseDelegations, finalOutputFromLines, buildSystemPrompt } from "@/lib/providers";
+import { PROVIDERS, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
 import type { AgentConfig } from "@/types";
 
 const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
@@ -170,5 +170,71 @@ describe("parseDelegations with fences inside the task", () => {
     const parsed = parseDelegations(text);
     expect(parsed).toHaveLength(1);
     expect(parsed[0].task).toContain("npm test");
+  });
+});
+
+describe("usage reported by each CLI", () => {
+  it("takes cost, turns, duration and tokens from Claude Code's result line", () => {
+    const line = JSON.stringify({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      duration_ms: 41_562,
+      num_turns: 7,
+      result: "listo",
+      session_id: "s1",
+      total_cost_usd: 0.3421,
+      usage: { input_tokens: 12, output_tokens: 1_204, cache_read_input_tokens: 48_233, cache_creation_input_tokens: 1_640 },
+    });
+    const events = PROVIDERS.claude.parseLine(line, "stdout");
+    expect(events).toEqual([
+      {
+        type: "result",
+        text: "listo",
+        sessionId: "s1",
+        // The two cache counters are one figure for us.
+        usage: { costUsd: 0.3421, inputTokens: 12, outputTokens: 1_204, cachedInputTokens: 49_873, turns: 7, durationMs: 41_562 },
+      },
+    ]);
+  });
+
+  it("leaves out whatever Claude Code did not report, without inventing zeros", () => {
+    expect(claudeUsage({ type: "result", result: "x" })).toBeUndefined();
+    expect(claudeUsage({ total_cost_usd: 0.1, usage: { output_tokens: 5 } })).toEqual({ costUsd: 0.1, outputTokens: 5 });
+    // A string is not a figure.
+    expect(claudeUsage({ total_cost_usd: "0.1" })).toBeUndefined();
+  });
+
+  it("reads Antigravity's usage under any of the names its builds have used", () => {
+    const line = JSON.stringify({
+      event: "result",
+      result: {
+        conversation_id: "c1",
+        status: "SUCCESS",
+        response: "hecho",
+        usage: { input_tokens: 900, output_tokens: 300, total_cost_usd: 0.02 },
+      },
+    });
+    expect(PROVIDERS.antigravity.parseLine(line, "stdout")).toEqual([
+      { type: "result", text: "hecho", sessionId: "c1", usage: { costUsd: 0.02, inputTokens: 900, outputTokens: 300 } },
+    ]);
+    expect(antigravityUsage({ usage: { promptTokens: 10, completionTokens: 4 } })).toEqual({ inputTokens: 10, outputTokens: 4 });
+    // No usage object at all (the builds that report nothing): the run simply has no figures.
+    expect(antigravityUsage({ status: "SUCCESS" })).toBeUndefined();
+  });
+
+  it("takes Copilot's premium requests and session duration", () => {
+    const line = JSON.stringify({
+      type: "result",
+      sessionId: "s-1",
+      exitCode: 0,
+      usage: { premiumRequests: 3, sessionDurationMs: 92_310 },
+    });
+    expect(PROVIDERS.copilot.parseLine(line, "stdout")).toEqual([
+      { type: "session", sessionId: "s-1" },
+      // Copilot's result has no answer text: the event exists only to carry the usage.
+      { type: "result", text: "", usage: { durationMs: 92_310, premiumRequests: 3 } },
+    ]);
+    expect(copilotUsage({ type: "result" })).toBeUndefined();
   });
 });

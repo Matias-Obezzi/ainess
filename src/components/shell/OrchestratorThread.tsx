@@ -10,6 +10,7 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
+import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
@@ -150,6 +151,8 @@ function RunBubble({ run }: { run: Run }) {
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
   const interrupted = run.output === INTERRUPTED_OUTPUT;
   const output = interrupted ? "" : (run.output ?? "");
+  // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
+  const usage = runUsageText(run, locale, t);
 
   const retry = () =>
     void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
@@ -219,17 +222,22 @@ function RunBubble({ run }: { run: Run }) {
                 <RunActivity runId={run.id} />
               ) : (
                 <>
-                  {steps > 0 && (
+                  {(steps > 0 || usage) && (
                     <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                        onClick={() => setActivityOpen(o => !o)}
-                      >
-                        {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        {plural(steps, t("thread.activity.one", { n: steps, elapsed }), t("thread.activity.other", { n: steps, elapsed }))}
-                      </button>
-                      {activityOpen && (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        {steps > 0 && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 hover:text-foreground"
+                            onClick={() => setActivityOpen(o => !o)}
+                          >
+                            {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            {plural(steps, t("thread.activity.one", { n: steps, elapsed }), t("thread.activity.other", { n: steps, elapsed }))}
+                          </button>
+                        )}
+                        {usage && <span>{steps > 0 ? `· ${usage}` : usage}</span>}
+                      </div>
+                      {activityOpen && steps > 0 && (
                         <div className="rounded-md border border-border bg-muted/40 p-2">
                           <RunActivity runId={run.id} showFooter={false} />
                         </div>

@@ -254,6 +254,21 @@ export interface AgentRuntime {
 
 export type RunStatus = "running" | "done" | "error" | "killed";
 
+/** What one run consumed, as reported by its CLI. Every field is optional: each one reports less. */
+export interface RunUsage {
+  /** Dollars, when the provider reports them (today only Claude Code). */
+  costUsd?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedInputTokens?: number;
+  /** Model turns inside the run. */
+  turns?: number;
+  /** Duration reported by the CLI itself, in ms (may differ from ours). */
+  durationMs?: number;
+  /** Copilot counts premium requests instead of tokens. */
+  premiumRequests?: number;
+}
+
 export interface Run {
   id: string;
   projectId: string;
@@ -276,6 +291,8 @@ export interface Run {
   model?: string;
   /** "task" (default) or "chat" — chat runs skip delegation parsing. */
   kind?: "task" | "chat";
+  /** What the CLI said the run consumed. Absent when the provider reported nothing. */
+  usage?: RunUsage;
 }
 
 export type MessageKind =
@@ -397,7 +414,7 @@ export type ParsedEvent =
   | { type: "session"; sessionId: string }
   | { type: "text"; text: string }
   | { type: "tool"; name: string; detail?: string; input?: unknown }
-  | { type: "result"; text: string; sessionId?: string }
+  | { type: "result"; text: string; sessionId?: string; usage?: RunUsage }
   | { type: "error"; text: string }
   | { type: "raw"; text: string };
 

@@ -5,6 +5,7 @@ import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { runUsageText } from "@/components/UsageDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,7 @@ export function TaskDetailDialog({
   const locale = useLocale();
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const agents = useAppStore(state => selectProjectAgents(state, projectId));
+  const runs = useAppStore(state => state.runs);
   const updateTask = useAppStore(state => state.updateTask);
   const removeTask = useAppStore(state => state.removeTask);
   const archiveTask = useAppStore(state => state.archiveTask);
@@ -59,6 +61,8 @@ export function TaskDetailDialog({
   }, [task?.id, task?.title, task?.detail]);
 
   const agent = task?.agentId ? agents.find(a => a.id === task.agentId) : undefined;
+  // What the run of this task consumed, when its CLI said anything at all.
+  const usage = runUsageText(task?.runId ? runs[task.runId] : undefined, locale, t);
   const missing = useMemo(() => (task ? blockedBy(task, tasks) : []), [task, tasks]);
   const dependencies = useMemo(
     () => (task ? task.dependsOn.map(id => tasks.find(t => t.id === id)).filter(t => t !== undefined) : []),
@@ -264,6 +268,7 @@ export function TaskDetailDialog({
                       <div className="min-w-0">
                         <Label>{t("tasks.run")}</Label>
                         <p className="truncate font-mono text-[11px] text-muted-foreground">{task.runId}</p>
+                        {usage && <p className="text-[11px] text-muted-foreground">{t("usage.runUsage")}: {usage}</p>}
                       </div>
                       <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
                         <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { GitBranchButton } from "@/components/GitStatus";
+import { UsageButton } from "@/components/UsageDialog";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
@@ -52,6 +53,7 @@ export function ProjectScreen() {
           {project.workspaceDir}
         </span>
         <GitBranchButton projectId={project.id} />
+        <UsageButton projectId={project.id} />
 
         <Badge variant={running > 0 ? "default" : "outline"} className="ml-auto text-[10px]">
           {t("projectScreen.working", { n: running })}

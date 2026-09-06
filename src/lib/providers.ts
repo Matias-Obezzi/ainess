@@ -1,4 +1,4 @@
-import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo } from "@/types";
+import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
@@ -38,6 +38,68 @@ function parseJsonTolerant(line: string): any {
   }
 }
 
+/** A number only when the provider actually sent one: strings, nulls and NaN are "not reported". */
+function num(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/** Drops the fields nobody reported, so an absent value never turns into a zero. */
+function compactUsage(usage: RunUsage): RunUsage | undefined {
+  const entries = Object.entries(usage).filter(([, value]) => value !== undefined);
+  return entries.length > 0 ? (Object.fromEntries(entries) as RunUsage) : undefined;
+}
+
+/**
+ * Claude Code's `result` line: `total_cost_usd`, `num_turns`, `duration_ms` and a `usage` object
+ * with the token counts. The two cache counters are added up into one "cached" figure.
+ */
+export function claudeUsage(obj: any): RunUsage | undefined {
+  const u = obj?.usage ?? {};
+  const cacheRead = num(u.cache_read_input_tokens);
+  const cacheWrite = num(u.cache_creation_input_tokens);
+  const cached = cacheRead === undefined && cacheWrite === undefined ? undefined : (cacheRead ?? 0) + (cacheWrite ?? 0);
+  return compactUsage({
+    costUsd: num(obj?.total_cost_usd),
+    inputTokens: num(u.input_tokens),
+    outputTokens: num(u.output_tokens),
+    cachedInputTokens: cached,
+    turns: num(obj?.num_turns),
+    durationMs: num(obj?.duration_ms),
+  });
+}
+
+/**
+ * Antigravity's `result.usage`. The agy build in use does not document the shape and different
+ * versions have named the same counters differently, so every spelling we have seen is accepted
+ * and whatever is missing simply stays out.
+ */
+export function antigravityUsage(result: any): RunUsage | undefined {
+  const u = result?.usage;
+  if (!u || typeof u !== "object") return undefined;
+  return compactUsage({
+    costUsd: num(u.total_cost_usd ?? u.cost_usd ?? u.cost),
+    inputTokens: num(u.input_tokens ?? u.inputTokens ?? u.prompt_tokens ?? u.promptTokens),
+    outputTokens: num(u.output_tokens ?? u.outputTokens ?? u.completion_tokens ?? u.completionTokens),
+    cachedInputTokens: num(u.cached_input_tokens ?? u.cachedInputTokens ?? u.cache_read_input_tokens ?? u.cached_tokens),
+    turns: num(u.turns ?? u.num_turns ?? result?.num_turns),
+    durationMs: num(u.duration_ms ?? u.durationMs ?? result?.duration_ms),
+    premiumRequests: num(u.premium_requests ?? u.premiumRequests),
+  });
+}
+
+/** Copilot's `result.usage`: premium requests and the session duration, no tokens and no cost. */
+export function copilotUsage(obj: any): RunUsage | undefined {
+  const u = obj?.usage;
+  if (!u || typeof u !== "object") return undefined;
+  return compactUsage({
+    inputTokens: num(u.input_tokens ?? u.inputTokens),
+    outputTokens: num(u.output_tokens ?? u.outputTokens),
+    cachedInputTokens: num(u.cached_input_tokens ?? u.cachedInputTokens),
+    durationMs: num(u.sessionDurationMs ?? u.session_duration_ms ?? u.durationMs),
+    premiumRequests: num(u.premiumRequests ?? u.premium_requests),
+  });
+}
+
 function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   const obj = parseJsonTolerant(line);
   if (!obj) {
@@ -61,7 +123,8 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
     return events;
   }
   if (obj.type === "result") {
-    return [{ type: "result", text: obj.result || "", sessionId: obj.session_id }];
+    const usage = claudeUsage(obj);
+    return [{ type: "result", text: obj.result || "", sessionId: obj.session_id, ...(usage ? { usage } : {}) }];
   }
   return [];
 }
@@ -95,7 +158,8 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     if (obj.result.status !== "SUCCESS" && obj.result.error) {
       events.push({ type: "error", text: obj.result.error });
     }
-    events.push({ type: "result", text: obj.result.response || "", sessionId: obj.result.conversation_id });
+    const usage = antigravityUsage(obj.result);
+    events.push({ type: "result", text: obj.result.response || "", sessionId: obj.result.conversation_id, ...(usage ? { usage } : {}) });
     return events;
   }
   return [];
@@ -125,7 +189,12 @@ function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEven
     return events;
   }
   if (obj.type === "result") {
-    return obj.sessionId ? [{ type: "session", sessionId: obj.sessionId }] : [];
+    const events: ParsedEvent[] = [];
+    if (obj.sessionId) events.push({ type: "session", sessionId: obj.sessionId });
+    // The answer text is rebuilt by `copilotFinalOutput`; this event exists only to carry the usage.
+    const usage = copilotUsage(obj);
+    if (usage) events.push({ type: "result", text: "", usage });
+    return events;
   }
   if (obj.type === "error" || obj.type === "session.error") {
     const msg = obj.data?.message ?? obj.message ?? line;
