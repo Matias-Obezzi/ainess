@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* The phone build has its Vite root in src/remote: point Tailwind at the whole src/ so the classes used by the shared components are generated there too. */
+@source "./";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
