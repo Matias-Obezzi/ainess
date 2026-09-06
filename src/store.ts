@@ -18,6 +18,15 @@ import { translateNow } from "@/i18n/useT";
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
 
+/**
+ * Forgets deleted conversations: their turn in flight and their file on disk. `lib/chat.ts` imports
+ * this module, so it is loaded on demand here, the same as the other chat actions below.
+ */
+function forgetChats(chatIds: string[]): void {
+  if (chatIds.length === 0) return;
+  void import("@/lib/chat").then(m => { for (const id of chatIds) m.forgetChat(id); }).catch(() => {});
+}
+
 /** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
 export type Screen = "home" | "project";
 /** Project screen body: task board, conversation or agent graph. */
@@ -886,14 +895,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
     debouncedSave();
   },
 
+  /**
+   * Deleting a project takes everything hanging off it with it. Anything keyed by (or pointing at)
+   * the project has to go in this one pass: what stays behind keeps showing up in the shell —
+   * pending approvals in the sidebar badge, bell notifications, back/forward entries that navigate
+   * to a project that no longer exists — with no screen left to clear it from.
+   */
   removeProject: (id) => {
-    // stopAll(id) is an async action, so we do it here, but zustand set is sync.
-    // The plan says "mata sus runs primero con stopAll(projectId)". 
-    // Wait, the orchestrator might be async, so we just call it.
+    const before = get();
+    const chatIds = before.config.chats.filter(c => c.projectId === id).map(c => c.id);
+    // Side effects first: killing the runs and emptying the files is async, the `set` below is not.
     orchestrator.stopAll(id);
     history.forgetHistory(id);
     taskStore.forgetTasks(id);
+    forgetChats(chatIds);
+
     set((state) => {
+      const goneChats = new Set(chatIds);
       const newProjects = state.config.projects.filter(p => p.id !== id);
       const newRuntime = { ...state.runtime };
       delete newRuntime[id];
@@ -905,16 +923,49 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // `git worktree remove` behind the user's back.
       const newWorktrees = { ...state.worktrees };
       delete newWorktrees[id];
-      // clear messages for project
       const newMessages = state.messages.filter(m => m.projectId !== id);
-      const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
+      const goneRuns = new Set(Object.values(state.runs).filter(r => r.projectId === id).map(r => r.id));
+      const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== id));
+      const goneTasks = new Set((state.tasks[id] ?? []).map(t => t.id));
       const newTasks = { ...state.tasks };
       delete newTasks[id];
       // Chats belong to the project, so they go with it (otherwise they stay orphaned in config).
       const newChats = state.config.chats.filter(c => c.projectId !== id);
+      // A hook that only fires for this project can never fire again.
+      const newHooks = state.config.hooks.filter(h => h.filter?.projectId !== id);
+
+      // Approvals waiting for the user: the run they would launch is gone with the project.
+      const goneApprovals = new Set(
+        Object.values(state.approvals).filter(a => a.projectId === id).map(a => a.id),
+      );
+      const newApprovals = Object.fromEntries(
+        Object.entries(state.approvals).filter(([, a]) => a.projectId !== id),
+      );
+      // Whatever the bell said about this project (or about one of its approvals or runs) goes too.
+      const newNotifications = state.notifications.filter(n =>
+        n.projectId !== id
+        && !(n.approvalId && goneApprovals.has(n.approvalId))
+        && !(n.runId && goneRuns.has(n.runId)),
+      );
+
+      const dropByChat = <T,>(map: Record<string, T>): Record<string, T> =>
+        Object.fromEntries(Object.entries(map).filter(([chatId]) => !goneChats.has(chatId)));
+
+      const newHistoryLoading = { ...state.historyLoading };
+      delete newHistoryLoading[id];
+      const newSidebarCollapsed = { ...state.sidebarCollapsed };
+      delete newSidebarCollapsed[id];
+
+      // Back/forward must not offer a project that is gone; the index follows what is left.
+      const keptNav = state.navHistory.filter(e => e.projectId !== id);
+      const droppedBefore = state.navHistory.slice(0, state.navIndex + 1).filter(e => e.projectId === id).length;
+      const navHistory = keptNav.length > 0 ? keptNav : [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }];
+      const navIndex = Math.min(Math.max(state.navIndex - droppedBefore, 0), navHistory.length - 1);
+
       const wasCurrent = state.currentProjectId === id;
+      const chatGone = state.currentChatId ? goneChats.has(state.currentChatId) : false;
       return {
-        config: { ...state.config, projects: newProjects, chats: newChats },
+        config: { ...state.config, projects: newProjects, chats: newChats, hooks: newHooks },
         runtime: newRuntime,
         activeTaskRunId: newActiveTask,
         repoState: newRepoState,
@@ -922,8 +973,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
         messages: newMessages,
         runs: newRuns,
         tasks: newTasks,
+        approvals: newApprovals,
+        notifications: newNotifications,
+        chatMessages: dropByChat(state.chatMessages),
+        chatSessions: dropByChat(state.chatSessions),
+        chatLoading: dropByChat(state.chatLoading),
+        remoteActiveChats: state.remoteActiveChats.filter(c => !goneChats.has(c)),
+        historyLoading: newHistoryLoading,
+        sidebarCollapsed: newSidebarCollapsed,
+        navHistory,
+        navIndex,
+        // The search palette may have asked the board to open a card of this project.
+        focusedTaskId: state.focusedTaskId && goneTasks.has(state.focusedTaskId) ? null : state.focusedTaskId,
+        // The shells keep running (only their tab, `exit` or closing the app may kill one), but
+        // they no longer belong to anything.
+        terminals: state.terminals.map(t => (t.projectId === id ? { ...t, projectId: null } : t)),
         currentProjectId: wasCurrent ? null : state.currentProjectId,
-        currentChatId: wasCurrent ? null : state.currentChatId,
+        currentChatId: wasCurrent || chatGone ? null : state.currentChatId,
         // Losing the open project drops the user back to the home screen.
         screen: wasCurrent && state.screen === "project" ? ("home" as Screen) : state.screen,
       };
@@ -1409,16 +1475,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   removeChat: (id) => {
+    forgetChats([id]);
     set((state) => {
       const newChats = state.config.chats.filter(c => c.id !== id);
       const newChatMessages = { ...state.chatMessages };
       delete newChatMessages[id];
       const newSessions = { ...state.chatSessions };
       delete newSessions[id];
+      const newLoading = { ...state.chatLoading };
+      delete newLoading[id];
       return {
         config: { ...state.config, chats: newChats },
         chatMessages: newChatMessages,
         chatSessions: newSessions,
+        chatLoading: newLoading,
+        remoteActiveChats: state.remoteActiveChats.filter(c => c !== id),
         currentChatId: state.currentChatId === id ? null : state.currentChatId,
       };
     });

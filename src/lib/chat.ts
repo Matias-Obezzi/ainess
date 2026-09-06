@@ -358,6 +358,15 @@ export async function stopChat(chatId: string): Promise<void> {
   void persistMessages(chatId);
 }
 
+/**
+ * Called when a chat is deleted, on its own or with its project: forget the turn in flight and
+ * empty its file, so the conversation does not come back the next time something reads it.
+ */
+export function forgetChat(chatId: string): void {
+  activeTurns.delete(chatId);
+  void getTransport().writeTextFile(chatFilePath(chatId), "{}").catch(() => {});
+}
+
 // ---- Helper to check if a chat has an active turn ----
 
 export function isChatActive(chatId: string): boolean {

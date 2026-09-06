@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { isChatActive } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
+import { pendingApprovals } from "@/lib/approvals";
 import type { Chat, Project } from "@/types";
 import {
   Bot,
@@ -93,9 +94,9 @@ export function Sidebar() {
     () => Object.values(runningByProject).reduce((a, b) => a + b, 0),
     [runningByProject],
   );
-  const pendingApprovals = useMemo(
-    () => Object.values(approvals).filter(a => a.status === "pending").length,
-    [approvals],
+  const pendingCount = useMemo(
+    () => pendingApprovals(approvals, projects).length,
+    [approvals, projects],
   );
 
   const newProject = () => {
@@ -354,13 +355,13 @@ export function Sidebar() {
       <div className="border-t border-border p-2 flex flex-col gap-1.5">
         <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
           <span>{t("sidebar.working", { n: totalRunning })}</span>
-          {pendingApprovals > 0 && (
+          {pendingCount > 0 && (
             <Badge
               className="ml-auto cursor-pointer bg-amber-500 text-black hover:bg-amber-500"
               title={t("sidebar.pendingTitle")}
               onClick={() => currentProjectId && openProject(currentProjectId)}
             >
-              {plural(pendingApprovals, t("sidebar.pending.one", { n: pendingApprovals }), t("sidebar.pending.other", { n: pendingApprovals }))}
+              {plural(pendingCount, t("sidebar.pending.one", { n: pendingCount }), t("sidebar.pending.other", { n: pendingCount }))}
             </Badge>
           )}
         </div>

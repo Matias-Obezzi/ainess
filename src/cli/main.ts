@@ -8,6 +8,7 @@ import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
 import { flushTasks } from "@/lib/task-store";
+import { pendingApprovals } from "@/lib/approvals";
 import { remoteUrl, tunnelUrl } from "@/lib/remote";
 import { installConsoleCapture, log } from "@/lib/logger";
 import { isTunnelProvider, normalizeDomain } from "@/lib/tunnel";
@@ -868,7 +869,7 @@ async function main() {
     for (const p of store.config.projects) await loadHistory(p.id);
     const state = useAppStore.getState();
     const name = (id?: string) => agentById(id)?.name || id || "";
-    const pending = Object.values(state.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt);
+    const pending = pendingApprovals(state.approvals, state.config.projects);
     if (sub === "list") {
       if (jsonOutput) { console.log(JSON.stringify(pending)); process.exit(0); }
       if (pending.length === 0) console.log("No hay aprobaciones pendientes.");

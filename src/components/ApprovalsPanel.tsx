@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { copyText } from "@/lib/clipboard";
+import { pendingApprovals } from "@/lib/approvals";
 import { Markdown } from "@/components/shell/Markdown";
 import { truncate } from "@/lib/format";
 import type { Approval } from "@/types";
@@ -38,10 +39,8 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const pending = useMemo(
-    () => Object.values(approvals)
-      .filter(a => a.status === "pending" && (all || a.projectId === currentProjectId))
-      .sort((a, b) => a.createdAt - b.createdAt),
-    [approvals, all, currentProjectId],
+    () => pendingApprovals(approvals, projects, all ? null : currentProjectId),
+    [approvals, projects, all, currentProjectId],
   );
   if (pending.length === 0) return null;
 

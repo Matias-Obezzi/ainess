@@ -6,6 +6,7 @@ import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
 import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus } from "@/types";
 import { TASK_STATUSES } from "@/lib/tasks";
+import { pendingApprovals } from "@/lib/approvals";
 import { resolveLanguage, type Language } from "@/i18n";
 
 /**
@@ -132,7 +133,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     }))),
     runtime,
     messages: s.messages.slice(-limits.messages).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) })),
-    approvals: Object.values(s.approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
+    approvals: pendingApprovals(s.approvals, s.config.projects),
     runs,
     chats: s.config.chats,
     chatMessages,

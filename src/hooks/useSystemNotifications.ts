@@ -3,6 +3,7 @@ import { useAppStore, selectAllAgents } from "@/store";
 import { isTauri } from "@/lib/tauri";
 import { log } from "@/lib/logger";
 import { translateNow } from "@/i18n/useT";
+import { pendingApprovals } from "@/lib/approvals";
 
 /** Truncates to `max` chars, adding an ellipsis when it cuts the text short. */
 function truncate(text: string, max: number): string {
@@ -57,12 +58,10 @@ export function useSystemNotifications() {
 
       // New pending approvals: diff against what we've already seen.
       if (config.tray.notifyApprovals) {
-        const currentPending = new Set(
-          Object.values(state.approvals).filter(a => a.status === "pending").map(a => a.id)
-        );
-        for (const id of currentPending) {
-          if (!knownPendingApprovals.current.has(id)) {
-            const approval = state.approvals[id];
+        const pending = pendingApprovals(state.approvals, state.config.projects);
+        const currentPending = new Set(pending.map(a => a.id));
+        for (const approval of pending) {
+          if (!knownPendingApprovals.current.has(approval.id)) {
             void notify(translateNow("notify.needsPermission"), truncate(approval.summary, 200));
           }
         }
