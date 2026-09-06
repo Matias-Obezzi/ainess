@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { SUGGESTED_MCP, SUGGESTED_SKILLS } from "@/lib/suggested";
 import { toast } from "@/components/ui/toast";
 import { Check } from "lucide-react";
+import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
 interface Props {
   kind: "mcp" | "skill";
@@ -15,6 +17,7 @@ interface Props {
 
 /** Curated list of MCP servers or skills the user can add in one click (checkbox-style picker). */
 export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const upsertSkill = useAppStore(state => state.upsertSkill);
   const upsertMcpServer = useAppStore(state => state.upsertMcpServer);
@@ -52,7 +55,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
         count++;
       }
     }
-    if (count > 0) toast.success(`${count} agregado${count === 1 ? "" : "s"}`);
+    if (count > 0) toast.success(plural(count, t("suggested.added.one", { n: count }), t("suggested.added.other", { n: count })));
     setSelected(new Set());
     onOpenChange(false);
   };
@@ -61,7 +64,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col">
         <DialogHeader>
-          <DialogTitle>{kind === "mcp" ? "Servidores MCP sugeridos" : "Skills sugeridas"}</DialogTitle>
+          <DialogTitle>{kind === "mcp" ? t("suggested.mcpTitle") : t("suggested.skillsTitle")}</DialogTitle>
         </DialogHeader>
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-2 py-2">
@@ -82,7 +85,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
                       {isSelected && <Check className="size-3" />}
                     </div>
                     <span className="font-semibold text-sm">{item.name}</span>
-                    {already && <Badge variant="secondary" className="text-[10px]">Agregado</Badge>}
+                    {already && <Badge variant="secondary" className="text-[10px]">{t("suggested.alreadyAdded")}</Badge>}
                   </div>
                   <p className="pl-6 text-xs text-muted-foreground">{item.description}</p>
                   {item.command && (
@@ -97,9 +100,9 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={handleAdd} disabled={selected.size === 0}>
-            Agregar {selected.size > 0 ? selected.size : ""} seleccionados
+            {t("suggested.addSelected", { n: selected.size })}
           </Button>
         </DialogFooter>
       </DialogContent>

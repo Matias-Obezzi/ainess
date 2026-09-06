@@ -23,6 +23,7 @@ import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
 import { Archive, ArchiveRestore, Ban, Trash2 } from "lucide-react";
+import { useT, useLocale } from "@/i18n/useT";
 
 interface Props {
   task: Task;
@@ -36,6 +37,8 @@ interface Props {
 }
 
 export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
+  const t = useT();
+  const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
 
@@ -65,7 +68,7 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
           {agent ? (
             <AgentAvatar provider={agent.provider} color={agent.color} size={22} />
           ) : (
-            <span className="mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full border border-dashed border-border" title="Sin asignar" />
+            <span className="mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full border border-dashed border-border" title={t("tasks.unassigned")} />
           )}
           <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">{task.title}</p>
         </div>
@@ -78,13 +81,13 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
 
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
-          <span className="truncate">{meta.label}</span>
-          <span className="ml-auto shrink-0">{formatTimeAgo(task.updatedAt, Date.now())}</span>
+          <span className="truncate">{t(meta.labelKey)}</span>
+          <span className="ml-auto shrink-0">{formatTimeAgo(task.updatedAt, Date.now(), locale)}</span>
         </div>
 
         {blocked > 0 && (
           <Badge variant="outline" className="mt-2 border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400">
-            <Ban className="h-3 w-3" /> Bloqueada por {blocked}
+            <Ban className="h-3 w-3" /> {t("tasks.blockedBy", { n: blocked })}
           </Badge>
         )}
       </article>
@@ -94,6 +97,7 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
 
 /** Right click on a card: move it, hand it to somebody, archive it or drop it. */
 export function TaskContextMenu({ task, children }: { task: Task; children: React.ReactNode }) {
+  const t = useT();
   const agents = useAppStore(state => selectProjectAgents(state, task.projectId));
   const updateTask = useAppStore(state => state.updateTask);
   const moveTask = useAppStore(state => state.moveTask);
@@ -101,7 +105,7 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
   const removeTask = useAppStore(state => state.removeTask);
 
   const remove = async () => {
-    if (!(await confirmDelete("la tarea", task.title))) return;
+    if (!(await confirmDelete(t("tasks.delete"), task.title))) return;
     removeTask(task.id);
   };
 
@@ -110,7 +114,7 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ContextMenuSub>
-          <ContextMenuSubTrigger>Mover a</ContextMenuSubTrigger>
+          <ContextMenuSubTrigger>{t("tasks.moveTo")}</ContextMenuSubTrigger>
           <ContextMenuSubContent>
             {TASK_STATUSES.map(status => (
               <ContextMenuItem
@@ -119,17 +123,17 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
                 // Dropping it at the end of the column is what dragging it there would do.
                 onSelect={() => moveTask(task.id, status, Number.MAX_SAFE_INTEGER)}
               >
-                {taskStatusMeta[status].label}
+                {t(taskStatusMeta[status].labelKey)}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
         </ContextMenuSub>
 
         <ContextMenuSub>
-          <ContextMenuSubTrigger>Asignar a</ContextMenuSubTrigger>
+          <ContextMenuSubTrigger>{t("tasks.assignTo")}</ContextMenuSubTrigger>
           <ContextMenuSubContent>
             <ContextMenuItem disabled={!task.agentId} onSelect={() => updateTask(task.id, { agentId: undefined })}>
-              Sin asignar
+              {t("tasks.unassigned")}
             </ContextMenuItem>
             <ContextMenuSeparator />
             {agents.map(agent => (
@@ -142,10 +146,10 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
 
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => archiveTask(task.id, !task.archived)}>
-          {task.archived ? <ArchiveRestore /> : <Archive />} {task.archived ? "Desarchivar" : "Archivar"}
+          {task.archived ? <ArchiveRestore /> : <Archive />} {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
         </ContextMenuItem>
         <ContextMenuItem variant="destructive" onSelect={() => void remove()}>
-          <Trash2 /> Eliminar
+          <Trash2 /> {t("common.delete")}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

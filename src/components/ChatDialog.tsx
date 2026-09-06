@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import type { ChatParticipant } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
+import { useT } from "@/i18n/useT";
 
 interface Props {
   open: boolean;
@@ -15,13 +16,28 @@ interface Props {
   editChatId?: string;
 }
 
-/** Roles that make sense in a chat; the text lands in the agent's system prompt ("tu rol es …"). */
+/**
+ * Roles that make sense in a chat. The value is what lands in the agent's system prompt
+ * ("tu rol es …") and is stored as such; only the label the user reads is translated.
+ */
 const CHAT_ROLES = ["asistente", "arquitecto", "revisor de código", "QA", "abogado del diablo", "docente", "product owner", "investigador"];
+
+const CHAT_ROLE_KEY: Record<string, string> = {
+  "asistente": "chat.role.assistant",
+  "arquitecto": "chat.role.architect",
+  "revisor de código": "chat.role.codeReviewer",
+  "QA": "chat.role.qa",
+  "abogado del diablo": "chat.role.devilsAdvocate",
+  "docente": "chat.role.teacher",
+  "product owner": "chat.role.productOwner",
+  "investigador": "chat.role.researcher",
+};
 const OTHER_ROLE = "__other__";
 const DEFAULT_MODEL = "__default__";
 const OTHER_MODEL = "__other_model__";
 
 export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
+  const t = useT();
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const models = useAppStore(state => state.models);
   const currentProjectId = useAppStore(state => state.currentProjectId);
@@ -70,32 +86,30 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editChat ? "Editar chat" : "Nuevo chat"}</DialogTitle>
+          <DialogTitle>{editChat ? t("chat.edit") : t("sidebar.newChat")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div>
-            <Label>Nombre</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Revisión de código" />
+            <Label>{t("common.name")}</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("chatDialog.namePlaceholder")} />
           </div>
 
           <div>
-            <Label>Modo</Label>
+            <Label>{t("chatDialog.mode")}</Label>
             <Select value={participants.length > 1 ? mode : "individual"} onValueChange={(v: "individual" | "shared") => setMode(v)} disabled={participants.length <= 1}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="individual">Individual</SelectItem>
-                <SelectItem value="shared">Compartido</SelectItem>
+                <SelectItem value="individual">{t("chat.individual")}</SelectItem>
+                <SelectItem value="shared">{t("chat.shared")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label>Participantes</Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Con quién hablás directamente, sin pasar por el planificador. Con más de uno, responden por turno y cada uno ve lo que dijeron los otros; el rol le dice a cada agente cómo comportarse en este chat.
-            </p>
+            <Label>{t("chatDialog.participants")}</Label>
+            <p className="text-xs text-muted-foreground mt-1">{t("chatDialog.participantsHint")}</p>
             <div className="flex flex-col gap-2 mt-2">
               {participants.map((p, idx) => {
                 const provider = agents.find(a => a.id === p.agentId)?.provider;
@@ -104,7 +118,7 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                   <div key={idx} className="rounded-md border border-border p-2 flex flex-col gap-2">
                     <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
                       <Select value={p.agentId} onValueChange={v => updateParticipant(idx, { agentId: v, model: undefined })}>
-                        <SelectTrigger className="w-full" title="Agente">
+                        <SelectTrigger className="w-full" title={t("chatDialog.agent")}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -117,29 +131,29 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                         value={CHAT_ROLES.includes(p.role) ? p.role : OTHER_ROLE}
                         onValueChange={v => updateParticipant(idx, { role: v === OTHER_ROLE ? "" : v })}
                       >
-                        <SelectTrigger className="w-full" title="Cómo tiene que comportarse en este chat">
-                          <SelectValue placeholder="Rol" />
+                        <SelectTrigger className="w-full" title={t("chatDialog.roleHint")}>
+                          <SelectValue placeholder={t("chatDialog.role")} />
                         </SelectTrigger>
                         <SelectContent>
                           {CHAT_ROLES.map(r => (
-                            <SelectItem key={r} value={r}>{r[0].toUpperCase() + r.slice(1)}</SelectItem>
+                            <SelectItem key={r} value={r}>{t(CHAT_ROLE_KEY[r])}</SelectItem>
                           ))}
-                          <SelectItem value={OTHER_ROLE}>Otro…</SelectItem>
+                          <SelectItem value={OTHER_ROLE}>{t("composer.otherModel")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select
                         value={!p.model ? DEFAULT_MODEL : modelIds.includes(p.model) ? p.model : OTHER_MODEL}
                         onValueChange={v => updateParticipant(idx, { model: v === DEFAULT_MODEL ? undefined : v === OTHER_MODEL ? "custom" : v })}
                       >
-                        <SelectTrigger className="w-full" title="Modelo para este agente en este chat">
-                          <SelectValue placeholder="Modelo" />
+                        <SelectTrigger className="w-full" title={t("chatDialog.modelHint")}>
+                          <SelectValue placeholder={t("common.model")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={DEFAULT_MODEL}>Modelo por defecto</SelectItem>
+                          <SelectItem value={DEFAULT_MODEL}>{t("composer.defaultModel")}</SelectItem>
                           {modelIds.map(m => (
                             <SelectItem key={m} value={m}>{m}</SelectItem>
                           ))}
-                          <SelectItem value={OTHER_MODEL}>Otro…</SelectItem>
+                          <SelectItem value={OTHER_MODEL}>{t("composer.otherModel")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
@@ -147,7 +161,7 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                         size="icon"
                         className="h-8 w-8"
                         disabled={participants.length <= 1}
-                        title="Quitar participante"
+                        title={t("chatDialog.removeParticipant")}
                         onClick={() => removeParticipant(idx)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -159,14 +173,14 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                           <Input
                             value={p.role}
                             onChange={e => updateParticipant(idx, { role: e.target.value })}
-                            placeholder="Describí el rol (ej: experto en Postgres)"
+                            placeholder={t("chatDialog.customRolePlaceholder")}
                           />
                         )}
                         {p.model && !modelIds.includes(p.model) && (
                           <Input
                             value={p.model === "custom" ? "" : p.model}
                             onChange={e => updateParticipant(idx, { model: e.target.value || "custom" })}
-                            placeholder="Id del modelo"
+                            placeholder={t("chatDialog.modelIdPlaceholder")}
                           />
                         )}
                       </div>
@@ -175,15 +189,15 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                 );
               })}
               <Button variant="outline" size="sm" onClick={addParticipant} disabled={participants.length >= agents.length}>
-                <Plus className="h-4 w-4 mr-1" /> Agregar participante
+                <Plus className="h-4 w-4 mr-1" /> {t("chatDialog.addParticipant")}
               </Button>
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={handleSave} disabled={!name.trim() || participants.length === 0}>
-            {editChat ? "Guardar" : "Crear"}
+            {editChat ? t("common.save") : t("common.create")}
           </Button>
         </DialogFooter>
       </DialogContent>

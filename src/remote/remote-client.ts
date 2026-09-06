@@ -140,7 +140,7 @@ export function hydrate(snapshot: RemoteSnapshot): void {
 
   useAppStore.setState(state => ({
     loaded: true,
-    config: { ...state.config, projects, chats: snapshot.chats },
+    config: { ...state.config, projects, chats: snapshot.chats, language: snapshot.language },
     runtime,
     runs,
     messages: snapshot.messages,

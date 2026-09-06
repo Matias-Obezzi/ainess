@@ -13,6 +13,7 @@ import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
+import { translateNow } from "@/i18n/useT";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -279,7 +280,8 @@ function generateSeedConfig(): AppConfig {
   };
 
   return {
-    version: 10,
+    version: 11,
+    language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
     tray: { enabled: true, notifyApprovals: true, notifyResults: true },
@@ -476,7 +478,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 10, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
+  config: { version: 11, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -696,7 +698,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         : { running: false, error: state.tunnelStatus.running ? "Se cayó el túnel" : state.tunnelStatus.error },
     }));
     if (fell) {
-      get().notify({ kind: "tunnel", title: "Se cayó el túnel", body: "El acceso público quedó apagado." });
+      get().notify({ kind: "tunnel", title: translateNow("notify.tunnelDown"), body: translateNow("notify.tunnelDownBody") });
     }
   },
   refreshRemoteStatus: async () => {
@@ -1507,8 +1509,18 @@ async function runInit(): Promise<void> {
         projects: migratedProjects,
         formations,
         defaultFormationId,
-      } as AppConfig;
+      } as unknown as AppConfig;
       delete (config as unknown as { agents?: AgentConfig[] }).agents;
+      isSeed = true;
+    }
+
+    // Migration to version 11: the UI can be read in several languages.
+    if ((config.version as number) < 11) {
+      config = {
+        ...config,
+        version: 11,
+        language: config.language ?? null,
+      } as AppConfig;
       isSeed = true;
     }
 

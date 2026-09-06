@@ -15,6 +15,8 @@ import { copyText } from "@/lib/clipboard";
 import { Markdown } from "@/components/shell/Markdown";
 import { truncate } from "@/lib/format";
 import type { Approval } from "@/types";
+import { useT, useLocale } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
 /** First non-empty line of the delegated task, for the collapsed row. */
 function firstLine(text: string): string {
@@ -24,6 +26,8 @@ function firstLine(text: string): string {
 
 /** Pending approvals of the current project (or all projects when `all` is set). */
 export function ApprovalsPanel({ all = false }: { all?: boolean }) {
+  const t = useT();
+  const locale = useLocale();
   const approvals = useAppStore(state => state.approvals);
   const agents = useAppStore(selectAllAgents);
   const projects = useAppStore(state => state.config.projects);
@@ -41,20 +45,20 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
   );
   if (pending.length === 0) return null;
 
-  const name = (id?: string) => agents.find(a => a.id === id)?.name ?? (id ? "Agente anterior" : "");
+  const name = (id?: string) => agents.find(a => a.id === id)?.name ?? (id ? t("home.formerAgent") : "");
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
 
   const approvalActions = (a: Approval): MenuAction[] => [
-    { key: "approve", label: "Aprobar", icon: Check, onSelect: () => void approve(a.id, notes[a.id] || undefined) },
+    { key: "approve", label: t("approvals.approve"), icon: Check, onSelect: () => void approve(a.id, notes[a.id] || undefined) },
     {
       key: "copy",
-      label: "Copiar la tarea",
+      label: t("approvals.copyTask"),
       icon: Copy,
-      onSelect: () => void copyText(a.payload.prompt, "Tarea copiada"),
+      onSelect: () => void copyText(a.payload.prompt, t("approvals.taskCopied")),
     },
     {
       key: "reject",
-      label: "Rechazar",
+      label: t("approvals.reject"),
       icon: X,
       destructive: true,
       separatorBefore: true,
@@ -67,7 +71,7 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
     <Card className="p-3 border-amber-500/60 bg-amber-500/5 flex flex-col gap-2 max-h-[45vh] overflow-y-auto">
       <div className="flex items-center gap-2 font-semibold text-sm">
         <ShieldCheck className="h-4 w-4 text-amber-500" />
-        {pending.length === 1 ? "1 delegación espera tu aprobación" : `${pending.length} delegaciones esperan tu aprobación`}
+        {plural(pending.length, t("approvals.waiting.one", { n: pending.length }), t("approvals.waiting.other", { n: pending.length }))}
       </div>
       {pending.map(a => (
         <ContextMenu key={a.id}>
@@ -76,7 +80,7 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">{name(a.agentId)} → {name(a.toAgentId)}</Badge>
                 {all && <Badge variant="secondary">{projectName(a.projectId)}</Badge>}
-                <span>{new Date(a.createdAt).toLocaleTimeString("es-AR", { hour12: false })}</span>
+                <span>{new Date(a.createdAt).toLocaleTimeString(locale)}</span>
               </div>
               <button
                 type="button"
@@ -86,11 +90,11 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
               >
                 {expanded[a.id] ? <ChevronDown className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
                 <span className={expanded[a.id] ? "font-medium" : "line-clamp-2"}>
-                  {expanded[a.id] ? "Tarea delegada" : firstLine(a.payload.prompt)}
+                  {expanded[a.id] ? t("approvals.delegatedTask") : firstLine(a.payload.prompt)}
                 </span>
                 {!expanded[a.id] && (
                   <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                    {a.payload.prompt.split(/\r?\n/).length} líneas
+                    {t("approvals.lines", { n: a.payload.prompt.split(/\r?\n/).length })}
                   </span>
                 )}
               </button>
@@ -99,21 +103,21 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
                   <Markdown text={a.payload.prompt} className="text-xs" />
                 </div>
               )}
-              {a.payload.model && <div className="text-xs text-muted-foreground">Modelo: {a.payload.model}</div>}
+              {a.payload.model && <div className="text-xs text-muted-foreground">{t("presets.model", { model: a.payload.model })}</div>}
               <div className="flex gap-2 items-center">
                 <Input
                   className="h-8 text-xs flex-1"
-                  placeholder="Nota opcional (el agente la recibe si rechazás)"
+                  placeholder={t("approvals.notePlaceholder")}
                   value={notes[a.id] ?? ""}
                   onChange={e => setNotes({ ...notes, [a.id]: e.target.value })}
                   // Inside a field the right click belongs to the browser, for pasting.
                   onContextMenu={e => e.stopPropagation()}
                 />
                 <Button size="sm" className="h-8" onClick={() => void approve(a.id, notes[a.id] || undefined)}>
-                  <Check className="h-4 w-4 mr-1" /> Aprobar
+                  <Check className="h-4 w-4 mr-1" /> {t("approvals.approve")}
                 </Button>
                 <Button size="sm" variant="destructive" className="h-8" onClick={() => void reject(a.id, notes[a.id] || undefined)}>
-                  <X className="h-4 w-4 mr-1" /> Rechazar
+                  <X className="h-4 w-4 mr-1" /> {t("approvals.reject")}
                 </Button>
               </div>
             </div>

@@ -19,6 +19,8 @@ import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
 import { ensureNgrokUpToDate, installNgrok, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokInstallPhase, type NgrokUpdateState } from "@/lib/ngrok-account";
 import { Copy, Download, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
+import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 
 /**
  * QR of one URL. It has to be a component and not an effect on a ref of this section: the canvas
@@ -57,6 +59,7 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
   disabled: boolean;
   onSave: (value: string) => Promise<boolean>;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -83,7 +86,7 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
           autoComplete="off"
           autoFocus
           className="max-w-xs"
-          placeholder="Pegá el valor del dashboard"
+          placeholder={t("remote.ngrok.pastePlaceholder")}
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => {
@@ -92,9 +95,9 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
           }}
         />
         <Button size="sm" disabled={saving || !value.trim()} onClick={() => void save()}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Guardar
+          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} {t("common.save")}
         </Button>
-        <Button size="sm" variant="ghost" disabled={saving} onClick={close}>Cancelar</Button>
+        <Button size="sm" variant="ghost" disabled={saving} onClick={close}>{t("common.cancel")}</Button>
       </div>
     );
   }
@@ -102,16 +105,16 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className={cn("h-2 w-2 rounded-full", configured ? "bg-emerald-500" : "bg-muted-foreground/40")} />
-      <span className="text-sm">{configured ? "Configurado" : "Sin configurar"}</span>
+      <span className="text-sm">{configured ? t("remote.ngrok.configured") : t("remote.ngrok.notConfigured")}</span>
       <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setEditing(true)}>
-        {configured ? "Cambiar" : "Configurar"}
+        {configured ? t("remote.ngrok.change") : t("remote.ngrok.configure")}
       </Button>
       <Button
         variant="ghost"
         size="icon"
         className="h-7 w-7"
-        aria-label="Abrirlo en el dashboard de ngrok"
-        title="Abrirlo en el dashboard de ngrok"
+        aria-label={t("remote.ngrok.openDashboard")}
+        title={t("remote.ngrok.openDashboard")}
         onClick={() => void openExternal(dashboardUrl)}
       >
         <ExternalLink className="h-3.5 w-3.5" />
@@ -122,6 +125,7 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
 
 /** Configuración > Remoto: LAN server (URL + QR) and the optional public tunnel. */
 export function RemoteSection() {
+  const t = useT();
   const remote = useAppStore(state => state.config.remote);
   const status = useAppStore(state => state.remoteStatus);
   const tunnel = useAppStore(state => state.tunnelStatus);
@@ -188,7 +192,7 @@ export function RemoteSection() {
   const toggle = async (enabled: boolean) => {
     try {
       await toggleRemote(enabled);
-      if (enabled) toast.success("Acceso remoto activo");
+      if (enabled) toast.success(t("titlebar.remoteOn"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
@@ -199,7 +203,7 @@ export function RemoteSection() {
     try {
       const version = await installNgrok(setInstalling);
       await detect();
-      toast.success(version ? `ngrok ${version} instalado` : "ngrok instalado");
+      toast.success(version ? t("remote.ngrok.installedVersion", { version }) : t("remote.ngrok.installed"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -213,7 +217,7 @@ export function RemoteSection() {
       updateConfig({ remote: { ...remote, tunnel: { ...remote.tunnel, enabled } } });
       if (enabled) {
         await startTunnel();
-        toast.success("Túnel público activo");
+        toast.success(t("remote.tunnelOn"));
       } else {
         await stopTunnel();
       }
@@ -284,7 +288,7 @@ export function RemoteSection() {
     if (!ngrokPath) return false;
     try {
       await saveNgrokCredential(ngrokPath, kind, value);
-      toast.success(kind === "authtoken" ? "Authtoken guardado" : "API key guardada");
+      toast.success(kind === "authtoken" ? t("remote.ngrok.authtokenSaved") : t("remote.ngrok.apiKeySaved"));
       await refreshNgrokAccount();
       return true;
     } catch (e) {
@@ -319,7 +323,7 @@ export function RemoteSection() {
   // Only shown for ngrok, and only once the update pass could read a version.
   const ngrokVersionLabel =
     provider === "ngrok" && ngrokUpdate?.version
-      ? `v${ngrokUpdate.version}${ngrokUpdate.status === "updated" ? " (recién actualizado)" : ""}`
+      ? `v${ngrokUpdate.version}${ngrokUpdate.status === "updated" ? ` (${t("remote.ngrok.justUpdated")})` : ""}`
       : "";
   const selectedNgrokDomain = ngrokDomains?.includes(normalizeDomain(remote.tunnel.domain))
     ? normalizeDomain(remote.tunnel.domain)
@@ -335,31 +339,28 @@ export function RemoteSection() {
 
   const applyPort = () => {
     const n = parseInt(port, 10);
-    if (!n || n < 1024 || n > 65535) { toast.error("Puerto inválido (1024-65535)"); return; }
+    if (!n || n < 1024 || n > 65535) { toast.error(t("remote.invalidPort")); return; }
     updateConfig({ remote: { ...remote, port: n } });
     if (status.running) void stopRemote().then(() => startRemote()).catch(e => toast.error(String(e)));
   };
 
   const copy = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); toast.success("URL copiada"); }
-    catch { toast.error("No se pudo copiar"); }
+    try { await navigator.clipboard.writeText(url); toast.success(t("remote.urlCopied")); }
+    catch { toast.error(t("about.copyFailed")); }
   };
 
   const tunnelDisabledReason = !status.running
-    ? "Prendé primero el acceso remoto en la red local."
+    ? t("remote.tunnelNeedsLan")
     : !binaryPath
-      ? `Falta \`${tunnelBinary(provider)}\`: instalalo con \`${tunnelInstallCommand(provider)}\`.`
+      ? t("remote.tunnelMissingBinary", { binary: tunnelBinary(provider), command: tunnelInstallCommand(provider) })
       : null;
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Acceso en la red local</CardTitle>
-          <CardDescription>
-            Abrí la app desde el celular en la misma red WiFi: ves el estado de los agentes y el feed en vivo, mandás
-            prompts o instrucciones, detenés y aprobás delegaciones. La URL lleva un token: no la compartas.
-          </CardDescription>
+          <CardTitle>{t("remote.lanTitle")}</CardTitle>
+          <CardDescription>{t("remote.lanDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
       {initialLoading ? (
@@ -374,20 +375,28 @@ export function RemoteSection() {
         <div className="flex items-center gap-2">
           <Switch checked={status.running} disabled={busy} onCheckedChange={(c) => void toggle(c)} />
           <div className="flex flex-col">
-            <label className="text-sm font-semibold">Acceso remoto en la red local</label>
+            <label className="text-sm font-semibold">{t("settings.option.remote.lan")}</label>
             <span className="text-sm text-muted-foreground">
-              {status.running ? `Escuchando en ${status.ip}:${remote.port}` : status.error ? `Error: ${status.error}` : "Apagado"}
+              {status.running
+                ? t("remote.listeningOn", { host: status.ip ?? "", port: remote.port })
+                : status.error
+                  ? t("remote.error", { error: status.error })
+                  : t("remote.off")}
             </span>
           </div>
-          {status.running && <Badge variant="secondary">{status.clients} conectado{status.clients === 1 ? "" : "s"}</Badge>}
+          {status.running && (
+            <Badge variant="secondary">
+              {plural(status.clients, t("remote.clients.one", { n: status.clients }), t("remote.clients.other", { n: status.clients }))}
+            </Badge>
+          )}
         </div>
       )}
 
-      <Field label="Puerto" hint="El puerto en el que escucha el servidor local. Cambiarlo lo reinicia.">
+      <Field label={t("settings.option.remote.port")} hint={t("remote.portHint")}>
         <div className="flex items-center gap-2">
           <Input className="w-28" value={port} onChange={e => setPort(e.target.value)} onBlur={applyPort} onKeyDown={e => e.key === "Enter" && applyPort()} />
-          <Button variant="outline" size="sm" onClick={() => void regenerateRemoteToken().then(() => toast.success("Token regenerado"))}>
-            <RefreshCw className="mr-1 h-4 w-4" /> Regenerar token
+          <Button variant="outline" size="sm" onClick={() => void regenerateRemoteToken().then(() => toast.success(t("remote.tokenRegenerated")))}>
+            <RefreshCw className="mr-1 h-4 w-4" /> {t("settings.option.remote.token")}
           </Button>
         </div>
       </Field>
@@ -407,14 +416,12 @@ export function RemoteSection() {
             <QrCanvas value={status.url} />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="flex items-center gap-2 text-sm font-medium"><Smartphone className="h-4 w-4" /> Escaneá el QR o abrí:</div>
+            <div className="flex items-center gap-2 text-sm font-medium"><Smartphone className="h-4 w-4" /> {t("remote.scanOrOpen")}</div>
             <code className="break-all rounded-md bg-muted p-2 text-xs">{status.url}</code>
             <Button variant="secondary" size="sm" className="self-start" onClick={() => void copy(status.url!)}>
-              <Copy className="mr-1 h-4 w-4" /> Copiar URL
+              <Copy className="mr-1 h-4 w-4" /> {t("remote.copyUrl")}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Si no carga desde el celular, revisá que el firewall de Windows permita conexiones entrantes al puerto {remote.port}.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("remote.firewallHint", { port: remote.port })}</p>
           </div>
         </div>
       )}
@@ -424,42 +431,39 @@ export function RemoteSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> Acceso desde afuera (túnel)</CardTitle>
-          <CardDescription>
-            Publica el servidor local en una URL de internet, para usar la app fuera de tu red. Necesita el acceso local
-            prendido.
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> {t("remote.tunnelTitle")}</CardTitle>
+          <CardDescription>{t("remote.tunnelDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-4">
           <Field
-            label="Proveedor"
+            label={t("remote.provider")}
             hint={
               binaryPath ? (
                 <span className="flex flex-wrap items-center gap-1">
                   {provider === "ngrok" && ngrokUpdate?.status === "checking" ? (
                     <>
-                      <RefreshCw className="h-3 w-3 animate-spin" /> Actualizando ngrok a la última versión…
+                      <RefreshCw className="h-3 w-3 animate-spin" /> {t("remote.ngrok.updating")}
                     </>
                   ) : (
                     <>
-                      Detectado
+                      {t("agents.found")}
                       {ngrokVersionLabel && <span>· {ngrokVersionLabel}</span>}
-                      en <code className="break-all">{binaryPath}</code>
+                      {t("remote.at")} <code className="break-all">{binaryPath}</code>
                     </>
                   )}
                   {provider === "ngrok" && ngrokUpdate?.status === "failed" && (
-                    <span className="text-destructive">No se pudo actualizar: {ngrokUpdate.message}</span>
+                    <span className="text-destructive">{t("remote.ngrok.updateFailed", { error: ngrokUpdate.message ?? "" })}</span>
                   )}
                 </span>
               ) : installing ? (
                 <span className="flex flex-wrap items-center gap-1">
                   <RefreshCw className="h-3 w-3 animate-spin" />
-                  {installing === "installing" ? "Instalando ngrok con winget…" : "Buscando el binario recién instalado…"}
+                  {installing === "installing" ? t("remote.ngrok.installingWinget") : t("remote.ngrok.lookingForBinary")}
                 </span>
               ) : (
                 <span className="flex flex-wrap items-center gap-1">
-                  No está instalado. Instalalo con
+                  {t("remote.notInstalled")}
                   <code className="rounded bg-muted px-1 py-0.5">{tunnelInstallCommand(provider)}</code>
                 </span>
               )
@@ -476,12 +480,12 @@ export function RemoteSection() {
                 </SelectContent>
               </Select>
               <Button variant="ghost" size="sm" onClick={() => void detect()}>
-                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Volver a detectar
+                <RefreshCw className="mr-1 h-3.5 w-3.5" /> {t("settings.option.remote.detectAgain")}
               </Button>
               {provider === "ngrok" && !binaryPath && (
                 <Button size="sm" variant="secondary" disabled={!!installing} onClick={() => void install()}>
                   {installing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
-                  Instalar ngrok
+                  {t("settings.option.remote.installNgrok")}
                 </Button>
               )}
             </div>
@@ -490,12 +494,8 @@ export function RemoteSection() {
           {provider === "ngrok" ? (
             <>
               <Field
-                label="Tipo de dominio"
-                hint={
-                  domainType === "static"
-                    ? "La URL es siempre la misma, con un dominio de tu cuenta."
-                    : "ngrok genera una URL nueva cada vez que prendés el túnel."
-                }
+                label={t("settings.option.remote.domainType")}
+                hint={domainType === "static" ? t("remote.staticHint") : t("remote.dynamicHint")}
               >
                 <Select
                   value={domainType}
@@ -507,15 +507,15 @@ export function RemoteSection() {
                 >
                   <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="dynamic">Dinámico</SelectItem>
-                    <SelectItem value="static">Estático</SelectItem>
+                    <SelectItem value="dynamic">{t("remote.dynamic")}</SelectItem>
+                    <SelectItem value="static">{t("remote.static")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
 
               {domainType === "static" && (
                 <>
-                  <Field label="Authtoken" hint="Es lo que ngrok necesita para conectarse.">
+                  <Field label="Authtoken" hint={t("remote.ngrok.authtokenHint")}>
                     <NgrokCredential
                       configured={!!ngrokAccount?.hasAuthtoken}
                       dashboardUrl={NGROK_AUTHTOKEN_URL}
@@ -523,7 +523,7 @@ export function RemoteSection() {
                       onSave={v => saveCredential("authtoken", v)}
                     />
                   </Field>
-                  <Field label="API key" hint="Distinta del authtoken: con ella la app trae los dominios de tu cuenta.">
+                  <Field label="API key" hint={t("remote.ngrok.apiKeyHint")}>
                     <NgrokCredential
                       configured={!!ngrokAccount?.hasApiKey}
                       dashboardUrl={NGROK_API_KEYS_URL}
@@ -535,22 +535,22 @@ export function RemoteSection() {
               )}
 
               <Field
-                label="Dominio"
+                label={t("settings.option.remote.domain")}
                 hint={
                   domainType === "dynamic"
-                    ? "Lo elige ngrok y cambia en cada arranque."
+                    ? t("remote.domainDynamicHint")
                     : !ngrokVerified
-                      ? "Cargá el authtoken y la API key para poder elegirlo."
+                      ? t("remote.domainNeedsCredentials")
                       : ngrokDomains?.length === 0
                         ? (
                           <span className="flex flex-wrap items-center gap-1">
-                            Tu cuenta no tiene dominios reservados.
+                            {t("remote.noReservedDomains")}
                             <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
-                              Reclamá el gratis en el dashboard
+                              {t("remote.claimFreeDomain")}
                             </button>
                           </span>
                         )
-                        : "Es el dominio en el que se va a publicar la app."
+                        : t("remote.domainHint")
                 }
               >
                 {domainType === "dynamic" ? (
@@ -558,14 +558,14 @@ export function RemoteSection() {
                     disabled
                     className="max-w-xs"
                     value={runningHost}
-                    placeholder="Lo genera ngrok al prender el túnel"
+                    placeholder={t("remote.domainGenerated")}
                   />
                 ) : !ngrokVerified ? (
                   <Input
                     disabled
                     className="max-w-xs"
                     value={normalizeDomain(remote.tunnel.domain)}
-                    placeholder="Autenticate para configurar"
+                    placeholder={t("remote.domainNeedsAuth")}
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -575,7 +575,7 @@ export function RemoteSection() {
                       onValueChange={v => void applyTunnelFixedFields({ domain: normalizeDomain(v) })}
                     >
                       <SelectTrigger className="w-64">
-                        <SelectValue placeholder={loadingDomains ? "Buscando tus dominios…" : "Elegí uno de tus dominios"} />
+                        <SelectValue placeholder={loadingDomains ? t("remote.loadingDomains") : t("remote.pickDomain")} />
                       </SelectTrigger>
                       <SelectContent>
                         {(ngrokDomains ?? []).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
@@ -585,7 +585,7 @@ export function RemoteSection() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      title="Volver a traer mis dominios"
+                      title={t("remote.reloadDomains")}
                       disabled={loadingDomains}
                       onClick={() => void loadNgrokDomains()}
                     >
@@ -598,11 +598,11 @@ export function RemoteSection() {
           ) : (
             <>
               <Field
-                label="Nombre del túnel"
+                label={t("remote.tunnelName")}
                 hint={
                   missingTunnelName
-                    ? <span className="text-destructive">Sin esto la URL no queda fija.</span>
-                    : "El que creaste con `cloudflared tunnel create`. Vacío usa un túnel de un solo uso."
+                    ? <span className="text-destructive">{t("remote.tunnelNameRequired")}</span>
+                    : t("remote.tunnelNameHint")
                 }
               >
                 <Input
@@ -614,7 +614,7 @@ export function RemoteSection() {
                   onKeyDown={e => e.key === "Enter" && applyTunnelName()}
                 />
               </Field>
-              <Field label="Hostname" hint="El subdominio de tu dominio en Cloudflare que apunta a ese túnel.">
+              <Field label={t("remote.hostname")} hint={t("remote.hostnameHint")}>
                 <Input
                   className="max-w-xs"
                   placeholder="ainess.midominio.com"
@@ -624,7 +624,7 @@ export function RemoteSection() {
                   onKeyDown={e => e.key === "Enter" && applyDomain()}
                 />
               </Field>
-              <Field label="Cómo se crea" hint="Se corre una sola vez, con tu cuenta de Cloudflare.">
+              <Field label={t("remote.howToCreate")} hint={t("remote.howToCreateHint")}>
                 <code className="block whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
                   {"cloudflared tunnel login\ncloudflared tunnel create ainess\ncloudflared tunnel route dns ainess ainess.midominio.com"}
                 </code>
@@ -643,19 +643,23 @@ export function RemoteSection() {
               />
               <div className="flex flex-col">
                 <span className="flex items-center gap-1.5 text-sm font-semibold">
-                  Túnel público
-                  {isFixed && <Badge variant="secondary">URL fija</Badge>}
+                  {t("settings.option.remote.tunnel")}
+                  {isFixed && <Badge variant="secondary">{t("remote.fixedUrl")}</Badge>}
                 </span>
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   {tunnelBusy ? (
                     <>
                       <RefreshCw className="h-3 w-3 animate-spin" />
-                      {remote.tunnel.enabled ? "Creando el túnel… puede tardar unos segundos" : "Cerrando el túnel…"}
+                      {remote.tunnel.enabled ? t("remote.creatingTunnel") : t("remote.closingTunnel")}
                     </>
-                  ) : tunnel.running ? `Activo con ${tunnel.provider ?? provider}` : tunnel.error ? tunnel.error : "Apagado"}
+                  ) : tunnel.running
+                    ? t("remote.tunnelActiveWith", { provider: tunnel.provider ?? provider })
+                    : tunnel.error ? tunnel.error : t("remote.off")}
                 </span>
                 {isFixed && previewUrl && !tunnel.running && (
-                  <span className="text-xs text-muted-foreground">Al prenderlo, la URL va a ser <code className="rounded bg-muted px-1">{previewUrl}</code></span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("remote.urlWillBe")} <code className="rounded bg-muted px-1">{previewUrl}</code>
+                  </span>
                 )}
               </div>
             </div>
@@ -665,7 +669,7 @@ export function RemoteSection() {
 
         {!tunnel.running && tunnel.error && remote.tunnel.enabled && (
           <Button variant="outline" size="sm" className="self-start" disabled={tunnelBusy || !!tunnelDisabledReason} onClick={() => void toggleTunnel(true)}>
-            <RefreshCw className="mr-1 h-4 w-4" /> Reintentar
+            <RefreshCw className="mr-1 h-4 w-4" /> {t("common.retry")}
           </Button>
         )}
 
@@ -676,16 +680,16 @@ export function RemoteSection() {
                 <QrCanvas value={publicUrl} />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="text-sm font-medium">URL pública:</div>
+                <div className="text-sm font-medium">{t("remote.publicUrl")}</div>
                 <code className="break-all rounded-md bg-muted p-2 text-xs">{publicUrl}</code>
                 <Button variant="secondary" size="sm" className="self-start" onClick={() => void copy(publicUrl)}>
-                  <Copy className="mr-1 h-4 w-4" /> Copiar URL
+                  <Copy className="mr-1 h-4 w-4" /> {t("remote.copyUrl")}
                 </Button>
               </div>
             </div>
             <p className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-muted-foreground">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              Cualquiera con esta URL y el token puede operar la app. Si la compartiste, regenerá el token.
+              {t("remote.shareWarning")}
             </p>
           </>
         )}

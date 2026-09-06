@@ -13,6 +13,7 @@ import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/types";
 import { ChevronDown, ChevronRight, ListTodo } from "lucide-react";
+import { useT } from "@/i18n/useT";
 
 interface DropTarget {
   status: TaskStatus;
@@ -21,6 +22,7 @@ interface DropTarget {
 }
 
 export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: string; onOpenTask(id: string): void; onNewTask(status?: TaskStatus): void }) {
+  const t = useT();
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const moveTask = useAppStore(state => state.moveTask);
 
@@ -95,9 +97,9 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
     return (
       <EmptyState
         icon={ListTodo}
-        title="Todavía no hay tareas"
-        description="Las tareas que le pidas al orquestador aparecen solas acá. También podés escribir una vos."
-        action={{ label: "Nueva tarea", onClick: () => onNewTask() }}
+        title={t("tasks.empty.title")}
+        description={t("tasks.empty.body")}
+        action={{ label: t("tasks.new"), onClick: () => onNewTask() }}
       />
     );
   }
@@ -116,7 +118,7 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
             >
               <header className="flex items-center gap-2 px-3 py-2">
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", meta.dot)} />
-                <h3 className="truncate text-xs font-semibold uppercase tracking-wide">{meta.label}</h3>
+                <h3 className="truncate text-xs font-semibold uppercase tracking-wide">{t(meta.labelKey)}</h3>
                 <Badge variant="outline" className="ml-auto text-[10px]">{items.length}</Badge>
               </header>
 
@@ -142,7 +144,7 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
                     className="w-full rounded-lg border border-dashed border-border py-4 text-xs text-muted-foreground transition-colors hover:border-ring/50 hover:text-foreground"
                     onClick={() => onNewTask(status)}
                   >
-                    Agregar una tarea
+                    {t("tasks.addOne")}
                   </button>
                 )}
               </div>
@@ -155,7 +157,7 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
         <div className="shrink-0 border-t border-border">
           <Button variant="ghost" size="sm" className="h-8 w-full justify-start rounded-none px-3" onClick={() => setArchiveOpen(o => !o)}>
             {archiveOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            Archivo
+            {t("tasks.archive")}
             <Badge variant="outline" className="ml-1 text-[10px]">{archived.length}</Badge>
           </Button>
           {archiveOpen && (
@@ -169,7 +171,7 @@ export function TaskBoard({ projectId, onOpenTask, onNewTask }: { projectId: str
                   >
                     <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", taskStatusMeta[task.status].dot)} />
                     <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                    <span className="shrink-0">{taskStatusMeta[task.status].label}</span>
+                    <span className="shrink-0">{t(taskStatusMeta[task.status].labelKey)}</span>
                   </button>
                 </TaskContextMenu>
               ))}

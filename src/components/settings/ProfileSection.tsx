@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { createContext, useContext, type ReactNode } from "react";
+import { useT } from "@/i18n/useT";
 
 interface ProfileDraft {
   name: string;
@@ -23,6 +24,7 @@ const ProfileCtx = createContext<ProfileCtxValue | null>(null);
 
 /** Shares the staged profile draft between the header's "Guardar" action and the form body. */
 export function ProfileSectionProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const profile = useAppStore(state => state.config.profile);
   const updateConfig = useAppStore(state => state.updateConfig);
   const [draft, setDraft] = useState<ProfileDraft>({
@@ -40,7 +42,7 @@ export function ProfileSectionProvider({ children }: { children: ReactNode }) {
 
   const save = () => {
     updateConfig({ profile: draft });
-    toast.success("Perfil guardado");
+    toast.success(t("profile.saved"));
   };
 
   return <ProfileCtx.Provider value={{ draft, setDraft, dirty, save }}>{children}</ProfileCtx.Provider>;
@@ -53,40 +55,42 @@ function useProfileCtx(): ProfileCtxValue {
 }
 
 export function ProfileSectionActions() {
+  const t = useT();
   const { dirty, save } = useProfileCtx();
-  return <Button size="sm" onClick={save} disabled={!dirty}>Guardar</Button>;
+  return <Button size="sm" onClick={save} disabled={!dirty}>{t("common.save")}</Button>;
 }
 
 export function ProfileSection() {
+  const t = useT();
   const { draft, setDraft } = useProfileCtx();
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">Esta información se inyecta en el prompt del sistema para que los agentes te conozcan mejor.</p>
+      <p className="text-sm text-muted-foreground">{t("profile.intro")}</p>
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold">Tu Nombre</label>
+        <label className="text-sm font-semibold">{t("settings.option.profile.name")}</label>
         <Input
           value={draft.name}
           onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-          placeholder="Ej: Matias"
+          placeholder={t("profile.namePlaceholder")}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold">Sobre vos (rol, seniority, contexto)</label>
+        <label className="text-sm font-semibold">{t("settings.option.profile.about")}</label>
         <Textarea
           className="resize-none"
           value={draft.about}
           onChange={e => setDraft(d => ({ ...d, about: e.target.value }))}
-          placeholder="Ej: Desarrollador full stack especializado en React y Node."
+          placeholder={t("profile.aboutPlaceholder")}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold">Preferencias de trabajo</label>
+        <label className="text-sm font-semibold">{t("settings.option.profile.preferences")}</label>
         <Textarea
           className="h-32 resize-none"
           value={draft.preferences}
           onChange={e => setDraft(d => ({ ...d, preferences: e.target.value }))}
-          placeholder="Ej: Respuestas cortas, en español rioplatense, siempre con validación de tipos."
+          placeholder={t("profile.preferencesPlaceholder")}
         />
       </div>
     </div>

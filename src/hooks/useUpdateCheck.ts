@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAppStore } from "@/store";
 import { toast } from "@/components/ui/toast";
 import { checkForUpdate } from "@/lib/updates";
+import { translateNow } from "@/i18n/useT";
 
 const DELAY_MS = 5000;
 const TOAST_ID = "ainess-update";
@@ -23,29 +24,30 @@ export function useUpdateCheck(): void {
         const result = await checkForUpdate();
         if (!result.available || !result.install) return;
         const install = result.install;
+        const headline = translateNow("update.available", { version: result.version ?? "" });
         useAppStore.getState().notify({
           kind: "update",
-          title: `ainess ${result.version} disponible`,
-          body: "Hay una versión nueva lista para instalar.",
+          title: headline,
+          body: translateNow("update.readyToInstall"),
         });
-        toast.info(`ainess ${result.version} disponible`, {
+        toast.info(headline, {
           id: TOAST_ID,
-          description: result.body?.slice(0, 200) ?? "Hay una versión nueva lista para instalar.",
+          description: result.body?.slice(0, 200) ?? translateNow("update.readyToInstall"),
           duration: Infinity,
           action: {
-            label: "Instalar",
+            label: translateNow("update.install"),
             onClick: () => {
               void (async () => {
                 try {
                   await install(percent => {
-                    toast.loading(`Descargando ainess ${result.version}…`, {
+                    toast.loading(translateNow("update.downloading", { version: result.version ?? "" }), {
                       id: TOAST_ID,
                       description: `${percent}%`,
                       duration: Infinity,
                     });
                   });
                 } catch (e) {
-                  toast.error("No se pudo instalar la actualización", {
+                  toast.error(translateNow("update.installFailed"), {
                     id: TOAST_ID,
                     description: e instanceof Error ? e.message : String(e),
                   });

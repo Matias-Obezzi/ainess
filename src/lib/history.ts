@@ -8,6 +8,7 @@
 import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, Approval, AgentWorktree } from "@/types";
+import { translateNow } from "@/i18n/useT";
 
 interface HistoryFile {
   version: 1;
@@ -199,14 +200,17 @@ function notifyInterrupted(projectId: string, interrupted: Run[]): void {
   if (interrupted.length === 0) return;
   const store = useAppStore.getState();
   const project = store.config.projects.find(p => p.id === projectId);
-  const where = project ? ` en ${project.name}` : "";
+  const inProject = !!project;
   if (interrupted.length === 1) {
     const run = interrupted[0];
     const agent = selectAgent(store, run.agentId);
     store.notify({
       kind: "interrupted",
-      title: `${agent?.name ?? "Un agente"} quedó a medias${where}`,
-      body: "La corrida se cortó cuando se cerró la aplicación.",
+      title: translateNow(inProject ? "notify.leftHalfwayIn" : "notify.leftHalfway", {
+        name: agent?.name ?? translateNow("notify.anAgent"),
+        project: project?.name ?? "",
+      }),
+      body: translateNow("notify.interruptedOne"),
       projectId,
       agentId: run.agentId,
       runId: run.id,
@@ -215,8 +219,11 @@ function notifyInterrupted(projectId: string, interrupted: Run[]): void {
   }
   store.notify({
     kind: "interrupted",
-    title: `${interrupted.length} corridas quedaron a medias${where}`,
-    body: "Se cortaron cuando se cerró la aplicación.",
+    title: translateNow(inProject ? "notify.runsLeftHalfwayIn" : "notify.runsLeftHalfway", {
+      n: interrupted.length,
+      project: project?.name ?? "",
+    }),
+    body: translateNow("notify.interruptedMany"),
     projectId,
   });
 }

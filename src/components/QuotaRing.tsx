@@ -5,6 +5,7 @@ import { useAppStore } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
 import { summarizeAgentQuota, type QuotaSummary } from "@/lib/quota-summary";
 import { cn } from "@/lib/utils";
+import { translateNow } from "@/i18n/useT";
 
 /** Green while there is room, amber when it gets tight, red when it is about to run out. */
 function ringColor(fraction: number | null): string {
@@ -34,7 +35,7 @@ export function QuotaRing({
   const circumference = 2 * Math.PI * radius;
   const filled = fraction === null ? 0 : Math.max(0, Math.min(1, fraction));
   const percent = fraction === null ? null : Math.round(filled * 100);
-  const text = label ?? (percent === null ? "sin datos" : `${percent}%`);
+  const text = label ?? (percent === null ? translateNow("quota.noData") : `${percent}%`);
 
   return (
     <svg
@@ -42,7 +43,7 @@ export function QuotaRing({
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-label={`Cuota restante: ${text}`}
+      aria-label={translateNow("quota.remaining", { value: text })}
       className={cn("shrink-0", ringColor(fraction), className)}
     >
       <circle

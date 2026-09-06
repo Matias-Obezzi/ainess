@@ -3,6 +3,7 @@ import { useAppStore } from "@/store";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { useT } from "@/i18n/useT";
 
 interface ContextCtxValue {
   draft: string;
@@ -15,6 +16,7 @@ const ContextCtx = createContext<ContextCtxValue | null>(null);
 
 /** Shares the staged shared-context draft between the header's "Guardar" action and the textarea. */
 export function ContextSectionProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const sharedContext = useAppStore(state => state.config.sharedContext);
   const setSharedContext = useAppStore(state => state.setSharedContext);
   const [draft, setDraft] = useState(sharedContext);
@@ -24,7 +26,7 @@ export function ContextSectionProvider({ children }: { children: ReactNode }) {
   const dirty = draft !== sharedContext;
   const save = () => {
     setSharedContext(draft);
-    toast.success("Contexto guardado");
+    toast.success(t("context.saved"));
   };
 
   return <ContextCtx.Provider value={{ draft, setDraft, dirty, save }}>{children}</ContextCtx.Provider>;
@@ -37,16 +39,18 @@ function useContextCtx(): ContextCtxValue {
 }
 
 export function ContextSectionActions() {
+  const t = useT();
   const { dirty, save } = useContextCtx();
-  return <Button size="sm" onClick={save} disabled={!dirty}>Guardar</Button>;
+  return <Button size="sm" onClick={save} disabled={!dirty}>{t("common.save")}</Button>;
 }
 
 export function ContextSection() {
+  const t = useT();
   const { draft, setDraft } = useContextCtx();
 
   return (
     <div className="flex h-full flex-col">
-      <p className="mb-2 text-sm text-muted-foreground">Se agrega al system prompt de todos los agentes.</p>
+      <p className="mb-2 text-sm text-muted-foreground">{t("context.intro")}</p>
       <Textarea
         className="min-h-64 flex-1 resize-none font-mono"
         value={draft}

@@ -5,6 +5,7 @@ import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
 import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run } from "@/types";
+import { resolveLanguage, type Language } from "@/i18n";
 
 /**
  * Everything the phone needs to render the same React UI as the desktop app: the page is a
@@ -12,6 +13,8 @@ import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, C
  */
 export interface RemoteSnapshot {
   serverTime: number;
+  /** Already resolved: the phone shows the same language as the app, whatever its own system says. */
+  language: Language;
   projects: Array<{ id: string; name: string; workspaceDir: string; color?: string; createdAt: number; activeTaskRunId: string | null; running: number }>;
   /** Every project's team, flattened; `projectId` says which one each agent belongs to. */
   agents: Array<Pick<AgentConfig, "id" | "name" | "provider" | "role" | "parentId" | "model" | "description" | "color"> & { projectId: string }>;
@@ -110,6 +113,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
 
   return {
     serverTime: Date.now(),
+    language: resolveLanguage(s.config.language),
     projects: s.config.projects.map(p => ({
       id: p.id,
       name: p.name,

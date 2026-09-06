@@ -4,19 +4,20 @@ import { useAppStore, selectAllAgents, selectProjectOfAgent } from "@/store";
 import type { SettingsSection } from "@/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/useT";
 
 /** Mirrors the sections of SettingsDialog (that file is owned by another change, so it is not imported). */
-const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string }> = [
-  { id: "general", label: "General" },
-  { id: "agents", label: "Agentes" },
-  { id: "profile", label: "Perfil" },
-  { id: "presets", label: "Órdenes" },
-  { id: "skills", label: "Skills" },
-  { id: "mcp", label: "MCP" },
-  { id: "hooks", label: "Hooks" },
-  { id: "context", label: "Contexto" },
-  { id: "remote", label: "Remoto" },
-  { id: "about", label: "Acerca de" },
+const SETTINGS_SECTIONS: Array<{ id: SettingsSection; labelKey: string }> = [
+  { id: "general", labelKey: "settings.section.general" },
+  { id: "agents", labelKey: "settings.section.agents" },
+  { id: "profile", labelKey: "settings.section.profile" },
+  { id: "presets", labelKey: "settings.section.presets" },
+  { id: "skills", labelKey: "settings.section.skills" },
+  { id: "mcp", labelKey: "settings.section.mcp" },
+  { id: "hooks", labelKey: "settings.section.hooks" },
+  { id: "context", labelKey: "settings.section.context" },
+  { id: "remote", labelKey: "settings.section.remote" },
+  { id: "about", labelKey: "settings.section.about" },
 ];
 
 /** Lowercases and strips accents so "orquestacion" matches "Orquestación". */
@@ -24,7 +25,14 @@ function normalize(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-type Group = "Proyectos" | "Chats" | "Agentes" | "Configuración";
+type Group = "projects" | "chats" | "agents" | "settings";
+
+const GROUP_LABEL_KEY: Record<Group, string> = {
+  projects: "search.group.projects",
+  chats: "search.group.chats",
+  agents: "search.group.agents",
+  settings: "search.group.settings",
+};
 
 interface Result {
   key: string;
@@ -39,6 +47,7 @@ interface Result {
 const PER_GROUP = 8;
 
 export function SearchPalette() {
+  const t = useT();
   const searchOpen = useAppStore(state => state.searchOpen);
   const toggleSearch = useAppStore(state => state.toggleSearch);
   const projects = useAppStore(state => state.config.projects);
@@ -66,7 +75,7 @@ export function SearchPalette() {
     for (const p of projects.filter(p => matches(p.name) || matches(p.workspaceDir)).slice(0, PER_GROUP)) {
       out.push({
         key: `project:${p.id}`,
-        group: "Proyectos",
+        group: "projects",
         label: p.name,
         hint: p.workspaceDir,
         icon: FolderOpen,
@@ -78,7 +87,7 @@ export function SearchPalette() {
       const project = projects.find(p => p.id === c.projectId);
       out.push({
         key: `chat:${c.id}`,
-        group: "Chats",
+        group: "chats",
         label: c.name,
         hint: project?.name,
         icon: c.mode === "shared" ? Users : MessageCircle,
@@ -90,7 +99,7 @@ export function SearchPalette() {
       const project = projects.find(p => (p.agents ?? []).some(x => x.id === a.id));
       out.push({
         key: `agent:${a.id}`,
-        group: "Agentes",
+        group: "agents",
         label: a.name,
         hint: project ? `${project.name} · ${a.provider}` : a.provider,
         icon: Bot,
@@ -105,18 +114,18 @@ export function SearchPalette() {
     }
 
     // "conf" should also find every settings section, not only its own label.
-    for (const s of SETTINGS_SECTIONS.filter(s => matches(`Configuración ${s.label}`))) {
+    for (const s of SETTINGS_SECTIONS.filter(s => matches(`${t("settings.title")} ${t(s.labelKey)}`))) {
       out.push({
         key: `section:${s.id}`,
-        group: "Configuración",
-        label: s.label,
+        group: "settings",
+        label: t(s.labelKey),
         icon: Settings2,
         run: () => openSettings(s.id),
       });
     }
 
     return out;
-  }, [query, projects, chats, agents, openProject, openSettings]);
+  }, [query, projects, chats, agents, openProject, openSettings, t]);
 
   // The query shrinks the list, so keep the cursor inside it.
   useEffect(() => {
@@ -156,13 +165,13 @@ export function SearchPalette() {
         className="top-[15%] translate-y-0 gap-0 p-0 overflow-hidden sm:max-w-xl"
         onKeyDown={onKeyDown}
       >
-        <DialogTitle className="sr-only">Buscar</DialogTitle>
+        <DialogTitle className="sr-only">{t("common.search")}</DialogTitle>
         <div className="border-b border-border p-2">
           <Input
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscar proyectos, chats, agentes, configuración…"
+            placeholder={t("search.placeholder")}
             className="border-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
           />
         </div>
@@ -170,7 +179,7 @@ export function SearchPalette() {
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
           {results.length === 0 && (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              Nada que coincida con «{query.trim()}»
+              {t("search.noResults", { query: query.trim() })}
             </div>
           )}
           {results.map((r, i) => {
@@ -181,7 +190,7 @@ export function SearchPalette() {
               <div key={r.key}>
                 {header && (
                   <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {header}
+                    {t(GROUP_LABEL_KEY[header])}
                   </div>
                 )}
                 <button

@@ -6,6 +6,7 @@ import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
+import { translateNow } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { Run, AgentConfig, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
@@ -325,11 +326,14 @@ function notifyTaskOutcome(run: Run, failed: boolean) {
   const store = useAppStore.getState();
   const agent = selectAgent(store, run.agentId);
   const project = store.config.projects.find(p => p.id === run.projectId);
-  const where = project ? ` en ${project.name}` : "";
+  const name = agent?.name ?? translateNow("notify.anAgent");
   const body = truncate(run.output ?? "", 140);
+  const key = failed
+    ? (project ? "notify.agentFailedIn" : "notify.agentFailed")
+    : (project ? "notify.agentDoneIn" : "notify.agentDone");
   store.notify({
     kind: failed ? "task-failed" : "task-done",
-    title: `${agent?.name ?? "Un agente"} ${failed ? "falló" : "terminó"}${where}`,
+    title: translateNow(key, { name, project: project?.name ?? "" }),
     body: body || undefined,
     projectId: run.projectId,
     agentId: run.agentId,
@@ -634,7 +638,10 @@ function requestApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" 
   });
   store.notify({
     kind: "approval",
-    title: `${agent?.name ?? "Un agente"} pide tu permiso${project ? ` en ${project.name}` : ""}`,
+    title: translateNow(project ? "notify.asksPermissionIn" : "notify.asksPermission", {
+      name: agent?.name ?? translateNow("notify.anAgent"),
+      project: project?.name ?? "",
+    }),
     body: truncate(approval.summary, 140) || undefined,
     projectId: approval.projectId,
     agentId: approval.agentId,

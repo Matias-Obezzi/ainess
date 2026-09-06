@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
+import { useT } from "@/i18n/useT";
 import { Send, Square } from "lucide-react";
 
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
@@ -18,6 +19,7 @@ const sentHistory: string[] = [];
 
 /** The input pinned at the bottom of the project screen: orchestrator prompt or chat message. */
 export function Composer() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   // A chat can name an agent of another project, so its ring looks the roster up everywhere.
@@ -159,24 +161,23 @@ export function Composer() {
 
   const noTeam = !chatMode && agents.length === 0;
   const placeholder = chatMode
-    ? `Mensaje para ${chat?.name ?? "el chat"}…  (Ctrl+Enter para enviar)`
+    ? t("composer.placeholder.chat", { name: chat?.name ?? t("composer.theChat") })
     : noTeam
-      ? "Este proyecto todavía no tiene agentes…"
-      : "Pedile algo al equipo… (Ctrl+Enter para enviar)";
+      ? t("composer.placeholder.noTeam")
+      : t("composer.placeholder.team");
 
   return (
     <div className="border-t border-border p-3 shrink-0 bg-background">
       <div className="max-w-3xl mx-auto flex flex-col gap-2">
         {noTeam && (
           <Alert className="text-xs py-2">
-            Este proyecto todavía no tiene agentes. Armá el equipo desde la vista de Jerarquía.
+            {t("composer.noTeamHint")}
           </Alert>
         )}
 
         {!chatMode && targetAgent && binaryInfo === null && (
           <Alert variant="destructive" className="text-xs py-2">
-            No se detectó el CLI de {PROVIDERS[targetAgent.provider]?.label ?? targetAgent.provider}.
-            Revisalo en Configuración → Agentes.
+            {t("composer.missingCli", { provider: PROVIDERS[targetAgent.provider]?.label ?? targetAgent.provider })}
           </Alert>
         )}
 
@@ -200,8 +201,8 @@ export function Composer() {
               size="icon"
               className="absolute bottom-2 right-2 h-8 w-8"
               onClick={handleStop}
-              title="Detener (Esc)"
-              aria-label="Detener"
+              title={t("composer.stopHint")}
+              aria-label={t("composer.stop")}
             >
               <Square className="h-4 w-4" />
             </Button>
@@ -211,8 +212,8 @@ export function Composer() {
               className="absolute bottom-2 right-2 h-8 w-8"
               onClick={handleSend}
               disabled={!canSend}
-              title="Enviar (Ctrl+Enter)"
-              aria-label="Enviar"
+              title={t("composer.sendHint")}
+              aria-label={t("composer.send")}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -225,7 +226,7 @@ export function Composer() {
               <>
                 <Select value={targetId} onValueChange={setTargetId}>
                   <SelectTrigger className="w-[150px] h-8 text-xs">
-                    <SelectValue placeholder="Destino" />
+                    <SelectValue placeholder={t("composer.target")} />
                   </SelectTrigger>
                   <SelectContent>
                     {agents.map(a => (
@@ -238,21 +239,21 @@ export function Composer() {
 
                 <Select value={targetModel} onValueChange={setTargetModel}>
                   <SelectTrigger className="w-[170px] h-8 text-xs">
-                    <SelectValue placeholder="Modelo" />
+                    <SelectValue placeholder={t("common.model")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Modelo por defecto</SelectItem>
+                    <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
                     {modelOptions.map(m => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
-                    <SelectItem value="custom">Otro…</SelectItem>
+                    <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 {targetModel === "custom" && (
                   <Input
                     className="h-8 w-[150px] text-xs"
-                    placeholder="Escribí el modelo…"
+                    placeholder={t("composer.typeModel")}
                     value={customModel}
                     onChange={e => setCustomModel(e.target.value)}
                   />

@@ -10,6 +10,7 @@ import { SuggestedDialog } from "@/components/settings/SuggestedDialog";
 import { Skill } from "@/types";
 import { Sparkles } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
+import { useT } from "@/i18n/useT";
 
 const SkillDialogCtx = createDialogContext<Skill>();
 const SuggestedCtx = createToggleContext();
@@ -23,19 +24,21 @@ export function SkillsSectionProvider({ children }: { children: ReactNode }) {
 }
 
 export function SkillsSectionActions() {
+  const t = useT();
   const { openCreate } = SkillDialogCtx.useDialogState();
   const { show } = SuggestedCtx.useToggleState();
   return (
     <div className="flex gap-2">
       <Button size="sm" variant="outline" onClick={show}>
-        <Sparkles className="mr-1 size-4" /> Sugeridos
+        <Sparkles className="mr-1 size-4" /> {t("suggested.button")}
       </Button>
-      <Button size="sm" onClick={openCreate}>Nueva skill</Button>
+      <Button size="sm" onClick={openCreate}>{t("skills.new")}</Button>
     </div>
   );
 }
 
 export function SkillsSection() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const agents = useAppStore(selectAllAgents);
   const removeSkill = useAppStore(state => state.removeSkill);
@@ -54,9 +57,9 @@ export function SkillsSection() {
       <>
         <EmptyState
           icon={Sparkles}
-          title="Todavía no hay skills"
-          description="Agregá una skill o elegí una sugerida para darle instrucciones reutilizables a los agentes."
-          action={{ label: "Agregar sugerida", onClick: showSuggested }}
+          title={t("skills.empty.title")}
+          description={t("skills.empty.body")}
+          action={{ label: t("skills.empty.action"), onClick: showSuggested }}
         />
         {dialogs}
       </>
@@ -75,7 +78,7 @@ export function SkillsSection() {
             <CardContent>
               <div className="flex flex-wrap gap-1">
                 {skill.enabledFor === "all" ? (
-                  <Badge variant="secondary">Todos</Badge>
+                  <Badge variant="secondary">{t("common.all")}</Badge>
                 ) : (
                   skill.enabledFor.map(id => {
                     const agent = agents.find(a => a.id === id);
@@ -85,8 +88,8 @@ export function SkillsSection() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => openEdit(skill)}>Editar</Button>
-              <Button variant="destructive" size="sm" onClick={() => void confirmDelete("la skill", skill.name).then(ok => ok && removeSkill(skill.id))}>Eliminar</Button>
+              <Button variant="outline" size="sm" onClick={() => openEdit(skill)}>{t("common.edit")}</Button>
+              <Button variant="destructive" size="sm" onClick={() => void confirmDelete(t("skills.delete"), skill.name).then(ok => ok && removeSkill(skill.id))}>{t("common.delete")}</Button>
             </CardFooter>
           </Card>
         ))}

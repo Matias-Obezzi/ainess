@@ -12,6 +12,7 @@ import { getTransport } from "@/lib/transport";
 import { openExternal } from "@/lib/open-external";
 import { Logo } from "@/components/Logo";
 import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw } from "lucide-react";
+import { useT } from "@/i18n/useT";
 
 const REPO_URL = "https://github.com/Matias-Obezzi/ainess";
 const AUTHOR_URL = "https://github.com/Matias-Obezzi";
@@ -19,6 +20,7 @@ const TECHNOLOGIES = ["Tauri 2", "React 19", "TypeScript", "Tailwind 4", "Rust"]
 
 /** Configuración > Acerca de: versión, actualizaciones, carpeta de logs y diagnóstico. */
 export function AboutSection() {
+  const t = useT();
   const binaries = useAppStore(state => state.binaries);
   const [version, setVersion] = useState("");
   const [checking, setChecking] = useState(false);
@@ -47,7 +49,7 @@ export function AboutSection() {
     try {
       await result.install(setProgress);
     } catch (e) {
-      toast.error(`No se pudo instalar: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(t("about.installFailed", { error: e instanceof Error ? e.message : String(e) }));
       setInstalling(false);
     }
   };
@@ -56,28 +58,28 @@ export function AboutSection() {
     try {
       await getTransport().openLogsDir();
     } catch (e) {
-      toast.error(`No se pudo abrir la carpeta: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(t("about.openFolderFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
   };
 
   const copyDiagnostics = async () => {
     const detected = Object.entries(binaries)
-      .map(([id, info]) => `  ${id}: ${info?.path ?? "no detectado"}${info?.version ? ` (${info.version})` : ""}`)
+      .map(([id, info]) => `  ${id}: ${info?.path ?? t("about.diag.notFound")}${info?.version ? ` (${info.version})` : ""}`)
       .join("\n");
     const text = [
       `ainess ${version}`,
-      `Entorno: ${isTauri() ? "app (Tauri)" : "navegador"} — ${navigator.userAgent}`,
-      "Binarios:",
-      detected || "  (ninguno)",
+      t("about.diag.environment", { env: isTauri() ? "app (Tauri)" : "browser", agent: navigator.userAgent }),
+      t("about.diag.binaries"),
+      detected || `  ${t("about.diag.none")}`,
       "",
-      "Últimas líneas del log:",
+      t("about.diag.lastLogLines"),
       ...getRecentLogs(50),
     ].join("\n");
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Diagnóstico copiado");
+      toast.success(t("about.diagCopied"));
     } catch {
-      toast.error("No se pudo copiar");
+      toast.error(t("about.copyFailed"));
     }
   };
 
@@ -89,11 +91,11 @@ export function AboutSection() {
             <Logo size={24} />
             ainess {version && <Badge variant="secondary">v{version}</Badge>}
           </CardTitle>
-          <CardDescription>Orquestador local de agentes de IA.</CardDescription>
+          <CardDescription>{t("about.tagline")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Creada por{" "}
+            {t("about.createdBy")}{" "}
             <button
               type="button"
               className="cursor-pointer font-medium text-foreground underline underline-offset-2"
@@ -101,51 +103,50 @@ export function AboutSection() {
             >
               Matías Obezzi
             </button>
-            .
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {TECHNOLOGIES.map(t => (
-              <Badge key={t} variant="outline">{t}</Badge>
+            {TECHNOLOGIES.map(tech => (
+              <Badge key={tech} variant="outline">{tech}</Badge>
             ))}
           </div>
           <Button variant="ghost" size="sm" className="self-start" onClick={() => void openExternal(REPO_URL)}>
-            <ExternalLink className="mr-1 h-4 w-4" /> Repositorio
+            <ExternalLink className="mr-1 h-4 w-4" /> {t("settings.option.about.repository")}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Actualizaciones</CardTitle>
-          <CardDescription>Las versiones nuevas se publican en GitHub y se instalan desde acá.</CardDescription>
+          <CardTitle>{t("about.updatesTitle")}</CardTitle>
+          <CardDescription>{t("about.updatesDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button variant="outline" size="sm" className="self-start" disabled={checking || installing} onClick={() => void check()}>
             {checking ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
-            Buscar actualizaciones
+            {t("settings.option.about.checkUpdates")}
           </Button>
 
           {result?.unsupported && (
-            <p className="text-sm text-muted-foreground">Las actualizaciones automáticas solo funcionan en la app instalada.</p>
+            <p className="text-sm text-muted-foreground">{t("about.unsupported")}</p>
           )}
-          {result?.error && <p className="text-sm text-destructive">No se pudo consultar: {result.error}</p>}
+          {result?.error && <p className="text-sm text-destructive">{t("about.checkFailed", { error: result.error })}</p>}
           {result && !result.available && !result.error && !result.unsupported && (
-            <p className="text-sm text-muted-foreground">Estás al día ({version}).</p>
+            <p className="text-sm text-muted-foreground">{t("about.upToDate", { version })}</p>
           )}
           {result?.available && (
             <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-              <span className="text-sm font-semibold">Hay una versión nueva: {result.version}</span>
+              <span className="text-sm font-semibold">{t("about.newVersion", { version: result.version ?? "" })}</span>
               {result.body && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{result.body}</p>}
               {installing ? (
                 <div className="flex flex-col gap-1">
                   <Progress value={progress} />
                   <span className="text-xs text-muted-foreground">
-                    {progress >= 100 ? "Instalando y reiniciando…" : `Descargando… ${progress}%`}
+                    {progress >= 100 ? t("about.installing") : t("about.downloading", { progress })}
                   </span>
                 </div>
               ) : (
                 <Button size="sm" className="self-start" onClick={() => void install()}>
-                  <Download className="mr-1 h-4 w-4" /> Descargar e instalar
+                  <Download className="mr-1 h-4 w-4" /> {t("about.downloadAndInstall")}
                 </Button>
               )}
             </div>
@@ -155,21 +156,18 @@ export function AboutSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Diagnóstico</CardTitle>
-          <CardDescription>
-            Todo lo que pasa por la consola y los eventos del backend se guardan en archivos con rotación diaria
-            (se borran solos a los 14 días).
-          </CardDescription>
+          <CardTitle>{t("about.diagnosticsTitle")}</CardTitle>
+          <CardDescription>{t("about.diagnosticsDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" disabled={!isTauri()} onClick={() => void openLogs()}>
-            <FolderOpen className="mr-1 h-4 w-4" /> Abrir carpeta de logs
+            <FolderOpen className="mr-1 h-4 w-4" /> {t("about.openLogs")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => void copyDiagnostics()}>
-            <ClipboardCopy className="mr-1 h-4 w-4" /> Copiar diagnóstico
+            <ClipboardCopy className="mr-1 h-4 w-4" /> {t("settings.option.about.copyDiagnostics")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => { log.info("about", "prueba de log desde Acerca de"); toast.success("Línea de prueba escrita en el log"); }}>
-            Escribir línea de prueba
+          <Button variant="ghost" size="sm" onClick={() => { log.info("about", "prueba de log desde Acerca de"); toast.success(t("about.testLineWritten")); }}>
+            {t("about.writeTestLine")}
           </Button>
         </CardContent>
       </Card>

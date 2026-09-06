@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { isTauri } from "@/lib/tauri";
 import { log } from "@/lib/logger";
+import { translateNow } from "@/i18n/useT";
 
 /** Truncates to `max` chars, adding an ellipsis when it cuts the text short. */
 function truncate(text: string, max: number): string {
@@ -62,7 +63,7 @@ export function useSystemNotifications() {
         for (const id of currentPending) {
           if (!knownPendingApprovals.current.has(id)) {
             const approval = state.approvals[id];
-            void notify("AIS: un agente necesita tu permiso", truncate(approval.summary, 200));
+            void notify(translateNow("notify.needsPermission"), truncate(approval.summary, 200));
           }
         }
         knownPendingApprovals.current = currentPending;
@@ -82,7 +83,7 @@ export function useSystemNotifications() {
             const agent = selectAllAgents(state).find(a => a.id === msg.fromAgentId);
             const prefix = [project?.name, agent?.name].filter(Boolean).join(" · ");
             const body = `${prefix ? `${prefix}: ` : ""}${truncate(msg.text, 150)}`;
-            void notify("AIS: tarea terminada", body);
+            void notify(translateNow("notify.taskDoneTitle"), body);
           }
           lastMessageId.current = messages[messages.length - 1].id;
         }

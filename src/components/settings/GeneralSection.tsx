@@ -3,9 +3,13 @@ import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LANGUAGES, languageNames, type Language } from "@/i18n";
+import { useT } from "@/i18n/useT";
 
-/** "Segundo plano" (tray/notifications) and "Orquestación" (maxRounds, approvals, model auto-selection). */
+/** Language, "Segundo plano" (tray/notifications) and "Orquestación" (maxRounds, approvals, models). */
 export function GeneralSection() {
+  const t = useT();
   const config = useAppStore(state => state.config);
   const updateConfig = useAppStore(state => state.updateConfig);
   const setMaxRounds = useAppStore(state => state.setMaxRounds);
@@ -28,8 +32,33 @@ export function GeneralSection() {
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Segundo plano</CardTitle>
-          <CardDescription>Con esto apagado, cerrar la ventana cierra la app.</CardDescription>
+          <CardTitle>{t("settings.general.languageTitle")}</CardTitle>
+          <CardDescription>{t("settings.general.languageDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <label className="text-sm font-semibold">{t("settings.option.general.language")}</label>
+          <Select
+            value={config.language ?? "system"}
+            onValueChange={value => updateConfig({ language: value === "system" ? null : (value as Language) })}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="system">{t("settings.general.systemLanguage")}</SelectItem>
+              {LANGUAGES.map(lang => (
+                <SelectItem key={lang} value={lang}>{languageNames[lang]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">{t("settings.general.languageHint")}</span>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.general.backgroundTitle")}</CardTitle>
+          <CardDescription>{t("settings.general.backgroundDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
@@ -38,8 +67,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ tray: { ...config.tray, enabled: checked } })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Seguir en la bandeja al cerrar la ventana</label>
-              <span className="text-sm text-muted-foreground">La app queda corriendo en segundo plano y se puede volver a abrir desde el icono de la bandeja.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.tray")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.trayHint")}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -48,8 +77,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ tray: { ...config.tray, notifyApprovals: checked } })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Notificar cuando un agente necesita permiso</label>
-              <span className="text-sm text-muted-foreground">Una notificación del sistema cuando queda una delegación esperando tu aprobación.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.notifyApprovals")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.notifyApprovalsHint")}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -58,8 +87,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ tray: { ...config.tray, notifyResults: checked } })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Notificar cuando termina una tarea</label>
-              <span className="text-sm text-muted-foreground">Una notificación del sistema cuando un agente termina de responder al usuario.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.notifyResults")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.notifyResultsHint")}</span>
             </div>
           </div>
         </CardContent>
@@ -67,8 +96,8 @@ export function GeneralSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Actualizaciones y registro</CardTitle>
-          <CardDescription>Los logs quedan en archivos locales con rotación diaria (Acerca de → Abrir carpeta de logs).</CardDescription>
+          <CardTitle>{t("settings.general.updatesTitle")}</CardTitle>
+          <CardDescription>{t("settings.general.updatesDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
@@ -77,8 +106,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ autoUpdateCheck: checked })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Buscar actualizaciones al iniciar</label>
-              <span className="text-sm text-muted-foreground">Unos segundos después de abrir la app se consulta si hay una versión nueva publicada.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.updateCheck")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.updateCheckHint")}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t">
@@ -87,10 +116,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ logLevel: checked ? "debug" : "info" })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Registrar detalles (debug)</label>
-              <span className="text-sm text-muted-foreground">
-                Escribe también las líneas de nivel debug. Sirve para diagnosticar un problema; genera archivos más grandes.
-              </span>
+              <label className="text-sm font-semibold">{t("settings.option.general.debugLog")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.debugLogHint")}</span>
             </div>
           </div>
         </CardContent>
@@ -98,11 +125,11 @@ export function GeneralSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Orquestación</CardTitle>
+          <CardTitle>{t("settings.general.orchestrationTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold">Rondas máximas por tarea</label>
+            <label className="text-sm font-semibold">{t("settings.option.general.maxRounds")}</label>
             <Input
               type="number"
               min={1}
@@ -112,7 +139,7 @@ export function GeneralSection() {
               onChange={e => setMaxRoundsText(e.target.value)}
               onBlur={e => commitMaxRounds(e.target.value)}
             />
-            <span className="text-sm text-muted-foreground">Cuántas continuaciones automáticas puede encadenar el planificador para una misma tarea del usuario.</span>
+            <span className="text-sm text-muted-foreground">{t("settings.general.maxRoundsHint")}</span>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t">
             <Switch
@@ -120,8 +147,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ autoModel: checked })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Auto-selección de modelos por el Orquestador</label>
-              <span className="text-sm text-muted-foreground">Si está activo, el planificador elegirá automáticamente el modelo adecuado (flash, pro, etc) para cada tarea delegada a los agentes.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.autoModel")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.autoModelHint")}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t">
@@ -130,8 +157,8 @@ export function GeneralSection() {
               onCheckedChange={(checked) => updateConfig({ approveDelegations: checked })}
             />
             <div className="flex flex-col">
-              <label className="text-sm font-semibold">Aprobar todas las delegaciones</label>
-              <span className="text-sm text-muted-foreground">Cada tarea que el planificador delegue queda en espera hasta que la apruebes desde la app, el CLI o el celular.</span>
+              <label className="text-sm font-semibold">{t("settings.option.general.approveDelegations")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.approveDelegationsHint")}</span>
             </div>
           </div>
         </CardContent>

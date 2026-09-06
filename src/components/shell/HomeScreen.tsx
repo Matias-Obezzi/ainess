@@ -16,15 +16,11 @@ import {
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { copyText } from "@/lib/clipboard";
 import { formatTimeAgo, truncate } from "@/lib/format";
-import type { Project, Run, RunStatus } from "@/types";
+import { runStatusLabelKey } from "@/lib/labels";
+import { useT, useLocale } from "@/i18n/useT";
+import { plural } from "@/i18n";
+import type { Project, Run } from "@/types";
 import { Copy, Folder, FolderKanban, FolderOpen, Pencil, PlayCircle, Trash2 } from "lucide-react";
-
-const runStatusLabel: Record<RunStatus, string> = {
-  running: "En curso",
-  done: "Terminada",
-  error: "Error",
-  killed: "Detenida",
-};
 
 function ProjectCardSkeleton() {
   return (
@@ -42,6 +38,8 @@ function ProjectCardSkeleton() {
 
 /** Landing screen: every project as a card with what it is doing right now. */
 export function HomeScreen() {
+  const t = useT();
+  const locale = useLocale();
   const projects = useAppStore(state => state.config.projects);
   const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
@@ -92,14 +90,14 @@ export function HomeScreen() {
 
   const handleRemove = async (p: Project) => {
     const confirmed = await island.confirm({
-      title: "¿Eliminar proyecto?",
-      description: `Se eliminará ${p.name} y se perderán sus mensajes y runs.`,
+      title: t("sidebar.deleteProject.title"),
+      description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,
     });
     if (confirmed) removeProject(p.id);
   };
 
-  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? "Agente anterior";
+  const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? t("home.formerAgent");
 
   const editProject = (p: Project) => {
     setEditingProject(p);
@@ -107,18 +105,18 @@ export function HomeScreen() {
   };
 
   const projectActions = (p: Project): MenuAction[] => [
-    { key: "open", label: "Abrir", icon: FolderOpen, onSelect: () => openProject(p.id, null) },
-    { key: "edit", label: "Editar", icon: Pencil, onSelect: () => editProject(p) },
+    { key: "open", label: t("common.open"), icon: FolderOpen, onSelect: () => openProject(p.id, null) },
+    { key: "edit", label: t("common.edit"), icon: Pencil, onSelect: () => editProject(p) },
     {
       key: "copy-path",
-      label: "Copiar ruta",
+      label: t("home.copyPath"),
       icon: Copy,
       disabled: !p.workspaceDir,
-      onSelect: () => void copyText(p.workspaceDir, "Ruta copiada"),
+      onSelect: () => void copyText(p.workspaceDir, t("sidebar.pathCopied")),
     },
     {
       key: "delete",
-      label: "Eliminar",
+      label: t("common.delete"),
       icon: Trash2,
       destructive: true,
       separatorBefore: true,
@@ -129,8 +127,8 @@ export function HomeScreen() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-6 gap-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Proyectos</h2>
-        <Button onClick={newProject}>Nuevo proyecto</Button>
+        <h2 className="text-xl font-bold">{t("home.title")}</h2>
+        <Button onClick={newProject}>{t("sidebar.newProject")}</Button>
       </div>
 
       {!loaded ? (
@@ -142,9 +140,9 @@ export function HomeScreen() {
       ) : projects.length === 0 ? (
         <EmptyState
           icon={FolderKanban}
-          title="Todavía no hay proyectos"
-          description="Un proyecto es una carpeta de trabajo donde los agentes van a operar."
-          action={{ label: "Crear el primer proyecto", onClick: newProject }}
+          title={t("home.empty.title")}
+          description={t("home.empty.body")}
+          action={{ label: t("home.empty.action"), onClick: newProject }}
           className="flex-1"
         />
       ) : (
@@ -165,7 +163,7 @@ export function HomeScreen() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
                       <h3 className="font-bold truncate">{p.name}</h3>
-                      {isCurrent && <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Actual</span>}
+                      {isCurrent && <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{t("home.current")}</span>}
                     </div>
 
                     <div className="text-sm text-muted-foreground flex items-center gap-1.5 truncate">
@@ -179,38 +177,42 @@ export function HomeScreen() {
                           <div key={b.agentId} className="flex items-center gap-1.5">
                             <StatusDot status="working" />
                             <span className="truncate">
-                              Trabajando: {agentName(b.agentId)}
-                              {b.task ? ` — ${truncate(b.task, 80)}` : ""}
+                              {b.task
+                                ? t("home.workingOnTask", { name: agentName(b.agentId), task: truncate(b.task, 80) })
+                                : t("home.working", { name: agentName(b.agentId) })}
                             </span>
                           </div>
                         ))
                       ) : last ? (
                         <>
-                          <span className="truncate text-muted-foreground">Última tarea: {truncate(last.prompt, 80)}</span>
+                          <span className="truncate text-muted-foreground">{t("home.lastTask", { task: truncate(last.prompt, 80) })}</span>
                           <div className="flex items-center gap-2">
                             <Badge variant={last.status === "error" ? "destructive" : "outline"} className="text-[10px]">
-                              {runStatusLabel[last.status]}
+                              {t(runStatusLabelKey[last.status])}
                             </Badge>
-                            <span className="text-muted-foreground">{formatTimeAgo(last.endedAt ?? last.startedAt, now)}</span>
+                            <span className="text-muted-foreground">{formatTimeAgo(last.endedAt ?? last.startedAt, now, locale)}</span>
                           </div>
                         </>
                       ) : (
-                        <span className="text-muted-foreground">Sin actividad todavía</span>
+                        <span className="text-muted-foreground">{t("home.noActivity")}</span>
                       )}
                     </div>
 
                     <div className="text-sm flex items-center gap-1.5">
                       <PlayCircle className="w-4 h-4 text-orange-500" />
-                      {busy.length} tareas activas
-                      <span className="text-muted-foreground">· {savedRuns[p.id] ?? 0} runs guardados</span>
+                      {plural(busy.length, t("home.activeTasks.one", { n: busy.length }), t("home.activeTasks.other", { n: busy.length }))}
+                      <span className="text-muted-foreground">
+                        {" · "}
+                        {plural(savedRuns[p.id] ?? 0, t("home.savedRuns.one", { n: savedRuns[p.id] ?? 0 }), t("home.savedRuns.other", { n: savedRuns[p.id] ?? 0 }))}
+                      </span>
                     </div>
 
                     <div className="flex gap-2 mt-auto pt-2" onClick={e => e.stopPropagation()}>
-                      <Button size="sm" className="flex-1" onClick={() => openProject(p.id, null)}>Abrir</Button>
+                      <Button size="sm" className="flex-1" onClick={() => openProject(p.id, null)}>{t("common.open")}</Button>
                       <Button size="sm" variant="outline" onClick={() => editProject(p)}>
-                        Editar
+                        {t("common.edit")}
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => void handleRemove(p)}>Eliminar</Button>
+                      <Button size="sm" variant="destructive" onClick={() => void handleRemove(p)}>{t("common.delete")}</Button>
                     </div>
                   </Card>
                 </ContextMenuTrigger>

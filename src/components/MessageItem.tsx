@@ -2,22 +2,24 @@ import { CommMessage } from "@/types";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { kindLabel } from "@/lib/labels";
+import { kindLabelKey } from "@/lib/labels";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 import { useState } from "react";
 import { RunDetailDialog } from "./RunDetailDialog";
 
 export function MessageItem({ message }: { message: CommMessage }) {
+  const t = useT();
   const agents = useAppStore(selectAllAgents);
   
   const fromAgent = message.fromAgentId === "user" ? null : agents.find(a => a.id === message.fromAgentId);
   const toAgent = message.toAgentId === "user" ? null : agents.find(a => a.id === message.toAgentId);
   
-  const fromName = message.fromAgentId === "user" ? "Usuario" : (fromAgent?.name || message.fromAgentId);
+  const fromName = message.fromAgentId === "user" ? t("label.kind.user") : (fromAgent?.name || message.fromAgentId);
   const fromColor = fromAgent?.color || "#888";
   
-  const toName = message.toAgentId === "user" ? "Usuario" : (toAgent?.name || message.toAgentId);
+  const toName = message.toAgentId === "user" ? t("label.kind.user") : (toAgent?.name || message.toAgentId);
   const toColor = toAgent?.color || "#888";
 
   const date = new Date(message.ts);
@@ -44,7 +46,7 @@ export function MessageItem({ message }: { message: CommMessage }) {
             </>
           )}
           <span className="text-xs text-muted-foreground ml-auto">{timeStr}</span>
-          <Badge variant="outline">{kindLabel[message.kind] || message.kind}</Badge>
+          <Badge variant="outline">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
           {message.runId && (
             <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-muted-foreground" onClick={() => setRunDetailOpen(true)}>
               <FileText className="h-3.5 w-3.5" />

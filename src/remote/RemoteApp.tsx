@@ -17,7 +17,9 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
 import { Toaster } from "@/components/ui/toast";
-import { roleLabel, statusLabel } from "@/lib/labels";
+import { roleLabelKey, statusLabelKey } from "@/lib/labels";
+import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { truncate } from "@/lib/format";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, getToken, hydrate, installRemoteActions, RemoteError } from "./remote-client";
@@ -39,6 +41,7 @@ function openProject(projectId: string): void {
 }
 
 export function RemoteApp() {
+  const t = useT();
   const [phase, setPhase] = useState<Phase>("loading");
   const [connected, setConnected] = useState(false);
   const currentProjectId = useAppStore(state => state.currentProjectId);
@@ -96,18 +99,18 @@ export function RemoteApp() {
           {phase === "no-token" && (
             <EmptyState
               icon={ShieldCheck}
-              title="Falta el token"
-              description="Abrí esta página desde el QR de la app (Configuración → Remoto) o desde la URL que imprime «ais serve»."
+              title={t("phone.noToken.title")}
+              description={t("phone.noToken.body")}
             />
           )}
           {phase === "unauthorized" && (
             <EmptyState
               icon={ShieldCheck}
-              title="Token inválido"
-              description="El token cambió o venció. Volvé a escanear el QR desde la app."
+              title={t("phone.badToken.title")}
+              description={t("phone.badToken.body")}
             />
           )}
-          {phase === "loading" && <p className="text-sm text-muted-foreground">Conectando con la PC…</p>}
+          {phase === "loading" && <p className="text-sm text-muted-foreground">{t("phone.connecting")}</p>}
         </div>
       </Shell>
     );
@@ -119,7 +122,7 @@ export function RemoteApp() {
       <Toaster position="top-center" richColors />
       {!connected && (
         <div className="shrink-0 flex items-center justify-center gap-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs py-1.5">
-          <WifiOff className="h-3.5 w-3.5" /> Reconectando…
+          <WifiOff className="h-3.5 w-3.5" /> {t("phone.reconnecting")}
         </div>
       )}
       {currentProjectId ? <ProjectView projectId={currentProjectId} /> : <HomeView />}
@@ -139,6 +142,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 // ---- Home: the project list ----
 
 function HomeView() {
+  const t = useT();
   const projects = useAppStore(state => state.config.projects);
   const runs = useAppStore(state => state.runs);
   const runtime = useAppStore(state => state.runtime);
@@ -162,14 +166,14 @@ function HomeView() {
             onClick={() => openProject(pending[0].projectId)}
           >
             <ShieldCheck className="h-4 w-4" />
-            {pending.length} {pending.length === 1 ? "aprobación" : "aprobaciones"}
+            {plural(pending.length, t("phone.approvals.one", { n: pending.length }), t("phone.approvals.other", { n: pending.length }))}
           </Button>
         )}
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2">
         {projects.length === 0 ? (
-          <EmptyState icon={FolderOpen} title="Todavía no hay proyectos" description="Creá uno desde la app de escritorio." />
+          <EmptyState icon={FolderOpen} title={t("home.empty.title")} description={t("phone.createOnDesktop")} />
         ) : (
           projects.map(project => {
             const working = Object.values(runtime[project.id] ?? {}).filter(r => r.status === "working" || r.status === "waiting").length;
@@ -184,10 +188,10 @@ function HomeView() {
                   <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                     <span className="font-medium truncate">{project.name}</span>
                     <span className="text-xs text-muted-foreground truncate">
-                      {last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : "Sin tareas todavía"}
+                      {last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : t("phone.noTasksYet")}
                     </span>
                   </div>
-                  {working > 0 && <Badge variant="secondary" className="shrink-0">{working} trabajando</Badge>}
+                  {working > 0 && <Badge variant="secondary" className="shrink-0">{t("sidebar.working", { n: working })}</Badge>}
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Card>
               </button>
@@ -202,6 +206,7 @@ function HomeView() {
 // ---- Project: header, body and the bottom tab bar ----
 
 function ProjectView({ projectId }: { projectId: string }) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>("thread");
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
   const approvals = useAppStore(state => state.approvals);
@@ -221,7 +226,7 @@ function ProjectView({ projectId }: { projectId: string }) {
   if (!project) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <EmptyState icon={FolderOpen} title="El proyecto ya no existe" action={{ label: "Volver", onClick: goHome }} />
+        <EmptyState icon={FolderOpen} title={t("phone.projectGone")} action={{ label: t("phone.back"), onClick: goHome }} />
       </div>
     );
   }
@@ -229,7 +234,7 @@ function ProjectView({ projectId }: { projectId: string }) {
   return (
     <>
       <header className="shrink-0 flex items-center gap-2 px-2 h-14 border-b border-border">
-        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" aria-label="Volver" onClick={goHome}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" aria-label={t("phone.back")} onClick={goHome}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold truncate">{project.name}</span>
@@ -257,7 +262,7 @@ function ProjectView({ projectId }: { projectId: string }) {
             {pending > 0 ? (
               <ApprovalsPanel />
             ) : (
-              <EmptyState icon={ShieldCheck} title="No hay nada esperando tu aprobación" description="Cuando el planificador delegue una tarea que necesite tu visto bueno, aparece acá." />
+              <EmptyState icon={ShieldCheck} title={t("phone.noApprovals.title")} description={t("phone.noApprovals.body")} />
             )}
           </div>
         )}
@@ -265,10 +270,10 @@ function ProjectView({ projectId }: { projectId: string }) {
       </div>
 
       <nav className="shrink-0 grid grid-cols-4 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
-        <TabButton icon={MessagesSquare} label="Orquestador" active={tab === "thread"} onClick={() => selectTab("thread")} />
-        <TabButton icon={MessageSquare} label="Chats" active={tab === "chats"} onClick={() => selectTab("chats")} />
-        <TabButton icon={ShieldCheck} label="Aprobaciones" active={tab === "approvals"} badge={pending} onClick={() => selectTab("approvals")} />
-        <TabButton icon={Users} label="Agentes" active={tab === "agents"} onClick={() => selectTab("agents")} />
+        <TabButton icon={MessagesSquare} label={t("sidebar.orchestrator")} active={tab === "thread"} onClick={() => selectTab("thread")} />
+        <TabButton icon={MessageSquare} label={t("search.group.chats")} active={tab === "chats"} onClick={() => selectTab("chats")} />
+        <TabButton icon={ShieldCheck} label={t("phone.tab.approvals")} active={tab === "approvals"} badge={pending} onClick={() => selectTab("approvals")} />
+        <TabButton icon={Users} label={t("settings.section.agents")} active={tab === "agents"} onClick={() => selectTab("agents")} />
       </nav>
     </>
   );
@@ -303,6 +308,7 @@ function TabButton({ icon: Icon, label, active, badge, onClick }: {
 // ---- Chats tab ----
 
 function ChatList({ projectId }: { projectId: string }) {
+  const t = useT();
   const allChats = useAppStore(state => state.config.chats);
   const agents = useAppStore(selectAllAgents);
   const active = useAppStore(state => state.remoteActiveChats);
@@ -312,7 +318,7 @@ function ChatList({ projectId }: { projectId: string }) {
   if (chats.length === 0) {
     return (
       <div className="flex-1 min-h-0 overflow-y-auto p-3">
-        <EmptyState icon={MessageSquare} title="Este proyecto no tiene chats" description="Creá uno desde la app de escritorio." />
+        <EmptyState icon={MessageSquare} title={t("phone.noChats")} description={t("phone.createOnDesktop")} />
       </div>
     );
   }
@@ -328,7 +334,7 @@ function ChatList({ projectId }: { projectId: string }) {
                 {chat.participants.map(p => agents.find(a => a.id === p.agentId)?.name ?? "?").join(" · ")}
               </span>
             </div>
-            {active.includes(chat.id) && <Badge variant="secondary" className="shrink-0">Respondiendo…</Badge>}
+            {active.includes(chat.id) && <Badge variant="secondary" className="shrink-0">{t("phone.answering")}</Badge>}
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </Card>
         </button>
@@ -340,6 +346,7 @@ function ChatList({ projectId }: { projectId: string }) {
 // ---- Agents tab ----
 
 function AgentsTab({ projectId }: { projectId: string }) {
+  const t = useT();
   const agents = useAppStore(state => selectProjectAgents(state, projectId));
   const runtime = useAppStore(state => state.runtime[projectId]);
   const stopAgent = useAppStore(state => state.stopAgent);
@@ -348,7 +355,7 @@ function AgentsTab({ projectId }: { projectId: string }) {
   if (agents.length === 0) {
     return (
       <div className="flex-1 min-h-0 overflow-y-auto p-3">
-        <EmptyState icon={Bot} title="No hay agentes configurados" description="Agregalos desde la app de escritorio." />
+        <EmptyState icon={Bot} title={t("phone.noAgents")} description={t("phone.addOnDesktop")} />
       </div>
     );
   }
@@ -365,10 +372,10 @@ function AgentsTab({ projectId }: { projectId: string }) {
               <AgentAvatar provider={agent.provider} color={agent.color} size={28} />
               <div className="min-w-0 flex-1 flex flex-col">
                 <span className="font-medium truncate">{agent.name}</span>
-                <span className="text-xs text-muted-foreground truncate">{roleLabel[agent.role]}</span>
+                <span className="text-xs text-muted-foreground truncate">{t(roleLabelKey[agent.role])}</span>
               </div>
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                <StatusDot status={status} /> {statusLabel[status]}
+                <StatusDot status={status} /> {t(statusLabelKey[status])}
               </span>
             </div>
             {rt?.currentTask && (
@@ -376,7 +383,7 @@ function AgentsTab({ projectId }: { projectId: string }) {
             )}
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-10 flex-1" onClick={() => setInstructing(agent.id)}>
-                Indicar
+                {t("agentActions.instruct")}
               </Button>
               <Button
                 variant="destructive"
@@ -385,7 +392,7 @@ function AgentsTab({ projectId }: { projectId: string }) {
                 disabled={!working}
                 onClick={() => void stopAgent(agent.id, projectId)}
               >
-                <Square className="h-4 w-4" /> Detener
+                <Square className="h-4 w-4" /> {t("composer.stop")}
               </Button>
             </div>
           </Card>

@@ -18,9 +18,11 @@ import { TerminalView } from "./TerminalView";
 import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Pencil, Plus, TerminalSquare, X } from "lucide-react";
+import { useT } from "@/i18n/useT";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
 export function TerminalDockSection() {
+  const t = useT();
   const terminals = useAppStore(state => state.terminals);
   const activeTerminalId = useAppStore(state => state.activeTerminalId);
   const shells = useAppStore(state => state.shells);
@@ -65,15 +67,15 @@ export function TerminalDockSection() {
   const tabActions = (id: string, title: string): MenuAction[] => [
     {
       key: "new",
-      label: "Nueva terminal",
+      label: t("terminals.new"),
       icon: Plus,
       disabled: atLimit || noShells,
       onSelect: () => openTerminal(),
     },
-    { key: "rename", label: "Renombrar", icon: Pencil, onSelect: () => startRename(id, title) },
+    { key: "rename", label: t("common.rename"), icon: Pencil, onSelect: () => startRename(id, title) },
     {
       key: "close",
-      label: "Cerrar",
+      label: t("common.close"),
       icon: X,
       destructive: true,
       separatorBefore: true,
@@ -82,15 +84,15 @@ export function TerminalDockSection() {
   ];
 
   const addTitle = noShells
-    ? "No se detectó ningún shell en esta máquina"
+    ? t("terminals.noShells")
     : atLimit
-      ? `Máximo de ${MAX_TERMINALS} terminales abiertas`
-      : "Nueva terminal";
+      ? t("terminals.atLimit", { n: MAX_TERMINALS })
+      : t("terminals.new");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-        <span className="text-sm font-semibold">Terminales</span>
+        <span className="text-sm font-semibold">{t("terminals.title")}</span>
         <div className="ml-auto flex items-center gap-0.5">
           {/* A disabled button has `pointer-events: none`, so the tooltip lives on the wrapper. */}
           <span title={addTitle} className="inline-flex">
@@ -110,7 +112,7 @@ export function TerminalDockSection() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-5"
-                title="Elegir shell"
+                title={t("terminals.pickShell")}
                 disabled={atLimit || noShells}
               >
                 <ChevronDown className="h-3.5 w-3.5" />
@@ -128,7 +130,7 @@ export function TerminalDockSection() {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            title="Cerrar"
+            title={t("common.close")}
             onClick={() => toggleTermPanel(false)}
           >
             <X className="h-4 w-4" />
@@ -185,12 +187,12 @@ export function TerminalDockSection() {
                   {tab.exited != null && (
                     <span
                       className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-                      title={`Terminado con código ${tab.exited}`}
+                      title={t("terminals.exitedWith", { code: tab.exited })}
                     />
                   )}
                   <button
                     type="button"
-                    title="Cerrar terminal"
+                    title={t("terminals.close")}
                     className="ml-0.5 shrink-0 rounded opacity-0 group-hover:opacity-100 focus:opacity-100"
                     onClick={e => {
                       e.stopPropagation();
@@ -213,13 +215,9 @@ export function TerminalDockSection() {
         {terminals.length === 0 ? (
           <EmptyState
             icon={TerminalSquare}
-            title="No hay terminales abiertas"
-            description={
-              noShells
-                ? "No se detectó ningún shell en esta máquina."
-                : "Se abre en la carpeta del proyecto actual."
-            }
-            action={noShells ? undefined : { label: "Abrir terminal", onClick: () => openTerminal() }}
+            title={t("terminals.empty.title")}
+            description={noShells ? t("terminals.empty.noShells") : t("terminals.empty.body")}
+            action={noShells ? undefined : { label: t("terminals.empty.action"), onClick: () => openTerminal() }}
           />
         ) : (
           // Every tab stays mounted so its scrollback survives switching.

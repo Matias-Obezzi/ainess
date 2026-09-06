@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { StatusDot } from "@/components/StatusDot";
 import { RunActivity } from "@/components/shell/RunActivity";
 import { AgentActionDialogs, AgentContextMenu, useAgentActions } from "@/components/agent-actions";
-import { statusLabel, roleLabel, runDotStatus, runStatusLabel } from "@/lib/labels";
+import { statusLabelKey, roleLabelKey, runDotStatus, runStatusLabelKey } from "@/lib/labels";
+import { useT, useLocale } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatClock, truncate } from "@/lib/format";
@@ -19,6 +20,8 @@ import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Sq
 const RECENT_RUNS = 3;
 
 export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose: () => void }) {
+  const t = useT();
+  const locale = useLocale();
   const actions = useAgentActions(agent);
   const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
   const worktree = useAppStore(state => selectWorktree(state, state.currentProjectId, agent.id));
@@ -59,7 +62,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
       data-inspector=""
       tabIndex={-1}
       role="complementary"
-      aria-label={`Detalle de ${agent.name}`}
+      aria-label={t("inspector.detailOf", { name: agent.name })}
       className="absolute bottom-3 right-3 top-3 z-10 flex w-[360px] flex-col rounded-xl border border-border bg-card text-card-foreground shadow-lg outline-none"
     >
       {/* The header stands for the agent itself, so it carries the same actions on right click. */}
@@ -69,7 +72,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{agent.name}</div>
             <div className="truncate text-[11px] text-muted-foreground">
-              {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
+              {PROVIDERS[agent.provider]?.label || agent.provider} · {t(roleLabelKey[agent.role]) || agent.role}
             </div>
             {branch && (
               <div className="truncate font-mono text-[10px] text-muted-foreground" title={worktree?.path ?? branch}>
@@ -82,12 +85,12 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
                 {preparing
                   ? preparing
                   : actions.status === "waiting"
-                    ? "Esperando a sus hijos"
-                    : statusLabel[actions.status]}
+                    ? t("inspector.waitingForChildren")
+                    : t(statusLabelKey[actions.status])}
               </span>
             </div>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Cerrar" onClick={onClose}>
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label={t("common.close")} onClick={onClose}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -96,30 +99,30 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
         {binaryInfo === null && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
-            CLI no encontrado: configuralo en Agentes.
+            {t("inspector.cliMissing")}
           </p>
         )}
 
         {actions.lastError && (
-          <Section title="Último error">
+          <Section title={t("inspector.lastError")}>
             <p className="whitespace-pre-wrap break-words text-xs text-destructive">{actions.lastError}</p>
           </Section>
         )}
 
         {actions.currentTask && (
-          <Section title="Tarea actual">
+          <Section title={t("inspector.currentTask")}>
             <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{actions.currentTask}</p>
           </Section>
         )}
 
         {showLive && actions.currentRunId ? (
-          <Section title="Actividad en vivo">
+          <Section title={t("inspector.liveActivity")}>
             <RunActivity runId={actions.currentRunId} />
           </Section>
         ) : (
-          <Section title="Últimas tareas">
+          <Section title={t("inspector.recentTasks")}>
             {recentRuns.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Todavía no corrió nada en este proyecto.</p>
+              <p className="text-xs text-muted-foreground">{t("inspector.nothingRun")}</p>
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {recentRuns.map(run => (
@@ -127,8 +130,8 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
                     <StatusDot status={runDotStatus[run.status]} className="mt-1 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="tabular-nums">{formatClock(run.startedAt)}</span>
-                        <span>{runStatusLabel[run.status]}</span>
+                        <span className="tabular-nums">{formatClock(run.startedAt, locale)}</span>
+                        <span>{t(runStatusLabelKey[run.status])}</span>
                       </div>
                       <p className="break-words text-xs" title={run.prompt}>
                         {truncate(run.prompt, 110)}
@@ -141,7 +144,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
                       className="h-6 shrink-0 px-2 text-xs"
                       onClick={() => openDetail(run.id)}
                     >
-                      Ver
+                      {t("inspector.view")}
                     </Button>
                   </li>
                 ))}
@@ -163,7 +166,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
               className="justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={actions.stop}
             >
-              <Square className="h-3.5 w-3.5" /> Detener
+              <Square className="h-3.5 w-3.5" /> {t("composer.stop")}
             </Button>
           )}
           <Button
@@ -174,7 +177,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.ready}
             onClick={actions.instruct}
           >
-            <MessageSquareText className="h-3.5 w-3.5" /> Indicar
+            <MessageSquareText className="h-3.5 w-3.5" /> {t("agentActions.instruct")}
           </Button>
           <Button
             type="button"
@@ -184,7 +187,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.lastRunId}
             onClick={() => openDetail(actions.lastRunId)}
           >
-            <FileText className="h-3.5 w-3.5" /> Ver salida
+            <FileText className="h-3.5 w-3.5" /> {t("agentActions.viewOutput")}
           </Button>
           <Button
             type="button"
@@ -194,7 +197,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.ready}
             onClick={actions.openChat}
           >
-            <MessageCircle className="h-3.5 w-3.5" /> Chatear
+            <MessageCircle className="h-3.5 w-3.5" /> {t("agentActions.chat")}
           </Button>
         </div>
         <div className="flex gap-1">
@@ -206,7 +209,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.ready}
             onClick={actions.resetSession}
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Reiniciar sesión
+            <RotateCcw className="h-3.5 w-3.5" /> {t("agentActions.resetSession")}
           </Button>
           <Button
             type="button"
@@ -215,7 +218,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             className="h-7 px-2 text-xs text-muted-foreground"
             onClick={actions.editAgent}
           >
-            <Pencil className="h-3.5 w-3.5" /> Editar
+            <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}
           </Button>
           <Button
             type="button"
@@ -225,7 +228,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.ready}
             onClick={actions.duplicate}
           >
-            <Copy className="h-3.5 w-3.5" /> Duplicar
+            <Copy className="h-3.5 w-3.5" /> {t("agentActions.duplicate")}
           </Button>
           <Button
             type="button"
@@ -235,7 +238,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             disabled={!actions.ready}
             onClick={actions.removeAgent}
           >
-            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+            <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
           </Button>
         </div>
       </div>

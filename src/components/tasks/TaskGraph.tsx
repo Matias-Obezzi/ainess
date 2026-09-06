@@ -30,6 +30,7 @@ import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
 import { Ban, ListTodo, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { useT } from "@/i18n/useT";
 
 const FIT_VIEW_OPTIONS = { padding: 0.2 } as const;
 
@@ -41,6 +42,7 @@ interface TaskNodeData extends Record<string, unknown> {
 }
 
 function TaskGraphNode({ data }: NodeProps<Node<TaskNodeData>>) {
+  const t = useT();
   const { task, blocked } = data;
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
@@ -62,7 +64,7 @@ function TaskGraphNode({ data }: NodeProps<Node<TaskNodeData>>) {
       {task.branch && <p className="truncate font-mono text-[10px] text-muted-foreground">{task.branch}</p>}
       <div className="mt-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
-        <span className="truncate">{meta.label}</span>
+        <span className="truncate">{t(meta.labelKey)}</span>
         {blocked > 0 && (
           <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-amber-600 dark:text-amber-400">
             <Ban className="h-3 w-3" /> {blocked}
@@ -85,13 +87,14 @@ export function TaskGraph(props: { projectId: string; onOpenTask(id: string): vo
 }
 
 function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: string; onOpenTask(id: string): void; onNewTask(): void }) {
+  const t = useT();
   const all = useAppStore(state => selectTasks(state, projectId));
   const linkTaskDependency = useAppStore(state => state.linkTaskDependency);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
   // The archive belongs to the board; the graph only shows live work.
-  const tasks = useMemo(() => all.filter(t => !t.archived), [all]);
+  const tasks = useMemo(() => all.filter(task => !task.archived), [all]);
   const positions = useMemo(() => layoutTaskGraph(tasks), [tasks]);
   const blocked = useMemo(() => {
     const map = new Map<string, number>();
@@ -141,7 +144,7 @@ function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: strin
     if (!connection.source || !connection.target) return;
     // The arrow goes from the prerequisite to the task, so the target is the one that depends.
     if (!linkTaskDependency(connection.target, connection.source)) {
-      toast.error("Esa dependencia haría un círculo.");
+      toast.error(t("tasks.cycle"));
     }
   }, [linkTaskDependency]);
 
@@ -169,9 +172,9 @@ function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: strin
     return (
       <EmptyState
         icon={ListTodo}
-        title="Todavía no hay tareas"
-        description="El grafo muestra qué tarea espera a cuál. Arrastrá de un nodo a otro para encadenarlas."
-        action={{ label: "Nueva tarea", onClick: onNewTask }}
+        title={t("tasks.empty.title")}
+        description={t("tasks.graphEmpty.body")}
+        action={{ label: t("tasks.new"), onClick: onNewTask }}
       />
     );
   }
@@ -198,13 +201,13 @@ function TaskGraphBoard({ projectId, onOpenTask, onNewTask }: { projectId: strin
       </ReactFlow>
 
       <div className="absolute right-3 top-3 flex gap-0.5 rounded-lg border border-border bg-card/90 p-0.5 shadow-sm backdrop-blur">
-        <ToolbarButton label="Ajustar vista" onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
+        <ToolbarButton label={t("tasks.fitView")} onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
           <Maximize2 className="h-3.5 w-3.5" />
         </ToolbarButton>
-        <ToolbarButton label="Acercar" onClick={() => zoomIn({ duration: 150 })}>
+        <ToolbarButton label={t("tasks.zoomIn")} onClick={() => zoomIn({ duration: 150 })}>
           <ZoomIn className="h-3.5 w-3.5" />
         </ToolbarButton>
-        <ToolbarButton label="Alejar" onClick={() => zoomOut({ duration: 150 })}>
+        <ToolbarButton label={t("tasks.zoomOut")} onClick={() => zoomOut({ duration: 150 })}>
           <ZoomOut className="h-3.5 w-3.5" />
         </ToolbarButton>
       </div>
