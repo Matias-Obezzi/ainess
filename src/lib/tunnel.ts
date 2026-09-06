@@ -21,27 +21,73 @@ export function tunnelInstallCommand(provider: TunnelProvider): string {
 
 export function tunnelDescription(provider: TunnelProvider): string {
   return provider === "ngrok"
-    ? "Requiere una cuenta y un authtoken (`ngrok config add-authtoken …`). La URL es estable en planes pagos."
-    : "Sin cuenta ni configuración, pero la URL pública cambia cada vez que prendés el túnel.";
+    ? "Requiere una cuenta y un authtoken (`ngrok config add-authtoken …`). El plan gratis incluye un dominio estático: con eso la URL queda fija."
+    : "Sin cuenta ni configuración, pero la URL cambia cada vez. Con un named tunnel y un dominio tuyo en Cloudflare, la URL queda fija.";
+}
+
+export interface TunnelOptions {
+  /** Fixed hostname, with or without scheme; empty means ephemeral. */
+  domain?: string;
+  /** cloudflared named tunnel. */
+  tunnelName?: string;
+}
+
+/** `https://Algo.Ngrok-Free.App/` → `algo.ngrok-free.app`. Returns "" when nothing is left. */
+export function normalizeDomain(input: string | undefined | null): string {
+  if (!input) return "";
+  return input
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .split(/[/?#]/)[0]
+    .replace(/\/+$/, "")
+    .toLowerCase();
+}
+
+/** true when the config is enough for a fixed URL with that provider. */
+export function hasFixedUrl(provider: TunnelProvider, opts?: TunnelOptions): boolean {
+  const domain = normalizeDomain(opts?.domain);
+  if (!domain) return false;
+  if (provider === "ngrok") return true;
+  return !!opts?.tunnelName?.trim();
+}
+
+/** Public URL the tunnel will have when the config is fixed, or null. */
+export function fixedUrl(provider: TunnelProvider, opts?: TunnelOptions): string | null {
+  if (!hasFixedUrl(provider, opts)) return null;
+  return `https://${normalizeDomain(opts?.domain)}`;
 }
 
 /** Arguments used to launch the tunnel against the local remote server. */
-export function tunnelArgs(provider: TunnelProvider, port: number): string[] {
-  return provider === "ngrok"
-    ? ["http", String(port), "--log=stdout", "--log-format=json"]
-    : ["tunnel", "--url", `http://127.0.0.1:${port}`];
+export function tunnelArgs(provider: TunnelProvider, port: number, opts?: TunnelOptions): string[] {
+  if (provider === "ngrok") {
+    const domain = normalizeDomain(opts?.domain);
+    return domain
+      ? ["http", String(port), "--log=stdout", "--log-format=json", "--url", `https://${domain}`]
+      : ["http", String(port), "--log=stdout", "--log-format=json"];
+  }
+  if (hasFixedUrl(provider, opts)) {
+    return ["tunnel", "--url", `http://127.0.0.1:${port}`, "run", opts!.tunnelName!.trim()];
+  }
+  return ["tunnel", "--url", `http://127.0.0.1:${port}`];
 }
 
 /**
  * Public URL out of one output line: `https://<algo>.trycloudflare.com` for cloudflared
  * (printed on stderr), the `url` field of ngrok's `started tunnel` JSON event for ngrok.
- * Returns null when the line carries no URL.
+ * With a cloudflared named tunnel there is no URL to print: a line marking the connection as
+ * registered means the fixed URL is up. Returns null when the line carries no URL.
  */
-export function extractTunnelUrl(provider: TunnelProvider, line: string): string | null {
+export function extractTunnelUrl(provider: TunnelProvider, line: string, opts?: TunnelOptions): string | null {
   if (provider === "ngrok") {
     const matches = line.matchAll(/"url"\s*:\s*"([^"]+)"/g);
     for (const m of matches) {
       if (m[1].startsWith("https://")) return m[1];
+    }
+    return null;
+  }
+  if (hasFixedUrl(provider, opts)) {
+    if (/registered tunnel connection/i.test(line) || /connection [0-9a-f-]{8,} registered/i.test(line)) {
+      return fixedUrl(provider, opts);
     }
     return null;
   }

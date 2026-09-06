@@ -47,6 +47,8 @@ export interface TunnelStatus {
   url?: string;
   provider?: string;
   error?: string;
+  /** true when the URL is fixed (static ngrok domain or cloudflared named tunnel). */
+  fixed?: boolean;
 }
 
 const MAX_MESSAGES = 800;
@@ -264,7 +266,10 @@ export async function startTunnel(): Promise<TunnelStatus> {
   const { remote } = useAppStore.getState().config;
   const status = await getTransport().remoteStatus();
   if (!status.running) throw new Error("Prendé primero el acceso remoto local");
-  const info = await getTransport().tunnelStart(remote.tunnel.provider, remote.port);
+  const info = await getTransport().tunnelStart(remote.tunnel.provider, remote.port, {
+    domain: remote.tunnel.domain,
+    tunnelName: remote.tunnel.tunnelName,
+  });
   log.info("tunnel", `túnel ${remote.tunnel.provider} activo`);
   return { running: true, url: info.url, provider: remote.tunnel.provider };
 }

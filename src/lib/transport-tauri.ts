@@ -67,9 +67,10 @@ export const tauriTransport: Transport = {
   logsDir: async () => invoke<string>("logs_dir"),
   openLogsDir: async () => invoke<void>("open_logs_dir"),
 
-  tunnelStart: async (provider, port) => invoke<{ url: string }>("tunnel_start", { provider, port }),
+  tunnelStart: async (provider, port, opts) =>
+    invoke<{ url: string }>("tunnel_start", { provider, port, domain: opts?.domain ?? null, tunnelName: opts?.tunnelName ?? null }),
   tunnelStop: async () => invoke<void>("tunnel_stop"),
-  tunnelStatus: async () => invoke<{ running: boolean; url?: string; provider?: string }>("tunnel_status"),
+  tunnelStatus: async () => invoke<{ running: boolean; url?: string; provider?: string; fixed?: boolean }>("tunnel_status"),
   tunnelDetect: async () => invoke<{ cloudflared: string | null; ngrok: string | null }>("tunnel_detect"),
 
   ptySpawn: async (opts) => invoke<void>("pty_spawn", opts),
