@@ -143,7 +143,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const detectBinaries = useAppStore(state => state.detectBinaries);
   const updateConfig = useAppStore(state => state.updateConfig);
-  const repoState = useAppStore(state => state.repoState);
+  // `undefined` while the repo has not been read yet: the switch stays available until we know.
+  const projectIsRepo = useAppStore(state => (targetProjectId ? state.repoState[targetProjectId]?.isRepo : undefined));
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
 
   const [id, setId] = useState("");
@@ -330,7 +331,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const hasOverride = !!config.binaryOverrides?.[provider];
   // A worktree needs a repo. A team with no project yet (a formation) keeps the option: the
   // agent carries the setting to whichever project it lands in.
-  const isRepo = targetProjectId ? repoState[targetProjectId]?.isRepo !== false : true;
+  const isRepo = projectIsRepo !== false;
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
