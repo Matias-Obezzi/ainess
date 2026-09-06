@@ -164,7 +164,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
           "w-[260px] rounded-xl border bg-card text-card-foreground shadow-sm",
           selected && "ring-2 ring-primary/60"
         )}
-        style={{ borderTopWidth: 3, borderTopColor: color }}
+        style={{ borderLeftWidth: 3, borderLeftColor: color }}
       >
         <div className="flex flex-col gap-2 p-3">
           {/* Who */}

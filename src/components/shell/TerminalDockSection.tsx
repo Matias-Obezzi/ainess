@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TerminalView } from "./TerminalView";
+import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Plus, TerminalSquare, X } from "lucide-react";
 
@@ -30,6 +31,15 @@ export function TerminalDockSection() {
   useEffect(() => {
     if (renamingId) renameInputRef.current?.select();
   }, [renamingId]);
+
+  // Terminals outlive their view on purpose, so the one thing that must tear them down is the
+  // tab going away: drop every live session that no longer has a tab.
+  useEffect(() => {
+    const open = new Set(terminals.map(t => t.id));
+    for (const id of liveTerminalIds()) {
+      if (!open.has(id)) disposeTerminal(id);
+    }
+  }, [terminals]);
 
   const atLimit = terminals.length >= MAX_TERMINALS;
   const noShells = shells.length === 0;
