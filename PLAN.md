@@ -304,6 +304,37 @@ raíz), `Antigravity` (implementer, provider antigravity, hijo de Claude, model
 `gemini-3.1-pro-high`) y `Copilot` (implementer, provider copilot, hijo de Claude), marcada como
 predeterminada. `maxRounds = 6`.
 
+## Worktrees por agente (src/lib/worktree.ts)
+
+Un agente con `AgentConfig.worktree === true` trabaja en **su propio git worktree** del repo del
+proyecto: su rama, su carpeta. Así dos agentes implementan en paralelo sin pelearse el índice de
+git. La app nunca mergea sola: cuando el agente termina, el usuario decide.
+
+- Nombres (puros, testeados): `worktreePath(workspaceDir, agentName)` → `<workspace>-wt-<slug>`
+  (carpeta hermana), `worktreeBranch(agentName)` → `ainess/<slug>`. El slug es minúsculas, sin
+  acentos, con guiones. `parseWorktreeList(stdout)` lee `git worktree list --porcelain`.
+- `ensureWorktree(project, agent, onStep?, known?)`: exige que el workspace sea un repo git, reusa
+  el worktree que ya esté registrado y preparado, si no hace `git worktree add [-b <rama>] <path>`
+  desde la rama actual y —cuando el repo tiene `package.json`— corre `npm install` adentro
+  (timeout 600 s). **Nunca** se enlaza `node_modules` al del repo principal: `git worktree remove`
+  sigue el enlace y borra el original. `onStep` es lo que la UI narra en vivo.
+- `removeWorktree(project, worktree, { deleteBranch })` y `mergeWorktree(project, worktree)`. El
+  merge se **niega** si el workspace o el worktree tienen cambios sin commitear, y un merge con
+  conflictos se informa, no se deshace: se resuelve a mano en la carpeta del proyecto.
+- Estado: `AppState.worktrees: Record<projectId, AgentWorktree[]>`
+  (`{ agentId, path, branch, base, createdAt, readyAt? }`), con `setWorktree` / `forgetWorktree` y
+  los selectores `selectProjectWorktrees` / `selectWorktree`. Se persiste en el archivo de
+  historial del proyecto (`src/lib/history.ts`); el disco solo siembra la lista la primera vez, así
+  un worktree que el usuario borró no revive.
+- Orquestador: `startRun` resuelve el `cwd` antes de lanzar (`resolveCwd`). Si preparar el worktree
+  falla, el run queda en error y no arranca. Mientras tanto `AgentRuntime.preparing` lleva el paso
+  ("Creando el worktree…", "Instalando dependencias…"), que muestran el nodo y el inspector.
+- UI: switch "Trabajar en su propio worktree" en `AgentDialog` (deshabilitado si el proyecto no es
+  un repo), la rama en monoespaciada bajo el nombre del agente, y el panel `WorktreePanel`
+  (botón "Worktrees" en la jerarquía) con abrir carpeta, mergear y eliminar. Todo lo destructivo
+  confirma antes.
+- Apagar el switch **no** borra nada: la carpeta queda y sigue apareciendo en el panel.
+
 ## UI (src/App.tsx + src/components/)
 
 Shell tipo "Claude desktop", sin pestañas. `App.tsx` es `div.h-screen.flex.flex-col`:

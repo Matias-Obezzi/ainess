@@ -5,7 +5,7 @@ import { QuotaRing, useAgentQuota } from "@/components/QuotaRing";
 import { useEffect, useMemo, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { AgentConfig, CommMessage } from "@/types";
-import { useAppStore } from "@/store";
+import { useAppStore, selectWorktree } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
@@ -13,6 +13,7 @@ import { statusLabel, roleLabel } from "@/lib/labels";
 import { PROVIDERS } from "@/lib/providers";
 import { formatElapsed, truncate } from "@/lib/format";
 import { toolIcon } from "@/lib/tool-summary";
+import { worktreeBranch } from "@/lib/worktree";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -139,6 +140,13 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
     return runId ? state.runs[runId]?.startedAt : undefined;
   });
 
+  // The branch it works on, once it has a worktree; before the first run, the one it will get.
+  const worktree = useAppStore(state => selectWorktree(state, state.currentProjectId, agent.id));
+  const preparing = useAppStore(state =>
+    state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id]?.preparing : undefined
+  );
+  const branch = agent.worktree ? worktree?.branch ?? worktreeBranch(agent.name) : null;
+
   const actions = useAgentActions(agent);
   const { status } = actions;
   const busyElsewhere = useBusyElsewhere(agent.id);
@@ -150,7 +158,9 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
 
   const elapsed = status === "working" && runStartedAt ? formatElapsed((now - runStartedAt) / 1000) : null;
   const stateText =
-    status === "working"
+    preparing
+      ? preparing
+      : status === "working"
       ? `Trabajando${elapsed ? ` · ${elapsed}` : ""}`
       : status === "waiting"
         ? "Esperando a sus hijos"
@@ -182,6 +192,18 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                 <div className="truncate text-[11px] text-muted-foreground">
                   {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
                 </div>
+                {branch && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="truncate font-mono text-[10px] text-muted-foreground" title={branch}>
+                        {branch}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {worktree ? `Trabaja en ${worktree.path}` : "Trabaja en su propio worktree (se crea en la primera corrida)"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
                 {binaryInfo === null && (

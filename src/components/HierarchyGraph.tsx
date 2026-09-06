@@ -15,10 +15,11 @@ import {
   type Node
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useAppStore, selectProjectAgents } from "@/store";
+import { useAppStore, selectProjectAgents, selectProjectWorktrees } from "@/store";
 import { AgentNode } from "./AgentNode";
 import { AgentDialog } from "./AgentDialog";
 import { AgentInspector } from "./shell/AgentInspector";
+import { WorktreePanel } from "./WorktreePanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,7 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { Bookmark, Crosshair, Maximize2, Network, Plus, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, Crosshair, GitBranch, Maximize2, Network, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import type { AgentStatus } from "@/types";
 
 const nodeTypes = { agent: AgentNode };
@@ -132,10 +133,12 @@ function HierarchyBoard() {
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const runtime = useAppStore(state => state.runtime);
   const projectName = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId)?.name);
+  const worktrees = useAppStore(state => selectProjectWorktrees(state, state.currentProjectId));
 
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [formationOpen, setFormationOpen] = useState(false);
+  const [worktreesOpen, setWorktreesOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
@@ -298,6 +301,13 @@ function HierarchyBoard() {
           >
             <Bookmark className="h-3.5 w-3.5" />
           </ToolbarButton>
+          <ToolbarButton
+            label={worktrees.length > 0 ? `Worktrees (${worktrees.length})` : "Worktrees"}
+            disabled={!currentProjectId}
+            onClick={() => setWorktreesOpen(true)}
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+          </ToolbarButton>
           <ToolbarButton label="Ajustar vista" onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, duration: 200 })}>
             <Maximize2 className="h-3.5 w-3.5" />
           </ToolbarButton>
@@ -320,6 +330,7 @@ function HierarchyBoard() {
       {selectedAgent && <AgentInspector agent={selectedAgent} onClose={clearSelection} />}
 
       <AgentDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <WorktreePanel open={worktreesOpen} onOpenChange={setWorktreesOpen} />
       <SaveFormationDialog
         open={formationOpen}
         onOpenChange={setFormationOpen}

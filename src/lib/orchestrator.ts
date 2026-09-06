@@ -4,9 +4,10 @@ import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
+import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import * as taskSync from "@/lib/task-sync";
-import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, AgentConfig, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
 
@@ -21,6 +22,42 @@ export function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
   useAppStore.setState(state => ({
     messages: [...state.messages, { ...msg, id: crypto.randomUUID(), ts: Date.now() }]
   }));
+}
+
+/** The message an error carries, without the `Error:` prefix `String(err)` would add. */
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** What the agent is setting up before its run can start, so the UI can narrate it. */
+function setPreparing(projectId: string, agentId: string, step: string | undefined): void {
+  useAppStore.setState(state => {
+    const projectRuntime = state.runtime[projectId] ?? {};
+    const rt = projectRuntime[agentId] ?? { agentId, status: "idle" as AgentStatus, queuedInstructions: [] };
+    if (rt.preparing === step) return state;
+    return { runtime: { ...state.runtime, [projectId]: { ...projectRuntime, [agentId]: { ...rt, preparing: step } } } };
+  });
+}
+
+/**
+ * Where an agent runs: its own git worktree when it works on its own branch, the project's
+ * workspace otherwise. Preparing a worktree can take minutes (a checkout plus `npm install`),
+ * so every step is told to the runtime and to the feed.
+ */
+async function resolveCwd(projectId: string, agent: AgentConfig, project: Project, runId: string): Promise<string> {
+  if (!agent.worktree) return project.workspaceDir;
+  try {
+    const known = useAppStore.getState().worktrees[projectId]?.find(w => w.agentId === agent.id);
+    setPreparing(projectId, agent.id, "Preparando el worktree…");
+    const worktree = await ensureWorktree(project, agent, step => {
+      setPreparing(projectId, agent.id, step);
+      addMessage({ projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: `${agent.name}: ${step}`, runId });
+    }, known);
+    useAppStore.getState().setWorktree(projectId, worktree);
+    return worktree.path;
+  } finally {
+    setPreparing(projectId, agent.id, undefined);
+  }
 }
 
 function appendCommText(agentId: string, runId: string, projectId: string, delta: string) {
@@ -145,12 +182,16 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
 
     const effectiveAgent = opts.model ? { ...agent, model: opts.model } : agent;
 
+    // An agent with its own worktree runs there; a worktree that cannot be prepared stops the
+    // run before it starts (the rejection lands in the catch below).
+    const cwd = await resolveCwd(opts.projectId, agent, project, runId);
+
     const spawnOpts = provider.buildCommand({
       agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
-      cwd: project.workspaceDir,
+      cwd,
       binaryPath: binary.path,
       mcpConfigPath
     });
@@ -159,20 +200,21 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   };
 
   doSpawn().catch(err => {
+    const message = errorText(err);
     useAppStore.setState(state => {
       const pRuntime = state.runtime[opts.projectId] || {};
       return {
-        runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: String(err), endedAt: Date.now() } },
+        runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "error", output: message, endedAt: Date.now() } },
         runtime: { 
           ...state.runtime, 
           [opts.projectId]: { 
             ...pRuntime, 
-            [opts.agentId]: { ...pRuntime[opts.agentId], status: "error", lastError: String(err), currentRunId: undefined } 
+            [opts.agentId]: { ...pRuntime[opts.agentId], status: "error", lastError: message, currentRunId: undefined } 
           } 
         }
       };
     });
-    addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: String(err), runId });
+    addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: message, runId });
     onRunFinished(runId);
   });
 
