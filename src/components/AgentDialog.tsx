@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
+import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabel } from "@/lib/labels";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -142,6 +143,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const detectBinaries = useAppStore(state => state.detectBinaries);
   const updateConfig = useAppStore(state => state.updateConfig);
+  const repoState = useAppStore(state => state.repoState);
+  const refreshRepoState = useAppStore(state => state.refreshRepoState);
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -152,6 +155,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [otherModel, setOtherModel] = useState("");
   const [autoApprove, setAutoApprove] = useState(false);
   const [requireApproval, setRequireApproval] = useState(false);
+  const [worktree, setWorktree] = useState(false);
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [customProgram, setCustomProgram] = useState("");
@@ -186,6 +190,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setModelFromAgent(agent.provider, agent.model, models[agent.provider] || []);
         setAutoApprove(agent.autoApprove);
         setRequireApproval(agent.requireApproval ?? false);
+        setWorktree(agent.worktree ?? false);
         setDescription(agent.description || "");
         setSystemPrompt(agent.systemPrompt || "");
         setCustomProgram(agent.customCommand?.program || "");
@@ -203,6 +208,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setOtherModel("");
         setAutoApprove(false);
         setRequireApproval(false);
+        setWorktree(false);
         setDescription("");
         setSystemPrompt("");
         setCustomProgram("");
@@ -212,6 +218,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, agent]);
+
+  // Whether the project is a git repo decides if the worktree switch is available at all.
+  useEffect(() => {
+    if (dialogOpen && targetProjectId) void refreshRepoState(targetProjectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, targetProjectId]);
 
   // Fetch the model list and quota for the selected provider whenever the dialog is open
   // and the provider changes (covers both opening the dialog and switching providers).
@@ -262,6 +274,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       model: resolvedModel || undefined,
       autoApprove,
       requireApproval: requireApproval || undefined,
+      worktree: worktree || undefined,
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
       color
@@ -315,6 +328,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const currentBinary = binaries[provider];
   const hasOverride = !!config.binaryOverrides?.[provider];
+  // A worktree needs a repo. A team with no project yet (a formation) keeps the option: the
+  // agent carries the setting to whichever project it lands in.
+  const isRepo = targetProjectId ? repoState[targetProjectId]?.isRepo !== false : true;
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
@@ -426,6 +442,23 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
             <div className="flex items-center gap-2">
               <Switch checked={requireApproval} onCheckedChange={setRequireApproval} id="require-approval" />
               <Label htmlFor="require-approval">Requiere tu aprobación para recibir tareas delegadas</Label>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={worktree}
+                  onCheckedChange={setWorktree}
+                  id="worktree"
+                  disabled={!isRepo}
+                />
+                <Label htmlFor="worktree">Trabajar en su propio worktree</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isRepo
+                  ? <>Se crea la rama <span className="font-mono">{worktreeBranch(name || "agente")}</span> y una carpeta hermana del proyecto. Las dependencias se instalan ahí la primera vez, así que la primera corrida tarda más.</>
+                  : "El proyecto no es un repositorio git: no se puede crear un worktree."}
+              </p>
             </div>
 
             {/* The description is what the parent reads to pick who to delegate to: no parent, no field. */}
