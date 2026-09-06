@@ -178,7 +178,7 @@ function RunBubble({ run }: { run: Run }) {
       disabled: !output,
       onSelect: () => createTaskFromMessage({ projectId: run.projectId, text: output, agentId: run.agentId, runId: run.id }),
     },
-    { key: "detail", label: t("message.viewDetail"), icon: FileText, separatorBefore: true, onSelect: () => setDetailOpen(true) },
+    { key: "detail", label: t("message.viewDetail"), icon: FileText, onSelect: () => setDetailOpen(true) },
     // Retrying only means something on a run the app cut short.
     ...(interrupted ? [{ key: "retry", label: t("common.retry"), icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
   ];

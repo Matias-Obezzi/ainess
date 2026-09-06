@@ -195,7 +195,6 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             key: "detail",
             label: t("message.viewDetail"),
             icon: FileText,
-            separatorBefore: true,
             disabled: !message.runId || !hasRun,
             onSelect: () => setDetailOpen(true),
           } satisfies MenuAction,
