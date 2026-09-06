@@ -45,6 +45,7 @@ pub fn run() {
             config::write_config_file,
             config::read_config_file,
             config::read_home_file,
+            config::read_file_abs,
             detect::detect_binaries,
             http::http_post,
             http::http_get,

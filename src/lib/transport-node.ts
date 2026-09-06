@@ -422,6 +422,14 @@ export const nodeTransport: Transport = {
     }
   },
 
+  readFileAbs: async (absPath: string) => {
+    try {
+      return fs.readFileSync(absPath, "utf-8");
+    } catch {
+      return null;
+    }
+  },
+
   ...nodeRemote,
   ...nodeTunnel,
 

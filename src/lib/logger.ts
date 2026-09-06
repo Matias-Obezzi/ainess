@@ -30,12 +30,15 @@ export function getRecentLogs(limit = BUFFER_SIZE): string[] {
   return buffer.slice(Math.max(0, buffer.length - limit));
 }
 
-/** Replaces the value of `token=…`, `"token":"…"` and `Bearer …` with `***`. */
+/** Replaces the value of `token=…`, `"token":"…"`, `Bearer …`,
+ * `authtoken: …`/`authtoken=…` and `api_key: …`/`api_key=…` with `***`. */
 export function maskSecrets(text: string): string {
   return text
     .replace(/(token=)[^&\s"']+/gi, "$1***")
     .replace(/("token"\s*:\s*")[^"]*"/gi, '$1***"')
-    .replace(/(Bearer )[^\s"',}]+/gi, "$1***");
+    .replace(/(Bearer )[^\s"',}\]]+/gi, "$1***")
+    .replace(/(authtoken\s*[:=]\s*)\S+/gi, "$1***")
+    .replace(/(api_key\s*[:=]\s*)\S+/gi, "$1***");
 }
 
 function formatArg(value: unknown): string {

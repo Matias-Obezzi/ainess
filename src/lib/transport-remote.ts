@@ -28,6 +28,7 @@ export const remoteTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
   readHomeFile: async () => null,
+  readFileAbs: async () => null,
   remoteStart: async () => { throw new Error(NOT_AVAILABLE); },
   remoteStop: async () => {},
   remoteStatus: async () => ({ running: false, clients: 0 }),

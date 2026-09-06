@@ -106,6 +106,11 @@ describe("maskSecrets", () => {
     expect(maskSecrets("Authorization: Bearer secreto")).toBe("Authorization: Bearer ***");
   });
 
+  it("hides ngrok authtoken and api_key lines", () => {
+    expect(maskSecrets("authtoken: 2abcDEF0123456789")).toBe("authtoken: ***");
+    expect(maskSecrets("api_key=1xyzGHI9876543210")).toBe("api_key=***");
+  });
+
   it("leaves ordinary text alone", () => {
     expect(maskSecrets("run 123 terminó con código 0")).toBe("run 123 terminó con código 0");
   });

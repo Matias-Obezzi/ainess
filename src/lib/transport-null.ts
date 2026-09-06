@@ -17,6 +17,7 @@ export const nullTransport: Transport = {
   httpPost: async () => { throw new Error("null transport"); },
   httpGet: async () => ({ status: 0, body: "" }),
   readHomeFile: async () => null,
+  readFileAbs: async () => null,
   remoteStart: async () => { throw new Error("El acceso remoto no está disponible en el navegador"); },
   remoteStop: async () => {},
   remoteStatus: async () => ({ running: false, clients: 0 }),

@@ -84,3 +84,18 @@ pub fn read_home_file(relative_path: String) -> Result<Option<String>, String> {
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     Ok(Some(content))
 }
+
+/// Reads a file by absolute path (read-only). Returns `None` when it does not exist or cannot
+/// be read, so callers only need to distinguish "not there" from "there".
+#[tauri::command]
+pub fn read_file_abs(path: String) -> Result<Option<String>, String> {
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(Some(content)),
+        Err(_) => Ok(None),
+    }
+}
