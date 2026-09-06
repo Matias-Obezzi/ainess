@@ -1,7 +1,7 @@
 //! File logging for both the Rust backend and the webview.
 //!
 //! Every line lands in `<app_log_dir>/ainess-YYYY-MM-DD.log` (on Windows
-//! `%LOCALAPPDATA%\com.matias.ais\logs`) with the shape
+//! `%LOCALAPPDATA%\com.ainess\logs`) with the shape
 //! `2026-09-05T14:03:22.123Z [info] [runner] message`.
 //! The file rotates by date and files older than `KEEP_DAYS` are deleted at startup.
 //! Writes never panic and never propagate an error: logging must not break the app.

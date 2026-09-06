@@ -1,5 +1,5 @@
 // File logging for the frontend and the CLI. Every line goes to the same daily file the
-// Rust backend writes (`%LOCALAPPDATA%\com.matias.ais\logs\ainess-<fecha>.log`) through
+// Rust backend writes (`%LOCALAPPDATA%\com.ainess\logs\ainess-<fecha>.log`) through
 // `Transport.logAppend`, and the last lines stay in memory for "Copiar diagnóstico".
 //
 // Rules: never throw, never block, never use `console` (installConsoleCapture wraps it and

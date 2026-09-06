@@ -515,7 +515,7 @@ Tema oscuro por defecto: poner `class="dark"` en `<html>` (index.html).
 
 Todo lo que pasa por `console.log/info/warn/error/debug`, los errores no capturados y los
 `unhandledrejection` del front, más los eventos del backend, se escriben en
-`<app_log_dir>/ainess-YYYY-MM-DD.log` (en Windows `%LOCALAPPDATA%\com.matias.ais\logs`, el mismo
+`<app_log_dir>/ainess-YYYY-MM-DD.log` (en Windows `%LOCALAPPDATA%\com.ainess\logs`, el mismo
 lugar para la app y para el CLI). Formato de línea:
 
 ```

@@ -18,13 +18,13 @@ const exitHandlers = new Set<(e: RunExitEvent) => void>();
 
 function getConfigPath() {
   const appData = process.env.APPDATA ?? os.homedir();
-  return path.join(appData, "com.matias.ais", "config.json");
+  return path.join(appData, "com.ainess", "config.json");
 }
 
-/** Same folder Tauri's `app_log_dir` points at: `%LOCALAPPDATA%\com.matias.ais\logs`. */
+/** Same folder Tauri's `app_log_dir` points at: `%LOCALAPPDATA%\com.ainess\logs`. */
 export function getLogsDir(): string {
   const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
-  return path.join(local, "com.matias.ais", "logs");
+  return path.join(local, "com.ainess", "logs");
 }
 
 const LOG_KEEP_DAYS = 14;

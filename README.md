@@ -222,11 +222,11 @@ ais serve --port 4710                             # phone server
 
 | What | Where |
 | --- | --- |
-| Config | `%APPDATA%\com.matias.ais\config.json` |
-| History per project | `%APPDATA%\com.matias.ais\history\<projectId>.json` |
-| Chats | `%APPDATA%\com.matias.ais\chats\<id>.json` |
-| Antigravity quota marks | `%APPDATA%\com.matias.ais\quota\antigravity.json` |
-| Logs | `%LOCALAPPDATA%\com.matias.ais\logs\ainess-<date>.log` |
+| Config | `%APPDATA%\com.ainess\config.json` |
+| History per project | `%APPDATA%\com.ainess\history\<projectId>.json` |
+| Chats | `%APPDATA%\com.ainess\chats\<id>.json` |
+| Antigravity quota marks | `%APPDATA%\com.ainess\quota\antigravity.json` |
+| Logs | `%LOCALAPPDATA%\com.ainess\logs\ainess-<date>.log` |
 
 History keeps the last 300 runs and 3000 messages per project, and the last 300 raw lines of each
 run. A run cut short by closing the app comes back marked as interrupted, with a retry button.
