@@ -83,10 +83,13 @@ fn unauthorized() -> Response {
     (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Token inválido" }))).into_response()
 }
 
-async fn page(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
-    if !authorized(&inner, &headers, &q) {
-        return unauthorized();
-    }
+/// The page is served to whoever asks, unlike everything under `/api/`.
+///
+/// It carries no data of its own — the snapshot, the commands and the events all stay behind the
+/// token — and it is what asks for the token when the link did not bring one. Gated, a phone that
+/// opens the bare address (an installed app launches its start URL with no query string) was
+/// answered with a raw `{"error":"Token inválido"}` and had nowhere to type it.
+async fn page() -> Response {
     ([(header::CACHE_CONTROL, "no-store")], Html(PAGE)).into_response()
 }
 

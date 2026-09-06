@@ -59,14 +59,17 @@ const ACTIONS: Record<string, string> = {
 
 async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   const reqUrl = new URL(req.url || "/", "http://localhost");
-  if (!authorized(req, reqUrl)) { json(res, 401, { error: "Token inválido" }); return; }
   const path = reqUrl.pathname;
 
+  // The page goes out to whoever asks: it holds no data (that is what /api/ is for, and that stays
+  // behind the token) and it is what asks for the token when the link did not bring one. Gated, a
+  // phone opening the bare address got a raw {"error":"Token inválido"} with nowhere to type it.
   if (req.method === "GET" && path === "/") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(remoteHtml);
     return;
   }
+  if (!authorized(req, reqUrl)) { json(res, 401, { error: "Token inválido" }); return; }
   if (req.method === "GET" && path === "/api/state") {
     const snap = handler ? await handler({ id: "state", action: "state", payload: {} }) : lastSnapshot;
     json(res, 200, snap ?? {});
