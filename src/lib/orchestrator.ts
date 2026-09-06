@@ -4,6 +4,7 @@ import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
+import { trimMessagesInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
@@ -20,9 +21,10 @@ export async function attachListeners(): Promise<void> {
 }
 
 export function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
-  useAppStore.setState(state => ({
-    messages: [...state.messages, { ...msg, id: crypto.randomUUID(), ts: Date.now() }]
-  }));
+  useAppStore.setState(state => {
+    const messages = [...state.messages, { ...msg, id: crypto.randomUUID(), ts: Date.now() }];
+    return { messages: messages.length > TRIM_MESSAGES_AT ? trimMessagesInMemory(messages) : messages };
+  });
 }
 
 /** The message an error carries, without the `Error:` prefix `String(err)` would add. */

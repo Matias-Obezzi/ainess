@@ -266,6 +266,30 @@ export async function flushHistory(): Promise<void> {
 }
 
 /** Load (or re-sync) a project's history into the store. Safe to call repeatedly. */
+/**
+ * Keeps the feed in memory the same size the file keeps it: the last `MAX_MESSAGES` per project.
+ * `addMessage` only ever appended, so a long session grew the array without end and copied it whole
+ * on every tool call. Anything trimmed here is still on disk and comes back with the next merge.
+ */
+export function trimMessagesInMemory(messages: CommMessage[]): CommMessage[] {
+  const kept = new Map<string, number>();
+  const keep = new Set<string>();
+  // Walk backwards so "the last N" is what survives, then rebuild in the original order.
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    // A message with no project (rare, but the type allows it) is counted in its own bucket.
+    const project = m.projectId ?? "";
+    const n = kept.get(project) ?? 0;
+    if (n >= MAX_MESSAGES) continue;
+    kept.set(project, n + 1);
+    keep.add(m.id);
+  }
+  return keep.size === messages.length ? messages : messages.filter(m => keep.has(m.id));
+}
+
+/** Past this many, `addMessage` trims: often enough to bound memory, rare enough to stay cheap. */
+export const TRIM_MESSAGES_AT = MAX_MESSAGES * 2;
+
 export async function loadHistory(projectId: string): Promise<void> {
   const firstLoad = !loadedProjects.has(projectId);
   loadedProjects.add(projectId);
