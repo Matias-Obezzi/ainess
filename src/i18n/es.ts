@@ -782,6 +782,7 @@ export const es: Dictionary = {
   "quota.autoModelHint": "El modelo lo elige el orquestador, así que se muestra el total que queda sobre el total de todos los modelos de cada agente.",
   "quota.noData": "sin datos",
   "quota.noQuotaData": "Sin datos de cuota",
+  "run.stoppedWhilePreparing": "Lo detuviste mientras preparaba su worktree: no llegó a arrancar.",
   "quota.detailWithReset": "{detail} · se renueva {date}",
   "quota.remaining": "Cuota restante: {value}",
 

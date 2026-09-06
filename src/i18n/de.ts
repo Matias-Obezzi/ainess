@@ -781,6 +781,7 @@ export const de: Dictionary = {
   "quota.autoModelHint": "Das Modell wählt der Orchestrator, deshalb wird der verbleibende Gesamtwert über alle Modelle jedes Agenten angezeigt.",
   "quota.noData": "keine Daten",
   "quota.noQuotaData": "Keine Kontingentdaten",
+  "run.stoppedWhilePreparing": "Du hast ihn gestoppt, während sein worktree vorbereitet wurde: er ist nie gestartet.",
   "quota.detailWithReset": "{detail} · erneuert am {date}",
   "quota.remaining": "Verbleibendes Kontingent: {value}",
 

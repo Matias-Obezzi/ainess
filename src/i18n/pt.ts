@@ -781,6 +781,7 @@ export const pt: Dictionary = {
   "quota.autoModelHint": "O modelo é escolhido pelo orquestrador, então é mostrado o total restante sobre o total de todos os modelos de cada agente.",
   "quota.noData": "sem dados",
   "quota.noQuotaData": "Sem dados de cota",
+  "run.stoppedWhilePreparing": "Você parou enquanto o worktree era preparado: nem chegou a começar.",
   "quota.detailWithReset": "{detail} · renova {date}",
   "quota.remaining": "Cota restante: {value}",
 

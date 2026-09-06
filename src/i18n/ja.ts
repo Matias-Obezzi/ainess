@@ -782,6 +782,7 @@ export const ja: Dictionary = {
   "quota.autoModelHint": "モデルはオーケストレーターが選ぶため、各エージェントの全モデルの合計に対する残量を表示しています。",
   "quota.noData": "データなし",
   "quota.noQuotaData": "クォータ情報がありません",
+  "run.stoppedWhilePreparing": "worktree の準備中に停止されたため、開始されませんでした。",
   "quota.detailWithReset": "{detail}・{date} に更新",
   "quota.remaining": "残りクォータ: {value}",
 

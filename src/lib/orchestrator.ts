@@ -61,6 +61,22 @@ async function resolveCwd(projectId: string, agent: AgentConfig, project: Projec
   }
 }
 
+/** Closes a run that never reached a process: killed, agent idle, and the feed says why. */
+function finishNeverSpawned(runId: string, projectId: string, agentId: string, reason: string): void {
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[projectId] || {};
+    return {
+      runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "killed", output: reason, endedAt: Date.now() } },
+      runtime: {
+        ...state.runtime,
+        [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], status: "idle", currentRunId: undefined, currentTask: undefined } },
+      },
+    };
+  });
+  addMessage({ projectId, fromAgentId: "system", toAgentId: agentId, kind: "system", text: reason, runId });
+  onRunFinished(runId);
+}
+
 function appendCommText(agentId: string, runId: string, projectId: string, delta: string) {
   useAppStore.setState(state => {
     const msgId = `text-${runId}`;
@@ -186,6 +202,13 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // An agent with its own worktree runs there; a worktree that cannot be prepared stops the
     // run before it starts (the rejection lands in the catch below).
     const cwd = await resolveCwd(opts.projectId, agent, project, runId);
+
+    // The user pressed stop while the worktree was being prepared. The install itself cannot be
+    // taken back, but the agent is not launched on top of it.
+    if (stoppedBeforeSpawn.delete(runId)) {
+      finishNeverSpawned(runId, opts.projectId, opts.agentId, translateNow("run.stoppedWhilePreparing"));
+      return;
+    }
 
     const spawnOpts = provider.buildCommand({
       agent: effectiveAgent,
@@ -730,10 +753,18 @@ function descendsFromAgent(runs: Record<string, Run>, run: Run, agentId: string)
 /** Runs whose continuation was cancelled by the user while they waited for children. */
 const cancelledRuns = new Set<string>();
 
+/**
+ * Runs the user stopped before anything was spawned, which happens while a worktree is being
+ * prepared: `killRun` has no child to kill yet, so the id is parked here and `startRun` drops the
+ * run instead of launching the agent once the preparation ends.
+ */
+const stoppedBeforeSpawn = new Set<string>();
+
 export async function stopAgent(agentId: string, projectId: string): Promise<void> {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   if (runtime?.currentRunId) {
+    stoppedBeforeSpawn.add(runtime.currentRunId);
     await getTransport().killRun(runtime.currentRunId);
     return;
   }
@@ -775,6 +806,7 @@ export async function stopAll(projectId?: string): Promise<void> {
       for (const agentId in pRuntime) {
         const runtime = pRuntime[agentId];
         if (runtime?.currentRunId) {
+          stoppedBeforeSpawn.add(runtime.currentRunId);
           getTransport().killRun(runtime.currentRunId).catch(() => {});
         }
       }
@@ -784,6 +816,7 @@ export async function stopAll(projectId?: string): Promise<void> {
       for (const agentId in store.runtime[pid]) {
         const runtime = store.runtime[pid][agentId];
         if (runtime?.currentRunId) {
+          stoppedBeforeSpawn.add(runtime.currentRunId);
           getTransport().killRun(runtime.currentRunId).catch(() => {});
         }
       }

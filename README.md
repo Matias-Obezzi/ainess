@@ -80,7 +80,17 @@ state, history and chats. The sidebar lists them with their chats; the home scre
 cards. A new project starts from a **formation** — a saved team you pick (and can edit) as you
 create it; Settings → Agents is where formations live, next to what each CLI reports about itself.
 
-**The thread.** The main view is a conversation with the orchestrator: its text as it arrives, the
+**Tasks.** Opening a project lands on its board: six columns from backlog to done, drag and drop,
+right-click actions and an archive at the bottom. The same tasks also draw a **dependency graph**,
+laid out in layers, where dragging from one card to another declares that this one waits for that
+one (cycles are refused). A switcher flips between the two.
+
+The board is not a list you keep by hand. A prompt to the orchestrator opens a task; every
+delegation hangs off it; one waiting for your approval sits in *needs you* until you approve it; and
+when a run ends the card moves to review if the project has a reviewer, or straight to ready. A run
+that fails goes back to *needs you* with the error in its detail.
+
+**The thread.** The Chat tab is a conversation with the orchestrator: its text as it arrives, the
 tools it uses, the tasks it delegates (collapsible, rendered as markdown) and its final answer.
 Saved **orders** — prompts you reuse — sit as chips above the input, filtered to the agent that will
 run them.
@@ -89,6 +99,13 @@ run them.
 each agent is doing and how much quota it has left. It is also where the team is managed: add an
 agent, duplicate one (two Claudes with different roles is a normal setup), remove one, or save the
 whole team as a formation.
+
+**Worktrees.** An agent can work in its own git worktree instead of sharing the folder with
+everyone else: its own branch (`ainess/<agent>`), a sibling folder, and dependencies installed there
+the first time. That is what lets two agents implement at once without fighting over the git index.
+The Worktrees panel lists them and offers to open the folder, merge the branch back, or drop it —
+the merge refuses to run when either side has uncommitted work, and a conflict is reported rather
+than guessed at.
 
 **Communication and terminals.** A right dock with the raw event feed and real terminals (PTY, tabs,
 your shells). Closing the panel does not kill anything: a terminal only dies from its tab's close
@@ -107,6 +124,14 @@ messages, terminal tabs, approvals. Where there is nothing to do, nothing opens.
 the GitHub API, Antigravity inferred from its own "quota reached" errors — and shows it as a ring
 next to each agent and under the input.
 
+**Notifications.** A bell in the window bar keeps the history of what happened and what needs you:
+approvals waiting, tasks finished or failed, runs cut short by a restart, a tunnel that fell, a new
+version. Each row takes you to where it happened.
+
+**Repo state.** For a project that is a git repo, the sidebar shows the branch, uncommitted changes
+and how far ahead or behind the remote it is, and the header opens the open pull requests with their
+CI and review state. It reads; it never writes.
+
 **Tray and notifications.** The app can keep running in the background when you close the window and
 notify you when an agent needs permission or finishes a task.
 
@@ -117,6 +142,17 @@ notify you when an agent needs permission or finishes a task.
   synced machine-wide with `ais mcp sync`.
 - **Shared context** — a block of text every agent receives about the project or the team.
 - **Profile** — who you are and how you like to work, also injected into the system prompt.
+
+## Languages
+
+The interface speaks Spanish, English, Brazilian Portuguese, Simplified Chinese, Japanese, French and
+German. Pick one in Settings → General, or leave it following the system. The change applies at
+once, with no restart, and the phone page inherits whatever the app is using.
+
+Translations live in `src/i18n/<lang>.ts`: flat dictionaries with dot-separated keys, Spanish as the
+base. A missing key falls back to Spanish rather than showing the key, and a test keeps every
+dictionary aligned with the base, key for key and placeholder for placeholder. The CLI stays in
+Spanish.
 
 ## Hooks
 
@@ -232,6 +268,7 @@ ais serve --port 4710                             # phone server
 | Config | `%APPDATA%\com.ainess\config.json` |
 | History per project | `%APPDATA%\com.ainess\history\<projectId>.json` |
 | Chats | `%APPDATA%\com.ainess\chats\<id>.json` |
+| Task board per project | `%APPDATA%\com.ainess\tasks\<projectId>.json` |
 | Antigravity quota marks | `%APPDATA%\com.ainess\quota\antigravity.json` |
 | Logs | `%LOCALAPPDATA%\com.ainess\logs\ainess-<date>.log` |
 
