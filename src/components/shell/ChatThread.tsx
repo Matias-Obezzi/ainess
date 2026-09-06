@@ -9,9 +9,14 @@ import { ChatDialog } from "@/components/ChatDialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity } from "@/components/shell/RunActivity";
 import { island } from "@/components/ui/island";
+import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { formatClock } from "@/lib/format";
+import { copyText } from "@/lib/clipboard";
+import { hasMarkdown, toPlainText } from "@/lib/text";
 import type { ChatMessage } from "@/types";
-import { MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { Copy, FileCode, FileText, MessageSquare, Pencil, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
@@ -141,36 +146,75 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   const isPending = message.status === "pending";
   // A pending bubble left behind by a closed app has no run to stream from.
   const hasRun = useAppStore(state => (message.runId ? !!state.runs[message.runId] : false));
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const messageActions: MenuAction[] = [
+    {
+      key: "copy",
+      label: "Copiar texto",
+      icon: Copy,
+      disabled: !message.text,
+      onSelect: () => void copyText(toPlainText(message.text), "Texto copiado"),
+    },
+    {
+      key: "copy-markdown",
+      label: "Copiar como markdown",
+      icon: FileCode,
+      disabled: !message.text || !hasMarkdown(message.text),
+      onSelect: () => void copyText(message.text, "Markdown copiado"),
+    },
+    // Only an agent's turn comes from a run, so only it has a detail to show.
+    ...(isUser
+      ? []
+      : [
+          {
+            key: "detail",
+            label: "Ver detalle",
+            icon: FileText,
+            separatorBefore: true,
+            disabled: !message.runId || !hasRun,
+            onSelect: () => setDetailOpen(true),
+          } satisfies MenuAction,
+        ]),
+  ];
 
   return (
-    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
-      <div className="flex items-center gap-1.5 mb-1">
-        {!isUser && (agent ? <AgentAvatar provider={agent.provider} color={color} size={22} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />)}
-        <span className="text-xs font-medium">{name}</span>
-        <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
-        {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
-      </div>
-      {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}
-      <div
-        className={`text-sm break-words ${
-          isUser
-            ? "rounded-xl px-3.5 py-2 max-w-[80%] bg-muted whitespace-pre-wrap"
-            : message.status === "error"
-              ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
-              : "pl-[18px] w-full"
-        }`}
-      >
-        {isPending ? (
-          // Live: what the agent is writing plus every tool it uses, with its own footer.
-          message.runId && hasRun
-            ? <RunActivity runId={message.runId} />
-            : <span className="text-muted-foreground">…</span>
-        ) : isUser || message.status === "error" ? (
-          message.text
-        ) : (
-          <Markdown text={message.text} />
-        )}
-      </div>
-    </div>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+          <div className="flex items-center gap-1.5 mb-1">
+            {!isUser && (agent ? <AgentAvatar provider={agent.provider} color={color} size={22} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />)}
+            <span className="text-xs font-medium">{name}</span>
+            <span className="text-xs text-muted-foreground">{formatClock(message.ts)}</span>
+            {message.status === "error" && <Badge variant="destructive" className="text-[9px]">error</Badge>}
+          </div>
+          {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}
+          <div
+            className={`text-sm break-words ${
+              isUser
+                ? "rounded-xl px-3.5 py-2 max-w-[80%] bg-muted whitespace-pre-wrap"
+                : message.status === "error"
+                  ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
+                  : "pl-[18px] w-full"
+            }`}
+          >
+            {isPending ? (
+              // Live: what the agent is writing plus every tool it uses, with its own footer.
+              message.runId && hasRun
+                ? <RunActivity runId={message.runId} />
+                : <span className="text-muted-foreground">…</span>
+            ) : isUser || message.status === "error" ? (
+              message.text
+            ) : (
+              <Markdown text={message.text} />
+            )}
+          </div>
+          <RunDetailDialog runId={message.runId || null} open={detailOpen} onOpenChange={setDetailOpen} />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <ContextActionItems actions={messageActions} />
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

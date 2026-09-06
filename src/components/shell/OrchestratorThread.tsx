@@ -6,13 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
 import { runStatusLabel } from "@/lib/labels";
 import { INTERRUPTED_OUTPUT } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
+import { copyText } from "@/lib/clipboard";
+import { hasMarkdown, toPlainText } from "@/lib/text";
 import type { Run } from "@/types";
-import { ArrowDown, ChevronDown, ChevronRight, FileText, MessagesSquare } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, MessagesSquare, RotateCw } from "lucide-react";
 
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
@@ -136,6 +140,31 @@ function RunBubble({ run }: { run: Run }) {
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
+  const interrupted = run.output === INTERRUPTED_OUTPUT;
+  const output = interrupted ? "" : (run.output ?? "");
+
+  const retry = () =>
+    void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
+
+  const messageActions: MenuAction[] = [
+    {
+      key: "copy",
+      label: "Copiar texto",
+      icon: Copy,
+      disabled: !output,
+      onSelect: () => void copyText(toPlainText(output), "Texto copiado"),
+    },
+    {
+      key: "copy-markdown",
+      label: "Copiar como markdown",
+      icon: FileCode,
+      disabled: !output || !hasMarkdown(output),
+      onSelect: () => void copyText(output, "Markdown copiado"),
+    },
+    { key: "detail", label: "Ver detalle", icon: FileText, separatorBefore: true, onSelect: () => setDetailOpen(true) },
+    // Retrying only means something on a run the app cut short.
+    ...(interrupted ? [{ key: "retry", label: "Reintentar", icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
+  ];
 
   return (
     <div className="flex flex-col gap-3">
@@ -153,72 +182,79 @@ function RunBubble({ run }: { run: Run }) {
       )}
 
       {/* The answer reads like a document, not a bubble: a header line and the content below it. */}
-      <div className="group flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-xs">
-          {agent ? <AgentAvatar provider={agent.provider} color={agent.color} size={22} /> : <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground" />}
-          <span className="font-semibold">{agent?.name ?? run.agentId}</span>
-          {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
-          {(run.status === "error" || run.status === "killed") && (
-            <Badge variant={run.status === "error" ? "destructive" : "secondary"} className="text-[10px]">
-              {runStatusLabel[run.status]}
-            </Badge>
-          )}
-          <span className="ml-auto text-muted-foreground">{formatClock(run.startedAt)}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            title="Ver salida cruda"
-            onClick={() => setDetailOpen(true)}
-          >
-            <FileText className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="group flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-xs">
+              {agent ? <AgentAvatar provider={agent.provider} color={agent.color} size={22} /> : <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground" />}
+              <span className="font-semibold">{agent?.name ?? run.agentId}</span>
+              {run.round > 0 && <Badge variant="outline" className="text-[10px]">Ronda {run.round + 1}</Badge>}
+              {(run.status === "error" || run.status === "killed") && (
+                <Badge variant={run.status === "error" ? "destructive" : "secondary"} className="text-[10px]">
+                  {runStatusLabel[run.status]}
+                </Badge>
+              )}
+              <span className="ml-auto text-muted-foreground">{formatClock(run.startedAt)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                title="Ver salida cruda"
+                onClick={() => setDetailOpen(true)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </Button>
+            </div>
 
-        <div className="pl-[18px] flex flex-col gap-2">
-          {isRunning ? (
-            <RunActivity runId={run.id} />
-          ) : (
-            <>
-              {steps > 0 && (
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                    onClick={() => setActivityOpen(o => !o)}
-                  >
-                    {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                    Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
-                  </button>
-                  {activityOpen && (
-                    <div className="rounded-md border border-border bg-muted/40 p-2">
-                      <RunActivity runId={run.id} showFooter={false} />
+            <div className="pl-[18px] flex flex-col gap-2">
+              {isRunning ? (
+                <RunActivity runId={run.id} />
+              ) : (
+                <>
+                  {steps > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        className="self-start flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() => setActivityOpen(o => !o)}
+                      >
+                        {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        Actividad ({steps} paso{steps === 1 ? "" : "s"} · {elapsed})
+                      </button>
+                      {activityOpen && (
+                        <div className="rounded-md border border-border bg-muted/40 p-2">
+                          <RunActivity runId={run.id} showFooter={false} />
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {run.output === INTERRUPTED_OUTPUT ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-                  <span>Se cortó: la app se cerró mientras el agente trabajaba.</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model })}
-                  >
-                    Reintentar
-                  </Button>
-                </div>
-              ) : run.output ? (
-                <Markdown text={run.output} />
-              ) : (
-                <div className="text-sm text-muted-foreground italic">Sin salida</div>
+                  {interrupted ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+                      <span>Se cortó: la app se cerró mientras el agente trabajaba.</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={retry}
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  ) : run.output ? (
+                    <Markdown text={run.output} />
+                  ) : (
+                    <div className="text-sm text-muted-foreground italic">Sin salida</div>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          <ContextActionItems actions={messageActions} />
+        </ContextMenuContent>
+      </ContextMenu>
 
       <RunDetailDialog runId={run.id} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
