@@ -780,6 +780,8 @@ export const pt: Dictionary = {
   "quota.perAgent": "Cota por agente",
   "quota.autoModelHint": "O modelo é escolhido pelo orquestrador, então é mostrado o total restante sobre o total de todos os modelos de cada agente.",
   "quota.noData": "sem dados",
+  "quota.noQuotaData": "Sem dados de cota",
+  "quota.detailWithReset": "{detail} · renova {date}",
   "quota.remaining": "Cota restante: {value}",
 
   // ---- Tasks ----

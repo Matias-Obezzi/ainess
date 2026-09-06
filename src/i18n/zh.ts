@@ -780,6 +780,8 @@ export const zh: Dictionary = {
   "quota.perAgent": "各智能体的配额",
   "quota.autoModelHint": "模型由编排器挑选，所以这里显示的是每个智能体所有模型加起来的剩余量和总量。",
   "quota.noData": "无数据",
+  "quota.noQuotaData": "无配额数据",
+  "quota.detailWithReset": "{detail} · {date} 重置",
   "quota.remaining": "剩余配额：{value}",
 
   // ---- Tasks ----

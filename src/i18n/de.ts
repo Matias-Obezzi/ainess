@@ -780,6 +780,8 @@ export const de: Dictionary = {
   "quota.perAgent": "Kontingent pro Agent",
   "quota.autoModelHint": "Das Modell wählt der Orchestrator, deshalb wird der verbleibende Gesamtwert über alle Modelle jedes Agenten angezeigt.",
   "quota.noData": "keine Daten",
+  "quota.noQuotaData": "Keine Kontingentdaten",
+  "quota.detailWithReset": "{detail} · erneuert am {date}",
   "quota.remaining": "Verbleibendes Kontingent: {value}",
 
   // ---- Tasks ----

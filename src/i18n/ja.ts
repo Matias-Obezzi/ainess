@@ -781,6 +781,8 @@ export const ja: Dictionary = {
   "quota.perAgent": "エージェントごとのクォータ",
   "quota.autoModelHint": "モデルはオーケストレーターが選ぶため、各エージェントの全モデルの合計に対する残量を表示しています。",
   "quota.noData": "データなし",
+  "quota.noQuotaData": "クォータ情報がありません",
+  "quota.detailWithReset": "{detail}・{date} に更新",
   "quota.remaining": "残りクォータ: {value}",
 
   // ---- Tasks ----

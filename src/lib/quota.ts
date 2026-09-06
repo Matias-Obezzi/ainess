@@ -2,6 +2,7 @@
 // data sources (endpoints, headers, files) this module relies on.
 import { Binaries, ModelInfo, ProviderId, ProviderQuota, QuotaItem } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { activeLocale } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 
 // ---------------------------------------------------------------------------------------------
@@ -344,7 +345,7 @@ export async function fetchQuota(provider: ProviderId): Promise<ProviderQuota> {
 /** Localized "D/M HH:MM" for the app UI. */
 export function formatResetsAt(ms?: number): string | undefined {
   if (ms === undefined || Number.isNaN(ms)) return undefined;
-  return new Date(ms).toLocaleString("es-AR", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleString(activeLocale(), { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /** Plain-text rendering of a single quota row, used by `ais quota`. */

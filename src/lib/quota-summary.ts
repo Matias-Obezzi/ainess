@@ -2,6 +2,7 @@
 // left for one agent. Pure module, no store and no I/O, so it is easy to test.
 import { ProviderQuota, QuotaItem } from "@/types";
 import { formatQuotaLine, formatResetsAt, poolOf } from "@/lib/quota";
+import { translateNow } from "@/i18n/useT";
 
 export interface QuotaSummary {
   /** Remaining share, 0..1, or null when the provider does not report enough to know. */
@@ -30,13 +31,13 @@ function applicableItems(items: QuotaItem[], models: string[]): QuotaItem[] {
   return items.filter(item => !item.model || models.some(model => itemAppliesTo(item.model!, model)));
 }
 
-/** Localized "<label>: <value> · se renueva <fecha>" for one item. */
+/** One item as a sentence: "<label>: <value> · renews <date>", in the active language. */
 function detailOf(item: QuotaItem): string {
   // formatQuotaLine renders the reset as a UTC timestamp (it is shared with the CLI); the UI wants
   // the localized one, so drop it there and append it here.
   const base = formatQuotaLine({ ...item, resetsAt: undefined });
   const resets = formatResetsAt(item.resetsAt);
-  return resets ? `${base} · se renueva ${resets}` : base;
+  return resets ? translateNow("quota.detailWithReset", { detail: base, date: resets }) : base;
 }
 
 function summaryOf(fraction: number, label: string, detail: string): QuotaSummary {
@@ -54,13 +55,13 @@ export function summarizeAgentQuota(
   opts: { model?: string; allModels?: string[] },
 ): QuotaSummary {
   if (!quota) {
-    return { fraction: null, label: "—", detail: "Sin datos de cuota", status: "unavailable" };
+    return { fraction: null, label: "—", detail: translateNow("quota.noQuotaData"), status: "unavailable" };
   }
   if (quota.status !== "ok") {
     return {
       fraction: null,
       label: "—",
-      detail: quota.message || "Sin datos de cuota",
+      detail: quota.message || translateNow("quota.noQuotaData"),
       status: quota.status,
     };
   }
@@ -68,7 +69,7 @@ export function summarizeAgentQuota(
   const models = opts.allModels?.length ? opts.allModels : opts.model ? [opts.model] : [];
   const items = applicableItems(quota.items, models);
   if (items.length === 0) {
-    return { fraction: null, label: "—", detail: quota.message || "Sin datos de cuota", status: "ok" };
+    return { fraction: null, label: "—", detail: quota.message || translateNow("quota.noQuotaData"), status: "ok" };
   }
 
   // Absolute counters win: they are the only ones that can be added up honestly.

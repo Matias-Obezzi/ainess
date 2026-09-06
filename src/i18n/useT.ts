@@ -34,6 +34,11 @@ export function useT(): TFunction {
   }, [lang]);
 }
 
+/** Same as `useLocale`, for code outside React (formatters shared with the CLI). */
+export function activeLocale(): string {
+  return localeOf(resolveLanguage(useAppStore.getState().config.language));
+}
+
 /** For code outside React (store actions, notifications) that still needs a translated string. */
 export function translateNow(key: string, vars?: Record<string, string | number>): string {
   const lang = resolveLanguage(useAppStore.getState().config.language);
