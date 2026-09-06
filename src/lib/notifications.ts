@@ -75,3 +75,24 @@ export function markApprovalRead(list: AppNotification[], approvalId: string): A
 export function dismissNotification(list: AppNotification[], id: string): AppNotification[] {
   return list.filter(n => n.id !== id);
 }
+
+/**
+ * When this window came up. What is older than this was read from disk, not lived through.
+ */
+export const sessionStartedAt = Date.now();
+
+/**
+ * The messages worth announcing: the ones after the last one seen that also happened in this
+ * session. The cursor alone is not enough — it starts empty, so the whole restored feed read as
+ * new and reopening the app fired a toast (and a system notification) for every task that had
+ * ever finished. History arrives asynchronously, project by project, well after the first
+ * callback, so what separates news from history is when it happened, not what came first.
+ */
+export function freshMessages<T extends { id: string; ts: number }>(
+  messages: T[],
+  lastSeenId: string | null,
+  since: number = sessionStartedAt,
+): T[] {
+  const lastIdx = lastSeenId ? messages.findIndex(m => m.id === lastSeenId) : -1;
+  return messages.slice(lastIdx + 1).filter(m => m.ts >= since);
+}

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   MAX_NOTIFICATIONS,
   dismissNotification,
+  freshMessages,
   markAllRead,
   markApprovalRead,
   markRead,
@@ -118,5 +119,33 @@ describe("dismissNotification", () => {
     list = push(list, { kind: "info", title: "b" });
     const out = dismissNotification(list, list[0].id);
     expect(out.map(n => n.title)).toEqual(["a"]);
+  });
+});
+
+// Reopening the app pours the whole history into the store; announcing it turned into a wall of
+// "tarea terminada" toasts for tasks that had finished days before.
+describe("freshMessages", () => {
+  const start = 1_000;
+  const msg = (id: string, ts: number) => ({ id, ts });
+
+  it("ignores what was restored from disk", () => {
+    const messages = [msg("old-1", 10), msg("old-2", 20)];
+    expect(freshMessages(messages, null, start)).toEqual([]);
+  });
+
+  it("announces what happened after the window came up", () => {
+    const messages = [msg("old", 10), msg("live", start + 5)];
+    expect(freshMessages(messages, null, start).map(m => m.id)).toEqual(["live"]);
+  });
+
+  it("does not repeat what the cursor already covered", () => {
+    const messages = [msg("a", start + 1), msg("b", start + 2), msg("c", start + 3)];
+    expect(freshMessages(messages, "b", start).map(m => m.id)).toEqual(["c"]);
+  });
+
+  it("stays quiet when history lands after the cursor was set", () => {
+    // Another project's feed is read later and its messages sort in before the last seen one.
+    const messages = [msg("old-of-other-project", 5), msg("a", start + 1), msg("b", start + 2)];
+    expect(freshMessages(messages, "b", start)).toEqual([]);
   });
 });

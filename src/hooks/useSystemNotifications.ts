@@ -4,6 +4,7 @@ import { isTauri } from "@/lib/tauri";
 import { log } from "@/lib/logger";
 import { translateNow } from "@/i18n/useT";
 import { pendingApprovals } from "@/lib/approvals";
+import { freshMessages, sessionStartedAt } from "@/lib/notifications";
 
 /** Truncates to `max` chars, adding an ellipsis when it cuts the text short. */
 function truncate(text: string, max: number): string {
@@ -56,26 +57,25 @@ export function useSystemNotifications() {
       const { config } = state;
       if (!config.tray) return;
 
-      // New pending approvals: diff against what we've already seen.
+      // New pending approvals: diff against what we've already seen. One asked for in an earlier
+      // session is not new — the badge and the bell already carry it — and it only reaches this
+      // store when its project's history is read, long after the first callback.
       if (config.tray.notifyApprovals) {
         const pending = pendingApprovals(state.approvals, state.config.projects);
         const currentPending = new Set(pending.map(a => a.id));
         for (const approval of pending) {
-          if (!knownPendingApprovals.current.has(approval.id)) {
+          if (!knownPendingApprovals.current.has(approval.id) && approval.createdAt >= sessionStartedAt) {
             void notify(translateNow("notify.needsPermission"), truncate(approval.summary, 200));
           }
         }
         knownPendingApprovals.current = currentPending;
       }
 
-      // New "task finished" messages, across every project.
+      // "Task finished" messages of this session, across every project.
       if (config.tray.notifyResults) {
         const messages = state.messages;
         if (messages.length > 0) {
-          const lastIdx = lastMessageId.current
-            ? messages.findIndex(m => m.id === lastMessageId.current)
-            : -1;
-          const newMessages = messages.slice(lastIdx + 1);
+          const newMessages = freshMessages(messages, lastMessageId.current);
           for (const msg of newMessages) {
             if (msg.kind !== "result" || msg.toAgentId !== "user") continue;
             const project = state.config.projects.find(p => p.id === msg.projectId);
