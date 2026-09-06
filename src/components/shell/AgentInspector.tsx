@@ -3,7 +3,7 @@
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useEffect, useRef, useState } from "react";
 import type { AgentConfig } from "@/types";
-import { useAppStore } from "@/store";
+import { useAppStore, selectWorktree } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { StatusDot } from "@/components/StatusDot";
@@ -11,6 +11,7 @@ import { RunActivity } from "@/components/shell/RunActivity";
 import { AgentActionDialogs, AgentContextMenu, useAgentActions } from "@/components/agent-actions";
 import { statusLabel, roleLabel, runDotStatus, runStatusLabel } from "@/lib/labels";
 import { PROVIDERS } from "@/lib/providers";
+import { worktreeBranch } from "@/lib/worktree";
 import { formatClock, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
@@ -20,6 +21,11 @@ const RECENT_RUNS = 3;
 export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose: () => void }) {
   const actions = useAgentActions(agent);
   const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
+  const worktree = useAppStore(state => selectWorktree(state, state.currentProjectId, agent.id));
+  const preparing = useAppStore(state =>
+    state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id]?.preparing : undefined
+  );
+  const branch = agent.worktree ? worktree?.branch ?? worktreeBranch(agent.name) : null;
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -65,9 +71,20 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
             <div className="truncate text-[11px] text-muted-foreground">
               {PROVIDERS[agent.provider]?.label || agent.provider} · {roleLabel[agent.role] || agent.role}
             </div>
+            {branch && (
+              <div className="truncate font-mono text-[10px] text-muted-foreground" title={worktree?.path ?? branch}>
+                {branch}
+              </div>
+            )}
             <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <StatusDot status={actions.status} />
-              <span>{actions.status === "waiting" ? "Esperando a sus hijos" : statusLabel[actions.status]}</span>
+              <span>
+                {preparing
+                  ? preparing
+                  : actions.status === "waiting"
+                    ? "Esperando a sus hijos"
+                    : statusLabel[actions.status]}
+              </span>
             </div>
           </div>
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Cerrar" onClick={onClose}>
