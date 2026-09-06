@@ -283,7 +283,11 @@ export function checkData(input: DiagnosticsInput, t: Translate): DiagnosticResu
   return { id: "data", level: "ok", title, detail: parts.join(" ") };
 }
 
-/** Every check, in the order the section and the CLI show them. */
+/**
+ * Every check, in the order the section and the CLI show them. Whatever a check picked up from an
+ * error message on the way passes through `maskSecrets` here, so no caller can print a credential
+ * even by accident.
+ */
 export function runDiagnostics(input: DiagnosticsInput, t: Translate): DiagnosticResult[] {
   return [
     checkAgentClis(input, t),
@@ -292,7 +296,11 @@ export function runDiagnostics(input: DiagnosticsInput, t: Translate): Diagnosti
     checkTunnel(input, t),
     checkLogs(input, t),
     checkData(input, t),
-  ];
+  ].map(result => ({
+    ...result,
+    detail: maskSecrets(result.detail),
+    hint: result.hint ? maskSecrets(result.hint) : undefined,
+  }));
 }
 
 const LEVEL_KEY: Record<DiagnosticLevel, string> = {

@@ -280,6 +280,27 @@ describe("runDiagnostics", () => {
   });
 });
 
+describe("secrets", () => {
+  it("masks whatever a check picked up from an error message", () => {
+    const results = runDiagnostics(input({
+      canObserveRemote: true,
+      remote: { enabled: true, port: 4710, running: false, clients: 0, error: "falló con token=hunter2" },
+    }), spanish);
+    const remote = results.find(r => r.id === "remote");
+    expect(remote?.detail).not.toContain("hunter2");
+    expect(remote?.detail).toContain("token=***");
+  });
+
+  it("keeps the ngrok credentials as a yes/no, never as a value", () => {
+    const detail = runDiagnostics(input({
+      tunnel: { enabled: false, provider: "ngrok", cloudflared: false, ngrok: true, canDetect: true },
+      ngrok: { hasAuthtoken: true, hasApiKey: true },
+    }), spanish).find(r => r.id === "tunnel")?.detail;
+    expect(detail).toContain("authtoken sí");
+    expect(detail).toContain("API key sí");
+  });
+});
+
 describe("worstLevel", () => {
   it("lets one error outrank everything else", () => {
     expect(worstLevel(runDiagnostics(input(), t))).toBe("ok");
