@@ -390,3 +390,31 @@ export interface PtyExitEvent {
   id: string;
   code: number | null;
 }
+
+// ---- Tasks (per project board + dependency graph, see src/lib/tasks.ts) ----
+
+export type TaskStatus = "backlog" | "working" | "needs-you" | "in-review" | "ready" | "done";
+
+export interface Task {
+  id: string;
+  projectId: string;
+  title: string;
+  /** Long form detail, in markdown. */
+  detail?: string;
+  status: TaskStatus;
+  /** Agent in charge. */
+  agentId?: string;
+  /** Tasks that have to finish before this one. */
+  dependsOn: string[];
+  /** Run executing it (or the one that did). */
+  runId?: string;
+  /** Approval this task is waiting on, while it sits in "needs-you". */
+  approvalId?: string;
+  /** Branch being worked on, when known. */
+  branch?: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Position inside its column. */
+  order: number;
+  archived: boolean;
+}
