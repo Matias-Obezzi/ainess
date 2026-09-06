@@ -813,6 +813,7 @@ export const ja: Dictionary = {
   "tasks.blockedByTasks.one": "未完了のタスク{n}件にブロックされています。",
   "tasks.blockedByTasks.other": "未完了のタスク{n}件にブロックされています。",
   "tasks.moveTo": "移動先",
+  "tasks.emptyColumn": "この列にはまだ何もありません",
   "tasks.assignTo": "担当を割り当て",
   "tasks.title": "タイトル",
   "tasks.titlePlaceholder": "何をすべきか",

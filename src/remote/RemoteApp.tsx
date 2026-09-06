@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { TasksTab } from "./TasksTab";
 import { Logo } from "@/components/Logo";
 import { StatusDot } from "@/components/StatusDot";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
@@ -24,12 +25,12 @@ import { truncate } from "@/lib/format";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, getToken, hydrate, installRemoteActions, RemoteError } from "./remote-client";
 import {
-  ArrowLeft, Bot, ChevronRight, FolderOpen, MessageSquare, MessagesSquare,
+  ArrowLeft, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
   ShieldCheck, Square, Users, WifiOff,
 } from "lucide-react";
 
 type Phase = "loading" | "no-token" | "unauthorized" | "ready";
-type Tab = "thread" | "chats" | "approvals" | "agents";
+type Tab = "tasks" | "thread" | "chats" | "approvals" | "agents";
 
 /** Straight to the store: the phone has no back/forward stack and nothing to persist. */
 function goHome(): void {
@@ -207,7 +208,8 @@ function HomeView() {
 
 function ProjectView({ projectId }: { projectId: string }) {
   const t = useT();
-  const [tab, setTab] = useState<Tab>("thread");
+  // The board is the project home on the desktop, so the phone opens there too.
+  const [tab, setTab] = useState<Tab>("tasks");
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
   const approvals = useAppStore(state => state.approvals);
   const currentChatId = useAppStore(state => state.currentChatId);
@@ -241,6 +243,7 @@ function ProjectView({ projectId }: { projectId: string }) {
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col">
+        {tab === "tasks" && <TasksTab projectId={projectId} />}
         {tab === "thread" && (
           <>
             <div className="flex-1 min-h-0"><OrchestratorThread /></div>
@@ -269,7 +272,8 @@ function ProjectView({ projectId }: { projectId: string }) {
         {tab === "agents" && <AgentsTab projectId={projectId} />}
       </div>
 
-      <nav className="shrink-0 grid grid-cols-4 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
+      <nav className="shrink-0 grid grid-cols-5 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
+        <TabButton icon={ListTodo} label={t("projectScreen.tasks")} active={tab === "tasks"} onClick={() => selectTab("tasks")} />
         <TabButton icon={MessagesSquare} label={t("sidebar.orchestrator")} active={tab === "thread"} onClick={() => selectTab("thread")} />
         <TabButton icon={MessageSquare} label={t("search.group.chats")} active={tab === "chats"} onClick={() => selectTab("chats")} />
         <TabButton icon={ShieldCheck} label={t("phone.tab.approvals")} active={tab === "approvals"} badge={pending} onClick={() => selectTab("approvals")} />

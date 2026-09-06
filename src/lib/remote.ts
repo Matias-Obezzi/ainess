@@ -4,7 +4,8 @@
 import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
-import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run } from "@/types";
+import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus } from "@/types";
+import { TASK_STATUSES } from "@/lib/tasks";
 import { resolveLanguage, type Language } from "@/i18n";
 
 /**
@@ -30,6 +31,8 @@ export interface RemoteSnapshot {
   binaries: Binaries;
   /** Chats with a turn in flight; `lib/chat.ts` keeps that in memory, out of reach of the phone. */
   activeChats: string[];
+  /** Every project's board, flattened: each task already carries its `projectId`. */
+  tasks: Task[];
 }
 
 export interface RemoteCommand {
@@ -135,6 +138,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     chatMessages,
     binaries,
     activeChats,
+    tasks: Object.values(s.tasks).flat(),
   };
 }
 
@@ -186,6 +190,17 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const agentId = str("agentId");
         if (!projectId) return { error: "Falta el proyecto" };
         if (agentId) await s.stopAgent(agentId, projectId); else await s.stopAll(projectId);
+        return { ok: true };
+      }
+      case "task": {
+        const id = str("taskId");
+        if (!id) return { error: "Falta la tarea" };
+        const op = str("op") ?? "move";
+        if (op === "archive") { s.archiveTask(id); return { ok: true }; }
+        if (op === "delete") { s.removeTask(id); return { ok: true }; }
+        const status = str("status");
+        if (!status || !TASK_STATUSES.includes(status as TaskStatus)) return { error: "Estado inválido" };
+        s.moveTask(id, status as TaskStatus, typeof payload.index === "number" ? payload.index : 0);
         return { ok: true };
       }
       case "approve": {
@@ -241,6 +256,10 @@ export async function attachRemote(): Promise<void> {
 
 export async function startRemote(portOverride?: number): Promise<RemoteStatus> {
   await attachRemote();
+  // The boards are read lazily when a project is opened, and `ais serve` opens none: without this
+  // the phone would get an empty Tasks tab from a CLI server.
+  const store = useAppStore.getState();
+  await Promise.all(store.config.projects.map(p => store.loadTasks(p.id).catch(() => {})));
   const { remote } = useAppStore.getState().config;
   const port = portOverride ?? remote.port;
   const info = await getTransport().remoteStart(port, remote.token);

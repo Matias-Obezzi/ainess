@@ -813,6 +813,7 @@ export const es: Dictionary = {
   "tasks.blockedByTasks.one": "Bloqueada por {n} tarea sin terminar.",
   "tasks.blockedByTasks.other": "Bloqueada por {n} tareas sin terminar.",
   "tasks.moveTo": "Mover a",
+  "tasks.emptyColumn": "Nada en esta columna",
   "tasks.assignTo": "Asignar a",
   "tasks.title": "Título",
   "tasks.titlePlaceholder": "Qué hay que hacer",

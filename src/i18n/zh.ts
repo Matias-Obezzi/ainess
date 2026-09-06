@@ -812,6 +812,7 @@ export const zh: Dictionary = {
   "tasks.blockedByTasks.one": "被 {n} 个未完成的任务阻塞。",
   "tasks.blockedByTasks.other": "被 {n} 个未完成的任务阻塞。",
   "tasks.moveTo": "移动到",
+  "tasks.emptyColumn": "此列暂无内容",
   "tasks.assignTo": "指派给",
   "tasks.title": "标题",
   "tasks.titlePlaceholder": "要做什么",

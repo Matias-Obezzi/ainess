@@ -4,7 +4,7 @@
 import { useAppStore } from "@/store";
 import { toast } from "@/components/ui/toast";
 import type { RemoteSnapshot } from "@/lib/remote";
-import type { AgentConfig, AgentRuntime, Approval, Project, Run } from "@/types";
+import type { AgentConfig, AgentRuntime, Approval, Project, Run, Task } from "@/types";
 
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
 const TOKEN_KEY = "ais.remote.token";
@@ -138,6 +138,11 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     });
   }
 
+  const tasks: Record<string, Task[]> = {};
+  for (const task of snapshot.tasks) {
+    (tasks[task.projectId] ??= []).push(task);
+  }
+
   useAppStore.setState(state => ({
     loaded: true,
     config: { ...state.config, projects, chats: snapshot.chats, language: snapshot.language },
@@ -149,6 +154,7 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     chatMessages: snapshot.chatMessages,
     binaries: snapshot.binaries,
     remoteActiveChats: snapshot.activeChats,
+    tasks,
     // Nothing is ever read from disk here, so no skeleton should ever be waiting for it.
     historyLoading: {},
     chatLoading: {},
@@ -179,6 +185,9 @@ export function installRemoteActions(): void {
     approve: (approvalId, note) => call("/api/approve", { approvalId, decision: "approve", note }),
     reject: (approvalId, note) => call("/api/approve", { approvalId, decision: "reject", note }),
     sendChatMessage: (chatId, text) => call("/api/chat", { chatId, text }),
+    moveTask: (taskId, status, index) => { void call("/api/task", { taskId, op: "move", status, index }); },
+    archiveTask: (taskId) => { void call("/api/task", { taskId, op: "archive" }); },
+    removeTask: (taskId) => { void call("/api/task", { taskId, op: "delete" }); },
     stopChat: (chatId) => call("/api/stop", { chatId }),
     // The snapshot is the only source of truth here: nothing to load, nothing to persist.
     saveConfig: async () => {},

@@ -54,6 +54,7 @@ const ACTIONS: Record<string, string> = {
   "/api/stop": "stop",
   "/api/approve": "approve",
   "/api/chat": "chat",
+  "/api/task": "task",
 };
 
 async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
