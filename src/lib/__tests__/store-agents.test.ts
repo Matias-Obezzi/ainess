@@ -174,6 +174,43 @@ describe("applyFormation", () => {
   });
 });
 
+describe("formation assignments", () => {
+  it("carries what each agent had enabled, and re-points it at the copies", async () => {
+    const { store } = await boot(legacyConfig());
+    const { useAppStore } = store;
+
+    // In p1 the skill is enabled for one agent in particular: Antigravity.
+    const p1Antigravity = useAppStore.getState().config.projects.find(p => p.id === "p1")!.agents[1];
+    expect(useAppStore.getState().config.skills[0].enabledFor).toEqual([p1Antigravity.id]);
+
+    const formationId = useAppStore.getState().saveProjectAsFormation("p1", "Con skill")!;
+    const formation = useAppStore.getState().config.formations.find(f => f.id === formationId)!;
+    const templateAgent = formation.agents[1];
+    expect(formation.assignments?.[templateAgent.id]).toEqual({ skills: ["s1"], mcpServers: [] });
+
+    // Applying it to the other project enables the same skill for the new copy of that agent.
+    useAppStore.getState().applyFormation("p2", formationId);
+    const state = useAppStore.getState();
+    const p2 = state.config.projects.find(p => p.id === "p2")!;
+    const copy = p2.agents.find(a => a.name === "Antigravity 2")!;
+    expect(state.config.skills[0].enabledFor).toContain(copy.id);
+    // The agent it already had keeps its own assignment.
+    expect(state.config.skills[0].enabledFor).toContain(p1Antigravity.id);
+  });
+
+  it("leaves a resource enabled for everyone alone", async () => {
+    const config = legacyConfig();
+    (config.skills as Array<Record<string, unknown>>)[0].enabledFor = "all";
+    const { store } = await boot(config);
+    const { useAppStore } = store;
+
+    const formationId = useAppStore.getState().saveProjectAsFormation("p1", "Todo")!;
+    useAppStore.getState().applyFormation("p2", formationId);
+
+    expect(useAppStore.getState().config.skills[0].enabledFor).toBe("all");
+  });
+});
+
 describe("removeAgent", () => {
   it("re-parents the children instead of deleting them, and only in that project", async () => {
     const { store } = await boot(legacyConfig());

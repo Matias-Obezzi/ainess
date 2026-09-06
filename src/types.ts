@@ -100,6 +100,13 @@ export interface Formation {
   description?: string;
   /** Same shape as a project's agents; ids are regenerated when it is applied. */
   agents: AgentConfig[];
+  /**
+   * Which skills and MCP servers each agent of the formation had, by the id those resources have
+   * in the config. Keyed by the agent id *inside the formation*. Without this, a skill enabled for
+   * one agent in particular would be lost the moment the team is copied into another project,
+   * because the copy gets new agent ids.
+   */
+  assignments?: Record<string, { skills: string[]; mcpServers: string[] }>;
 }
 
 export type HookEvent =

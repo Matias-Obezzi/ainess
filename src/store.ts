@@ -308,13 +308,52 @@ function generateSeedConfig(): AppConfig {
  * Copies a team keeping its shape: every agent gets a new id and every `parentId` is remapped to
  * the new id of its parent (a parent that is not in the list becomes a root, so nothing is lost).
  */
+export function cloneAgentsMapped(agents: AgentConfig[]): { agents: AgentConfig[]; idMap: Map<string, string> } {
+  const idMap = new Map(agents.map(a => [a.id, crypto.randomUUID()]));
+  return {
+    idMap,
+    agents: agents.map(a => ({
+      ...a,
+      id: idMap.get(a.id)!,
+      parentId: a.parentId ? idMap.get(a.parentId) ?? null : null,
+    })),
+  };
+}
+
 export function cloneAgents(agents: AgentConfig[]): AgentConfig[] {
-  const ids = new Map(agents.map(a => [a.id, crypto.randomUUID()]));
-  return agents.map(a => ({
-    ...a,
-    id: ids.get(a.id)!,
-    parentId: a.parentId ? ids.get(a.parentId) ?? null : null,
-  }));
+  return cloneAgentsMapped(agents).agents;
+}
+
+/**
+ * Re-points a formation's skill and MCP assignments at the agents it just created. A resource that
+ * is enabled for everyone, or that no longer exists, is left alone.
+ */
+export function applyAssignments(
+  config: AppConfig,
+  formation: Formation,
+  idMap: Map<string, string>,
+): Pick<AppConfig, "skills" | "mcpServers"> {
+  const assignments = formation.assignments;
+  if (!assignments) return { skills: config.skills, mcpServers: config.mcpServers };
+  const wanted = { skills: new Map<string, string[]>(), mcpServers: new Map<string, string[]>() };
+  for (const [formationAgentId, resources] of Object.entries(assignments)) {
+    const newAgentId = idMap.get(formationAgentId);
+    if (!newAgentId) continue;
+    for (const kind of ["skills", "mcpServers"] as const) {
+      for (const resourceId of resources[kind] ?? []) {
+        const list = wanted[kind].get(resourceId) ?? [];
+        list.push(newAgentId);
+        wanted[kind].set(resourceId, list);
+      }
+    }
+  }
+  const grow = <T extends { id: string; enabledFor: "all" | string[] }>(items: T[], map: Map<string, string[]>): T[] =>
+    items.map(item => {
+      const add = map.get(item.id);
+      if (!add || item.enabledFor === "all") return item;
+      return { ...item, enabledFor: [...item.enabledFor, ...add.filter(id => !item.enabledFor.includes(id))] };
+    });
+  return { skills: grow(config.skills, wanted.skills), mcpServers: grow(config.mcpServers, wanted.mcpServers) };
 }
 
 /** A runtime entry per agent: without it the first run of a project crashes. */
@@ -797,16 +836,24 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const id = crypto.randomUUID();
       // The dialog hands over the team the user edited; without one, the formation decides.
       let agents: AgentConfig[];
+      // A formation can also carry which skills and MCP servers its agents had.
+      let resources: Partial<Pick<AppConfig, "skills" | "mcpServers">> = {};
       if (project.agents) {
         agents = project.agents;
       } else {
         const formationId = opts && "formationId" in opts ? opts.formationId : state.config.defaultFormationId;
         const formation = formationId ? state.config.formations.find(f => f.id === formationId) : undefined;
-        agents = formation ? cloneAgents(formation.agents) : [];
+        if (formation) {
+          const cloned = cloneAgentsMapped(formation.agents);
+          agents = cloned.agents;
+          resources = applyAssignments(state.config, formation, cloned.idMap);
+        } else {
+          agents = [];
+        }
       }
       const newProject: Project = { ...project, agents, id, createdAt: Date.now() };
       return {
-        config: { ...state.config, projects: [...state.config.projects, newProject] },
+        config: { ...state.config, ...resources, projects: [...state.config.projects, newProject] },
         runtime: { ...state.runtime, [id]: runtimeFor(agents) },
       };
     });
@@ -952,7 +999,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // A delegation resolves by name, so an agent joining a team that already has that name
       // comes in as "Claude 2" instead of making both ambiguous.
       const team = [...(project.agents ?? [])];
-      const agents = cloneAgents(formation.agents).map(agent => {
+      const cloned = cloneAgentsMapped(formation.agents);
+      const agents = cloned.agents.map(agent => {
         const named = { ...agent, name: nextAgentName(team, agent.name) };
         team.push(named);
         return named;
@@ -960,6 +1008,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       return {
         config: {
           ...state.config,
+          ...applyAssignments(state.config, formation, cloned.idMap),
           projects: state.config.projects.map(p => p.id === projectId ? { ...p, agents: [...(p.agents ?? []), ...agents] } : p),
         },
         // The history and the runtime of the agents already there are left alone.
@@ -999,11 +1048,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
   saveProjectAsFormation: (projectId, name) => {
     const project = get().config.projects.find(p => p.id === projectId);
     if (!project) return undefined;
+    const config = get().config;
+    const cloned = cloneAgentsMapped(project.agents ?? []);
+    // What each agent had enabled travels with the template, keyed by its id inside the formation.
+    const assignments: NonNullable<Formation["assignments"]> = {};
+    for (const agent of project.agents ?? []) {
+      const formationAgentId = cloned.idMap.get(agent.id);
+      if (!formationAgentId) continue;
+      const skills = config.skills.filter(s => s.enabledFor !== "all" && s.enabledFor.includes(agent.id)).map(s => s.id);
+      const mcpServers = config.mcpServers.filter(m => m.enabledFor !== "all" && m.enabledFor.includes(agent.id)).map(m => m.id);
+      if (skills.length || mcpServers.length) assignments[formationAgentId] = { skills, mcpServers };
+    }
     const formation: Formation = {
       id: crypto.randomUUID(),
       name: name.trim() || project.name,
       description: `Equipo de ${project.name}`,
-      agents: cloneAgents(project.agents ?? []),
+      agents: cloned.agents,
+      ...(Object.keys(assignments).length ? { assignments } : {}),
     };
     set((state) => ({ config: { ...state.config, formations: [...state.config.formations, formation] } }));
     debouncedSave();
