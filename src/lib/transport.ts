@@ -17,6 +17,16 @@ export interface Transport {
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
 
+  // Read-only probes for the diagnostics section and `ais doctor`.
+  /**
+   * Size, file count and writability of one folder of the app's own storage: the logs folder
+   * (`scope` "logs") or the config folder (`scope` "config", optionally narrowed by
+   * `relativePath`). Null where there is no filesystem (browser preview, phone build).
+   */
+  storageStat(scope: "logs" | "config", relativePath?: string): Promise<import("@/types").StorageStat | null>;
+  /** True when nothing is listening on `port` here. Null when it cannot be checked. */
+  portAvailable(port: number): Promise<boolean | null>;
+
   // LAN remote access (see src/lib/remote.ts). The server lives in the transport because
   // the orchestrator state lives in this process.
   remoteStart(port: number, token: string): Promise<{ url: string; ip: string }>;

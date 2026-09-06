@@ -92,11 +92,14 @@ describe("dictionaries", () => {
     }
   });
 
-  it("lists the keys in the same order as Spanish, so the files stay easy to compare", () => {
+  it("declares the keys in the same order in every language", () => {
     const baseOrder = Object.keys(es);
     for (const lang of LANGUAGES) {
       if (lang === "es") continue;
-      expect({ lang, keys: Object.keys(dictionaries[lang]) }).toEqual({ lang, keys: baseOrder });
+      const order = Object.keys(dictionaries[lang]);
+      const firstDiff = baseOrder.findIndex((key, i) => order[i] !== key);
+      expect({ lang, at: firstDiff, key: firstDiff === -1 ? null : order[firstDiff] })
+        .toEqual({ lang, at: -1, key: null });
     }
   });
 

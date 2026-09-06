@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Transport } from "./transport";
 import { ipc, onRunOutput, onRunExit } from "./tauri";
-import type { PtyExitEvent, PtyOutputEvent, ShellInfo } from "@/types";
+import type { PtyExitEvent, PtyOutputEvent, ShellInfo, StorageStat } from "@/types";
 
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
 export const tauriTransport: Transport = {
@@ -38,6 +38,21 @@ export const tauriTransport: Transport = {
   readFileAbs: async (path) => {
     try {
       return await invoke<string | null>("read_file_abs", { path });
+    } catch {
+      return null;
+    }
+  },
+
+  storageStat: async (scope, relativePath) => {
+    try {
+      return await invoke<StorageStat>("storage_stat", { scope, relativePath: relativePath ?? null });
+    } catch {
+      return null;
+    }
+  },
+  portAvailable: async (port) => {
+    try {
+      return await invoke<boolean>("port_available", { port });
     } catch {
       return null;
     }

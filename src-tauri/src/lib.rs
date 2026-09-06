@@ -1,5 +1,6 @@
 mod config;
 mod detect;
+mod diagnostics;
 mod http;
 mod logging;
 mod pty;
@@ -47,6 +48,8 @@ pub fn run() {
             config::read_home_file,
             config::read_file_abs,
             detect::detect_binaries,
+            diagnostics::storage_stat,
+            diagnostics::port_available,
             http::http_post,
             http::http_get,
             logging::log_append,

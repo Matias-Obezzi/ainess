@@ -127,6 +127,9 @@ export function Composer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, chatMode, currentChatId, currentProjectId]);
 
+  // These keys belong to the composer, so they are handled here rather than by the window
+  // listener in App.tsx, but they are still declared in src/lib/shortcuts.ts (group "composer"),
+  // which is what the Ctrl+/ dialog documents. Adding one here means adding it there too.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && e.ctrlKey) {
       e.preventDefault();

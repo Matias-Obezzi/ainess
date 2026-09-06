@@ -8,6 +8,7 @@ import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TitleBar } from "@/components/shell/TitleBar";
 import { SearchPalette } from "@/components/shell/SearchPalette";
+import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
 import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectScreen } from "@/components/shell/ProjectScreen";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
@@ -19,6 +20,7 @@ import { useQuotaSync } from "@/hooks/useQuotaSync";
 import { useRepoSync } from "@/hooks/useRepoSync";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
+import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
 
 export default function App() {
   const init = useAppStore(state => state.init);
@@ -52,30 +54,36 @@ export default function App() {
   useQuotaSync();
   useRepoSync();
 
-  // Ctrl+, opens Configuración, Ctrl+K the search palette, Ctrl+B toggles the sidebar
-  // and Ctrl+` the terminals dock.
+  // Every global shortcut is resolved from the one table in src/lib/shortcuts.ts, which is also
+  // what the Ctrl+/ dialog documents, so the keys and their description cannot drift apart.
   useEffect(() => {
+    const platform = shortcutPlatform();
     const handler = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || e.altKey) return;
-      const key = e.key.toLowerCase();
-      // `code` covers layouts where the backtick is a dead key and never reaches `key`.
-      if (key === "`" || e.code === "Backquote") {
-        e.preventDefault();
-        const state = useAppStore.getState();
-        state.toggleTermPanel();
-        // Opening an empty dock straight into its empty state helps nobody.
-        if (!state.termPanelOpen && useAppStore.getState().terminals.length === 0) {
-          useAppStore.getState().openTerminal();
+      const shortcut = resolveGlobalShortcut(e, platform);
+      if (!shortcut) return;
+      e.preventDefault();
+      const state = useAppStore.getState();
+      switch (shortcut.id) {
+        case "terminals": {
+          state.toggleTermPanel();
+          // Opening an empty dock straight into its empty state helps nobody.
+          if (!state.termPanelOpen && useAppStore.getState().terminals.length === 0) {
+            useAppStore.getState().openTerminal();
+          }
+          break;
         }
-      } else if (key === ",") {
-        e.preventDefault();
-        useAppStore.getState().openSettings();
-      } else if (key === "k") {
-        e.preventDefault();
-        useAppStore.getState().toggleSearch();
-      } else if (key === "b") {
-        e.preventDefault();
-        useAppStore.getState().toggleSidebar();
+        case "settings":
+          state.openSettings();
+          break;
+        case "palette":
+          state.toggleSearch();
+          break;
+        case "sidebar":
+          state.toggleSidebar();
+          break;
+        case "shortcuts":
+          state.toggleShortcuts();
+          break;
       }
     };
     window.addEventListener("keydown", handler);
@@ -112,6 +120,7 @@ export default function App() {
 
       <SettingsDialog />
       <SearchPalette />
+      <ShortcutsDialog />
     </div>
   );
 }

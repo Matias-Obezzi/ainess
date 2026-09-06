@@ -1,7 +1,7 @@
 // The Tareas mode of a project: its own little toolbar (board or graph, plus "Nueva tarea"), a bar
 // to search and filter, and whichever of the two views is selected. The filter lives here so the
 // board and the graph always count the same work; it is a view thing and nothing about it is saved.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,10 +30,20 @@ export function TasksView({ projectId }: { projectId: string }) {
   const loaded = useAppStore(state => state.loaded);
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const agents = useAppStore(state => selectProjectAgents(state, projectId));
+  const focusedTaskId = useAppStore(state => state.focusedTaskId);
+  const focusTask = useAppStore(state => state.focusTask);
 
   useAutoArchive(projectId);
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+
+  // The search palette asks for one task's detail from outside the board; consume the request
+  // right away so closing the dialog does not immediately reopen it.
+  useEffect(() => {
+    if (!focusedTaskId) return;
+    setOpenTaskId(focusedTaskId);
+    focusTask(null);
+  }, [focusedTaskId, focusTask]);
   const [newOpen, setNewOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<TaskStatus | undefined>(undefined);
   const [query, setQuery] = useState("");
