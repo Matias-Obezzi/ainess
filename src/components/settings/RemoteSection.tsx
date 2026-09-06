@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "@/components/ui/toast";
 import { getTransport } from "@/lib/transport";
 import { tunnelUrl } from "@/lib/remote";
-import { TUNNEL_PROVIDERS, tunnelBinary, tunnelDescription, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
+import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelDescription, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
 import { Copy, Globe, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 
 /** Configuración > Remoto: LAN server (URL + QR) and the optional public tunnel. */
@@ -36,12 +36,20 @@ export function RemoteSection() {
   const [tunnelBusy, setTunnelBusy] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [detected, setDetected] = useState<{ cloudflared: string | null; ngrok: string | null } | null>(null);
+  const [domainInput, setDomainInput] = useState(remote.tunnel.domain ?? "");
+  const [tunnelNameInput, setTunnelNameInput] = useState(remote.tunnel.tunnelName ?? "");
 
   const provider = remote.tunnel.provider;
   const binaryPath = detected ? detected[provider] : null;
   const publicUrl = tunnel.running && tunnel.url ? tunnelUrl(tunnel.url, remote.token) : null;
+  const fixedOpts = { domain: remote.tunnel.domain, tunnelName: remote.tunnel.tunnelName };
+  const isFixed = hasFixedUrl(provider, fixedOpts);
+  const previewUrl = fixedUrl(provider, fixedOpts);
+  const missingTunnelName = provider === "cloudflared" && !!normalizeDomain(remote.tunnel.domain) && !remote.tunnel.tunnelName?.trim();
 
   useEffect(() => { setPort(String(remote.port)); }, [remote.port]);
+  useEffect(() => { setDomainInput(remote.tunnel.domain ?? ""); }, [remote.tunnel.domain]);
+  useEffect(() => { setTunnelNameInput(remote.tunnel.tunnelName ?? ""); }, [remote.tunnel.tunnelName]);
 
   const detect = useCallback(async () => {
     try {
@@ -114,6 +122,37 @@ export function RemoteSection() {
     } finally {
       setTunnelBusy(false);
     }
+  };
+
+  /** Saves the fixed-URL fields and, if the tunnel is up, restarts it against the new config. */
+  const applyTunnelFixedFields = async (patch: { domain?: string; tunnelName?: string }) => {
+    const nextTunnel = { ...remote.tunnel, ...patch };
+    updateConfig({ remote: { ...remote, tunnel: nextTunnel } });
+    if (!tunnel.running) return;
+    setTunnelBusy(true);
+    try {
+      await stopTunnel();
+      await startTunnel();
+    } catch (e) {
+      updateConfig({ remote: { ...remote, tunnel: { ...nextTunnel, enabled: false } } });
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTunnelBusy(false);
+    }
+  };
+
+  const applyDomain = () => {
+    const normalized = normalizeDomain(domainInput);
+    setDomainInput(normalized);
+    if (normalized === (remote.tunnel.domain ?? "")) return;
+    void applyTunnelFixedFields({ domain: normalized });
+  };
+
+  const applyTunnelName = () => {
+    const trimmed = tunnelNameInput.trim();
+    setTunnelNameInput(trimmed);
+    if (trimmed === (remote.tunnel.tunnelName ?? "")) return;
+    void applyTunnelFixedFields({ tunnelName: trimmed });
   };
 
   const applyPort = () => {
@@ -223,6 +262,59 @@ export function RemoteSection() {
           <span className="text-xs text-muted-foreground">{tunnelDescription(provider)}</span>
         </div>
 
+        <div className="flex flex-col gap-2 rounded-md border p-3">
+          <span className="text-xs font-semibold text-muted-foreground">URL fija (opcional)</span>
+          {provider === "ngrok" ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Dominio estático</label>
+              <Input
+                className="w-72"
+                placeholder="algo.ngrok-free.app"
+                value={domainInput}
+                onChange={e => setDomainInput(e.target.value)}
+                onBlur={applyDomain}
+                onKeyDown={e => e.key === "Enter" && applyDomain()}
+              />
+              <span className="text-xs text-muted-foreground">
+                El plan gratis de ngrok incluye un dominio estático. Reclamalo en dashboard.ngrok.com → Domains y pegalo
+                acá: la URL pública no cambia más.
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Nombre del túnel</label>
+                <Input
+                  className="w-72"
+                  placeholder="ainess"
+                  value={tunnelNameInput}
+                  onChange={e => setTunnelNameInput(e.target.value)}
+                  onBlur={applyTunnelName}
+                  onKeyDown={e => e.key === "Enter" && applyTunnelName()}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Hostname</label>
+                <Input
+                  className="w-72"
+                  placeholder="ainess.midominio.com"
+                  value={domainInput}
+                  onChange={e => setDomainInput(e.target.value)}
+                  onBlur={applyDomain}
+                  onKeyDown={e => e.key === "Enter" && applyDomain()}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Necesitás una cuenta de Cloudflare con tu dominio. Corré una vez estos comandos y completá los campos:
+              </span>
+              <code className="whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
+                {"cloudflared tunnel login\ncloudflared tunnel create ainess\ncloudflared tunnel route dns ainess ainess.midominio.com"}
+              </code>
+              {missingTunnelName && <span className="text-xs text-destructive">Falta el nombre del túnel.</span>}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {binaryPath ? (
             <>
@@ -249,7 +341,10 @@ export function RemoteSection() {
                 onCheckedChange={(c) => void toggleTunnel(c)}
               />
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">Túnel público</span>
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  Túnel público
+                  {isFixed && <Badge variant="secondary">URL fija</Badge>}
+                </span>
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   {tunnelBusy ? (
                     <>
@@ -258,6 +353,9 @@ export function RemoteSection() {
                     </>
                   ) : tunnel.running ? `Activo con ${tunnel.provider ?? provider}` : tunnel.error ? tunnel.error : "Apagado"}
                 </span>
+                {isFixed && previewUrl && !tunnel.running && (
+                  <span className="text-xs text-muted-foreground">Al prenderlo, la URL va a ser <code className="rounded bg-muted px-1">{previewUrl}</code></span>
+                )}
               </div>
             </div>
           </TooltipTrigger>

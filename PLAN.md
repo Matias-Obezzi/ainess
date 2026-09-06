@@ -628,43 +628,81 @@ queda en la barra de direcciones.
 
 ## Túnel público
 
-`AppConfig.remote.tunnel: { provider: "cloudflared" | "ngrok"; enabled: boolean }` (migración a
-`version: 9`, junto con `logLevel` y `autoUpdateCheck`; default `{ provider: "cloudflared", enabled:
-false }`).
+`AppConfig.remote.tunnel: { provider: "cloudflared" | "ngrok"; enabled: boolean; domain?: string;
+tunnelName?: string }` (migración a `version: 9`, junto con `logLevel` y `autoUpdateCheck`; default
+`{ provider: "cloudflared", enabled: false }`). `domain` y `tunnelName` son opcionales y no
+bumpean la versión: una config vieja sigue arrancando igual, con URL efímera.
 
-`src-tauri/src/tunnel.rs`: `TunnelState { child, url, provider }` (`Mutex`), comandos
-`tunnel_start(provider, port)`, `tunnel_stop()`, `tunnel_status()` y `tunnel_detect()`.
-`tunnel_start` es `async` y hace el trabajo bloqueante en `spawn_blocking`: resuelve el binario con
-`detect::find_path` (PATH + carpetas de winget), lo lanza oculto (`CREATE_NO_WINDOW`), lee stdout y
-stderr en hilos y espera hasta 30 s a que aparezca la URL pública; si el proceso muere antes,
-devuelve el error con las últimas líneas (y el consejo del authtoken si es ngrok). `tunnel_status`
-detecta con `try_wait` que el túnel se cayó solo, para que la UI muestre "Se cayó el túnel" con
-botón "Reintentar". `tunnel::shutdown` se llama en `RunEvent::Exit`, así no queda ningún proceso
-huérfano al salir por la bandeja.
+Dos formas de tener **URL fija** (la misma siempre, en vez de la efímera de cada arranque), las dos
+soportadas y sin dependencias nuevas:
 
-Comandos y parsing:
+- **ngrok con dominio estático**: el plan gratis incluye un (1) dominio estático
+  (`algo.ngrok-free.app`) reclamado en dashboard.ngrok.com → Domains. Alcanza con cargar `domain`;
+  se lanza como `ngrok http <port> --log=stdout --log-format=json --url https://<domain>`.
+- **cloudflared con named tunnel**: requiere cuenta de Cloudflare y un dominio propio. El usuario
+  corre una vez `cloudflared tunnel login`, `cloudflared tunnel create <tunnelName>` y
+  `cloudflared tunnel route dns <tunnelName> <domain>`; hacen falta **los dos** campos (`domain` y
+  `tunnelName`) para que cuente como fija — si falta `tunnelName` se comporta como quick tunnel. Se
+  lanza como `cloudflared tunnel --url http://127.0.0.1:<port> run <tunnelName>` y no imprime
+  ninguna URL: se detecta que quedó arriba con una línea de conexión registrada
+  (`/registered tunnel connection/i` o `/connection [0-9a-f-]{8,} registered/i`) y se devuelve
+  `https://<domain>` normalizado.
+
+El quick tunnel de cloudflared (`trycloudflare.com`) no puede tener URL fija por diseño: sigue
+siendo el modo por defecto cuando no hay `domain`/`tunnelName` configurados.
+
+`src/lib/tunnel.ts` tiene la parte compartida y testeada: `normalizeDomain(input)` (saca esquema,
+espacios, path y barra final, pasa a minúsculas), `hasFixedUrl(provider, opts)` y
+`fixedUrl(provider, opts)` (con `opts: { domain?, tunnelName? }`), `tunnelArgs(provider, port,
+opts?)`, `extractTunnelUrl(provider, line, opts?)`, `tunnelBinary`, `tunnelInstallCommand`,
+`tunnelDescription`. `src/lib/tunnel-node.ts` es la misma lógica con `child_process` para
+`ais serve --tunnel`.
+
+`src-tauri/src/tunnel.rs`: `TunnelState { child, url, provider, fixed }` (`Mutex`), comandos
+`tunnel_start(provider, port, domain, tunnel_name)`, `tunnel_stop()`, `tunnel_status()` (con
+`fixed: bool` para que la UI lo muestre) y `tunnel_detect()`. `tunnel_start` es `async` y hace el
+trabajo bloqueante en `spawn_blocking`: resuelve el binario con `detect::find_path` (PATH + carpetas
+de winget), arma los argumentos igual que `tunnelArgs`, lo lanza oculto (`CREATE_NO_WINDOW`), lee
+stdout y stderr en hilos y espera a que aparezca la URL pública (o, en un named tunnel, la línea de
+conexión registrada) con el mismo `extract_url` espejo de la versión TS. El timeout es 30 s, salvo
+para un named tunnel de cloudflared que sube a 45 s (tarda más en registrar las conexiones). Si el
+proceso muere antes, devuelve el error con las últimas líneas y una pista según el caso: authtoken
+de ngrok, dominio no reclamado en la cuenta de ngrok (`domain` + `not found`/`not
+authorized`/`ERR_NGROK_3200`), o falta de `cloudflared tunnel login`/`tunnel create` (menciones de
+`origincertificate`, `cert.pem`, `credentials file` o `tunnel credentials`). `tunnel_status` detecta
+con `try_wait` que el túnel se cayó solo, para que la UI muestre "Se cayó el túnel" con botón
+"Reintentar". `tunnel::shutdown` se llama en `RunEvent::Exit`, así no queda ningún proceso huérfano
+al salir por la bandeja.
+
+Comandos y parsing (sin URL fija, el caso por defecto):
 
 - cloudflared: `cloudflared tunnel --url http://127.0.0.1:<port>`, imprime la URL en **stderr**
   (`https://<algo>.trycloudflare.com`). Sin cuenta; la URL cambia cada vez.
 - ngrok: `ngrok http <port> --log=stdout --log-format=json`, la URL sale en el campo `url` del
   evento `started tunnel`. Necesita `ngrok config add-authtoken …`.
 
-`src/lib/tunnel.ts` tiene la parte compartida y testeada (`extractTunnelUrl`, `tunnelArgs`,
-`tunnelBinary`, `tunnelInstallCommand`, `tunnelDescription`); `src/lib/tunnel-node.ts` es la misma
-lógica con `child_process` para `ais serve --tunnel`. `src/lib/remote.ts` agrega `startTunnel()`
-(exige que el servidor local esté corriendo, si no lanza "Prendé primero el acceso remoto local"),
-`stopTunnel()` y `tunnelUrl(publicUrl, token)`. El store tiene `tunnelStatus` y las acciones
-`startTunnel/stopTunnel/refreshTunnelStatus`; `stopRemote` apaga el túnel primero y `runInit` lo
-levanta al arrancar si `remote.enabled && remote.tunnel.enabled`.
+`src/lib/remote.ts` agrega `startTunnel()` (exige que el servidor local esté corriendo, si no lanza
+"Prendé primero el acceso remoto local"; pasa `{ domain, tunnelName }` de la config al transport),
+`stopTunnel()` y `tunnelUrl(publicUrl, token)`. `Transport.tunnelStart(provider, port, opts?)` recibe
+las mismas opciones; `transport-tauri.ts` las manda como `domain`/`tunnelName` al comando Tauri
+(camelCase, sin `rename_all` porque Tauri ya mapea así por defecto). El store tiene `tunnelStatus` y
+las acciones `startTunnel/stopTunnel/refreshTunnelStatus`; `stopRemote` apaga el túnel primero y
+`runInit` lo levanta al arrancar si `remote.enabled && remote.tunnel.enabled`.
 
 `RemoteSection` suma el bloque "Acceso desde afuera (túnel)": select de proveedor con su
 explicación, estado de detección del binario con el `winget install …` y botón "Volver a detectar",
-switch deshabilitado (con tooltip) si el acceso local está apagado o falta el binario, URL pública
-con QR y Copiar, y el aviso de seguridad. La página remota usa rutas relativas, así que funciona
-igual detrás del túnel.
+un bloque "URL fija (opcional)" con el input de dominio estático (ngrok) o nombre de túnel + hostname
+(cloudflared, con los tres comandos de referencia), switch deshabilitado (con tooltip) si el acceso
+local está apagado o falta el binario, un badge "URL fija" y la URL que va a quedar cuando la config
+alcanza, URL pública con QR y Copiar, y el aviso de seguridad. Cambiar el dominio o el nombre del
+túnel mientras el túnel está corriendo lo reinicia solo (stop + start), mostrando el mismo indicador
+`tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
+del túnel.
 
-CLI: `ais serve --tunnel [cloudflared|ngrok]` levanta el túnel junto con el servidor e imprime la
-URL pública; `ais remote url --tunnel` devuelve la URL pública del túnel de ese proceso.
+CLI: `ais serve --tunnel [cloudflared|ngrok] [--tunnel-domain <dominio>] [--tunnel-name <nombre>]`
+levanta el túnel junto con el servidor e imprime la URL pública (los overrides se guardan en la
+config, igual que `--tunnel <prov>`); `ais remote url --tunnel` devuelve la URL pública del túnel de
+ese proceso.
 
 ## Verificación
 

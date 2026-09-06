@@ -9,7 +9,7 @@ import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
 import { remoteUrl, tunnelUrl } from "@/lib/remote";
 import { installConsoleCapture, log } from "@/lib/logger";
-import { isTunnelProvider } from "@/lib/tunnel";
+import { isTunnelProvider, normalizeDomain } from "@/lib/tunnel";
 import { killTunnelSync } from "@/lib/tunnel-node";
 import { localIp } from "@/lib/remote-node";
 import { claudeCandidateDirs } from "@/lib/transport-node";
@@ -60,7 +60,7 @@ async function main() {
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
     console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
-    console.log("  serve [--port N] [--tunnel [prov]] [-w dir|-p proyecto]  Servidor para el celular, Ctrl+C termina");
+    console.log("  serve [--port N] [--tunnel [prov]] [--tunnel-domain dominio] [--tunnel-name nombre] [-w dir|-p proyecto]  Servidor para el celular, Ctrl+C termina");
     console.log("  remote url [--tunnel] | token [--regenerate]             URL con token para el celular"); 
     console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
     console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
@@ -705,7 +705,13 @@ async function main() {
   if (first === "serve") {
     const { values: sv } = parseArgs({
       args: args.slice(1),
-      options: { port: { type: "string" }, workspace: { type: "string", short: "w" }, project: { type: "string", short: "p" } },
+      options: {
+        port: { type: "string" },
+        workspace: { type: "string", short: "w" },
+        project: { type: "string", short: "p" },
+        "tunnel-domain": { type: "string" },
+        "tunnel-name": { type: "string" },
+      },
       allowPositionals: true,
       strict: false,
     });
@@ -729,7 +735,11 @@ async function main() {
     if (tunnelIdx !== -1) {
       const arg = args[tunnelIdx + 1];
       const provider = isTunnelProvider(arg) ? arg : store.config.remote.tunnel.provider;
-      store.updateConfig({ remote: { ...store.config.remote, tunnel: { provider, enabled: true } } });
+      const domainOverride = sv["tunnel-domain"] as string | undefined;
+      const tunnelNameOverride = sv["tunnel-name"] as string | undefined;
+      const domain = domainOverride !== undefined ? normalizeDomain(domainOverride) : store.config.remote.tunnel.domain;
+      const tunnelName = tunnelNameOverride !== undefined ? tunnelNameOverride.trim() : store.config.remote.tunnel.tunnelName;
+      store.updateConfig({ remote: { ...store.config.remote, tunnel: { provider, enabled: true, domain, tunnelName } } });
       try {
         await store.startTunnel();
         publicUrl = tunnelUrl(useAppStore.getState().tunnelStatus.url ?? "", store.config.remote.token);

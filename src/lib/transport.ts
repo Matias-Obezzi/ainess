@@ -34,9 +34,9 @@ export interface Transport {
   openLogsDir(): Promise<void>;
 
   // Public tunnel on top of the LAN server (see src/lib/remote.ts).
-  tunnelStart(provider: string, port: number): Promise<{ url: string }>;
+  tunnelStart(provider: string, port: number, opts?: import("@/lib/tunnel").TunnelOptions): Promise<{ url: string }>;
   tunnelStop(): Promise<void>;
-  tunnelStatus(): Promise<{ running: boolean; url?: string; provider?: string }>;
+  tunnelStatus(): Promise<{ running: boolean; url?: string; provider?: string; fixed?: boolean }>;
   /** Absolute path of each tunnel binary, or null when it is not installed. */
   tunnelDetect(): Promise<{ cloudflared: string | null; ngrok: string | null }>;
 

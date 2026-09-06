@@ -128,6 +128,14 @@ export interface TunnelConfig {
   provider: TunnelProviderId;
   /** Only meaningful while `RemoteConfig.enabled` is true: the tunnel needs the local server. */
   enabled: boolean;
+  /**
+   * Fixed public hostname, without scheme. ngrok: the static domain of the account
+   * (`algo.ngrok-free.app`). cloudflared: the hostname routed to the named tunnel.
+   * Empty/undefined means an ephemeral URL.
+   */
+  domain?: string;
+  /** cloudflared only: name (or UUID) of the named tunnel created with `cloudflared tunnel create`. */
+  tunnelName?: string;
 }
 
 export interface RemoteConfig {
