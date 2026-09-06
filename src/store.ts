@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
+import { AppConfig, AgentConfig, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -48,6 +48,8 @@ export interface AppState {
   quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** Last known repository state per project (branch, changes, pull requests). */
   repoState: Record<string, RepoState>;
+  /** Git worktrees per project, one per agent that works in its own branch (see src/lib/worktree.ts). */
+  worktrees: Record<string, AgentWorktree[]>;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
   /** Whether a chat's messages are being loaded from disk for the first time (for a skeleton). */
@@ -157,6 +159,12 @@ export interface AppState {
   loadQuotaMarks(): Promise<void>;
   /** Re-reads the git state of a project's workspace. Read-only, and never throws. */
   refreshRepoState(projectId: string): Promise<void>;
+
+  // ---- Agent worktrees (src/lib/worktree.ts) ----
+  /** Records (or replaces) the worktree an agent works in. */
+  setWorktree(projectId: string, worktree: AgentWorktree): void;
+  /** Forgets a worktree record. The folder on disk is only removed by `removeWorktree`. */
+  forgetWorktree(projectId: string, agentId: string): void;
 
   submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void>;
   instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void>;
@@ -473,6 +481,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   models: {},
   quota: {},
   repoState: {},
+  worktrees: {},
   runtime: {},
   runs: {},
   messages: [],
@@ -825,6 +834,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newActiveTask[id];
       const newRepoState = { ...state.repoState };
       delete newRepoState[id];
+      // The folders on disk are left alone on purpose: deleting a project must never run
+      // `git worktree remove` behind the user's back.
+      const newWorktrees = { ...state.worktrees };
+      delete newWorktrees[id];
       // clear messages for project
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
@@ -838,6 +851,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         runtime: newRuntime,
         activeTaskRunId: newActiveTask,
         repoState: newRepoState,
+        worktrees: newWorktrees,
         messages: newMessages,
         runs: newRuns,
         tasks: newTasks,
@@ -1151,6 +1165,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
       });
     repoReads.set(projectId, read);
     return read;
+  },
+
+  setWorktree: (projectId, worktree) => {
+    set(state => {
+      const list = state.worktrees[projectId] ?? [];
+      const idx = list.findIndex(w => w.agentId === worktree.agentId);
+      const next = idx >= 0 ? list.map((w, i) => (i === idx ? worktree : w)) : [...list, worktree];
+      return { worktrees: { ...state.worktrees, [projectId]: next } };
+    });
+  },
+
+  forgetWorktree: (projectId, agentId) => {
+    set(state => {
+      const list = state.worktrees[projectId];
+      if (!list) return state;
+      return { worktrees: { ...state.worktrees, [projectId]: list.filter(w => w.agentId !== agentId) } };
+    });
   },
 
   submitPrompt: async (text, targetAgentId, projectId, opts) => {
@@ -1666,6 +1697,18 @@ const EMPTY_TASKS: Task[] = [];
 export function selectTasks(state: AppState, projectId: string | null | undefined): Task[] {
   if (!projectId) return EMPTY_TASKS;
   return state.tasks[projectId] ?? EMPTY_TASKS;
+}
+
+/** Shared empty list, so a project with no worktrees never re-renders its subscribers. */
+const NO_WORKTREES: AgentWorktree[] = [];
+
+export function selectProjectWorktrees(state: AppState, projectId: string | null | undefined): AgentWorktree[] {
+  if (!projectId) return NO_WORKTREES;
+  return state.worktrees[projectId] ?? NO_WORKTREES;
+}
+
+export function selectWorktree(state: AppState, projectId: string | null | undefined, agentId: string): AgentWorktree | undefined {
+  return selectProjectWorktrees(state, projectId).find(w => w.agentId === agentId);
 }
 
 export function selectProject(state: AppState, id: string | null | undefined): Project | undefined {

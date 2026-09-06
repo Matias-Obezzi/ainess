@@ -7,7 +7,7 @@
 // current project periodically to see decisions taken elsewhere.
 import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
-import type { Run, CommMessage, Approval } from "@/types";
+import type { Run, CommMessage, Approval, AgentWorktree } from "@/types";
 
 interface HistoryFile {
   version: 1;
@@ -20,6 +20,8 @@ interface HistoryFile {
    * after a restart still continues the same conversation. `null` = explicitly reset.
    */
   sessions?: Record<string, { sessionId: string | null; updatedAt: number }>;
+  /** Git worktrees of this project's agents (see src/lib/worktree.ts). */
+  worktrees?: AgentWorktree[];
 }
 
 /** Output of a run that was still running when the app (or CLI) that owned it went away. */
@@ -33,6 +35,12 @@ const SAVE_DELAY_MS = 500;
 const SYNC_INTERVAL_MS = 5000;
 
 const loadedProjects = new Set<string>();
+/**
+ * Projects whose worktree records were already taken from disk. Unlike runs or approvals, the
+ * list in memory is authoritative afterwards: re-adopting the file would resurrect a worktree the
+ * user just deleted.
+ */
+const worktreesLoaded = new Set<string>();
 const dirtyProjects = new Set<string>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 let subscribed = false;
@@ -45,8 +53,13 @@ export function attachHistoryPersistence(): void {
   if (subscribed) return;
   subscribed = true;
   useAppStore.subscribe((state, prev) => {
-    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals && state.runtime === prev.runtime) return;
+    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals && state.runtime === prev.runtime && state.worktrees === prev.worktrees) return;
     const changed = new Set<string>();
+    if (state.worktrees !== prev.worktrees) {
+      for (const projectId of new Set([...Object.keys(state.worktrees), ...Object.keys(prev.worktrees)])) {
+        if (state.worktrees[projectId] !== prev.worktrees[projectId]) changed.add(projectId);
+      }
+    }
     if (state.runtime !== prev.runtime) {
       for (const [projectId, agents] of Object.entries(state.runtime)) {
         const prevAgents = prev.runtime[projectId];
@@ -161,7 +174,22 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         changed = true;
       }
     }
-    return changed ? { runs, messages, approvals, runtime } : state;
+    // Worktrees: the file only seeds the list, the first time this project is read.
+    let worktrees = state.worktrees;
+    if (!worktreesLoaded.has(projectId)) {
+      worktreesLoaded.add(projectId);
+      const fromDisk = parsed.worktrees ?? [];
+      if (fromDisk.length > 0) {
+        const mine = state.worktrees[projectId] ?? [];
+        const known = new Set(mine.map(w => w.agentId));
+        const added = fromDisk.filter(w => w && w.agentId && !known.has(w.agentId));
+        if (added.length > 0) {
+          worktrees = { ...state.worktrees, [projectId]: [...mine, ...added] };
+          changed = true;
+        }
+      }
+    }
+    return changed ? { runs, messages, approvals, runtime, worktrees } : state;
   });
   notifyInterrupted(projectId, interrupted);
 }
@@ -214,7 +242,8 @@ export async function saveHistory(projectId: string): Promise<void> {
   for (const [agentId, rt] of Object.entries(state.runtime[projectId] ?? {})) {
     if (rt.sessionUpdatedAt) sessions[agentId] = { sessionId: rt.sessionId ?? null, updatedAt: rt.sessionUpdatedAt };
   }
-  const file: HistoryFile = { version: 1, runs, messages, approvals, sessions };
+  const worktrees = state.worktrees[projectId] ?? [];
+  const file: HistoryFile = { version: 1, runs, messages, approvals, sessions, worktrees };
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
@@ -252,7 +281,14 @@ export async function clearHistory(projectId: string): Promise<void> {
     messages: state.messages.filter(m => m.projectId !== projectId),
     approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
   }));
-  const file: HistoryFile = { version: 1, runs: [], messages: [], approvals: [] };
+  // Clearing the history is about runs and messages: the worktrees the agents work in stay.
+  const file: HistoryFile = {
+    version: 1,
+    runs: [],
+    messages: [],
+    approvals: [],
+    worktrees: useAppStore.getState().worktrees[projectId] ?? [],
+  };
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }
   dirtyProjects.delete(projectId);
@@ -262,6 +298,7 @@ export async function clearHistory(projectId: string): Promise<void> {
 /** Called when a project is deleted: forget it and empty its file. */
 export function forgetHistory(projectId: string): void {
   loadedProjects.delete(projectId);
+  worktreesLoaded.delete(projectId);
   dirtyProjects.delete(projectId);
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }

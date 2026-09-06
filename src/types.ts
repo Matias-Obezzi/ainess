@@ -46,6 +46,21 @@ export interface AgentConfig {
   color?: string;
   /** Tasks delegated to this agent wait for the user's approval before running. */
   requireApproval?: boolean;
+  /** Run this agent in its own git worktree (own branch, sibling folder). See src/lib/worktree.ts. */
+  worktree?: boolean;
+}
+
+/** A git worktree an agent works in, one per agent and project. */
+export interface AgentWorktree {
+  agentId: string;
+  /** Folder of the worktree, a sibling of the workspace. */
+  path: string;
+  branch: string;
+  /** Branch it was created from. */
+  base: string;
+  createdAt: number;
+  /** Last time it was prepared (dependency install included). */
+  readyAt?: number;
 }
 
 export interface Skill {
@@ -222,6 +237,8 @@ export interface AgentRuntime {
   /** When `sessionId` last changed (set or cleared); newest wins when merging with disk. */
   sessionUpdatedAt?: number;
   lastError?: string;
+  /** What is being set up before the run can start ("Creando el worktree…"). In memory only. */
+  preparing?: string;
   queuedInstructions: string[];
 }
 
