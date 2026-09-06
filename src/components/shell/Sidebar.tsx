@@ -39,8 +39,8 @@ import {
   Users,
 } from "lucide-react";
 
-/** Where bug reports go, opened in the user's own browser. */
-const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues";
+/** Straight to the issue templates, opened in the user's own browser. */
+const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues/new/choose";
 
 /** Left rail: home, the project tree with its chats, and the settings gear. */
 export function Sidebar() {
