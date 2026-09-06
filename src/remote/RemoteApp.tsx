@@ -131,10 +131,15 @@ export function RemoteApp() {
   );
 }
 
-/** One column, full viewport height; everything inside scrolls on its own. */
+/**
+ * One column, as tall as the small viewport; everything inside scrolls on its own.
+ *
+ * `svh` and not `dvh`: the dynamic unit follows the browser UI as it appears and disappears, so
+ * the tab bar at the bottom would shift (and hide behind Chrome) whenever the viewport changed.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-dvh w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="h-svh w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden">
       {children}
     </div>
   );

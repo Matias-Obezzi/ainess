@@ -106,6 +106,15 @@
 @layer base {
   * { border-color: var(--border); }
   html, body, #root { height: 100%; }
+  /*
+   * On a phone the browser UI comes and goes, and a percentage height resolves against the tall
+   * viewport (toolbars hidden): the page then ends up taller than what is on screen and its last
+   * row — the tab bar — sits under Chrome's own UI, which zooming makes obvious. The small
+   * viewport is the one that is always visible, so the shell is sized to that and nothing moves.
+   */
+  @supports (height: 100svh) {
+    html, body, #root { height: 100svh; }
+  }
   /* The shell owns its scrolling; the document itself never scrolls. */
   body { margin: 0; overflow: hidden; background: var(--background); color: var(--foreground); }
 }
