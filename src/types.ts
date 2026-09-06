@@ -207,7 +207,7 @@ export interface Preset {
 }
 
 export interface AppConfig {
-  version: 11;
+  version: 12;
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -235,6 +235,8 @@ export interface AppConfig {
   logLevel: LogLevel;
   /** Check for a new release a few seconds after startup. Default true. */
   autoUpdateCheck: boolean;
+  /** Archive done tasks older than this many days; null never archives on its own. */
+  autoArchiveDoneDays: number | null;
 }
 
 export interface AgentRuntime {
@@ -463,6 +465,9 @@ export interface AppNotification {
 
 export type TaskStatus = "backlog" | "working" | "needs-you" | "in-review" | "ready" | "done";
 
+/** How urgent a task is. Missing means "normal": only "high" changes how the board reads. */
+export type TaskPriority = "low" | "normal" | "high";
+
 export interface Task {
   id: string;
   projectId: string;
@@ -470,6 +475,8 @@ export interface Task {
   /** Long form detail, in markdown. */
   detail?: string;
   status: TaskStatus;
+  /** Urgency; missing counts as "normal". */
+  priority?: TaskPriority;
   /** Agent in charge. */
   agentId?: string;
   /** Tasks that have to finish before this one. */

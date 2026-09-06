@@ -280,7 +280,7 @@ function generateSeedConfig(): AppConfig {
   };
 
   return {
-    version: 11,
+    version: 12,
     language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
@@ -301,6 +301,7 @@ function generateSeedConfig(): AppConfig {
     chats: [],
     logLevel: "info",
     autoUpdateCheck: true,
+    autoArchiveDoneDays: null,
   };
 }
 
@@ -517,7 +518,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 11, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true } as AppConfig,
+  config: { version: 12, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -1581,6 +1582,16 @@ async function runInit(): Promise<void> {
         ...config,
         version: 11,
         language: config.language ?? null,
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 12: the board can archive its own done tasks (off until it is asked to).
+    if ((config.version as number) < 12) {
+      config = {
+        ...config,
+        version: 12,
+        autoArchiveDoneDays: config.autoArchiveDoneDays ?? null,
       } as AppConfig;
       isSeed = true;
     }
