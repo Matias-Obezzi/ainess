@@ -3,9 +3,28 @@ import {
   looksLikeNgrokCredential,
   ngrokApiKey,
   ngrokConfigKeys,
+  ngrokUpdateOutcome,
   parseNgrokConfigPath,
+  parseNgrokVersion,
   parseReservedDomains,
 } from "@/lib/ngrok";
+
+describe("ngrok update", () => {
+  it("reads the version out of `ngrok --version`", () => {
+    expect(parseNgrokVersion("ngrok version 3.20.1")).toBe("3.20.1");
+    expect(parseNgrokVersion("ngrok version 3.3.1\n")).toBe("3.3.1");
+    expect(parseNgrokVersion("command not found")).toBeNull();
+  });
+
+  it("tells apart an update, an already current agent and a failure", () => {
+    expect(ngrokUpdateOutcome("Update successful!", 0)).toBe("updated");
+    expect(ngrokUpdateOutcome("No update available, ngrok is already the latest version", 0)).toBe("current");
+    expect(ngrokUpdateOutcome("permission denied", 1)).toBe("failed");
+    expect(ngrokUpdateOutcome("", null)).toBe("failed");
+    // Anything unreadable that still exited fine means nothing changed.
+    expect(ngrokUpdateOutcome("algo raro", 0)).toBe("current");
+  });
+});
 
 describe("parseNgrokConfigPath", () => {
   it("extracts the path from a valid-config message", () => {

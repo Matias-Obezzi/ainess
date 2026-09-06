@@ -3,13 +3,15 @@
 // transport. See PLAN.md for the security rules (credentials never touch ainess's own config or
 // the log file).
 import { getTransport } from "@/lib/transport";
-import { maskSecrets } from "@/lib/logger";
+import { log, maskSecrets } from "@/lib/logger";
 import {
   NGROK_CONFIG_HOME_PATH,
   looksLikeNgrokCredential,
   ngrokApiKey,
   ngrokConfigKeys,
+  ngrokUpdateOutcome,
   parseNgrokConfigPath,
+  parseNgrokVersion,
   parseReservedDomains,
 } from "@/lib/ngrok";
 
@@ -20,6 +22,54 @@ export interface NgrokAccountStatus {
   hasApiKey: boolean;
   /** Message to show when nothing could be read (ngrok missing, exec unavailable…). */
   error?: string;
+}
+
+export interface NgrokUpdateState {
+  /** `checking` while `ngrok update` runs; the rest is what it ended up doing. */
+  status: "checking" | "updated" | "current" | "failed";
+  /** Version after the attempt, when it could be read. */
+  version: string | null;
+  /** Why it failed, already masked. */
+  message?: string;
+}
+
+let updatePromise: Promise<NgrokUpdateState> | null = null;
+
+/**
+ * Keeps the agent current: ngrok refuses to connect when it is older than the minimum its account
+ * requires, and winget's package lags behind, so the app runs ngrok's own updater. It runs once per
+ * app session; every later caller gets the same result.
+ */
+export function ensureNgrokUpToDate(ngrokPath = "ngrok"): Promise<NgrokUpdateState> {
+  if (!updatePromise) {
+    updatePromise = runUpdate(ngrokPath);
+    // A failed attempt must not be cached as the session's answer.
+    void updatePromise.then(state => {
+      if (state.status === "failed") updatePromise = null;
+    });
+  }
+  return updatePromise;
+}
+
+async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
+  const transport = getTransport();
+  try {
+    const res = await transport.exec(ngrokPath, ["update"]);
+    const outcome = ngrokUpdateOutcome(`${res.stdout}\n${res.stderr}`, res.code);
+    const versionRes = await transport.exec(ngrokPath, ["--version"]).catch(() => null);
+    const version = versionRes ? parseNgrokVersion(`${versionRes.stdout}\n${versionRes.stderr}`) : null;
+    if (outcome === "failed") {
+      const message = maskSecrets((res.stderr || res.stdout || "").trim().split(/\r?\n/).slice(-2).join(" ")) || "no se pudo actualizar";
+      log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
+      return { status: "failed", version, message };
+    }
+    log.info("tunnel", outcome === "updated" ? `ngrok actualizado${version ? ` a ${version}` : ""}` : "ngrok ya estaba al día");
+    return { status: outcome, version };
+  } catch (e) {
+    const message = maskSecrets(e instanceof Error ? e.message : String(e));
+    log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
+    return { status: "failed", version: null, message };
+  }
 }
 
 /** Runs `ngrok config check`, reads the file and reports which credentials are there. */

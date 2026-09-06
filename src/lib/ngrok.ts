@@ -67,6 +67,23 @@ export function parseReservedDomains(body: string): string[] {
   }
 }
 
+/** `ngrok version 3.20.1` → `3.20.1`, or null when the output says something else. */
+export function parseNgrokVersion(output: string): string | null {
+  const m = output.match(/\bversion\s+v?(\d+\.\d+\.\d+\S*)/i) ?? output.match(/\bv?(\d+\.\d+\.\d+)\b/);
+  return m ? m[1] : null;
+}
+
+/** What `ngrok update` did. `current` also covers an output we cannot read: nothing changed. */
+export type NgrokUpdateOutcome = "updated" | "current" | "failed";
+
+export function ngrokUpdateOutcome(output: string, code: number | null): NgrokUpdateOutcome {
+  if (code !== 0) return "failed";
+  const text = output.toLowerCase();
+  if (/no update|already|up to date|up-to-date/.test(text)) return "current";
+  if (/success|updated|installed|new version/.test(text)) return "updated";
+  return "current";
+}
+
 /** Cheap paste check before shelling out: non-empty, no whitespace, at least 20 chars. */
 export function looksLikeNgrokCredential(value: string): boolean {
   return value.length >= 20 && !/\s/.test(value);

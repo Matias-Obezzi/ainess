@@ -711,6 +711,14 @@ dominio o el nombre del túnel mientras el túnel está corriendo lo reinicia so
 mostrando el mismo indicador `tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
 del túnel.
 
+Actualización automática del agente: ngrok rechaza la conexión cuando la versión es menor que el
+mínimo que pide la cuenta (`ERR_NGROK_121`) y el paquete de winget queda atrasado, así que la app
+corre `ngrok update` sola. `ensureNgrokUpToDate` (en `ngrok-account.ts`) lo hace una vez por sesión,
+cacheando la promesa salvo que falle; `App.tsx` la dispara al arrancar apenas `tunnelDetect`
+encuentra el binario, y `RemoteSection` muestra "Actualizando ngrok a la última versión…" mientras
+pasa y después la versión (con "recién actualizado" si cambió) o el error. El parseo está en
+`ngrok.ts` (`parseNgrokVersion`, `ngrokUpdateOutcome`) y testeado.
+
 Cuenta de ngrok (`src/lib/ngrok.ts` puro + `src/lib/ngrok-account.ts` con I/O). ngrok usa dos
 credenciales distintas: el **authtoken**, con el que el agente se conecta, y la **API key**, que solo
 sirve para consultar la API de la cuenta. Las dos viven en el `ngrok.yml` del usuario

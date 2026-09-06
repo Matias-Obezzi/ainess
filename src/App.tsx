@@ -13,6 +13,8 @@ import { ProjectScreen } from "@/components/shell/ProjectScreen";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { getTransport } from "@/lib/transport";
+import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 
 export default function App() {
   const init = useAppStore(state => state.init);
@@ -24,6 +26,19 @@ export default function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // ngrok refuses to connect when the agent is older than the minimum its account asks for, and
+  // winget's package lags behind, so the app keeps it current on its own as soon as it finds it.
+  useEffect(() => {
+    void getTransport()
+      .tunnelDetect()
+      .then(found => {
+        if (found.ngrok) void ensureNgrokUpToDate(found.ngrok);
+      })
+      .catch(() => {
+        /* no tunnel binaries here (browser preview): nothing to update */
+      });
+  }, []);
 
   useNotifications();
   useSystemNotifications();

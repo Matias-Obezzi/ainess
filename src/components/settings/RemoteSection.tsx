@@ -17,7 +17,7 @@ import { tunnelUrl } from "@/lib/remote";
 import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
 import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
-import { ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus } from "@/lib/ngrok-account";
+import { ensureNgrokUpToDate, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokUpdateState } from "@/lib/ngrok-account";
 import { Copy, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 
 /** One labelled row of the tunnel card: label on the left, control and its hint on the right. */
@@ -132,6 +132,7 @@ export function RemoteSection() {
   const [ngrokAccount, setNgrokAccount] = useState<NgrokAccountStatus | null>(null);
   const [ngrokDomains, setNgrokDomains] = useState<string[] | null>(null);
   const [loadingDomains, setLoadingDomains] = useState(false);
+  const [ngrokUpdate, setNgrokUpdate] = useState<NgrokUpdateState | null>(null);
 
   const provider = remote.tunnel.provider;
   const binaryPath = detected ? detected[provider] : null;
@@ -256,6 +257,17 @@ export function RemoteSection() {
     setNgrokAccount(await ngrokAccountStatus(ngrokPath));
   }, [ngrokPath]);
 
+  // ngrok is kept up to date on its own (see App.tsx); here it is only surfaced while it happens.
+  useEffect(() => {
+    if (provider !== "ngrok" || !ngrokPath) return;
+    let alive = true;
+    setNgrokUpdate({ status: "checking", version: null });
+    void ensureNgrokUpToDate(ngrokPath).then(state => {
+      if (alive) setNgrokUpdate(state);
+    });
+    return () => { alive = false; };
+  }, [provider, ngrokPath]);
+
   // Read the account state when ngrok is the chosen provider (and after it is detected).
   useEffect(() => {
     if (provider === "ngrok") void refreshNgrokAccount();
@@ -298,6 +310,11 @@ export function RemoteSection() {
   // Only an account we can query has domains to offer; without the API key there is nothing to pick.
   const ngrokVerified = !!ngrokPath && !!ngrokAccount?.hasApiKey;
   const runningHost = tunnel.running && tunnel.url ? normalizeDomain(tunnel.url) : "";
+  // Only shown for ngrok, and only once the update pass could read a version.
+  const ngrokVersionLabel =
+    provider === "ngrok" && ngrokUpdate?.version
+      ? `v${ngrokUpdate.version}${ngrokUpdate.status === "updated" ? " (recién actualizado)" : ""}`
+      : "";
   const selectedNgrokDomain = ngrokDomains?.includes(normalizeDomain(remote.tunnel.domain))
     ? normalizeDomain(remote.tunnel.domain)
     : undefined;
@@ -409,7 +426,20 @@ export function RemoteSection() {
             hint={
               binaryPath ? (
                 <span className="flex flex-wrap items-center gap-1">
-                  Detectado en <code className="break-all">{binaryPath}</code>
+                  {provider === "ngrok" && ngrokUpdate?.status === "checking" ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" /> Actualizando ngrok a la última versión…
+                    </>
+                  ) : (
+                    <>
+                      Detectado
+                      {ngrokVersionLabel && <span>· {ngrokVersionLabel}</span>}
+                      en <code className="break-all">{binaryPath}</code>
+                    </>
+                  )}
+                  {provider === "ngrok" && ngrokUpdate?.status === "failed" && (
+                    <span className="text-destructive">No se pudo actualizar: {ngrokUpdate.message}</span>
+                  )}
                 </span>
               ) : (
                 <span className="flex flex-wrap items-center gap-1">
