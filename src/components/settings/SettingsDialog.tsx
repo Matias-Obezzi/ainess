@@ -30,10 +30,10 @@ export interface SettingsSectionDef {
   /** Which block of the sidebar it belongs to. */
   group: SettingsGroup;
   /**
-   * Names of the individual settings inside the section, so the search finds "puerto" or
-   * "notificaciones" and not only the section titles.
+   * The individual options inside the section, by their real name in the UI. The search returns
+   * these as results of their own, so "puerto" lands on the option and not just on the section.
    */
-  keywords: string[];
+  options: string[];
   /** Body of the section. */
   component: ComponentType;
   /** Header actions (buttons) rendered right of the title, before the close button. */
@@ -45,16 +45,16 @@ export interface SettingsSectionDef {
 const PassThrough = ({ children }: { children: ReactNode }) => children;
 
 export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
-  { id: "general", label: "General", help: "Segundo plano, notificaciones y orquestación.", group: "General", keywords: ["bandeja", "tray", "segundo plano", "notificaciones", "avisos", "rondas", "orquestación", "aprobaciones", "modelo automático", "logs", "nivel de log", "actualizaciones"], icon: Settings2, component: GeneralSection },
-  { id: "agents", label: "Agentes", help: "Los agentes disponibles y su jerarquía.", group: "Agentes", keywords: ["agente", "jerarquía", "proveedor", "modelo", "rol", "planificador", "implementador", "revisor", "padre", "detectar", "autodetectar", "cuota"], icon: Bot, component: AgentsSection, actions: AgentsSectionActions, provider: AgentsSectionProvider },
-  { id: "profile", label: "Perfil", help: "Información que se inyecta en el prompt del sistema.", group: "Agentes", keywords: ["nombre", "sobre mí", "preferencias", "system prompt", "perfil"], icon: User, component: ProfileSection, actions: ProfileSectionActions, provider: ProfileSectionProvider },
-  { id: "presets", label: "Órdenes", help: "Prompts predefinidos para lanzar tareas rápido.", group: "Automatización", keywords: ["orden", "preset", "prompt predefinido", "atajo"], icon: ListChecks, component: PresetsSection, actions: PresetsSectionActions, provider: PresetsSectionProvider },
-  { id: "skills", label: "Skills", help: "Habilidades reutilizables para los agentes.", group: "Automatización", keywords: ["skill", "habilidad", "sugeridas"], icon: Sparkles, component: SkillsSection, actions: SkillsSectionActions, provider: SkillsSectionProvider },
-  { id: "mcp", label: "MCP", help: "Servidores MCP disponibles para los agentes.", group: "Automatización", keywords: ["mcp", "servidor", "herramientas", "sugeridos"], icon: Plug, component: McpSection, actions: McpSectionActions, provider: McpSectionProvider },
-  { id: "hooks", label: "Hooks", help: "Acciones automáticas en eventos del orquestador.", group: "Automatización", keywords: ["hook", "webhook", "slack", "comando", "evento", "disparador", "automatización"], icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
-  { id: "context", label: "Contexto", help: "Texto compartido agregado al system prompt de todos los agentes.", group: "Agentes", keywords: ["contexto compartido", "instrucciones", "system prompt"], icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
-  { id: "remote", label: "Remoto", help: "Acceso desde el celular en la misma red local.", group: "Acceso", keywords: ["celular", "red local", "puerto", "token", "qr", "túnel", "tunnel", "ngrok", "cloudflared", "dominio", "authtoken", "api key", "url fija"], icon: Smartphone, component: RemoteSection },
-  { id: "about", label: "Acerca de", help: "Versión, actualizaciones y archivos de log.", group: "Aplicación", keywords: ["versión", "actualizar", "update", "logs", "diagnóstico", "creador", "repositorio"], icon: Info, component: AboutSection },
+  { id: "general", label: "General", help: "Segundo plano, notificaciones y orquestación.", group: "General", options: ["Seguir en la bandeja al cerrar la ventana", "Notificar cuando un agente necesita permiso", "Notificar cuando termina una tarea", "Buscar actualizaciones al iniciar", "Registrar detalles (debug)", "Rondas máximas por tarea", "Auto-selección de modelos por el Orquestador", "Aprobar todas las delegaciones"], icon: Settings2, component: GeneralSection },
+  { id: "agents", label: "Agentes", help: "Los agentes disponibles y su jerarquía.", group: "Agentes", options: ["Agentes y jerarquía", "Autodetectar las IAs instaladas", "Proveedor (CLI)", "Modelo", "Rol", "Agente padre", "Auto-aprobar", "Cuota por agente", "Color"], icon: Bot, component: AgentsSection, actions: AgentsSectionActions, provider: AgentsSectionProvider },
+  { id: "profile", label: "Perfil", help: "Información que se inyecta en el prompt del sistema.", group: "Agentes", options: ["Tu nombre", "Sobre vos (rol, seniority, contexto)", "Preferencias de trabajo"], icon: User, component: ProfileSection, actions: ProfileSectionActions, provider: ProfileSectionProvider },
+  { id: "presets", label: "Órdenes", help: "Prompts predefinidos para lanzar tareas rápido.", group: "Automatización", options: ["Órdenes rápidas", "Nueva orden"], icon: ListChecks, component: PresetsSection, actions: PresetsSectionActions, provider: PresetsSectionProvider },
+  { id: "skills", label: "Skills", help: "Habilidades reutilizables para los agentes.", group: "Automatización", options: ["Skills de los agentes", "Skills sugeridas"], icon: Sparkles, component: SkillsSection, actions: SkillsSectionActions, provider: SkillsSectionProvider },
+  { id: "mcp", label: "MCP", help: "Servidores MCP disponibles para los agentes.", group: "Automatización", options: ["Servidores MCP", "MCP sugeridos"], icon: Plug, component: McpSection, actions: McpSectionActions, provider: McpSectionProvider },
+  { id: "hooks", label: "Hooks", help: "Acciones automáticas en eventos del orquestador.", group: "Automatización", options: ["Hooks por evento", "Acción: Slack", "Acción: comando", "Filtro por agente o proyecto"], icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
+  { id: "context", label: "Contexto", help: "Texto compartido agregado al system prompt de todos los agentes.", group: "Agentes", options: ["Contexto compartido entre todos los agentes"], icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
+  { id: "remote", label: "Remoto", help: "Acceso desde el celular en la misma red local.", group: "Acceso", options: ["Acceso remoto en la red local", "Puerto", "Regenerar token", "Código QR", "Túnel público", "Proveedor del túnel", "Tipo de dominio", "Dominio", "Authtoken de ngrok", "API key de ngrok", "Instalar ngrok", "Volver a detectar"], icon: Smartphone, component: RemoteSection },
+  { id: "about", label: "Acerca de", help: "Versión, actualizaciones y archivos de log.", group: "Aplicación", options: ["Versión de la app", "Buscar actualizaciones", "Abrir la carpeta de logs", "Copiar diagnóstico", "Repositorio"], icon: Info, component: AboutSection },
 ];
 
 /** Lowercase and without accents, so "orquestacion" finds "orquestación". */
@@ -77,14 +77,29 @@ export function SettingsDialog() {
     setQuery("");
   };
 
-  // The search covers the individual settings too (their `keywords`), so "puerto" lands on Remoto.
-  const visible = useMemo(() => {
+  // Results are the options themselves, not only the sections that hold them: searching "puerto"
+  // answers with "Puerto · Remoto" and opens that section.
+  const results = useMemo(() => {
     const needle = normalize(query);
-    if (!needle) return SETTINGS_SECTIONS;
-    return SETTINGS_SECTIONS.filter(s =>
-      normalize(`${s.group} ${s.label} ${s.help} ${s.keywords.join(" ")}`).includes(needle),
-    );
+    if (!needle) return [];
+    const out: Array<{ key: string; section: SettingsSectionDef; label: string; sub: string }> = [];
+    for (const section of SETTINGS_SECTIONS) {
+      if (normalize(`${section.group} ${section.label} ${section.help}`).includes(needle)) {
+        out.push({ key: `s:${section.id}`, section, label: section.label, sub: section.group });
+      }
+      for (const option of section.options) {
+        if (normalize(option).includes(needle)) {
+          out.push({ key: `${section.id}:${option}`, section, label: option, sub: section.label });
+        }
+      }
+    }
+    return out.slice(0, 24);
   }, [query]);
+
+  const go = (id: SettingsSection) => {
+    openSettings(id);
+    closeSearch();
+  };
 
   const active = SETTINGS_SECTIONS.find(s => s.id === settingsSection) ?? SETTINGS_SECTIONS[0];
   const Provider = active.provider ?? PassThrough;
@@ -105,13 +120,10 @@ export function SettingsDialog() {
                     onChange={e => setQuery(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === "Escape") closeSearch();
-                      else if (e.key === "Enter" && visible[0]) {
-                        openSettings(visible[0].id);
-                        closeSearch();
-                      }
+                      else if (e.key === "Enter" && results[0]) go(results[0].section.id);
                     }}
                     placeholder="Buscar una opción…"
-                    className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                    className="h-8 px-2.5"
                   />
                   <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Cerrar la búsqueda" onClick={closeSearch}>
                     <X className="h-4 w-4" />
@@ -134,42 +146,54 @@ export function SettingsDialog() {
               )}
             </div>
             <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-              {visible.length === 0 && (
-                <p className="px-3 py-6 text-center text-xs text-muted-foreground">Nada coincide con “{query}”.</p>
+              {query ? (
+                results.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">Nada coincide con “{query}”.</p>
+                ) : (
+                  results.map(result => (
+                    <button
+                      key={result.key}
+                      type="button"
+                      onClick={() => go(result.section.id)}
+                      className="flex flex-col gap-0.5 rounded-md px-3 py-2 text-left text-muted-foreground transition-colors hover:bg-accent/50 hover:text-accent-foreground"
+                    >
+                      <span className="text-sm leading-tight">{result.label}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{result.sub}</span>
+                    </button>
+                  ))
+                )
+              ) : (
+                SETTINGS_GROUPS.map(group => {
+                  const inGroup = SETTINGS_SECTIONS.filter(s => s.group === group);
+                  if (inGroup.length === 0) return null;
+                  return (
+                    <div key={group} className="flex flex-col gap-1">
+                      <span className="mt-2 px-3 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground/70 first:mt-0">
+                        {group}
+                      </span>
+                      {inGroup.map(section => {
+                        const Icon = section.icon;
+                        return (
+                          <button
+                            key={section.id}
+                            type="button"
+                            onClick={() => go(section.id)}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                              section.id === settingsSection
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            {section.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })
               )}
-              {SETTINGS_GROUPS.map(group => {
-                const inGroup = visible.filter(s => s.group === group);
-                if (inGroup.length === 0) return null;
-                return (
-                  <div key={group} className="flex flex-col gap-1">
-                    <span className="mt-2 px-3 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground/70 first:mt-0">
-                      {group}
-                    </span>
-                    {inGroup.map(s => {
-                      const Icon = s.icon;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => {
-                            openSettings(s.id);
-                            closeSearch();
-                          }}
-                          className={cn(
-                            "flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                            s.id === settingsSection
-                              ? "bg-accent text-accent-foreground"
-                              : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
-                          )}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          {s.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
             </div>
           </div>
 
