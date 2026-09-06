@@ -11,9 +11,79 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { getTransport } from "@/lib/transport";
+import { openExternal } from "@/lib/open-external";
 import { tunnelUrl } from "@/lib/remote";
 import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelDescription, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
-import { Copy, Globe, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
+import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
+import { ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus } from "@/lib/ngrok-account";
+import { Copy, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
+
+/**
+ * One ngrok credential (authtoken or API key). The value only lives in this component's state
+ * until it is handed to the ngrok CLI: it is never stored in ainess's config nor logged.
+ */
+function NgrokCredential({ label, hint, configured, dashboardUrl, disabled, onSave }: {
+  label: string;
+  hint: string;
+  configured: boolean;
+  dashboardUrl: string;
+  disabled: boolean;
+  onSave: (value: string) => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (await onSave(value.trim())) {
+        setValue("");
+        setOpen(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">{label}</span>
+        <Badge variant={configured ? "secondary" : "outline"}>{configured ? "Configurado" : "Falta"}</Badge>
+        <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setOpen(o => !o)}>
+          {configured ? "Cambiar" : "Configurar"}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          aria-label={`Abrir ${label} en el dashboard de ngrok`}
+          onClick={() => void openExternal(dashboardUrl)}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <span className="text-xs text-muted-foreground">{hint}</span>
+      {open && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="password"
+            autoComplete="off"
+            className="w-72"
+            placeholder="Pegá el valor del dashboard"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !saving) void save(); }}
+          />
+          <Button size="sm" disabled={saving || !value.trim()} onClick={() => void save()}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Guardar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Configuración > Remoto: LAN server (URL + QR) and the optional public tunnel. */
 export function RemoteSection() {
@@ -38,6 +108,9 @@ export function RemoteSection() {
   const [detected, setDetected] = useState<{ cloudflared: string | null; ngrok: string | null } | null>(null);
   const [domainInput, setDomainInput] = useState(remote.tunnel.domain ?? "");
   const [tunnelNameInput, setTunnelNameInput] = useState(remote.tunnel.tunnelName ?? "");
+  const [ngrokAccount, setNgrokAccount] = useState<NgrokAccountStatus | null>(null);
+  const [ngrokDomains, setNgrokDomains] = useState<string[] | null>(null);
+  const [loadingDomains, setLoadingDomains] = useState(false);
 
   const provider = remote.tunnel.provider;
   const binaryPath = detected ? detected[provider] : null;
@@ -155,6 +228,49 @@ export function RemoteSection() {
     void applyTunnelFixedFields({ tunnelName: trimmed });
   };
 
+  const ngrokPath = detected?.ngrok ?? null;
+
+  const refreshNgrokAccount = useCallback(async () => {
+    if (!ngrokPath) { setNgrokAccount(null); return; }
+    setNgrokAccount(await ngrokAccountStatus(ngrokPath));
+  }, [ngrokPath]);
+
+  // Read the account state when ngrok is the chosen provider (and after it is detected).
+  useEffect(() => {
+    if (provider === "ngrok") void refreshNgrokAccount();
+  }, [provider, refreshNgrokAccount]);
+
+  /** Hands one credential to `ngrok config add-…`. Returns whether it was saved. */
+  const saveCredential = async (kind: "authtoken" | "api-key", value: string): Promise<boolean> => {
+    if (!ngrokPath) return false;
+    try {
+      await saveNgrokCredential(ngrokPath, kind, value);
+      toast.success(kind === "authtoken" ? "Authtoken guardado" : "API key guardada");
+      await refreshNgrokAccount();
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      return false;
+    }
+  };
+
+  const loadNgrokDomains = async () => {
+    if (!ngrokPath) return;
+    setLoadingDomains(true);
+    try {
+      const list = await ngrokReservedDomains(ngrokPath);
+      setNgrokDomains(list);
+      // One domain and nothing chosen yet: pick it, which is what the user wanted anyway.
+      if (list.length === 1 && !normalizeDomain(remote.tunnel.domain)) {
+        await applyTunnelFixedFields({ domain: normalizeDomain(list[0]) });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoadingDomains(false);
+    }
+  };
+
   const applyPort = () => {
     const n = parseInt(port, 10);
     if (!n || n < 1024 || n > 65535) { toast.error("Puerto inválido (1024-65535)"); return; }
@@ -262,10 +378,72 @@ export function RemoteSection() {
           <span className="text-xs text-muted-foreground">{tunnelDescription(provider)}</span>
         </div>
 
+        {provider === "ngrok" && (
+          <div className="flex flex-col gap-3 rounded-md border p-3">
+            <span className="text-xs font-semibold text-muted-foreground">Cuenta de ngrok</span>
+            <NgrokCredential
+              label="Authtoken"
+              hint="Lo necesita ngrok para conectarse. La app solo mira si está presente: si es inválido, el error aparece al prender el túnel."
+              configured={!!ngrokAccount?.hasAuthtoken}
+              dashboardUrl={NGROK_AUTHTOKEN_URL}
+              disabled={!ngrokPath}
+              onSave={v => saveCredential("authtoken", v)}
+            />
+            <NgrokCredential
+              label="API key"
+              hint="Opcional y distinta del authtoken: sirve para traer tus dominios desde acá."
+              configured={!!ngrokAccount?.hasApiKey}
+              dashboardUrl={NGROK_API_KEYS_URL}
+              disabled={!ngrokPath}
+              onSave={v => saveCredential("api-key", v)}
+            />
+            <span className="text-xs text-muted-foreground">
+              {!ngrokPath
+                ? "Instalá ngrok para poder configurar la cuenta desde acá."
+                : ngrokAccount?.error
+                  ? `No se pudo leer la configuración de ngrok: ${ngrokAccount.error}`
+                  : "Las dos credenciales se guardan en el archivo de configuración de ngrok, nunca en ainess."}
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 rounded-md border p-3">
           <span className="text-xs font-semibold text-muted-foreground">URL fija (opcional)</span>
           {provider === "ngrok" ? (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!ngrokPath || !ngrokAccount?.hasApiKey || loadingDomains}
+                  onClick={() => void loadNgrokDomains()}
+                >
+                  {loadingDomains ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
+                  Traer mis dominios
+                </Button>
+                {!ngrokAccount?.hasApiKey && (
+                  <span className="text-xs text-muted-foreground">Necesita la API key de arriba.</span>
+                )}
+              </div>
+              {ngrokDomains && ngrokDomains.length > 0 && (
+                <Select
+                  value={ngrokDomains.includes(normalizeDomain(remote.tunnel.domain)) ? normalizeDomain(remote.tunnel.domain) : undefined}
+                  onValueChange={v => void applyTunnelFixedFields({ domain: normalizeDomain(v) })}
+                >
+                  <SelectTrigger className="w-72"><SelectValue placeholder="Elegí uno de tus dominios" /></SelectTrigger>
+                  <SelectContent>
+                    {ngrokDomains.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {ngrokDomains?.length === 0 && (
+                <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                  Tu cuenta no tiene dominios reservados todavía.
+                  <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
+                    Reclamá el gratis en el dashboard
+                  </button>
+                </span>
+              )}
               <label className="text-xs text-muted-foreground">Dominio estático</label>
               <Input
                 className="w-72"

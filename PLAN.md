@@ -699,6 +699,23 @@ túnel mientras el túnel está corriendo lo reinicia solo (stop + start), mostr
 `tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
 del túnel.
 
+Cuenta de ngrok (`src/lib/ngrok.ts` puro + `src/lib/ngrok-account.ts` con I/O). ngrok usa dos
+credenciales distintas: el **authtoken**, con el que el agente se conecta, y la **API key**, que solo
+sirve para consultar la API de la cuenta. Las dos viven en el `ngrok.yml` del usuario
+(`%LOCALAPPDATA%
+grok
+grok.yml` en Windows), nunca en la config de ainess. `ngrokAccountStatus`
+corre `ngrok config check` (imprime `Valid configuration file at <ruta>`), lee el archivo con
+`Transport.readFileAbs` (comando Tauri `read_file_abs`, con `readHomeFile` como respaldo) y reporta
+solo si cada clave está presente, nunca su valor; no hay archivo todavía es estado normal, no error.
+`saveNgrokCredential` corre `ngrok config add-authtoken|add-api-key <valor>`. `ngrokReservedDomains`
+saca la API key del archivo y pega en `GET https://api.ngrok.com/reserved_domains` con
+`Authorization: Bearer …` y `ngrok-version: 2`. La app **no** valida el authtoken contra el servidor:
+eso solo se sabe al prender el túnel. En `RemoteSection`, con proveedor ngrok, el bloque "Cuenta de
+ngrok" muestra el estado de cada credencial, deja cargarlas en un input `type="password"` y ofrece
+"Traer mis dominios" para elegir el dominio de un select en vez de tipearlo. Las credenciales no se
+loguean nunca: `maskSecrets` además tapa `authtoken`/`api_key` por las dudas.
+
 CLI: `ais serve --tunnel [cloudflared|ngrok] [--tunnel-domain <dominio>] [--tunnel-name <nombre>]`
 levanta el túnel junto con el servidor e imprime la URL pública (los overrides se guardan en la
 config, igual que `--tunnel <prov>`); `ais remote url --tunnel` devuelve la URL pública del túnel de
