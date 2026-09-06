@@ -508,6 +508,28 @@ function onRunFinished(runId: string) {
   processQueuedInstructions(agent.id, run.projectId);
 }
 
+/**
+ * The runs of one round: what the parent recorded, plus anything that points back at it.
+ *
+ * The two should say the same, but the parent's list is only written when a child starts, and a
+ * store rebuilt from disk carries the copy from before that — a task delegated in one session and
+ * approved in the next has a parent whose list is empty. Read on its own, an empty list means
+ * "every child is done", which is how a planner answered with two of its four audits while the
+ * other two were still running.
+ */
+export function childRunsOf(runs: Record<string, Run>, parentRunId: string): Run[] {
+  const out: Run[] = [];
+  const seen = new Set<string>();
+  for (const id of runs[parentRunId]?.childRunIds ?? []) {
+    const child = runs[id];
+    if (child && !seen.has(id)) { seen.add(id); out.push(child); }
+  }
+  for (const run of Object.values(runs)) {
+    if (run.parentRunId === parentRunId && !seen.has(run.id)) { seen.add(run.id); out.push(run); }
+  }
+  return out.sort((a, b) => a.startedAt - b.startedAt);
+}
+
 function maybeContinueParent(parentRunId: string) {
   const store = useAppStore.getState();
   const parentRun = store.runs[parentRunId];
@@ -515,22 +537,17 @@ function maybeContinueParent(parentRunId: string) {
   // Delegations still waiting for approval count as unfinished children.
   if (pendingApprovalsFor(parentRunId).length > 0) return;
 
-  const allChildrenDone = parentRun.childRunIds.every(id => {
-    const r = store.runs[id];
-    return r && (r.status === "done" || r.status === "error" || r.status === "killed");
-  });
+  const children = childRunsOf(store.runs, parentRunId);
+  const allChildrenDone = children.every(r => r.status === "done" || r.status === "error" || r.status === "killed");
 
   if (allChildrenDone) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
 
     let outputText = "Resultados de tus agentes:\n\n";
-    for (const id of parentRun.childRunIds) {
-      const childRun = store.runs[id];
-      if (childRun) {
-        const childAgent = selectAgent(store, childRun.agentId);
-        outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n\n`;
-      }
+    for (const childRun of children) {
+      const childAgent = selectAgent(store, childRun.agentId);
+      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n\n`;
     }
 
     const cancelled = cancelledRuns.delete(parentRunId);
