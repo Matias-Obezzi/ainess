@@ -1,6 +1,6 @@
 // The Tareas mode of a project: its own little toolbar (board or graph, plus "Nueva tarea") and
 // whichever of the two views is selected. Both open the same detail dialog.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore, selectTasks } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,8 +19,18 @@ export function TasksView({ projectId }: { projectId: string }) {
   const setTaskView = useAppStore(state => state.setTaskView);
   const loaded = useAppStore(state => state.loaded);
   const tasks = useAppStore(state => selectTasks(state, projectId));
+  const focusedTaskId = useAppStore(state => state.focusedTaskId);
+  const focusTask = useAppStore(state => state.focusTask);
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+
+  // The search palette asks for one task's detail from outside the board; consume the request
+  // right away so closing the dialog does not immediately reopen it.
+  useEffect(() => {
+    if (!focusedTaskId) return;
+    setOpenTaskId(focusedTaskId);
+    focusTask(null);
+  }, [focusedTaskId, focusTask]);
   const [newOpen, setNewOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<TaskStatus | undefined>(undefined);
 

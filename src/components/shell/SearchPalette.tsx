@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, FolderOpen, MessageCircle, Settings2, Users } from "lucide-react";
-import { useAppStore, selectAllAgents, selectProjectOfAgent } from "@/store";
+import { Bot, FolderOpen, Keyboard, ListTodo, MessageCircle, Plus, Settings2, Users } from "lucide-react";
+import { useAppStore, selectAllAgents, selectProjectOfAgent, selectTasks } from "@/store";
 import type { SettingsSection } from "@/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSection; labelKey: string }> = [
   { id: "hooks", labelKey: "settings.section.hooks" },
   { id: "context", labelKey: "settings.section.context" },
   { id: "remote", labelKey: "settings.section.remote" },
+  { id: "diagnostics", labelKey: "settings.section.diagnostics" },
   { id: "about", labelKey: "settings.section.about" },
 ];
 
@@ -25,13 +26,15 @@ function normalize(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-type Group = "projects" | "chats" | "agents" | "settings";
+type Group = "projects" | "tasks" | "chats" | "agents" | "settings" | "actions";
 
 const GROUP_LABEL_KEY: Record<Group, string> = {
   projects: "search.group.projects",
+  tasks: "search.group.tasks",
   chats: "search.group.chats",
   agents: "search.group.agents",
   settings: "search.group.settings",
+  actions: "search.group.actions",
 };
 
 interface Result {
@@ -46,6 +49,14 @@ interface Result {
 /** Per group cap, so an empty query still shows a useful preview instead of everything. */
 const PER_GROUP = 8;
 
+/** Lands on the project's board with one task's detail open. */
+function openTaskOnBoard(projectId: string, taskId: string): void {
+  const state = useAppStore.getState();
+  state.openProject(projectId, null);
+  state.setProjectMode("tasks");
+  state.focusTask(taskId);
+}
+
 export function SearchPalette() {
   const t = useT();
   const searchOpen = useAppStore(state => state.searchOpen);
@@ -53,8 +64,13 @@ export function SearchPalette() {
   const projects = useAppStore(state => state.config.projects);
   const chats = useAppStore(state => state.config.chats);
   const agents = useAppStore(selectAllAgents);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const tasks = useAppStore(state => selectTasks(state, state.currentProjectId));
   const openProject = useAppStore(state => state.openProject);
   const openSettings = useAppStore(state => state.openSettings);
+  const addTask = useAppStore(state => state.addTask);
+  const focusTask = useAppStore(state => state.focusTask);
+  const toggleShortcuts = useAppStore(state => state.toggleShortcuts);
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -80,6 +96,18 @@ export function SearchPalette() {
         hint: p.workspaceDir,
         icon: FolderOpen,
         run: () => openProject(p.id, null),
+      });
+    }
+
+    // Only the current project's board: a task title says nothing about which project it is in.
+    const liveTasks = tasks.filter(t => !t.archived);
+    for (const task of liveTasks.filter(t => matches(t.title)).slice(0, PER_GROUP)) {
+      out.push({
+        key: `task:${task.id}`,
+        group: "tasks",
+        label: task.title,
+        icon: ListTodo,
+        run: () => openTaskOnBoard(task.projectId, task.id),
       });
     }
 
@@ -124,8 +152,34 @@ export function SearchPalette() {
       });
     }
 
+    const typed = query.trim();
+    // Offering to create what already exists would only duplicate a card.
+    const exact = liveTasks.some(task => normalize(task.title) === normalize(typed));
+    if (typed !== "" && currentProjectId && !exact) {
+      out.push({
+        key: "action:new-task",
+        group: "actions",
+        label: t("search.action.createTask", { query: typed }),
+        icon: Plus,
+        run: () => {
+          const task = addTask(currentProjectId, { title: typed, status: "backlog" });
+          openTaskOnBoard(currentProjectId, task.id);
+        },
+      });
+    }
+
+    if (matches(t("search.action.shortcuts"))) {
+      out.push({
+        key: "action:shortcuts",
+        group: "actions",
+        label: t("search.action.shortcuts"),
+        icon: Keyboard,
+        run: () => toggleShortcuts(true),
+      });
+    }
+
     return out;
-  }, [query, projects, chats, agents, openProject, openSettings, t]);
+  }, [query, projects, chats, agents, tasks, currentProjectId, openProject, openSettings, addTask, focusTask, toggleShortcuts, t]);
 
   // The query shrinks the list, so keep the cursor inside it.
   useEffect(() => {

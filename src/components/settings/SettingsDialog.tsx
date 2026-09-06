@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppStore } from "@/store";
 import type { SettingsSection } from "@/store";
 import { cn } from "@/lib/utils";
-import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, Info, Search, X, type LucideIcon } from "lucide-react";
+import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, Stethoscope, Info, Search, X, type LucideIcon } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
 import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
@@ -16,6 +16,7 @@ import { McpSection, McpSectionActions, McpSectionProvider } from "@/components/
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
 import { RemoteSection } from "@/components/settings/RemoteSection";
+import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { useT } from "@/i18n/useT";
 
@@ -66,6 +67,7 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   { id: "hooks", labelKey: "settings.section.hooks", helpKey: "settings.help.hooks", group: "automation", optionKeys: options("hooks", ["byEvent", "slackAction", "commandAction", "filter"]), icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
   { id: "context", labelKey: "settings.section.context", helpKey: "settings.help.context", group: "agents", optionKeys: options("context", ["shared"]), icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
   { id: "remote", labelKey: "settings.section.remote", helpKey: "settings.help.remote", group: "access", optionKeys: options("remote", ["lan", "port", "token", "qr", "tunnel", "tunnelProvider", "domainType", "domain", "ngrokAuthtoken", "ngrokApiKey", "installNgrok", "detectAgain"]), icon: Smartphone, component: RemoteSection },
+  { id: "diagnostics", labelKey: "settings.section.diagnostics", helpKey: "settings.help.diagnostics", group: "app", optionKeys: options("diagnostics", ["recheck", "copy"]), icon: Stethoscope, component: DiagnosticsSection },
   { id: "about", labelKey: "settings.section.about", helpKey: "settings.help.about", group: "app", optionKeys: options("about", ["version", "checkUpdates", "openLogs", "copyDiagnostics", "repository"]), icon: Info, component: AboutSection },
 ];
 
