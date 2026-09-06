@@ -15,6 +15,7 @@ import { OrchestratorThread } from "@/components/shell/OrchestratorThread";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
 import { Toaster } from "@/components/ui/toast";
@@ -23,7 +24,7 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { truncate } from "@/lib/format";
 import type { RemoteSnapshot } from "@/lib/remote";
-import { api, connectEvents, getToken, hydrate, installRemoteActions, RemoteError } from "./remote-client";
+import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError } from "./remote-client";
 import {
   ArrowLeft, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
   ShieldCheck, Square, Users, WifiOff,
@@ -45,6 +46,8 @@ export function RemoteApp() {
   const t = useT();
   const [phase, setPhase] = useState<Phase>("loading");
   const [connected, setConnected] = useState(false);
+  // Bumped by the token form: it is what makes the effect below try again with the new token.
+  const [attempt, setAttempt] = useState(0);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const installed = useRef(false);
 
@@ -73,6 +76,9 @@ export function RemoteApp() {
       } catch (e) {
         if (cancelled) return;
         if (e instanceof RemoteError && (e.status === 401 || e.status === 403)) {
+          // A token that no longer works is worse than none: kept, it would greet the next launch
+          // with the same error instead of the form.
+          forgetToken();
           setPhase("unauthorized");
           return;
         }
@@ -90,26 +96,28 @@ export function RemoteApp() {
       cancelled = true;
       stop?.();
     };
-  }, []);
+  }, [attempt]);
 
   if (phase !== "ready") {
     return (
       <Shell>
         <Toaster position="top-center" richColors />
         <div className="flex-1 flex items-center justify-center p-6">
-          {phase === "no-token" && (
-            <EmptyState
-              icon={ShieldCheck}
-              title={t("phone.noToken.title")}
-              description={t("phone.noToken.body")}
-            />
-          )}
-          {phase === "unauthorized" && (
-            <EmptyState
-              icon={ShieldCheck}
-              title={t("phone.badToken.title")}
-              description={t("phone.badToken.body")}
-            />
+          {(phase === "no-token" || phase === "unauthorized") && (
+            <div className="w-full max-w-sm flex flex-col gap-5">
+              <EmptyState
+                icon={ShieldCheck}
+                title={phase === "no-token" ? t("phone.noToken.title") : t("phone.badToken.title")}
+                description={phase === "no-token" ? t("phone.noToken.body") : t("phone.badToken.body")}
+              />
+              <TokenForm
+                onSubmit={token => {
+                  rememberToken(token);
+                  setPhase("loading");
+                  setAttempt(n => n + 1);
+                }}
+              />
+            </div>
           )}
           {phase === "loading" && <p className="text-sm text-muted-foreground">{t("phone.connecting")}</p>}
         </div>
@@ -142,6 +150,45 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="h-svh w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden">
       {children}
     </div>
+  );
+}
+
+/**
+ * Way in for an installed app. Its start URL carries no `?token=`, so without somewhere to type it
+ * the page could only ever answer "invalid token"; what is typed here is kept on the device.
+ */
+function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
+  const t = useT();
+  const [value, setValue] = useState("");
+  const clean = value.trim();
+
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={e => {
+        e.preventDefault();
+        if (clean) onSubmit(clean);
+      }}
+    >
+      <label className="text-xs font-medium text-muted-foreground" htmlFor="remote-token">
+        {t("phone.token.label")}
+      </label>
+      <Input
+        id="remote-token"
+        type="password"
+        inputMode="text"
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        className="h-11"
+        placeholder={t("phone.token.placeholder")}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+      />
+      <Button type="submit" className="h-11" disabled={!clean}>{t("phone.token.submit")}</Button>
+      <p className="text-xs text-muted-foreground">{t("phone.token.help")}</p>
+    </form>
   );
 }
 

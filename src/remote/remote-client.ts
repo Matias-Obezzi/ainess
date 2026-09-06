@@ -25,6 +25,11 @@ let cachedToken: string | null | undefined;
 /**
  * The token from `?token=…` (the QR link), remembered for the tab. The URL is cleaned right
  * away so the secret never sits in the address bar, the history or a screenshot.
+ *
+ * An installed app (added to the home screen) opens its start URL, which carries no query string,
+ * and starts a new browser session every launch: neither the link nor the tab's memory is there
+ * to be read. So a token typed into the form is kept on the device (see `rememberToken`), and
+ * that copy is the last place looked at.
  */
 export function getToken(): string | null {
   if (cachedToken !== undefined) return cachedToken;
@@ -39,10 +44,28 @@ export function getToken(): string | null {
     }
   } catch { /* malformed URL */ }
   if (!token) {
-    try { token = sessionStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
+    try { token = sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
   }
   cachedToken = token;
   return token;
+}
+
+/** Keeps a token the user typed on this device, the only way an installed app can get back in. */
+export function rememberToken(token: string): void {
+  cachedToken = token;
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch { /* private mode: it still works for this session */ }
+}
+
+/** Drops the stored token, so the form is what comes up next. */
+export function forgetToken(): void {
+  cachedToken = null;
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+  } catch { /* nothing to clear */ }
 }
 
 /** One request to the PC. Throws `RemoteError` on an HTTP error or an `{ error }` body. */
