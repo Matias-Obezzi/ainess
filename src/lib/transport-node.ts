@@ -257,6 +257,9 @@ function resolveProgram(program: string, args: string[]): { program: string; arg
   return { program: process.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c", program, ...args] };
 }
 
+/** Hard limit for `exec`, mirrored by `EXEC_TIMEOUT` in src-tauri/src/runner.rs. */
+const EXEC_TIMEOUT_MS = 60_000;
+
 function killTree(child: ChildProcess): void {
   if (process.platform === "win32" && child.pid) {
     spawnSync("taskkill", ["/PID", child.pid.toString(), "/T", "/F"], { windowsHide: true });
@@ -394,7 +397,12 @@ export const nodeTransport: Transport = {
 
   exec: async (program: string, args: string[], cwd?: string) => {
     const resolved = resolveProgram(program, args);
-    const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout: 60000, windowsHide: true });
+    const res = spawnSync(resolved.program, resolved.args, { cwd, encoding: "utf-8", timeout: EXEC_TIMEOUT_MS, killSignal: "SIGKILL", windowsHide: true });
+    // A program that outlives the timeout is an error, not an empty result: `exec_capture`
+    // in src-tauri/src/runner.rs rejects with the same message.
+    if ((res.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
+      throw new Error(`${program} no respondió en ${EXEC_TIMEOUT_MS / 1000} s: se canceló la ejecución.`);
+    }
     return {
       code: res.status,
       stdout: res.stdout || "",

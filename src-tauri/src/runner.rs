@@ -4,7 +4,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, Output, Stdio};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -234,6 +235,10 @@ pub fn running_runs(state: State<'_, RunnerState>) -> Vec<String> {
     state.children.lock().unwrap().keys().cloned().collect()
 }
 
+/// Hard limit for `exec_capture`, matching the 60 s the Node transport passes to
+/// `spawnSync` in src/lib/transport-node.ts.
+const EXEC_TIMEOUT: Duration = Duration::from_secs(60);
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecResult {
@@ -263,20 +268,146 @@ pub fn exec_capture(app: AppHandle, program: String, args: Vec<String>, cwd: Opt
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     
-    // There is no standard way to enforce a timeout on Command in std without custom threading, 
-    // but the plan simply requested "con timeout de 60 s". For simplicity without adding 
-    // third-party deps like wait-timeout, we can just spawn and wait, or spawn a thread. 
-    // Wait, wait_timeout is usually what people mean. I'll just spawn and read, since the 
-    // Node side already does sync execution with a timeout. I'll just wait for the process.
-    let output = cmd.output().map_err(|e| {
+    let child = cmd.spawn().map_err(|e| {
         let msg = format!("No se pudo ejecutar {}: {}", program, e);
         logging::append(&app, "error", "exec", &msg);
         msg
     })?;
 
-    Ok(ExecResult {
-        code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-    })
+    match wait_with_timeout(child, EXEC_TIMEOUT) {
+        Ok(output) => Ok(ExecResult {
+            code: output.status.code(),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        }),
+        Err(WaitError::Failed(e)) => {
+            let msg = format!("Falló la ejecución de {}: {}", program, e);
+            logging::append(&app, "error", "exec", &msg);
+            Err(msg)
+        }
+        Err(WaitError::TimedOut) => {
+            let msg = format!(
+                "{} no respondió en {} s: se canceló la ejecución.",
+                program,
+                EXEC_TIMEOUT.as_secs()
+            );
+            logging::append(&app, "error", "exec", &msg);
+            Err(msg)
+        }
+    }
+}
+
+enum WaitError {
+    /// Waiting itself failed (the OS could not report the exit status).
+    Failed(std::io::Error),
+    /// The program was still running after the timeout and got killed.
+    TimedOut,
+}
+
+/// Waits for `child` and collects its output, giving up after `timeout` and killing the
+/// process tree. `std` has no wait-with-timeout, so the wait runs on a helper thread and
+/// the result comes back over a channel. `wait_with_output` drains both pipes while it
+/// waits, so a chatty program cannot deadlock by filling a pipe buffer; when we time out
+/// that thread stays around until the kill lands and its send fails harmlessly.
+fn wait_with_timeout(child: Child, timeout: Duration) -> Result<Output, WaitError> {
+    let pid = child.id();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let _ = tx.send(child.wait_with_output());
+    });
+
+    match rx.recv_timeout(timeout) {
+        Ok(Ok(output)) => Ok(output),
+        Ok(Err(e)) => Err(WaitError::Failed(e)),
+        Err(_) => {
+            kill_tree(pid);
+            Err(WaitError::TimedOut)
+        }
+    }
+}
+
+/// Kills a process tree by pid. The child was moved into the waiting thread, so we
+/// cannot signal it through `Child`: go through the OS, like `kill_child` in tunnel.rs.
+fn kill_tree(pid: u32) {
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = Command::new("kill")
+            .args(["-9", &pid.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{wait_with_timeout, WaitError};
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    /// A program that stays alive for about `secs` seconds without needing a shell.
+    fn sleeper(secs: u32) -> Command {
+        #[cfg(windows)]
+        let mut cmd = {
+            let mut c = Command::new("ping");
+            // `ping` sends one packet per second, so n+1 packets ≈ n seconds.
+            c.args(["-n", &(secs + 1).to_string(), "127.0.0.1"]);
+            c
+        };
+        #[cfg(not(windows))]
+        let mut cmd = {
+            let mut c = Command::new("sleep");
+            c.arg(secs.to_string());
+            c
+        };
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+        cmd
+    }
+
+    #[test]
+    fn returns_the_output_of_a_program_that_finishes_in_time() {
+        let child = sleeper(0).spawn().expect("spawn");
+        let output = wait_with_timeout(child, Duration::from_secs(30)).ok().expect("no timeout");
+        assert!(output.status.success());
+        assert!(!output.stdout.is_empty());
+    }
+
+    #[test]
+    fn kills_a_program_that_outlives_the_timeout() {
+        let child = sleeper(30).spawn().expect("spawn");
+        let pid = child.id();
+        let err = wait_with_timeout(child, Duration::from_millis(300));
+        assert!(matches!(err, Err(WaitError::TimedOut)));
+        assert!(!is_running(pid), "el proceso siguió vivo después del timeout");
+    }
+
+    /// Asks the OS whether `pid` is still around, without adopting the process.
+    fn is_running(pid: u32) -> bool {
+        #[cfg(windows)]
+        {
+            let out = Command::new("tasklist")
+                .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+                .output()
+                .expect("tasklist");
+            String::from_utf8_lossy(&out.stdout).contains(&pid.to_string())
+        }
+        #[cfg(not(windows))]
+        {
+            Command::new("kill")
+                .args(["-0", &pid.to_string()])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+        }
+    }
 }
