@@ -7,6 +7,7 @@ import { nodeTransport, killAllSync, wingetCandidates } from "@/lib/transport-no
 import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
+import { flushTasks } from "@/lib/task-store";
 import { remoteUrl, tunnelUrl } from "@/lib/remote";
 import { installConsoleCapture, log } from "@/lib/logger";
 import { isTunnelProvider, normalizeDomain } from "@/lib/tunnel";
@@ -17,6 +18,11 @@ import * as os from "node:os";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
+
+/** Writes whatever this process still owes to disk (feed and board) before it exits. */
+const flushAll = async (): Promise<void> => {
+  await Promise.all([flushHistory(), flushTasks()]);
+};
 
 async function main() {
   setTransport(nodeTransport);
@@ -765,7 +771,7 @@ async function main() {
         console.log(`${new Date(m.ts).toLocaleTimeString("en-GB", { hour12: false })}  ${from}  [${m.kind}]  ${m.text.replace(/\s+/g, " ").slice(0, 160)}`);
       }
     });
-    const shutdown = () => { void store.stopRemote().finally(() => flushHistory().finally(() => process.exit(0))); };
+    const shutdown = () => { void store.stopRemote().finally(() => flushAll().finally(() => process.exit(0))); };
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
     process.on("exit", () => { killAllSync(); killTunnelSync(); });
@@ -819,7 +825,7 @@ async function main() {
       if (last) console.log(`\n${last.text}`);
       const stillPending = Object.values(after.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
       for (const a of stillPending) console.log(`Nueva aprobación pendiente: ${a.id.slice(0, 8)}  ${a.summary}`);
-      await flushHistory();
+      await flushAll();
       process.exit(0);
     }
     error("Uso: ais approvals list | approve <id> [--note] | reject <id> [--note]");
@@ -1149,7 +1155,7 @@ async function main() {
           for (const a of pending) console.log(`  ${a.id.slice(0, 8)}  ${a.summary}`);
           console.log("Aprobá con: ais approvals approve <id>   (o rechazá con reject)");
         }
-        void flushHistory().finally(() => process.exit(3));
+        void flushAll().finally(() => process.exit(3));
         return;
       }
     }
@@ -1158,16 +1164,16 @@ async function main() {
       if (!values.json) process.stdout.write("\n");
       const errs = state.messages.find(m => m.projectId === projectId && m.kind === "error" && m.text.includes("No se encontró el CLI"));
       const isError = errs || state.runs[prevState.activeTaskRunId[projectId] as string]?.status === "error";
-      void flushHistory().finally(() => process.exit(isError ? 1 : 0));
+      void flushAll().finally(() => process.exit(isError ? 1 : 0));
     }
   });
 
   process.on("SIGINT", () => {
     useAppStore.getState().stopAll();
-    setTimeout(() => { void flushHistory().finally(() => process.exit(130)); }, 2500);
+    setTimeout(() => { void flushAll().finally(() => process.exit(130)); }, 2500);
   });
   process.stdout.on("error", (err: NodeJS.ErrnoException) => {
-    if (err.code === "EPIPE") { killAllSync(); void flushHistory().finally(() => process.exit(0)); }
+    if (err.code === "EPIPE") { killAllSync(); void flushAll().finally(() => process.exit(0)); }
   });
   process.on("exit", () => killAllSync());
 

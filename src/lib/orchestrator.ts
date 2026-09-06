@@ -5,6 +5,7 @@ import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } 
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { truncate } from "@/lib/format";
+import * as taskSync from "@/lib/task-sync";
 import { Run, AgentStatus, CommMessage, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
@@ -264,6 +265,8 @@ function handleExit(e: RunExitEvent) {
     }
   }));
 
+  taskSync.taskOnRunFinished({ ...run, status, output, endedAt: Date.now(), exitCode: e.code });
+
   if (agentForRun?.provider === "antigravity" && !e.killed) {
     const text = `${output}\n${run.rawLines.slice(-20).join("\n")}`;
     void recordAntigravityOutcome(run.model ?? agentForRun.model, text, status === "done");
@@ -363,9 +366,11 @@ function onRunFinished(runId: string) {
             const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse };
             if (store.config.approveDelegations || childAgent.requireApproval) {
               // Gate: the child only runs once the user approves (app, CLI or phone).
-              requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
+              const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id });
             } else {
-              startRun(payload);
+              const childRunId = startRun(payload);
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId });
             }
           } else {
             addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
@@ -407,6 +412,7 @@ function onRunFinished(runId: string) {
       // Only runs belonging to the current task clear it; direct instructions don't.
       if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+        taskSync.taskOnRootFinished(run.projectId, run.rootRunId, run.status === "error", run.output);
         if (run.status === "error") {
           void emitHookEvent("task.failed", {}, ctx);
           notifyTaskOutcome(run, true);
@@ -473,6 +479,7 @@ function maybeContinueParent(parentRunId: string) {
 
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
+        taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
         const project = store.config.projects.find(p => p.id === parentRun.projectId);
         const rootRun = store.runs[parentRun.rootRunId];
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
@@ -531,6 +538,7 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
   const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model, resume: true });
   if (runId) {
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
+    taskSync.taskForPrompt({ projectId, agentId: targetAgentId, runId, prompt: text });
     const store = useAppStore.getState();
     const project = store.config.projects.find(p => p.id === projectId);
     const agent = selectAgent(store, targetAgentId);
@@ -610,7 +618,8 @@ export async function approveApproval(approvalId: string, note?: string): Promis
   const approval = settleApproval(approvalId, "approved", note);
   if (!approval) return;
   addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Aprobado: ${approval.summary}${note ? ` (${note})` : ""}` });
-  startRun(approval.payload);
+  const runId = startRun(approval.payload);
+  taskSync.taskOnApprovalSettled(approval.id, true, runId);
 }
 
 export async function rejectApproval(approvalId: string, note?: string): Promise<void> {
@@ -619,6 +628,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
   const store = useAppStore.getState();
   const { payload } = approval;
   addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Rechazado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  taskSync.taskOnApprovalSettled(approval.id, false);
   // Record the rejection as a finished child run so the planner gets it with the other results.
   const runId = crypto.randomUUID();
   const now = Date.now();

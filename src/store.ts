@@ -1,9 +1,11 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
+import * as taskStore from "@/lib/task-store";
+import * as taskLogic from "@/lib/tasks";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 import { readRepoState, type RepoState } from "@/lib/git-repo";
@@ -17,8 +19,10 @@ let lastSavedConfig: AppConfig | null = null;
 
 /** Which top-level screen the shell is showing. Settings is a modal, not a screen. */
 export type Screen = "home" | "project";
-/** Project screen body: conversation or agent graph. */
-export type ProjectMode = "chat" | "graph";
+/** Project screen body: task board, conversation or agent graph. */
+export type ProjectMode = "tasks" | "chat" | "graph";
+/** How the tasks of a project are shown: kanban columns or dependency graph. */
+export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
 export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "about";
 /** One visited view in the shell back/forward history. */
@@ -60,9 +64,14 @@ export interface AppState {
    */
   remoteActiveChats: string[];
 
+  /** Tasks per project, loaded from disk on demand (see src/lib/task-store.ts). */
+  tasks: Record<string, Task[]>;
+
   // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
   screen: Screen;
   projectMode: ProjectMode;
+  /** Board or dependency graph, inside the Tareas mode (persisted). */
+  taskView: TaskView;
   commPanelOpen: boolean;
   /** Whether the terminals section of the right dock is open (persisted). */
   termPanelOpen: boolean;
@@ -86,6 +95,7 @@ export interface AppState {
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
+  setTaskView(view: TaskView): void;
   toggleCommPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
   setDockSplit(value: number): void;
@@ -141,6 +151,18 @@ export interface AppState {
   clearMessages(projectId?: string): void;
   /** Drops a project's runs and feed, in memory and on disk. */
   clearHistory(projectId: string): Promise<void>;
+
+  // ---- Tasks (board and dependency graph, see src/lib/tasks.ts) ----
+  loadTasks(projectId: string): Promise<void>;
+  addTask(projectId: string, partial?: Partial<Task>): Task;
+  updateTask(id: string, patch: Partial<Task>): void;
+  /** `index` counts the target column without the moved task. */
+  moveTask(id: string, status: TaskStatus, index: number): void;
+  removeTask(id: string): void;
+  archiveTask(id: string, archived?: boolean): void;
+  /** Makes `id` depend on `dependsOnId`. Returns false when it would close a loop. */
+  linkTaskDependency(id: string, dependsOnId: string): boolean;
+  unlinkTaskDependency(id: string, dependsOnId: string): void;
 
   // Approvals (delegations waiting for the user's go-ahead)
   approvals: Record<string, Approval>;
@@ -251,6 +273,7 @@ function generateSeedConfig(): AppConfig {
 interface UiPrefs {
   screen: Screen;
   projectMode: ProjectMode;
+  taskView: TaskView;
   commPanelOpen: boolean;
   termPanelOpen: boolean;
   dockSplit: number;
@@ -262,7 +285,8 @@ interface UiPrefs {
 const UI_PREFS_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
-  projectMode: "chat",
+  projectMode: "tasks",
+  taskView: "board",
   commPanelOpen: false,
   termPanelOpen: false,
   dockSplit: 0.5,
@@ -270,6 +294,8 @@ const defaultUiPrefs: UiPrefs = {
   sidebarCollapsed: {},
   sidebarOpen: true,
 };
+
+const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
 
 const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote", "about"];
 
@@ -298,7 +324,8 @@ function loadUiPrefs(): UiPrefs {
     const parsed = JSON.parse(raw) as Partial<UiPrefs>;
     return {
       screen: parsed.screen === "project" ? "project" : "home",
-      projectMode: parsed.projectMode === "graph" ? "graph" : "chat",
+      projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
+      taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
       dockSplit: clampDockSplit(parsed.dockSplit),
@@ -318,6 +345,7 @@ function saveUiPrefs(): void {
     const prefs: UiPrefs = {
       screen: s.screen,
       projectMode: s.projectMode,
+      taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
       termPanelOpen: s.termPanelOpen,
       dockSplit: s.dockSplit,
@@ -376,6 +404,14 @@ export const canGoForward = (s: AppState): boolean => s.navIndex < s.navHistory.
 /** Repo reads in flight, per project, so the timer and the run-finished trigger never overlap. */
 const repoReads = new Map<string, Promise<void>>();
 
+/** Which project a task belongs to, plus that project's list: tasks are keyed by project. */
+function findTaskProject(state: AppState, taskId: string): [string, Task[]] | undefined {
+  for (const [projectId, list] of Object.entries(state.tasks)) {
+    if (list.some(t => t.id === taskId)) return [projectId, list];
+  }
+  return undefined;
+}
+
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
@@ -404,6 +440,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   historyLoading: {},
   remoteActiveChats: [],
   approvals: {},
+  tasks: {},
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,
   searchOpen: false,
@@ -435,9 +472,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     } else {
       nextChatId = chatId;
     }
+    // Opening a project lands on its board; asking for a chat lands on the chat. Keeping the
+    // current chat (chatId undefined) means "come back here", so the mode is left alone.
+    const nextMode: ProjectMode = chatId === undefined ? state.projectMode : chatId === null ? "tasks" : "chat";
     if (!sameProject) state.setCurrentProject(projectId);
-    set({ currentChatId: nextChatId, screen: "project" });
-    pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: state.projectMode });
+    set({ currentChatId: nextChatId, screen: "project", projectMode: nextMode });
+    pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: nextMode });
     if (nextChatId) void state.loadChatMessages(nextChatId);
     saveUiPrefs();
   },
@@ -455,6 +495,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     set({ projectMode: mode });
     pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
+    saveUiPrefs();
+  },
+
+  setTaskView: (view) => {
+    set({ taskView: view });
     saveUiPrefs();
   },
 
@@ -722,6 +767,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // Wait, the orchestrator might be async, so we just call it.
     orchestrator.stopAll(id);
     history.forgetHistory(id);
+    taskStore.forgetTasks(id);
     set((state) => {
       const newProjects = state.config.projects.filter(p => p.id !== id);
       const newRuntime = { ...state.runtime };
@@ -733,6 +779,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // clear messages for project
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
+      const newTasks = { ...state.tasks };
+      delete newTasks[id];
       // Chats belong to the project, so they go with it (otherwise they stay orphaned in config).
       const newChats = state.config.chats.filter(c => c.projectId !== id);
       const wasCurrent = state.currentProjectId === id;
@@ -743,6 +791,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         repoState: newRepoState,
         messages: newMessages,
         runs: newRuns,
+        tasks: newTasks,
         currentProjectId: wasCurrent ? null : state.currentProjectId,
         currentChatId: wasCurrent ? null : state.currentChatId,
         // Losing the open project drops the user back to the home screen.
@@ -755,7 +804,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setCurrentProject: (id) => {
     set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
-    if (id) void history.loadHistory(id);
+    if (id) {
+      void history.loadHistory(id);
+      void get().loadTasks(id);
+    }
     debouncedSave();
   },
 
@@ -1020,6 +1072,83 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   clearHistory: (projectId) => history.clearHistory(projectId),
 
+  // ---- Task actions ----
+  // Every mutation rewrites one project's array, so the persistence subscription only has to
+  // compare `state.tasks[projectId]` to know what to save.
+  loadTasks: (projectId) => taskStore.loadTasks(projectId),
+
+  addTask: (projectId, partial) => {
+    const state = get();
+    const status = partial?.status ?? "backlog";
+    const list = state.tasks[projectId] ?? [];
+    const task = taskLogic.createTask({
+      ...partial,
+      projectId,
+      status,
+      order: partial?.order ?? taskLogic.sortColumn(list, status).length,
+    });
+    set(s => ({ tasks: { ...s.tasks, [projectId]: [...(s.tasks[projectId] ?? []), task] } }));
+    return task;
+  },
+
+  updateTask: (id, patch) => {
+    set(s => {
+      const entry = findTaskProject(s, id);
+      if (!entry) return {};
+      const [projectId, list] = entry;
+      return {
+        tasks: {
+          ...s.tasks,
+          [projectId]: list.map(t => (t.id === id ? { ...t, ...patch, id: t.id, projectId: t.projectId, updatedAt: Date.now() } : t)),
+        },
+      };
+    });
+  },
+
+  moveTask: (id, status, index) => {
+    set(s => {
+      const entry = findTaskProject(s, id);
+      if (!entry) return {};
+      const [projectId, list] = entry;
+      const next = taskLogic.moveTask(list, id, status, index);
+      return next === list ? {} : { tasks: { ...s.tasks, [projectId]: next } };
+    });
+  },
+
+  removeTask: (id) => {
+    set(s => {
+      const entry = findTaskProject(s, id);
+      if (!entry) return {};
+      const [projectId, list] = entry;
+      return { tasks: { ...s.tasks, [projectId]: taskLogic.removeTask(list, id) } };
+    });
+  },
+
+  archiveTask: (id, archived = true) => {
+    get().updateTask(id, { archived });
+  },
+
+  linkTaskDependency: (id, dependsOnId) => {
+    const state = get();
+    const entry = findTaskProject(state, id);
+    if (!entry) return false;
+    const [projectId, list] = entry;
+    const next = taskLogic.linkDependency(list, id, dependsOnId);
+    if (next === list) return false;
+    set(s => ({ tasks: { ...s.tasks, [projectId]: next } }));
+    return true;
+  },
+
+  unlinkTaskDependency: (id, dependsOnId) => {
+    set(s => {
+      const entry = findTaskProject(s, id);
+      if (!entry) return {};
+      const [projectId, list] = entry;
+      const next = taskLogic.unlinkDependency(list, id, dependsOnId);
+      return next === list ? {} : { tasks: { ...s.tasks, [projectId]: next } };
+    });
+  },
+
   // ---- Chat actions ----
   createChat: (opts) => {
     const id = crypto.randomUUID();
@@ -1209,6 +1338,7 @@ async function runInit(): Promise<void> {
       currentProjectId: lastProjectValid ? config.lastProjectId : null,
       screen,
       projectMode: prefs.projectMode,
+      taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
       termPanelOpen: prefs.termPanelOpen,
       dockSplit: prefs.dockSplit,
@@ -1246,10 +1376,11 @@ async function runInit(): Promise<void> {
 
     // Restore runs and feed: every project when there are few, otherwise only the last one.
     history.attachHistoryPersistence();
+    taskStore.attachTaskPersistence();
     const toLoad = config.projects.length <= 5
       ? config.projects.map(p => p.id)
       : (config.lastProjectId ? [config.lastProjectId] : []);
-    await Promise.all(toLoad.map(id => history.loadHistory(id)));
+    await Promise.all(toLoad.flatMap(id => [history.loadHistory(id), taskStore.loadTasks(id)]));
     history.startHistorySync();
 
     set({ loaded: true });
@@ -1314,6 +1445,14 @@ export function selectRunningCount(state: AppState, projectId?: string): number 
     }
   }
   return count;
+}
+
+/** A stable empty array, so `selectTasks` never makes a subscribed component re-render. */
+const EMPTY_TASKS: Task[] = [];
+
+export function selectTasks(state: AppState, projectId: string | null | undefined): Task[] {
+  if (!projectId) return EMPTY_TASKS;
+  return state.tasks[projectId] ?? EMPTY_TASKS;
 }
 
 export function selectProject(state: AppState, id: string | null | undefined): Project | undefined {
