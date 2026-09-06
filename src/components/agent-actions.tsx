@@ -113,10 +113,12 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
     duplicate: () => {
       if (!currentProjectId) return;
       const roster = selectProjectAgents(useAppStore.getState(), currentProjectId);
+      // Duplicating "Claude 2" gives "Claude 3", not "Claude 2 2".
+      const base = agent.name.replace(/\s+\d+$/, "").trim() || agent.name;
       addAgent(currentProjectId, {
         ...agent,
         id: crypto.randomUUID(),
-        name: nextAgentName(roster, agent.name),
+        name: nextAgentName(roster, base),
       });
     },
     removeAgent: () => {
