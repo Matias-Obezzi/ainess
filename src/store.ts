@@ -6,6 +6,7 @@ import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
+import { readRepoState, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
@@ -40,6 +41,8 @@ export interface AppState {
   models: Partial<Record<ProviderId, ModelInfo[]>>;
   /** Last known quota per provider. */
   quota: Partial<Record<ProviderId, ProviderQuota>>;
+  /** Last known repository state per project (branch, changes, pull requests). */
+  repoState: Record<string, RepoState>;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
   /** Whether a chat's messages are being loaded from disk for the first time (for a skeleton). */
@@ -126,6 +129,8 @@ export interface AppState {
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
   refreshQuota(provider: ProviderId): Promise<ProviderQuota>;
   loadQuotaMarks(): Promise<void>;
+  /** Re-reads the git state of a project's workspace. Read-only, and never throws. */
+  refreshRepoState(projectId: string): Promise<void>;
 
   submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void>;
   instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void>;
@@ -353,6 +358,9 @@ function applyNav(entry: NavEntry): void {
 export const canGoBack = (s: AppState): boolean => s.navIndex > 0;
 export const canGoForward = (s: AppState): boolean => s.navIndex < s.navHistory.length - 1;
 
+/** Repo reads in flight, per project, so the timer and the run-finished trigger never overlap. */
+const repoReads = new Map<string, Promise<void>>();
+
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
@@ -368,6 +376,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   binaries: {},
   models: {},
   quota: {},
+  repoState: {},
   runtime: {},
   runs: {},
   messages: [],
@@ -674,6 +683,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newRuntime[id];
       const newActiveTask = { ...state.activeTaskRunId };
       delete newActiveTask[id];
+      const newRepoState = { ...state.repoState };
+      delete newRepoState[id];
       // clear messages for project
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([_, r]) => r.projectId !== id));
@@ -684,6 +695,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         config: { ...state.config, projects: newProjects, chats: newChats },
         runtime: newRuntime,
         activeTaskRunId: newActiveTask,
+        repoState: newRepoState,
         messages: newMessages,
         runs: newRuns,
         currentProjectId: wasCurrent ? null : state.currentProjectId,
@@ -896,6 +908,27 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (Object.keys(pools).length === 0) return;
     const result = await quota.fetchQuota("antigravity");
     set(state => ({ quota: { ...state.quota, antigravity: result } }));
+  },
+
+  refreshRepoState: async (projectId) => {
+    const project = selectProject(get(), projectId);
+    if (!project?.workspaceDir) return;
+    // The 60 s timer, opening the project and the end of a run can all land at once; one read per
+    // project at a time is plenty and keeps git from being called three times over.
+    const inFlight = repoReads.get(projectId);
+    if (inFlight) return inFlight;
+    const read = readRepoState(project.workspaceDir)
+      .then(state => {
+        set(s => ({ repoState: { ...s.repoState, [projectId]: state } }));
+      })
+      .catch(() => {
+        /* a repo we cannot read is not worth an error: the UI just shows nothing */
+      })
+      .finally(() => {
+        repoReads.delete(projectId);
+      });
+    repoReads.set(projectId, read);
+    return read;
   },
 
   submitPrompt: async (text, targetAgentId, projectId, opts) => {
