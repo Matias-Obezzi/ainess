@@ -715,9 +715,12 @@ Instalación desde la app: cuando ngrok no está, la fila Proveedor ofrece "Inst
 `winget install ngrok -s msstore --accept-package-agreements --accept-source-agreements
 --disable-interactivity` (el comando que documenta ngrok; el paquete de la Store deja un alias en
 `%LOCALAPPDATA%\Microsoft\WindowsApps`, que la detección ahora mira explícitamente y acepta aunque
-pedirle metadata falle, como pasa con los alias de ejecución) (con timeout de 300 s vía el parámetro nuevo de `Transport.exec`), vuelve a
-detectar y termina con `ensureNgrokUpToDate`. Va narrando las fases (`installNgrok(onPhase)`:
-instalando → detectando → actualizando). Un "already installed" de winget no cuenta como error.
+pedirle metadata falle, como pasa con los alias de ejecución), con timeout de 300 s vía el parámetro
+de `Transport.exec`, y después vuelve a detectar. El botón vive al lado de "Volver a detectar" y va
+narrando las fases (`installNgrok(onPhase)`: instalando → detectando). Un "already installed" de
+winget no cuenta como error. **No** corre el actualizador después de instalar: el paquete de la Store
+no puede reemplazarse a sí mismo (`in-place upgrades are not supported`) y la Store ya lo mantiene al
+día, así que `ngrokUpdateOutcome` trata ese mensaje como "ya está al día" y no como falla.
 
 Estado remoto sincronizado: `useRemoteSync` (montado en `App`) refresca `remoteStatus` y
 `tunnelStatus` cada 4 s para toda la app, no solo con el modal de configuración abierto; antes el

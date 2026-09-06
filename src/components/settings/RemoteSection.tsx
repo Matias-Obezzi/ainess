@@ -448,19 +448,7 @@ export function RemoteSection() {
               ) : installing ? (
                 <span className="flex flex-wrap items-center gap-1">
                   <RefreshCw className="h-3 w-3 animate-spin" />
-                  {installing === "installing"
-                    ? "Instalando ngrok con winget…"
-                    : installing === "detecting"
-                      ? "Buscando el binario recién instalado…"
-                      : "Actualizando ngrok a la última versión…"}
-                </span>
-              ) : provider === "ngrok" ? (
-                <span className="flex flex-wrap items-center gap-2">
-                  No está instalado.
-                  <Button size="sm" variant="secondary" onClick={() => void install()}>
-                    <Download className="mr-1 h-3.5 w-3.5" /> Instalar ngrok
-                  </Button>
-                  <span>Corre <code className="rounded bg-muted px-1 py-0.5">{tunnelInstallCommand(provider)}</code> por vos.</span>
+                  {installing === "installing" ? "Instalando ngrok con winget…" : "Buscando el binario recién instalado…"}
                 </span>
               ) : (
                 <span className="flex flex-wrap items-center gap-1">
@@ -483,6 +471,12 @@ export function RemoteSection() {
               <Button variant="ghost" size="sm" onClick={() => void detect()}>
                 <RefreshCw className="mr-1 h-3.5 w-3.5" /> Volver a detectar
               </Button>
+              {provider === "ngrok" && !binaryPath && (
+                <Button size="sm" variant="secondary" disabled={!!installing} onClick={() => void install()}>
+                  {installing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                  Instalar ngrok
+                </Button>
+              )}
             </div>
           </Field>
 

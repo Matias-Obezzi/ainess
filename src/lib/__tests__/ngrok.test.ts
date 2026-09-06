@@ -30,6 +30,8 @@ describe("ngrok update", () => {
     expect(ngrokUpdateOutcome("", null)).toBe("failed");
     // Anything unreadable that still exited fine means nothing changed.
     expect(ngrokUpdateOutcome("algo raro", 0)).toBe("current");
+    // A Microsoft Store install cannot replace itself; the Store keeps it current.
+    expect(ngrokUpdateOutcome("ERROR: in-place upgrades are not supported for this ngrok installation", 1)).toBe("current");
   });
 });
 

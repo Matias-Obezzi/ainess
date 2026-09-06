@@ -26,14 +26,15 @@ export interface NgrokAccountStatus {
 }
 
 /** What `installNgrok` is doing, so the UI can narrate it. */
-export type NgrokInstallPhase = "installing" | "updating" | "detecting";
+export type NgrokInstallPhase = "installing" | "detecting";
 
 /** winget can take a while on a cold source; a version probe never should. */
 const INSTALL_TIMEOUT_SECS = 300;
 
 /**
- * Installs ngrok with winget and leaves it on the latest version. Reports each phase as it
- * starts. Throws with the reason when winget is missing or the install fails.
+ * Installs ngrok with winget. Reports each phase as it starts. Throws with the reason when winget
+ * is missing or the install fails. It does not run the updater afterwards: the Store package it
+ * installs cannot replace itself, and the Store is what keeps it current.
  */
 export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void): Promise<string | null> {
   const transport = getTransport();
@@ -63,12 +64,9 @@ export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void):
     throw new Error("winget terminó pero ngrok sigue sin aparecer. Reiniciá la app y probá de nuevo.");
   }
 
-  onPhase("updating");
-  // winget's package lags behind, so the fresh install is brought up to date right away. The
-  // updater replaces the binary, so where it ends up is only known after it runs.
-  const updated = await ensureNgrokUpToDate(found.ngrok);
-  await transport.tunnelDetect().catch(() => null);
-  return updated.version;
+  const versionRes = await runNgrok(found.ngrok, ["--version"]);
+  return versionRes.ok ? parseNgrokVersion(`${versionRes.stdout}
+${versionRes.stderr}`) : null;
 }
 
 export interface NgrokUpdateState {

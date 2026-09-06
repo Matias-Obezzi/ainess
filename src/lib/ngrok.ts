@@ -77,8 +77,11 @@ export function parseNgrokVersion(output: string): string | null {
 export type NgrokUpdateOutcome = "updated" | "current" | "failed";
 
 export function ngrokUpdateOutcome(output: string, code: number | null): NgrokUpdateOutcome {
-  if (code !== 0) return "failed";
   const text = output.toLowerCase();
+  // A Microsoft Store install refuses to replace itself: the Store keeps it current, so there is
+  // nothing to do and nothing to complain about.
+  if (text.includes("in-place upgrades are not supported")) return "current";
+  if (code !== 0) return "failed";
   if (/no update|already|up to date|up-to-date/.test(text)) return "current";
   if (/success|updated|installed|new version/.test(text)) return "updated";
   return "current";
