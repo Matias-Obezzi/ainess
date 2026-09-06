@@ -162,6 +162,16 @@ export interface TrayConfig {
   notifyResults: boolean;
 }
 
+/** A saved order: a prompt you reuse, optionally bound to one agent and model. */
+export interface Preset {
+  id: string;
+  name: string;
+  prompt: string;
+  /** Only offered for this agent when set; otherwise it applies to any of them. */
+  agentId?: string;
+  model?: string;
+}
+
 export interface AppConfig {
   version: 9;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -178,7 +188,7 @@ export interface AppConfig {
   sharedContext: string;
   binaryOverrides: Partial<Record<ProviderId, string>>;
   profile: { name: string; about: string; preferences: string };
-  presets: Array<{ id: string; name: string; prompt: string; agentId?: string; model?: string }>;
+  presets: Preset[];
   autoModel: boolean;
   hooks: Hook[];
   chats: Chat[];

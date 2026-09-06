@@ -374,6 +374,14 @@ function onRunFinished(runId: string) {
 
   if (!waitingForChildren) {
     if (!run.parentRunId) {
+      // The streamed text and the final answer are the same words when the agent only talked, so
+      // keeping both showed the reply twice. The result is the one that carries the "to user"
+      // meaning, so it wins and the live copy goes.
+      const streamedId = `text-${runId}`;
+      const streamed = useAppStore.getState().messages.find(m => m.id === streamedId);
+      if (streamed && streamed.text.trim() === run.output.trim()) {
+        useAppStore.setState(state => ({ messages: state.messages.filter(m => m.id !== streamedId) }));
+      }
       addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: "user", kind: "result", text: run.output, runId });
       // Only runs belonging to the current task clear it; direct instructions don't.
       if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {

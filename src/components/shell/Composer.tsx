@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { PresetStrip } from "@/components/shell/PresetStrip";
+import type { Preset } from "@/types";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +61,19 @@ export function Composer() {
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+  // An order bound to another agent would run somewhere else than what the composer says, so only
+  // the ones for this target (and the ones bound to nobody) are offered.
+  const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
+
+  /** Loads an order into the box, and follows the agent and model it was saved with. */
+  const applyPreset = (preset: Preset) => {
+    setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
+    if (preset.agentId) setTargetId(preset.agentId);
+    if (preset.model) {
+      setTargetModel(preset.model);
+      setCustomModel("");
+    }
+  };
 
   // Whose quota the ring shows: the agent of a one-on-one chat, or the one the prompt is aimed at
   // (the orchestrator unless the destination select says otherwise).
@@ -153,6 +168,9 @@ export function Composer() {
           </Alert>
         )}
 
+        {/* The saved orders that apply to whoever is going to run this. */}
+        <PresetStrip presets={presetsForTarget} onPick={applyPreset} />
+
         {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
         <div className="relative">
           {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
@@ -228,30 +246,6 @@ export function Composer() {
                   />
                 )}
 
-                <Select
-                  value="none"
-                  onValueChange={val => {
-                    if (val === "none") return;
-                    const preset = config.presets?.find(p => p.id === val);
-                    if (!preset) return;
-                    setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
-                    if (preset.agentId) setTargetId(preset.agentId);
-                    if (preset.model) {
-                      setTargetModel(preset.model);
-                      setCustomModel("");
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-[170px] h-8 text-xs">
-                    <SelectValue placeholder="Órdenes predefinidas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Seleccionar orden…</SelectItem>
-                    {config.presets?.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </>
             )}
 
