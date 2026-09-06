@@ -14,6 +14,7 @@ import { getTransport } from "@/lib/transport";
 import { openExternal } from "@/lib/open-external";
 import { tunnelUrl } from "@/lib/remote";
 import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary, tunnelDescription, tunnelInstallCommand, type TunnelProvider } from "@/lib/tunnel";
+import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
 import { ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus } from "@/lib/ngrok-account";
 import { Copy, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
@@ -198,7 +199,7 @@ export function RemoteSection() {
   };
 
   /** Saves the fixed-URL fields and, if the tunnel is up, restarts it against the new config. */
-  const applyTunnelFixedFields = async (patch: { domain?: string; tunnelName?: string }) => {
+  const applyTunnelFixedFields = async (patch: Partial<TunnelConfig>) => {
     const nextTunnel = { ...remote.tunnel, ...patch };
     updateConfig({ remote: { ...remote, tunnel: nextTunnel } });
     if (!tunnel.running) return;
@@ -270,6 +271,24 @@ export function RemoteSection() {
       setLoadingDomains(false);
     }
   };
+
+  // What the user picked; a config from before this existed is read from whether it has a domain.
+  const domainType: "dynamic" | "static" =
+    remote.tunnel.domainType ?? (normalizeDomain(remote.tunnel.domain) ? "static" : "dynamic");
+  // Only an account we can query has domains to offer; without the API key there is nothing to pick.
+  const ngrokVerified = !!ngrokPath && !!ngrokAccount?.hasApiKey;
+  const runningHost = tunnel.running && tunnel.url ? normalizeDomain(tunnel.url) : "";
+  const selectedNgrokDomain = ngrokDomains?.includes(normalizeDomain(remote.tunnel.domain))
+    ? normalizeDomain(remote.tunnel.domain)
+    : undefined;
+
+  // With a static domain the list is the only way to choose, so fetch it as soon as it is usable.
+  useEffect(() => {
+    if (provider === "ngrok" && domainType === "static" && ngrokVerified && ngrokDomains === null && !loadingDomains) {
+      void loadNgrokDomains();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, domainType, ngrokVerified, ngrokDomains]);
 
   const applyPort = () => {
     const n = parseInt(port, 10);
@@ -378,87 +397,117 @@ export function RemoteSection() {
           <span className="text-xs text-muted-foreground">{tunnelDescription(provider)}</span>
         </div>
 
-        {provider === "ngrok" && (
-          <div className="flex flex-col gap-3 rounded-md border p-3">
-            <span className="text-xs font-semibold text-muted-foreground">Cuenta de ngrok</span>
-            <NgrokCredential
-              label="Authtoken"
-              hint="Lo necesita ngrok para conectarse. La app solo mira si está presente: si es inválido, el error aparece al prender el túnel."
-              configured={!!ngrokAccount?.hasAuthtoken}
-              dashboardUrl={NGROK_AUTHTOKEN_URL}
-              disabled={!ngrokPath}
-              onSave={v => saveCredential("authtoken", v)}
-            />
-            <NgrokCredential
-              label="API key"
-              hint="Opcional y distinta del authtoken: sirve para traer tus dominios desde acá."
-              configured={!!ngrokAccount?.hasApiKey}
-              dashboardUrl={NGROK_API_KEYS_URL}
-              disabled={!ngrokPath}
-              onSave={v => saveCredential("api-key", v)}
-            />
-            <span className="text-xs text-muted-foreground">
-              {!ngrokPath
-                ? "Instalá ngrok para poder configurar la cuenta desde acá."
-                : ngrokAccount?.error
-                  ? `No se pudo leer la configuración de ngrok: ${ngrokAccount.error}`
-                  : "Las dos credenciales se guardan en el archivo de configuración de ngrok, nunca en ainess."}
-            </span>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2 rounded-md border p-3">
-          <span className="text-xs font-semibold text-muted-foreground">URL fija (opcional)</span>
-          {provider === "ngrok" ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!ngrokPath || !ngrokAccount?.hasApiKey || loadingDomains}
-                  onClick={() => void loadNgrokDomains()}
-                >
-                  {loadingDomains ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
-                  Traer mis dominios
-                </Button>
-                {!ngrokAccount?.hasApiKey && (
-                  <span className="text-xs text-muted-foreground">Necesita la API key de arriba.</span>
-                )}
-              </div>
-              {ngrokDomains && ngrokDomains.length > 0 && (
-                <Select
-                  value={ngrokDomains.includes(normalizeDomain(remote.tunnel.domain)) ? normalizeDomain(remote.tunnel.domain) : undefined}
-                  onValueChange={v => void applyTunnelFixedFields({ domain: normalizeDomain(v) })}
-                >
-                  <SelectTrigger className="w-72"><SelectValue placeholder="Elegí uno de tus dominios" /></SelectTrigger>
-                  <SelectContent>
-                    {ngrokDomains.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-              {ngrokDomains?.length === 0 && (
-                <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                  Tu cuenta no tiene dominios reservados todavía.
-                  <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
-                    Reclamá el gratis en el dashboard
-                  </button>
-                </span>
-              )}
-              <label className="text-xs text-muted-foreground">Dominio estático</label>
-              <Input
-                className="w-72"
-                placeholder="algo.ngrok-free.app"
-                value={domainInput}
-                onChange={e => setDomainInput(e.target.value)}
-                onBlur={applyDomain}
-                onKeyDown={e => e.key === "Enter" && applyDomain()}
-              />
+        {provider === "ngrok" ? (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Tipo de dominio</label>
+              <Select
+                value={domainType}
+                onValueChange={v =>
+                  void applyTunnelFixedFields(
+                    v === "static" ? { domainType: "static" } : { domainType: "dynamic", domain: "" },
+                  )
+                }
+              >
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dynamic">Dinámico</SelectItem>
+                  <SelectItem value="static">Estático</SelectItem>
+                </SelectContent>
+              </Select>
               <span className="text-xs text-muted-foreground">
-                El plan gratis de ngrok incluye un dominio estático. Reclamalo en dashboard.ngrok.com → Domains y pegalo
-                acá: la URL pública no cambia más.
+                {domainType === "static"
+                  ? "Siempre la misma URL, usando un dominio de tu cuenta de ngrok."
+                  : "ngrok genera una URL nueva cada vez que prendés el túnel."}
               </span>
             </div>
-          ) : (
+
+            {domainType === "static" && (
+              <div className="flex flex-col gap-3 rounded-md border p-3">
+                <span className="text-xs font-semibold text-muted-foreground">Cuenta de ngrok</span>
+                <NgrokCredential
+                  label="Authtoken"
+                  hint="Lo necesita ngrok para conectarse. La app solo mira si está presente: si es inválido, el error aparece al prender el túnel."
+                  configured={!!ngrokAccount?.hasAuthtoken}
+                  dashboardUrl={NGROK_AUTHTOKEN_URL}
+                  disabled={!ngrokPath}
+                  onSave={v => saveCredential("authtoken", v)}
+                />
+                <NgrokCredential
+                  label="API key"
+                  hint="Distinta del authtoken: con ella la app trae los dominios de tu cuenta."
+                  configured={!!ngrokAccount?.hasApiKey}
+                  dashboardUrl={NGROK_API_KEYS_URL}
+                  disabled={!ngrokPath}
+                  onSave={v => saveCredential("api-key", v)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {!ngrokPath
+                    ? "Instalá ngrok para poder configurar la cuenta desde acá."
+                    : ngrokAccount?.error
+                      ? `No se pudo leer la configuración de ngrok: ${ngrokAccount.error}`
+                      : "Las dos credenciales se guardan en el archivo de configuración de ngrok, nunca en ainess."}
+                </span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 rounded-md border p-3">
+              <span className="text-xs font-semibold text-muted-foreground">Dominio</span>
+              {domainType === "dynamic" ? (
+                <>
+                  <Input className="w-72" disabled value={runningHost} placeholder="Lo genera ngrok al prender el túnel" />
+                  <span className="text-xs text-muted-foreground">
+                    {runningHost ? "Es la URL de esta corrida: cambia la próxima vez." : "Se completa cuando el túnel esté activo."}
+                  </span>
+                </>
+              ) : ngrokVerified ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      value={selectedNgrokDomain}
+                      disabled={loadingDomains || !ngrokDomains?.length}
+                      onValueChange={v => void applyTunnelFixedFields({ domain: normalizeDomain(v) })}
+                    >
+                      <SelectTrigger className="w-72">
+                        <SelectValue placeholder={loadingDomains ? "Buscando tus dominios…" : "Elegí uno de tus dominios"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(ngrokDomains ?? []).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Volver a traer mis dominios"
+                      disabled={loadingDomains}
+                      onClick={() => void loadNgrokDomains()}
+                    >
+                      {loadingDomains ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {ngrokDomains?.length === 0 && (
+                    <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                      Tu cuenta no tiene dominios reservados todavía.
+                      <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void openExternal(NGROK_DOMAINS_URL)}>
+                        Reclamá el gratis en el dashboard
+                      </button>
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Input className="w-72" disabled placeholder="Autenticate para configurar" />
+                  <span className="text-xs text-muted-foreground">
+                    Autenticate para configurar: cargá el authtoken y la API key acá arriba.
+                  </span>
+                </>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-md border p-3">
+            <span className="text-xs font-semibold text-muted-foreground">URL fija (opcional)</span>
             <div className="flex flex-col gap-2">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Nombre del túnel</label>
@@ -490,8 +539,8 @@ export function RemoteSection() {
               </code>
               {missingTunnelName && <span className="text-xs text-destructive">Falta el nombre del túnel.</span>}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {binaryPath ? (

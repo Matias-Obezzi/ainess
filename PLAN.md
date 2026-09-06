@@ -697,12 +697,17 @@ las acciones `startTunnel/stopTunnel/refreshTunnelStatus`; `stopRemote` apaga el
 
 `RemoteSection` suma el bloque "Acceso desde afuera (túnel)": select de proveedor con su
 explicación, estado de detección del binario con el `winget install …` y botón "Volver a detectar",
-un bloque "URL fija (opcional)" con el input de dominio estático (ngrok) o nombre de túnel + hostname
-(cloudflared, con los tres comandos de referencia), switch deshabilitado (con tooltip) si el acceso
-local está apagado o falta el binario, un badge "URL fija" y la URL que va a quedar cuando la config
-alcanza, URL pública con QR y Copiar, y el aviso de seguridad. Cambiar el dominio o el nombre del
-túnel mientras el túnel está corriendo lo reinicia solo (stop + start), mostrando el mismo indicador
-`tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
+y después dos formas distintas según el proveedor. Con **ngrok** manda el select "Tipo de dominio"
+(`TunnelConfig.domainType`, que en una config vieja se deduce de si hay `domain`): en *dinámico* el
+campo "Dominio" es un input deshabilitado que muestra el host que generó ngrok en esta corrida; en
+*estático* aparece el bloque "Cuenta de ngrok" (authtoken y API key) y el campo "Dominio" pasa a ser
+un select con los dominios de la cuenta, que se traen solos apenas hay API key. Sin API key el campo
+queda deshabilitado con la leyenda "Autenticate para configurar". Con **cloudflared** sigue el bloque
+"URL fija (opcional)" con nombre de túnel + hostname y los tres comandos de referencia. Además:
+switch deshabilitado (con tooltip) si el acceso local está apagado o falta el binario, badge "URL
+fija" con la URL que va a quedar, URL pública con QR y Copiar, y el aviso de seguridad. Cambiar el
+dominio o el nombre del túnel mientras el túnel está corriendo lo reinicia solo (stop + start),
+mostrando el mismo indicador `tunnelBusy` que usa el switch. La página remota usa rutas relativas, así que funciona igual detrás
 del túnel.
 
 Cuenta de ngrok (`src/lib/ngrok.ts` puro + `src/lib/ngrok-account.ts` con I/O). ngrok usa dos

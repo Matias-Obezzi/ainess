@@ -80,7 +80,7 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="h-10 shrink-0 relative flex items-center justify-between border-b border-border bg-card select-none"
+      className="h-[var(--titlebar-h)] shrink-0 relative z-[60] flex items-center justify-between border-b border-border bg-card select-none pointer-events-auto"
     >
       <div className="flex items-center gap-1 px-2">
         <Tooltip>

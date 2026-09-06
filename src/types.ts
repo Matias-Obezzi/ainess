@@ -136,6 +136,11 @@ export interface TunnelConfig {
   domain?: string;
   /** cloudflared only: name (or UUID) of the named tunnel created with `cloudflared tunnel create`. */
   tunnelName?: string;
+  /**
+   * What the user picked in the UI: a URL that changes on every start ("dynamic") or one that is
+   * always the same ("static", which needs `domain`). Absent means it is inferred from `domain`.
+   */
+  domainType?: "dynamic" | "static";
 }
 
 export interface RemoteConfig {

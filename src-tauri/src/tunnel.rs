@@ -338,6 +338,9 @@ fn start_process(
     };
     let deadline = Instant::now() + timeout;
     let mut tail: Vec<String> = Vec::new();
+    // ngrok answers a bad flag with its whole help text, which would push the actual error out
+    // of `tail`, so error lines are kept in their own buffer.
+    let mut errors: Vec<String> = Vec::new();
     loop {
         match rx.recv_timeout(Duration::from_millis(200)) {
             Ok(line) => {
@@ -345,6 +348,13 @@ fn start_process(
                     return Ok((child, url));
                 }
                 if !line.trim().is_empty() {
+                    let upper = line.to_uppercase();
+                    if upper.contains("ERROR") || upper.contains("ERR_") {
+                        errors.push(line.clone());
+                        if errors.len() > 6 {
+                            errors.remove(0);
+                        }
+                    }
                     tail.push(line);
                     if tail.len() > 8 {
                         tail.remove(0);
@@ -353,30 +363,56 @@ fn start_process(
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 if let Ok(Some(status)) = child.try_wait() {
-                    return Err(exit_message(provider, status.code(), &tail));
+                    return Err(exit_message(provider, status.code(), &shown(&tail, &errors)));
                 }
                 if Instant::now() > deadline {
                     kill_child(child);
                     return Err(format!(
                         "`{provider}` no publicó una URL en {} s. Últimas líneas: {}",
                         timeout.as_secs(),
-                        tail.join(" | ")
+                        shown(&tail, &errors).join(" | ")
                     ));
                 }
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 let code = child.wait().ok().and_then(|s| s.code());
-                return Err(exit_message(provider, code, &tail));
+                return Err(exit_message(provider, code, &shown(&tail, &errors)));
             }
         }
     }
+}
+
+/// The error lines when there are any, the plain tail otherwise.
+fn shown(tail: &[String], errors: &[String]) -> Vec<String> {
+    if errors.is_empty() { tail.to_vec() } else { errors.to_vec() }
+}
+
+/// The lines worth showing the user. ngrok answers a bad flag by printing its whole help text,
+/// so the plain tail is mostly noise: when the output carries error lines, only those are kept.
+fn relevant_lines(tail: &[String]) -> Vec<String> {
+    let errors: Vec<String> = tail
+        .iter()
+        .filter(|l| {
+            let u = l.to_uppercase();
+            u.contains("ERROR") || u.contains("ERR_")
+        })
+        .filter(|l| l.trim().trim_end_matches("ERROR:").trim() != "")
+        .cloned()
+        .collect();
+    if errors.is_empty() { tail.to_vec() } else { errors }
 }
 
 fn exit_message(provider: &str, code: Option<i32>, tail: &[String]) -> String {
     let joined_lower = tail.join(" ").to_lowercase();
     let mut hint = String::new();
     if provider == "ngrok" {
-        if tail.iter().any(|l| l.contains("authtoken")) {
+        if joined_lower.contains("err_ngrok_121")
+            || (joined_lower.contains("agent") && joined_lower.contains("too old"))
+        {
+            hint.push_str(
+                " Tu agente de ngrok es más viejo que el mínimo que pide tu cuenta: actualizalo con `ngrok update` o `winget upgrade Ngrok.Ngrok`.",
+            );
+        } else if tail.iter().any(|l| l.contains("authtoken")) {
             hint.push_str(" Configurá tu cuenta con `ngrok config add-authtoken <token>`.");
         } else if joined_lower.contains("domain")
             && (joined_lower.contains("not found")
@@ -395,7 +431,7 @@ fn exit_message(provider: &str, code: Option<i32>, tail: &[String]) -> String {
     format!(
         "`{provider}` terminó{}.{hint} Últimas líneas: {}",
         code.map(|c| format!(" con código {c}")).unwrap_or_default(),
-        tail.join(" | ")
+        relevant_lines(tail).join(" | ")
     )
 }
 
@@ -487,6 +523,19 @@ mod tests {
             Some("https://abc-1-2-3.ngrok-free.app")
         );
         assert_eq!(extract_url("ngrok", r#"{"url":"http://localhost:4040"}"#, None, None), None);
+    }
+
+    #[test]
+    fn an_old_agent_gets_told_to_update() {
+        let tail = vec![
+            "--scheme strings which schemes to listen on".to_string(),
+            "ERROR: authentication failed: Your ngrok-agent version \"3.3.1\" is too old. ERR_NGROK_121".to_string(),
+            "--websocket-tcp-converter convert ingress websocket connections".to_string(),
+        ];
+        let msg = super::exit_message("ngrok", Some(1), &tail);
+        assert!(msg.contains("ngrok update"), "{msg}");
+        // The help noise around the error is dropped.
+        assert!(!msg.contains("--websocket-tcp-converter"), "{msg}");
     }
 
     #[test]
