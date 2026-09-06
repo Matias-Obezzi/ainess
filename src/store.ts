@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, ModelInfo, ProviderQuota, ShellInfo, TerminalTab } from "@/types";
+import { AppConfig, AgentConfig, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -10,6 +10,7 @@ import { readRepoState, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
+import * as notifications from "@/lib/notifications";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -145,6 +146,20 @@ export interface AppState {
   approvals: Record<string, Approval>;
   approve(approvalId: string, note?: string): Promise<void>;
   reject(approvalId: string, note?: string): Promise<void>;
+
+  // ---- Notification center (the bell in the window bar; in memory only) ----
+  /** Newest first, capped at `MAX_NOTIFICATIONS`. Never written to disk. */
+  notifications: AppNotification[];
+  /** Whether the bell's panel is open. Not persisted. */
+  notificationsOpen: boolean;
+  notify(n: notifications.NotificationInput): void;
+  markNotificationsRead(): void;
+  markNotificationRead(id: string): void;
+  /** Everything said about one approval stops asking once the user decided. */
+  markApprovalNotificationsRead(approvalId: string): void;
+  dismissNotification(id: string): void;
+  clearNotifications(): void;
+  toggleNotifications(open?: boolean): void;
 
   // LAN remote access
   remoteStatus: { running: boolean; url?: string; ip?: string; clients: number; error?: string };
@@ -491,6 +506,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
   approve: (approvalId, note) => orchestrator.approveApproval(approvalId, note),
   reject: (approvalId, note) => orchestrator.rejectApproval(approvalId, note),
 
+  notifications: [],
+  notificationsOpen: false,
+  notify: (n) => {
+    set(state => ({
+      notifications: notifications.pushNotification(state.notifications, n, { id: crypto.randomUUID(), ts: Date.now() }),
+    }));
+  },
+  markNotificationsRead: () => {
+    set(state => ({ notifications: notifications.markAllRead(state.notifications) }));
+  },
+  markNotificationRead: (id) => {
+    set(state => ({ notifications: notifications.markRead(state.notifications, id) }));
+  },
+  markApprovalNotificationsRead: (approvalId) => {
+    set(state => ({ notifications: notifications.markApprovalRead(state.notifications, approvalId) }));
+  },
+  dismissNotification: (id) => {
+    set(state => ({ notifications: notifications.dismissNotification(state.notifications, id) }));
+  },
+  clearNotifications: () => {
+    set({ notifications: [] });
+  },
+  toggleNotifications: (open) => {
+    set(s => ({ notificationsOpen: open ?? !s.notificationsOpen }));
+  },
+
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
   toggleRemote: async (enabled) => {
@@ -549,11 +590,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   refreshTunnelStatus: async () => {
     const status = await getTransport().tunnelStatus();
+    const fell = get().tunnelStatus.running && !status.running;
     set(state => ({
       tunnelStatus: status.running
         ? { ...status }
         : { running: false, error: state.tunnelStatus.running ? "Se cayó el túnel" : state.tunnelStatus.error },
     }));
+    if (fell) {
+      get().notify({ kind: "tunnel", title: "Se cayó el túnel", body: "El acceso público quedó apagado." });
+    }
   },
   refreshRemoteStatus: async () => {
     const status = await getTransport().remoteStatus();

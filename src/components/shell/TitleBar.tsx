@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
+import { NotificationBell } from "@/components/shell/NotificationBell";
 
 /**
  * Turns the remote server on and off from the window bar, so the phone can be let in without
@@ -202,6 +203,7 @@ export function TitleBar() {
       </span>
 
       <div className="flex items-center">
+        <NotificationBell />
         <RemoteButton />
         {isTauri() ? <WindowControls /> : <div className="w-2" />}
       </div>

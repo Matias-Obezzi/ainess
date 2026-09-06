@@ -503,6 +503,27 @@ notificaciones del sistema (`@tauri-apps/plugin-notification`, importado dinámi
 dentro de `isTauri()` para no romper el CLI) cuando aparece una nueva aprobación pendiente o
 termina una tarea, en cualquier proyecto (no solo el actual).
 
+### Centro de notificaciones (la campanita)
+
+Aparte de los toasts (del momento) y de las notificaciones del sistema (fuera de la app), el
+historial de lo que pidió atención vive en el store: `notifications: AppNotification[]`
+(`NotificationKind` = approval | task-done | task-failed | interrupted | tunnel | update | info),
+en memoria, nunca en disco, tope 200 y las más nuevas primero. La lógica pura está en
+`src/lib/notifications.ts` (`pushNotification` deduplica contra la no leída del mismo `kind` sobre
+el mismo `approvalId`/`runId`, `markAllRead`, `markRead`, `markApprovalRead`, `unreadCount`,
+`unreadBadge`), con tests en `src/lib/__tests__/notifications.test.ts`. Acciones del store:
+`notify`, `markNotificationsRead`, `markNotificationRead`, `markApprovalNotificationsRead`,
+`dismissNotification`, `clearNotifications`, `toggleNotifications`.
+
+Quién notifica: `orchestrator.requestApproval` (aprobación pedida; `settleApproval` marca leída la
+suya cuando el usuario decide), `orchestrator` en las ramas de `task.finished`/`task.failed` (las
+corridas que el usuario detuvo no dicen nada), `history.mergeFromDisk` (corridas que quedaron
+`running` de un proceso muerto), `store.refreshTunnelStatus` (cuando se cae) y
+`hooks/useUpdateCheck` (versión nueva). `src/components/shell/NotificationBell.tsx` la muestra en
+la barra de ventana, a la izquierda del botón remoto: badge hasta "9+", `Popover` de 360 px con
+scroll a 70vh, "Marcar todas como leídas" y "Vaciar", y cada fila lleva al proyecto y al detalle
+del run.
+
 Helpers de formato en `src/lib/format.ts`: `formatTimeAgo`, `formatElapsed`, `truncate`,
 `formatClock`.
 

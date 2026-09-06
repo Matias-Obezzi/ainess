@@ -23,6 +23,11 @@ export function useUpdateCheck(): void {
         const result = await checkForUpdate();
         if (!result.available || !result.install) return;
         const install = result.install;
+        useAppStore.getState().notify({
+          kind: "update",
+          title: `ainess ${result.version} disponible`,
+          body: "Hay una versión nueva lista para instalar.",
+        });
         toast.info(`ainess ${result.version} disponible`, {
           id: TOAST_ID,
           description: result.body?.slice(0, 200) ?? "Hay una versión nueva lista para instalar.",
