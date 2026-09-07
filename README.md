@@ -1,17 +1,22 @@
 <div align="center">
 
+<img src="docs/logo.png" width="112" alt="">
+
 # ainess
 
-**Your AI coding CLIs, working as a team.**
+*You ask one agent. The team splits the work.*
 
-ainess is a desktop app that runs the agent CLIs already installed on your machine — Claude Code,
-Antigravity, GitHub Copilot CLI, Gemini, opencode and others — as one team. You give the task to
-one agent; it plans, splits the work, delegates to the rest, and you watch the whole thing happen
-in one place. From your phone too.
+[![Release](https://img.shields.io/github/v/release/Matias-Obezzi/ainess?style=flat-square&color=6366F1&label=release)](https://github.com/Matias-Obezzi/ainess/releases/latest) [![Downloads](https://img.shields.io/github/downloads/Matias-Obezzi/ainess/total?style=flat-square&color=6366F1)](https://github.com/Matias-Obezzi/ainess/releases) [![License](https://img.shields.io/badge/license-MIT-6366F1?style=flat-square)](LICENSE) [![Windows](https://img.shields.io/badge/Windows-x64-6366F1?style=flat-square&logo=windows&logoColor=white)](https://github.com/Matias-Obezzi/ainess/releases/latest) [![Tauri](https://img.shields.io/badge/Tauri-2-6366F1?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app)
 
-[Download](https://github.com/Matias-Obezzi/ainess/releases/latest) ·
-[Changelog](CHANGELOG.md) ·
-[Report a bug](https://github.com/Matias-Obezzi/ainess/issues/new/choose)
+**8 CLIs as one team · 7 languages · your phone included · nothing leaves your machine**
+
+A desktop app that runs the AI coding CLIs already installed on your machine — Claude Code,
+Antigravity, GitHub Copilot CLI, Gemini, Codex, opencode, Ollama, Aider — as a team. You give the
+task to one agent; it plans, splits the work and delegates to the rest, and you watch the whole
+thing happen in one place. It brings no model and no key of its own: it drives what you already
+have, with the sessions you already opened.
+
+[Download](https://github.com/Matias-Obezzi/ainess/releases/latest) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/Matias-Obezzi/ainess/issues/new/choose)
 
 ![The conversation with the orchestrator](docs/screenshots/chat.png)
 
@@ -391,6 +396,11 @@ docs/screenshots/     the images in this file
 The frontend talks to the backend through a **transport**, and there are four: Tauri (the app), Node
 (the CLI), HTTP (the phone) and a null one (the browser preview). Anything that touches the system
 goes through it, which is why the same code runs in all four.
+
+## License
+
+[MIT](LICENSE). The providers it runs are not part of it: each CLI keeps its own licence and its own
+terms of use.
 
 ## Reporting a bug
 
