@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { nodeLanguage, nodeI18n } from "@/i18n/node";
+import type { Language } from "@/i18n";
 
 describe("nodeLanguage", () => {
   test("explicit config wins over env", () => {
@@ -29,6 +30,11 @@ describe("nodeLanguage", () => {
 
   test("empty env -> es", () => {
     expect(nodeLanguage(null, {})).toBe("es");
+  });
+
+  test("a configured language this build does not ship falls through to the env", () => {
+    expect(nodeLanguage("ru" as Language, { LANG: "ja_JP.UTF-8" })).toBe("ja");
+    expect(nodeLanguage("ru" as Language, {})).toBe("es");
   });
 
   test("language the app doesn't have -> es", () => {

@@ -1,8 +1,10 @@
-import { type Language, dictionaries, baseDictionary, pickLanguage, localeOf, translate } from "./index";
+import { type Language, LANGUAGES, dictionaries, baseDictionary, pickLanguage, localeOf, translate } from "./index";
 
 /** The language a CLI process runs in: what the user configured, else what the environment says. */
 export function nodeLanguage(configured: Language | null | undefined, env: NodeJS.ProcessEnv): Language {
-  if (configured) {
+  // A config written by a newer build (or edited by hand) can name a language this build does not
+  // ship; that is not a reason to crash, so it falls through to the environment.
+  if (configured && (LANGUAGES as readonly string[]).includes(configured)) {
     return configured;
   }
   const candidates: string[] = [];
@@ -27,7 +29,6 @@ export function nodeI18n(configured: Language | null | undefined, env: NodeJS.Pr
   const lang = nodeLanguage(configured, env);
   const locale = localeOf(lang);
   const dict = dictionaries[lang] ?? baseDictionary;
-  
   const t = (key: string, vars?: Record<string, string | number>) => {
     return translate(dict, baseDictionary, key, vars);
   };

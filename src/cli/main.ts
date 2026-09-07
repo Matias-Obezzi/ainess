@@ -37,7 +37,6 @@ async function main() {
   const { locale, t } = nodeI18n(store.config.language, process.env);
 
   const args = process.argv.slice(2);
-
   const jsonOutput = args.includes("--json");
 
   /** Fresh state: the actions replace `config`, so the snapshot above goes stale after a write. */
@@ -99,7 +98,6 @@ async function main() {
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
   // through `ais run "<texto>"` or contain spaces). Rejecting it avoids burning tokens.
-
   if (!first.startsWith("-") && !KNOWN.has(first) && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
     error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ais run "<texto>"`);
   }
@@ -779,7 +777,8 @@ async function main() {
       strict: false,
     });
 
-    const by = uv.by || "agent";
+    const by = String(uv.by ?? "agent");
+    if (by !== "agent" && by !== "day") error('--by acepta "agent" o "day".');
     const days = parseInt(String(uv.days ?? "30"), 10);
     if (isNaN(days) || days < 1 || days > 365) error("Los días deben ser un número entre 1 y 365.");
     const labels = { tokens: t("cli.usage.tokens"), premiumRequests: t("cli.usage.premiumRequests") };
