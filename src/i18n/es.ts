@@ -581,6 +581,9 @@ export const es: Dictionary = {
 
   // ---- Settings: about ----
   "about.tagline": "Orquestador local de agentes de IA.",
+  "changelog.title": "Novedades",
+  "changelog.description": "Lo que trajo cada versión. Estás en la {version}.",
+  "changelog.open": "Ver novedades",
   "about.createdBy": "Creada por",
   "about.updatesTitle": "Actualizaciones",
   "about.updatesDescription": "Las versiones nuevas se publican en GitHub y se instalan desde acá.",

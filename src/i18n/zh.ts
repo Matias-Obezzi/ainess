@@ -580,6 +580,9 @@ export const zh: Dictionary = {
 
   // ---- Settings: about ----
   "about.tagline": "本地 AI 智能体编排器。",
+  "changelog.title": "更新内容",
+  "changelog.description": "每个版本带来了什么。你在 {version}。",
+  "changelog.open": "查看更新内容",
   "about.createdBy": "作者",
   "about.updatesTitle": "更新",
   "about.updatesDescription": "新版本发布在 GitHub 上，可以直接从这里安装。",

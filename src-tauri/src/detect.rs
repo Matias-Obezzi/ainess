@@ -189,11 +189,22 @@ fn detect_antigravity() -> Option<BinaryInfo> {
         });
     }
 
-    let home = dirs::home_dir().or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from));
-    if let Some(home_path) = home {
-        let agy_path = home_path.join(".gemini").join("bin").join("agy.exe");
-        if agy_path.exists() {
-            let path_str = agy_path.to_string_lossy().into_owned();
+    // The two places it lands, in the order they became a thing: the CLI that comes with the
+    // Antigravity app, and the one its own installer (`irm .../cli/install.ps1 | iex`) drops into
+    // %LOCALAPPDATA%gyin. That second one adds itself to the PATH, which this process already
+    // read at startup, so looking only at `which` finds nothing until the app restarts.
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(home) = dirs::home_dir().or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from)) {
+        candidates.push(home.join(".gemini").join("bin").join("agy.exe"));
+        candidates.push(home.join(".gemini").join("bin").join("agy"));
+    }
+    if let Some(local) = dirs::data_local_dir() {
+        candidates.push(local.join("agy").join("bin").join("agy.exe"));
+        candidates.push(local.join("agy").join("bin").join("agy"));
+    }
+    for candidate in candidates {
+        if candidate.is_file() {
+            let path_str = candidate.to_string_lossy().into_owned();
             return Some(BinaryInfo {
                 version: get_version(&path_str),
                 path: path_str,

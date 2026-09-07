@@ -10,8 +10,9 @@ import { appVersion, checkForUpdate, type UpdateCheck } from "@/lib/updates";
 import { getRecentLogs, log } from "@/lib/logger";
 import { getTransport } from "@/lib/transport";
 import { openExternal } from "@/lib/open-external";
+import { ChangelogDialog } from "@/components/settings/ChangelogDialog";
 import { Logo } from "@/components/Logo";
-import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw } from "lucide-react";
+import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw, ScrollText } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 const REPO_URL = "https://github.com/Matias-Obezzi/ainess";
@@ -20,6 +21,7 @@ const TECHNOLOGIES = ["Tauri 2", "React 19", "TypeScript", "Tailwind 4", "Rust"]
 
 /** Configuración > Acerca de: versión, actualizaciones, carpeta de logs y diagnóstico. */
 export function AboutSection() {
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const t = useT();
   const binaries = useAppStore(state => state.binaries);
   const [version, setVersion] = useState("");
@@ -109,9 +111,14 @@ export function AboutSection() {
               <Badge key={tech} variant="outline">{tech}</Badge>
             ))}
           </div>
-          <Button variant="ghost" size="sm" className="self-start" onClick={() => void openExternal(REPO_URL)}>
-            <ExternalLink className="mr-1 h-4 w-4" /> {t("settings.option.about.repository")}
-          </Button>
+          <div className="flex flex-wrap gap-1.5">
+            <Button variant="ghost" size="sm" onClick={() => setChangelogOpen(true)}>
+              <ScrollText className="mr-1 h-4 w-4" /> {t("changelog.open")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void openExternal(REPO_URL)}>
+              <ExternalLink className="mr-1 h-4 w-4" /> {t("settings.option.about.repository")}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -171,6 +178,7 @@ export function AboutSection() {
           </Button>
         </CardContent>
       </Card>
+      <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
     </div>
   );
 }

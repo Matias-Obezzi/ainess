@@ -20,6 +20,7 @@ import { useQuotaSync } from "@/hooks/useQuotaSync";
 import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
@@ -56,6 +57,7 @@ export default function App() {
   useQuotaSync();
   useRepoSync();
   useRepoWatch();
+  const { open: changelogOpen, setOpen: setChangelogOpen } = useChangelogOnUpdate();
 
   // Every global shortcut is resolved from the one table in src/lib/shortcuts.ts, which is also
   // what the Ctrl+/ dialog documents, so the keys and their description cannot drift apart.
@@ -104,6 +106,8 @@ export default function App() {
         <Toaster position="bottom-right" richColors />
         {/* The one dialog every `confirm()` on the desktop opens (src/lib/confirm.ts). */}
         <ConfirmDialogHost />
+        {/* Opens itself once when the version changed under the user, wherever they are. */}
+        <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
 
         <Sidebar />
 

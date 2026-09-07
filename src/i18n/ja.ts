@@ -581,6 +581,9 @@ export const ja: Dictionary = {
 
   // ---- Settings: about ----
   "about.tagline": "AIエージェントのローカルオーケストレーター。",
+  "changelog.title": "新着情報",
+  "changelog.description": "各バージョンの変更点です。現在は {version} です。",
+  "changelog.open": "新着情報を見る",
   "about.createdBy": "作成者",
   "about.updatesTitle": "アップデート",
   "about.updatesDescription": "新しいバージョンはGitHubで公開され、ここからインストールできます。",

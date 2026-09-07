@@ -580,6 +580,9 @@ export const pt: Dictionary = {
 
   // ---- Settings: about ----
   "about.tagline": "Orquestrador local de agentes de IA.",
+  "changelog.title": "Novidades",
+  "changelog.description": "O que cada versão trouxe. Você está na {version}.",
+  "changelog.open": "Ver novidades",
   "about.createdBy": "Criado por",
   "about.updatesTitle": "Atualizações",
   "about.updatesDescription": "As versões novas são publicadas no GitHub e instaladas por aqui.",

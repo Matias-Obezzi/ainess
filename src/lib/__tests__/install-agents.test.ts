@@ -16,12 +16,21 @@ describe("INSTALLERS", () => {
     expect(installerFor("custom")).toBeUndefined();
   });
 
-  it("runs nothing for the ones that ship no command of their own", () => {
-    // Antigravity's CLI comes with the app; aider is a Python package whose install depends on the
-    // machine. Guessing a command for either is worse than opening their instructions.
-    expect(INSTALLERS.antigravity.kind).toBe("manual");
+  it("runs nothing for the one that ships no command of its own", () => {
+    // aider is a Python package whose install depends on what the machine has (pip, pipx, uv):
+    // guessing one of those is worse than opening its instructions.
     expect(INSTALLERS.aider.kind).toBe("manual");
-    expect(installCommand(INSTALLERS.antigravity)).toBeUndefined();
+    expect(installCommand(INSTALLERS.aider)).toBeUndefined();
+  });
+
+  it("runs Antigravity's own installer, and says so in full", () => {
+    // The line antigravity.google documents. It is the only one fetched and run, so the command
+    // the user reads before clicking has to carry the domain it comes from.
+    const text = installCommandText(INSTALLERS.antigravity)!;
+    expect(text).toContain("https://antigravity.google/cli/install.ps1");
+    expect(text).toContain("irm");
+    expect(text).toContain("-NoProfile");
+    expect(installCommand(INSTALLERS.antigravity)!.program).toBe("powershell");
   });
 
   it("installs globally with npm, reversibly", () => {
@@ -84,7 +93,7 @@ describe("installProvider", () => {
   });
 
   it("refuses to run anything for a provider with no command", async () => {
-    await expect(installProvider("antigravity", () => {})).rejects.toThrow(/no se instala desde acá/);
+    await expect(installProvider("aider", () => {})).rejects.toThrow(/no se instala desde acá/);
     await expect(installProvider("custom", () => {})).rejects.toThrow(/no se instala desde acá/);
   });
 });

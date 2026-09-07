@@ -580,6 +580,9 @@ export const de: Dictionary = {
 
   // ---- Settings: about ----
   "about.tagline": "Lokaler Orchestrator für KI-Agenten.",
+  "changelog.title": "Neuigkeiten",
+  "changelog.description": "Was jede Version gebracht hat. Du bist auf {version}.",
+  "changelog.open": "Neuigkeiten ansehen",
   "about.createdBy": "Erstellt von",
   "about.updatesTitle": "Updates",
   "about.updatesDescription": "Neue Versionen werden auf GitHub veröffentlicht und von hier aus installiert.",
