@@ -1034,4 +1034,9 @@ export const fr: Dictionary = {
   "usage.empty.title": "Personne n'a encore déclaré de dépense",
   "usage.empty.body": "Claude Code indique le coût en dollars de chaque exécution et Copilot compte les requêtes premium. Dès que l'un d'eux travaille sur ce projet, la dépense apparaît ici.",
   "usage.runUsage": "Consommation",
+  // ---- CLI usage ----
+  "cli.usage.noData": "Aucune donnée d'utilisation pour le moment.",
+  "cli.usage.tokens": "tokens",
+  "cli.usage.premiumRequests": "premium",
+  "cli.usage.total": "Total général",
 };

@@ -1034,4 +1034,9 @@ export const zh: Dictionary = {
   "usage.empty.title": "还没有人上报花费",
   "usage.empty.body": "Claude Code 会上报每次运行的美元费用，Copilot 会统计高级请求。只要其中之一在本项目里工作，花费就会显示在这里。",
   "usage.runUsage": "消耗",
+  // ---- CLI usage ----
+  "cli.usage.noData": "暂无使用数据。",
+  "cli.usage.tokens": "tokens",
+  "cli.usage.premiumRequests": "premium",
+  "cli.usage.total": "总计",
 };

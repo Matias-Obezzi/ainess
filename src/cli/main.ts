@@ -19,6 +19,8 @@ import * as os from "node:os";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
+import { nodeI18n } from "@/i18n/node";
+import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
 
 /** Writes whatever this process still owes to disk (feed and board) before it exits. */
 const flushAll = async (): Promise<void> => {
@@ -32,6 +34,7 @@ async function main() {
   log.info("cli", `ais ${process.argv.slice(2).join(" ")}`);
   await useAppStore.getState().init();
   const store = useAppStore.getState();
+  const { locale, t } = nodeI18n(store.config.language, process.env);
 
   const args = process.argv.slice(2);
   const jsonOutput = args.includes("--json");
@@ -72,12 +75,13 @@ async function main() {
     console.log("  --json                 Salida en JSON");
     console.log("  -q, --quiet            Solo imprimir resultado");
     console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, formations, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, run");
+    console.log("Subcomandos: agents, formations, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, usage, run");
     console.log("  agents list|add|edit|remove|init [-p proyecto|-w dir]   Equipo de un proyecto");
     console.log("  formations list | apply <nombre> [-p proyecto|-w dir]   Equipos guardados");
     console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
     console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
     console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
+    console.log("  usage [-p proyecto | -w dir] [--by agent|day] [--days N] [--json]  Consumo reportado de los runs");
     console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
     console.log("  doctor [--json]                            Chequeos del sistema; termina con código 1 si algo está mal");
     console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
@@ -89,7 +93,7 @@ async function main() {
     process.exit(0);
   }
 
-  const KNOWN = new Set(["run", "agents", "formations", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "doctor", "profile", "presets", "chat", "history", "status", "approvals", "serve", "remote"]);
+  const KNOWN = new Set(["run", "agents", "formations", "skills", "mcp", "hooks", "context", "projects", "detect", "quota", "doctor", "profile", "presets", "chat", "history", "status", "usage", "approvals", "serve", "remote"]);
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
@@ -177,14 +181,12 @@ async function main() {
   // code 1 when any of them is an error, so a script can gate on it.
   if (first === "doctor") {
     const { collectDiagnostics, formatDiagnosticsReport, worstLevel } = await import("@/lib/diagnostics");
-    const { translate, es } = await import("@/i18n");
-    const t = (key: string, vars?: Record<string, string | number>) => translate(es, es, key, vars);
 
     const results = await collectDiagnostics(t, { refreshQuota: true });
     if (jsonOutput) {
       console.log(JSON.stringify(results));
     } else {
-      const stamp = new Date().toLocaleString("es-AR", { hour12: false });
+      const stamp = new Date().toLocaleString(locale, { hour12: false });
       console.log(formatDiagnosticsReport(results, t, `${t("diagnostics.reportTitle")} — ${stamp}`));
     }
     // Nothing was modified, so there is nothing to flush: exiting drops the pending load timers.
@@ -711,7 +713,7 @@ async function main() {
       strict: false,
     });
     const agentName = (id: string) => agentById(id)?.name || id;
-    const fmt = (ts: number) => new Date(ts).toLocaleString("es-AR", { hour12: false });
+    const fmt = (ts: number) => new Date(ts).toLocaleString(locale, { hour12: false });
     const oneLine = (s: string, n: number) => s.replace(/\s+/g, " ").trim().slice(0, n);
 
     if (first === "status") {
@@ -758,6 +760,101 @@ async function main() {
       console.log(`${fmt(r.startedAt)}  ${r.id.slice(0, 8)}  ${agentName(r.agentId)} [${r.status}] r${r.round}`);
       console.log(`    > ${oneLine(r.prompt, 80)}`);
       if (r.output) console.log(`    < ${oneLine(r.output, 120)}`);
+    }
+    process.exit(0);
+  }
+
+  if (first === "usage") {
+    const { values: uv } = parseArgs({
+      args: args.slice(1),
+      options: {
+        workspace: { type: "string", short: "w" },
+        project: { type: "string", short: "p" },
+        by: { type: "string" },
+        days: { type: "string" },
+        json: { type: "boolean" },
+      },
+      strict: false,
+    });
+
+    const by = String(uv.by ?? "agent");
+    if (by !== "agent" && by !== "day") error('--by acepta "agent" o "day".');
+    const days = parseInt(String(uv.days ?? "30"), 10);
+    if (isNaN(days) || days < 1 || days > 365) error("Los días deben ser un número entre 1 y 365.");
+    const labels = { tokens: t("cli.usage.tokens"), premiumRequests: t("cli.usage.premiumRequests") };
+    const agentName = (id: string) => agentById(id)?.name || id.slice(0, 8);
+
+    const filterProject = uv.project as string | undefined;
+    const filterWorkspace = uv.workspace as string | undefined;
+    let projects = store.config.projects;
+    if (filterProject || filterWorkspace) {
+      const pid = resolveProjectId(filterProject, filterWorkspace);
+      projects = store.config.projects.filter(p => p.id === pid);
+    }
+    
+    for (const p of projects) await loadHistory(p.id);
+    const state = useAppStore.getState();
+
+    let jsonResult: any = {};
+    const allProjectRuns = [];
+
+    for (const p of projects) {
+      const projectRuns = runsOfProject(state.runs, p.id).filter(r => hasUsage(r.usage));
+      allProjectRuns.push(...projectRuns);
+      
+      const pTotals = totalsOf(projectRuns);
+      const byAgentData = totalsByAgent(projectRuns);
+      const byDayData = totalsByDay(projectRuns, days, Date.now());
+
+      if (jsonOutput || uv.json) {
+        jsonResult[p.id] = {
+          name: p.name,
+          totals: pTotals,
+          byAgent: byAgentData,
+          byDay: byDayData,
+        };
+      } else {
+        console.log(p.name);
+        if (projectRuns.length === 0) {
+          console.log(t("cli.usage.noData") + "\n");
+          continue;
+        }
+        
+        if (by === "day") {
+          for (const d of byDayData) {
+            if (d.totals.runs > 0) {
+              const text = formatUsage(d.totals, locale, labels);
+              if (text) console.log(`${d.day}  ${text}`);
+            }
+          }
+        } else {
+          // by agent
+          const entries = Object.entries(byAgentData).sort((a, b) => {
+            if (b[1].costUsd !== a[1].costUsd) return b[1].costUsd - a[1].costUsd;
+            return totalTokens(b[1]) - totalTokens(a[1]);
+          });
+          for (const [id, totals] of entries) {
+            if (totals.runs > 0) {
+              const text = formatUsage(totals, locale, labels);
+              if (text) console.log(`${agentName(id)}  ${text}`);
+            }
+          }
+        }
+        console.log("");
+      }
+    }
+
+    if (jsonOutput || uv.json) {
+      if (!filterProject && !filterWorkspace) {
+        jsonResult.total = totalsOf(allProjectRuns);
+      }
+      console.log(JSON.stringify(jsonResult));
+    } else {
+      if (!filterProject && !filterWorkspace) {
+        console.log(t("cli.usage.total"));
+        const text = formatUsage(totalsOf(allProjectRuns), locale, labels);
+        if (text) console.log(text);
+      }
     }
     process.exit(0);
   }
@@ -875,7 +972,7 @@ async function main() {
       if (pending.length === 0) console.log("No hay aprobaciones pendientes.");
       for (const a of pending) {
         const proj = state.config.projects.find(p => p.id === a.projectId)?.name || a.projectId;
-        console.log(`${a.id.slice(0, 8)}  [${proj}]  ${name(a.agentId)} → ${name(a.toAgentId)}  ${new Date(a.createdAt).toLocaleTimeString("es-AR", { hour12: false })}`);
+        console.log(`${a.id.slice(0, 8)}  [${proj}]  ${name(a.agentId)} → ${name(a.toAgentId)}  ${new Date(a.createdAt).toLocaleTimeString(locale, { hour12: false })}`);
         console.log(`    ${a.payload.prompt.replace(/\s+/g, " ").slice(0, 160)}`);
       }
       process.exit(0);
