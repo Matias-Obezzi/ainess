@@ -10,6 +10,14 @@
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
+    <!-- Served by both servers beside the page (see src/remote/sw.js). Without it, what you add to
+         the home screen is a bookmark: no icon of ours, no standalone window, and on iOS no
+         notifications at all. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ainess" />
+    <meta name="theme-color" content="#0a0a0a" />
     <title>ainess</title>
     <script>
       // The theme is the `.dark` class on <html> (see src/index.css). On the phone there is no

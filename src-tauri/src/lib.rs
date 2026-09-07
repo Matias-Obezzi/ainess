@@ -65,6 +65,7 @@ pub fn run() {
             config::delete_config_file,
             config::read_home_file,
             config::read_file_abs,
+            config::write_file_abs,
             detect::detect_binaries,
             diagnostics::storage_stat,
             diagnostics::port_available,

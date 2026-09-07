@@ -210,6 +210,15 @@ a question — the things that keep the team moving while you are away from the 
 | --- | --- | --- |
 | ![](docs/screenshots/phone-tasks.png) | ![](docs/screenshots/phone-thread.png) | ![](docs/screenshots/phone-agents.png) |
 
+**Notifications on the phone.** The bell in the header asks for permission and, from then on, the
+page tells you when a delegation is waiting for a yes, an agent asked something, or a task came
+back — while it is in the background or the screen is locked, as long as the browser is alive. It
+is the browser's own notifications driven by the stream that is already open: no push service, no
+keys, nothing leaving your machine. Two conditions the browser puts on it: a **secure context**, so
+the tunnel's HTTPS URL rather than the plain-HTTP LAN address, and on iOS the page has to be
+installed to the home screen. Notifications with the page closed would need Web Push, which is not
+here.
+
 Turn it on from the window bar button or Settings → Remote, then scan the QR. From the
 terminal, `ais serve` does the same with the CLI's orchestrator. The page is the same React app,
 built to a single self-contained `dist-remote/index.html` that both servers embed and send

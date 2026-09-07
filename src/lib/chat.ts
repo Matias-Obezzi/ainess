@@ -335,6 +335,8 @@ export function onChatRunFinished(runId: string): void {
   } else {
     // Turn complete
     activeTurns.delete(chatId);
+    // What was written while this turn was running goes out now (see `flushChatQueue`).
+    void useAppStore.getState().flushChatQueue(chatId);
   }
 }
 

@@ -28,6 +28,7 @@ export const remoteTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
   readHomeFile: async () => null,
+  writeFileAbs: async () => {},
   readFileAbs: async () => null,
   storageStat: async () => null,
   portAvailable: async () => null,

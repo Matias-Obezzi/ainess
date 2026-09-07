@@ -1,4 +1,4 @@
-import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
+import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { roleLabelKey } from "@/lib/labels";
 
@@ -340,9 +340,10 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       }
       
       if (input.agent.role === "planner") {
-        // Planners do not implement, but they do keep the plans (.claude/) and need git to check
-        // what the implementers left behind and to commit/push: nothing else from the shell.
-        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.claude/**)", "Write(.claude/**)", "MultiEdit(.claude/**)");
+        // Planners do not implement, but they do keep the plans (.ainess/, the folder the app
+        // writes the board and the team into) and need git to check what the implementers left
+        // behind and to commit/push: nothing else from the shell.
+        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)");
       }
 
       return {
@@ -583,13 +584,57 @@ export function defaultAgentDescription(role: AgentRole, provider: ProviderId): 
   });
 }
 
+/** The eight characters of a task id the planner sees and quotes back in a `delegate` block. */
+export function shortTaskId(id: string): string {
+  return id.replace(/-/g, "").slice(0, 8);
+}
+
+/** Which cards are worth showing: what is still open, oldest first, and never the whole board. */
+const BOARD_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "in-review"];
+const BOARD_LIMIT = 30;
+
+const TASK_STATUS_KEY: Record<TaskStatus, string> = {
+  backlog: "task.status.backlog",
+  working: "task.status.working",
+  "needs-you": "task.status.needsYou",
+  "in-review": "task.status.inReview",
+  ready: "task.status.ready",
+  done: "task.status.done",
+};
+
+/**
+ * The board as a planner reads it: one line per open card, with the id it needs to move it.
+ *
+ * Without this the board was write-only — the app filled it, no agent ever saw it — so "look at
+ * the tasks and get to work" was answered with "there are no tasks" and the request itself was
+ * delegated, which opened one more card saying the same thing.
+ */
+export function boardSection(tasks: Task[], agentName: (id: string) => string | undefined): string {
+  const open = tasks
+    .filter(t => !t.archived && BOARD_STATUSES.includes(t.status))
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(0, BOARD_LIMIT);
+
+  const lines = [translateNow("prompt.board.header")];
+  if (open.length === 0) {
+    lines.push(translateNow("prompt.board.empty"));
+    return lines.join("\n");
+  }
+  lines.push(translateNow("prompt.board.intro"));
+  for (const task of open) {
+    const who = task.agentId ? agentName(task.agentId) : undefined;
+    lines.push(`- [${shortTaskId(task.id)}] ${translateNow(TASK_STATUS_KEY[task.status])}: ${task.title}${who ? ` (${who})` : ""}`);
+  }
+  return lines.join("\n");
+}
+
 /**
  * The instructions an agent is started with, in the language the app is running in.
  *
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[] }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -622,8 +667,22 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
         "```",
         t("prompt.planner.delegateRules", { extra }),
       ].join("\n");
+      // Where the whole team is written down, in the project itself.
+      prompt += "\n" + t("prompt.planner.teamFile");
+
+      // What there is to delegate. Right after the rules for delegating, so the planner reads how
+      // and what in one go.
+      if (extras?.tasks) {
+        prompt += "\n\n" + boardSection(extras.tasks, extras.agentName ?? (() => undefined));
+      }
     } else {
       prompt += " " + t("prompt.planner.noChildren");
+      // A team can be built with everybody at the root: then a planner has nobody under it and
+      // used to answer as if it were alone in the project.
+      const others = (extras?.others ?? []).filter(a => a.id !== agent.id);
+      if (others.length > 0) {
+        prompt += " " + t("prompt.planner.othersExist", { names: others.map(a => a.name).join(", ") });
+      }
     }
   } else if (agent.role === "implementer") {
     prompt = t("prompt.implementer");
@@ -737,7 +796,15 @@ export function parseDelegations(text: string): Delegation[] {
         for (const t of tasks) {
           if (t && typeof t.agent === "string" && typeof t.task === "string") {
             const model = typeof t.model === "string" && t.model.trim() ? t.model.trim() : undefined;
-            delegations.push(model ? { agent: t.agent, task: t.task, model } : { agent: t.agent, task: t.task });
+            // The id of a card the planner read off the board: this delegation is that task
+            // moving, not a new one (see `taskForDelegation`).
+            const taskId = typeof t.taskId === "string" && t.taskId.trim() ? t.taskId.trim() : undefined;
+            delegations.push({
+              agent: t.agent,
+              task: t.task,
+              ...(model ? { model } : {}),
+              ...(taskId ? { taskId } : {}),
+            });
           }
         }
       }

@@ -95,6 +95,17 @@ export function isMissingBinaryError(message: string): boolean {
   return /os error 2|cannot find the file|no such file|ENOENT/i.test(message);
 }
 
+/**
+ * The credential inside what was pasted. The dashboard hands you the whole line
+ * (`ngrok config add-authtoken 2abc…`), and a copy often brings a newline with it, so the token
+ * was being rejected for looking nothing like one.
+ */
+export function cleanNgrokCredential(pasted: string): string {
+  const text = pasted.trim().replace(/^ngrok\s+config\s+add-(?:authtoken|api-key)\s+/i, "").trim();
+  // Quotes around it are what a shell would have eaten.
+  return text.replace(/^["'`]|["'`]$/g, "").trim();
+}
+
 /** Cheap paste check before shelling out: non-empty, no whitespace, at least 20 chars. */
 export function looksLikeNgrokCredential(value: string): boolean {
   return value.length >= 20 && !/\s/.test(value);

@@ -34,6 +34,8 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
+  writeFileAbs: async (path, content) => invoke<void>("write_file_abs", { path, content }),
+
   readFileAbs: async (path) => {
     try {
       return await invoke<string | null>("read_file_abs", { path });

@@ -3,6 +3,59 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Added
+
+- **A `.ainess/` folder in every project.** The app writes what it knows where the agents can read
+  it: `BOARD.md` with the open cards and the id each one answers to, `AGENTS.md` with the team and
+  who reports to whom, and a `README.md` saying what the folder is. The app owns those three — a
+  card moves when a delegation names it, not when somebody edits the markdown — and the rest of
+  the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
+  configuration folder.
+- **The phone tells you when something needs you.** A bell in its header asks for permission, and
+  from then on a delegation waiting for a yes, a question, or a task that came back reaches you
+  while the page is in the background or the screen is locked. It is the browser's own
+  notifications over the stream that is already open — no push service, no keys, nothing that
+  leaves your machine — so it needs the tunnel's HTTPS address (over plain HTTP on the LAN the
+  browser refuses) and, on iOS, the page installed to the home screen. The page now ships a
+  manifest, an icon and a service worker, which is also what makes an installed copy behave like an
+  app rather than a bookmark.
+- **Writing while an agent is thinking.** The box no longer goes grey mid-answer: what you write
+  is queued and sent the moment the turn ends, in the orchestrator and in a chat alike. Enter
+  sends, Shift+Enter is a line break and Ctrl+Enter queues on purpose, whether or not anything is
+  running.
+- **An unsent message stays put.** What is typed is kept per conversation and survives changing
+  view — and closing the app.
+- A planner with nobody under it used to answer as if it were alone in the project. It is told who
+  else is on the team and that they have to be placed under it in Hierarchy before it can delegate,
+  and it is pointed at `.ainess/AGENTS.md`, where the whole team is written down.
+- **The orchestrator can see the board.** Its open tasks are part of what a planner is told, each
+  with a short id, so "look at the tasks and get to work" is answered from the board instead of
+  "there are no tasks and no saved plan". To pick one up it delegates with that id in a `taskId`
+  field, and the card moves — with the agent on it and its status — rather than a second card
+  being opened for the same work.
+
+### Fixed
+
+- Saving the ngrok authtoken or API key did nothing when the paste carried the whole line from the
+  dashboard (`ngrok config add-authtoken 2abc…`) or a trailing newline: the credential is taken out
+  of what was pasted now. With ngrok missing the button was silent; it says so. And what the CLI
+  answered when it refused is written to the log, masked, instead of only flashing in a toast.
+- A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
+  only that it took too long. It now says what was holding it: something the agent left running in
+  the background, and what to ask it to do about that.
+- On the phone, the board's columns run past the edge of the screen and nothing said so. The strip
+  fades on whichever side still has columns on it.
+- The communication panel opened at the oldest line of the project instead of at what just
+  happened. It lands on the newest, like the conversation does.
+- Tasks that seemed to duplicate themselves: every prompt opened a card and every delegation
+  opened another, so a planner that handed the request straight down left the same title twice.
+  A delegation that repeats the card it came from moves that card now.
+- The update button in a development build offered an update it could not install, and failed on
+  the plugin it loads to relaunch as soon as the dev server was gone. A dev build says what it
+  always said about the CLI and the browser: updates are for the installed app.
+
 ## 0.3.2 — 2026-09-07
 
 ### Added

@@ -175,11 +175,17 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
-  const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, { 
-    skills, 
-    sharedContext, 
-    profile: store.config.profile, 
-    autoModel: store.config.autoModel 
+  const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
+    skills,
+    sharedContext,
+    profile: store.config.profile,
+    autoModel: store.config.autoModel,
+    // What there is to do. The board used to be something only the app could see, so a planner
+    // asked to work off it answered that there was nothing there.
+    tasks: store.tasks[opts.projectId] ?? [],
+    agentName: (id) => selectAgent(store, id)?.name,
+    // Who else is in this project, for the planner that has nobody under it.
+    others: selectProjectAgents(store, opts.projectId).filter(a => a.parentId !== agent.id),
   });
   const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
@@ -455,10 +461,10 @@ function onRunFinished(runId: string) {
             if (store.config.approveDelegations || childAgent.requireApproval) {
               // Gate: the child only runs once the user approves (app, CLI or phone).
               const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
-              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id });
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
             } else {
               const childRunId = startRun(payload);
-              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId });
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
             }
           } else {
             addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });

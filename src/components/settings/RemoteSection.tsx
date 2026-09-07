@@ -285,7 +285,11 @@ export function RemoteSection() {
 
   /** Hands one credential to `ngrok config add-…`. Returns whether it was saved. */
   const saveCredential = async (kind: "authtoken" | "api-key", value: string): Promise<boolean> => {
-    if (!ngrokPath) return false;
+    // Silence here was a button that did nothing: without ngrok there is no config to write to.
+    if (!ngrokPath) {
+      toast.error(t("remote.ngrok.notDetected"));
+      return false;
+    }
     try {
       await saveNgrokCredential(ngrokPath, kind, value);
       toast.success(kind === "authtoken" ? t("remote.ngrok.authtokenSaved") : t("remote.ngrok.apiKeySaved"));

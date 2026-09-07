@@ -27,6 +27,12 @@ use crate::logging;
 /// The phone page, built by `npm run build:remote` into one self-contained HTML file.
 /// `build.rs` leaves a placeholder there when it is missing, so a fresh clone still compiles.
 const PAGE: &str = include_str!("../../dist-remote/index.html");
+/// What an installed app needs beside the page: the manifest, the icon it names, and the service
+/// worker that shows a notification and knows where to take you when it is tapped. They are plain
+/// files (nothing to bundle), so they come straight from the source tree.
+const MANIFEST: &str = include_str!("../../src/remote/public/manifest.webmanifest");
+const SERVICE_WORKER: &str = include_str!("../../src/remote/public/sw.js");
+const ICON: &[u8] = include_bytes!("../../src/remote/public/icon.png");
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 
 struct Inner {
@@ -108,6 +114,41 @@ async fn page(headers: HeaderMap) -> Response {
             .into_response();
     }
     ([(header::CACHE_CONTROL, "no-store")], Html(PAGE)).into_response()
+}
+
+async fn manifest() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "application/manifest+json; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        MANIFEST,
+    )
+        .into_response()
+}
+
+async fn service_worker() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            // The browser keeps its own copy of a worker; `no-store` is what makes an update of
+            // the app reach a phone that already has one installed.
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        SERVICE_WORKER,
+    )
+        .into_response()
+}
+
+async fn icon() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "max-age=86400"),
+        ],
+        ICON,
+    )
+        .into_response()
 }
 
 /// Whether the client asked for gzip. `identity;q=0` and friends are not worth parsing: a browser
@@ -253,6 +294,11 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
     });
     let router = Router::new()
         .route("/", get(page))
+        // Open, like the page: a manifest behind a token is a manifest the browser cannot read,
+        // and without it what you install to the home screen is a bookmark.
+        .route("/manifest.webmanifest", get(manifest))
+        .route("/sw.js", get(service_worker))
+        .route("/icon.png", get(icon))
         .route("/api/state", get(state_handler))
         .route("/api/events", get(events))
         .route("/api/prompt", post(cmd_prompt))

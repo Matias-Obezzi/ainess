@@ -49,7 +49,9 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: "sidebar", keys: { mod: true, key: "b" }, descriptionKey: "shortcuts.sidebar", group: "general", global: true },
   // The backtick is a dead key in several layouts and never reaches `key`, so `code` covers it.
   { id: "terminals", keys: { mod: true, key: "`", code: "Backquote" }, descriptionKey: "shortcuts.terminals", group: "project", global: true },
-  { id: "composer.send", keys: { mod: true, key: "enter" }, descriptionKey: "shortcuts.composerSend", group: "composer", global: false },
+  { id: "composer.send", keys: { key: "enter" }, descriptionKey: "shortcuts.composerSend", group: "composer", global: false },
+  { id: "composer.newline", keys: { shift: true, key: "enter" }, descriptionKey: "shortcuts.composerNewline", group: "composer", global: false },
+  { id: "composer.queue", keys: { mod: true, key: "enter" }, descriptionKey: "shortcuts.composerQueue", group: "composer", global: false },
   { id: "composer.stop", keys: { key: "escape" }, descriptionKey: "shortcuts.composerStop", group: "composer", global: false },
   { id: "composer.previous", keys: { key: "arrowup" }, descriptionKey: "shortcuts.composerPrevious", group: "composer", global: false },
   { id: "composer.next", keys: { key: "arrowdown" }, descriptionKey: "shortcuts.composerNext", group: "composer", global: false },
