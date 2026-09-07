@@ -16,9 +16,9 @@ import { ContextActionItems, DropdownActionItems, type MenuAction } from "@/comp
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
-import { island } from "@/components/ui/island";
 import { toast } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
+import { confirm } from "@/lib/confirm";
 import { openExternal } from "@/lib/open-external";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isChatActive } from "@/lib/chat";
@@ -110,7 +110,7 @@ export function Sidebar() {
   };
 
   const deleteProject = async (p: Project) => {
-    const confirmed = await island.confirm({
+    const confirmed = await confirm({
       title: t("sidebar.deleteProject.title"),
       description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,
@@ -138,7 +138,7 @@ export function Sidebar() {
   };
 
   const deleteChat = async (chatId: string, name: string, projectId: string) => {
-    const confirmed = await island.confirm({
+    const confirmed = await confirm({
       title: t("sidebar.deleteChat.title"),
       description: t("sidebar.deleteChat.body", { name }),
       destructive: true,

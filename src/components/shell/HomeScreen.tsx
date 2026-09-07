@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { ProjectDialog } from "@/components/ProjectDialog";
-import { island } from "@/components/ui/island";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { copyText } from "@/lib/clipboard";
+import { confirm } from "@/lib/confirm";
 import { formatTimeAgo, truncate } from "@/lib/format";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale } from "@/i18n/useT";
@@ -89,7 +89,7 @@ export function HomeScreen() {
   };
 
   const handleRemove = async (p: Project) => {
-    const confirmed = await island.confirm({
+    const confirmed = await confirm({
       title: t("sidebar.deleteProject.title"),
       description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,

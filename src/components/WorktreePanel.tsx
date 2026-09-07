@@ -15,8 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
-import { island } from "@/components/ui/island";
-import { confirmDelete } from "@/lib/confirm";
+import { confirm, confirmDelete } from "@/lib/confirm";
 import { revealPath } from "@/lib/open-external";
 import { hasUncommittedChanges, mergeWorktree, removeWorktree } from "@/lib/worktree";
 import { useT } from "@/i18n/useT";
@@ -62,7 +61,7 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
 
   const merge = async (worktree: AgentWorktree) => {
     if (!project) return;
-    const ok = await island.confirm({
+    const ok = await confirm({
       title: t("worktrees.merge.title", { branch: worktree.branch }),
       description: t("worktrees.merge.body", { target }),
       confirmText: t("worktrees.merge.confirm"),

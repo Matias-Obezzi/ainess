@@ -19,6 +19,7 @@ import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
 import { useQuotaSync } from "@/hooks/useQuotaSync";
 import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
@@ -101,6 +102,8 @@ export default function App() {
       <div className="flex-1 min-h-0 flex relative">
         <Island position="top" idle={false} />
         <Toaster position="bottom-right" richColors />
+        {/* The one dialog every `confirm()` on the desktop opens (src/lib/confirm.ts). */}
+        <ConfirmDialogHost />
 
         <Sidebar />
 

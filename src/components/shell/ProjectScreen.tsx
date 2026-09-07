@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useAppStore, selectProject } from "@/store";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { GitBranchButton } from "@/components/GitStatus";
@@ -48,10 +49,13 @@ export function ProjectScreen() {
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="h-12 shrink-0 border-b border-border flex items-center gap-3 px-4">
         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: project.color || "#4f8cff" }} />
-        <span className="font-semibold text-sm truncate">{project.name}</span>
-        <span className="text-xs text-muted-foreground truncate max-w-[280px]" title={project.workspaceDir}>
-          {project.workspaceDir}
-        </span>
+        {/* The path is long, never read at a glance and was eating the bar: it lives on the name. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="font-semibold text-sm truncate">{project.name}</span>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">{project.workspaceDir}</TooltipContent>
+        </Tooltip>
         <GitBranchButton projectId={project.id} />
         <UsageButton projectId={project.id} />
 

@@ -8,11 +8,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ChatDialog } from "@/components/ChatDialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity } from "@/components/shell/RunActivity";
-import { island } from "@/components/ui/island";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { formatClock } from "@/lib/format";
+import { confirm } from "@/lib/confirm";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
@@ -72,7 +72,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   }
 
   const handleRemove = async () => {
-    const confirmed = await island.confirm({
+    const confirmed = await confirm({
       title: t("sidebar.deleteChat.title"),
       description: t("sidebar.deleteChat.body", { name: chat.name }),
       destructive: true,
