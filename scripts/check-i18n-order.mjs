@@ -8,9 +8,14 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "i18n");
+
+// A dictionary is a file that declares one: `export const es: Dictionary = {`. Not every module in
+// this folder is a language — `node.ts` is the CLI's language fallback — and a filename is not
+// enough to tell them apart, which is what once had this reporting `node` as missing every key.
 const langs = readdirSync(dir)
-  .filter(f => f.endsWith(".ts") && f !== "index.ts" && f !== "useT.ts")
-  .map(f => f.replace(/\.ts$/, ""));
+  .filter(f => f.endsWith(".ts"))
+  .map(f => f.replace(/\.ts$/, ""))
+  .filter(lang => readFileSync(join(dir, `${lang}.ts`), "utf8").includes(`export const ${lang}: Dictionary`));
 
 /** The keys of one dictionary file, in the order they are written. */
 function keysOf(lang) {

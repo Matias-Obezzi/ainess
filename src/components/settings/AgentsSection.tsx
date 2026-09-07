@@ -22,9 +22,11 @@ import { confirmDelete } from "@/lib/confirm";
 import { AgentDialog } from "@/components/AgentDialog";
 import { AgentConfig, Formation, ProviderId } from "@/types";
 import { toast } from "@/components/ui/toast";
+import { openExternal } from "@/lib/open-external";
+import { installCommandText, installerFor, installProvider, type InstallPhase } from "@/lib/install-agents";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { isTauri } from "@/lib/tauri";
-import { Bookmark, Check, Copy, Loader2, Pencil, Plus, RefreshCw, ScanSearch, Trash2 } from "lucide-react";
+import { Bookmark, Check, Copy, Download, Loader2, Pencil, Plus, RefreshCw, ScanSearch, Trash2 } from "lucide-react";
 import { createDialogContext } from "@/components/settings/section-context";
 
 const FormationDialogCtx = createDialogContext<Formation>();
@@ -81,6 +83,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const allModels = useProviderModels(provider);
   const [refreshing, setRefreshing] = useState(false);
+  const [installing, setInstalling] = useState<InstallPhase | null>(null);
 
   const spec = PROVIDERS[provider];
   const summary = summarizeAgentQuota(quota, { allModels });
@@ -114,6 +117,30 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
     }
   };
 
+  const method = installerFor(provider);
+  const command = method && installCommandText(method);
+
+  /** Runs what that provider documents, then leaves the row showing the path it found. */
+  const install = async () => {
+    if (!method) return;
+    if (method.kind === "manual") {
+      void openExternal(method.url);
+      return;
+    }
+    setInstalling("installing");
+    try {
+      const path = await installProvider(provider, setInstalling);
+      await detectBinaries();
+      toast.success(t("agents.installed", { name: spec?.label ?? provider }), { description: path });
+    } catch (e) {
+      toast.error(t("agents.installFailed", { name: spec?.label ?? provider }), {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setInstalling(null);
+    }
+  };
+
   return (
     <Card className="flex flex-col gap-2 p-4">
       <div className="flex items-start justify-between gap-2">
@@ -138,11 +165,34 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
             ? <span>{binary.path}{binary.version ? ` (${binary.version})` : ""}</span>
             : <span>{t("agents.installHint")}</span>}
         </div>
+        {!binary?.path && command && (
+          <div className="text-xs">
+            <code className="rounded bg-muted px-1 py-0.5">{command}</code>
+          </div>
+        )}
         <div className="text-xs">{t("agents.quota", { detail: summary.detail })}</div>
         {hasOverride && <div className="text-xs">{t("agents.manualPath")}</div>}
       </div>
 
       <div className="mt-auto flex flex-wrap gap-2 pt-2">
+        {/* Only what is missing gets an install button, and it says what it is about to run. */}
+        {!binary?.path && method && (
+          <Button
+            size="sm"
+            disabled={installing !== null}
+            title={command ?? (method.kind === "manual" ? method.url : undefined)}
+            onClick={() => void install()}
+          >
+            {installing ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Download className="mr-1 size-3" />}
+            {installing === "installing"
+              ? t("agents.installing")
+              : installing === "detecting"
+                ? t("agents.installDetecting")
+                : method.kind === "manual"
+                  ? t("agents.howToInstall")
+                  : t("agents.install")}
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => void pickExecutable()}>{t("agents.setPath")}</Button>
         {hasOverride && (
           <Button size="sm" variant="ghost" onClick={() => void clearOverride()}>{t("agents.clearOverride")}</Button>
