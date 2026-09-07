@@ -372,6 +372,7 @@ export const en: Dictionary = {
   // ---- Diagnostics ----
   "diagnostics.description": "Read-only checks: none of this changes your setup.",
   "diagnostics.running": "Checking…",
+  "diagnostics.run": "Run diagnostics",
   "diagnostics.copied": "Report copied",
   "diagnostics.copyFailed": "The report could not be copied",
   "diagnostics.reportTitle": "ainess — Diagnostics",

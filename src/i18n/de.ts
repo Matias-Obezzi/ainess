@@ -372,6 +372,7 @@ export const de: Dictionary = {
   // ---- Diagnostics ----
   "diagnostics.description": "Nur lesende Prüfungen: Nichts davon ändert deine Konfiguration.",
   "diagnostics.running": "Prüfung läuft…",
+  "diagnostics.run": "Diagnose ausführen",
   "diagnostics.copied": "Bericht kopiert",
   "diagnostics.copyFailed": "Der Bericht konnte nicht kopiert werden",
   "diagnostics.reportTitle": "ainess — Diagnose",

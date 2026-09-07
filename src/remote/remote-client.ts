@@ -5,6 +5,7 @@ import { useAppStore } from "@/store";
 import { toast } from "@/components/ui/toast";
 import type { RemoteSnapshot } from "@/lib/remote";
 import type { AgentConfig, AgentRuntime, Approval, Project, Run, Task } from "@/types";
+import type { DiagnosticResult } from "@/lib/diagnostics";
 
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
 const TOKEN_KEY = "ais.remote.token";
@@ -178,6 +179,7 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     binaries: snapshot.binaries,
     remoteActiveChats: snapshot.activeChats,
     tasks,
+    quota: snapshot.quota ?? {},
     // Nothing is ever read from disk here, so no skeleton should ever be waiting for it.
     historyLoading: {},
     chatLoading: {},
@@ -220,4 +222,9 @@ export function installRemoteActions(): void {
     updateChat: refuse,
     removeChat: refuse,
   });
+}
+
+export async function runDiagnostics(refreshQuota: boolean = false): Promise<DiagnosticResult[]> {
+  const res = await api("/api/diagnostics", { refreshQuota });
+  return (res.results as DiagnosticResult[]) ?? [];
 }
