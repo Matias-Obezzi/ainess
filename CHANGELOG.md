@@ -18,7 +18,9 @@ Settings → About.
   arguments are invalid`. Windows refuses to hand a batch shim an argument with a line break, and
   the system prompt every agent is started with has several. npm installs its CLIs as a shim
   around a script, so that script is what the app runs now — the CLI in the terminal already did
-  this, the app did not. A shim it cannot read says what is going on instead of that sentence.
+  this, the app did not. It covers the CLI shipped as a script and the one shipped as a binary
+  (opencode's shim points at an `.exe`), which is 13 of the 15 shims on this machine — the two it
+  passes over are npm's own. A shim it cannot read says what is going on instead of that sentence.
 - An agent row with a model and a parent made the new-project dialog scroll sideways, taking the
   Browse button and the row's own buttons off the edge with it. The list can shrink now, and a
   long line is trimmed instead of setting the dialog's width.

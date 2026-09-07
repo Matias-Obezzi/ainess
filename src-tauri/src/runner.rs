@@ -57,14 +57,25 @@ fn needs_shim_unwrap(program: &str, args: &[String]) -> bool {
     args.iter().any(|a| a.contains('\n') || a.contains('\r'))
 }
 
-/// The script an npm shim runs, as an absolute path.
+/// The two shapes of shim we can see through.
+enum ShimTarget {
+    /// A node script: run node on it.
+    Script(std::path::PathBuf),
+    /// A binary of its own: run it, and the batch file is out of the way.
+    Exe(std::path::PathBuf),
+}
+
+/// What a shim actually runs: a node script, or an executable of its own.
 ///
-/// The shim ends in a line like `"%_prog%"  "%dp0%\node_modules\pkg\cli.js" %*`; everything we
-/// need is that quoted path, with `%dp0%` (or `%~dp0`) standing for the folder the shim is in.
-fn script_of_shim(text: &str, shim_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+/// The shim ends in a line like `"%_prog%"  "%dp0%\node_modules\pkg\cli.js" %*` — or, for a CLI
+/// shipped as a binary, `"%dp0%\node_modules\pkg\bin\thing.exe" %*`. Either way what we need is
+/// that quoted path, with `%dp0%` (or `%~dp0`) standing for the folder the shim is in.
+fn target_of_shim(text: &str, shim_dir: &std::path::Path) -> Option<ShimTarget> {
     for piece in text.split('"') {
         let lower = piece.to_ascii_lowercase();
-        if !(lower.ends_with(".js") || lower.ends_with(".mjs") || lower.ends_with(".cjs")) {
+        let is_script = lower.ends_with(".js") || lower.ends_with(".mjs") || lower.ends_with(".cjs");
+        let is_exe = lower.ends_with(".exe");
+        if !is_script && !is_exe {
             continue;
         }
         let relative = piece
@@ -73,18 +84,23 @@ fn script_of_shim(text: &str, shim_dir: &std::path::Path) -> Option<std::path::P
             .replace("%~dp0%", "");
         let relative = relative.trim_start_matches(['\\', '/']);
         let candidate = shim_dir.join(relative);
-        if candidate.is_file() {
-            return Some(candidate);
+        if !candidate.is_file() {
+            continue;
         }
+        // `node.exe` next to the shim is the interpreter the shim would use, not its target.
+        if is_exe && candidate.file_name().is_some_and(|n| n.eq_ignore_ascii_case("node.exe")) {
+            continue;
+        }
+        return Some(if is_exe { ShimTarget::Exe(candidate) } else { ShimTarget::Script(candidate) });
     }
     None
 }
 
-/// Turns a batch shim into the node call it wraps, when the arguments leave no other way.
+/// Turns a batch shim into what it wraps, when the arguments leave no other way.
 ///
 /// Returns the program and the arguments to use instead, or nothing when this is not a shim we
 /// recognise — in which case the spawn is attempted as it was and fails as it did, which is at
-/// least the error the user already knows.
+/// least the error the user already knows (and `lib/errors.ts` explains it).
 fn unwrap_shim(program: &str, args: &[String]) -> Option<(String, Vec<String>)> {
     if !needs_shim_unwrap(program, args) {
         return None;
@@ -92,20 +108,23 @@ fn unwrap_shim(program: &str, args: &[String]) -> Option<(String, Vec<String>)> 
     let path = std::path::Path::new(program);
     let dir = path.parent()?;
     let text = std::fs::read_to_string(path).ok()?;
-    let script = script_of_shim(&text, dir)?;
 
-    // npm's shim prefers the node next to it and falls back to the one on PATH; so do we.
-    let local_node = dir.join("node.exe");
-    let node = if local_node.is_file() {
-        local_node.to_string_lossy().into_owned()
-    } else {
-        "node".to_string()
-    };
-
-    let mut out = Vec::with_capacity(args.len() + 1);
-    out.push(script.to_string_lossy().into_owned());
-    out.extend(args.iter().cloned());
-    Some((node, out))
+    match target_of_shim(&text, dir)? {
+        ShimTarget::Exe(exe) => Some((exe.to_string_lossy().into_owned(), args.to_vec())),
+        ShimTarget::Script(script) => {
+            // npm's shim prefers the node next to it and falls back to the one on PATH; so do we.
+            let local_node = dir.join("node.exe");
+            let node = if local_node.is_file() {
+                local_node.to_string_lossy().into_owned()
+            } else {
+                "node".to_string()
+            };
+            let mut out = Vec::with_capacity(args.len() + 1);
+            out.push(script.to_string_lossy().into_owned());
+            out.extend(args.iter().cloned());
+            Some((node, out))
+        }
+    }
 }
 
 fn build_command(opts: &SpawnOptions) -> Command {
@@ -492,6 +511,29 @@ two").output();
         assert!(out.status.success());
         assert_eq!(String::from_utf8_lossy(&out.stdout), "--append-system-prompt|one
 two");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Some CLIs ship a binary and the shim only points at it (opencode, bun): then the batch
+    /// file steps aside entirely and the binary takes the arguments as they are.
+    #[test]
+    fn runs_the_executable_a_shim_points_at() {
+        let dir = std::env::temp_dir().join(format!("ainess-shim-exe-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let exe = dir.join("node_modules").join("pkg").join("bin").join("thing.exe");
+        std::fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        std::fs::write(&exe, "not really a binary").unwrap();
+        let shim = dir.join("thing.cmd");
+        let content = format!("@ECHO off\r\nCALL :find_dp0\r\n{}\r\n", r#""%dp0%\node_modules\pkg\bin\thing.exe"   %*"#);
+        std::fs::write(&shim, content).unwrap();
+
+        let args = vec!["one\ntwo".to_string()];
+        let (program, out) = super::unwrap_shim(shim.to_str().unwrap(), &args).expect("shim");
+        assert_eq!(
+            std::fs::canonicalize(&program).unwrap(),
+            std::fs::canonicalize(&exe).unwrap(),
+        );
+        assert_eq!(out, args);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
