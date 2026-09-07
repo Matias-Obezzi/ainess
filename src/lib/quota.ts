@@ -347,11 +347,162 @@ async function fetchAntigravityQuota(): Promise<ProviderQuota> {
 // Entry point.
 // ---------------------------------------------------------------------------------------------
 
-export async function fetchQuota(provider: ProviderId): Promise<ProviderQuota> {
+
+// ---------------------------------------------------------------------------------------------
+// opencode: what each linked account has been used for.
+//
+// opencode has no quota to report — the limit belongs to whatever account is behind it (an AI
+// Studio key, a Copilot seat, its own free models), and none of them can be asked through it. What
+// it does keep is what has gone through each one: `opencode stats --models` prints a table per
+// «proveedor/modelo», and `opencode auth list` says which accounts are linked. Grouped by the
+// provider half, that is the per-account picture, and an account with nothing spent still shows up
+// so a key that was just connected is visibly there.
+// ---------------------------------------------------------------------------------------------
+
+/** Everything one linked account has spent, added up over its models. */
+export interface OpencodeAccountUsage {
+  /** The provider half of «proveedor/modelo»: google, anthropic, opencode… */
+  id: string;
+  messages: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens: number;
+  costUsd: number;
+  models: number;
+}
+
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
+
+/** `82.2K` → 82200. The table humanizes its numbers, so this is as exact as the source is. */
+export function parseHumanNumber(text: string): number {
+  const match = /^\$?([\d.,]+)\s*([KMB])?$/i.exec(text.trim());
+  if (!match) return 0;
+  const value = Number(match[1].replace(/,/g, ""));
+  if (!Number.isFinite(value)) return 0;
+  const scale = { k: 1_000, m: 1_000_000, b: 1_000_000_000 }[(match[2] ?? "").toLowerCase()] ?? 1;
+  return value * scale;
+}
+
+/**
+ * The MODEL USAGE table of `opencode stats --models`, added up per account.
+ *
+ * Every row belongs to a model written «proveedor/modelo», and the rows that follow it are its
+ * counters until the next model. Anything outside that table is ignored, so the overview and the
+ * tool usage above it never leak in.
+ */
+export function parseOpencodeStats(stdout: string): OpencodeAccountUsage[] {
+  const lines = stdout.replace(ANSI_RE, "").split(/\r?\n/);
+  const start = lines.findIndex(line => line.includes("MODEL USAGE"));
+  if (start < 0) return [];
+
+  const byAccount = new Map<string, OpencodeAccountUsage>();
+  let current: OpencodeAccountUsage | undefined;
+
+  for (const raw of lines.slice(start + 1)) {
+    const line = raw.replace(/[│┌┐└┘├┤─]/g, " ").trim();
+    if (!line) continue;
+    // A model row: «proveedor/modelo» on its own.
+    const model = /^([\w.-]+)\/([\w.:-]+)$/.exec(line);
+    if (model) {
+      const id = model[1].toLowerCase();
+      current = byAccount.get(id) ?? { id, messages: 0, inputTokens: 0, outputTokens: 0, cachedTokens: 0, costUsd: 0, models: 0 };
+      current.models++;
+      byAccount.set(id, current);
+      continue;
+    }
+    if (!current) continue;
+    const counter = /^(Messages|Input Tokens|Output Tokens|Cache Read|Cache Write|Cost)\s+(.+)$/.exec(line);
+    if (!counter) {
+      // The table is over: what follows belongs to another section.
+      if (/^[A-Z][A-Z ]+$/.test(line)) break;
+      continue;
+    }
+    const value = parseHumanNumber(counter[2]);
+    if (counter[1] === "Messages") current.messages += value;
+    else if (counter[1] === "Input Tokens") current.inputTokens += value;
+    else if (counter[1] === "Output Tokens") current.outputTokens += value;
+    else if (counter[1] === "Cache Read" || counter[1] === "Cache Write") current.cachedTokens += value;
+    else if (counter[1] === "Cost") current.costUsd += value;
+  }
+  return [...byAccount.values()];
+}
+
+/** The accounts `opencode auth list` says are linked: `●  Google api`. */
+export function parseOpencodeAccounts(stdout: string): Array<{ id: string; label: string }> {
+  const out: Array<{ id: string; label: string }> = [];
+  for (const raw of stdout.replace(ANSI_RE, "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line.startsWith("●")) continue;
+    // «Google api» / «GitHub Copilot oauth»: the last word is how it was authenticated.
+    const rest = line.slice(1).trim().replace(/\s+(api|oauth|wellknown)$/i, "").trim();
+    if (!rest) continue;
+    out.push({ id: rest.toLowerCase().replace(/[^a-z0-9]/g, ""), label: rest });
+  }
+  return out;
+}
+
+/** Two names for the same account: «GitHub Copilot» from auth, `github-copilot` from a model id. */
+function sameAccount(a: string, b: string): boolean {
+  const norm = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return norm(a) === norm(b);
+}
+
+async function fetchOpencodeQuota(binaries?: Binaries): Promise<ProviderQuota> {
+  const fetchedAt = Date.now();
+  const program = binaries?.opencode?.path ?? "opencode";
+  const [stats, auth] = await Promise.all([
+    getTransport().exec(program, ["stats", "--models"]).catch(() => null),
+    getTransport().exec(program, ["auth", "list"]).catch(() => null),
+  ]);
+  if (!stats || stats.code !== 0) {
+    return { provider: "opencode", status: "unavailable", message: "No se pudo leer el uso de opencode", fetchedAt, items: [] };
+  }
+
+  const usage = parseOpencodeStats(stats.stdout);
+  const linked = auth && auth.code === 0 ? parseOpencodeAccounts(auth.stdout) : [];
+  const items: QuotaItem[] = [];
+
+  for (const account of usage) {
+    const label = linked.find(l => sameAccount(l.id, account.id))?.label ?? account.id;
+    items.push({
+      label,
+      model: account.id,
+      note: `${account.messages} mensajes · ${formatTokens(account.inputTokens)} entrada · ${formatTokens(account.outputTokens)} salida · ${formatUsd(account.costUsd)}`,
+    });
+  }
+  // A key that was just linked has spent nothing, and saying so beats leaving it out.
+  for (const account of linked) {
+    if (usage.some(u => sameAccount(u.id, account.id))) continue;
+    items.push({ label: account.label, model: account.id, note: "sin uso todavía" });
+  }
+
+  return {
+    provider: "opencode",
+    status: "ok",
+    // opencode counts what was spent; the ceiling belongs to the account behind it.
+    message: "opencode no informa límites: lo que sigue es lo consumido por cuenta.",
+    fetchedAt,
+    items,
+  };
+}
+
+/** `82200` → `82.2K`, the same shorthand opencode's own table uses. */
+function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(Math.round(value));
+}
+
+function formatUsd(value: number): string {
+  return value >= 0.01 ? `US$${value.toFixed(2)}` : "US$0";
+}
+
+export async function fetchQuota(provider: ProviderId, binaries?: Binaries): Promise<ProviderQuota> {
   try {
     if (provider === "copilot") return await fetchCopilotQuota();
     if (provider === "claude") return await fetchClaudeQuota();
     if (provider === "antigravity") return await fetchAntigravityQuota();
+    if (provider === "opencode") return await fetchOpencodeQuota(binaries);
     return {
       provider,
       status: "unavailable",

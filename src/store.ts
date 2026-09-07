@@ -1293,7 +1293,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   refreshQuota: async (provider) => {
-    const result = await quota.fetchQuota(provider);
+    // opencode is asked through its own binary, so it needs the path that was detected.
+    const result = await quota.fetchQuota(provider, get().binaries);
     set(state => ({ quota: { ...state.quota, [provider]: result } }));
     return result;
   },

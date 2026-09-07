@@ -126,6 +126,9 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
             );
           })}
           {quotaState.items.length === 0 && <div className="text-sm text-muted-foreground">{t("agentDialog.quotaNoInfo")}</div>}
+          {/* A provider that answered but has something to say about what it answered: opencode
+              counts what was spent, because the ceiling belongs to the account behind it. */}
+          {quotaState.message && <div className="pt-1 text-xs text-muted-foreground">{quotaState.message}</div>}
         </div>
       )}
     </Card>
