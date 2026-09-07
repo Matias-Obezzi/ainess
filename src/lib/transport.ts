@@ -62,6 +62,15 @@ export interface Transport {
   ptyListShells(): Promise<import("@/types").ShellInfo[]>;
   onPtyOutput(h: (e: import("@/types").PtyOutputEvent) => void): Promise<() => void>;
   onPtyExit(h: (e: import("@/types").PtyExitEvent) => void): Promise<() => void>;
+
+  /**
+   * Watches a project's folder and reports back when the repository changed (see
+   * src-tauri/src/repo_watch.rs). Only the desktop app can: the CLI and the phone answer nothing
+   * and their callers fall back to asking every so often.
+   */
+  repoWatchStart(projectId: string, path: string): Promise<void>;
+  repoWatchStop(projectId: string): Promise<void>;
+  onRepoChanged(h: (e: { projectId: string }) => void): Promise<() => void>;
 }
 
 let currentTransport: Transport | null = null;

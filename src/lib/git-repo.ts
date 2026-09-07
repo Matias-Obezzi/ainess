@@ -90,3 +90,17 @@ export async function readRepoState(workspaceDir: string): Promise<RepoState> {
     fetchedAt: Date.now(),
   };
 }
+
+/**
+ * Just the local half: the branch and the working tree, no `gh` and no network.
+ *
+ * This is what a filesystem event asks for. Reading the pull requests too would put a call to
+ * GitHub behind every file the user saves, and PRs do not change when a file does — those stay on
+ * the slow path (`readRepoState`, on a timer).
+ */
+export async function readRepoStatus(workspaceDir: string): Promise<GitStatus | null> {
+  if (!workspaceDir) return null;
+  const result = await run("git", ["status", "--porcelain=v2", "--branch"], workspaceDir);
+  if (!result || result.code !== 0) return null;
+  return parseGitStatus(result.stdout);
+}

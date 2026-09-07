@@ -9,7 +9,7 @@ import * as taskLogic from "@/lib/tasks";
 import { reconcileProject } from "@/lib/task-reconcile";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
-import { readRepoState, type RepoState } from "@/lib/git-repo";
+import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
@@ -177,6 +177,11 @@ export interface AppState {
   loadQuotaMarks(): Promise<void>;
   /** Re-reads the git state of a project's workspace. Read-only, and never throws. */
   refreshRepoState(projectId: string): Promise<void>;
+  /**
+   * Re-reads only the local half (branch and working tree), for when the folder itself says it
+   * changed. Cheap enough to run on every save; the pull requests stay on `refreshRepoState`.
+   */
+  refreshRepoStatus(projectId: string): Promise<void>;
 
   // ---- Agent worktrees (src/lib/worktree.ts) ----
   /** Records (or replaces) the worktree an agent works in. */
@@ -1319,6 +1324,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
       });
     repoReads.set(projectId, read);
     return read;
+  },
+
+  refreshRepoStatus: async (projectId) => {
+    const project = selectProject(get(), projectId);
+    if (!project?.workspaceDir) return;
+    const status = await readRepoStatus(project.workspaceDir).catch(() => null);
+    if (!status) return;
+    set(s => {
+      const before = s.repoState[projectId];
+      // Nothing read the whole state yet: this half is still better than an empty header, and the
+      // pull requests fill in on the next slow pass.
+      const next: RepoState = before
+        ? { ...before, status, fetchedAt: Date.now() }
+        : { isRepo: true, status, pullRequests: [], fetchedAt: Date.now() };
+      return { repoState: { ...s.repoState, [projectId]: next } };
+    });
   },
 
   setWorktree: (projectId, worktree) => {

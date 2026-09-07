@@ -18,6 +18,7 @@ import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
 import { useQuotaSync } from "@/hooks/useQuotaSync";
 import { useRepoSync } from "@/hooks/useRepoSync";
+import { useRepoWatch } from "@/hooks/useRepoWatch";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
@@ -53,6 +54,7 @@ export default function App() {
   useNoDefaultContextMenu();
   useQuotaSync();
   useRepoSync();
+  useRepoWatch();
 
   // Every global shortcut is resolved from the one table in src/lib/shortcuts.ts, which is also
   // what the Ctrl+/ dialog documents, so the keys and their description cannot drift apart.

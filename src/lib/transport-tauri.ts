@@ -100,4 +100,8 @@ export const tauriTransport: Transport = {
   ptyListShells: async () => invoke<ShellInfo[]>("pty_list_shells"),
   onPtyOutput: async (h) => listenOnce<PtyOutputEvent>("pty-output", h),
   onPtyExit: async (h) => listenOnce<PtyExitEvent>("pty-exit", h),
+
+  repoWatchStart: async (projectId, path) => invoke<void>("repo_watch_start", { projectId, path }),
+  repoWatchStop: async (projectId) => invoke<void>("repo_watch_stop", { projectId }),
+  onRepoChanged: async (h) => listenOnce<{ projectId: string }>("repo-changed", h),
 };

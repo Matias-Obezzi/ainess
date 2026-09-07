@@ -516,4 +516,7 @@ export const nodeTransport: Transport = {
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},
+  repoWatchStart: async () => {},
+  repoWatchStop: async () => {},
+  onRepoChanged: async () => () => {},
 };

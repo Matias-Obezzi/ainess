@@ -5,6 +5,7 @@ mod http;
 mod logging;
 mod pty;
 mod remote;
+mod repo_watch;
 mod runner;
 mod tray;
 mod tunnel;
@@ -16,6 +17,7 @@ pub fn run() {
         .manage(remote::RemoteState::default())
         .manage(tray::TrayState::default())
         .manage(tunnel::TunnelState::default())
+        .manage(repo_watch::RepoWatchState::default())
         .manage(logging::LogState::default())
         .manage(pty::PtyState::default())
         .plugin(tauri_plugin_opener::init())
@@ -73,7 +75,9 @@ pub fn run() {
             tunnel::tunnel_start,
             tunnel::tunnel_stop,
             tunnel::tunnel_status,
-            tunnel::tunnel_detect
+            tunnel::tunnel_detect,
+            repo_watch::repo_watch_start,
+            repo_watch::repo_watch_stop
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -83,6 +87,7 @@ pub fn run() {
         if let tauri::RunEvent::Exit = event {
             runner::shutdown(handle);
             tunnel::shutdown(handle);
+            repo_watch::shutdown(handle);
             pty::shutdown(handle);
             logging::append(handle, "info", "app", "ainess cerrando");
         }
