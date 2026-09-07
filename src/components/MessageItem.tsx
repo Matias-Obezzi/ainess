@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 import { useState } from "react";
 import { RunDetailDialog } from "./RunDetailDialog";
+import { ErrorMessage } from "./ErrorMessage";
 
 export function MessageItem({ message }: { message: CommMessage }) {
   const t = useT();
@@ -53,9 +54,13 @@ export function MessageItem({ message }: { message: CommMessage }) {
             </Button>
           )}
         </div>
-        <div className={cn("mt-1 whitespace-pre-wrap break-words", isMono && "font-mono text-xs text-muted-foreground")}>
-          {message.text}
-        </div>
+        {message.kind === "error" ? (
+          <ErrorMessage text={message.text} className="mt-1" />
+        ) : (
+          <div className={cn("mt-1 whitespace-pre-wrap break-words", isMono && "font-mono text-xs text-muted-foreground")}>
+            {message.text}
+          </div>
+        )}
       </div>
       <RunDetailDialog
         runId={message.runId || null}

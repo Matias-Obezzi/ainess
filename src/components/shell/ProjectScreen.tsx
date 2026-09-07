@@ -3,7 +3,6 @@ import { useAppStore, selectProject } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { GitBranchButton } from "@/components/GitStatus";
 import { UsageButton } from "@/components/UsageDialog";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
@@ -116,10 +115,6 @@ export function ProjectScreen() {
             <TerminalSquare className="h-3.5 w-3.5" /> {t("projectScreen.terminal")}
           </Button>
         </div>
-      </div>
-
-      <div className="px-4 pt-3 empty:hidden">
-        <ApprovalsPanel />
       </div>
 
       <div className="flex-1 min-h-0">

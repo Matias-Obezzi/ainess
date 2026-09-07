@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
 import { Markdown } from "@/components/shell/Markdown";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
 import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
@@ -117,7 +119,7 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
   if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} />;
 
   if (msg.kind === "error" || msg.kind === "stderr") {
-    return <div className="text-xs text-destructive break-words whitespace-pre-wrap">{msg.text}</div>;
+    return <ErrorMessage text={msg.text} className="my-1" />;
   }
 
   return <div className="text-xs text-muted-foreground italic break-words">{msg.text}</div>;
@@ -139,6 +141,14 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
   const agent = agents.find(a => a.id === msg.toAgentId);
   const name = agent?.name ?? msg.toAgentId ?? "?";
 
+  // A delegation that is waiting for a yes is answered right here, where it was read. It used to
+  // live in a bar across the top of the screen, away from the thing it was about.
+  const pending = useAppStore(state =>
+    Object.values(state.approvals).find(a =>
+      a.status === "pending" && a.payload.parentRunId === parentRunId && a.toAgentId === msg.toAgentId,
+    ),
+  );
+
   return (
     <div className="my-1 rounded-md border border-border bg-background/40 p-2 flex flex-col gap-1">
       <div className="flex items-center gap-1.5 text-xs">
@@ -147,6 +157,7 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
         {agent && <ProviderLogo provider={agent.provider} size={14} />}
         <span className="font-medium shrink-0">{name}</span>
         <span className="text-muted-foreground truncate" title={msg.text}>{truncate(msg.text, 90)}</span>
+        {pending && <InlineApproval approvalId={pending.id} />}
         {childRun && childRun.status !== "running" && (
           <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{t(runStatusLabelKey[childRun.status])}</span>
         )}

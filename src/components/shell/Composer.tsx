@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
@@ -265,7 +266,11 @@ export function Composer() {
               </>
             )}
 
-            {quotaAgent && <QuotaIndicator agent={quotaAgent} className="ml-auto" />}
+            {/* Both live at the right end: what is waiting for you, and what is left to spend. */}
+            <div className="ml-auto flex items-center gap-1">
+              <ApprovalsPill />
+              {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
+            </div>
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ChatDialog } from "@/components/ChatDialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity } from "@/components/shell/RunActivity";
+import { ErrorMessage } from "@/components/ErrorMessage";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -226,7 +227,9 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
               message.runId && hasRun
                 ? <RunActivity runId={message.runId} />
                 : <span className="text-muted-foreground">…</span>
-            ) : isUser || message.status === "error" ? (
+            ) : message.status === "error" ? (
+              <ErrorMessage text={message.text} />
+            ) : isUser ? (
               message.text
             ) : (
               <Markdown text={message.text} />
