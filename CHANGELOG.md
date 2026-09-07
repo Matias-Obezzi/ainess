@@ -13,6 +13,14 @@ Settings → About.
   card moves when a delegation names it, not when somebody edits the markdown — and the rest of
   the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
   configuration folder.
+- **The phone tells you when something needs you.** A bell in its header asks for permission, and
+  from then on a delegation waiting for a yes, a question, or a task that came back reaches you
+  while the page is in the background or the screen is locked. It is the browser's own
+  notifications over the stream that is already open — no push service, no keys, nothing that
+  leaves your machine — so it needs the tunnel's HTTPS address (over plain HTTP on the LAN the
+  browser refuses) and, on iOS, the page installed to the home screen. The page now ships a
+  manifest, an icon and a service worker, which is also what makes an installed copy behave like an
+  app rather than a bookmark.
 - **Writing while an agent is thinking.** The box no longer goes grey mid-answer: what you write
   is queued and sent the moment the turn ends, in the orchestrator and in a chat alike. Enter
   sends, Shift+Enter is a line break and Ctrl+Enter queues on purpose, whether or not anything is

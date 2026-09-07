@@ -23,11 +23,18 @@ import { roleLabelKey, statusLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { cn } from "@/lib/utils";
+import {
+  askForNotifications,
+  notificationState,
+  registerServiceWorker,
+  useWebNotifications,
+  type NotificationState,
+} from "./web-notifications";
 import { truncate } from "@/lib/format";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError, runDiagnostics } from "./remote-client";
 import {
-  ArrowLeft, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
+  ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
   ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw, Loader2,
   AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
@@ -55,6 +62,10 @@ export function RemoteApp() {
   const [attempt, setAttempt] = useState(0);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const installed = useRef(false);
+
+  // What needs you, on the phone's own notifications: only while the page is not in front, and
+  // only once it has been allowed from the bell.
+  useWebNotifications();
 
   useEffect(() => {
     if (!getToken()) {
@@ -228,6 +239,7 @@ function HomeView() {
               {plural(pending.length, t("phone.approvals.one", { n: pending.length }), t("phone.approvals.other", { n: pending.length }))}
             </Button>
           )}
+          <AlertsButton />
           <DiagnosticsButton />
         </div>
       </header>
@@ -300,6 +312,7 @@ function ProjectView({ projectId }: { projectId: string }) {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="font-semibold truncate flex-1">{project.name}</span>
+        <AlertsButton />
         <DiagnosticsButton />
       </header>
 
@@ -495,6 +508,44 @@ const LEVEL_COLOR = {
   warn: "text-amber-600 dark:text-amber-400",
   error: "text-destructive",
 };
+
+/**
+ * Turns on the notifications of this phone. It has to be a button: the browser only takes the
+ * request from a gesture, and iOS only from an app installed to the home screen.
+ */
+function AlertsButton() {
+  const t = useT();
+  const [state, setState] = useState<NotificationState>(() => notificationState());
+
+  // The worker is what shows them, and what makes this installable; registering it does not ask
+  // for anything.
+  useEffect(() => {
+    if (state === "granted") void registerServiceWorker();
+  }, [state]);
+
+  const label = {
+    unsupported: t("phone.alerts.unsupported"),
+    insecure: t("phone.alerts.insecure"),
+    denied: t("phone.alerts.denied"),
+    granted: t("phone.alerts.on"),
+    default: t("phone.alerts.enable"),
+  }[state];
+
+  const off = state !== "default";
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn("h-10 w-10", state === "granted" ? "text-emerald-500" : "text-muted-foreground")}
+      aria-label={`${t("phone.alerts.label")}: ${label}`}
+      title={label}
+      disabled={off && state !== "granted"}
+      onClick={() => { if (!off) void askForNotifications().then(setState); }}
+    >
+      {state === "granted" ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+    </Button>
+  );
+}
 
 function DiagnosticsButton() {
   const [open, setOpen] = useState(false);
