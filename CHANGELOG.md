@@ -54,6 +54,12 @@ Settings → About.
 - A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
   only that it took too long. It now says what was holding it: something the agent left running in
   the background, and what to ask it to do about that.
+- **Moving a card reloaded the whole window.** The `.ainess/` folder is written into the project
+  whenever the board is saved, and a dev server watching that project reloads the page when a file
+  under it changes — including the app's own, whose project is its own repository. Two halves: a
+  file that would come out the same is not written at all, so the board being saved does not wake
+  up anything watching the repo, and the folder is out of what the app's own dev server watches.
+  The `README.md` in the folder says it too, for a project with a dev server of its own.
 - A card let go anywhere but on a column is now let go: an unhandled drop belongs to the browser,
   which does what it likes with it, and in a window that reads as the screen reloading.
 - **Drag and drop on the board did nothing in the app.** The webview keeps the drag events for

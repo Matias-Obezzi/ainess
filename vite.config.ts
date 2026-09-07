@@ -22,6 +22,8 @@ export default defineConfig(async () => ({
     strictPort: true,
     host: host || false,
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
-    watch: { ignored: ["**/src-tauri/**"] },
+    // `.ainess/` is written by the app itself whenever the board changes (see
+    // src/lib/project-folder.ts). Watched, moving a card in the window reloads the window.
+    watch: { ignored: ["**/src-tauri/**", "**/.ainess/**"] },
   },
 }));

@@ -16,9 +16,13 @@ const project: Project = { id: "p1", name: "tienda", workspaceDir: "C:\\repos\\t
 const task = (over: Partial<Task>): Task => createTask({ projectId: project.id, ...over });
 
 /** Records what was written where, without touching a disk. */
-function recording() {
+function recording(existing: Record<string, string> = {}) {
   const written = new Map<string, string>();
-  setTransport({ ...nullTransport, writeFileAbs: async (path: string, content: string) => { written.set(path, content); } });
+  setTransport({
+    ...nullTransport,
+    readFileAbs: async (path: string) => existing[path] ?? null,
+    writeFileAbs: async (path: string, content: string) => { written.set(path, content); },
+  });
   return written;
 }
 
@@ -76,6 +80,28 @@ describe("writing the folder", () => {
     ]);
     expect(written.get("C:\\repos\\tienda\\.ainess\\BOARD.md")).toContain("Una");
     expect(written.get("C:\\repos\\tienda\\.ainess\\README.md")).toBe(readmeMarkdown(project));
+  });
+
+  // Every write wakes up whatever watches the repository — a dev server reloads the page, a test
+  // runner starts again — and the board is saved far more often than it changes.
+  it("does not touch a file that would come out the same", async () => {
+    const tasks = [task({ title: "Una" })];
+    const first = recording();
+    await writeProjectFolder(project, tasks, project.agents);
+    expect(first.size).toBe(3);
+
+    const again = recording(Object.fromEntries(first));
+    await writeProjectFolder(project, tasks, project.agents);
+    expect(again.size).toBe(0);
+  });
+
+  it("writes the one that did change, and only that one", async () => {
+    const before = recording();
+    await writeProjectFolder(project, [task({ title: "Una" })], project.agents);
+
+    const after = recording(Object.fromEntries(before));
+    await writeProjectFolder(project, [task({ title: "Otra" })], project.agents);
+    expect([...after.keys()]).toEqual(["C:\\repos\\tienda\\.ainess\\BOARD.md"]);
   });
 
   it("keeps the separator the workspace already uses", () => {

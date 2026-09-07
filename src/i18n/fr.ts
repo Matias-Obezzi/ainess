@@ -1155,5 +1155,5 @@ export const fr: Dictionary = {
   "folder.agents.title": "L'équipe de {project}",
   "folder.agents.empty": "Ce projet n'a pas encore d'agents.",
   "folder.readme.title": "Le dossier .ainess de {project}",
-  "folder.readme.body": "Ce que ainess sait de ce projet vit ici. `BOARD.md` est le tableau des tâches et `AGENTS.md` l'équipe : c'est l'app qui les écrit, donc ce que tu modifies à la main est perdu à la prochaine exécution — pour déplacer une carte, le planificateur la délègue avec son id.\n\nLe reste du dossier appartient aux agents : plans, notes et passations vont ici, et non dans le dossier de configuration de chaque CLI.",
+  "folder.readme.body": "Ce que ainess sait de ce projet vit ici. `BOARD.md` est le tableau des tâches et `AGENTS.md` l'équipe : c'est l'app qui les écrit, donc ce que tu modifies à la main est perdu à la prochaine exécution — pour déplacer une carte, le planificateur la délègue avec son id.\n\nLe reste du dossier appartient aux agents : plans, notes et passations vont ici, et non dans le dossier de configuration de chaque CLI.\n\nSi un serveur de développement surveille ce dépôt, ajoute `.ainess/` à ce qu'il ignore : chaque changement du tableau touche ces fichiers.",
 };
