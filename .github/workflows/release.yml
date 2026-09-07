@@ -61,10 +61,13 @@ jobs:
         if: steps.tag.outputs.exists == 'false'
         run: npm run build:cli
 
+      # `--release` on purpose, even though it compiles slower on its own: the build right after
+      # this one is a release build too, so the dependency tree gets compiled once and reused
+      # instead of twice (a debug compile here and a release one there, ~8 minutes apiece cold).
       - name: Rust tests
         if: steps.tag.outputs.exists == 'false'
         working-directory: src-tauri
-        run: cargo test --lib
+        run: cargo test --lib --release
 
       - name: Build and publish the release
         if: steps.tag.outputs.exists == 'false'
