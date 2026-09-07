@@ -46,6 +46,26 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Nothing checks the code on main: ci.yml ignores this branch, and pushing straight to main
+      # is how this repo works. So whatever is about to be published is checked here first — only
+      # when it is going to be published, so an ordinary push to main stays as quick as it was.
+      - name: Typecheck
+        if: steps.tag.outputs.exists == 'false'
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        if: steps.tag.outputs.exists == 'false'
+        run: npm test
+
+      - name: Build the CLI
+        if: steps.tag.outputs.exists == 'false'
+        run: npm run build:cli
+
+      - name: Rust tests
+        if: steps.tag.outputs.exists == 'false'
+        working-directory: src-tauri
+        run: cargo test --lib
+
       - name: Build and publish the release
         if: steps.tag.outputs.exists == 'false'
         uses: tauri-apps/tauri-action@v0

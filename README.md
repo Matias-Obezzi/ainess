@@ -285,12 +285,16 @@ ngrok authtoken and API key stay in ngrok's own config file.
 
 ## Releases
 
-GitHub Actions publishes them when a PR is merged into `main`:
+A release is a version number: GitHub Actions does the rest on every push to `main`.
 
-1. In the PR, bump the version in `package.json`, `src-tauri/tauri.conf.json` and
-   `src-tauri/Cargo.toml`. `npm run release:check` verifies the three agree, and CI runs it.
-2. On merge, the workflow tags `v<version>`, builds and signs the NSIS installer and publishes
-   `latest.json` in the release. If the tag exists already it does nothing.
+1. Bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` —
+   the same number in the three. `npm run release:check` verifies they agree.
+2. Push to `main`. The workflow tags `v<version>`, builds and signs the NSIS installer and
+   publishes `latest.json` in the release. A push that does not change the version finds the tag
+   already there and stops, which is why most pushes to `main` publish nothing.
+3. Before publishing (and only then) it runs the typecheck, the unit tests, the CLI build and the
+   Rust tests: `ci.yml` ignores `main`, so this is what stands between a broken commit and an
+   installer.
 3. Installed apps pick it up on their next check — at startup if enabled, or from
    Configuración → Acerca de — and update themselves.
 
