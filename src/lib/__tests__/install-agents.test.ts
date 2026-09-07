@@ -1,6 +1,6 @@
 // Installing an agent's CLI from the app: only what each one documents, and never a remote script
 // piped into a shell. The command is written where the button is, so nothing runs unannounced.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { INSTALLERS, installCommand, installCommandText, installerFor, installProvider } from "@/lib/install-agents";
 import { PROVIDERS } from "@/lib/providers";
 import { nullTransport } from "@/lib/transport-null";
