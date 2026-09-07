@@ -5,13 +5,14 @@ import { taskStatusMeta } from "@/components/tasks/task-meta";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Markdown } from "@/components/shell/Markdown";
 import { formatTimeAgo } from "@/lib/format";
 import { useLocale } from "@/i18n/useT";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ListTodo } from "lucide-react";
+import { ChevronLeft, ListTodo, Plus } from "lucide-react";
 import type { Task, TaskStatus } from "@/types";
 
 /**
@@ -24,6 +25,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
   const tasks = useAppStore(state => selectTasks(state, projectId));
   const [status, setStatus] = useState<TaskStatus>("working");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
   const live = useMemo(() => tasks.filter(task => !task.archived), [tasks]);
   const byStatus = useMemo(() => {
@@ -36,6 +38,14 @@ export function TasksTab({ projectId }: { projectId: string }) {
   if (open) return <TaskDetail task={open} tasks={live} onBack={() => setOpenId(null)} />;
 
   const column = byStatus[status] ?? [];
+
+  /** The card is made on the PC and comes back in the next snapshot; nothing is faked here. */
+  const create = () => {
+    const title = draft.trim();
+    if (!title) return;
+    useAppStore.getState().addTask(projectId, { title, status });
+    setDraft("");
+  };
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -57,6 +67,22 @@ export function TasksTab({ projectId }: { projectId: string }) {
           );
         })}
       </div>
+
+      {/* Writing one down is half of what a board is for, and it could only be done on the PC. */}
+      <form
+        className="shrink-0 flex gap-1.5 border-b border-border px-3 py-2"
+        onSubmit={e => { e.preventDefault(); create(); }}
+      >
+        <Input
+          className="h-9 flex-1 text-sm"
+          placeholder={t("tasks.titlePlaceholder")}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+        />
+        <Button type="submit" size="icon" className="h-9 w-9 shrink-0" aria-label={t("tasks.new")} disabled={!draft.trim()}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </form>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3">
         {column.length === 0 ? (

@@ -126,9 +126,11 @@ export const ja: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "このチャット",
-  "composer.placeholder.chat": "{name} へのメッセージ…  (Ctrl+Enterで送信)",
+  "composer.placeholder.chat": "{name} へのメッセージ…",
   "composer.placeholder.noTeam": "このプロジェクトにはまだエージェントがいません…",
-  "composer.placeholder.team": "チームに何か頼んでみましょう… (Ctrl+Enterで送信)",
+  "composer.placeholder.team": "チームに何か頼む…",
+  "composer.sendShortcut": "(Ctrl+Enter で送信)",
+  "composer.pickModel": "モデルを選ぶ",
   "composer.noTeamHint": "このプロジェクトにはまだエージェントがいません。階層ビューからチームを編成してください。",
   "composer.missingCli": "{provider} のCLIが見つかりませんでした。設定 → エージェントで確認してください。",
   "composer.stop": "停止",

@@ -125,9 +125,11 @@ export const zh: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "该聊天",
-  "composer.placeholder.chat": "发给 {name} 的消息…（Ctrl+Enter 发送）",
+  "composer.placeholder.chat": "给 {name} 的消息…",
   "composer.placeholder.noTeam": "这个项目还没有智能体…",
-  "composer.placeholder.team": "给团队安排点事…（Ctrl+Enter 发送）",
+  "composer.placeholder.team": "给团队安排点什么…",
+  "composer.sendShortcut": "(Ctrl+Enter 发送)",
+  "composer.pickModel": "选择模型",
   "composer.noTeamHint": "这个项目还没有智能体。到「层级」视图里组建团队。",
   "composer.missingCli": "没有检测到 {provider} 的 CLI。到设置 → 智能体里检查一下。",
   "composer.stop": "停止",

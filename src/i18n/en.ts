@@ -125,9 +125,11 @@ export const en: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "the chat",
-  "composer.placeholder.chat": "Message for {name}…  (Ctrl+Enter to send)",
+  "composer.placeholder.chat": "Message for {name}…",
   "composer.placeholder.noTeam": "This project doesn't have agents yet…",
-  "composer.placeholder.team": "Ask the team for something… (Ctrl+Enter to send)",
+  "composer.placeholder.team": "Ask the team for something…",
+  "composer.sendShortcut": "(Ctrl+Enter to send)",
+  "composer.pickModel": "Pick a model",
   "composer.noTeamHint": "This project doesn't have agents yet. Build the team from the Hierarchy view.",
   "composer.missingCli": "{provider}'s CLI wasn't detected. Check it under Settings → Agents.",
   "composer.stop": "Stop",

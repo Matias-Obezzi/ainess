@@ -207,6 +207,20 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         return { ok: true };
       }
       case "task": {
+        // Creating comes with no task id: it is the one op that makes one.
+        if (str("op") === "create") {
+          const projectId = str("projectId");
+          const title = str("title")?.trim();
+          if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: "Proyecto inválido" };
+          if (!title) return { error: "Falta el título" };
+          const agentId = str("agentId");
+          const task = s.addTask(projectId, {
+            title,
+            detail: str("detail"),
+            ...(agentId && selectProjectAgents(s, projectId).some(a => a.id === agentId) ? { agentId } : {}),
+          });
+          return { ok: true, taskId: task.id };
+        }
         const id = str("taskId");
         if (!id) return { error: "Falta la tarea" };
         const op = str("op") ?? "move";

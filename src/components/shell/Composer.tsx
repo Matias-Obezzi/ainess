@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { isRemoteBuild } from "@/lib/platform";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
-import { Send, Square } from "lucide-react";
+import { Send, SlidersHorizontal, Square } from "lucide-react";
 
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
 const sentHistory: string[] = [];
@@ -164,11 +165,16 @@ export function Composer() {
   };
 
   const noTeam = !chatMode && agents.length === 0;
+  // On a phone there is no Ctrl+Enter to mention, and the room the hint takes is room the thread
+  // does not get. `compact` is the phone page (see lib/platform.ts), not a screen width.
+  const compact = isRemoteBuild();
+  const [showModel, setShowModel] = useState(false);
   const placeholder = chatMode
     ? t("composer.placeholder.chat", { name: chat?.name ?? t("composer.theChat") })
     : noTeam
       ? t("composer.placeholder.noTeam")
       : t("composer.placeholder.team");
+  const hint = compact ? placeholder : `${placeholder} ${t("composer.sendShortcut")}`;
 
   return (
     <div className="border-t border-border p-3 shrink-0 bg-background">
@@ -195,7 +201,7 @@ export function Composer() {
             value={text}
             onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={hint}
             rows={2}
             className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
           />
@@ -241,6 +247,20 @@ export function Composer() {
                   </SelectContent>
                 </Select>
 
+                {compact && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    aria-label={t("composer.pickModel")}
+                    onClick={() => setShowModel(v => !v)}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {(!compact || showModel) && (
                 <Select value={targetModel} onValueChange={setTargetModel}>
                   <SelectTrigger className="w-[170px] h-8 text-xs">
                     <SelectValue placeholder={t("common.model")} />
@@ -253,8 +273,9 @@ export function Composer() {
                     <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
 
-                {targetModel === "custom" && (
+                {targetModel === "custom" && (!compact || showModel) && (
                   <Input
                     className="h-8 w-[150px] text-xs"
                     placeholder={t("composer.typeModel")}

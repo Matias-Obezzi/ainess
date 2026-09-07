@@ -4,6 +4,7 @@
 import { useAppStore } from "@/store";
 import { toast } from "@/components/ui/toast";
 import type { RemoteSnapshot } from "@/lib/remote";
+import { createTask } from "@/lib/tasks";
 import type { AgentConfig, AgentRuntime, Approval, Project, Run, Task } from "@/types";
 import type { DiagnosticResult } from "@/lib/diagnostics";
 
@@ -210,6 +211,12 @@ export function installRemoteActions(): void {
     approve: (approvalId, note) => call("/api/approve", { approvalId, decision: "approve", note }),
     reject: (approvalId, note) => call("/api/approve", { approvalId, decision: "reject", note }),
     sendChatMessage: (chatId, text) => call("/api/chat", { chatId, text }),
+    addTask: (projectId, partial) => {
+      void call("/api/task", { op: "create", projectId, title: partial?.title, detail: partial?.detail, agentId: partial?.agentId });
+      // The PC answers with the task it made and the next snapshot brings it; nothing local is
+      // invented in the meantime, so the board never shows a card the PC does not have.
+      return createTask({ ...partial, projectId });
+    },
     moveTask: (taskId, status, index) => { void call("/api/task", { taskId, op: "move", status, index }); },
     archiveTask: (taskId) => { void call("/api/task", { taskId, op: "archive" }); },
     removeTask: (taskId) => { void call("/api/task", { taskId, op: "delete" }); },
