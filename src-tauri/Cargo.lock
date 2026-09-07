@@ -23,6 +23,7 @@ version = "0.2.0"
 dependencies = [
  "axum",
  "dirs",
+ "flate2",
  "local-ip-address",
  "notify",
  "portable-pty",

@@ -1,5 +1,6 @@
 // LAN server for the CLI (`ais serve`): node:http + SSE, same protocol as src-tauri/src/remote.rs.
 import * as http from "node:http";
+import * as zlib from "node:zlib";
 import * as os from "node:os";
 import type { Transport } from "./transport";
 import { remoteUrl } from "./remote";
@@ -57,6 +58,19 @@ const ACTIONS: Record<string, string> = {
   "/api/task": "task",
 };
 
+/** Whether the client asked for gzip; one that did not gets the page as it is. */
+function acceptsGzip(req: http.IncomingMessage): boolean {
+  const header = req.headers["accept-encoding"];
+  const value = Array.isArray(header) ? header.join(",") : header ?? "";
+  return value.toLowerCase().split(",").some(part => part.trim().startsWith("gzip"));
+}
+
+let compressedPage: Buffer | undefined;
+function gzippedPage(): Buffer {
+  compressedPage ??= zlib.gzipSync(remoteHtml);
+  return compressedPage;
+}
+
 async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   const reqUrl = new URL(req.url || "/", "http://localhost");
   const path = reqUrl.pathname;
@@ -65,6 +79,18 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): P
   // behind the token) and it is what asks for the token when the link did not bring one. Gated, a
   // phone opening the bare address got a raw {"error":"Token inválido"} with nowhere to type it.
   if (req.method === "GET" && path === "/") {
+    // A megabyte of single-file bundle, and it travels: compressed it is about a third. Same page
+    // every time, so it is compressed once (see src-tauri/src/remote.rs, which does the same).
+    if (acceptsGzip(req)) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Encoding": "gzip",
+        "Cache-Control": "no-store",
+        Vary: "Accept-Encoding",
+      });
+      res.end(gzippedPage());
+      return;
+    }
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(remoteHtml);
     return;

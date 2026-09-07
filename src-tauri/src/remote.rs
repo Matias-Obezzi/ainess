@@ -9,11 +9,14 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::sync::{Arc, Mutex, RwLock};
+use std::io::Write;
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State as TauriState};
 use tokio::sync::{broadcast, oneshot};
@@ -89,8 +92,47 @@ fn unauthorized() -> Response {
 /// token — and it is what asks for the token when the link did not bring one. Gated, a phone that
 /// opens the bare address (an installed app launches its start URL with no query string) was
 /// answered with a raw `{"error":"Token inválido"}` and had nowhere to type it.
-async fn page() -> Response {
+async fn page(headers: HeaderMap) -> Response {
+    if accepts_gzip(&headers) {
+        return (
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CONTENT_ENCODING, "gzip"),
+                (header::CACHE_CONTROL, "no-store"),
+                // Anything between here and the phone (the tunnel, a proxy) has to know that the
+                // answer depends on what the client said it accepts.
+                (header::VARY, "Accept-Encoding"),
+            ],
+            gzipped_page().clone(),
+        )
+            .into_response();
+    }
     ([(header::CACHE_CONTROL, "no-store")], Html(PAGE)).into_response()
+}
+
+/// Whether the client asked for gzip. `identity;q=0` and friends are not worth parsing: a browser
+/// that names gzip at all takes it, and one that does not gets the page as it is.
+fn accepts_gzip(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::ACCEPT_ENCODING)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|value| value.to_ascii_lowercase().split(',').any(|part| part.trim().starts_with("gzip")))
+}
+
+/// The page, compressed once and kept.
+///
+/// It is a megabyte of single-file bundle and it travels: over the LAN, or through the tunnel to a
+/// phone on mobile data. Compressing it takes it to about a third, and it is the same bytes every
+/// time, so it is done once for the life of the process rather than per request.
+fn gzipped_page() -> &'static Vec<u8> {
+    static COMPRESSED: OnceLock<Vec<u8>> = OnceLock::new();
+    COMPRESSED.get_or_init(|| {
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        // A failure here would mean the page cannot be served at all, so fall back to the raw
+        // bytes: the header is only set on the branch that reaches this, which cannot happen.
+        let _ = encoder.write_all(PAGE.as_bytes());
+        encoder.finish().unwrap_or_else(|_| PAGE.as_bytes().to_vec())
+    })
 }
 
 async fn state_handler(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
@@ -288,4 +330,39 @@ pub fn remote_reply(state: TauriState<'_, RemoteState>, id: String, result: Valu
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{accepts_gzip, gzipped_page, PAGE};
+    use axum::http::{header, HeaderMap, HeaderValue};
+    use flate2::read::GzDecoder;
+    use std::io::Read;
+
+    fn headers(accept_encoding: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::ACCEPT_ENCODING, HeaderValue::from_str(accept_encoding).unwrap());
+        headers
+    }
+
+    #[test]
+    fn only_compresses_for_a_client_that_asked() {
+        assert!(accepts_gzip(&headers("gzip, deflate, br")));
+        assert!(accepts_gzip(&headers("br;q=1.0, gzip;q=0.8")));
+        assert!(accepts_gzip(&headers("GZIP")));
+        assert!(!accepts_gzip(&headers("br, zstd")));
+        assert!(!accepts_gzip(&headers("")));
+        // A client that says nothing gets the page as it is.
+        assert!(!accepts_gzip(&HeaderMap::new()));
+    }
+
+    #[test]
+    fn what_is_sent_is_the_page() {
+        let compressed = gzipped_page();
+        let mut decoded = String::new();
+        GzDecoder::new(&compressed[..]).read_to_string(&mut decoded).unwrap();
+        assert_eq!(decoded, PAGE);
+        // Worth the trouble: the bundle is a megabyte and it travels to a phone.
+        assert!(compressed.len() < PAGE.len() / 2, "{} vs {}", compressed.len(), PAGE.len());
+    }
 }
