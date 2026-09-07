@@ -116,3 +116,43 @@ describe("summarizeAgentQuota", () => {
     expect(summary.label).toBe("7/300");
   });
 });
+
+// opencode reports what each linked account spent and no ceiling at all: there is no ring to draw,
+// and the lines are the whole answer — one per account.
+describe("summarizeAgentQuota with amounts spent and no limits", () => {
+  const spent = (): ProviderQuota => ({
+    provider: "opencode",
+    status: "ok",
+    message: "opencode no informa límites",
+    fetchedAt: 0,
+    items: [
+      { label: "opencode", model: "opencode", note: "12 mensajes · 82.2K entrada" },
+      { label: "Google", model: "google", note: "7 mensajes · 1.5K entrada" },
+    ],
+  });
+
+  it("gives every account a line when the agent pins no model", () => {
+    const summary = summarizeAgentQuota(spent(), {});
+    expect(summary.fraction).toBeNull();
+    expect(summary.details).toHaveLength(2);
+    expect(summary.details[0]).toContain("opencode");
+    expect(summary.details[1]).toContain("Google");
+  });
+
+  it("narrows to the account of the model the agent uses", () => {
+    const summary = summarizeAgentQuota(spent(), { model: "google/gemini-3-flash" });
+    expect(summary.details).toEqual([expect.stringContaining("Google")]);
+  });
+
+  it("keeps one line per summary for a provider that does report numbers", () => {
+    const quota: ProviderQuota = {
+      provider: "copilot",
+      status: "ok",
+      fetchedAt: 0,
+      items: [{ label: "Premium requests", remaining: 30, entitlement: 300 }],
+    };
+    const summary = summarizeAgentQuota(quota, {});
+    expect(summary.fraction).toBeCloseTo(0.1);
+    expect(summary.details).toHaveLength(1);
+  });
+});

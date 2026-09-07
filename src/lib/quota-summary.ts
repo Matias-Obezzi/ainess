@@ -11,6 +11,12 @@ export interface QuotaSummary {
   label: string;
   /** One line for the tooltip: what it is and when it resets. */
   detail: string;
+  /**
+   * Every item that applies, one line each. With nothing to draw a ring with — opencode reports
+   * what each linked account spent and no ceiling — these lines are the whole answer, and showing
+   * only the first one hid the other accounts.
+   */
+  details: string[];
   status: "ok" | "unavailable" | "error" | "exhausted";
 }
 
@@ -25,9 +31,15 @@ function itemAppliesTo(itemModel: string, model: string): boolean {
   return item === target || target.includes(item) || poolOf(target) === item;
 }
 
-/** The items of `quota` that count for an agent: the provider-wide ones plus its models'. */
+/**
+ * The items of `quota` that count for an agent: the provider-wide ones plus its models'.
+ *
+ * An agent with no model pinned takes them all, the same way one whose model the orchestrator
+ * picks does: it can end up on any of them. Keeping only the provider-wide items left an opencode
+ * agent with nothing at all, since every one of its lines belongs to an account.
+ */
 function applicableItems(items: QuotaItem[], models: string[]): QuotaItem[] {
-  if (models.length === 0) return items.filter(item => !item.model);
+  if (models.length === 0) return items;
   return items.filter(item => !item.model || models.some(model => itemAppliesTo(item.model!, model)));
 }
 
@@ -40,9 +52,9 @@ function detailOf(item: QuotaItem): string {
   return resets ? translateNow("quota.detailWithReset", { detail: base, date: resets }) : base;
 }
 
-function summaryOf(fraction: number, label: string, detail: string): QuotaSummary {
+function summaryOf(fraction: number, label: string, detail: string, details: string[]): QuotaSummary {
   const clamped = Math.max(0, Math.min(1, fraction));
-  return { fraction: clamped, label, detail, status: clamped <= 0 ? "exhausted" : "ok" };
+  return { fraction: clamped, label, detail, details, status: clamped <= 0 ? "exhausted" : "ok" };
 }
 
 /**
@@ -55,22 +67,21 @@ export function summarizeAgentQuota(
   opts: { model?: string; allModels?: string[] },
 ): QuotaSummary {
   if (!quota) {
-    return { fraction: null, label: "—", detail: translateNow("quota.noQuotaData"), status: "unavailable" };
+    const detail = translateNow("quota.noQuotaData");
+    return { fraction: null, label: "—", detail, details: [detail], status: "unavailable" };
   }
   if (quota.status !== "ok") {
-    return {
-      fraction: null,
-      label: "—",
-      detail: quota.message || translateNow("quota.noQuotaData"),
-      status: quota.status,
-    };
+    const detail = quota.message || translateNow("quota.noQuotaData");
+    return { fraction: null, label: "—", detail, details: [detail], status: quota.status };
   }
 
   const models = opts.allModels?.length ? opts.allModels : opts.model ? [opts.model] : [];
   const items = applicableItems(quota.items, models);
   if (items.length === 0) {
-    return { fraction: null, label: "—", detail: quota.message || translateNow("quota.noQuotaData"), status: "ok" };
+    const detail = quota.message || translateNow("quota.noQuotaData");
+    return { fraction: null, label: "—", detail, details: [detail], status: "ok" };
   }
+  const details = items.map(detailOf);
 
   // Absolute counters win: they are the only ones that can be added up honestly.
   const counted = items.filter(i => !i.unlimited && i.remaining !== undefined && i.entitlement !== undefined);
@@ -78,14 +89,14 @@ export function summarizeAgentQuota(
     const remaining = counted.reduce((sum, i) => sum + (i.remaining ?? 0), 0);
     const entitlement = counted.reduce((sum, i) => sum + (i.entitlement ?? 0), 0);
     const fraction = entitlement > 0 ? remaining / entitlement : 0;
-    return summaryOf(fraction, `${remaining}/${entitlement}`, detailOf(leadItem(counted, i => share(i))));
+    return summaryOf(fraction, `${remaining}/${entitlement}`, detailOf(leadItem(counted, i => share(i))), details);
   }
 
   const percents = items.filter(i => !i.unlimited && i.percentRemaining !== undefined);
   if (percents.length > 0) {
     const avg = percents.reduce((sum, i) => sum + (i.percentRemaining ?? 0), 0) / percents.length;
     const fraction = avg / 100;
-    return summaryOf(fraction, `${Math.round(avg)}%`, detailOf(leadItem(percents, i => (i.percentRemaining ?? 0) / 100)));
+    return summaryOf(fraction, `${Math.round(avg)}%`, detailOf(leadItem(percents, i => (i.percentRemaining ?? 0) / 100)), details);
   }
 
   const windows = items.filter(i => !i.unlimited && i.usedPercent !== undefined);
@@ -93,17 +104,17 @@ export function summarizeAgentQuota(
     // The tightest window is the one that stops the agent, so it drives the ring.
     const lead = leadItem(windows, i => 1 - (i.usedPercent ?? 0) / 100);
     const fraction = 1 - (lead.usedPercent ?? 0) / 100;
-    return summaryOf(fraction, `${Math.round(fraction * 100)}%`, detailOf(lead));
+    return summaryOf(fraction, `${Math.round(fraction * 100)}%`, detailOf(lead), details);
   }
 
   const unlimited = items.filter(i => i.unlimited);
   if (unlimited.length === items.length) {
-    return { fraction: 1, label: "∞", detail: detailOf(unlimited[0]), status: "ok" };
+    return { fraction: 1, label: "∞", detail: detailOf(unlimited[0]), details, status: "ok" };
   }
 
   // Items with no numbers at all (Antigravity pools, which only say "Agotado"/"Disponible"): the
   // ring stays off, but the detail still tells the story.
-  return { fraction: null, label: "—", detail: detailOf(items[0]), status: "ok" };
+  return { fraction: null, label: "—", detail: detailOf(items[0]), details, status: "ok" };
 }
 
 /** The item that binds: the one with the least left over, falling back to the first. */

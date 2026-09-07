@@ -27,7 +27,11 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
             )}
           </span>
         </div>
-        <p className="text-[10px] leading-snug text-muted-foreground">{quota.detail}</p>
+        {/* With a ring, its line is enough; without one the lines are the whole answer (an
+            opencode agent has one per linked account). */}
+        {(quota.fraction === null ? quota.details : [quota.detail]).map((line, i) => (
+          <p key={i} className="text-[10px] leading-snug text-muted-foreground">{line}</p>
+        ))}
       </div>
     </div>
   );
