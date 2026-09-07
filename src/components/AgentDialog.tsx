@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
-import { PROVIDERS } from "@/lib/providers";
+import { availableProviders, PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
@@ -203,11 +203,15 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setCustomArgs(agent.customCommand?.args.join(" ") || "");
         setColor(agent.color || "#888888");
       } else {
-        const proposed = nextAgentName(roster, PROVIDERS.claude.label);
+        // Whatever is installed, preferring Claude Code when it is: starting on a provider that
+        // is not here would ask the user to change it before anything else.
+        const installed = availableProviders(binaries);
+        const first = installed.includes("claude") ? "claude" : (installed[0] ?? "custom");
+        const proposed = nextAgentName(roster, PROVIDERS[first].label);
         setId(crypto.randomUUID());
         setName(proposed);
         setSuggestedName(proposed);
-        setProvider("claude");
+        setProvider(first);
         setRole("implementer");
         setParentId(null);
         setModelOption(DEFAULT_MODEL_OPTION);
@@ -334,6 +338,10 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     await detectBinaries();
   };
 
+  // Only what can run: an agent built on a CLI that is not here would fail on its first run.
+  const offered: ProviderId[] = useMemo(() => availableProviders(binaries, provider), [binaries, provider]);
+  const hiddenProviders = Object.keys(PROVIDERS).length - offered.length;
+
   const currentBinary = binaries[provider];
   const hasOverride = !!config.binaryOverrides?.[provider];
   // A worktree needs a repo. A team with no project yet (a formation) keeps the option: the
@@ -371,11 +379,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(PROVIDERS) as [ProviderId, typeof PROVIDERS[ProviderId]][]).map(([id, p]) => (
-                      <SelectItem key={id} value={id}>{p.label}</SelectItem>
+                    {offered.map(id => (
+                      <SelectItem key={id} value={id}>{PROVIDERS[id].label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {hiddenProviders > 0 && (
+                  <p className="text-xs text-muted-foreground">{t("agentDialog.onlyDetected")}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>{t("agentDialog.role")}</Label>

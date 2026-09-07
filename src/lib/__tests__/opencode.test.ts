@@ -45,7 +45,11 @@ describe("opencode buildCommand", () => {
       binaryPath: "opencode.cmd",
     });
     expect(cmd.program).toBe("opencode.cmd");
-    expect(cmd.args.slice(0, 2)).toEqual(["run", "## Instrucciones del sistema\nSos IMPLEMENTADOR\n\n## Tarea\nHacé algo"]);
+    // The prompt goes in through stdin: npm installs opencode as a `.cmd` on Windows, and Windows
+    // refuses to start a batch file whose arguments carry newlines.
+    expect(cmd.stdinText).toBe("## Instrucciones del sistema\nSos IMPLEMENTADOR\n\n## Tarea\nHacé algo");
+    expect(cmd.args.some(a => a.includes("\n"))).toBe(false);
+    expect(cmd.args[0]).toBe("run");
     expect(cmd.args).toEqual(expect.arrayContaining(["--format", "json", "--dir", "C:/dev/app", "--model", "google/gemini-3-flash", "--session", SESSION]));
     // Nobody can answer a permission prompt in a headless run.
     expect(cmd.args).not.toContain("--auto");
@@ -79,6 +83,22 @@ describe("opencode parseLine", () => {
     expect(parse(toolPart("completed", { output: "ok", title: "ls", metadata: {}, time: { start: 1, end: 2 } }))).toEqual([]);
     expect(parse(toolPart("error", { error: "permiso denegado", time: { start: 1, end: 2 } }))).toEqual([
       { type: "error", text: "Falló la herramienta bash: permiso denegado" },
+    ]);
+  });
+
+  it("passes on what the model provider refused, in one line", () => {
+    // A real 429 from the Gemini API, as opencode prints it: no `part`, the message inside `error`.
+    const line = JSON.stringify({
+      type: "error",
+      timestamp: 1,
+      sessionID: SESSION,
+      error: {
+        name: "APIError",
+        data: { message: "You exceeded your current quota, please check your plan.\n* Quota exceeded for metric: …", statusCode: 429 },
+      },
+    });
+    expect(parse(line)).toEqual([
+      { type: "error", text: "You exceeded your current quota, please check your plan. (HTTP 429)" },
     ]);
   });
 

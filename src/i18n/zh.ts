@@ -664,6 +664,7 @@ export const zh: Dictionary = {
   "agentDialog.color": "颜色",
   "agentDialog.duplicateName": "这个团队里已经有同名的智能体了。",
   "agentDialog.provider": "提供方",
+  "agentDialog.onlyDetected": "仅显示在本机检测到的 CLI。",
   "agentDialog.role": "角色",
   "agentDialog.parent": "上级",
   "agentDialog.noParent": "无（根节点）",

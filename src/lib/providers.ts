@@ -1,4 +1,4 @@
-import { AgentConfig, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
+import { AgentConfig, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
@@ -239,6 +239,16 @@ function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEve
   // Every line carries it; announcing it on the first one is enough to resume the session later.
   if (obj.type === "step_start" && typeof obj.sessionID === "string") {
     events.push({ type: "session", sessionId: obj.sessionID });
+  }
+
+  // What the provider behind opencode answered when it refused (a 429 over quota, a bad key). It
+  // comes with no `part`, and swallowing it would end the run with no output and no reason.
+  if (obj.type === "error") {
+    const data = obj.error?.data ?? {};
+    const status = data.statusCode ? ` (HTTP ${data.statusCode})` : "";
+    const text = typeof data.message === "string" ? data.message : (obj.error?.name ?? line);
+    events.push({ type: "error", text: `${String(text).split("\n")[0]}${status}` });
+    return events;
   }
 
   if (part.type === "text" && typeof part.text === "string" && part.text.trim()) {
@@ -516,23 +526,41 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     defaultModels: [],
     models: [],
     supportsSessions: true,
-    promptVia: "arg",
+    // The prompt goes in through stdin and never as an argument: npm installs opencode as a `.cmd`
+    // shim on Windows, and Windows refuses to start a batch file whose arguments carry newlines
+    // ("batch file arguments are invalid"), which every system prompt does.
+    promptVia: "stdin",
     note: "Los modelos son «proveedor/modelo» (por ejemplo google/gemini-3-flash) y salen de `opencode models`. Conectá la cuenta o la API key con `opencode auth login`: la clave queda en opencode, ainess no la guarda. Sin auto-aprobación las herramientas quedan denegadas, así que un implementador la necesita.",
     buildCommand: (input) => {
       const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
-      const args = ["run", prompt, "--format", "json"];
+      const args = ["run", "--format", "json"];
       if (input.cwd) args.push("--dir", input.cwd);
       if (input.agent.model) args.push("--model", input.agent.model);
       if (input.sessionId) args.push("--session", input.sessionId);
       // Nobody can answer a permission prompt in a headless run: without this the tools are denied.
       if (input.agent.autoApprove) args.push("--auto");
-      return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
+      return { program: input.binaryPath, args, cwd: input.cwd, stdinText: prompt, env: { NO_COLOR: "1" } };
     },
     parseLine: parseOpencodeLine,
     finalOutput: opencodeFinalOutput,
     finalUsage: opencodeUsage
   }
 };
+
+/**
+ * The providers worth offering: the ones whose CLI was found on this machine, plus `custom`, whose
+ * command the user writes, plus whichever one the agent already has.
+ *
+ * Offering every provider meant a team could be built out of CLIs that are not installed, and the
+ * agent only said so when its first run died. Keeping the current one matters when editing: an
+ * agent that came in a formation from another machine, or whose CLI is momentarily missing, must
+ * not have its provider quietly swapped for another just by opening its dialog.
+ */
+export function availableProviders(binaries: Binaries, current?: ProviderId): ProviderId[] {
+  return (Object.keys(PROVIDERS) as ProviderId[]).filter(
+    id => id === "custom" || id === current || !!binaries[id]?.path,
+  );
+}
 
 export function finalOutputFromLines(lines: string[]): string {
   // rawLines are stored without their line breaks, so put them back.

@@ -664,6 +664,7 @@ export const fr: Dictionary = {
   "agentDialog.color": "Couleur",
   "agentDialog.duplicateName": "Un autre agent de cette équipe porte déjà ce nom.",
   "agentDialog.provider": "Provider",
+  "agentDialog.onlyDetected": "Seules les CLI détectées sur cette machine sont proposées.",
   "agentDialog.role": "Rôle",
   "agentDialog.parent": "Parent",
   "agentDialog.noParent": "Aucun (racine)",

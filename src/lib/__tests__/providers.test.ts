@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
 import type { AgentConfig } from "@/types";
 
 const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
@@ -236,5 +236,28 @@ describe("usage reported by each CLI", () => {
       { type: "result", text: "", usage: { durationMs: 92_310, premiumRequests: 3 } },
     ]);
     expect(copilotUsage({ type: "result" })).toBeUndefined();
+  });
+});
+
+// Offering every provider meant a team could be built out of CLIs that are not installed, and the
+// agent only said so when its first run died.
+describe("availableProviders", () => {
+  it("offers what was detected, plus the custom command", () => {
+    const offered = availableProviders({ claude: { path: "C:/claude.exe" }, opencode: { path: "C:/opencode.cmd" } });
+    expect(offered).toContain("claude");
+    expect(offered).toContain("opencode");
+    expect(offered).toContain("custom");
+    expect(offered).not.toContain("codex");
+    expect(offered).not.toContain("antigravity");
+  });
+
+  it("keeps the one an agent already has, installed or not", () => {
+    // An agent that came in a formation from another machine must not have its provider swapped
+    // for another just because its dialog was opened here.
+    expect(availableProviders({ claude: { path: "C:/claude.exe" } }, "codex")).toContain("codex");
+  });
+
+  it("with nothing detected, leaves the custom command", () => {
+    expect(availableProviders({})).toEqual(["custom"]);
   });
 });
