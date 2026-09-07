@@ -19,8 +19,8 @@ Estado: `pendiente` · `en curso` · `hecho`.
 
 | Id | Tarea | Origen | Plan | Estado |
 |---|---|---|---|---|
-| B-06 | **El CLI ignora el idioma configurado.** `ais doctor` traduce con `translate(es, es, …)` fijo y las fechas usan `"es-AR"` hardcodeado (`src/cli/main.ts:187`, `:714`, `:878`). Debe resolver el idioma desde `config.language` como la app. | 034 | 038 | en curso |
-| B-07 | **El CLI no muestra uso.** El panel de uso que se agregó en la app (plan 035) no tiene equivalente en `ais`. | 035 | 038 | en curso |
+| B-06 | **El CLI ignora el idioma configurado.** `ais doctor` traduce con `translate(es, es, …)` fijo y las fechas usan `"es-AR"` hardcodeado (`src/cli/main.ts:187`, `:714`, `:878`). Debe resolver el idioma desde `config.language` como la app. | 034 | 038 | hecho |
+| B-07 | **El CLI no muestra uso.** El panel de uso que se agregó en la app (plan 035) no tiene equivalente en `ais`. | 035 | 038 | hecho |
 | B-08 | **Strings del CLI sin traducir.** Más allá de `doctor`, el CLI imprime español plano ("No hay aprobaciones pendientes."). Pasarlo entero por los diccionarios es un plan grande aparte. | 034 | — | pendiente |
 
 ## Vista del celular (`src/remote/**`)
@@ -35,9 +35,9 @@ Estado: `pendiente` · `en curso` · `hecho`.
 
 | Id | Tarea | Origen | Plan | Estado |
 |---|---|---|---|---|
-| B-12 | **Dos listas de secciones de Configuración en paralelo.** `SearchPalette.tsx` mantiene su propia copia en vez de importar `SETTINGS_SECTIONS` de `SettingsDialog.tsx`; se van a desincronizar. | 037 | 039 | en curso |
-| B-13 | **`NewTaskDialog` no deja elegir prioridad al crear.** Hoy son dos clics después, desde la tarjeta. | 036 | 039 | en curso |
-| B-14 | **Las notificaciones no sobreviven al reinicio.** La campanita arranca vacía y las aprobaciones pendientes se re-anuncian recién cuando algo las toca. | 029 | 039 | en curso |
+| B-12 | **Dos listas de secciones de Configuración en paralelo.** `SearchPalette.tsx` mantiene su propia copia en vez de importar `SETTINGS_SECTIONS` de `SettingsDialog.tsx`; se van a desincronizar. | 037 | 039 | hecho |
+| B-13 | **`NewTaskDialog` no deja elegir prioridad al crear.** Hoy son dos clics después, desde la tarjeta. | 036 | 039 | hecho |
+| B-14 | **Las notificaciones no sobreviven al reinicio.** La campanita arranca vacía y las aprobaciones pendientes se re-anuncian recién cuando algo las toca. | 029 | 039 | hecho |
 | B-15 | **Refrescar la cuota al entrar a un proyecto.** El nodo y el popover leen sólo lo que hay en el store, así que arrancan sin dato hasta que alguien abra un diálogo de agente o apriete "Actualizar". | 027 | — | pendiente |
 
 ## Deuda de verificación
