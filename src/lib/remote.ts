@@ -4,7 +4,7 @@
 import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
-import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus } from "@/types";
+import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { pendingApprovals } from "@/lib/approvals";
 import { resolveLanguage, type Language } from "@/i18n";
@@ -34,6 +34,8 @@ export interface RemoteSnapshot {
   activeChats: string[];
   /** Every project's board, flattened: each task already carries its `projectId`. */
   tasks: Task[];
+  /** Latest quota fetched per provider, if any. */
+  quota: Partial<Record<ProviderId, ProviderQuota>>;
 }
 
 export interface RemoteCommand {
@@ -140,6 +142,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     binaries,
     activeChats,
     tasks: Object.values(s.tasks).flat(),
+    quota: s.quota,
   };
 }
 
@@ -170,6 +173,16 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         if (!agentId || !selectProjectAgents(s, projectId).some(a => a.id === agentId)) return { error: "Agente inválido" };
         await s.submitPrompt(text, agentId, projectId, { model: str("model") });
         return { ok: true, runId: useAppStore.getState().activeTaskRunId[projectId] };
+      }
+      case "diagnostics": {
+        const { collectDiagnostics } = await import("@/lib/diagnostics");
+        const { dictionaries, baseDictionary, translate } = await import("@/i18n");
+        const lang = resolveLanguage(s.config.language);
+        const dict = dictionaries[lang] ?? baseDictionary;
+        const t = (key: string, vars?: Record<string, string | number>) => translate(dict, baseDictionary, key, vars);
+        const refreshQuota = payload.refreshQuota === true;
+        const results = await collectDiagnostics(t, { refreshQuota });
+        return { results };
       }
       case "instruct": {
         const projectId = str("projectId");

@@ -372,6 +372,7 @@ export const pt: Dictionary = {
   // ---- Diagnostics ----
   "diagnostics.description": "Verificações somente de leitura: nada aqui muda a configuração.",
   "diagnostics.running": "Verificando…",
+  "diagnostics.run": "Executar diagnóstico",
   "diagnostics.copied": "Relatório copiado",
   "diagnostics.copyFailed": "Não foi possível copiar o relatório",
   "diagnostics.reportTitle": "ainess — Diagnóstico",

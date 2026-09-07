@@ -373,6 +373,7 @@ export const ja: Dictionary = {
   // ---- Diagnostics ----
   "diagnostics.description": "読み取り専用のチェックです。設定は一切変更しません。",
   "diagnostics.running": "チェック中…",
+  "diagnostics.run": "診断を実行",
   "diagnostics.copied": "レポートをコピーしました",
   "diagnostics.copyFailed": "レポートをコピーできませんでした",
   "diagnostics.reportTitle": "ainess — 診断",

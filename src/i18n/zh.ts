@@ -372,6 +372,7 @@ export const zh: Dictionary = {
   // ---- Diagnostics ----
   "diagnostics.description": "只读检查：这些都不会改动你的配置。",
   "diagnostics.running": "正在检查…",
+  "diagnostics.run": "运行诊断",
   "diagnostics.copied": "报告已复制",
   "diagnostics.copyFailed": "无法复制报告",
   "diagnostics.reportTitle": "ainess — 诊断",
