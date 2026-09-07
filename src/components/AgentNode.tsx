@@ -297,6 +297,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
 
           {/* Actions: the click belongs to the button, not to the canvas. */}
           <div
+            data-node-actions
             className="nodrag nopan flex items-center gap-0.5 border-t border-border px-2 py-1"
             onClick={e => e.stopPropagation()}
           >

@@ -17,11 +17,11 @@ import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
 import { blockedBy, hasCycle, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
-import { taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
+import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/types";
-import { Archive, ArchiveRestore, Link2, Terminal, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, MessagesSquare, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -298,6 +298,19 @@ export function TaskDetailDialog({
               </div>
 
               <DialogFooter className="sm:justify-between">
+                {hasOrigin(task) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      goToTaskOrigin(task);
+                    }}
+                  >
+                    <MessagesSquare className="h-3.5 w-3.5" />
+                    {t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat")}
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
                   {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
                   {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}

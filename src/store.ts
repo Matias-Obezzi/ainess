@@ -6,6 +6,7 @@ import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
 import * as taskStore from "@/lib/task-store";
 import * as taskLogic from "@/lib/tasks";
+import { reconcileProject } from "@/lib/task-reconcile";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 import { readRepoState, type RepoState } from "@/lib/git-repo";
@@ -1004,8 +1005,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setCurrentProject: (id) => {
     set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
     if (id) {
-      void history.loadHistory(id);
-      void get().loadTasks(id);
+      // Both, then the board: a card whose run ended while the app was closed is still sitting in
+      // "en curso" and only the history says so (see lib/task-reconcile.ts).
+      void Promise.all([history.loadHistory(id), get().loadTasks(id)])
+        .then(() => reconcileProject(id))
+        .catch(() => {});
     }
     debouncedSave();
   },
@@ -1750,6 +1754,8 @@ async function runInit(): Promise<void> {
       ? config.projects.map(p => p.id)
       : (config.lastProjectId ? [config.lastProjectId] : []);
     await Promise.all(toLoad.flatMap(id => [history.loadHistory(id), taskStore.loadTasks(id)]));
+    // With the runs in memory, the boards can be put back in step with them.
+    for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
 
     set({ loaded: true });

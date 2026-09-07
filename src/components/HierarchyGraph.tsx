@@ -262,7 +262,14 @@ function HierarchyBoard() {
         edges={edges}
         onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
-        onNodeClick={(_, node) => setSelectedAgentId(node.id)}
+        onNodeClick={(event, node) => {
+          // The card's own buttons already did what they do (stop, instruct, open the chat…), and
+          // React Flow sees their click on its way up: without this the panel opened on top of
+          // every one of those actions. Stopping propagation inside the node is not enough — the
+          // library's handler runs first.
+          if ((event.target as HTMLElement | null)?.closest?.("[data-node-actions]")) return;
+          setSelectedAgentId(node.id);
+        }}
         onPaneClick={clearSelection}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}

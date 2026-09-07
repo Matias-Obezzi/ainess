@@ -14,9 +14,11 @@ import { NewTaskDialog } from "./NewTaskDialog";
 import { taskStatusMeta } from "./task-meta";
 import { boardMarkdown, isFiltering, type TaskFilter } from "@/lib/tasks";
 import { copyText } from "@/lib/clipboard";
+import { reconcileProject } from "@/lib/task-reconcile";
+import { toast } from "@/components/ui/toast";
 import { useAutoArchive } from "@/hooks/useAutoArchive";
 import type { TaskStatus } from "@/types";
-import { ClipboardCopy, Columns3, Network, Plus, Search, X } from "lucide-react";
+import { ClipboardCopy, Columns3, Network, Plus, RefreshCw, Search, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -60,6 +62,20 @@ export function TasksView({ projectId }: { projectId: string }) {
   const clearFilter = () => {
     setQuery("");
     setAgentId(null);
+  };
+
+  /**
+   * Reads the runs behind the cards and puts the ones that are out of step where they belong. It
+   * is the same rule the board follows live, so nothing here is a guess: what it moves are the
+   * tasks whose run ended while nobody was listening (the app closed, the run killed).
+   */
+  const reviewBoard = () => {
+    const moved = reconcileProject(projectId);
+    if (moved === 0) {
+      toast.success(t("tasks.reconcileClean"));
+      return;
+    }
+    toast.success(plural(moved, t("tasks.reconciled.one", { n: moved }), t("tasks.reconciled.other", { n: moved })));
   };
 
   const copyBoard = () => {
@@ -128,7 +144,16 @@ export function TasksView({ projectId }: { projectId: string }) {
               <X className="h-3.5 w-3.5" /> {t("tasks.clearFilter")}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="ml-auto h-7" onClick={copyBoard}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-7"
+            title={t("tasks.reconcileHint")}
+            onClick={reviewBoard}
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> {t("tasks.reconcile")}
+          </Button>
+          <Button variant="outline" size="sm" className="h-7" onClick={copyBoard}>
             <ClipboardCopy className="h-3.5 w-3.5" /> {t("tasks.copyMarkdown")}
           </Button>
         </div>

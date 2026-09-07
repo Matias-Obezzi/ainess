@@ -19,10 +19,10 @@ import {
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
-import { taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
+import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task, TaskPriority } from "@/types";
-import { Archive, ArchiveRestore, Ban, ChevronsUp, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Ban, ChevronsUp, MessagesSquare, Trash2 } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 
 interface Props {
@@ -41,6 +41,8 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
+  // A card waiting on the user is usually waiting for a yes, so it says where that yes is given.
+  const originLabel = t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat");
 
   return (
     <TaskContextMenu task={task}>
@@ -60,7 +62,7 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
           }
         }}
         className={cn(
-          "cursor-grab rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+          "group cursor-grab rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
           dragging && "opacity-40"
         )}
       >
@@ -89,6 +91,22 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
           <span className="truncate">{t(meta.labelKey)}</span>
           <span className="ml-auto shrink-0">{formatTimeAgo(task.updatedAt, Date.now(), locale)}</span>
+          {/* The way to where this card came from — where a delegation is answered. The click is
+              the button's: opening the detail from here would bury the shortcut. */}
+          {hasOrigin(task) && (
+            <button
+              type="button"
+              aria-label={originLabel}
+              title={originLabel}
+              className="-my-1 -mr-1 shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 group-hover:opacity-100"
+              onClick={e => {
+                e.stopPropagation();
+                goToTaskOrigin(task);
+              }}
+            >
+              <MessagesSquare className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {blocked > 0 && (
@@ -119,6 +137,14 @@ export function TaskContextMenu({ task, children }: { task: Task; children: Reac
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52">
+        {hasOrigin(task) && (
+          <>
+            <ContextMenuItem onSelect={() => goToTaskOrigin(task)}>
+              <MessagesSquare className="h-4 w-4" /> {t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuSub>
           <ContextMenuSubTrigger>{t("tasks.moveTo")}</ContextMenuSubTrigger>
           <ContextMenuSubContent>

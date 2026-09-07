@@ -1,6 +1,7 @@
 // One table for how a task status looks and reads, so the board, the cards and the graph can never
 // drift apart. `color` is a plain hex because React Flow paints edges and borders with inline SVG.
-import type { TaskPriority, TaskStatus } from "@/types";
+import { useAppStore } from "@/store";
+import type { Task, TaskPriority, TaskStatus } from "@/types";
 
 export interface TaskStatusMeta {
   /** Dictionary key of the column name; render it with `t(meta.labelKey)`. */
@@ -26,3 +27,22 @@ export const taskPriorityLabelKey: Record<TaskPriority, string> = {
   normal: "task.priority.normal",
   high: "task.priority.high",
 };
+
+/**
+ * Whether a card has a conversation behind it: the run that produced it, or the delegation waiting
+ * for a yes. A card the user typed in has neither and stands on its own.
+ */
+export function hasOrigin(task: Pick<Task, "runId" | "approvalId">): boolean {
+  return !!task.runId || !!task.approvalId;
+}
+
+/**
+ * Takes the user to that conversation. Answering a delegation, reading what an agent said, or
+ * carrying on from where a card came from all live in the project's thread, and the board gave no
+ * way there: a task could say "requiere tu atención" while the button to act on it was elsewhere.
+ */
+export function goToTaskOrigin(task: Pick<Task, "projectId">): void {
+  const store = useAppStore.getState();
+  store.openProject(task.projectId, null);
+  store.setProjectMode("chat");
+}
