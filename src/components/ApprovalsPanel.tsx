@@ -16,8 +16,14 @@ import { pendingApprovals } from "@/lib/approvals";
 import { Markdown } from "@/components/shell/Markdown";
 import { truncate } from "@/lib/format";
 import type { Approval } from "@/types";
-import { useT, useLocale } from "@/i18n/useT";
+import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
+
+/** "1 line" / "12 lines": how much of the task is folded away. */
+function linesLabel(t: TFunction, prompt: string): string {
+  const n = prompt.split(/\r?\n/).length;
+  return plural(n, t("approvals.lines.one", { n }), t("approvals.lines.other", { n }));
+}
 
 /** First non-empty line of the delegated task, for the collapsed row. */
 function firstLine(text: string): string {
@@ -93,7 +99,7 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
                 </span>
                 {!expanded[a.id] && (
                   <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                    {t("approvals.lines", { n: a.payload.prompt.split(/\r?\n/).length })}
+                    {linesLabel(t, a.payload.prompt)}
                   </span>
                 )}
               </button>

@@ -22,8 +22,9 @@ have, with the sessions you already opened.
 
 </div>
 
-> The interface is in Spanish (and six other languages). The code, this document and the commits
-> are in English. Windows is the platform it is developed and tested on.
+> The interface speaks seven languages and follows your system unless you pick one; the
+> screenshots here are in English. The code, this document and the commits are in English too.
+> Windows is the platform it is developed and tested on.
 >
 > `PLAN.md` is the source of truth for the architecture, the type contracts and the protocol
 > between the app and each CLI. When it and this document disagree, `PLAN.md` wins.
@@ -40,11 +41,11 @@ have, with the sessions you already opened.
 
 Grab the installer from [the latest release](https://github.com/Matias-Obezzi/ainess/releases/latest)
 (`ainess_<version>_x64-setup.exe`) and run it. From then on the app updates itself: it checks on
-startup and offers the new version from Configuración → Acerca de.
+startup and offers the new version from Settings → About.
 
 Then bring your own CLIs. ainess runs what you already have — it never ships or bundles a provider —
 and the app detects what is installed, says what is missing and can install most of them for you
-from Configuración → Agentes:
+from Settings → Agents:
 
 | Provider | How it gets there |
 | --- | --- |
@@ -209,7 +210,7 @@ a question — the things that keep the team moving while you are away from the 
 | --- | --- | --- |
 | ![](docs/screenshots/phone-tasks.png) | ![](docs/screenshots/phone-thread.png) | ![](docs/screenshots/phone-agents.png) |
 
-Turn it on from the window bar button or Configuración → Remoto, then scan the QR. From the
+Turn it on from the window bar button or Settings → Remote, then scan the QR. From the
 terminal, `ais serve` does the same with the CLI's orchestrator. The page is the same React app,
 built to a single self-contained `dist-remote/index.html` that both servers embed and send
 compressed.
@@ -240,10 +241,10 @@ or [ngrok](https://ngrok.com/). The tunnel only forwards `127.0.0.1:<port>`, so 
 to be on first.
 
 - **cloudflared, no account** — `winget install Cloudflare.cloudflared`. A new URL every time.
-- **ngrok** — `winget install ngrok -s msstore`, or the button in Configuración → Remoto, which runs
+- **ngrok** — `winget install ngrok -s msstore`, or the button in Settings → Remote, which runs
   it for you. Needs an authtoken; the app can save it (in ngrok's own config file, never in
   ainess's) and tells you whether it is there.
-- **A URL that never changes** — pick *Estático* as the domain type. With ngrok that is the static
+- **A URL that never changes** — pick *Static* as the domain type. With ngrok that is the static
   domain the free plan includes (paste your API key and the app lists your domains to choose from).
   With cloudflared it is a named tunnel plus a hostname of your own:
 
@@ -274,7 +275,7 @@ Anyone with the public URL and the token can operate the app. If it leaked, rege
 
 ## Hooks
 
-Automatic reactions to orchestrator events, configured in Configuración → Hooks or from the CLI.
+Automatic reactions to orchestrator events, configured in Settings → Hooks or from the CLI.
 The app fires them itself: nothing is delegated to the agent.
 
 Events: `task.started`, `task.finished`, `task.failed`, `delegation`, `approval.requested`,
@@ -327,13 +328,14 @@ ais serve --port 4710                             # phone server
 ## Languages
 
 The interface speaks Spanish, English, Brazilian Portuguese, Simplified Chinese, Japanese, French and
-German. Pick one in Configuración → General, or leave it following the system. The change applies at
+German. Pick one in Settings → General, or leave it following the system. The change applies at
 once, with no restart, and the phone page inherits whatever the app is using.
 
 Translations live in `src/i18n/<lang>.ts`: flat dictionaries with dot-separated keys, Spanish as the
 base. A missing key falls back to Spanish rather than showing the key, and a test keeps every
-dictionary aligned with the base, key for key and placeholder for placeholder. The CLI stays in
-Spanish.
+dictionary aligned with the base, key for key and placeholder for placeholder. The CLI is written
+in Spanish; what it shares with the app — the quota lines, the dates — follows the configured
+language.
 
 ## Where your data lives
 
@@ -355,7 +357,7 @@ run. A run cut short by closing the app comes back marked as interrupted, with a
 
 Logs hold everything from `console.*`, uncaught frontend errors and backend events, one line each.
 They rotate daily and are deleted after 14 days. Tokens are masked before anything is written.
-Configuración → General changes the level; Configuración → Acerca de opens the folder and copies a
+Settings → General changes the level; Settings → About opens the folder and copies a
 diagnostic.
 
 Credentials are never stored by ainess. Provider tokens live where each CLI keeps them, and the
@@ -367,7 +369,7 @@ A release is a version number: GitHub Actions does the rest on every push to `ma
 
 1. Bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` —
    the same number in the three. `npm run release:check` verifies they agree. Write what changed in
-   `CHANGELOG.md`, which is also what the app shows in Configuración → Acerca de.
+   `CHANGELOG.md`, which is also what the app shows in Settings → About.
 2. Push to `main`. The workflow tags `v<version>`, builds and signs the NSIS installer and
    publishes `latest.json` in the release. A push that does not change the version finds the tag
    already there and stops, which is why most pushes to `main` publish nothing.
@@ -375,7 +377,7 @@ A release is a version number: GitHub Actions does the rest on every push to `ma
    Rust tests: `ci.yml` ignores `main`, so this is what stands between a broken commit and an
    installer.
 4. Installed apps pick it up on their next check — at startup if enabled, or from
-   Configuración → Acerca de — and update themselves.
+   Settings → About — and update themselves.
 
 The repo needs one secret, `TAURI_SIGNING_PRIVATE_KEY`, with the contents of the signing key. The
 public half is already in `src-tauri/tauri.conf.json`.

@@ -3,6 +3,15 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Configuración → Acerca de.
 
+## Unreleased
+
+### Fixed
+
+- The quota was written in Spanish whatever language the app was in: the windows Claude Code
+  reports, Antigravity's pools, what each opencode account spent, and every "sign in first" that
+  goes with them. All seven languages now.
+- A delegation of a single line said "1 lines" while it waited for approval.
+
 ## 0.3.0 — 2026-09-07
 
 ### Added

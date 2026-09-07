@@ -112,7 +112,7 @@ export function summarizeAgentQuota(
     return { fraction: 1, label: "∞", detail: detailOf(unlimited[0]), details, status: "ok" };
   }
 
-  // Items with no numbers at all (Antigravity pools, which only say "Agotado"/"Disponible"): the
+  // Items with no numbers at all (Antigravity pools, which only say whether they are used up): the
   // ring stays off, but the detail still tells the story.
   return { fraction: null, label: "—", detail: detailOf(items[0]), details, status: "ok" };
 }

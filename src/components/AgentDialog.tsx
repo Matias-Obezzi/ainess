@@ -44,7 +44,7 @@ function quotaLine(item: QuotaItem, t: TFunction): { text: string; percent?: num
     return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
   }
   if (item.usedPercent !== undefined) {
-    return { text: t("agentDialog.quotaUsedPercent", { percent: item.usedPercent }), percent: 100 - item.usedPercent };
+    return { text: t("quota.usedPercent", { percent: item.usedPercent }), percent: 100 - item.usedPercent };
   }
   return { text: item.note || "" };
 }

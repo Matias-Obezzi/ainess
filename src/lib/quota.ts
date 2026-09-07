@@ -2,7 +2,7 @@
 // data sources (endpoints, headers, files) this module relies on.
 import { Binaries, ModelInfo, ProviderId, ProviderQuota, QuotaItem } from "@/types";
 import { getTransport } from "@/lib/transport";
-import { activeLocale } from "@/i18n/useT";
+import { activeLocale, translateNow } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 
 // ---------------------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ async function fetchCopilotQuota(): Promise<ProviderQuota> {
     return {
       provider: "copilot",
       status: "unavailable",
-      message: "Instalá GitHub CLI (gh) e iniciá sesión con `gh auth login`",
+      message: translateNow("quota.copilot.needsGh"),
       fetchedAt,
       items: [],
     };
@@ -240,21 +240,21 @@ export function claudeQuotaFromJson(obj: ClaudeUsageResponse): QuotaItem[] {
   const items: QuotaItem[] = [];
   if (obj.five_hour) {
     items.push({
-      label: "Ventana de 5 h",
+      label: translateNow("quota.claude.window5h"),
       usedPercent: obj.five_hour.utilization,
       resetsAt: Date.parse(obj.five_hour.resets_at),
     });
   }
   if (obj.seven_day) {
     items.push({
-      label: "Semana",
+      label: translateNow("quota.claude.week"),
       usedPercent: obj.seven_day.utilization,
       resetsAt: Date.parse(obj.seven_day.resets_at),
     });
   }
   if (obj.seven_day_opus) {
     items.push({
-      label: "Semana (Opus)",
+      label: translateNow("quota.claude.weekModel", { model: "Opus" }),
       model: "opus",
       usedPercent: obj.seven_day_opus.utilization,
       resetsAt: Date.parse(obj.seven_day_opus.resets_at),
@@ -262,7 +262,7 @@ export function claudeQuotaFromJson(obj: ClaudeUsageResponse): QuotaItem[] {
   }
   if (obj.seven_day_sonnet) {
     items.push({
-      label: "Semana (Sonnet)",
+      label: translateNow("quota.claude.weekModel", { model: "Sonnet" }),
       model: "sonnet",
       usedPercent: obj.seven_day_sonnet.utilization,
       resetsAt: Date.parse(obj.seven_day_sonnet.resets_at),
@@ -275,7 +275,7 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
   const fetchedAt = Date.now();
   const text = await getTransport().readHomeFile(".claude/.credentials.json");
   if (!text) {
-    return { provider: "claude", status: "unavailable", message: "Iniciá sesión en Claude Code", fetchedAt, items: [] };
+    return { provider: "claude", status: "unavailable", message: translateNow("quota.claude.signIn"), fetchedAt, items: [] };
   }
 
   let token: string | undefined;
@@ -283,10 +283,10 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
     const parsed = JSON.parse(text);
     token = parsed?.claudeAiOauth?.accessToken;
   } catch {
-    return { provider: "claude", status: "error", message: "No se pudo leer las credenciales de Claude Code", fetchedAt, items: [] };
+    return { provider: "claude", status: "error", message: translateNow("quota.claude.unreadable"), fetchedAt, items: [] };
   }
   if (!token) {
-    return { provider: "claude", status: "unavailable", message: "Iniciá sesión en Claude Code", fetchedAt, items: [] };
+    return { provider: "claude", status: "unavailable", message: translateNow("quota.claude.signIn"), fetchedAt, items: [] };
   }
 
   try {
@@ -295,7 +295,7 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
       "anthropic-beta": "oauth-2025-04-20",
     });
     if (res.status === 401) {
-      return { provider: "claude", status: "error", message: "Token vencido: abrí Claude Code para renovarlo", fetchedAt, items: [] };
+      return { provider: "claude", status: "error", message: translateNow("quota.claude.expired"), fetchedAt, items: [] };
     }
     if (res.status !== 200) {
       return { provider: "claude", status: "error", message: `HTTP ${res.status}`, fetchedAt, items: [] };
@@ -311,10 +311,11 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
 // Antigravity quota: no endpoint, inferred from run outcomes.
 // ---------------------------------------------------------------------------------------------
 
+/** How each pool is written; the word "pool" around it comes from the dictionary. */
 const POOL_LABELS: Record<string, string> = {
-  gemini: "Pool Gemini",
-  claude: "Pool Claude",
-  "gpt-oss": "Pool GPT-OSS",
+  gemini: "Gemini",
+  claude: "Claude",
+  "gpt-oss": "GPT-OSS",
 };
 
 async function fetchAntigravityQuota(): Promise<ProviderQuota> {
@@ -327,17 +328,17 @@ async function fetchAntigravityQuota(): Promise<ProviderQuota> {
     const mark = pools[pool];
     const exhausted = mark && mark.exhaustedUntil > now;
     items.push({
-      label: POOL_LABELS[pool] || `Pool ${pool}`,
+      label: translateNow("quota.antigravity.pool", { name: POOL_LABELS[pool] ?? pool }),
       model: pool,
       // Not "unlimited": the pool has a cap, we just don't know its size until it runs out.
       resetsAt: exhausted ? mark.exhaustedUntil : undefined,
-      note: exhausted ? "Agotado" : "Disponible",
+      note: translateNow(exhausted ? "quota.antigravity.exhausted" : "quota.antigravity.available"),
     });
   }
   return {
     provider: "antigravity",
     status: "ok",
-    message: "Antigravity no expone la cuota: se infiere de los errores de los runs.",
+    message: translateNow("quota.antigravity.inferred"),
     fetchedAt,
     items,
   };
@@ -455,7 +456,7 @@ async function fetchOpencodeQuota(binaries?: Binaries): Promise<ProviderQuota> {
     getTransport().exec(program, ["auth", "list"]).catch(() => null),
   ]);
   if (!stats || stats.code !== 0) {
-    return { provider: "opencode", status: "unavailable", message: "No se pudo leer el uso de opencode", fetchedAt, items: [] };
+    return { provider: "opencode", status: "unavailable", message: translateNow("quota.opencode.unreadable"), fetchedAt, items: [] };
   }
 
   const usage = parseOpencodeStats(stats.stdout);
@@ -467,20 +468,25 @@ async function fetchOpencodeQuota(binaries?: Binaries): Promise<ProviderQuota> {
     items.push({
       label,
       model: account.id,
-      note: `${account.messages} mensajes · ${formatTokens(account.inputTokens)} entrada · ${formatTokens(account.outputTokens)} salida · ${formatUsd(account.costUsd)}`,
+      note: translateNow("quota.opencode.usage", {
+        messages: account.messages,
+        input: formatTokens(account.inputTokens),
+        output: formatTokens(account.outputTokens),
+        cost: formatUsd(account.costUsd),
+      }),
     });
   }
   // A key that was just linked has spent nothing, and saying so beats leaving it out.
   for (const account of linked) {
     if (usage.some(u => sameAccount(u.id, account.id))) continue;
-    items.push({ label: account.label, model: account.id, note: "sin uso todavía" });
+    items.push({ label: account.label, model: account.id, note: translateNow("quota.opencode.noUsageYet") });
   }
 
   return {
     provider: "opencode",
     status: "ok",
     // opencode counts what was spent; the ceiling belongs to the account behind it.
-    message: "opencode no informa límites: lo que sigue es lo consumido por cuenta.",
+    message: translateNow("quota.opencode.noLimits"),
     fetchedAt,
     items,
   };
@@ -506,7 +512,7 @@ export async function fetchQuota(provider: ProviderId, binaries?: Binaries): Pro
     return {
       provider,
       status: "unavailable",
-      message: "Este proveedor no expone su cuota",
+      message: translateNow("quota.unsupported"),
       fetchedAt: Date.now(),
       items: [],
     };
@@ -529,12 +535,12 @@ export function formatResetsAt(ms?: number): string | undefined {
 export function formatQuotaLine(item: QuotaItem): string {
   const bits: string[] = [`${item.label}:`];
   if (item.unlimited) {
-    bits.push("ilimitado");
+    bits.push(translateNow("quota.line.unlimited"));
   } else if (item.entitlement !== undefined && item.remaining !== undefined) {
     const pct = item.percentRemaining !== undefined ? ` (${Math.round(item.percentRemaining)}%)` : "";
     bits.push(`${item.remaining}/${item.entitlement}${pct}`);
   } else if (item.usedPercent !== undefined) {
-    bits.push(`${item.usedPercent}% usado`);
+    bits.push(translateNow("quota.usedPercent", { percent: item.usedPercent }));
   } else if (item.note) {
     bits.push(item.note);
   }
@@ -544,7 +550,8 @@ export function formatQuotaLine(item: QuotaItem): string {
     // just the date; otherwise it is a real timestamp (e.g. Claude's usage windows).
     const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
     const dateStr = d.toISOString().slice(0, 10);
-    bits.push(isDateOnly ? `se renueva ${dateStr}` : `se renueva ${dateStr} ${d.toISOString().slice(11, 16)}`);
+    const when = isDateOnly ? dateStr : `${dateStr} ${d.toISOString().slice(11, 16)}`;
+    bits.push(translateNow("quota.line.renews", { date: when }));
   }
   return bits.join(" ");
 }
