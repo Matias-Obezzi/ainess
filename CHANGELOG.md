@@ -54,6 +54,8 @@ Settings → About.
 - A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
   only that it took too long. It now says what was holding it: something the agent left running in
   the background, and what to ask it to do about that.
+- A card let go anywhere but on a column is now let go: an unhandled drop belongs to the browser,
+  which does what it likes with it, and in a window that reads as the screen reloading.
 - **Drag and drop on the board did nothing in the app.** The webview keeps the drag events for
   itself on Windows unless it is told not to — "disabling it is required to use HTML5 drag and
   drop on the frontend", says Tauri's own config schema — so a card could be picked up and never
