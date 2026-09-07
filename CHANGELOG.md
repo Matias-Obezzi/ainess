@@ -13,6 +13,12 @@ Settings → About.
   card moves when a delegation names it, not when somebody edits the markdown — and the rest of
   the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
   configuration folder.
+- **Writing while an agent is thinking.** The box no longer goes grey mid-answer: what you write
+  is queued and sent the moment the turn ends, in the orchestrator and in a chat alike. Enter
+  sends, Shift+Enter is a line break and Ctrl+Enter queues on purpose, whether or not anything is
+  running.
+- **An unsent message stays put.** What is typed is kept per conversation and survives changing
+  view — and closing the app.
 - **The orchestrator can see the board.** Its open tasks are part of what a planner is told, each
   with a short id, so "look at the tasks and get to work" is answered from the board instead of
   "there are no tasks and no saved plan". To pick one up it delegates with that id in a `taskId`
@@ -21,6 +27,8 @@ Settings → About.
 
 ### Fixed
 
+- The communication panel opened at the oldest line of the project instead of at what just
+  happened. It lands on the newest, like the conversation does.
 - Tasks that seemed to duplicate themselves: every prompt opened a card and every delegation
   opened another, so a planner that handed the request straight down left the same title twice.
   A delegation that repeats the card it came from moves that card now.

@@ -6,6 +6,7 @@ import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { instructAgent } from "@/lib/orchestrator";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
-import { Send, SlidersHorizontal, Square } from "lucide-react";
+import { Clock, Send, SlidersHorizontal, Square } from "lucide-react";
 
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
 const sentHistory: string[] = [];
@@ -33,9 +34,9 @@ export function Composer() {
   const submitPrompt = useAppStore(state => state.submitPrompt);
   const sendChatMessage = useAppStore(state => state.sendChatMessage);
   const stopChat = useAppStore(state => state.stopChat);
+  const queueChatMessage = useAppStore(state => state.queueChatMessage);
   const stopAll = useAppStore(state => state.stopAll);
 
-  const [text, setText] = useState("");
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
 
   const roots = agents.filter(a => a.parentId === null);
@@ -61,6 +62,16 @@ export function Composer() {
 
   const chat = currentChatId ? config.chats.find(c => c.id === currentChatId) : undefined;
   const chatMode = !!currentChatId;
+
+  // What is typed lives in the store, by conversation: going to the board and back used to come
+  // back to an empty box.
+  const draftKey = chatMode && currentChatId ? `chat:${currentChatId}` : currentProjectId ? `project:${currentProjectId}` : "";
+  const text = useAppStore(state => state.drafts[draftKey] ?? "");
+  const setDraft = useAppStore(state => state.setDraft);
+  const setText = (value: string | ((prev: string) => string)) => {
+    const next = typeof value === "function" ? value(useAppStore.getState().drafts[draftKey] ?? "") : value;
+    setDraft(draftKey, next);
+  };
   const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
 
   const targetAgent = agents.find(a => a.id === targetId);
@@ -90,20 +101,34 @@ export function Composer() {
     : targetAgent || defaultAgent;
 
   const busy = chatMode ? chatBusy : targetWorking;
-  const canSend = !!text.trim() && !busy && (chatMode
+  const canSend = !!text.trim() && (chatMode
     ? !!currentChatId
     : !!targetId && !!currentProjectId && !(targetModel === "custom" && !customModel.trim()));
+  /** Sending now means "when this turn ends": the agent is mid-answer and cannot be interrupted. */
+  const willQueue = busy && canSend;
 
-  const handleSend = () => {
+  /**
+   * Enter sends, Ctrl+Enter queues. Queueing is also what sending does while the agent is mid
+   * answer: there is nothing to interrupt it with, so what you write waits its turn.
+   */
+  const handleSend = (opts?: { queue?: boolean }) => {
     if (!canSend) return;
+    const queue = opts?.queue === true || busy;
     const value = text.trim();
     sentHistory.push(value);
     setHistoryIndex(null);
     if (chatMode && currentChatId) {
-      void sendChatMessage(currentChatId, value);
+      // Mid-turn the chat takes it and sends it when the turn ends (see `flushQueue` in lib/chat).
+      if (queue && busy) queueChatMessage(currentChatId, value);
+      else void sendChatMessage(currentChatId, value);
     } else if (currentProjectId) {
       const model = targetModel === "none" ? undefined : targetModel === "custom" ? customModel : targetModel;
-      void submitPrompt(value, targetId, currentProjectId, { model });
+      // An agent that is working queues what it is told and picks it up when it is free; that is
+      // what `instructAgent` has always done for the "instruct" action.
+      // `instructAgent` runs it now when the agent is free and queues it when it is not, which is
+      // exactly what both keys mean.
+      if (queue) void instructAgent(targetId, value, currentProjectId, { model });
+      else void submitPrompt(value, targetId, currentProjectId, { model });
     }
     setText("");
   };
@@ -133,9 +158,10 @@ export function Composer() {
   // listener in App.tsx, but they are still declared in src/lib/shortcuts.ts (group "composer"),
   // which is what the Ctrl+/ dialog documents. Adding one here means adding it there too.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && e.ctrlKey) {
+    // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free.
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSend({ queue: e.ctrlKey || e.metaKey });
       return;
     }
     if (e.key === "Escape" && busy) {
@@ -209,29 +235,34 @@ export function Composer() {
             rows={2}
             className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
           />
-          {busy ? (
-            <Button
-              variant="destructive"
-              size="icon"
-              className="absolute bottom-2 right-2 h-8 w-8"
-              onClick={handleStop}
-              title={t("composer.stopHint")}
-              aria-label={t("composer.stop")}
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              className="absolute bottom-2 right-2 h-8 w-8"
-              onClick={handleSend}
-              disabled={!canSend}
-              title={t("composer.sendHint")}
-              aria-label={t("composer.send")}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            {busy && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleStop}
+                title={t("composer.stopHint")}
+                aria-label={t("composer.stop")}
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+            )}
+            {/* While something is running this queues instead of interrupting: the box no longer
+                goes grey mid-answer, which is the moment you most want to add something. */}
+            {(!busy || canSend) && (
+              <Button
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleSend()}
+                disabled={!canSend}
+                title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
+                aria-label={willQueue ? t("composer.queue") : t("composer.send")}
+              >
+                {willQueue ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+              </Button>
+            )}
+          </div>
         </div>
 
         {(!chatMode || quotaAgent) && (

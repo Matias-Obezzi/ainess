@@ -74,6 +74,23 @@ export interface AppState {
   currentChatId: string | null;
   /** Whether a project's history is being loaded from disk for the first time (for a skeleton). */
   historyLoading: Record<string, boolean>;
+
+  /**
+   * What is typed and not sent yet, by `project:<id>` or `chat:<id>`. The composer used to hold it
+   * in component state, so opening the board and coming back left the box empty.
+   */
+  drafts: Record<string, string>;
+  setDraft(key: string, text: string): void;
+
+  /**
+   * Messages written while a chat was mid-turn, sent when it ends. The orchestrator has had this
+   * for its agents since it existed (`queuedInstructions`); a chat had nothing and the box was
+   * simply disabled.
+   */
+  chatQueues: Record<string, string[]>;
+  queueChatMessage(chatId: string, text: string): void;
+  /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
+  flushChatQueue(chatId: string): Promise<void>;
   /**
    * Chats with a turn in flight, as reported by the snapshot. Only the phone build fills this:
    * in the app (and the CLI) the real answer lives in `lib/chat.ts`, in this process's memory.
@@ -375,6 +392,35 @@ interface UiPrefs {
   sidebarOpen: boolean;
 }
 
+const DRAFTS_KEY = "ais.drafts";
+
+/** What was typed and not sent, kept across views and restarts. Guarded like the UI preferences. */
+function loadDrafts(): Record<string, string> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(DRAFTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string" && value) out[key] = value;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveDrafts(drafts: Record<string, string>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+  } catch {
+    // Private mode or quota: an unsent draft is not worth failing over.
+  }
+}
+
 const UI_PREFS_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
@@ -533,6 +579,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   historyLoading: {},
+  drafts: loadDrafts(),
+  chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
   questions: {},
@@ -1526,6 +1574,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (state.screen === "project" && state.currentProjectId) {
       pushNav({ screen: "project", projectId: state.currentProjectId, chatId: id, projectMode: state.projectMode });
     }
+  },
+
+  setDraft: (key, text) => {
+    if (!key) return;
+    set(state => {
+      const drafts = { ...state.drafts };
+      if (text) drafts[key] = text;
+      else delete drafts[key];
+      saveDrafts(drafts);
+      return { drafts };
+    });
+  },
+
+  queueChatMessage: (chatId, text) => {
+    set(state => ({
+      chatQueues: { ...state.chatQueues, [chatId]: [...(state.chatQueues[chatId] ?? []), text] },
+    }));
+  },
+
+  flushChatQueue: async (chatId) => {
+    const queued = get().chatQueues[chatId] ?? [];
+    if (queued.length === 0) return;
+    set(state => ({
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(1) },
+    }));
+    await get().sendChatMessage(chatId, queued[0]);
   },
 
   sendChatMessage: async (chatId, text) => {

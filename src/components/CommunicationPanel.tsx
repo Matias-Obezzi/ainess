@@ -37,6 +37,15 @@ export function CommunicationPanel() {
 
   const prevMessagesLength = useRef(messages.length);
 
+  // Opening the panel lands on the newest line, the way the conversation does. Without this it
+  // opened at the oldest message of the project and you had to scroll a history to see what just
+  // happened. A frame later, so the list is laid out and `scrollIntoView` has somewhere to go.
+  useEffect(() => {
+    setStickToBottom(true);
+    const id = requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: "end" }));
+    return () => cancelAnimationFrame(id);
+  }, [currentProjectId]);
+
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
       if (stickToBottom) {
