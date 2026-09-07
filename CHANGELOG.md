@@ -21,6 +21,9 @@ Settings → About.
   this, the app did not. It covers the CLI shipped as a script and the one shipped as a binary
   (opencode's shim points at an `.exe`), which is 13 of the 15 shims on this machine — the two it
   passes over are npm's own. A shim it cannot read says what is going on instead of that sentence.
+- The update button in a development build offered an update it could not install, and failed on
+  the plugin it loads to relaunch as soon as the dev server was gone. A dev build says what it
+  always said about the CLI and the browser: updates are for the installed app.
 - An agent row with a model and a parent made the new-project dialog scroll sideways, taking the
   Browse button and the row's own buttons off the edge with it. The list can shrink now, and a
   long line is trimmed instead of setting the dialog's width.

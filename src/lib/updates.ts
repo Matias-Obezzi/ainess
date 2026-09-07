@@ -36,6 +36,11 @@ export async function appVersion(): Promise<string> {
 /** Never throws: a failure comes back as `{ available: false, error }`. */
 export async function checkForUpdate(): Promise<UpdateCheck> {
   if (!isTauri()) return { available: false, unsupported: true };
+  // A dev build has nothing the installer could replace: its executable is the one under
+  // `target/debug` and its frontend is served by vite. Offering the update there ended halfway,
+  // with "Failed to fetch dynamically imported module …@tauri-apps_plugin-process.js" — the
+  // plugin that relaunches the app, asked for over the dev server after it had stopped.
+  if (import.meta.env.DEV) return { available: false, unsupported: true };
   try {
     const { check } = await import("@tauri-apps/plugin-updater");
     const update = await check();
