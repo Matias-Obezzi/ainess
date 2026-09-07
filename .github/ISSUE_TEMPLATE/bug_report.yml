@@ -1,53 +1,53 @@
-name: Reportar un problema
-description: Algo no funciona como debería
+name: Report a problem
+description: Something does not work the way it should
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Gracias por reportarlo. Con el paso a paso y la versión suele alcanzar para reproducirlo.
+        Thanks for reporting it. The steps and the version are usually enough to reproduce it.
 
   - type: textarea
     id: what-happened
     attributes:
-      label: Qué pasó
-      description: Contá qué viste, con tus palabras.
-      placeholder: Al prender el túnel la app queda "creando el túnel" para siempre.
+      label: What happened
+      description: Tell it in your own words.
+      placeholder: Turning the tunnel on leaves the app saying "creating the tunnel" forever.
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Qué esperabas que pasara
+      label: What you expected instead
     validations:
       required: false
 
   - type: textarea
     id: steps
     attributes:
-      label: Cómo lo reproduzco
-      description: Los pasos, de a uno.
+      label: How to reproduce it
+      description: The steps, one by one.
       placeholder: |
-        1. Abrir Configuración → Remoto
-        2. Prender el acceso en la red local
-        3. Prender el túnel público
+        1. Open Settings → Remote
+        2. Turn on access over the local network
+        3. Turn on the public tunnel
     validations:
       required: true
 
   - type: input
     id: version
     attributes:
-      label: Versión de ainess
-      description: Está en Configuración → Acerca de.
-      placeholder: 0.1.0
+      label: ainess version
+      description: It is in Settings → About.
+      placeholder: 0.3.0
     validations:
       required: true
 
   - type: dropdown
     id: os
     attributes:
-      label: Sistema operativo
+      label: Operating system
       options:
         - Windows
         - macOS
@@ -58,21 +58,21 @@ body:
   - type: checkboxes
     id: agents
     attributes:
-      label: Agentes involucrados
-      description: Marcá los que estaban en juego, si el problema tiene que ver con alguno.
+      label: Agents involved
+      description: Tick the ones in play, if the problem has to do with any of them.
       options:
         - label: Claude Code
         - label: Antigravity
         - label: GitHub Copilot
-        - label: Otro / ninguno en particular
+        - label: Another one / none in particular
 
   - type: textarea
     id: logs
     attributes:
       label: Logs
       description: |
-        Configuración → Acerca de → Copiar diagnóstico trae la versión y las últimas líneas del log.
-        Se pega tal cual acá.
+        Settings → About → Copy diagnostic gives you the version and the last lines of the log.
+        Paste it here as it is.
       render: text
     validations:
       required: false
@@ -80,7 +80,7 @@ body:
   - type: checkboxes
     id: no-secrets
     attributes:
-      label: Antes de enviar
+      label: Before you send it
       options:
-        - label: Revisé que lo que pego no tenga tokens, authtokens ni claves de API.
+        - label: I checked that what I am pasting carries no tokens, authtokens or API keys.
           required: true

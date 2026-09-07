@@ -1,55 +1,55 @@
-name: Proponer una mejora
-description: Algo que te gustaría que la app haga
+name: Suggest an improvement
+description: Something you would like the app to do
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Contá qué querrías hacer y por qué. El "para qué" ayuda más que el "cómo".
+        Tell us what you would want to do and why. The "what for" helps more than the "how".
 
   - type: textarea
     id: what
     attributes:
-      label: Qué te gustaría poder hacer
-      placeholder: Ver la cuota que le queda a cada agente sin abrir la configuración.
+      label: What you would like to be able to do
+      placeholder: See how much quota each agent has left without opening the settings.
     validations:
       required: true
 
   - type: textarea
     id: why
     attributes:
-      label: Qué problema te resuelve
-      description: Qué estás intentando lograr y qué te lo complica hoy.
+      label: What problem it solves for you
+      description: What you are trying to get done, and what makes it hard today.
     validations:
       required: true
 
   - type: dropdown
     id: area
     attributes:
-      label: Parte de la app
+      label: Part of the app
       options:
-        - Orquestación y delegación
+        - Orchestration and delegation
         - Chat
-        - Jerarquía de agentes
-        - Terminales
-        - Acceso remoto y celular
-        - Configuración
-        - Otra / no sé
+        - Agent hierarchy
+        - Terminals
+        - Remote access and phone
+        - Settings
+        - Another one / not sure
     validations:
       required: true
 
   - type: textarea
     id: idea
     attributes:
-      label: Cómo lo imaginás
-      description: Opcional. Si ya tenés una idea de la interfaz o del flujo, contala.
+      label: How you picture it
+      description: Optional. If you already have an idea of the interface or the flow, tell us.
     validations:
       required: false
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Qué probaste mientras tanto
-      description: Opcional. Vueltas o herramientas externas que estés usando hoy para eso.
+      label: What you are doing in the meantime
+      description: Optional. Workarounds or other tools you are using for this today.
     validations:
       required: false

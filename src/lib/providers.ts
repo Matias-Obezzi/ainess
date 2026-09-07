@@ -1,4 +1,5 @@
 import { AgentConfig, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
+import { translateNow } from "@/i18n/useT";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
@@ -567,13 +568,20 @@ export function finalOutputFromLines(lines: string[]): string {
   return lines.join("\n");
 }
 
+/**
+ * The instructions an agent is started with, in the language the app is running in.
+ *
+ * These used to be Spanish literals, so an English window got a team that answered in Spanish:
+ * the interface was translated and the thing that decides how the agent writes was not.
+ */
 export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean }): string {
+  const t = translateNow;
   let prompt = "";
-  
+
   if (agent.role === "planner") {
-    prompt = "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .claude/ del proyecto (planes, handoffs, notas) y usar git.";
+    prompt = t("prompt.planner.intro");
     if (children.length > 0) {
-      prompt += " Agentes disponibles bajo tu mando:\n";
+      prompt += " " + t("prompt.planner.children") + "\n";
       for (const child of children) {
         let childModelsInfo = "";
         if (extras?.autoModel) {
@@ -582,50 +590,49 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
           if (child.model) models.add(child.model);
           const modelsList = Array.from(models).join(", ");
           if (modelsList) {
-            childModelsInfo = ` (Modelos disponibles: ${modelsList})`;
+            childModelsInfo = t("prompt.planner.childModels", { models: modelsList });
           }
         }
         prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}${childModelsInfo}\n`;
       }
-      
-      let delegateSchema = `{"tasks":[{"agent":"nombre o id del agente","task":"instrucción detallada y autocontenida"}]}`;
-      let extraInstruction = "";
-      
-      if (extras?.autoModel) {
-        delegateSchema = `{"tasks":[{"agent":"nombre o id del agente","task":"instrucción detallada y autocontenida","model":"modelo elegido (opcional)"}]}`;
-        extraInstruction = ` Elegí el modelo más adecuado para cada tarea según su dificultad (los flash/haiku para tareas simples y rápidas, los pro/opus/sonnet para tareas complejas) e indicalo en el campo model de cada task del bloque delegate.`;
-      }
-      
-      prompt += `Para delegar incluí en tu respuesta uno o más bloques exactamente así:
-\`\`\`delegate
-${delegateSchema}
-\`\`\`
-Cada task debe ser autocontenida (el agente no ve esta conversación).${extraInstruction} Cuando recibas los resultados, verificalos; si falta algo delegá de nuevo. Si no queda nada por delegar respondé sin bloques delegate con un resumen final para el usuario.`;
+
+      const withModel = extras?.autoModel === true;
+      const schema = t(withModel ? "prompt.planner.delegateSchemaModel" : "prompt.planner.delegateSchema");
+      const extra = withModel ? t("prompt.planner.autoModel") : "";
+
+      prompt += [
+        t("prompt.planner.delegateIntro"),
+        "```delegate",
+        schema,
+        "```",
+        t("prompt.planner.delegateRules", { extra }),
+      ].join("\n");
     } else {
-      prompt += " No tenés agentes bajo tu mando. Respondé directamente a la tarea.";
+      prompt += " " + t("prompt.planner.noChildren");
     }
   } else if (agent.role === "implementer") {
-    prompt = "Sos IMPLEMENTADOR. Recibís tareas de tu planificador. Hacé los cambios en el workspace. Al terminar respondé un resumen claro: qué cambiaste (archivos), qué verificaste, qué quedó pendiente o bloqueado.";
+    prompt = t("prompt.implementer");
   } else if (agent.role === "reviewer") {
-    prompt = "Sos REVISOR. Revisás cambios y respondés hallazgos o sugerencias de mejora.";
+    prompt = t("prompt.reviewer");
   } else if (agent.role === "custom") {
     // Only use agent.systemPrompt (appended at the end)
   }
 
   if (extras) {
     if (extras.profile && (extras.profile.name || extras.profile.about || extras.profile.preferences)) {
-      prompt += (prompt ? "\n\n" : "") + "## Sobre el usuario\n";
-      if (extras.profile.name) prompt += `Nombre: ${extras.profile.name}\n`;
-      if (extras.profile.about) prompt += `${extras.profile.about}\n`;
-      if (extras.profile.preferences) prompt += `Preferencias de trabajo: ${extras.profile.preferences}\n`;
+      const lines = [t("prompt.profile.header")];
+      if (extras.profile.name) lines.push(t("prompt.profile.name", { name: extras.profile.name }));
+      if (extras.profile.about) lines.push(extras.profile.about);
+      if (extras.profile.preferences) lines.push(t("prompt.profile.preferences", { preferences: extras.profile.preferences }));
+      prompt += (prompt ? "\n\n" : "") + lines.join("\n");
     }
-    
+
     if (extras.sharedContext && extras.sharedContext.trim()) {
-      prompt += (prompt ? "\n\n" : "") + "## Contexto compartido del equipo\n" + extras.sharedContext;
+      prompt += (prompt ? "\n\n" : "") + t("prompt.sharedContext.header") + "\n" + extras.sharedContext;
     }
     const validSkills = extras.skills?.filter(s => s.content.trim()) || [];
     if (validSkills.length > 0) {
-      prompt += (prompt ? "\n\n" : "") + "## Skills";
+      prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header");
       for (const skill of validSkills) {
         prompt += `\n### ${skill.name}\n${skill.content}`;
       }
@@ -636,19 +643,19 @@ Cada task debe ser autocontenida (el agente no ve esta conversación).${extraIns
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {
     prompt += (prompt ? "\n\n" : "") + [
-      "## Cuando necesites que el usuario decida",
-      "Si te falta una decisión que no te corresponde tomar, no adivines: pedila con un bloque así y terminá tu respuesta ahí.",
+      t("prompt.ask.header"),
+      t("prompt.ask.intro"),
       "```ask",
-      '{"question":"la pregunta, corta y concreta","options":["opción 1","opción 2"],"multiple":false}',
+      t("prompt.ask.schema"),
       "```",
-      "Van al menos dos opciones; `multiple` en true si se pueden elegir varias. El usuario también puede escribir una respuesta propia, así que no agregues una opción para eso. Cuando responda, seguís vos en la misma conversación.",
+      t("prompt.ask.rules"),
     ].join("\n");
   }
 
   if (agent.systemPrompt) {
     prompt += (prompt ? "\n\n" : "") + agent.systemPrompt;
   }
-  
+
   return prompt;
 }
 

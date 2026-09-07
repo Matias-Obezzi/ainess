@@ -11,6 +11,13 @@ Settings → About.
   reports, Antigravity's pools, what each opencode account spent, and every "sign in first" that
   goes with them. All seven languages now.
 - A delegation of a single line said "1 lines" while it waited for approval.
+- The instructions every agent is started with were Spanish whatever language the app was in, so
+  an English window got a team that answered in Spanish. What each role is, how to delegate and
+  how to ask you something are written in the seven languages now.
+- The path of a project opened above its name, under the window bar, where it was cut off. It
+  opens below it.
+- The actions of the agent panel in the hierarchy ran past its edge; they wrap now, and a long
+  label is trimmed instead of pushing the button out.
 
 ## 0.3.0 — 2026-09-07
 

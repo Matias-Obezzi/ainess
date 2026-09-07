@@ -53,7 +53,11 @@ export function ProjectScreen() {
           <TooltipTrigger asChild>
             <span className="font-semibold text-sm truncate">{project.name}</span>
           </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">{project.workspaceDir}</TooltipContent>
+          {/* Below the name and aligned to it: on top (the default) a path this long went under
+              the window bar, where it is clipped and unreadable. */}
+          <TooltipContent side="bottom" align="start" sideOffset={6} className="font-mono text-xs">
+            {project.workspaceDir}
+          </TooltipContent>
         </Tooltip>
         <GitBranchButton projectId={project.id} />
         <UsageButton projectId={project.id} />

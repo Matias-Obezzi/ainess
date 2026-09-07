@@ -163,44 +163,45 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
               type="button"
               variant="outline"
               size="sm"
-              className="justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="min-w-0 justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={actions.stop}
             >
-              <Square className="h-3.5 w-3.5" /> {t("composer.stop")}
+              <Square className="h-3.5 w-3.5" /> <span className="truncate">{t("composer.stop")}</span>
             </Button>
           )}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="justify-start"
+            className="min-w-0 justify-start"
             disabled={!actions.ready}
             onClick={actions.instruct}
           >
-            <MessageSquareText className="h-3.5 w-3.5" /> {t("agentActions.instruct")}
+            <MessageSquareText className="h-3.5 w-3.5" /> <span className="truncate">{t("agentActions.instruct")}</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="justify-start"
+            className="min-w-0 justify-start"
             disabled={!actions.lastRunId}
             onClick={() => openDetail(actions.lastRunId)}
           >
-            <FileText className="h-3.5 w-3.5" /> {t("agentActions.viewOutput")}
+            <FileText className="h-3.5 w-3.5" /> <span className="truncate">{t("agentActions.viewOutput")}</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="justify-start"
+            className="min-w-0 justify-start"
             disabled={!actions.ready}
             onClick={actions.openChat}
           >
-            <MessageCircle className="h-3.5 w-3.5" /> {t("agentActions.chat")}
+            <MessageCircle className="h-3.5 w-3.5" /> <span className="truncate">{t("agentActions.chat")}</span>
           </Button>
         </div>
-        <div className="flex gap-1">
+        {/* Four labels in a row are wider than the panel in any language: they wrap. */}
+        <div className="flex flex-wrap gap-1">
           <Button
             type="button"
             variant="ghost"

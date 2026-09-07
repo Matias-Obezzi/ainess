@@ -1,6 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { useAppStore } from "@/store";
+import { en, es, de } from "@/i18n";
 import type { AgentConfig } from "@/types";
+
+/** The prompt is built outside React, so it reads the language off the store. */
+function inLanguage<T>(language: "es" | "en" | "de", body: () => T): T {
+  const before = useAppStore.getState().config.language;
+  useAppStore.setState(state => ({ config: { ...state.config, language } }));
+  try {
+    return body();
+  } finally {
+    useAppStore.setState(state => ({ config: { ...state.config, language: before } }));
+  }
+}
 
 const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
   id: "a1",
@@ -113,6 +126,31 @@ describe("plain-text providers and system prompt", () => {
     expect(prompt).toContain("```delegate");
     expect(prompt).toContain("Obrero");
     expect(prompt).toContain("hace cosas");
+  });
+
+  // The interface was translated and the instructions the agent runs on were not, so an English
+  // window got a team that answered in Spanish.
+  it("writes the prompt in the language the app is in", () => {
+    const planner = agent({ id: "p", role: "planner" });
+    const child = agent({ id: "c", parentId: "p" });
+    const opts = { skills: [], sharedContext: "" };
+
+    expect(inLanguage("en", () => buildSystemPrompt(planner, [child], opts))).toContain(en["prompt.planner.intro"]);
+    expect(inLanguage("es", () => buildSystemPrompt(planner, [child], opts))).toContain(es["prompt.planner.intro"]);
+    expect(inLanguage("de", () => buildSystemPrompt(agent({ role: "implementer" }), [], opts))).toContain(de["prompt.implementer"]);
+  });
+
+  it("keeps both protocol blocks in every language", () => {
+    for (const language of ["es", "en", "de"] as const) {
+      const prompt = inLanguage(language, () =>
+        buildSystemPrompt(agent({ id: "p", role: "planner" }), [agent({ id: "c", parentId: "p" })], { skills: [], sharedContext: "" }),
+      );
+      expect(prompt, language).toContain("```delegate");
+      expect(prompt, language).toContain("```ask");
+      // The field names are the protocol; only the words around them are translated.
+      expect(prompt, language).toContain('"tasks"');
+      expect(prompt, language).toContain('"question"');
+    }
   });
 
   it("injects skills, shared context and the agent's own instructions", () => {
