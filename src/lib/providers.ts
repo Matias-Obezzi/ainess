@@ -28,6 +28,11 @@ export interface ProviderSpec {
   parseLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[];
   /** Final answer when the provider's own `result` event doesn't carry it (default: all raw lines). */
   finalOutput?(rawLines: string[]): string;
+  /**
+   * Usage when it only exists per step and has to be added up (opencode). Read once the run ends,
+   * so a run of five steps reports what the five of them cost and not what the last one did.
+   */
+  finalUsage?(rawLines: string[]): RunUsage | undefined;
 }
 
 function parseJsonTolerant(line: string): any {
@@ -213,6 +218,85 @@ function copilotFinalOutput(lines: string[]): string {
     }
   }
   return parts.join("\n");
+}
+
+/**
+ * opencode `run --format json`: one JSON object per line, `{type, timestamp, sessionID, part}`,
+ * where `part` is what the SDK calls a message part (`text`, `tool`, `step-start`, `step-finish`).
+ *
+ * There is no closing event carrying the answer, so the text is rebuilt from its parts
+ * (`opencodeFinalOutput`) and what a run spent is added up across its steps (`opencodeUsage`).
+ */
+function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
+  const obj = parseJsonTolerant(line);
+  if (!obj || typeof obj.type !== "string") {
+    if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
+    return line.trim() ? [{ type: "raw", text: line }] : [];
+  }
+
+  const events: ParsedEvent[] = [];
+  const part = obj.part ?? {};
+  // Every line carries it; announcing it on the first one is enough to resume the session later.
+  if (obj.type === "step_start" && typeof obj.sessionID === "string") {
+    events.push({ type: "session", sessionId: obj.sessionID });
+  }
+
+  if (part.type === "text" && typeof part.text === "string" && part.text.trim()) {
+    events.push({ type: "text", text: part.text + "\n" });
+    return events;
+  }
+
+  if (part.type === "tool") {
+    const state = part.state ?? {};
+    const name = typeof part.tool === "string" ? part.tool : "tool";
+    // A call shows up as pending, then running, then completed: it is logged once, when it starts.
+    if (state.status === "running") {
+      const detail = state.input !== undefined ? JSON.stringify(state.input).substring(0, 200) : undefined;
+      events.push({ type: "tool", name, detail, input: state.input });
+    } else if (state.status === "error") {
+      events.push({ type: "error", text: `Falló la herramienta ${name}: ${state.error ?? ""}`.trim() });
+    }
+  }
+
+  return events;
+}
+
+/** The answer, rebuilt from the text parts. A part that arrives twice counts once (its last copy). */
+function opencodeFinalOutput(lines: string[]): string {
+  const byPart = new Map<string, string>();
+  for (const line of lines) {
+    const obj = parseJsonTolerant(line);
+    const part = obj?.part;
+    if (part?.type !== "text" || typeof part.text !== "string") continue;
+    if (!part.text.trim()) continue;
+    byPart.set(typeof part.id === "string" ? part.id : String(byPart.size), part.text);
+  }
+  return [...byPart.values()].join("\n");
+}
+
+/** What the whole run spent: opencode reports it per step, so the steps are added up. */
+export function opencodeUsage(lines: string[]): RunUsage | undefined {
+  let input = 0, output = 0, cached = 0, cost = 0, steps = 0;
+  for (const line of lines) {
+    const obj = parseJsonTolerant(line);
+    const part = obj?.part;
+    if (part?.type !== "step-finish") continue;
+    steps++;
+    const tokens = part.tokens ?? {};
+    input += num(tokens.input) ?? 0;
+    output += num(tokens.output) ?? 0;
+    cached += (num(tokens.cache?.read) ?? 0) + (num(tokens.cache?.write) ?? 0);
+    cost += num(part.cost) ?? 0;
+  }
+  if (steps === 0) return undefined;
+  return compactUsage({
+    inputTokens: input,
+    outputTokens: output,
+    cachedInputTokens: cached || undefined,
+    // Free models report zero, and a zero is an answer: it says the run cost nothing.
+    costUsd: cost,
+    turns: steps,
+  });
 }
 
 function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
@@ -426,18 +510,27 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   },
   opencode: {
     id: "opencode",
-    label: "OpenCode",
+    label: "opencode",
+    // Which models exist depends on what the machine has connected, so the list is asked for
+    // (`opencode models`, see lib/quota.ts) instead of being written down here.
     defaultModels: [],
     models: [],
-    supportsSessions: false,
+    supportsSessions: true,
     promptVia: "arg",
+    note: "Los modelos son «proveedor/modelo» (por ejemplo google/gemini-3-flash) y salen de `opencode models`. Conectá la cuenta o la API key con `opencode auth login`: la clave queda en opencode, ainess no la guarda. Sin auto-aprobación las herramientas quedan denegadas, así que un implementador la necesita.",
     buildCommand: (input) => {
       const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
-      const args = ["run", prompt];
+      const args = ["run", prompt, "--format", "json"];
+      if (input.cwd) args.push("--dir", input.cwd);
       if (input.agent.model) args.push("--model", input.agent.model);
+      if (input.sessionId) args.push("--session", input.sessionId);
+      // Nobody can answer a permission prompt in a headless run: without this the tools are denied.
+      if (input.agent.autoApprove) args.push("--auto");
       return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
     },
-    parseLine: parsePlainLine
+    parseLine: parseOpencodeLine,
+    finalOutput: opencodeFinalOutput,
+    finalUsage: opencodeUsage
   }
 };
 

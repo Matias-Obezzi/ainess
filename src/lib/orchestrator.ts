@@ -318,6 +318,8 @@ function handleExit(e: RunExitEvent) {
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
   const collected = run.output || (spec?.finalOutput ? spec.finalOutput(run.rawLines) : finalOutputFromLines(run.rawLines));
+  // Providers that only report what each step spent (opencode) are added up here, once.
+  const finalUsage = spec?.finalUsage ? spec.finalUsage(run.rawLines) : undefined;
   const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
   const output = e.killed ? "[detenido por el usuario]" : collected;
@@ -333,7 +335,8 @@ function handleExit(e: RunExitEvent) {
           status,
           output,
           endedAt: Date.now(),
-          exitCode: e.code
+          exitCode: e.code,
+          ...(finalUsage ? { usage: finalUsage } : {})
         }
       },
       run.projectId,

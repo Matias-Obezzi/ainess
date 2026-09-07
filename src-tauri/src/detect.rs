@@ -369,3 +369,4 @@ fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
     }
     out
 }
+

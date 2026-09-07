@@ -120,7 +120,33 @@ export async function listModels(provider: ProviderId, binaries: Binaries): Prom
       return PROVIDERS.antigravity.models;
     }
   }
+  if (provider === "opencode") {
+    // `opencode models` prints one «proveedor/modelo» per line, and which ones exist depends on
+    // what the user connected (an AI Studio key adds the google/* ones).
+    const bin = binaries.opencode;
+    if (!bin?.path) return PROVIDERS.opencode.models;
+    try {
+      const res = await getTransport().exec(bin.path, ["models"]);
+      const models = parseOpencodeModels(res.stdout);
+      return models.length > 0 ? models : PROVIDERS.opencode.models;
+    } catch {
+      return PROVIDERS.opencode.models;
+    }
+  }
   return PROVIDERS[provider]?.models || [];
+}
+
+/** One id per line; anything that is not a `provider/model` is a message, not a model. */
+export function parseOpencodeModels(stdout: string): ModelInfo[] {
+  const seen = new Set<string>();
+  const models: ModelInfo[] = [];
+  for (const raw of stdout.split(/\r?\n/)) {
+    const id = raw.trim();
+    if (!/^[\w.-]+\/[\w.:-]+$/.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    models.push({ id, label: id });
+  }
+  return models;
 }
 
 // ---------------------------------------------------------------------------------------------
