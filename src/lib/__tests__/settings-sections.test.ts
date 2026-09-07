@@ -3,6 +3,9 @@
 // and that SettingsDialog's SECTION_UI map covers all of them.
 import { describe, it, expect } from "vitest";
 import { SETTINGS_SECTIONS_META, ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
+// Imported statically on purpose: pulling the dialog in from inside a test made the whole settings
+// UI load against the per-test timeout, which a cold run could not always meet.
+import { SETTINGS_SECTIONS } from "@/components/settings/SettingsDialog";
 
 /** The eleven section ids the app has always had. */
 const EXPECTED_IDS = [
@@ -39,16 +42,13 @@ describe("settings sections list (B-12)", () => {
     }
   });
 
-  it("SettingsDialog SECTION_UI covers all section ids", async () => {
-    // Import the compiled dialog module and check that SETTINGS_SECTIONS has one entry per id.
-    const { SETTINGS_SECTIONS } = await import("@/components/settings/SettingsDialog");
+  it("SettingsDialog SECTION_UI covers all section ids", () => {
     const dialogIds = SETTINGS_SECTIONS.map(s => s.id).sort();
     const expectedSorted = [...EXPECTED_IDS].sort();
     expect(dialogIds).toEqual(expectedSorted);
   });
 
-  it("every SETTINGS_SECTIONS entry has a component", async () => {
-    const { SETTINGS_SECTIONS } = await import("@/components/settings/SettingsDialog");
+  it("every SETTINGS_SECTIONS entry has a component", () => {
     for (const s of SETTINGS_SECTIONS) {
       expect(typeof s.component, s.id).toBe("function");
     }
