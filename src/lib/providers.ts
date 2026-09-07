@@ -632,11 +632,70 @@ Cada task debe ser autocontenida (el agente no ve esta conversación).${extraIns
     }
   }
 
+  // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
+  // were guessing or ending the run with a paragraph and hoping somebody read it.
+  if (agent.role !== "custom") {
+    prompt += (prompt ? "\n\n" : "") + [
+      "## Cuando necesites que el usuario decida",
+      "Si te falta una decisión que no te corresponde tomar, no adivines: pedila con un bloque así y terminá tu respuesta ahí.",
+      "```ask",
+      '{"question":"la pregunta, corta y concreta","options":["opción 1","opción 2"],"multiple":false}',
+      "```",
+      "Van al menos dos opciones; `multiple` en true si se pueden elegir varias. El usuario también puede escribir una respuesta propia, así que no agregues una opción para eso. Cuando responda, seguís vos en la misma conversación.",
+    ].join("\n");
+  }
+
   if (agent.systemPrompt) {
     prompt += (prompt ? "\n\n" : "") + agent.systemPrompt;
   }
   
   return prompt;
+}
+
+/** One question an agent asked, as its `ask` block described it. */
+export interface ParsedQuestion {
+  question: string;
+  options: string[];
+  multiple: boolean;
+  allowOther: boolean;
+}
+
+/**
+ * The `ask` blocks of an answer:
+ *
+ * ```ask
+ * {"question":"¿Con cuál seguimos?","options":["Postgres","SQLite"],"multiple":false}
+ * ```
+ *
+ * Same shape as the `delegate` block, and read the same way: the closing fence has to start a
+ * line, because the text of a question can carry its own fences. Anything without a question or
+ * without at least two options is dropped — a question with one answer is not a question.
+ */
+export function parseQuestions(text: string): ParsedQuestion[] {
+  const out: ParsedQuestion[] = [];
+  const regex = /```ask[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      const obj = JSON.parse(match[1]);
+      const question = typeof obj?.question === "string" ? obj.question.trim() : "";
+      const options = Array.isArray(obj?.options)
+        ? obj.options.filter((o: unknown) => typeof o === "string" && o.trim()).map((o: string) => o.trim())
+        : [];
+      if (!question || options.length < 2) continue;
+      out.push({
+        question,
+        options,
+        multiple: obj.multiple === true,
+        // Letting the user write their own is the default: an agent's options are a guess at what
+        // the answer might be, never the whole of it.
+        allowOther: obj.allowOther !== false,
+      });
+    } catch {
+      // A malformed block is not worth stopping a run over.
+    }
+  }
+  return out;
 }
 
 export function parseDelegations(text: string): Delegation[] {

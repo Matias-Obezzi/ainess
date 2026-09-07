@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -212,6 +212,14 @@ export interface AppState {
   /** Makes `id` depend on `dependsOnId`. Returns false when it would close a loop. */
   linkTaskDependency(id: string, dependsOnId: string): boolean;
   unlinkTaskDependency(id: string, dependsOnId: string): void;
+
+  /**
+   * Questions agents asked, with the options they offered (see `parseQuestions`). Kept beside the
+   * approvals because they are the same kind of thing: a run that stopped needing the user.
+   */
+  questions: Record<string, AgentQuestion>;
+  /** Answers one and lets the agent carry on with what was chosen. */
+  answerQuestion(questionId: string, answer: string[]): void;
 
   // Approvals (delegations waiting for the user's go-ahead)
   approvals: Record<string, Approval>;
@@ -526,6 +534,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   historyLoading: {},
   remoteActiveChats: [],
   approvals: {},
+  questions: {},
   tasks: {},
   navHistory: [{ screen: "home" as Screen, projectId: null, chatId: null, projectMode: "chat" as ProjectMode }],
   navIndex: 0,
@@ -918,6 +927,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const newApprovals = Object.fromEntries(
         Object.entries(state.approvals).filter(([, a]) => a.projectId !== id),
       );
+      const newQuestions = Object.fromEntries(
+        Object.entries(state.questions).filter(([, q]) => q.projectId !== id),
+      );
       // Whatever the bell said about this project (or about one of its approvals or runs) goes too.
       const newNotifications = state.notifications.filter(n =>
         n.projectId !== id
@@ -951,6 +963,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         runs: newRuns,
         tasks: newTasks,
         approvals: newApprovals,
+        questions: newQuestions,
         notifications: newNotifications,
         chatMessages: dropByChat(state.chatMessages),
         chatSessions: dropByChat(state.chatSessions),
@@ -1309,6 +1322,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
         : { isRepo: true, status, pullRequests: [], fetchedAt: Date.now() };
       return { repoState: { ...s.repoState, [projectId]: next } };
     });
+  },
+
+  answerQuestion: (questionId, answer) => {
+    const question = get().questions[questionId];
+    if (!question || question.status !== "pending") return;
+    set(state => ({
+      questions: {
+        ...state.questions,
+        [questionId]: { ...question, status: "answered", answer, answeredAt: Date.now() },
+      },
+    }));
+    orchestrator.resumeWithAnswer(question, answer);
   },
 
   setWorktree: (projectId, worktree) => {

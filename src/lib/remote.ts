@@ -4,7 +4,7 @@
 import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
-import type { AgentConfig, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
+import type { AgentConfig, AgentQuestion, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { pendingApprovals } from "@/lib/approvals";
 import { resolveLanguage, type Language } from "@/i18n";
@@ -23,6 +23,8 @@ export interface RemoteSnapshot {
   runtime: Record<string, Record<string, { status: AgentStatus; currentTask?: string }>>;
   messages: CommMessage[];
   approvals: Approval[];
+  /** Questions still waiting for an answer; the phone can answer them too. */
+  questions: AgentQuestion[];
   /** Recent runs of every project, newest first, without `rawLines` (they never leave the PC). */
   runs: Array<Omit<Run, "rawLines">>;
   chats: Chat[];
@@ -136,6 +138,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     runtime,
     messages: s.messages.slice(-limits.messages).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) })),
     approvals: pendingApprovals(s.approvals, s.config.projects),
+    questions: Object.values(s.questions).filter(q => q.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
     runs,
     chats: s.config.chats,
     chatMessages,
@@ -229,6 +232,16 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const status = str("status");
         if (!status || !TASK_STATUSES.includes(status as TaskStatus)) return { error: "Estado inválido" };
         s.moveTask(id, status as TaskStatus, typeof payload.index === "number" ? payload.index : 0);
+        return { ok: true };
+      }
+      case "answer": {
+        const id = str("questionId");
+        const answer = Array.isArray(payload.answer)
+          ? (payload.answer as unknown[]).filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+          : [];
+        if (!id || !s.questions[id]) return { error: "Pregunta inexistente" };
+        if (answer.length === 0) return { error: "Falta la respuesta" };
+        s.answerQuestion(id, answer);
         return { ok: true };
       }
       case "approve": {

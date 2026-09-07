@@ -11,6 +11,9 @@ Configuración → Acerca de.
   running what that CLI documents — a global npm install, winget, or Antigravity's own installer —
   with the whole command written next to it.
 - A changelog, in the app: what a version brought, and it opens itself once after an update.
+- **An agent can ask you to decide.** Instead of guessing, it ends its answer with the options it
+  sees; the conversation shows them, you pick one (or write your own) and it carries on in the same
+  session. Answerable from the phone too.
 
 ### Changed
 

@@ -7,7 +7,7 @@
 // current project periodically to see decisions taken elsewhere.
 import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
-import type { Run, CommMessage, Approval, AgentWorktree } from "@/types";
+import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
 
 interface HistoryFile {
@@ -16,6 +16,11 @@ interface HistoryFile {
   messages: CommMessage[];
   /** Pending (and recently decided) approvals, so a restart does not lose them. */
   approvals?: Approval[];
+  /**
+   * Questions agents asked, for the same reason: one that is lost leaves its agent waiting for an
+   * answer nobody can give any more.
+   */
+  questions?: AgentQuestion[];
   /**
    * Conversation ids per agent (Claude session / agy conversation), so a follow-up prompt
    * after a restart still continues the same conversation. `null` = explicitly reset.
@@ -54,7 +59,7 @@ export function attachHistoryPersistence(): void {
   if (subscribed) return;
   subscribed = true;
   useAppStore.subscribe((state, prev) => {
-    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals && state.runtime === prev.runtime && state.worktrees === prev.worktrees) return;
+    if (state.runs === prev.runs && state.messages === prev.messages && state.approvals === prev.approvals && state.questions === prev.questions && state.runtime === prev.runtime && state.worktrees === prev.worktrees) return;
     const changed = new Set<string>();
     if (state.worktrees !== prev.worktrees) {
       for (const projectId of new Set([...Object.keys(state.worktrees), ...Object.keys(prev.worktrees)])) {
@@ -79,6 +84,11 @@ export function attachHistoryPersistence(): void {
       for (let i = 0; i < state.messages.length; i++) {
         const m = state.messages[i];
         if (p[i] !== m && m.projectId) changed.add(m.projectId);
+      }
+    }
+    if (state.questions !== prev.questions) {
+      for (const [id, q] of Object.entries(state.questions)) {
+        if (prev.questions[id] !== q) changed.add(q.projectId);
       }
     }
     if (state.approvals !== prev.approvals) {
@@ -154,6 +164,15 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     const added = parsed.messages.filter(m => !known.has(m.id));
     const messages = added.length ? [...added, ...state.messages].sort((a, b) => a.ts - b.ts) : state.messages;
     if (added.length) changed = true;
+    const questions = { ...state.questions };
+    for (const q of parsed.questions ?? []) {
+      const mine = questions[q.id];
+      // An answer given in another process (the CLI, the phone) wins over a pending copy here.
+      if (!mine || (mine.status === "pending" && q.status !== "pending")) {
+        questions[q.id] = q;
+        changed = true;
+      }
+    }
     const approvals = { ...state.approvals };
     for (const a of parsed.approvals ?? []) {
       const mine = approvals[a.id];
@@ -190,7 +209,7 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         }
       }
     }
-    return changed ? { runs, messages, approvals, runtime, worktrees } : state;
+    return changed ? { runs, messages, approvals, questions, runtime, worktrees } : state;
   });
   notifyInterrupted(projectId, interrupted);
 }
@@ -241,6 +260,7 @@ export async function saveHistory(projectId: string): Promise<void> {
     .slice(-MAX_RUNS)
     .map(r => ({ ...r, rawLines: r.rawLines.slice(-MAX_RAW_LINES) }));
   const messages = state.messages.filter(m => m.projectId === projectId).slice(-MAX_MESSAGES);
+  const questions = Object.values(state.questions).filter(q => q.projectId === projectId);
   const approvals = Object.values(state.approvals)
     .filter(a => a.projectId === projectId)
     .sort((a, b) => a.createdAt - b.createdAt)
@@ -250,7 +270,7 @@ export async function saveHistory(projectId: string): Promise<void> {
     if (rt.sessionUpdatedAt) sessions[agentId] = { sessionId: rt.sessionId ?? null, updatedAt: rt.sessionUpdatedAt };
   }
   const worktrees = state.worktrees[projectId] ?? [];
-  const file: HistoryFile = { version: 1, runs, messages, approvals, sessions, worktrees };
+  const file: HistoryFile = { version: 1, runs, messages, approvals, questions, sessions, worktrees };
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
@@ -336,6 +356,7 @@ export async function clearHistory(projectId: string): Promise<void> {
     runs: Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== projectId)),
     messages: state.messages.filter(m => m.projectId !== projectId),
     approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
+    questions: Object.fromEntries(Object.entries(state.questions).filter(([, q]) => q.projectId !== projectId)),
   }));
   // Clearing the history is about runs and messages: the worktrees the agents work in stay.
   const file: HistoryFile = {
@@ -343,6 +364,7 @@ export async function clearHistory(projectId: string): Promise<void> {
     runs: [],
     messages: [],
     approvals: [],
+    questions: [],
     worktrees: useAppStore.getState().worktrees[projectId] ?? [],
   };
   const t = timers.get(projectId);

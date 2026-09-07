@@ -10,6 +10,7 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
+import { InlineQuestion } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
@@ -171,6 +172,11 @@ function RunBubble({ run }: { run: Run }) {
   const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const steps = useActivityCount(run.id);
+  const allQuestions = useAppStore(state => state.questions);
+  const questions = useMemo(
+    () => Object.values(allQuestions).filter(q => q.runId === run.id).sort((a, b) => a.createdAt - b.createdAt),
+    [allQuestions, run.id],
+  );
 
   const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
@@ -297,6 +303,9 @@ function RunBubble({ run }: { run: Run }) {
                   ) : (
                     <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}
+
+                  {/* A run that ended asking something ends here, with the options it offered. */}
+                  {questions.map(q => <InlineQuestion key={q.id} questionId={q.id} />)}
                 </>
               )}
             </div>

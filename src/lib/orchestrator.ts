@@ -1,7 +1,7 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, finalOutputFromLines } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -9,7 +9,7 @@ import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
-import { Run, AgentConfig, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 
 let listenersAttached = false;
 
@@ -419,7 +419,14 @@ function onRunFinished(runId: string) {
   else if (run.status === "error") void emitHookEvent("run.failed", {}, ctx);
   else if (run.status === "killed") void emitHookEvent("agent.stopped", {}, ctx);
 
-  if (run.status === "done" || run.status === "killed") {
+  // An agent that asked something is not finished, it is waiting: the round stops here and picks
+  // up when the question is answered (see `resumeWithAnswer`).
+  const asked = run.status === "done" ? askQuestions(run, agent) : false;
+  if (asked) {
+    agentStatus = "waiting";
+  }
+
+  if (!asked && (run.status === "done" || run.status === "killed")) {
     const children = selectChildren(store, run.projectId, agent.id);
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
@@ -531,6 +538,84 @@ export function childRunsOf(runs: Record<string, Run>, parentRunId: string): Run
     if (run.parentRunId === parentRunId && !seen.has(run.id)) { seen.add(run.id); out.push(run); }
   }
   return out.sort((a, b) => a.startedAt - b.startedAt);
+}
+
+/**
+ * Reads the `ask` blocks of a finished run and records what it asked. Returns whether it asked
+ * anything at all, which is what keeps the round from closing over an unanswered question.
+ */
+function askQuestions(run: Run, agent: AgentConfig): boolean {
+  const parsed = parseQuestions(run.output);
+  if (parsed.length === 0) return false;
+
+  const questions: Record<string, AgentQuestion> = {};
+  for (const q of parsed) {
+    const id = crypto.randomUUID();
+    questions[id] = {
+      id,
+      projectId: run.projectId,
+      agentId: agent.id,
+      runId: run.id,
+      rootRunId: run.rootRunId,
+      round: run.round,
+      question: q.question,
+      options: q.options,
+      multiple: q.multiple,
+      allowOther: q.allowOther,
+      createdAt: Date.now(),
+      status: "pending",
+    };
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: agent.id,
+      toAgentId: "user",
+      kind: "system",
+      text: q.question,
+      runId: run.id,
+    });
+  }
+  useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
+
+  const first = Object.values(questions)[0];
+  useAppStore.getState().notify({
+    kind: "question",
+    title: translateNow("notify.asksSomething", { name: agent.name }),
+    body: truncate(first.question, 140),
+    projectId: run.projectId,
+    agentId: agent.id,
+    runId: run.id,
+  });
+  return true;
+}
+
+/**
+ * Hands the answer back to the agent that asked and lets it carry on, in the same session, the
+ * same way an instruction does. Nothing else of the round moved while it waited.
+ */
+export function resumeWithAnswer(question: AgentQuestion, answer: string[]): void {
+  const store = useAppStore.getState();
+  const run = store.runs[question.runId];
+  const chosen = answer.filter(a => a.trim()).join(", ");
+  const text = translateNow("questions.answerPrompt", { question: question.question, answer: chosen });
+
+  addMessage({
+    projectId: question.projectId,
+    fromAgentId: "user",
+    toAgentId: question.agentId,
+    kind: "instruction",
+    text: chosen,
+    runId: question.runId,
+  });
+
+  startRun({
+    agentId: question.agentId,
+    projectId: question.projectId,
+    prompt: text,
+    parentRunId: run?.parentRunId ?? null,
+    round: question.round,
+    resume: true,
+    rootRunId: question.rootRunId,
+  });
 }
 
 function maybeContinueParent(parentRunId: string) {

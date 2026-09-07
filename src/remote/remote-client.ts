@@ -5,7 +5,7 @@ import { useAppStore } from "@/store";
 import { toast } from "@/components/ui/toast";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { createTask } from "@/lib/tasks";
-import type { AgentConfig, AgentRuntime, Approval, Project, Run, Task } from "@/types";
+import type { AgentConfig, AgentQuestion, AgentRuntime, Approval, Project, Run, Task } from "@/types";
 import type { DiagnosticResult } from "@/lib/diagnostics";
 
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
@@ -144,6 +144,9 @@ export function hydrate(snapshot: RemoteSnapshot): void {
   const approvals: Record<string, Approval> = {};
   for (const approval of snapshot.approvals) approvals[approval.id] = approval;
 
+  const questions: Record<string, AgentQuestion> = {};
+  for (const question of snapshot.questions ?? []) questions[question.id] = question;
+
   // The phone never edits agents, so the fields it does not get can take their safe default.
   const agentsByProject = new Map<string, AgentConfig[]>();
   for (const { projectId, ...a } of snapshot.agents) {
@@ -175,6 +178,7 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     runs,
     messages: snapshot.messages,
     approvals,
+    questions,
     activeTaskRunId,
     chatMessages: snapshot.chatMessages,
     binaries: snapshot.binaries,
@@ -208,6 +212,7 @@ export function installRemoteActions(): void {
       call("/api/instruct", { projectId, agentId, text, model: opts?.model }),
     stopAgent: (agentId, projectId) => call("/api/stop", { projectId, agentId }),
     stopAll: (projectId) => call("/api/stop", { projectId }),
+    answerQuestion: (questionId, answer) => { void call("/api/answer", { questionId, answer }); },
     approve: (approvalId, note) => call("/api/approve", { approvalId, decision: "approve", note }),
     reject: (approvalId, note) => call("/api/approve", { approvalId, decision: "reject", note }),
     sendChatMessage: (chatId, text) => call("/api/chat", { chatId, text }),

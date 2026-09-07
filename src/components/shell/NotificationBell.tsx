@@ -10,6 +10,7 @@ import {
   Download,
   Info,
   ShieldQuestion,
+  MessageCircleQuestion,
   Trash2,
   Unplug,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 const ICONS: Record<NotificationKind, LucideIcon> = {
   approval: ShieldQuestion,
+  question: MessageCircleQuestion,
   "task-done": CircleCheck,
   "task-failed": CircleAlert,
   interrupted: Unplug,
@@ -39,6 +41,7 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
 
 const COLORS: Record<NotificationKind, string> = {
   approval: "text-amber-500",
+  question: "text-amber-500",
   "task-done": "text-emerald-500",
   "task-failed": "text-red-500",
   interrupted: "text-muted-foreground",

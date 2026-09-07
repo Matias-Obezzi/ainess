@@ -155,6 +155,34 @@ export interface Approval {
   decidedAt?: number;
 }
 
+/**
+ * A question an agent asked, with the answers it will take.
+ *
+ * An agent that needs the user to decide something used to have two ways out: guess, or end its
+ * run with a paragraph asking and hope somebody read it. It can put an `ask` block in its answer
+ * instead (see `parseQuestions`), and the conversation shows the options.
+ */
+export interface AgentQuestion {
+  id: string;
+  projectId: string;
+  /** Who is asking, and the run that ended asking. */
+  agentId: string;
+  runId: string;
+  rootRunId: string;
+  round: number;
+  question: string;
+  options: string[];
+  /** Whether more than one option can be chosen. */
+  multiple: boolean;
+  /** Whether an answer of the user's own is allowed on top of the options. */
+  allowOther: boolean;
+  createdAt: number;
+  status: "pending" | "answered";
+  /** What was chosen (or written), once it was. */
+  answer?: string[];
+  answeredAt?: number;
+}
+
 /** Public tunnel provider used on top of the LAN server. */
 export type TunnelProviderId = "cloudflared" | "ngrok";
 
@@ -466,6 +494,7 @@ export interface PtyExitEvent {
 
 export type NotificationKind =
   | "approval" // a delegation is waiting for the user's go-ahead
+  | "question" // an agent asked something and is waiting for the answer
   | "task-done" // a task finished
   | "task-failed" // a task failed
   | "interrupted" // a run was cut short when the app went away
