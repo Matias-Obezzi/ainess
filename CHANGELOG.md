@@ -5,6 +5,13 @@ Settings → About.
 
 ## Unreleased
 
+### Added
+
+- An agent added under a planner arrives with a description of itself — its role and the CLI
+  behind it, in the app's language — instead of the empty field the planner used to read. It
+  follows the role and the provider while you are choosing them, and stops the moment you write
+  your own. `ais agents add` fills it in the same way.
+
 ### Fixed
 
 - The two notices above the composer — the project with no team, and the agent whose CLI is not

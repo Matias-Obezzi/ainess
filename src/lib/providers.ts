@@ -1,5 +1,6 @@
-import { AgentConfig, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
+import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { roleLabelKey } from "@/lib/labels";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
@@ -566,6 +567,20 @@ export function availableProviders(binaries: Binaries, current?: ProviderId): Pr
 export function finalOutputFromLines(lines: string[]): string {
   // rawLines are stored without their line breaks, so put them back.
   return lines.join("\n");
+}
+
+/**
+ * What a new agent says about itself: its role and the CLI behind it, in the app's language.
+ *
+ * The field it fills is the one the planner reads to decide who gets a task, and it was left
+ * empty by everything that creates an agent — so a team came out with three agents that told
+ * their planner nothing about themselves.
+ */
+export function defaultAgentDescription(role: AgentRole, provider: ProviderId): string {
+  return translateNow("agent.defaultDescription", {
+    role: translateNow(roleLabelKey[role]),
+    cli: PROVIDERS[provider]?.label ?? provider,
+  });
 }
 
 /**

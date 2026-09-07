@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
-import { availableProviders, PROVIDERS } from "@/lib/providers";
+import { availableProviders, defaultAgentDescription, PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
@@ -166,6 +166,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [requireApproval, setRequireApproval] = useState(false);
   const [worktree, setWorktree] = useState(false);
   const [description, setDescription] = useState("");
+  /** Once the user writes their own, the default stops following the role and the provider. */
+  const [descriptionEdited, setDescriptionEdited] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [customProgram, setCustomProgram] = useState("");
   const [customArgs, setCustomArgs] = useState("");
@@ -201,6 +203,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setRequireApproval(agent.requireApproval ?? false);
         setWorktree(agent.worktree ?? false);
         setDescription(agent.description || "");
+        setDescriptionEdited(true);
         setSystemPrompt(agent.systemPrompt || "");
         setCustomProgram(agent.customCommand?.program || "");
         setCustomArgs(agent.customCommand?.args.join(" ") || "");
@@ -223,6 +226,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setRequireApproval(false);
         setWorktree(false);
         setDescription("");
+        setDescriptionEdited(false);
         setSystemPrompt("");
         setCustomProgram("");
         setCustomArgs("");
@@ -231,6 +235,19 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, agent]);
+
+  /**
+   * A new agent introduces itself. The description is what its planner reads to decide who gets a
+   * task, and every way of creating an agent left it empty; this fills it with its role and the
+   * CLI behind it, and gets out of the way the moment the user types something of their own.
+   *
+   * Only with a parent: without one nobody reads it, and the field is not even shown.
+   */
+  useEffect(() => {
+    if (!dialogOpen || descriptionEdited) return;
+    setDescription(parentId === null ? "" : defaultAgentDescription(role, provider));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, descriptionEdited, parentId, role, provider]);
 
   // Whether the project is a git repo decides if the worktree switch is available at all.
   useEffect(() => {
@@ -503,7 +520,13 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
             {parentId !== null && (
               <div className="space-y-1">
                 <Label>{t("agentDialog.description")}</Label>
-                <Input value={description} onChange={e => setDescription(e.target.value)} />
+                <Input
+                  value={description}
+                  onChange={e => {
+                    setDescriptionEdited(true);
+                    setDescription(e.target.value);
+                  }}
+                />
               </div>
             )}
 

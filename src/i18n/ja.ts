@@ -942,6 +942,7 @@ export const ja: Dictionary = {
   "quota.opencode.noLimits": "opencode は上限を報告しません。以下は各アカウントの消費量です。",
   "quota.unsupported": "このプロバイダーはクォータを公開していません",
   "quota.rateLimited": "問い合わせが多すぎます: 数分後にもう一度読み取ります",
+  "agent.defaultDescription": "このプロジェクトの{role}です。{cli} を使って自分の役割を果たします",
   "quota.line.unlimited": "無制限",
   "quota.line.renews": "{date} に更新",
 

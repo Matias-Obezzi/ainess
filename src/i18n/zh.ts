@@ -941,6 +941,7 @@ export const zh: Dictionary = {
   "quota.opencode.noLimits": "opencode 不报告限额：以下是每个账号的消耗。",
   "quota.unsupported": "该提供方不提供配额信息",
   "quota.rateLimited": "查询过于频繁：几分钟后再读取",
+  "agent.defaultDescription": "我是这个项目里的{role}，用 {cli} 完成我的工作",
   "quota.line.unlimited": "无限制",
   "quota.line.renews": "{date} 重置",
 

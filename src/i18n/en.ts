@@ -941,6 +941,7 @@ export const en: Dictionary = {
   "quota.opencode.noLimits": "opencode does not report limits: what follows is what each account has spent.",
   "quota.unsupported": "This provider does not expose its quota",
   "quota.rateLimited": "Asked too often: it will be read again in a few minutes",
+  "agent.defaultDescription": "My role on this project is {role}, and I work with {cli}",
   "quota.line.unlimited": "unlimited",
   "quota.line.renews": "renews {date}",
 

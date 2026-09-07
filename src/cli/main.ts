@@ -20,6 +20,7 @@ import { claudeCandidateDirs } from "@/lib/transport-node";
 import * as os from "node:os";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
+import { defaultAgentDescription } from "@/lib/providers";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 import { nodeI18n } from "@/i18n/node";
 import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
@@ -383,7 +384,17 @@ async function main() {
         parentId,
         model: values.model !== undefined ? String(values.model) : agent?.model,
         autoApprove: values["auto-approve"] !== undefined ? Boolean(values["auto-approve"]) : (agent?.autoApprove ?? false),
-        description: values.description !== undefined ? String(values.description) : agent?.description,
+        // A new agent under a planner introduces itself, the same as in the app.
+        description:
+          values.description !== undefined
+            ? String(values.description)
+            : agent?.description ??
+              (parentId !== null
+                ? defaultAgentDescription(
+                    (values.role as AgentRole) || "implementer",
+                    (values.provider as ProviderId) || "claude",
+                  )
+                : undefined),
         systemPrompt,
         color: values.color !== undefined ? String(values.color) : agent?.color,
       };
