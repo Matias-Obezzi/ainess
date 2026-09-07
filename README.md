@@ -365,18 +365,23 @@ ngrok authtoken and API key stay in ngrok's own config file.
 
 ## Releases
 
-A release is a version number: GitHub Actions does the rest on every push to `main`.
+Work happens on `dev`; `main` is what has been released. A release is a version number — Actions
+does the rest.
 
-1. Bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` —
-   the same number in the three. `npm run release:check` verifies they agree. Write what changed in
-   `CHANGELOG.md`, which is also what the app shows in Settings → About.
-2. Push to `main`. The workflow tags `v<version>`, builds and signs the NSIS installer and
-   publishes `latest.json` in the release. A push that does not change the version finds the tag
-   already there and stops, which is why most pushes to `main` publish nothing.
-3. Before publishing (and only then) it runs the typecheck, the unit tests, the CLI build and the
-   Rust tests: `ci.yml` ignores `main`, so this is what stands between a broken commit and an
-   installer.
-4. Installed apps pick it up on their next check — at startup if enabled, or from
+1. **On `dev`.** Every push runs `ci.yml`: typecheck, unit tests, the web and CLI builds, the
+   version check and `cargo check`.
+2. **The pull request to `main`.** On top of those checks, `pr-installer.yml` builds the NSIS
+   installer of that branch and attaches it to the run: an `.exe` to try before merging, kept for
+   14 days. It carries no updater artifact and is never signed with the release key, so nothing
+   built there can reach an installed app.
+3. **The version.** Bump it in `package.json`, `src-tauri/tauri.conf.json` and
+   `src-tauri/Cargo.toml` — the same number in the three; `npm run release:check` verifies they
+   agree. Write what changed in `CHANGELOG.md`, which is what the app shows in Settings → About.
+4. **Merge.** `release.yml` runs on `main`: it stops if the tag `v<version>` is already there
+   (which is why a merge that does not change the version publishes nothing), and otherwise runs
+   the typecheck, the unit tests, the CLI build and the Rust tests before `tauri-action` builds
+   and signs the NSIS installer, tags, and publishes it with its `latest.json`.
+5. **The update.** Installed apps pick it up on their next check — at startup if enabled, or from
    Settings → About — and update themselves.
 
 The repo needs one secret, `TAURI_SIGNING_PRIVATE_KEY`, with the contents of the signing key. The

@@ -1,0 +1,52 @@
+name: PR installer
+
+# The installer of a pull request, to try before merging it. Nothing is tagged and nothing is
+# published: the .exe is attached to the run, which is what `ci.yml` cannot give you and a draft
+# release would only give you by existing.
+#
+# The config override turns the updater artifact off, so this build needs no signing key at all:
+# the key stays with what goes out on `main`, and nothing here can ever be taken for an update.
+on:
+  pull_request:
+    branches: [main]
+
+# A new push to the branch makes the build of the previous one pointless.
+concurrency:
+  group: pr-installer-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Read the version
+        id: version
+        shell: bash
+        run: echo "value=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build the installer
+        shell: bash
+        run: npm run tauri build -- --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainess-${{ steps.version.outputs.value }}-pr${{ github.event.pull_request.number }}
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14

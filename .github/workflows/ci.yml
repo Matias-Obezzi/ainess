@@ -2,8 +2,10 @@ name: CI
 
 on:
   pull_request:
+  # Only `dev`: a branch with a pull request open already gets this run from the line above, and
+  # `main` has `release.yml`, which runs the same checks before it publishes anything.
   push:
-    branches-ignore: [main]
+    branches: [dev]
 
 jobs:
   check:
