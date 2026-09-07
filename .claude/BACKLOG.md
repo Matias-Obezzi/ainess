@@ -9,11 +9,11 @@ Estado: `pendiente` · `en curso` · `hecho`.
 
 | Id | Tarea | Origen | Plan | Estado |
 |---|---|---|---|---|
-| B-01 | **Detener durante la preparación del worktree.** Apretar "Detener" mientras corre el `npm install` del setup no hace nada: la corrida arranca igual al terminar. `kill_run` sobre un run todavía no spawneado devuelve `false` y no cierra el run, así que cortar el spawn a lo bruto dejaría colgado a un padre que espera al hijo. Hay que arreglarlo dentro de `stopAgent`. | 032 | — | pendiente |
-| B-02 | **Concurrencia app + CLI en el tablero.** Si la app y `ais run` tocan el mismo proyecto, el último que guarda pisa al otro. `history.ts` ya mergea en cada guardado; para tareas falta decidir qué pasa con una tarea borrada en un proceso y presente en el archivo del otro. | 031 | — | pendiente |
-| B-03 | **Sub-planificador que delega.** Si una tarea delegada a su vez delega, su tarjeta pasa a `in-review`/`ready` cuando termina su primera corrida, no cuando terminan sus hijos. | 031 | — | pendiente |
-| B-04 | **Formaciones con nombre duplicado.** No se valida: dos formaciones pueden llamarse igual y `ais formations apply` toma la primera que coincida. | 028 | — | pendiente |
-| B-05 | **`branch` de una tarea nunca se llena solo.** El modelo lo tiene y el detalle lo deja editar a mano, pero nada en el orquestador sabe en qué rama trabajó un agente. | 031 | — | pendiente |
+| B-01 | ~~**Detener durante la preparación del worktree.**~~ Ya estaba arreglado en el código (commit `751dc2c`, posterior al reporte 032): `stoppedBeforeSpawn` + `finishNeverSpawned` en `orchestrator.ts`. El backlog salió de los reportes, no del código. Apretar "Detener" mientras corre el `npm install` del setup no hace nada: la corrida arranca igual al terminar. `kill_run` sobre un run todavía no spawneado devuelve `false` y no cierra el run, así que cortar el spawn a lo bruto dejaría colgado a un padre que espera al hijo. Hay que arreglarlo dentro de `stopAgent`. | 032 | — | hecho (ya estaba) |
+| B-02 | **Concurrencia app + CLI en el tablero.** El guardado ya mergea (`mergeWithDisk` en `task-store.ts`, con la tarjeta borrada resuelta); falta el sentido contrario: traer a memoria lo que escribió el otro proceso, como hace `startHistorySync`. Si la app y `ais run` tocan el mismo proyecto, el último que guarda pisa al otro. `history.ts` ya mergea en cada guardado; para tareas falta decidir qué pasa con una tarea borrada en un proceso y presente en el archivo del otro. | 031 | 040 | en curso |
+| B-03 | **Sub-planificador que delega.** Si una tarea delegada a su vez delega, su tarjeta pasa a `in-review`/`ready` cuando termina su primera corrida, no cuando terminan sus hijos. | 031 | 040 | en curso |
+| B-04 | **Formaciones con nombre duplicado.** No se valida: dos formaciones pueden llamarse igual y `ais formations apply` toma la primera que coincida. | 028 | 040 | en curso |
+| B-05 | **`branch` de una tarea nunca se llena solo.** El modelo lo tiene y el detalle lo deja editar a mano, pero nada en el orquestador sabe en qué rama trabajó un agente. | 031 | 040 | en curso |
 
 ## CLI
 
@@ -27,8 +27,8 @@ Estado: `pendiente` · `en curso` · `hecho`.
 
 | Id | Tarea | Origen | Plan | Estado |
 |---|---|---|---|---|
-| B-09 | **La vista remota no muestra cuota.** Quedó fuera de alcance del plan de cuota. | 027 | — | pendiente |
-| B-10 | **La vista remota no muestra diagnóstico.** La sección es sólo de escritorio. | 037 | — | pendiente |
+| B-09 | **La vista remota no muestra cuota.** Quedó fuera de alcance del plan de cuota. | 027 | 041 | en curso |
+| B-10 | **La vista remota no muestra diagnóstico.** La sección es sólo de escritorio. | 037 | 041 | en curso |
 | B-11 | **No se puede preparar un worktree desde el celular.** El transport remoto responde `null` a `readFileAbs`. | 032 | — | pendiente |
 
 ## Pulido
