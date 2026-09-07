@@ -1129,4 +1129,7 @@ export const zh: Dictionary = {
   "prompt.ask.intro": "如果缺少一个不该由你来做的决定，不要猜：用这样的代码块把它问出来，并在那里结束你的回答。",
   "prompt.ask.schema": "{\"question\":\"简短具体的问题\",\"options\":[\"选项 1\",\"选项 2\"],\"multiple\":false}",
   "prompt.ask.rules": "至少给两个选项；可以多选时把 `multiple` 设为 true。用户也可以自己写答案，所以不要为此额外加一个选项。用户回答后，你在同一段对话中继续。",
+  "prompt.board.header": "## 项目看板",
+  "prompt.board.intro": "以下是未完成的任务。要接手其中一个，就在 `taskId` 字段里带上它的 id 去委派：这样卡片会移动，而不是再新建一张。如果用户的请求已经在这个列表里，就不要再开一个新任务。",
+  "prompt.board.empty": "看板上没有未完成的任务。",
 };

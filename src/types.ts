@@ -353,6 +353,8 @@ export interface Delegation {
   agent: string;
   task: string;
   model?: string;
+  /** Card of the board this delegation picks up, when the planner is working off it. */
+  taskId?: string;
 }
 
 export interface ChatParticipant {

@@ -1130,4 +1130,7 @@ export const en: Dictionary = {
   "prompt.ask.intro": "If a decision that is not yours to make is missing, do not guess: ask for it with a block like this one and end your answer there.",
   "prompt.ask.schema": "{\"question\":\"the question, short and concrete\",\"options\":[\"option 1\",\"option 2\"],\"multiple\":false}",
   "prompt.ask.rules": "At least two options; `multiple` true when several can be chosen. The user can also write an answer of their own, so do not add an option for that. When they answer, you carry on in the same conversation.",
+  "prompt.board.header": "## The project's board",
+  "prompt.board.intro": "These are the open tasks. To pick one up, delegate it with its id in the `taskId` field: the card then moves instead of a second one being created. Do not open the user's request as a new task if it is already on this list.",
+  "prompt.board.empty": "The board has no open tasks.",
 };

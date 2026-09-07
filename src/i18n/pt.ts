@@ -1129,4 +1129,7 @@ export const pt: Dictionary = {
   "prompt.ask.intro": "Se faltar uma decisão que não cabe a você tomar, não adivinhe: peça-a com um bloco assim e termine sua resposta aí.",
   "prompt.ask.schema": "{\"question\":\"a pergunta, curta e concreta\",\"options\":[\"opção 1\",\"opção 2\"],\"multiple\":false}",
   "prompt.ask.rules": "Vão pelo menos duas opções; `multiple` em true se várias puderem ser escolhidas. O usuário também pode escrever uma resposta própria, então não acrescente uma opção para isso. Quando ele responder, você segue na mesma conversa.",
+  "prompt.board.header": "## Quadro do projeto",
+  "prompt.board.intro": "Estas são as tarefas abertas. Para assumir uma, delegue-a com o id dela no campo `taskId`: assim o cartão se move em vez de nascer outro igual. Não abra o pedido do usuário como tarefa nova se ele já está nesta lista.",
+  "prompt.board.empty": "O quadro não tem tarefas abertas.",
 };

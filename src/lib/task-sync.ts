@@ -22,6 +22,24 @@ function findByRun(projectId: string, runId: string): Task | undefined {
   return tasksOf(projectId).find(t => t.runId === runId);
 }
 
+/** The card a planner named, matched on the short id it was shown (see `shortTaskId`). */
+function findByShortId(projectId: string, shortId: string): Task | undefined {
+  const wanted = shortId.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (!wanted) return undefined;
+  return tasksOf(projectId).find(t => {
+    if (t.archived) return false;
+    const id = t.id.replace(/-/g, "").toLowerCase();
+    return id === wanted || id.startsWith(wanted);
+  });
+}
+
+/** Whether a delegation is just the card's own text handed down unchanged. */
+function sameWork(task: Task, text: string): boolean {
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const delegated = normalize(text);
+  return delegated === normalize(task.title) || delegated === normalize(task.detail ?? "");
+}
+
 /** True when this project has someone who reviews, so finished work waits for a look. */
 function hasReviewer(projectId: string): boolean {
   return selectProjectAgents(useAppStore.getState(), projectId).some(a => a.role === "reviewer");
@@ -59,14 +77,43 @@ export function taskForDelegation(opts: {
   rootRunId: string;
   runId?: string;
   approvalId?: string;
+  /** Short id of the card the planner picked off the board, when it was working off one. */
+  taskId?: string;
 }): void {
   guard(() => {
     const store = useAppStore.getState();
     const root = findByRun(opts.projectId, opts.rootRunId);
+    const status = opts.approvalId ? "needs-you" : "working";
+
+    // The planner named a card: that card is the work, so it moves. Opening another one is how
+    // the board ended up with the same title four times.
+    const claimed = opts.taskId ? findByShortId(opts.projectId, opts.taskId) : undefined;
+    if (claimed) {
+      store.updateTask(claimed.id, {
+        status,
+        agentId: opts.agentId,
+        runId: opts.runId,
+        approvalId: opts.approvalId,
+      });
+      return;
+    }
+
+    // No id, but the same words the user typed: the planner handed the request straight down and
+    // the root card already stands for it.
+    if (root && !opts.taskId && sameWork(root, opts.task)) {
+      store.updateTask(root.id, {
+        status,
+        agentId: opts.agentId,
+        runId: opts.runId,
+        approvalId: opts.approvalId,
+      });
+      return;
+    }
+
     store.addTask(opts.projectId, {
       title: titleFrom(opts.task),
       detail: opts.task,
-      status: opts.approvalId ? "needs-you" : "working",
+      status,
       agentId: opts.agentId,
       runId: opts.runId,
       approvalId: opts.approvalId,

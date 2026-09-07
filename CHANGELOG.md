@@ -3,6 +3,25 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Added
+
+- **The orchestrator can see the board.** Its open tasks are part of what a planner is told, each
+  with a short id, so "look at the tasks and get to work" is answered from the board instead of
+  "there are no tasks and no saved plan". To pick one up it delegates with that id in a `taskId`
+  field, and the card moves — with the agent on it and its status — rather than a second card
+  being opened for the same work.
+
+### Fixed
+
+- Tasks that seemed to duplicate themselves: every prompt opened a card and every delegation
+  opened another, so a planner that handed the request straight down left the same title twice.
+  A delegation that repeats the card it came from moves that card now.
+- The update button in a development build offered an update it could not install, and failed on
+  the plugin it loads to relaunch as soon as the dev server was gone. A dev build says what it
+  always said about the CLI and the browser: updates are for the installed app.
+
 ## 0.3.2 — 2026-09-07
 
 ### Added
@@ -21,9 +40,6 @@ Settings → About.
   this, the app did not. It covers the CLI shipped as a script and the one shipped as a binary
   (opencode's shim points at an `.exe`), which is 13 of the 15 shims on this machine — the two it
   passes over are npm's own. A shim it cannot read says what is going on instead of that sentence.
-- The update button in a development build offered an update it could not install, and failed on
-  the plugin it loads to relaunch as soon as the dev server was gone. A dev build says what it
-  always said about the CLI and the browser: updates are for the installed app.
 - An agent row with a model and a parent made the new-project dialog scroll sideways, taking the
   Browse button and the row's own buttons off the edge with it. The list can shrink now, and a
   long line is trimmed instead of setting the dialog's width.
