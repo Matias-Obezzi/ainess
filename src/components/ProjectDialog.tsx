@@ -181,7 +181,11 @@ export function ProjectDialog({
                       {t("projectDialog.noAgentsHint")}
                     </p>
                   ) : (
-                    <ul className="flex flex-col gap-2">
+                    /* `min-w-0`: the rows are a grid item, and a grid track is sized to its
+                       min-content — which for a nowrap line is the whole line, however long the
+                       model id and the parent make it. Without this the dialog grew a horizontal
+                       scrollbar and pushed its own buttons off the edge. */
+                    <ul className="flex min-w-0 flex-col gap-2">
                       {agents.map(a => {
                         const parent = agents.find(p => p.id === a.parentId);
                         return (

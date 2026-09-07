@@ -14,6 +14,9 @@ Settings → About.
 
 ### Fixed
 
+- An agent row with a model and a parent made the new-project dialog scroll sideways, taking the
+  Browse button and the row's own buttons off the edge with it. The list can shrink now, and a
+  long line is trimmed instead of setting the dialog's width.
 - The two notices above the composer — the project with no team, and the agent whose CLI is not
   installed — came out one word per line. The box they use is a two-column grid whose first column
   is zero wide, and a bare string was landing in it.
