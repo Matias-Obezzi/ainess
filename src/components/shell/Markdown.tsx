@@ -130,6 +130,9 @@ const components: Components = {
       // Even when the JSON is broken, raw JSON is never what the user wants to read.
       return <InvalidDelegation text={text} />;
     }
+    // An `ask` block is drawn as the question itself, right under this answer (`InlineQuestion`),
+    // so printing its JSON here says the same thing twice — the second time unreadably.
+    if (lang === "ask") return null;
     return (
       <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
         <code>{text}</code>

@@ -47,14 +47,19 @@ export function InlineQuestion({ questionId }: { questionId: string }) {
         <p className="min-w-0 flex-1 text-xs font-medium">{question.question}</p>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex min-w-0 flex-col items-stretch gap-1.5 sm:flex-row sm:flex-wrap sm:items-start">
         {question.options.map(option => (
           <Button
             key={option}
             type="button"
             size="sm"
             variant={chosen.includes(option) ? "default" : "outline"}
-            className={cn("h-7 text-xs", question.multiple && "min-w-16")}
+            // An option can be a whole sentence ("Actualizar la documentación al estado real"), and
+            // a button that does not wrap took it off the side of the phone.
+            className={cn(
+              "h-auto min-h-7 max-w-full whitespace-normal break-words py-1 text-left text-xs leading-snug",
+              question.multiple && "min-w-16",
+            )}
             onClick={() => pick(option)}
           >
             {option}

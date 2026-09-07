@@ -34,6 +34,15 @@ describe("Markdown", () => {
     expect(out).not.toContain("<pre");
   });
 
+  // The question it describes is drawn under the answer; printing the JSON says it twice, and the
+  // second one runs off the side of a phone.
+  it("says nothing for an ask block", () => {
+    const out = html('Listo.\n\n```ask\n{\"question\":\"¿Por dónde arrancamos?\",\"options\":[\"Una\",\"Otra\"]}\n```');
+    expect(out).toContain("Listo.");
+    expect(out).not.toContain("question");
+    expect(out).not.toContain("<pre");
+  });
+
   it("renders nothing for empty text", () => {
     expect(html("   ")).toBe("");
   });

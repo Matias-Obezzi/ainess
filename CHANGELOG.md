@@ -45,6 +45,9 @@ Settings → About.
 - A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
   only that it took too long. It now says what was holding it: something the agent left running in
   the background, and what to ask it to do about that.
+- An option of a question that was a whole sentence ran off the side of the screen. The options
+  wrap now, and stack on a narrow one. The `ask` block that describes the question was also being
+  printed above it as raw JSON: the question is drawn from it, so it is no longer written out.
 - On the phone, the board's columns run past the edge of the screen and nothing said so. The strip
   fades on whichever side still has columns on it.
 - The communication panel opened at the oldest line of the project instead of at what just
