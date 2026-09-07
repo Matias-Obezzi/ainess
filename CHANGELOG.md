@@ -32,6 +32,10 @@ Configuración → Acerca de.
 
 - Antigravity's CLI is found where its own installer puts it (`%LOCALAPPDATA%\agy\bin`), not only
   where the app leaves it.
+- Deleting a project emptied its history and its board but left the files there, one pair per
+  project ever deleted. They are removed now.
+- An answer to a question whose agent no longer exists says so, instead of leaving the thread
+  looking like something is working on it.
 
 ## 0.2.0 — 2026-09-07
 
