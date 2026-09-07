@@ -15,6 +15,9 @@ import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { translateNow } from "@/i18n/useT";
+// sections.ts only has a type-import back to store, no runtime cycle.
+import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
+import * as notificationStore from "@/lib/notification-store";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -414,7 +417,8 @@ const defaultUiPrefs: UiPrefs = {
 
 const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
 
-const VALID_SETTINGS_SECTIONS: SettingsSection[] = ["general", "agents", "profile", "presets", "skills", "mcp", "hooks", "context", "remote", "diagnostics", "about"];
+// Derived from sections.ts so adding a new section only requires one edit.
+const VALID_SETTINGS_SECTIONS: SettingsSection[] = ALL_SETTINGS_SECTION_IDS;
 
 /** Old builds stored "settings" as a screen and "resources" as a settings tab; both were removed. */
 function sanitizeSettingsSection(value: unknown): SettingsSection {
@@ -1772,6 +1776,7 @@ async function runInit(): Promise<void> {
     // Restore runs and feed: every project when there are few, otherwise only the last one.
     history.attachHistoryPersistence();
     taskStore.attachTaskPersistence();
+    notificationStore.attachNotificationPersistence();
     const toLoad = config.projects.length <= 5
       ? config.projects.map(p => p.id)
       : (config.lastProjectId ? [config.lastProjectId] : []);
@@ -1779,6 +1784,9 @@ async function runInit(): Promise<void> {
     // With the runs in memory, the boards can be put back in step with them.
     for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
+    // Load persisted notifications before marking the store as ready, so the bell
+    // shows its badge without a flash of empty state on startup.
+    await notificationStore.loadNotifications();
 
     set({ loaded: true });
 

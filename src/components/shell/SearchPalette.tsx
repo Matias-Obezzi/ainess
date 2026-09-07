@@ -1,25 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, FolderOpen, Keyboard, ListTodo, MessageCircle, Plus, Settings2, Users } from "lucide-react";
 import { useAppStore, selectAllAgents, selectProjectOfAgent, selectTasks } from "@/store";
-import type { SettingsSection } from "@/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/useT";
-
-/** Mirrors the sections of SettingsDialog (that file is owned by another change, so it is not imported). */
-const SETTINGS_SECTIONS: Array<{ id: SettingsSection; labelKey: string }> = [
-  { id: "general", labelKey: "settings.section.general" },
-  { id: "agents", labelKey: "settings.section.agents" },
-  { id: "profile", labelKey: "settings.section.profile" },
-  { id: "presets", labelKey: "settings.section.presets" },
-  { id: "skills", labelKey: "settings.section.skills" },
-  { id: "mcp", labelKey: "settings.section.mcp" },
-  { id: "hooks", labelKey: "settings.section.hooks" },
-  { id: "context", labelKey: "settings.section.context" },
-  { id: "remote", labelKey: "settings.section.remote" },
-  { id: "diagnostics", labelKey: "settings.section.diagnostics" },
-  { id: "about", labelKey: "settings.section.about" },
-];
+// Single source of truth for section metadata — no component imports, bundle-safe.
+import { SETTINGS_SECTIONS_META } from "@/components/settings/sections";
 
 /** Lowercases and strips accents so "orquestacion" matches "Orquestación". */
 function normalize(text: string): string {
@@ -142,7 +128,7 @@ export function SearchPalette() {
     }
 
     // "conf" should also find every settings section, not only its own label.
-    for (const s of SETTINGS_SECTIONS.filter(s => matches(`${t("settings.title")} ${t(s.labelKey)}`))) {
+    for (const s of SETTINGS_SECTIONS_META.filter(s => matches(`${t("settings.title")} ${t(s.labelKey)}`))) {
       out.push({
         key: `section:${s.id}`,
         group: "settings",

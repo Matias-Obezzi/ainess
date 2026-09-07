@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { TASK_STATUSES } from "@/lib/tasks";
-import { taskStatusMeta } from "./task-meta";
-import type { TaskStatus } from "@/types";
+import { TASK_STATUSES, TASK_PRIORITIES, storedPriority } from "@/lib/tasks";
+import { taskStatusMeta, taskPriorityLabelKey } from "./task-meta";
+import type { TaskPriority, TaskStatus } from "@/types";
 import { useT } from "@/i18n/useT";
 
 const UNASSIGNED = "__none__";
@@ -35,6 +35,7 @@ export function NewTaskDialog({
   const [detail, setDetail] = useState("");
   const [agentId, setAgentId] = useState(UNASSIGNED);
   const [column, setColumn] = useState<TaskStatus>(status ?? "backlog");
+  const [priority, setPriority] = useState<TaskPriority>("normal");
 
   useEffect(() => {
     if (!open) return;
@@ -42,6 +43,7 @@ export function NewTaskDialog({
     setDetail("");
     setAgentId(UNASSIGNED);
     setColumn(status ?? "backlog");
+    setPriority("normal");
   }, [open, status]);
 
   const create = () => {
@@ -52,6 +54,7 @@ export function NewTaskDialog({
       detail: detail.trim() || undefined,
       status: column,
       agentId: agentId === UNASSIGNED ? undefined : agentId,
+      priority: storedPriority(priority),
     });
     onOpenChange(false);
   };
@@ -107,21 +110,37 @@ export function NewTaskDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>{t("chatDialog.agent")}</Label>
-              <Select value={agentId} onValueChange={setAgentId}>
+              <Label>{t("tasks.priority")}</Label>
+              <Select value={priority} onValueChange={value => setPriority(value as TaskPriority)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UNASSIGNED}>{t("tasks.unassigned")}</SelectItem>
-                  {agents.map(a => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
+                  {TASK_PRIORITIES.map(p => (
+                    <SelectItem key={p} value={p}>
+                      {t(taskPriorityLabelKey[p])}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("chatDialog.agent")}</Label>
+            <Select value={agentId} onValueChange={setAgentId}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED}>{t("tasks.unassigned")}</SelectItem>
+                {agents.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
