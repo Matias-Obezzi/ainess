@@ -225,12 +225,14 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 shrink-0 gap-1.5 px-2 text-xs font-normal"
+          className="h-7 min-w-0 gap-1.5 px-2 text-xs font-normal"
           title={t("git.repoStatus")}
         >
           <GitBranch className="h-3.5 w-3.5" />
-          <span className="max-w-[140px] truncate">{status.branch ?? t("git.noBranch")}</span>
-          <Signals repo={repo} />
+          {/* In a narrow bar (the dock takes half of it) only the icon is left; the popover has
+              all of this anyway. */}
+          <span className="hidden max-w-[140px] truncate @2xl:inline">{status.branch ?? t("git.noBranch")}</span>
+          <span className="hidden @3xl:contents"><Signals repo={repo} /></span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-96 p-3">

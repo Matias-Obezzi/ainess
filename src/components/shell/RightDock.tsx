@@ -45,8 +45,10 @@ export function RightDock() {
   const both = commPanelOpen && termPanelOpen;
 
   return (
-    // Under ~1100px it floats over the thread instead of squeezing it.
-    <aside className="w-[380px] shrink-0 border-l border-border bg-card flex flex-col max-[1100px]:absolute max-[1100px]:right-0 max-[1100px]:top-0 max-[1100px]:bottom-0 max-[1100px]:z-20 max-[1100px]:shadow-xl">
+    // Under ~1100px it floats over the thread instead of squeezing it — but starting below the
+    // project bar (`top-12`), never over it: that bar holds the button that closes this dock, and
+    // its tabs were ending up behind the panel.
+    <aside className="w-[380px] shrink-0 border-l border-border bg-card flex flex-col max-[1100px]:absolute max-[1100px]:right-0 max-[1100px]:top-12 max-[1100px]:bottom-0 max-[1100px]:z-20 max-[1100px]:shadow-xl">
       {both ? (
         <div ref={columnRef} className="flex h-full min-h-0 flex-col">
           <div className="min-h-0 overflow-hidden" style={{ flex: `${dockSplit} 1 0%` }}>

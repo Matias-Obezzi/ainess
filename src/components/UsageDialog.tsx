@@ -65,12 +65,12 @@ export function UsageButton({ projectId }: { projectId: string }) {
         type="button"
         variant="ghost"
         size="sm"
-        className="h-7 shrink-0 gap-1.5 px-2 text-xs font-normal"
+        className="h-7 min-w-0 gap-1.5 px-2 text-xs font-normal"
         title={t("usage.open")}
         onClick={() => setOpen(true)}
       >
         <Coins className="h-3.5 w-3.5" />
-        {t("usage.title")}
+        <span className="hidden @2xl:inline">{t("usage.title")}</span>
       </Button>
       <UsageDialog projectId={projectId} open={open} onOpenChange={setOpen} />
     </>

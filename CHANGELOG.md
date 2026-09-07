@@ -18,6 +18,11 @@ Settings → About.
   opens below it.
 - The actions of the agent panel in the hierarchy ran past its edge; they wrap now, and a long
   label is trimmed instead of pushing the button out.
+- Toasts came out in the light palette of the library that draws them: a white card thrown at a
+  dark window every time something finished. They are mixed from the theme's own colours now.
+- In a narrow window the buttons of the project bar ended up under the right dock, out of reach.
+  The bar reads its own width: the labels drop to their icons, the branch and the spend give way
+  before the tabs do, and the floating dock starts below the bar instead of over it.
 
 ## 0.3.0 — 2026-09-07
 

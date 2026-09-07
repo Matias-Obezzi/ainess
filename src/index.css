@@ -55,6 +55,28 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
+
+    /* Rich toasts. The library falls back to light pastels (#ecfdf3 and friends), which in a dark
+       window is a flash of white every time something finishes. Each one is mixed from the
+       surface and the text colour of the theme in use, so the same four rules work in both:
+       against a dark popover the tint stays dark and the text comes out light, and the other way
+       round. Only the hue is fixed.
+
+       The mix is in oklab, not oklch: the surface is grey, its hue is undefined, and interpolating
+       polar coordinates against it walks the hue round the wheel — the green one came out brown
+       and the blue one purple. */
+    --toast-success-bg: color-mix(in oklab, var(--popover) 86%, oklch(0.72 0.19 149));
+    --toast-success-color: color-mix(in oklab, var(--popover-foreground) 40%, oklch(0.72 0.19 149));
+    --toast-success-border: color-mix(in oklab, var(--popover) 62%, oklch(0.72 0.19 149));
+    --toast-error-bg: color-mix(in oklab, var(--popover) 86%, oklch(0.64 0.21 25));
+    --toast-error-color: color-mix(in oklab, var(--popover-foreground) 40%, oklch(0.64 0.21 25));
+    --toast-error-border: color-mix(in oklab, var(--popover) 62%, oklch(0.64 0.21 25));
+    --toast-info-bg: color-mix(in oklab, var(--popover) 86%, oklch(0.62 0.19 250));
+    --toast-info-color: color-mix(in oklab, var(--popover-foreground) 40%, oklch(0.62 0.19 250));
+    --toast-info-border: color-mix(in oklab, var(--popover) 62%, oklch(0.62 0.19 250));
+    --toast-warning-bg: color-mix(in oklab, var(--popover) 86%, oklch(0.77 0.16 75));
+    --toast-warning-color: color-mix(in oklab, var(--popover-foreground) 40%, oklch(0.77 0.16 75));
+    --toast-warning-border: color-mix(in oklab, var(--popover) 62%, oklch(0.77 0.16 75));
 }
 
 .dark {
