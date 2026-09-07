@@ -9,7 +9,7 @@ import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
@@ -181,13 +181,17 @@ export function Composer() {
       <div className="max-w-3xl mx-auto flex flex-col gap-2">
         {noTeam && (
           <Alert className="text-xs py-2">
-            {t("composer.noTeamHint")}
+            {/* `Alert` is a two-column grid whose first column is zero wide: a bare string lands
+                in it and comes out one word per line. The text goes in the description. */}
+            <AlertDescription className="text-xs">{t("composer.noTeamHint")}</AlertDescription>
           </Alert>
         )}
 
         {!chatMode && targetAgent && binaryInfo === null && (
           <Alert variant="destructive" className="text-xs py-2">
-            {t("composer.missingCli", { provider: PROVIDERS[targetAgent.provider]?.label ?? targetAgent.provider })}
+            <AlertDescription className="text-xs">
+              {t("composer.missingCli", { provider: PROVIDERS[targetAgent.provider]?.label ?? targetAgent.provider })}
+            </AlertDescription>
           </Alert>
         )}
 

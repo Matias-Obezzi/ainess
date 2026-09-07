@@ -3,6 +3,14 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Fixed
+
+- The two notices above the composer — the project with no team, and the agent whose CLI is not
+  installed — came out one word per line. The box they use is a two-column grid whose first column
+  is zero wide, and a bare string was landing in it.
+
 ## 0.3.1 — 2026-09-07
 
 ### Fixed
