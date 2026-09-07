@@ -607,7 +607,7 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     runId: question.runId,
   });
 
-  startRun({
+  const resumed = startRun({
     agentId: question.agentId,
     projectId: question.projectId,
     prompt: text,
@@ -616,6 +616,18 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     resume: true,
     rootRunId: question.rootRunId,
   });
+
+  // The agent (or the project) is gone: the answer has nowhere to go, and saying so beats leaving
+  // the thread looking like something is working on it.
+  if (!resumed) {
+    addMessage({
+      projectId: question.projectId,
+      fromAgentId: "system",
+      kind: "error",
+      text: translateNow("questions.agentGone"),
+      runId: question.runId,
+    });
+  }
 }
 
 function maybeContinueParent(parentRunId: string) {

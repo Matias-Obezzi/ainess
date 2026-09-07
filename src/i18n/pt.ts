@@ -692,6 +692,7 @@ export const pt: Dictionary = {
   "questions.otherPlaceholder": "Escreva sua resposta…",
   "questions.send": "Responder",
   "questions.answered": "Você respondeu: {answer}",
+  "questions.agentGone": "O agente que perguntou não existe mais: sua resposta não chegou a lugar nenhum.",
   "approvals.reject": "Rejeitar",
   "approvals.copyTask": "Copiar a tarefa",
   "approvals.taskCopied": "Tarefa copiada",

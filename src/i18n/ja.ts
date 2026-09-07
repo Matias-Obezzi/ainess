@@ -693,6 +693,7 @@ export const ja: Dictionary = {
   "questions.otherPlaceholder": "回答を書いてください…",
   "questions.send": "回答する",
   "questions.answered": "回答しました：{answer}",
+  "questions.agentGone": "質問したエージェントはもういません。回答の届け先がありませんでした。",
   "approvals.reject": "却下",
   "approvals.copyTask": "タスクをコピー",
   "approvals.taskCopied": "タスクをコピーしました",

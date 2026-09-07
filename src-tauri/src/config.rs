@@ -50,6 +50,25 @@ pub fn write_config_file(app: tauri::AppHandle, relative_path: String, content: 
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Removes one file of the config dir. Missing is not an error: the point is that it is gone.
+///
+/// Deleting a project used to leave its history and its board behind as empty files, one pair per
+/// project ever deleted, which the diagnostics then counted as data.
+#[tauri::command]
+pub fn delete_config_file(app: tauri::AppHandle, relative_path: String) -> Result<(), String> {
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let path = config_dir.join(&relative_path);
+    // Nothing outside the config dir, whatever the caller passed.
+    if !path.starts_with(&config_dir) {
+        return Err("Ruta fuera del directorio de configuración".into());
+    }
+    match fs::remove_file(&path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[tauri::command]
 pub fn read_config_file(app: tauri::AppHandle, relative_path: String) -> Result<Option<String>, String> {
     if relative_path.contains("..") {

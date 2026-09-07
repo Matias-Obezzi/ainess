@@ -364,7 +364,7 @@ export async function stopChat(chatId: string): Promise<void> {
  */
 export function forgetChat(chatId: string): void {
   activeTurns.delete(chatId);
-  void getTransport().writeTextFile(chatFilePath(chatId), "{}").catch(() => {});
+  void getTransport().deleteFile(chatFilePath(chatId)).catch(() => {});
 }
 
 // ---- Helper to check if a chat has an active turn ----

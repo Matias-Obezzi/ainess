@@ -72,12 +72,14 @@ const terminal = (id: string, projectId: string | null): TerminalTab => ({
 async function bootAndSeed() {
   vi.resetModules();
   const written: string[] = [];
+  const deleted: string[] = [];
   const { setTransport } = await import("@/lib/transport");
   setTransport({
     ...nullTransport,
     loadConfig: async () => structuredClone(baseConfig()) as unknown as AppConfig,
     saveConfig: async () => {},
     writeTextFile: async (path: string) => { written.push(path); return path; },
+    deleteFile: async (path: string) => { deleted.push(path); },
   });
   const store = await import("@/store");
   await store.useAppStore.getState().init();
@@ -119,7 +121,7 @@ async function bootAndSeed() {
     navIndex: 2,
   }));
 
-  return { store, written };
+  return { store, written, deleted };
 }
 
 beforeEach(() => {
@@ -159,7 +161,7 @@ describe("removeProject", () => {
   });
 
   it("takes the project's chats, their messages and their sessions", async () => {
-    const { store, written } = await bootAndSeed();
+    const { store, deleted } = await bootAndSeed();
     store.useAppStore.getState().removeProject("p1");
     const s = store.useAppStore.getState();
     expect(s.config.chats.map(c => c.id)).toEqual(["c2"]);
@@ -168,8 +170,11 @@ describe("removeProject", () => {
     }
     expect(s.remoteActiveChats).toEqual(["c2"]);
     expect(s.currentChatId).toBeNull();
-    // The conversation's file is emptied too, or it would come back on the next read.
-    await vi.waitFor(() => expect(written).toContain("chats/c1.json"));
+    // Its file goes with it: emptied, it would sit in the folder for as long as the app lives.
+    await vi.waitFor(() => expect(deleted).toContain("chats/c1.json"));
+    // And so do the project's own two.
+    expect(deleted).toContain("history/p1.json");
+    expect(deleted).toContain("tasks/p1.json");
   });
 
   it("drops a hook that only fired for that project and keeps the global one", async () => {

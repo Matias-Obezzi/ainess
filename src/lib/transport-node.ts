@@ -516,6 +516,11 @@ export const nodeTransport: Transport = {
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},
+  deleteFile: async (relativePath: string) => {
+    if (relativePath.includes("..")) throw new Error("Invalid path");
+    // Missing is not an error: the point is that it is gone.
+    fs.rmSync(path.join(path.dirname(getConfigPath()), relativePath), { force: true });
+  },
   repoWatchStart: async () => {},
   repoWatchStop: async () => {},
   onRepoChanged: async () => () => {},

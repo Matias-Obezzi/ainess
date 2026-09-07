@@ -380,5 +380,7 @@ export function forgetHistory(projectId: string): void {
   dirtyProjects.delete(projectId);
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }
-  void getTransport().writeTextFile(filePath(projectId), "{}").catch(() => {});
+  // Gone, not emptied: an empty file per project ever deleted piles up in the folder and the
+  // diagnostics count it as data.
+  void getTransport().deleteFile(filePath(projectId)).catch(() => {});
 }

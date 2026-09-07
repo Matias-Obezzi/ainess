@@ -164,5 +164,5 @@ export function forgetTasks(projectId: string): void {
   dirtyProjects.delete(projectId);
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }
-  void getTransport().writeTextFile(filePath(projectId), "{}").catch(() => {});
+  void getTransport().deleteFile(filePath(projectId)).catch(() => {});
 }

@@ -68,6 +68,9 @@ export interface Transport {
    * src-tauri/src/repo_watch.rs). Only the desktop app can: the CLI and the phone answer nothing
    * and their callers fall back to asking every so often.
    */
+  /** Removes a file of the config dir. Missing is not an error. */
+  deleteFile(relativePath: string): Promise<void>;
+
   repoWatchStart(projectId: string, path: string): Promise<void>;
   repoWatchStop(projectId: string): Promise<void>;
   onRepoChanged(h: (e: { projectId: string }) => void): Promise<() => void>;

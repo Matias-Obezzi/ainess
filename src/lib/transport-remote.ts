@@ -51,6 +51,7 @@ export const remoteTransport: Transport = {
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},
+  deleteFile: async () => {},
   repoWatchStart: async () => {},
   repoWatchStop: async () => {},
   onRepoChanged: async () => () => {},
