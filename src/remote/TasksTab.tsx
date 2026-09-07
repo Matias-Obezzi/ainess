@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTouchDrag } from "./useTouchDrag";
+import { dropDecision } from "./task-drop";
 import { useAppStore, selectTasks, selectAgent } from "@/store";
 import { TASK_STATUSES, blockedBy } from "@/lib/tasks";
 import { taskStatusMeta } from "@/components/tasks/task-meta";
@@ -39,6 +41,22 @@ export function TasksTab({ projectId }: { projectId: string }) {
 
   const column = byStatus[status] ?? [];
 
+  /**
+   * Carrying a card: onto a chip it changes column, onto another card it takes that card's place.
+   * The desktop board has had this since it existed, with the HTML5 events a phone does not have.
+   */
+  const moveTask = useAppStore(state => state.moveTask);
+  const { drag, start: startDrag } = useTouchDrag<Task>(
+    useCallback((task: Task, over: string | null) => {
+      const decision = dropDecision(task, over, byStatus);
+      if (!decision) return;
+      moveTask(task.id, decision.status, decision.index);
+      // Follow the card: a board that moves something out of view without saying so is worse than
+      // one that cannot move it at all.
+      setStatus(decision.status);
+    }, [byStatus, moveTask]),
+  );
+
   // Whether there is anything past either edge of the column strip.
   const stripRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
@@ -57,7 +75,6 @@ export function TasksTab({ projectId }: { projectId: string }) {
     return () => observer.disconnect();
   }, [measureEdges]);
 
-  /** The card is made on the PC and comes back in the next snapshot; nothing is faked here. */
   const create = () => {
     const title = draft.trim();
     if (!title) return;
@@ -88,9 +105,12 @@ export function TasksTab({ projectId }: { projectId: string }) {
               key={s}
               type="button"
               onClick={() => setStatus(s)}
+              data-drop={`status:${s}`}
               className={cn(
                 "shrink-0 rounded-full border px-3 py-1 text-xs transition-colors",
                 s === status ? "border-transparent bg-accent text-accent-foreground" : "border-border text-muted-foreground",
+                // What the card in the air would land on.
+                drag?.over === `status:${s}` && "border-primary ring-2 ring-primary/40",
               )}
             >
               {t(taskStatusMeta[s].labelKey)} {count > 0 && <span className="tabular-nums opacity-70">{count}</span>}
@@ -122,16 +142,46 @@ export function TasksTab({ projectId }: { projectId: string }) {
         ) : (
           <div className="flex flex-col gap-2">
             {column.map(task => (
-              <TaskRow key={task.id} task={task} tasks={live} onOpen={() => setOpenId(task.id)} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                tasks={live}
+                onOpen={() => setOpenId(task.id)}
+                onHold={event => startDrag(event, task)}
+                carried={drag?.item.id === task.id}
+                landing={drag !== null && drag.item.id !== task.id && drag.over === `task:${task.id}`}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* The card in the air. Fixed to the finger and out of the way of hit testing, so what is
+          under it is the list, not itself. */}
+      {drag && (
+        <div
+          className="pointer-events-none fixed z-50 w-[70%] max-w-xs -translate-x-1/2 -translate-y-[150%] rounded-lg border border-primary/50 bg-card p-3 text-sm shadow-lg"
+          // Above the finger, not under it: what it is about to land on has to stay visible, and
+          // the finger already covers that spot.
+          style={{ left: drag.x, top: drag.y }}
+        >
+          {drag.item.title}
+        </div>
+      )}
     </div>
   );
 }
 
-function TaskRow({ task, tasks, onOpen }: { task: Task; tasks: Task[]; onOpen(): void }) {
+function TaskRow({ task, tasks, onOpen, onHold, carried, landing }: {
+  task: Task;
+  tasks: Task[];
+  onOpen(): void;
+  onHold(event: React.PointerEvent): void;
+  /** This is the card being carried: it stays in place, faded, so the list does not jump. */
+  carried: boolean;
+  /** The card being carried would land here. */
+  landing: boolean;
+}) {
   const t = useT();
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
@@ -141,7 +191,15 @@ function TaskRow({ task, tasks, onOpen }: { task: Task; tasks: Task[]; onOpen():
     <button
       type="button"
       onClick={onOpen}
-      className="w-full rounded-lg border border-border bg-card p-3 text-left active:bg-accent/40"
+      onPointerDown={onHold}
+      data-drop={`task:${task.id}`}
+      // While a card is in the air the browser must not take the gesture for a scroll.
+      style={carried ? { touchAction: "none" } : undefined}
+      className={cn(
+        "w-full rounded-lg border border-border bg-card p-3 text-left active:bg-accent/40",
+        carried && "opacity-40",
+        landing && "border-primary ring-2 ring-primary/40",
+      )}
     >
       <div className="flex items-start gap-2">
         {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={18} />}

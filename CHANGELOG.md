@@ -13,6 +13,8 @@ Settings → About.
   card moves when a delegation names it, not when somebody edits the markdown — and the rest of
   the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
   configuration folder.
+- **Dragging a card on the phone.** Hold one, carry it to another column's chip to move it, or
+  onto another card to take that card's place. The board follows it to the column it lands in.
 - **A browser for the agents.** The Playwright MCP server was already one click away in
   Configuración → MCP (⋯ → suggested); what was missing is that the servers reached more than one
   CLI. GitHub Copilot now gets them on every run too, through the file Claude Code already got
@@ -52,6 +54,10 @@ Settings → About.
 - A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
   only that it took too long. It now says what was holding it: something the agent left running in
   the background, and what to ask it to do about that.
+- **Drag and drop on the board did nothing in the app.** The webview keeps the drag events for
+  itself on Windows unless it is told not to — "disabling it is required to use HTML5 drag and
+  drop on the frontend", says Tauri's own config schema — so a card could be picked up and never
+  dropped. Nothing here wants files dropped from Explorer, so it is off.
 - An option of a question that was a whole sentence ran off the side of the screen. The options
   wrap now, and stack on a narrow one. The `ask` block that describes the question was also being
   printed above it as raw JSON: the question is drawn from it, so it is no longer written out.
