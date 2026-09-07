@@ -157,11 +157,13 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
         {agent && <ProviderLogo provider={agent.provider} size={14} />}
         <span className="font-medium shrink-0">{name}</span>
         <span className="text-muted-foreground truncate" title={msg.text}>{truncate(msg.text, 90)}</span>
-        {pending && <InlineApproval approvalId={pending.id} />}
         {childRun && childRun.status !== "running" && (
           <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{t(runStatusLabelKey[childRun.status])}</span>
         )}
       </div>
+      {/* Under the line it is about, across the whole card: beside it, the question and the task it
+          asks about were squeezed into half a phone screen each. */}
+      {pending && <InlineApproval approvalId={pending.id} />}
       {childRun ? (
         <RunActivity runId={childRun.id} compact />
       ) : (

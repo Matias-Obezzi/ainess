@@ -80,30 +80,42 @@ fn spawn_watcher(root: &Path, on_change: impl Fn() + Send + 'static) -> notify::
     })?;
     watcher.watch(root, RecursiveMode::Recursive)?;
 
-    thread::spawn(move || {
-        while let Ok(first) = rx.recv() {
-            let mut pending = interesting(&first);
-            let deadline = Instant::now() + MAX_WAIT;
-            // Drain what follows: a checkout arrives as thousands of events and is one change.
-            loop {
-                match rx.recv_timeout(QUIET) {
-                    Ok(event) => {
-                        pending |= interesting(&event);
-                        if Instant::now() >= deadline {
-                            break;
-                        }
-                    }
-                    Err(mpsc::RecvTimeoutError::Timeout) => break,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
-                }
-            }
-            if pending {
-                on_change();
-            }
-        }
-    });
+    thread::spawn(move || coalesce(&rx, QUIET, MAX_WAIT, on_change));
 
     Ok(watcher)
+}
+
+/// Turns a stream of file events into one call per quiet period, and returns when the watcher on
+/// the other end is dropped. Split out of `spawn_watcher` so it can be tested on a plain channel:
+/// through the filesystem the same test depends on how fast the machine delivers the events, and
+/// a loaded CI runner would deliver a burst in two halves and fail on nothing.
+fn coalesce(rx: &mpsc::Receiver<Event>, quiet: Duration, max_wait: Duration, on_change: impl Fn()) {
+    while let Ok(first) = rx.recv() {
+        let mut pending = interesting(&first);
+        let deadline = Instant::now() + max_wait;
+        // Drain what follows: a checkout arrives as thousands of events and is one change.
+        loop {
+            match rx.recv_timeout(quiet) {
+                Ok(event) => {
+                    pending |= interesting(&event);
+                    if Instant::now() >= deadline {
+                        break;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => break,
+                // The watcher is gone: what was already read still counts, and then this ends.
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    if pending {
+                        on_change();
+                    }
+                    return;
+                }
+            }
+        }
+        if pending {
+            on_change();
+        }
+    }
 }
 
 /// Starts watching one project's folder. Watching the same project again replaces the old watcher,
@@ -158,9 +170,11 @@ pub fn shutdown(app: &AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_noise, spawn_watcher};
+    use super::{coalesce, is_noise, spawn_watcher};
+    use notify::event::{Event, EventKind};
     use std::fs;
     use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc;
     use std::time::Duration;
 
@@ -203,9 +217,51 @@ mod tests {
         dir
     }
 
+    fn event(path: &str) -> Event {
+        Event { kind: EventKind::Any, paths: vec![PathBuf::from(path)], attrs: Default::default() }
+    }
+
+    /// Counts the announcements `coalesce` makes for a batch of events that is already queued.
+    fn announcements(events: Vec<Event>) -> usize {
+        let (tx, rx) = mpsc::channel::<Event>();
+        for event in events {
+            tx.send(event).unwrap();
+        }
+        // Gone before the loop starts: what is queued is the whole story.
+        drop(tx);
+        let count = AtomicUsize::new(0);
+        coalesce(&rx, Duration::from_millis(50), Duration::from_secs(3), || {
+            count.fetch_add(1, Ordering::SeqCst);
+        });
+        count.load(Ordering::SeqCst)
+    }
+
     /// A save is one change, and so is a hundred of them in a row.
     #[test]
     fn a_burst_of_writes_is_announced_once() {
+        let burst = (0..100).map(|i| event(&format!("C:/dev/app/src/file-{i}.ts"))).collect();
+        assert_eq!(announcements(burst), 1);
+    }
+
+    /// Noise in the middle of a burst does not turn it into two.
+    #[test]
+    fn noise_mixed_into_a_burst_changes_nothing() {
+        let mut events = vec![event("C:/dev/app/node_modules/react/index.js")];
+        events.push(event("C:/dev/app/src/main.ts"));
+        events.extend((0..50).map(|i| event(&format!("C:/dev/app/node_modules/dep-{i}/index.js"))));
+        assert_eq!(announcements(events), 1);
+    }
+
+    #[test]
+    fn a_burst_of_pure_noise_says_nothing() {
+        let burst = (0..50).map(|i| event(&format!("C:/dev/app/node_modules/dep-{i}/index.js"))).collect();
+        assert_eq!(announcements(burst), 0);
+    }
+
+    /// End to end, over the real filesystem: a write does reach the app. How many events the
+    /// kernel splits it into is the machine's business, so only the first one is asserted here.
+    #[test]
+    fn a_write_wakes_the_app() {
         let dir = temp_dir("burst");
         let (tx, rx) = mpsc::channel::<()>();
         let _watcher = spawn_watcher(&dir, move || { let _ = tx.send(()); }).unwrap();
@@ -214,9 +270,7 @@ mod tests {
             fs::write(dir.join(format!("file-{i}.txt")), "hola").unwrap();
         }
 
-        rx.recv_timeout(Duration::from_secs(5)).expect("no llegó el aviso");
-        // Nothing else follows: the whole burst was one announcement.
-        assert!(rx.recv_timeout(Duration::from_millis(1200)).is_err(), "avisó de más");
+        rx.recv_timeout(Duration::from_secs(10)).expect("no llegó el aviso");
         let _ = fs::remove_dir_all(&dir);
     }
 

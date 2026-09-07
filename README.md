@@ -1,14 +1,85 @@
+<div align="center">
+
 # ainess
 
-A desktop app that runs the AI coding CLIs already installed on your machine — Claude Code,
-Antigravity, GitHub Copilot CLI and others — as a team. You give one agent the task, it plans and
-delegates to the others, and you watch the whole thing happen in one place.
+**Your AI coding CLIs, working as a team.**
 
-Built with Tauri 2, React 19 and TypeScript. Windows is the platform it is developed and tested on.
-The interface is in Spanish; the code and this document are in English.
+ainess is a desktop app that runs the agent CLIs already installed on your machine — Claude Code,
+Antigravity, GitHub Copilot CLI, Gemini, opencode and others — as one team. You give the task to
+one agent; it plans, splits the work, delegates to the rest, and you watch the whole thing happen
+in one place. From your phone too.
 
-> `PLAN.md` is the source of truth for the architecture, the type contracts and the protocol between
-> the app and each CLI. When something here and there disagree, `PLAN.md` wins.
+[Download](https://github.com/Matias-Obezzi/ainess/releases/latest) ·
+[Changelog](CHANGELOG.md) ·
+[Report a bug](https://github.com/Matias-Obezzi/ainess/issues/new/choose)
+
+![The conversation with the orchestrator](docs/screenshots/chat.png)
+
+</div>
+
+> The interface is in Spanish (and six other languages). The code, this document and the commits
+> are in English. Windows is the platform it is developed and tested on.
+>
+> `PLAN.md` is the source of truth for the architecture, the type contracts and the protocol
+> between the app and each CLI. When it and this document disagree, `PLAN.md` wins.
+
+## Contents
+
+- [Getting started](#getting-started) · [How it works](#how-it-works) · [Inside the app](#inside-the-app)
+- [From your phone](#from-your-phone) · [Shared resources](#shared-resources) · [Hooks](#hooks) · [CLI](#cli)
+- [Languages](#languages) · [Where your data lives](#where-your-data-lives) · [Releases](#releases) · [Layout](#layout)
+
+## Getting started
+
+### Install it
+
+Grab the installer from [the latest release](https://github.com/Matias-Obezzi/ainess/releases/latest)
+(`ainess_<version>_x64-setup.exe`) and run it. From then on the app updates itself: it checks on
+startup and offers the new version from Configuración → Acerca de.
+
+Then bring your own CLIs. ainess runs what you already have — it never ships or bundles a provider —
+and the app detects what is installed, says what is missing and can install most of them for you
+from Configuración → Agentes:
+
+| Provider | How it gets there |
+| --- | --- |
+| Claude Code | `npm install -g @anthropic-ai/claude-code` |
+| GitHub Copilot CLI | `npm install -g @github/copilot` |
+| Antigravity | `irm https://antigravity.google/cli/install.ps1 \| iex` |
+| Gemini CLI | `npm install -g @google/gemini-cli` |
+| Codex CLI | `npm install -g @openai/codex` |
+| opencode | `npm install -g opencode-ai` |
+| Ollama | `winget install Ollama.Ollama` |
+| Aider | its own installer |
+| Anything else | a **custom** agent runs any command, with `{prompt}` replaced in its arguments |
+
+Sessions and API keys stay where each CLI keeps them. ainess never asks for a key, never stores one
+and never reads one: if `claude` works in your terminal, it works here.
+
+Detection is deliberately stubborn on Windows: it looks at the process PATH, at the *registry* PATH
+(which is what installers update), at the winget package folders, at `WindowsApps` aliases and at
+the usual `Program Files` locations. A CLI installed after the app started is still found.
+
+### Or build it
+
+Needs **Node.js 18+**, **Rust** with Cargo and **WebView2** (already present on current Windows).
+
+```bash
+npm install
+npm run tauri dev      # the app, with hot reload
+npm run tauri build    # NSIS installer in src-tauri/target/release/bundle
+```
+
+Other useful scripts:
+
+```bash
+npm run build          # web bundle + the phone page
+npm run build:remote   # only the phone page (dist-remote/index.html)
+npm run build:cli      # the CLI bundle, which embeds the phone page
+npm test               # unit tests (vitest)
+npx tsc --noEmit       # typecheck
+cd src-tauri && cargo check && cargo test
+```
 
 ## How it works
 
@@ -39,66 +110,51 @@ The orchestrator parses it, starts a run for that agent, and feeds the child's f
 into the planner's session as a result. That cycle is a **round**; the maximum per task is
 configurable.
 
-## Requirements
+An agent can also stop and **ask you** instead of guessing, with an `ask` block:
 
-- **Node.js 18+** and **Rust** with Cargo
-- **WebView2** (already present on current Windows)
-- At least one agent CLI. The app detects what you have and tells you what is missing:
-  - Claude Code — `npm install -g @anthropic-ai/claude-code`
-  - GitHub Copilot CLI — `winget install GitHub.Copilot`
-  - Antigravity — ships the `agy` binary with its own installer
-  - Gemini CLI, Codex CLI, Ollama, Aider, OpenCode — detected if they are on your PATH
-  - Anything else — a **custom** agent runs any command, with `{prompt}` replaced in its arguments
-
-Detection is deliberately stubborn on Windows: it looks at the process PATH, at the *registry* PATH
-(which is what installers update), at the winget package folders, at `WindowsApps` aliases and at
-the usual `Program Files` locations. A CLI installed after the app started is still found.
-
-## Running it
-
-```bash
-npm install
-npm run tauri dev      # the app, with hot reload
-npm run tauri build    # NSIS installer in src-tauri/target/release/bundle
+````
+```ask
+{"question":"¿Migro el webhook de reembolsos o lo dejo en v1?","options":["Migrarlo","Dejarlo"],"allowOther":true}
 ```
+````
 
-Other useful scripts:
-
-```bash
-npm run build          # web bundle + the phone page
-npm run build:remote   # only the phone page (dist-remote/index.html)
-npm run build:cli      # the CLI bundle, which embeds the phone page
-npm test               # unit tests (vitest)
-npx tsc --noEmit       # typecheck
-cd src-tauri && cargo check && cargo test
-```
+The conversation shows the options, you pick one (or write your own) and the run carries on in the
+same session — from the app or from your phone.
 
 ## Inside the app
 
 **Projects.** Each project points at a workspace folder and keeps its own team of agents, their
-state, history and chats. The sidebar lists them with their chats; the home screen shows them as
-cards. A new project starts from a **formation** — a saved team you pick (and can edit) as you
-create it; Settings → Agents is where formations live, next to what each CLI reports about itself.
+state, history and chats. A new project starts from a **formation**: a team you saved once and
+apply to the next project, with its skills and MCP servers.
+
+![The projects and what is waiting for you](docs/screenshots/home.png)
 
 **Tasks.** Opening a project lands on its board: six columns from backlog to done, drag and drop,
-right-click actions and an archive at the bottom. The same tasks also draw a **dependency graph**,
-laid out in layers, where dragging from one card to another declares that this one waits for that
-one (cycles are refused). A switcher flips between the two.
+right-click actions and an archive at the bottom.
+
+![The task board](docs/screenshots/board.png)
 
 The board is not a list you keep by hand. A prompt to the orchestrator opens a task; every
 delegation hangs off it; one waiting for your approval sits in *needs you* until you approve it; and
 when a run ends the card moves to review if the project has a reviewer, or straight to ready. A run
 that fails goes back to *needs you* with the error in its detail.
 
+The same tasks also draw a **dependency graph**, laid out in layers, where dragging from one card to
+another declares that this one waits for that one (cycles are refused).
+
+![The dependency graph](docs/screenshots/task-graph.png)
+
 **The thread.** The Chat tab is a conversation with the orchestrator: its text as it arrives, the
-tools it uses, the tasks it delegates (collapsible, rendered as markdown) and its final answer.
-Saved **orders** — prompts you reuse — sit as chips above the input, filtered to the agent that will
-run them.
+tools it uses, the tasks it delegates (collapsible, rendered as markdown) and its final answer. A
+delegation waiting for a yes is answered right there, under the delegation itself. Saved **orders** —
+prompts you reuse — sit as chips above the input.
 
 **Hierarchy.** The project's team as a graph: who delegates to whom, who is working right now, what
 each agent is doing and how much quota it has left. It is also where the team is managed: add an
 agent, duplicate one (two Claudes with different roles is a normal setup), remove one, or save the
 whole team as a formation.
+
+![The team](docs/screenshots/hierarchy.png)
 
 **Worktrees.** An agent can work in its own git worktree instead of sharing the folder with
 everyone else: its own branch (`ainess/<agent>`), a sibling folder, and dependencies installed there
@@ -117,12 +173,11 @@ globally. Pending ones show up in the app, on your phone and in the CLI, and sur
 **Chats.** Besides task delegation you can talk to one agent directly, or set up a shared
 conversation where several answer in turn, each with a role for that chat.
 
-**Right click.** Contextual menus everywhere they mean something: projects, chats, agent nodes,
-messages, terminal tabs, approvals. Where there is nothing to do, nothing opens.
-
 **Quota.** The app reads what each provider has left — Claude Code from its credentials, Copilot from
-the GitHub API, Antigravity inferred from its own "quota reached" errors — and shows it as a ring
-next to each agent and under the input.
+the GitHub API, opencode per linked account, Antigravity inferred from its own "quota reached"
+errors — and shows it as a ring next to each agent and under the input.
+
+![What is installed on this machine](docs/screenshots/settings-agents.png)
 
 **Notifications.** A bell in the window bar keeps the history of what happened and what needs you:
 approvals waiting, tasks finished or failed, runs cut short by a restart, a tunnel that fell, a new
@@ -130,10 +185,79 @@ version. Each row takes you to where it happened.
 
 **Repo state.** For a project that is a git repo, the sidebar shows the branch, uncommitted changes
 and how far ahead or behind the remote it is, and the header opens the open pull requests with their
-CI and review state. It reads; it never writes.
+CI and review state. It follows the folder through filesystem events, not a timer. It reads; it
+never writes.
 
-**Tray and notifications.** The app can keep running in the background when you close the window and
-notify you when an agent needs permission or finishes a task.
+**Right click.** Contextual menus everywhere they mean something: projects, chats, agent nodes,
+messages, terminal tabs, approvals. Where there is nothing to do, nothing opens.
+
+**Tray.** The app can keep running in the background when you close the window and notify you when
+an agent needs permission or finishes a task.
+
+## From your phone
+
+With your phone on the same WiFi you get the same app in one column: the board, the conversation,
+the team and what it is spending. You can send a task, stop a run, approve a delegation and answer
+a question — the things that keep the team moving while you are away from the desk.
+
+| The board | The conversation | The team |
+| --- | --- | --- |
+| ![](docs/screenshots/phone-tasks.png) | ![](docs/screenshots/phone-thread.png) | ![](docs/screenshots/phone-agents.png) |
+
+Turn it on from the window bar button or Configuración → Remoto, then scan the QR. From the
+terminal, `ais serve` does the same with the CLI's orchestrator. The page is the same React app,
+built to a single self-contained `dist-remote/index.html` that both servers embed and send
+compressed.
+
+The URL carries a token; without it the server answers 401, and the page shows a form to type it
+into (which is what an app installed to the home screen needs, since it opens without the query
+string). It listens on the local network only, over plain HTTP. If the phone cannot reach it, allow
+the port through the Windows firewall.
+
+**HTTP API**, if you want to drive it from something else — `Authorization: Bearer <token>` or
+`?token=`:
+
+| Endpoint | What it does |
+| --- | --- |
+| `GET /api/state` | Full snapshot |
+| `GET /api/events` | SSE stream of `state` events |
+| `POST /api/prompt` | `{projectId, agentId?, text, model?}` |
+| `POST /api/instruct` | `{projectId, agentId, text, model?}` |
+| `POST /api/stop` | `{projectId, agentId?}` or `{chatId}` |
+| `POST /api/approve` | `{approvalId, decision: "approve" \| "reject", note?}` |
+| `POST /api/chat` | `{chatId, text}` |
+
+### From outside your network
+
+On top of the LAN server the app can publish a public URL through
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+or [ngrok](https://ngrok.com/). The tunnel only forwards `127.0.0.1:<port>`, so the local server has
+to be on first.
+
+- **cloudflared, no account** — `winget install Cloudflare.cloudflared`. A new URL every time.
+- **ngrok** — `winget install ngrok -s msstore`, or the button in Configuración → Remoto, which runs
+  it for you. Needs an authtoken; the app can save it (in ngrok's own config file, never in
+  ainess's) and tells you whether it is there.
+- **A URL that never changes** — pick *Estático* as the domain type. With ngrok that is the static
+  domain the free plan includes (paste your API key and the app lists your domains to choose from).
+  With cloudflared it is a named tunnel plus a hostname of your own:
+
+  ```bash
+  cloudflared tunnel login
+  cloudflared tunnel create ainess
+  cloudflared tunnel route dns ainess ainess.yourdomain.com
+  ```
+
+The ngrok agent is kept current on its own, because ngrok refuses connections from an agent older
+than the minimum its account requires.
+
+```bash
+ais serve --tunnel                       # the provider saved in the config
+ais serve --tunnel ngrok --tunnel-domain something.ngrok-free.app
+ais remote url --tunnel                  # public URL of this process's tunnel
+```
+
+Anyone with the public URL and the token can operate the app. If it leaked, regenerate the token.
 
 ## Shared resources
 
@@ -142,17 +266,6 @@ notify you when an agent needs permission or finishes a task.
   synced machine-wide with `ais mcp sync`.
 - **Shared context** — a block of text every agent receives about the project or the team.
 - **Profile** — who you are and how you like to work, also injected into the system prompt.
-
-## Languages
-
-The interface speaks Spanish, English, Brazilian Portuguese, Simplified Chinese, Japanese, French and
-German. Pick one in Settings → General, or leave it following the system. The change applies at
-once, with no restart, and the phone page inherits whatever the app is using.
-
-Translations live in `src/i18n/<lang>.ts`: flat dictionaries with dot-separated keys, Spanish as the
-base. A missing key falls back to Spanish rather than showing the key, and a test keeps every
-dictionary aligned with the base, key for key and placeholder for placeholder. The CLI stays in
-Spanish.
 
 ## Hooks
 
@@ -178,63 +291,6 @@ ais hooks add Review --event run.finished --filter-agent Implementer --action in
   --agent Reviewer --template "Review these changes: {{output}}"
 ```
 
-## Remote access
-
-With your phone on the same WiFi you get the same interface in one column: agent status, the live
-feed, sending prompts and instructions, stopping runs and approving delegations. The phone page is
-the same React app, built to a single self-contained `dist-remote/index.html` that both servers
-embed.
-
-Turn it on from the window bar button or Configuración → Remoto, then scan the QR. From the
-terminal, `ais serve` does the same with the CLI's orchestrator.
-
-The URL carries a token; without it the server answers 401. It listens on the local network only,
-over plain HTTP. If the phone cannot reach it, allow the port through the Windows firewall.
-
-**HTTP API**, if you want to drive it from something else — `Authorization: Bearer <token>` or
-`?token=`:
-
-| Endpoint | What it does |
-| --- | --- |
-| `GET /api/state` | Full snapshot |
-| `GET /api/events` | SSE stream of `state` events |
-| `POST /api/prompt` | `{projectId, agentId?, text, model?}` |
-| `POST /api/instruct` | `{projectId, agentId, text, model?}` |
-| `POST /api/stop` | `{projectId, agentId?}` or `{chatId}` |
-| `POST /api/approve` | `{approvalId, decision: "approve" \| "reject", note?}` |
-| `POST /api/chat` | `{chatId, text}` |
-
-### From outside your network
-
-On top of the LAN server the app can publish a public URL through
-[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
-or [ngrok](https://ngrok.com/). The tunnel only forwards `127.0.0.1:<port>`, so the local server has
-to be on first.
-
-- **cloudflared, no account** — `winget install Cloudflare.cloudflared`. A new URL every time.
-- **ngrok** — `winget install ngrok -s msstore`, or the button in Configuración → Remoto, which runs
-  it for you. Needs an authtoken; the app can save it and tells you whether it is there.
-- **A URL that never changes** — pick *Estático* as the domain type. With ngrok that is the static
-  domain the free plan includes (paste your API key and the app lists your domains to choose from).
-  With cloudflared it is a named tunnel plus a hostname of your own:
-
-  ```bash
-  cloudflared tunnel login
-  cloudflared tunnel create ainess
-  cloudflared tunnel route dns ainess ainess.yourdomain.com
-  ```
-
-The ngrok agent is kept current on its own, because ngrok refuses connections from an agent older
-than the minimum its account requires.
-
-```bash
-ais serve --tunnel                       # the provider saved in the config
-ais serve --tunnel ngrok --tunnel-domain something.ngrok-free.app
-ais remote url --tunnel                  # public URL of this process's tunnel
-```
-
-Anyone with the public URL and the token can operate the app. If it leaked, regenerate the token.
-
 ## CLI
 
 The same orchestrator without the window. `npm run build:cli` produces it; run it with
@@ -244,12 +300,14 @@ The same orchestrator without the window. `npm run build:cli` produces it; run i
 ais "Add tests for the auth module" -w C:\repo    # run a task
 ais -a Claude -p MyProject --max-rounds 4 "..."   # pick agent, project, rounds
 ais projects add MyProject --dir C:\repo
-ais agents list -p MyProject                       # the team of a project
+ais agents list -p MyProject                      # the team of a project
 ais agents add --name QA --provider antigravity --role reviewer --parent Claude -p MyProject
 ais formations list                               # saved teams
 ais formations apply "Mi equipo" -p MyProject     # copy one into a project
 ais detect                                        # what is installed, and where
+ais doctor                                        # the same checks the app runs on itself
 ais quota [provider] [--json]                     # what is left
+ais usage                                         # what the runs cost
 ais history -w C:\repo --limit 20                 # recent runs
 ais history show 3f2a                             # one run in full
 ais status                                        # saved state per project
@@ -261,6 +319,17 @@ ais serve --port 4710                             # phone server
 
 `ais run` exits with code 3 when a delegation is left waiting for approval.
 
+## Languages
+
+The interface speaks Spanish, English, Brazilian Portuguese, Simplified Chinese, Japanese, French and
+German. Pick one in Configuración → General, or leave it following the system. The change applies at
+once, with no restart, and the phone page inherits whatever the app is using.
+
+Translations live in `src/i18n/<lang>.ts`: flat dictionaries with dot-separated keys, Spanish as the
+base. A missing key falls back to Spanish rather than showing the key, and a test keeps every
+dictionary aligned with the base, key for key and placeholder for placeholder. The CLI stays in
+Spanish.
+
 ## Where your data lives
 
 | What | Where |
@@ -271,6 +340,10 @@ ais serve --port 4710                             # phone server
 | Task board per project | `%APPDATA%\com.ainess\tasks\<projectId>.json` |
 | Antigravity quota marks | `%APPDATA%\com.ainess\quota\antigravity.json` |
 | Logs | `%LOCALAPPDATA%\com.ainess\logs\ainess-<date>.log` |
+
+Everything is on your machine, in plain files you can read. Nothing is sent anywhere: the only
+traffic ainess makes on its own is to GitHub for the update check and to each provider's own quota
+endpoint.
 
 History keeps the last 300 runs and 3000 messages per project, and the last 300 raw lines of each
 run. A run cut short by closing the app comes back marked as interrupted, with a retry button.
@@ -288,7 +361,8 @@ ngrok authtoken and API key stay in ngrok's own config file.
 A release is a version number: GitHub Actions does the rest on every push to `main`.
 
 1. Bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` —
-   the same number in the three. `npm run release:check` verifies they agree.
+   the same number in the three. `npm run release:check` verifies they agree. Write what changed in
+   `CHANGELOG.md`, which is also what the app shows in Configuración → Acerca de.
 2. Push to `main`. The workflow tags `v<version>`, builds and signs the NSIS installer and
    publishes `latest.json` in the release. A push that does not change the version finds the tag
    already there and stops, which is why most pushes to `main` publish nothing.
@@ -301,12 +375,6 @@ A release is a version number: GitHub Actions does the rest on every push to `ma
 The repo needs one secret, `TAURI_SIGNING_PRIVATE_KEY`, with the contents of the signing key. The
 public half is already in `src-tauri/tauri.conf.json`.
 
-## Reporting a bug
-
-The bug icon in the sidebar opens the issue templates in your browser, or go straight to
-[the issues page](https://github.com/Matias-Obezzi/ainess/issues/new/choose). When you paste logs,
-check them for tokens first.
-
 ## Layout
 
 ```
@@ -315,9 +383,17 @@ src/
   lib/                orchestrator, providers, transports, quota, remote, tunnel, hooks…
   remote/             the phone app
   cli/                the CLI entry point
+  i18n/               one dictionary per language
 src-tauri/src/        runner, config, detect, remote server, tunnel, pty, tray, logging
+docs/screenshots/     the images in this file
 ```
 
 The frontend talks to the backend through a **transport**, and there are four: Tauri (the app), Node
 (the CLI), HTTP (the phone) and a null one (the browser preview). Anything that touches the system
 goes through it, which is why the same code runs in all four.
+
+## Reporting a bug
+
+The bug icon in the sidebar opens the issue templates in your browser, or go straight to
+[the issues page](https://github.com/Matias-Obezzi/ainess/issues/new/choose). When you paste logs,
+check them for tokens first.

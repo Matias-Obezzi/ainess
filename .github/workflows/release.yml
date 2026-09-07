@@ -79,7 +79,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: ainess v__VERSION__
-          releaseBody: Ver los cambios en el historial de commits.
+          releaseBody: Los cambios de esta versión están en [CHANGELOG.md](https://github.com/Matias-Obezzi/ainess/blob/main/CHANGELOG.md).
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
