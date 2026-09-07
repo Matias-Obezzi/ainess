@@ -27,8 +27,8 @@ Estado: `pendiente` · `en curso` · `hecho`.
 
 | Id | Tarea | Origen | Plan | Estado |
 |---|---|---|---|---|
-| B-09 | **La vista remota no muestra cuota.** Quedó fuera de alcance del plan de cuota. | 027 | 041 | en curso |
-| B-10 | **La vista remota no muestra diagnóstico.** La sección es sólo de escritorio. | 037 | 041 | en curso |
+| B-09 | **La vista remota no muestra cuota.** Quedó fuera de alcance del plan de cuota. | 027 | 041 | hecho |
+| B-10 | **La vista remota no muestra diagnóstico.** La sección es sólo de escritorio. | 037 | 041 | hecho |
 | B-11 | **No se puede preparar un worktree desde el celular.** El transport remoto responde `null` a `readFileAbs`. | 032 | — | pendiente |
 
 ## Pulido
