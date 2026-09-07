@@ -259,51 +259,15 @@ export interface AppState {
   loadChatMessages(chatId: string): Promise<void>;
 }
 
-/** The team every new install starts from, saved as the default formation. */
-function seedAgents(): AgentConfig[] {
-  const claudeId = crypto.randomUUID();
-  return [
-    {
-      id: claudeId,
-      name: "Claude",
-      provider: "claude",
-      role: "planner",
-      parentId: null,
-      autoApprove: false,
-      color: "#d97757",
-    },
-    {
-      id: crypto.randomUUID(),
-      name: "Antigravity",
-      provider: "antigravity",
-      role: "implementer",
-      parentId: claudeId,
-      model: "gemini-3.1-pro-high",
-      autoApprove: true,
-      description: "Implementa cambios de código en el workspace usando Antigravity (Gemini)",
-      color: "#4f8cff",
-    },
-    {
-      id: crypto.randomUUID(),
-      name: "Copilot",
-      provider: "copilot",
-      role: "implementer",
-      parentId: claudeId,
-      autoApprove: true,
-      description: "Implementa cambios de código usando GitHub Copilot CLI",
-      color: "#8b5cf6",
-    },
-  ];
-}
-
+/**
+ * A fresh install: no projects, no agents, no formations.
+ *
+ * It used to come with a team already made — a planner and two implementers, on Claude Code,
+ * Antigravity and Copilot. It read as a suggestion of what a team looks like, but it is really a
+ * claim about the machine: whoever installs this may have none of those CLIs, and the first thing
+ * they got was a team wired to programs that are not there. Everyone builds their own.
+ */
 function generateSeedConfig(): AppConfig {
-  const formation: Formation = {
-    id: crypto.randomUUID(),
-    name: "Mi equipo",
-    description: "Un planificador con dos implementadores",
-    agents: seedAgents(),
-  };
-
   return {
     version: 12,
     language: null,
@@ -311,8 +275,8 @@ function generateSeedConfig(): AppConfig {
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
     tray: { enabled: true, notifyApprovals: true, notifyResults: true },
     projects: [],
-    formations: [formation],
-    defaultFormationId: formation.id,
+    formations: [],
+    defaultFormationId: null,
     lastProjectId: null,
     maxRounds: 6,
     skills: [],

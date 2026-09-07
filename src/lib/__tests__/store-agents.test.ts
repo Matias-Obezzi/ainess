@@ -229,3 +229,23 @@ describe("removeAgent", () => {
     expect(state.config.projects.find(p => p.id === "p2")!.agents).toHaveLength(3);
   });
 });
+
+// A fresh install used to come with a team already made, on Claude Code, Antigravity and Copilot.
+// It is a claim about the machine, and the first thing someone who has none of those CLIs got was
+// a team wired to programs that are not there.
+describe("a fresh install", () => {
+  it("starts with nothing: no projects, no formations, no default", async () => {
+    const { store } = await boot(null);
+    const config = store.useAppStore.getState().config;
+
+    expect(config.projects).toEqual([]);
+    expect(config.formations).toEqual([]);
+    expect(config.defaultFormationId).toBeNull();
+  });
+
+  it("still saves what it generated, so the token and the rest survive a restart", async () => {
+    const { saved } = await boot(null);
+    expect(saved.length).toBeGreaterThan(0);
+    expect(saved[saved.length - 1].remote.token).toBeTruthy();
+  });
+});

@@ -13,6 +13,18 @@ mod tunnel;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        // First of all the plugins, as the plugin itself asks: a second launch has to be turned
+        // back before anything else starts. Closing the window only hides it in the tray, so what
+        // "already open" means is often an invisible window — hence the show before the focus.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            logging::append(app, "info", "app", "otra instancia quiso abrirse: se enfocó la que ya estaba");
+        }))
         .manage(runner::RunnerState::default())
         .manage(remote::RemoteState::default())
         .manage(tray::TrayState::default())
