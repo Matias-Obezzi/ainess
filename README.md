@@ -120,7 +120,7 @@ An agent can also stop and **ask you** instead of guessing, with an `ask` block:
 
 ````
 ```ask
-{"question":"¿Migro el webhook de reembolsos o lo dejo en v1?","options":["Migrarlo","Dejarlo"],"allowOther":true}
+{"question":"Move the refunds webhook to v2, or leave it on v1?","options":["Move it","Leave it"],"allowOther":true}
 ```
 ````
 
@@ -309,7 +309,7 @@ ais projects add MyProject --dir C:\repo
 ais agents list -p MyProject                      # the team of a project
 ais agents add --name QA --provider antigravity --role reviewer --parent Claude -p MyProject
 ais formations list                               # saved teams
-ais formations apply "Mi equipo" -p MyProject     # copy one into a project
+ais formations apply "Full team" -p MyProject     # copy one into a project
 ais detect                                        # what is installed, and where
 ais doctor                                        # the same checks the app runs on itself
 ais quota [provider] [--json]                     # what is left

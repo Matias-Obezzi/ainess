@@ -1,7 +1,7 @@
 # Changelog
 
 What changed in each release, for the people who use it. The app shows this same file in
-Configuración → Acerca de.
+Settings → About.
 
 ## Unreleased
 
