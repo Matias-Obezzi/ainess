@@ -357,7 +357,7 @@ export async function collectDiagnosticsInput(opts: CollectOptions = {}): Promis
   let quota = state.quota;
   if (opts.refreshQuota && usedProviders.length > 0) {
     const { fetchQuota } = await import("@/lib/quota");
-    const fetched = await Promise.all(usedProviders.map(p => fetchQuota(p, state.binaries).catch(() => undefined)));
+    const fetched = await Promise.all(usedProviders.map(p => fetchQuota(p, state.binaries, { force: true }).catch(() => undefined)));
     quota = { ...quota };
     usedProviders.forEach((p, i) => {
       const result = fetched[i];

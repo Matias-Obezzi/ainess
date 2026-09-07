@@ -940,6 +940,7 @@ export const en: Dictionary = {
   "quota.opencode.noUsageYet": "no usage yet",
   "quota.opencode.noLimits": "opencode does not report limits: what follows is what each account has spent.",
   "quota.unsupported": "This provider does not expose its quota",
+  "quota.rateLimited": "Asked too often: it will be read again in a few minutes",
   "quota.line.unlimited": "unlimited",
   "quota.line.renews": "renews {date}",
 

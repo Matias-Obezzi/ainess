@@ -111,7 +111,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await refreshQuota(provider);
+      await refreshQuota(provider, { force: true });
     } finally {
       setRefreshing(false);
     }

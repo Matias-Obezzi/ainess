@@ -940,6 +940,7 @@ export const zh: Dictionary = {
   "quota.opencode.noUsageYet": "尚无用量",
   "quota.opencode.noLimits": "opencode 不报告限额：以下是每个账号的消耗。",
   "quota.unsupported": "该提供方不提供配额信息",
+  "quota.rateLimited": "查询过于频繁：几分钟后再读取",
   "quota.line.unlimited": "无限制",
   "quota.line.renews": "{date} 重置",
 

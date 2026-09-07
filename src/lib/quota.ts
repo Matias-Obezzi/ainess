@@ -210,6 +210,9 @@ async function fetchCopilotQuota(): Promise<ProviderQuota> {
       Accept: "application/json",
       "User-Agent": "AIS",
     });
+    if (res.status === 429) {
+      return { provider: "copilot", status: "error", message: translateNow("quota.rateLimited"), rateLimited: true, fetchedAt, items: [] };
+    }
     if (res.status !== 200) {
       return { provider: "copilot", status: "error", message: `HTTP ${res.status}`, fetchedAt, items: [] };
     }
@@ -296,6 +299,9 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
     });
     if (res.status === 401) {
       return { provider: "claude", status: "error", message: translateNow("quota.claude.expired"), fetchedAt, items: [] };
+    }
+    if (res.status === 429) {
+      return { provider: "claude", status: "error", message: translateNow("quota.rateLimited"), rateLimited: true, fetchedAt, items: [] };
     }
     if (res.status !== 200) {
       return { provider: "claude", status: "error", message: `HTTP ${res.status}`, fetchedAt, items: [] };
@@ -503,7 +509,35 @@ function formatUsd(value: number): string {
   return value >= 0.01 ? `US$${value.toFixed(2)}` : "US$0";
 }
 
-export async function fetchQuota(provider: ProviderId, binaries?: Binaries): Promise<ProviderQuota> {
+/**
+ * How long an answer is reused. Quota moves in minutes, not in seconds, and the app asks from
+ * four places at once: the rings when they mount, the agent dialog, the timer, and the sweep that
+ * follows every run. Without this each of those was a request of its own.
+ */
+export const QUOTA_CACHE_MS = 60_000;
+/** After a 429, the provider is left alone for this long and the last good answer is what shows. */
+export const QUOTA_BACKOFF_MS = 5 * 60_000;
+
+interface CacheEntry {
+  /** The newest answer, whatever it said. */
+  result: ProviderQuota;
+  /** The newest answer that actually carried numbers, kept to show while a 429 lasts. */
+  lastOk?: ProviderQuota;
+  /** Nothing is asked of this provider before this time. */
+  backoffUntil?: number;
+}
+
+const cache = new Map<ProviderId, CacheEntry>();
+/** One request per provider: everyone who asks while it is in flight gets the same answer. */
+const inFlight = new Map<ProviderId, Promise<ProviderQuota>>();
+
+/** Forgets everything read so far. For the tests, and for a config that changed under us. */
+export function clearQuotaCache(): void {
+  cache.clear();
+  inFlight.clear();
+}
+
+async function readQuota(provider: ProviderId, binaries?: Binaries): Promise<ProviderQuota> {
   try {
     if (provider === "copilot") return await fetchCopilotQuota();
     if (provider === "claude") return await fetchClaudeQuota();
@@ -519,6 +553,53 @@ export async function fetchQuota(provider: ProviderId, binaries?: Binaries): Pro
   } catch (e) {
     return { provider, status: "error", message: e instanceof Error ? e.message : String(e), fetchedAt: Date.now(), items: [] };
   }
+}
+
+/**
+ * What a provider has left. Shared between callers and cached for a minute; `force` is for the
+ * button that says "refresh", which is the user asking on purpose.
+ *
+ * A provider that answered 429 is not asked again for `QUOTA_BACKOFF_MS`, and what it said last
+ * time it worked is what comes back — numbers a few minutes old beat an error where they go.
+ */
+export async function fetchQuota(
+  provider: ProviderId,
+  binaries?: Binaries,
+  opts?: { force?: boolean },
+): Promise<ProviderQuota> {
+  const now = Date.now();
+  const entry = cache.get(provider);
+
+  if (entry && !opts?.force) {
+    if (now - entry.result.fetchedAt < QUOTA_CACHE_MS) return entry.result;
+    if (entry.backoffUntil !== undefined && now < entry.backoffUntil) {
+      return entry.lastOk ?? entry.result;
+    }
+  }
+
+  const pending = inFlight.get(provider);
+  if (pending) return pending;
+
+  const promise = readQuota(provider, binaries)
+    .then(result => {
+      const previous = cache.get(provider);
+      if (result.rateLimited) {
+        const kept = previous?.lastOk;
+        cache.set(provider, { result, lastOk: kept, backoffUntil: Date.now() + QUOTA_BACKOFF_MS });
+        return kept ?? result;
+      }
+      cache.set(provider, {
+        result,
+        lastOk: result.status === "ok" ? result : previous?.lastOk,
+      });
+      return result;
+    })
+    .finally(() => {
+      inFlight.delete(provider);
+    });
+
+  inFlight.set(provider, promise);
+  return promise;
 }
 
 // ---------------------------------------------------------------------------------------------

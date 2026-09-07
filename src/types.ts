@@ -425,6 +425,8 @@ export interface ProviderQuota {
   message?: string;
   fetchedAt: number;
   items: QuotaItem[];
+  /** The provider answered 429: it is being asked more often than it allows. */
+  rateLimited?: boolean;
 }
 
 // ---- Rust IPC contracts (see src-tauri/src/runner.rs) ----

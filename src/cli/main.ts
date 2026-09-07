@@ -164,7 +164,7 @@ async function main() {
 
     const results: Record<string, unknown> = {};
     for (const p of providers) {
-      const q = await fetchQuota(p, useAppStore.getState().binaries);
+      const q = await fetchQuota(p, useAppStore.getState().binaries, { force: true });
       results[p] = q;
       if (!jsonOutput) {
         if (q.status !== "ok") {

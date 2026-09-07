@@ -20,6 +20,11 @@ Settings → About.
   label is trimmed instead of pushing the button out.
 - Toasts came out in the light palette of the library that draws them: a white card thrown at a
   dark window every time something finished. They are mixed from the theme's own colours now.
+- The quota was asked for from four places at once — the rings, the agent dialog, the timer and
+  the sweep after every run — and each one was a request of its own, until Claude Code answered
+  429 and "HTTP 429" is what the rings showed. There is one shared answer now, reused for a
+  minute; a provider that answers 429 is left alone for five, showing what it said last time it
+  worked. The refresh buttons still ask on the spot.
 - In a narrow window the buttons of the project bar ended up under the right dock, out of reach.
   The bar reads its own width: the labels drop to their icons, the branch and the spend give way
   before the tabs do, and the floating dock starts below the bar instead of over it.

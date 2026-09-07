@@ -941,6 +941,7 @@ export const es: Dictionary = {
   "quota.opencode.noUsageYet": "sin uso todavía",
   "quota.opencode.noLimits": "opencode no informa límites: lo que sigue es lo consumido por cuenta.",
   "quota.unsupported": "Este proveedor no expone su cuota",
+  "quota.rateLimited": "Demasiadas consultas seguidas: se vuelve a preguntar en unos minutos",
   "quota.line.unlimited": "ilimitado",
   "quota.line.renews": "se renueva {date}",
 

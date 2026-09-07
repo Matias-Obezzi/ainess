@@ -50,7 +50,7 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
     setRefreshing(true);
     const providers = [...new Set(agents.map(a => a.provider))] as ProviderId[];
     try {
-      await Promise.all(providers.map(provider => refreshQuota(provider)));
+      await Promise.all(providers.map(provider => refreshQuota(provider, { force: true })));
     } finally {
       setRefreshing(false);
     }

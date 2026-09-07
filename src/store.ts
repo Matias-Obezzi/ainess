@@ -176,7 +176,8 @@ export interface AppState {
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
-  refreshQuota(provider: ProviderId): Promise<ProviderQuota>;
+  /** `force` skips the shared cache: it is the user asking on purpose. */
+  refreshQuota(provider: ProviderId, opts?: { force?: boolean }): Promise<ProviderQuota>;
   loadQuotaMarks(): Promise<void>;
   /** Re-reads the git state of a project's workspace. Read-only, and never throws. */
   refreshRepoState(projectId: string): Promise<void>;
@@ -1273,9 +1274,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
     return models;
   },
 
-  refreshQuota: async (provider) => {
+  refreshQuota: async (provider, opts) => {
     // opencode is asked through its own binary, so it needs the path that was detected.
-    const result = await quota.fetchQuota(provider, get().binaries);
+    const result = await quota.fetchQuota(provider, get().binaries, opts);
     set(state => ({ quota: { ...state.quota, [provider]: result } }));
     return result;
   },
