@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectTasks, selectAgent } from "@/store";
 import { TASK_STATUSES, blockedBy } from "@/lib/tasks";
 import { taskStatusMeta } from "@/components/tasks/task-meta";
@@ -39,6 +39,24 @@ export function TasksTab({ projectId }: { projectId: string }) {
 
   const column = byStatus[status] ?? [];
 
+  // Whether there is anything past either edge of the column strip.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const measureEdges = useCallback(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({ left: el.scrollLeft > 4, right: max - el.scrollLeft > 4 });
+  }, []);
+
+  useEffect(() => {
+    measureEdges();
+    if (typeof ResizeObserver === "undefined" || !stripRef.current) return;
+    const observer = new ResizeObserver(measureEdges);
+    observer.observe(stripRef.current);
+    return () => observer.disconnect();
+  }, [measureEdges]);
+
   /** The card is made on the PC and comes back in the next snapshot; nothing is faked here. */
   const create = () => {
     const title = draft.trim();
@@ -49,7 +67,20 @@ export function TasksTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 flex gap-1.5 overflow-x-auto scrollbar-none border-b border-border px-3 py-2">
+      {/* The columns run past the edge of a phone and nothing said so: the fade appears on
+          whichever side still has columns on it, and goes when you get there. */}
+      <div className="relative shrink-0 border-b border-border">
+        {edges.left && (
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+        )}
+        {edges.right && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+        )}
+        <div
+          ref={stripRef}
+          onScroll={measureEdges}
+          className="flex gap-1.5 overflow-x-auto scrollbar-none px-3 py-2"
+        >
         {TASK_STATUSES.map(s => {
           const count = byStatus[s]?.length ?? 0;
           return (
@@ -66,6 +97,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* Writing one down is half of what a board is for, and it could only be done on the PC. */}

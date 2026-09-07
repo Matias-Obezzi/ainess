@@ -6,6 +6,7 @@ import { getTransport } from "@/lib/transport";
 import { log, maskSecrets } from "@/lib/logger";
 import {
   NGROK_CONFIG_HOME_PATH,
+  cleanNgrokCredential,
   looksLikeNgrokCredential,
   ngrokApiKey,
   isMissingBinaryError,
@@ -173,15 +174,28 @@ export async function ngrokAccountStatus(ngrokPath: string): Promise<NgrokAccoun
 }
 
 /** `ngrok config add-authtoken|add-api-key <value>`. Throws with the masked stderr on failure. */
-export async function saveNgrokCredential(ngrokPath: string, kind: "authtoken" | "api-key", value: string): Promise<void> {
+export async function saveNgrokCredential(ngrokPath: string, kind: "authtoken" | "api-key", pasted: string): Promise<void> {
+  const value = cleanNgrokCredential(pasted);
   if (!looksLikeNgrokCredential(value)) {
     throw new Error(kind === "authtoken" ? "Eso no parece un authtoken de ngrok" : "Eso no parece una API key de ngrok");
   }
   const subcommand = kind === "authtoken" ? "add-authtoken" : "add-api-key";
-  const res = await getTransport().exec(ngrokPath, ["config", subcommand, value]);
-  if (res.code !== 0) {
-    throw new Error(maskSecrets(res.stderr || `ngrok config ${subcommand} falló`));
+  // Never the value, here or anywhere else: what is logged is the attempt and how it went.
+  log.info("tunnel", `guardando ${kind} de ngrok con ${ngrokPath}`);
+  let res;
+  try {
+    res = await getTransport().exec(ngrokPath, ["config", subcommand, value]);
+  } catch (e) {
+    const message = maskSecrets(e instanceof Error ? e.message : String(e));
+    log.error("tunnel", `no se pudo ejecutar ngrok config ${subcommand}: ${message}`);
+    throw new Error(isMissingBinaryError(message) ? `No se encontró ngrok en ${ngrokPath}` : message);
   }
+  if (res.code !== 0) {
+    const message = maskSecrets(res.stderr || res.stdout || `ngrok config ${subcommand} falló`);
+    log.error("tunnel", `ngrok config ${subcommand} terminó con ${res.code}: ${message}`);
+    throw new Error(message);
+  }
+  log.info("tunnel", `${kind} de ngrok guardado`);
 }
 
 /** Reserved domains of the account. Throws a clear error when there is no API key or it is rejected. */

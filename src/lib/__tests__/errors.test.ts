@@ -75,3 +75,16 @@ describe("firstLine", () => {
     expect(firstLine("x".repeat(200), 20)).toHaveLength(20);
   });
 });
+
+describe("what a CLI left running", () => {
+  it("reads Claude Code's ceiling as what it is", () => {
+    const e = explainError("Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.");
+    expect(e.kind).toBe("timeout");
+    expect(e.titleKey).toBe("error.bgTasks.title");
+    expect(e.hintKey).toBe("error.bgTasks.hint");
+  });
+
+  it("leaves the other timeouts as they were", () => {
+    expect(explainError("deadline exceeded").titleKey).toBe("error.timeout.title");
+  });
+});

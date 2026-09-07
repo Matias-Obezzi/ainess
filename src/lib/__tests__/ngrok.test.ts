@@ -7,8 +7,7 @@ import {
   ngrokUpdateOutcome,
   parseNgrokConfigPath,
   parseNgrokVersion,
-  parseReservedDomains,
-} from "@/lib/ngrok";
+  parseReservedDomains, cleanNgrokCredential } from "@/lib/ngrok";
 
 describe("ngrok update", () => {
   it("reads the version out of `ngrok --version`", () => {
@@ -127,5 +126,24 @@ describe("looksLikeNgrokCredential", () => {
     expect(looksLikeNgrokCredential("")).toBe(false);
     expect(looksLikeNgrokCredential("short")).toBe(false);
     expect(looksLikeNgrokCredential("has a space in it 12345")).toBe(false);
+  });
+});
+
+describe("cleanNgrokCredential", () => {
+  it("takes the token out of the line the dashboard hands you", () => {
+    expect(cleanNgrokCredential("ngrok config add-authtoken 2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB")).toBe(
+      "2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB",
+    );
+    expect(cleanNgrokCredential("  2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB\n")).toBe(
+      "2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB",
+    );
+    expect(cleanNgrokCredential('"2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB"')).toBe(
+      "2abcDEFghiJKLmnoPQRstuVWXyz1234567890AB",
+    );
+  });
+
+  it("and what comes out of it is accepted, which is what was failing", () => {
+    expect(looksLikeNgrokCredential(cleanNgrokCredential("ngrok config add-api-key 2abcDEFghiJKLmnoPQRstuVWXyz12345"))).toBe(true);
+    expect(looksLikeNgrokCredential(cleanNgrokCredential("corto"))).toBe(false);
   });
 });

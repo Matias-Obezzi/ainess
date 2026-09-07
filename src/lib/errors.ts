@@ -91,7 +91,14 @@ const PATTERNS: Array<{
     hintKey: "error.network.hint",
   },
   {
-    // «Background tasks still running after 600s; terminating.»
+    // Claude Code's own ceiling: it waits for what the agent left running in the background and
+    // gives up after ten minutes. A dev server or a watcher is usually what is holding it.
+    kind: "timeout",
+    test: /background tasks still running/i,
+    titleKey: "error.bgTasks.title",
+    hintKey: "error.bgTasks.hint",
+  },
+  {
     kind: "timeout",
     test: /timed? ?out|still running after|deadline exceeded|terminating/i,
     titleKey: "error.timeout.title",

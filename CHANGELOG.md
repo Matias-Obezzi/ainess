@@ -30,6 +30,15 @@ Settings → About.
 
 ### Fixed
 
+- Saving the ngrok authtoken or API key did nothing when the paste carried the whole line from the
+  dashboard (`ngrok config add-authtoken 2abc…`) or a trailing newline: the credential is taken out
+  of what was pasted now. With ngrok missing the button was silent; it says so. And what the CLI
+  answered when it refused is written to the log, masked, instead of only flashing in a toast.
+- A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
+  only that it took too long. It now says what was holding it: something the agent left running in
+  the background, and what to ask it to do about that.
+- On the phone, the board's columns run past the edge of the screen and nothing said so. The strip
+  fades on whichever side still has columns on it.
 - The communication panel opened at the oldest line of the project instead of at what just
   happened. It lands on the newest, like the conversation does.
 - Tasks that seemed to duplicate themselves: every prompt opened a card and every delegation
