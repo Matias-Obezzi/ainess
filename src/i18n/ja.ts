@@ -1035,4 +1035,9 @@ export const ja: Dictionary = {
   "usage.empty.title": "まだ誰も使用量を報告していません",
   "usage.empty.body": "Claude Code は実行ごとのドル建てコストを、Copilot はプレミアムリクエスト数を報告します。どちらかがこのプロジェクトで働けば、ここに表示されます。",
   "usage.runUsage": "消費",
+  // ---- CLI usage ----
+  "cli.usage.noData": "使用データはまだありません。",
+  "cli.usage.tokens": "tokens",
+  "cli.usage.premiumRequests": "premium",
+  "cli.usage.total": "総合計",
 };
