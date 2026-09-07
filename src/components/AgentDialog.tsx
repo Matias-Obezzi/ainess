@@ -387,9 +387,25 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     ))}
                   </SelectContent>
                 </Select>
-                {hiddenProviders > 0 && (
+                {/* Nothing installed is a dead end, not a note: the only thing left to pick is a
+                    command the user has to write, so this says where CLIs come from. */}
+                {offered.length === 1 && offered[0] === "custom" ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("agentDialog.noneDetected")}{" "}
+                    <button
+                      type="button"
+                      className="underline underline-offset-2 hover:text-foreground"
+                      onClick={() => {
+                        onOpenChange(false);
+                        useAppStore.getState().openSettings("agents");
+                      }}
+                    >
+                      {t("agentDialog.installOne")}
+                    </button>
+                  </p>
+                ) : hiddenProviders > 0 ? (
                   <p className="text-xs text-muted-foreground">{t("agentDialog.onlyDetected")}</p>
-                )}
+                ) : null}
               </div>
               <div className="space-y-1">
                 <Label>{t("agentDialog.role")}</Label>

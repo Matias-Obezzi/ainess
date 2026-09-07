@@ -24,7 +24,8 @@ Configuración → Acerca de.
   composer.
 - A fresh install starts empty. It used to come with a team of three agents wired to CLIs the
   machine may not have.
-- Building a team only offers the CLIs that are actually installed.
+- Building a team only offers the CLIs that are actually installed, and says where to get one when
+  there are none.
 - Opening the app while it is already open brings that window forward instead of starting a second
   copy of it.
 

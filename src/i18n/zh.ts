@@ -708,6 +708,8 @@ export const zh: Dictionary = {
   "agentDialog.duplicateName": "这个团队里已经有同名的智能体了。",
   "agentDialog.provider": "提供方",
   "agentDialog.onlyDetected": "仅显示在本机检测到的 CLI。",
+  "agentDialog.noneDetected": "本机没有找到任何智能体 CLI。",
+  "agentDialog.installOne": "安装一个",
   "agentDialog.role": "角色",
   "agentDialog.parent": "上级",
   "agentDialog.noParent": "无（根节点）",

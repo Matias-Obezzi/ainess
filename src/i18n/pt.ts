@@ -708,6 +708,8 @@ export const pt: Dictionary = {
   "agentDialog.duplicateName": "Já existe outro agente com esse nome nesta equipe.",
   "agentDialog.provider": "Provider",
   "agentDialog.onlyDetected": "Só aparecem as CLIs detectadas nesta máquina.",
+  "agentDialog.noneDetected": "Nenhuma CLI de agentes foi encontrada nesta máquina.",
+  "agentDialog.installOne": "Instalar uma",
   "agentDialog.role": "Papel",
   "agentDialog.parent": "Pai",
   "agentDialog.noParent": "Nenhum (raiz)",

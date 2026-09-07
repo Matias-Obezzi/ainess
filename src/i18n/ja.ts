@@ -709,6 +709,8 @@ export const ja: Dictionary = {
   "agentDialog.duplicateName": "このチームには同じ名前のエージェントがすでにあります。",
   "agentDialog.provider": "プロバイダー",
   "agentDialog.onlyDetected": "この端末で検出された CLI だけを表示しています。",
+  "agentDialog.noneDetected": "この端末にエージェントの CLI が見つかりませんでした。",
+  "agentDialog.installOne": "インストールする",
   "agentDialog.role": "役割",
   "agentDialog.parent": "親",
   "agentDialog.noParent": "なし (ルート)",
