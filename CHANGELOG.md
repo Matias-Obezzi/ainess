@@ -3,7 +3,7 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
-## Unreleased
+## 0.3.1 — 2026-09-07
 
 ### Fixed
 
