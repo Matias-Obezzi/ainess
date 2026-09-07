@@ -7,6 +7,12 @@ on:
   push:
     branches: [dev]
 
+# A push to `dev` with its pull request open fires this twice, once per event. Same branch, same
+# group: the newer run cancels the older one and only one of the two survives.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: windows-latest
