@@ -295,7 +295,7 @@ A release is a version number: GitHub Actions does the rest on every push to `ma
 3. Before publishing (and only then) it runs the typecheck, the unit tests, the CLI build and the
    Rust tests: `ci.yml` ignores `main`, so this is what stands between a broken commit and an
    installer.
-3. Installed apps pick it up on their next check — at startup if enabled, or from
+4. Installed apps pick it up on their next check — at startup if enabled, or from
    Configuración → Acerca de — and update themselves.
 
 The repo needs one secret, `TAURI_SIGNING_PRIVATE_KEY`, with the contents of the signing key. The
