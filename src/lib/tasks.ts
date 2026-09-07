@@ -9,6 +9,14 @@ export const TASK_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "
 /** Priorities offered in the UI, from the calmest to the most urgent. */
 export const TASK_PRIORITIES: TaskPriority[] = ["low", "normal", "high"];
 
+/**
+ * What a form actually stores for a priority. "normal" is what every task is unless someone says
+ * otherwise, so writing it would only add a field that says nothing to every task file.
+ */
+export function storedPriority(priority: TaskPriority): TaskPriority | undefined {
+  return priority === "normal" ? undefined : priority;
+}
+
 /** A dependency is satisfied once its task reached one of these. */
 const SATISFIED: TaskStatus[] = ["ready", "done"];
 
