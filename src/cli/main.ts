@@ -8,6 +8,8 @@ import * as readline from "node:readline";
 import { isChatActive } from "@/lib/chat";
 import { flushHistory, loadHistory } from "@/lib/history";
 import { flushTasks } from "@/lib/task-store";
+import { flushNotifications } from "@/lib/notification-store";
+
 import { pendingApprovals } from "@/lib/approvals";
 import { remoteUrl, tunnelUrl } from "@/lib/remote";
 import { installConsoleCapture, log } from "@/lib/logger";
@@ -20,10 +22,11 @@ import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 
-/** Writes whatever this process still owes to disk (feed and board) before it exits. */
+/** Writes whatever this process still owes to disk (feed, board and notifications) before it exits. */
 const flushAll = async (): Promise<void> => {
-  await Promise.all([flushHistory(), flushTasks()]);
+  await Promise.all([flushHistory(), flushTasks(), flushNotifications()]);
 };
+
 
 async function main() {
   setTransport(nodeTransport);
