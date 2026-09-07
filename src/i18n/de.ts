@@ -467,6 +467,8 @@ export const de: Dictionary = {
   "error.auth.hint": "Melde dich in einem Terminal erneut bei dieser CLI an.",
   "error.missingCli.title": "Die CLI wurde nicht gefunden",
   "error.missingCli.hint": "Installiere sie unter Einstellungen → Agenten oder gib den Pfad an.",
+  "error.batchArgs.title": "Windows hat den Befehl dieses CLI abgelehnt",
+  "error.batchArgs.hint": "Das CLI ist als .cmd installiert, und Windows übergibt ihm keine Argumente mit Zeilenumbrüchen. Installiere es mit npm (npm install -g) oder verweise den Agenten in Einstellungen → Agenten auf die echte ausführbare Datei.",
   "error.network.title": "Es konnte keine Verbindung hergestellt werden",
   "error.network.hint": "Prüfe deine Verbindung und versuch es erneut.",
   "error.timeout.title": "Es hat zu lange gedauert und wurde abgebrochen",

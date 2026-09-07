@@ -468,6 +468,8 @@ export const ja: Dictionary = {
   "error.auth.hint": "ターミナルからその CLI に入り直してください。",
   "error.missingCli.title": "CLI が見つかりません",
   "error.missingCli.hint": "「設定 → エージェント」からインストールするか、パスを指定してください。",
+  "error.batchArgs.title": "Windows がこの CLI のコマンドを拒否しました",
+  "error.batchArgs.hint": "この CLI は .cmd としてインストールされており、Windows は改行を含む引数を渡しません。npm でインストールする（npm install -g）か、設定 → エージェントで実際の実行ファイルを指定してください。",
   "error.network.title": "接続できませんでした",
   "error.network.hint": "接続を確認してもう一度お試しください。",
   "error.timeout.title": "時間がかかりすぎて中断されました",

@@ -467,6 +467,8 @@ export const en: Dictionary = {
   "error.auth.hint": "Log in to that CLI again from a terminal.",
   "error.missingCli.title": "The CLI was not found",
   "error.missingCli.hint": "Install it from Settings → Agents, or point at it by hand.",
+  "error.batchArgs.title": "Windows refused this CLI's command",
+  "error.batchArgs.hint": "The CLI is installed as a .cmd, and Windows will not pass it arguments with line breaks. Install it with npm (npm install -g) or point the agent at the real executable from Settings → Agents.",
   "error.network.title": "It could not connect",
   "error.network.hint": "Check your connection and try again.",
   "error.timeout.title": "It took too long and was cut short",

@@ -467,6 +467,8 @@ export const fr: Dictionary = {
   "error.auth.hint": "Reconnectez-vous à cette CLI depuis un terminal.",
   "error.missingCli.title": "La CLI est introuvable",
   "error.missingCli.hint": "Installez-la depuis Réglages → Agents, ou indiquez son chemin.",
+  "error.batchArgs.title": "Windows a refusé la commande de ce CLI",
+  "error.batchArgs.hint": "Le CLI est installé comme un .cmd, et Windows ne lui transmet pas d'arguments contenant des sauts de ligne. Installez-le avec npm (npm install -g) ou pointez l'agent vers l'exécutable réel depuis Paramètres → Agents.",
   "error.network.title": "La connexion a échoué",
   "error.network.hint": "Vérifiez votre connexion et réessayez.",
   "error.timeout.title": "Cela a pris trop de temps et a été coupé",

@@ -14,6 +14,11 @@ Settings → About.
 
 ### Fixed
 
+- **A run that would not start on Windows**: `No se pudo iniciar …\claude.cmd: batch file
+  arguments are invalid`. Windows refuses to hand a batch shim an argument with a line break, and
+  the system prompt every agent is started with has several. npm installs its CLIs as a shim
+  around a script, so that script is what the app runs now — the CLI in the terminal already did
+  this, the app did not. A shim it cannot read says what is going on instead of that sentence.
 - An agent row with a model and a parent made the new-project dialog scroll sideways, taking the
   Browse button and the row's own buttons off the edge with it. The list can shrink now, and a
   long line is trimmed instead of setting the dialog's width.

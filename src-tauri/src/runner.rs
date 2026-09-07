@@ -47,9 +47,76 @@ pub struct ExitEvent {
     pub killed: bool,
 }
 
+/// Whether Windows would refuse this command line: an argument with a line break in it cannot be
+/// passed to a `.cmd` or `.bat`, and the spawn fails with "batch file arguments are invalid".
+fn needs_shim_unwrap(program: &str, args: &[String]) -> bool {
+    let lower = program.to_ascii_lowercase();
+    if !(lower.ends_with(".cmd") || lower.ends_with(".bat")) {
+        return false;
+    }
+    args.iter().any(|a| a.contains('\n') || a.contains('\r'))
+}
+
+/// The script an npm shim runs, as an absolute path.
+///
+/// The shim ends in a line like `"%_prog%"  "%dp0%\node_modules\pkg\cli.js" %*`; everything we
+/// need is that quoted path, with `%dp0%` (or `%~dp0`) standing for the folder the shim is in.
+fn script_of_shim(text: &str, shim_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    for piece in text.split('"') {
+        let lower = piece.to_ascii_lowercase();
+        if !(lower.ends_with(".js") || lower.ends_with(".mjs") || lower.ends_with(".cjs")) {
+            continue;
+        }
+        let relative = piece
+            .replace("%~dp0", "")
+            .replace("%dp0%", "")
+            .replace("%~dp0%", "");
+        let relative = relative.trim_start_matches(['\\', '/']);
+        let candidate = shim_dir.join(relative);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// Turns a batch shim into the node call it wraps, when the arguments leave no other way.
+///
+/// Returns the program and the arguments to use instead, or nothing when this is not a shim we
+/// recognise — in which case the spawn is attempted as it was and fails as it did, which is at
+/// least the error the user already knows.
+fn unwrap_shim(program: &str, args: &[String]) -> Option<(String, Vec<String>)> {
+    if !needs_shim_unwrap(program, args) {
+        return None;
+    }
+    let path = std::path::Path::new(program);
+    let dir = path.parent()?;
+    let text = std::fs::read_to_string(path).ok()?;
+    let script = script_of_shim(&text, dir)?;
+
+    // npm's shim prefers the node next to it and falls back to the one on PATH; so do we.
+    let local_node = dir.join("node.exe");
+    let node = if local_node.is_file() {
+        local_node.to_string_lossy().into_owned()
+    } else {
+        "node".to_string()
+    };
+
+    let mut out = Vec::with_capacity(args.len() + 1);
+    out.push(script.to_string_lossy().into_owned());
+    out.extend(args.iter().cloned());
+    Some((node, out))
+}
+
 fn build_command(opts: &SpawnOptions) -> Command {
-    let mut cmd = Command::new(&opts.program);
-    cmd.args(&opts.args)
+    // A system prompt is many lines, and a line break cannot be handed to a batch shim.
+    let unwrapped = unwrap_shim(&opts.program, &opts.args);
+    let (program, args) = match &unwrapped {
+        Some((program, args)) => (program.as_str(), args.as_slice()),
+        None => (opts.program.as_str(), opts.args.as_slice()),
+    };
+    let mut cmd = Command::new(program);
+    cmd.args(args)
         .stdin(if opts.stdin_text.is_some() {
             Stdio::piped()
         } else {
@@ -357,6 +424,103 @@ fn kill_tree(pid: u32) {
 
 #[cfg(test)]
 mod tests {
+
+    // ---- Batch shims (see `unwrap_shim`) ----
+
+    /// What npm writes to `%APPDATA%\npm\<name>.cmd`, trimmed to the line that matters.
+    fn npm_shim(script: &str) -> String {
+        format!(
+            "@ECHO off\r\nSETLOCAL\r\nCALL :find_dp0\r\nIF EXIST \"%dp0%\\node.exe\" (\r\n  SET \"_prog=%dp0%\\node.exe\"\r\n) ELSE (\r\n  SET \"_prog=node\"\r\n)\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & \"%_prog%\"  \"%dp0%\\{script}\" %*\r\n"
+        )
+    }
+
+    fn temp_shim(name: &str, script_rel: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!("ainess-shim-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let script = dir.join(script_rel);
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(&script, "// cli").unwrap();
+        let shim = dir.join(format!("{name}.cmd"));
+        std::fs::write(&shim, npm_shim(&script_rel.replace('/', "\\"))).unwrap();
+        (shim, script)
+    }
+
+    #[test]
+    fn runs_the_script_a_shim_wraps_when_an_argument_has_a_line_break() {
+        let (shim, script) = temp_shim("claude", "node_modules/pkg/cli.js");
+        let args = vec!["--append-system-prompt".to_string(), "one\ntwo".to_string()];
+        let (program, out) = super::unwrap_shim(shim.to_str().unwrap(), &args).expect("shim");
+        assert!(program.ends_with("node.exe") || program == "node", "{program}");
+        assert_eq!(
+            std::fs::canonicalize(&out[0]).unwrap(),
+            std::fs::canonicalize(&script).unwrap(),
+        );
+        assert_eq!(&out[1..], &args[..]);
+        let _ = std::fs::remove_dir_all(shim.parent().unwrap());
+    }
+
+    /// Nothing changes for a command line Windows accepts as it is.
+    /// End to end: the same shim and the same multi-line argument that Windows rejects, through
+    /// the command the runner actually builds.
+    #[test]
+    fn spawns_a_shim_with_a_multi_line_argument() {
+        use super::{build_command, SpawnOptions};
+        let dir = std::env::temp_dir().join(format!("ainess-shim-e2e-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let script = dir.join("node_modules").join("probe").join("cli.js");
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(&script, "process.stdout.write(process.argv.slice(2).join('|'));").unwrap();
+        let shim = dir.join("probe.cmd");
+        std::fs::write(&shim, npm_shim(r"node_modules\probe\cli.js")).unwrap();
+
+        let opts = SpawnOptions {
+            run_id: "t".into(),
+            program: shim.to_string_lossy().into_owned(),
+            args: vec!["--append-system-prompt".into(), "one
+two".into()],
+            cwd: None,
+            stdin_text: None,
+            env: Default::default(),
+        };
+
+        // Straight at the shim this is the failure the user reported.
+        let direct = Command::new(&shim).arg("one
+two").output();
+        assert!(direct.is_err(), "Windows used to accept this: the workaround is no longer needed");
+
+        let out = build_command(&opts).stdout(Stdio::piped()).output().expect("spawn");
+        assert!(out.status.success());
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "--append-system-prompt|one
+two");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn leaves_the_shim_alone_when_every_argument_is_one_line() {
+        let (shim, _) = temp_shim("plain", "node_modules/pkg/cli.js");
+        let args = vec!["--version".to_string()];
+        assert!(super::unwrap_shim(shim.to_str().unwrap(), &args).is_none());
+        let _ = std::fs::remove_dir_all(shim.parent().unwrap());
+    }
+
+    #[test]
+    fn leaves_a_real_executable_alone() {
+        let args = vec!["one\ntwo".to_string()];
+        assert!(super::unwrap_shim("C:\\tools\\agy.exe", &args).is_none());
+    }
+
+    /// A shim whose script is not there (a broken or unfamiliar one) is left as it was.
+    #[test]
+    fn gives_up_on_a_shim_it_does_not_recognise() {
+        let dir = std::env::temp_dir().join(format!("ainess-shim-odd-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let shim = dir.join("odd.cmd");
+        std::fs::write(&shim, "@echo off\r\nsome-other-tool %*\r\n").unwrap();
+        let args = vec!["one\ntwo".to_string()];
+        assert!(super::unwrap_shim(shim.to_str().unwrap(), &args).is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     use super::{wait_with_timeout, WaitError};
     use std::process::{Command, Stdio};
     use std::time::Duration;

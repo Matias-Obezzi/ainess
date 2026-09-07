@@ -77,6 +77,14 @@ const PATTERNS: Array<{
     hintKey: "error.missingCli.hint",
   },
   {
+    // Windows will not hand an argument with a line break to a `.cmd`, and the system prompt has
+    // several. The runner works around the shims it recognises; this is what is left.
+    kind: "missing-cli",
+    test: /batch file arguments are invalid/i,
+    titleKey: "error.batchArgs.title",
+    hintKey: "error.batchArgs.hint",
+  },
+  {
     kind: "network",
     test: /econnrefused|etimedout|enotfound|getaddrinfo|socket hang up|network (error|unreachable)|dns/i,
     titleKey: "error.network.title",

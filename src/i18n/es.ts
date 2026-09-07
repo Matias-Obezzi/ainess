@@ -468,6 +468,8 @@ export const es: Dictionary = {
   "error.auth.hint": "Volvé a iniciar sesión en ese CLI desde una terminal.",
   "error.missingCli.title": "No se encontró el CLI",
   "error.missingCli.hint": "Instalalo desde Configuración → Agentes o indicá su ruta a mano.",
+  "error.batchArgs.title": "Windows rechazó el comando de este CLI",
+  "error.batchArgs.hint": "El CLI está instalado como un .cmd y Windows no le pasa argumentos con saltos de línea. Instalalo con npm (npm install -g) o apuntá el agente al ejecutable real desde Configuración → Agentes.",
   "error.network.title": "No se pudo conectar",
   "error.network.hint": "Revisá tu conexión y probá de nuevo.",
   "error.timeout.title": "Tardó demasiado y se cortó",

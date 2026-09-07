@@ -467,6 +467,8 @@ export const zh: Dictionary = {
   "error.auth.hint": "在终端里重新登录该 CLI。",
   "error.missingCli.title": "没有找到该 CLI",
   "error.missingCli.hint": "在“设置 → 智能体”里安装，或手动指定路径。",
+  "error.batchArgs.title": "Windows 拒绝了这个 CLI 的命令",
+  "error.batchArgs.hint": "该 CLI 是以 .cmd 安装的，Windows 不会把带换行的参数传给它。用 npm 安装（npm install -g），或在设置 → 智能体中把该智能体指向真正的可执行文件。",
   "error.network.title": "无法连接",
   "error.network.hint": "检查网络后重试。",
   "error.timeout.title": "耗时过长被中断",
