@@ -1123,6 +1123,8 @@ export const en: Dictionary = {
   "prompt.planner.autoModel": " Pick the model that fits each task's difficulty (flash/haiku for simple, quick work; pro/opus/sonnet for complex work) and put it in the model field of each task of the delegate block.",
   "prompt.planner.delegateRules": "Each task has to stand on its own (the agent does not see this conversation).{extra} When the results come back, check them; if something is missing, delegate again. When there is nothing left to delegate, answer without any delegate block, with a final summary for the user.",
   "prompt.planner.noChildren": "You have no agents under your command. Answer the task yourself.",
+  "prompt.planner.teamFile": "The project's whole team is in `.ainess/AGENTS.md`.",
+  "prompt.planner.othersExist": "The project has other agents ({names}), but none of them reports to you: you cannot delegate to them until they are placed under you in the Hierarchy view. Tell the user that instead of doing the work yourself.",
   "prompt.implementer": "You are an IMPLEMENTER. You get tasks from your planner. Make the changes in the workspace. When you are done, answer with a clear summary: what you changed (files), what you verified, what is left or blocked.",
   "prompt.reviewer": "You are a REVIEWER. You review changes and answer with findings or suggestions.",
   "prompt.profile.header": "## About the user",

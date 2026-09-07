@@ -19,6 +19,9 @@ Settings → About.
   running.
 - **An unsent message stays put.** What is typed is kept per conversation and survives changing
   view — and closing the app.
+- A planner with nobody under it used to answer as if it were alone in the project. It is told who
+  else is on the team and that they have to be placed under it in Hierarchy before it can delegate,
+  and it is pointed at `.ainess/AGENTS.md`, where the whole team is written down.
 - **The orchestrator can see the board.** Its open tasks are part of what a planner is told, each
   with a short id, so "look at the tasks and get to work" is answered from the board instead of
   "there are no tasks and no saved plan". To pick one up it delegates with that id in a `taskId`

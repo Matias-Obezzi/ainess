@@ -634,7 +634,7 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[] }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -667,6 +667,9 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
         "```",
         t("prompt.planner.delegateRules", { extra }),
       ].join("\n");
+      // Where the whole team is written down, in the project itself.
+      prompt += "\n" + t("prompt.planner.teamFile");
+
       // What there is to delegate. Right after the rules for delegating, so the planner reads how
       // and what in one go.
       if (extras?.tasks) {
@@ -674,6 +677,12 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       }
     } else {
       prompt += " " + t("prompt.planner.noChildren");
+      // A team can be built with everybody at the root: then a planner has nobody under it and
+      // used to answer as if it were alone in the project.
+      const others = (extras?.others ?? []).filter(a => a.id !== agent.id);
+      if (others.length > 0) {
+        prompt += " " + t("prompt.planner.othersExist", { names: others.map(a => a.name).join(", ") });
+      }
     }
   } else if (agent.role === "implementer") {
     prompt = t("prompt.implementer");

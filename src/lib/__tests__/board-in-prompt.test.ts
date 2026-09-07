@@ -60,6 +60,21 @@ describe("the board in the system prompt", () => {
     expect(text.split("\n")).toHaveLength(2);
   });
 
+  // A team can be built with everybody at the root: then the planner has nobody under it, and it
+  // used to answer as if it were alone in the project.
+  it("names the agents that exist but do not report to the planner", () => {
+    const loose: AgentConfig = { ...worker, id: "loose", name: "Suelto", parentId: null };
+    const prompt = buildSystemPrompt(planner, [], { skills: [], sharedContext: "", others: [planner, loose] });
+    expect(prompt).toContain("Suelto");
+    // Not itself: a planner is not one of its own missing children.
+    expect(prompt.split("Suelto")[0]).not.toContain(planner.name);
+  });
+
+  it("says where the whole team is written down", () => {
+    const prompt = buildSystemPrompt(planner, [worker], { skills: [], sharedContext: "" });
+    expect(prompt).toContain(".ainess/AGENTS.md");
+  });
+
   it("reaches the planner's prompt, and only when there is a team to delegate to", () => {
     const open = task({ title: "Modificaciones", status: "backlog" });
     const withTeam = buildSystemPrompt(planner, [worker], { skills: [], sharedContext: "", tasks: [open] });

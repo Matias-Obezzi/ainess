@@ -1122,6 +1122,8 @@ export const zh: Dictionary = {
   "prompt.planner.autoModel": " 请按每个任务的难度选择模型（简单快速的用 flash/haiku，复杂的用 pro/opus/sonnet），并写在 delegate 块中每个 task 的 model 字段里。",
   "prompt.planner.delegateRules": "每个 task 都必须自足（该智能体看不到这段对话）。{extra} 结果回来后要核对；如果还缺什么，就再委派一次。没有可委派的内容时，回答中不要带 delegate 块，直接给用户一份最终总结。",
   "prompt.planner.noChildren": "你没有可调度的智能体，请直接完成任务。",
+  "prompt.planner.teamFile": "项目的完整团队在 `.ainess/AGENTS.md` 中。",
+  "prompt.planner.othersExist": "项目里还有其他智能体（{names}），但没有一个归你管：在层级视图中把它们放到你下面之前，你无法委派给它们。请把这一点告诉用户，而不是自己把活干了。",
   "prompt.implementer": "你是实现者（IMPLEMENTER）。你从规划者那里接收任务，在工作区中做出修改。完成后请给出清晰的总结：改了什么（文件）、验证了什么、还剩下或被阻塞的是什么。",
   "prompt.reviewer": "你是审阅者（REVIEWER）。你审阅改动，并给出发现的问题或改进建议。",
   "prompt.profile.header": "## 关于用户",

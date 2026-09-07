@@ -1122,6 +1122,8 @@ export const pt: Dictionary = {
   "prompt.planner.autoModel": " Escolha o modelo adequado à dificuldade de cada tarefa (flash/haiku para trabalho simples e rápido; pro/opus/sonnet para trabalho complexo) e informe-o no campo model de cada task do bloco delegate.",
   "prompt.planner.delegateRules": "Cada task deve ser autocontida (o agente não vê esta conversa).{extra} Quando os resultados chegarem, verifique-os; se faltar algo, delegue de novo. Quando não houver mais nada a delegar, responda sem blocos delegate, com um resumo final para o usuário.",
   "prompt.planner.noChildren": "Você não tem agentes sob seu comando. Responda diretamente à tarefa.",
+  "prompt.planner.teamFile": "A equipe completa do projeto está em `.ainess/AGENTS.md`.",
+  "prompt.planner.othersExist": "O projeto tem outros agentes ({names}), mas nenhum depende de você: não dá para delegar a eles até que fiquem sob seu comando na visão de Hierarquia. Diga isso ao usuário em vez de fazer o trabalho sozinho.",
   "prompt.implementer": "Você é IMPLEMENTADOR. Recebe tarefas do seu planejador. Faça as mudanças no workspace. Ao terminar, responda com um resumo claro: o que mudou (arquivos), o que verificou, o que ficou pendente ou bloqueado.",
   "prompt.reviewer": "Você é REVISOR. Revisa mudanças e responde com achados ou sugestões de melhoria.",
   "prompt.profile.header": "## Sobre o usuário",

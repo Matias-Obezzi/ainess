@@ -1123,6 +1123,8 @@ export const ja: Dictionary = {
   "prompt.planner.autoModel": " 各タスクの難易度に合ったモデルを選び（簡単で速い作業は flash/haiku、複雑な作業は pro/opus/sonnet）、delegate ブロックの各 task の model フィールドに書いてください。",
   "prompt.planner.delegateRules": "各 task は単独で成立している必要があります（そのエージェントはこの会話を見ません）。{extra} 結果が戻ったら確認し、足りないものがあれば再度委譲してください。委譲することが残っていなければ、delegate ブロックなしで、ユーザー向けの最終的なまとめを答えてください。",
   "prompt.planner.noChildren": "指揮下のエージェントはいません。タスクに直接答えてください。",
+  "prompt.planner.teamFile": "プロジェクトのチーム全体は `.ainess/AGENTS.md` にあります。",
+  "prompt.planner.othersExist": "このプロジェクトには他のエージェント（{names}）がいますが、あなたの指揮下にはいません。階層ビューであなたの下に置かれるまで委譲できません。自分で作業をせず、そのことをユーザーに伝えてください。",
   "prompt.implementer": "あなたは実装者（IMPLEMENTER）です。プランナーからタスクを受け取り、ワークスペースで変更を行います。終わったら、変更した内容（ファイル）、検証した内容、残っていることや詰まっていることを簡潔にまとめて答えてください。",
   "prompt.reviewer": "あなたはレビュアー（REVIEWER）です。変更をレビューし、見つけた問題や改善の提案を答えてください。",
   "prompt.profile.header": "## ユーザーについて",

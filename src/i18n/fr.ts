@@ -1122,6 +1122,8 @@ export const fr: Dictionary = {
   "prompt.planner.autoModel": " Choisis le modèle adapté à la difficulté de chaque tâche (flash/haiku pour le travail simple et rapide, pro/opus/sonnet pour le travail complexe) et indique-le dans le champ model de chaque task du bloc delegate.",
   "prompt.planner.delegateRules": "Chaque task doit se suffire à elle-même (l'agent ne voit pas cette conversation).{extra} Quand les résultats reviennent, vérifie-les ; s'il manque quelque chose, délègue à nouveau. Quand il n'y a plus rien à déléguer, réponds sans bloc delegate, avec un résumé final pour l'utilisateur.",
   "prompt.planner.noChildren": "Tu n'as aucun agent sous tes ordres. Réponds directement à la tâche.",
+  "prompt.planner.teamFile": "L'équipe complète du projet est dans `.ainess/AGENTS.md`.",
+  "prompt.planner.othersExist": "Le projet a d'autres agents ({names}), mais aucun ne dépend de toi : tu ne peux pas leur déléguer tant qu'ils ne sont pas placés sous tes ordres dans la vue Hiérarchie. Dis-le à l'utilisateur au lieu de faire le travail toi-même.",
   "prompt.implementer": "Tu es IMPLÉMENTEUR. Tu reçois des tâches de ton planificateur. Fais les changements dans l'espace de travail. Une fois terminé, réponds par un résumé clair : ce que tu as changé (fichiers), ce que tu as vérifié, ce qui reste ou est bloqué.",
   "prompt.reviewer": "Tu es RELECTEUR. Tu relis les changements et réponds par des constats ou des suggestions.",
   "prompt.profile.header": "## À propos de l'utilisateur",

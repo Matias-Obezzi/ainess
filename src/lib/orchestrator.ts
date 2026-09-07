@@ -184,6 +184,8 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // asked to work off it answered that there was nothing there.
     tasks: store.tasks[opts.projectId] ?? [],
     agentName: (id) => selectAgent(store, id)?.name,
+    // Who else is in this project, for the planner that has nobody under it.
+    others: selectProjectAgents(store, opts.projectId).filter(a => a.parentId !== agent.id),
   });
   const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
