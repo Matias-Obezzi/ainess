@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppStore } from "@/store";
 import type { SettingsSection } from "@/store";
 import { cn } from "@/lib/utils";
-import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, Stethoscope, Info, Search, X, type LucideIcon } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
 import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
@@ -19,57 +19,55 @@ import { RemoteSection } from "@/components/settings/RemoteSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { useT } from "@/i18n/useT";
+import {
+  SETTINGS_SECTIONS_META,
+  SETTINGS_GROUPS,
+  SETTINGS_GROUP_KEY,
+  type SettingsSectionMeta,
+} from "@/components/settings/sections";
 
-/** Sidebar groups, in the order they are shown. */
-export const SETTINGS_GROUPS = ["general", "agents", "automation", "access", "app"] as const;
-export type SettingsGroup = (typeof SETTINGS_GROUPS)[number];
+// Re-export group types so consumers don't need a separate import.
+export type { SettingsGroup } from "@/components/settings/sections";
+export { SETTINGS_GROUPS, SETTINGS_GROUP_KEY } from "@/components/settings/sections";
 
-export const SETTINGS_GROUP_KEY: Record<SettingsGroup, string> = {
-  general: "settings.group.general",
-  agents: "settings.group.agents",
-  automation: "settings.group.automation",
-  access: "settings.group.access",
-  app: "settings.group.app",
-};
-
-export interface SettingsSectionDef {
-  id: SettingsSection;
-  labelKey: string;
-  helpKey: string;
-  icon: LucideIcon;
-  /** Which block of the sidebar it belongs to. */
-  group: SettingsGroup;
-  /**
-   * The individual options inside the section, by their real name in the UI. The search returns
-   * these as results of their own, so "puerto" lands on the option and not just on the section.
-   */
-  optionKeys: string[];
-  /** Body of the section. */
+/** The React-specific part of a section (components only SettingsDialog needs). */
+interface SectionUI {
   component: ComponentType;
-  /** Header actions (buttons) rendered right of the title, before the close button. */
   actions?: ComponentType;
-  /** Wraps both `actions` and `component` when they share state (e.g. a "new/edit" dialog). */
   provider?: ComponentType<{ children: ReactNode }>;
 }
 
+/**
+ * Full merged shape used inside SettingsDialog (declarative meta + React components).
+ * Kept private to this file — the rest of the app only needs SettingsSectionMeta from sections.ts.
+ */
+export type SettingsSectionDef = SettingsSectionMeta & SectionUI;
+
+/**
+ * Map from section id to its React pieces. TypeScript enforces all eleven ids are covered:
+ * adding a section in sections.ts without wiring it here causes a compile error.
+ */
+const SECTION_UI: Record<SettingsSection, SectionUI> = {
+  general:     { component: GeneralSection },
+  agents:      { component: AgentsSection,    actions: AgentsSectionActions,   provider: AgentsSectionProvider },
+  profile:     { component: ProfileSection,   actions: ProfileSectionActions,  provider: ProfileSectionProvider },
+  presets:     { component: PresetsSection,   actions: PresetsSectionActions,  provider: PresetsSectionProvider },
+  skills:      { component: SkillsSection,    actions: SkillsSectionActions,   provider: SkillsSectionProvider },
+  mcp:         { component: McpSection,       actions: McpSectionActions,      provider: McpSectionProvider },
+  hooks:       { component: HooksSection,     actions: HooksSectionActions,    provider: HooksSectionProvider },
+  context:     { component: ContextSection,   actions: ContextSectionActions,  provider: ContextSectionProvider },
+  remote:      { component: RemoteSection },
+  diagnostics: { component: DiagnosticsSection },
+  about:       { component: AboutSection },
+};
+
+/** The full list used by the dialog's sidebar and search — order from sections.ts. */
+export const SETTINGS_SECTIONS: SettingsSectionDef[] = SETTINGS_SECTIONS_META.map(meta => ({
+  ...meta,
+  ...SECTION_UI[meta.id],
+}));
+
 const PassThrough = ({ children }: { children: ReactNode }) => children;
-
-/** Search keys of a section's options, named after the option they stand for. */
-const options = (section: SettingsSection, names: string[]) => names.map(n => `settings.option.${section}.${n}`);
-
-export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
-  { id: "general", labelKey: "settings.section.general", helpKey: "settings.help.general", group: "general", optionKeys: options("general", ["tray", "notifyApprovals", "notifyResults", "updateCheck", "debugLog", "maxRounds", "autoModel", "approveDelegations", "language", "autoArchive"]), icon: Settings2, component: GeneralSection },
-  { id: "agents", labelKey: "settings.section.agents", helpKey: "settings.help.agents", group: "agents", optionKeys: options("agents", ["installed", "detect", "cliVersion", "quota", "binaryPath", "formations", "newFormation", "defaultFormation"]), icon: Bot, component: AgentsSection, actions: AgentsSectionActions, provider: AgentsSectionProvider },
-  { id: "profile", labelKey: "settings.section.profile", helpKey: "settings.help.profile", group: "agents", optionKeys: options("profile", ["name", "about", "preferences"]), icon: User, component: ProfileSection, actions: ProfileSectionActions, provider: ProfileSectionProvider },
-  { id: "presets", labelKey: "settings.section.presets", helpKey: "settings.help.presets", group: "automation", optionKeys: options("presets", ["quickOrders", "newOrder"]), icon: ListChecks, component: PresetsSection, actions: PresetsSectionActions, provider: PresetsSectionProvider },
-  { id: "skills", labelKey: "settings.section.skills", helpKey: "settings.help.skills", group: "automation", optionKeys: options("skills", ["agentSkills", "suggested"]), icon: Sparkles, component: SkillsSection, actions: SkillsSectionActions, provider: SkillsSectionProvider },
-  { id: "mcp", labelKey: "settings.section.mcp", helpKey: "settings.help.mcp", group: "automation", optionKeys: options("mcp", ["servers", "suggested"]), icon: Plug, component: McpSection, actions: McpSectionActions, provider: McpSectionProvider },
-  { id: "hooks", labelKey: "settings.section.hooks", helpKey: "settings.help.hooks", group: "automation", optionKeys: options("hooks", ["byEvent", "slackAction", "commandAction", "filter"]), icon: Webhook, component: HooksSection, actions: HooksSectionActions, provider: HooksSectionProvider },
-  { id: "context", labelKey: "settings.section.context", helpKey: "settings.help.context", group: "agents", optionKeys: options("context", ["shared"]), icon: FileText, component: ContextSection, actions: ContextSectionActions, provider: ContextSectionProvider },
-  { id: "remote", labelKey: "settings.section.remote", helpKey: "settings.help.remote", group: "access", optionKeys: options("remote", ["lan", "port", "token", "qr", "tunnel", "tunnelProvider", "domainType", "domain", "ngrokAuthtoken", "ngrokApiKey", "installNgrok", "detectAgain"]), icon: Smartphone, component: RemoteSection },
-  { id: "diagnostics", labelKey: "settings.section.diagnostics", helpKey: "settings.help.diagnostics", group: "app", optionKeys: options("diagnostics", ["recheck", "copy"]), icon: Stethoscope, component: DiagnosticsSection },
-  { id: "about", labelKey: "settings.section.about", helpKey: "settings.help.about", group: "app", optionKeys: options("about", ["version", "checkUpdates", "openLogs", "copyDiagnostics", "repository"]), icon: Info, component: AboutSection },
-];
 
 /** Lowercase and without accents, so "orquestacion" finds "orquestación". */
 function normalize(text: string): string {
