@@ -13,6 +13,13 @@ Settings → About.
   card moves when a delegation names it, not when somebody edits the markdown — and the rest of
   the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
   configuration folder.
+- **A browser for the agents.** The Playwright MCP server was already one click away in
+  Configuración → MCP (⋯ → suggested); what was missing is that the servers reached more than one
+  CLI. GitHub Copilot now gets them on every run too, through the file Claude Code already got
+  (`--additional-mcp-config`), so an agent on either can open the app, click around, read the DOM
+  and take screenshots. The section says which CLIs receive them and which have to be configured
+  in the CLI itself — before, enabling a server for an agent that could not receive it did nothing
+  and said nothing.
 - **The phone tells you when something needs you.** A bell in its header asks for permission, and
   from then on a delegation waiting for a yes, a question, or a task that came back reaches you
   while the page is in the background or the screen is locked. It is the browser's own

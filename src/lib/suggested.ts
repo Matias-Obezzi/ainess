@@ -57,7 +57,7 @@ export const SUGGESTED_MCP: SuggestedMcp[] = [
   },
   {
     name: "Playwright",
-    description: "Controlar un navegador",
+    description: "Un navegador para los agentes: abrir la app, hacer clic, leer el DOM y sacar capturas",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@playwright/mcp@latest"],

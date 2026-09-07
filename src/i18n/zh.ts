@@ -563,6 +563,7 @@ export const zh: Dictionary = {
   "mcp.new": "新建 MCP",
   "mcp.delete": "删除这个 MCP 服务器？",
   "mcp.syncWithAntigravity": "与 Antigravity 同步",
+  "mcp.reach": "Claude Code 和 GitHub Copilot 每次运行都会拿到。Antigravity 需要先同步（⋯ 菜单）。其他 CLI 目前还接收不到：请在各自的 CLI 里配置。",
   "mcp.syncDone": "同步成功：新增 {added} 个，移除 {removed} 个",
   "mcp.syncFailed": "同步 MCP 出错",
   "mcp.empty.title": "还没有 MCP 服务器",

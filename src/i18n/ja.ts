@@ -564,6 +564,7 @@ export const ja: Dictionary = {
   "mcp.new": "新しいMCP",
   "mcp.delete": "MCPサーバーを削除しますか?",
   "mcp.syncWithAntigravity": "Antigravityと同期",
+  "mcp.reach": "Claude Code と GitHub Copilot は実行のたびに受け取ります。Antigravity は同期（⋯ メニュー）のあとで受け取ります。他の CLI にはまだ渡す方法がないので、その CLI 側で設定してください。",
   "mcp.syncDone": "同期が完了しました: {added} 件追加、{removed} 件削除",
   "mcp.syncFailed": "MCPの同期に失敗しました",
   "mcp.empty.title": "まだMCPサーバーがありません",

@@ -80,7 +80,7 @@ export function McpSection() {
         <EmptyState
           icon={Plug}
           title={t("mcp.empty.title")}
-          description={t("mcp.empty.body")}
+          description={`${t("mcp.empty.body")} ${t("mcp.reach")}`}
           action={{ label: t("mcp.empty.action"), onClick: showSuggested }}
         />
         {dialogs}
@@ -90,6 +90,9 @@ export function McpSection() {
 
   return (
     <div className="space-y-4">
+      {/* Which CLIs actually receive them: a server enabled for an agent whose CLI has no way in
+          did nothing, and said nothing about it. */}
+      <p className="text-xs text-muted-foreground">{t("mcp.reach")}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {config.mcpServers.map(server => (
           <Card key={server.id}>

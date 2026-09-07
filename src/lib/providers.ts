@@ -416,6 +416,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       if (input.agent.model) args.push("--model", input.agent.model);
       if (input.sessionId) args.push("--resume", input.sessionId);
       if (input.cwd) args.push("--add-dir", input.cwd);
+      // The same file Claude Code gets: `--additional-mcp-config` takes "a JSON string or a file
+      // path (prefix with @)" and adds them on top of what ~/.copilot/mcp-config.json already has.
+      if (input.mcpConfigPath) args.push("--additional-mcp-config", `@${input.mcpConfigPath}`);
       return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
     },
     parseLine: parseCopilotLine,

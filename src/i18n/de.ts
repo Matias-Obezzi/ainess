@@ -563,6 +563,7 @@ export const de: Dictionary = {
   "mcp.new": "Neues MCP",
   "mcp.delete": "MCP-Server löschen?",
   "mcp.syncWithAntigravity": "Mit Antigravity synchronisieren",
+  "mcp.reach": "Claude Code und GitHub Copilot bekommen sie bei jedem Lauf. Antigravity nach dem Synchronisieren (Menü ⋯). Die übrigen CLIs haben noch keinen Weg dafür: richte sie im CLI selbst ein.",
   "mcp.syncDone": "Synchronisierung erfolgreich: {added} hinzugefügt, {removed} entfernt",
   "mcp.syncFailed": "Fehler beim Synchronisieren von MCP",
   "mcp.empty.title": "Noch keine MCP-Server",
