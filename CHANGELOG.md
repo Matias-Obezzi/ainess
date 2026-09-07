@@ -7,6 +7,12 @@ Settings → About.
 
 ### Added
 
+- **A `.ainess/` folder in every project.** The app writes what it knows where the agents can read
+  it: `BOARD.md` with the open cards and the id each one answers to, `AGENTS.md` with the team and
+  who reports to whom, and a `README.md` saying what the folder is. The app owns those three — a
+  card moves when a delegation names it, not when somebody edits the markdown — and the rest of
+  the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
+  configuration folder.
 - **The orchestrator can see the board.** Its open tasks are part of what a planner is told, each
   with a short id, so "look at the tasks and get to work" is answered from the board instead of
   "there are no tasks and no saved plan". To pick one up it delegates with that id in a `taskId`

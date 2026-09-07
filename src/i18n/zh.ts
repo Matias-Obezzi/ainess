@@ -1109,7 +1109,7 @@ export const zh: Dictionary = {
   "cli.usage.total": "总计",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "你是一个 AI 智能体团队的规划者（PLANNER）。你不亲自实现：你分析、拆分工作并委派。你可以在项目的 .claude/ 目录内创建和编辑文件（计划、交接、笔记），也可以使用 git。",
+  "prompt.planner.intro": "你是一个 AI 智能体团队的规划者（PLANNER）。你不亲自实现：你分析、拆分工作并委派。你可以在项目的 .ainess/ 目录内创建和编辑文件（计划、交接、笔记），也可以使用 git。",
   "prompt.planner.children": "你可以调度的智能体：",
   "prompt.planner.childModels": "（可用模型：{models}）",
   "prompt.planner.delegateIntro": "要委派任务，请在回答中包含一个或多个完全如下的代码块：",
@@ -1132,4 +1132,11 @@ export const zh: Dictionary = {
   "prompt.board.header": "## 项目看板",
   "prompt.board.intro": "以下是未完成的任务。要接手其中一个，就在 `taskId` 字段里带上它的 id 去委派：这样卡片会移动，而不是再新建一张。如果用户的请求已经在这个列表里，就不要再开一个新任务。",
   "prompt.board.empty": "看板上没有未完成的任务。",
+  "folder.generated": "由 ainess 生成。请勿手动编辑：内容变化时应用会重写它。",
+  "folder.board.title": "{project} 的看板",
+  "folder.board.empty": "没有未完成的任务。",
+  "folder.agents.title": "{project} 的团队",
+  "folder.agents.empty": "这个项目还没有智能体。",
+  "folder.readme.title": "{project} 的 .ainess 目录",
+  "folder.readme.body": "ainess 关于这个项目所知道的都放在这里。`BOARD.md` 是任务看板，`AGENTS.md` 是团队：两者都由应用写入，手动改动会在下次运行时丢失 —— 要移动一张卡片，规划者用它的 id 去委派。\n\n目录的其余部分属于智能体：计划、笔记和交接放在这里，而不是各个 CLI 自己的配置目录。",
 };

@@ -464,6 +464,11 @@ export const nodeTransport: Transport = {
     }
   },
 
+  writeFileAbs: async (absPath: string, content: string) => {
+    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    fs.writeFileSync(absPath, content, "utf-8");
+  },
+
   readFileAbs: async (absPath: string) => {
     try {
       return fs.readFileSync(absPath, "utf-8");

@@ -1109,7 +1109,7 @@ export const pt: Dictionary = {
   "cli.usage.total": "Total geral",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Você é o PLANEJADOR de uma equipe de agentes de IA. Você não implementa: analisa, divide o trabalho e delega. Pode criar e editar arquivos dentro da pasta .claude/ do projeto (planos, handoffs, notas) e usar git.",
+  "prompt.planner.intro": "Você é o PLANEJADOR de uma equipe de agentes de IA. Você não implementa: analisa, divide o trabalho e delega. Pode criar e editar arquivos dentro da pasta .ainess/ do projeto (planos, handoffs, notas) e usar git.",
   "prompt.planner.children": "Agentes sob seu comando:",
   "prompt.planner.childModels": " (Modelos disponíveis: {models})",
   "prompt.planner.delegateIntro": "Para delegar, inclua na sua resposta um ou mais blocos exatamente assim:",
@@ -1132,4 +1132,11 @@ export const pt: Dictionary = {
   "prompt.board.header": "## Quadro do projeto",
   "prompt.board.intro": "Estas são as tarefas abertas. Para assumir uma, delegue-a com o id dela no campo `taskId`: assim o cartão se move em vez de nascer outro igual. Não abra o pedido do usuário como tarefa nova se ele já está nesta lista.",
   "prompt.board.empty": "O quadro não tem tarefas abertas.",
+  "folder.generated": "Gerado pelo ainess. Não edite à mão: o app reescreve quando algo muda.",
+  "folder.board.title": "Quadro de {project}",
+  "folder.board.empty": "Não há tarefas abertas.",
+  "folder.agents.title": "Equipe de {project}",
+  "folder.agents.empty": "Este projeto ainda não tem agentes.",
+  "folder.readme.title": "A pasta .ainess de {project}",
+  "folder.readme.body": "Aqui fica o que o ainess sabe deste projeto. `BOARD.md` é o quadro de tarefas e `AGENTS.md` é a equipe: os dois são escritos pelo app, então o que você editar à mão se perde na próxima execução — para mover um cartão, o planejador o delega com o id dele.\n\nO resto da pasta é dos agentes: planos, notas e handoffs vão aqui, e não na pasta de configuração de cada CLI.",
 };

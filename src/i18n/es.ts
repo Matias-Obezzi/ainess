@@ -1111,7 +1111,7 @@ export const es: Dictionary = {
   "cli.usage.total": "Total general",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .claude/ del proyecto (planes, handoffs, notas) y usar git.",
+  "prompt.planner.intro": "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .ainess/ del proyecto (planes, handoffs, notas) y usar git.",
   "prompt.planner.children": "Agentes disponibles bajo tu mando:",
   "prompt.planner.childModels": " (Modelos disponibles: {models})",
   "prompt.planner.delegateIntro": "Para delegar incluí en tu respuesta uno o más bloques exactamente así:",
@@ -1134,4 +1134,11 @@ export const es: Dictionary = {
   "prompt.board.header": "## Tablero del proyecto",
   "prompt.board.intro": "Estas son las tareas abiertas. Para ponerte con una, delegala con su id en el campo `taskId`: así la tarjeta se mueve en lugar de crearse otra igual. No repitas el pedido del usuario como tarea nueva si ya está en esta lista.",
   "prompt.board.empty": "El tablero no tiene tareas abiertas.",
+  "folder.generated": "Generado por ainess. No lo edites a mano: la app lo reescribe cuando algo cambia.",
+  "folder.board.title": "Tablero de {project}",
+  "folder.board.empty": "No hay tareas abiertas.",
+  "folder.agents.title": "Equipo de {project}",
+  "folder.agents.empty": "Este proyecto todavía no tiene agentes.",
+  "folder.readme.title": "La carpeta .ainess de {project}",
+  "folder.readme.body": "Acá vive lo que ainess sabe de este proyecto. `BOARD.md` es el tablero de tareas y `AGENTS.md` es el equipo: los escribe la app, así que lo que edites a mano se pierde en la próxima corrida — para mover una tarjeta, el planificador la delega con su id.\n\nEl resto de la carpeta es de los agentes: planes, notas y handoffs van acá, y no en la carpeta de configuración de cada CLI.",
 };

@@ -1109,7 +1109,7 @@ export const fr: Dictionary = {
   "cli.usage.total": "Total général",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Tu es le PLANIFICATEUR d'une équipe d'agents IA. Tu n'implémentes pas : tu analyses, découpes le travail et délègues. Tu peux créer et modifier des fichiers dans le dossier .claude/ du projet (plans, passations, notes) et utiliser git.",
+  "prompt.planner.intro": "Tu es le PLANIFICATEUR d'une équipe d'agents IA. Tu n'implémentes pas : tu analyses, découpes le travail et délègues. Tu peux créer et modifier des fichiers dans le dossier .ainess/ du projet (plans, passations, notes) et utiliser git.",
   "prompt.planner.children": "Agents sous tes ordres :",
   "prompt.planner.childModels": " (Modèles disponibles : {models})",
   "prompt.planner.delegateIntro": "Pour déléguer, inclus dans ta réponse un ou plusieurs blocs exactement comme ceci :",
@@ -1132,4 +1132,11 @@ export const fr: Dictionary = {
   "prompt.board.header": "## Le tableau du projet",
   "prompt.board.intro": "Voici les tâches ouvertes. Pour en prendre une, délègue-la avec son id dans le champ `taskId` : la carte se déplace au lieu qu'une seconde soit créée. N'ouvre pas la demande de l'utilisateur comme une tâche neuve si elle est déjà dans cette liste.",
   "prompt.board.empty": "Le tableau n'a aucune tâche ouverte.",
+  "folder.generated": "Généré par ainess. Ne pas modifier à la main : l'app le réécrit dès que quelque chose change.",
+  "folder.board.title": "Le tableau de {project}",
+  "folder.board.empty": "Aucune tâche ouverte.",
+  "folder.agents.title": "L'équipe de {project}",
+  "folder.agents.empty": "Ce projet n'a pas encore d'agents.",
+  "folder.readme.title": "Le dossier .ainess de {project}",
+  "folder.readme.body": "Ce que ainess sait de ce projet vit ici. `BOARD.md` est le tableau des tâches et `AGENTS.md` l'équipe : c'est l'app qui les écrit, donc ce que tu modifies à la main est perdu à la prochaine exécution — pour déplacer une carte, le planificateur la délègue avec son id.\n\nLe reste du dossier appartient aux agents : plans, notes et passations vont ici, et non dans le dossier de configuration de chaque CLI.",
 };

@@ -340,9 +340,10 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       }
       
       if (input.agent.role === "planner") {
-        // Planners do not implement, but they do keep the plans (.claude/) and need git to check
-        // what the implementers left behind and to commit/push: nothing else from the shell.
-        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.claude/**)", "Write(.claude/**)", "MultiEdit(.claude/**)");
+        // Planners do not implement, but they do keep the plans (.ainess/, the folder the app
+        // writes the board and the team into) and need git to check what the implementers left
+        // behind and to commit/push: nothing else from the shell.
+        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)");
       }
 
       return {

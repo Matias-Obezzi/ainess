@@ -106,6 +106,17 @@ pub fn read_home_file(relative_path: String) -> Result<Option<String>, String> {
 
 /// Reads a file by absolute path (read-only). Returns `None` when it does not exist or cannot
 /// be read, so callers only need to distinguish "not there" from "there".
+/// Writes a file anywhere, creating the folder it goes in. Used for the `.ainess/` folder the app
+/// keeps inside each project, so the agents can read what the app knows.
+#[tauri::command]
+pub fn write_file_abs(path: String, content: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&path);
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn read_file_abs(path: String) -> Result<Option<String>, String> {
     let path = std::path::Path::new(&path);
@@ -116,5 +127,23 @@ pub fn read_file_abs(path: String) -> Result<Option<String>, String> {
     match fs::read_to_string(path) {
         Ok(content) => Ok(Some(content)),
         Err(_) => Ok(None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The `.ainess/` folder of a project does not exist until the app writes into it.
+    #[test]
+    fn writes_a_file_into_a_folder_that_is_not_there_yet() {
+        let dir = std::env::temp_dir().join(format!("ainess-write-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join(".ainess").join("BOARD.md");
+
+        super::write_file_abs(file.to_string_lossy().into_owned(), "# Tablero
+".into()).unwrap();
+
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "# Tablero
+");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -17,6 +17,9 @@ export interface Transport {
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
 
+  /** Writes a file by absolute path, creating its folder. For the `.ainess/` folder of a project. */
+  writeFileAbs(path: string, content: string): Promise<void>;
+
   // Read-only probes for the diagnostics section and `ais doctor`.
   /**
    * Size, file count and writability of one folder of the app's own storage: the logs folder

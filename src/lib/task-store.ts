@@ -2,6 +2,7 @@
 // are written with a debounce from a single store subscription, the same shape as src/lib/history.ts,
 // so neither the board nor the orchestrator needs to know when a save happens.
 import { useAppStore } from "@/store";
+import { writeProjectFolder } from "@/lib/project-folder";
 import { getTransport } from "@/lib/transport";
 import { createTask } from "@/lib/tasks";
 import type { Task, TaskStatus } from "@/types";
@@ -95,6 +96,10 @@ export async function saveTasks(projectId: string): Promise<void> {
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
+
+  // And the copy the agents can read, in the project's own folder.
+  const project = state.config.projects.find(p => p.id === projectId);
+  if (project) await writeProjectFolder(project, file.tasks, project.agents);
 }
 
 /**

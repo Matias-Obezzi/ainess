@@ -1109,7 +1109,7 @@ export const de: Dictionary = {
   "cli.usage.total": "Gesamtsumme",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Du bist der PLANER eines Teams von KI-Agenten. Du implementierst nicht selbst: Du analysierst, teilst die Arbeit auf und delegierst. Dateien im Ordner .claude/ des Projekts darfst du anlegen und bearbeiten (Pläne, Übergaben, Notizen), und git darfst du verwenden.",
+  "prompt.planner.intro": "Du bist der PLANER eines Teams von KI-Agenten. Du implementierst nicht selbst: Du analysierst, teilst die Arbeit auf und delegierst. Dateien im Ordner .ainess/ des Projekts darfst du anlegen und bearbeiten (Pläne, Übergaben, Notizen), und git darfst du verwenden.",
   "prompt.planner.children": "Agenten unter deiner Leitung:",
   "prompt.planner.childModels": " (Verfügbare Modelle: {models})",
   "prompt.planner.delegateIntro": "Zum Delegieren füge deiner Antwort einen oder mehrere Blöcke genau so ein:",
@@ -1132,4 +1132,11 @@ export const de: Dictionary = {
   "prompt.board.header": "## Das Board des Projekts",
   "prompt.board.intro": "Das sind die offenen Aufgaben. Um eine davon zu übernehmen, delegiere sie mit ihrer id im Feld `taskId`: dann wandert die Karte, statt dass eine zweite entsteht. Öffne die Anfrage des Benutzers nicht als neue Aufgabe, wenn sie bereits in dieser Liste steht.",
   "prompt.board.empty": "Auf dem Board gibt es keine offenen Aufgaben.",
+  "folder.generated": "Von ainess erzeugt. Nicht von Hand bearbeiten: die App schreibt die Datei neu, sobald sich etwas ändert.",
+  "folder.board.title": "Das Board von {project}",
+  "folder.board.empty": "Keine offenen Aufgaben.",
+  "folder.agents.title": "Das Team von {project}",
+  "folder.agents.empty": "Dieses Projekt hat noch keine Agenten.",
+  "folder.readme.title": "Der Ordner .ainess von {project}",
+  "folder.readme.body": "Was ainess über dieses Projekt weiß, liegt hier. `BOARD.md` ist das Aufgabenboard und `AGENTS.md` das Team: beide schreibt die App, von Hand Geändertes geht beim nächsten Lauf verloren — um eine Karte zu bewegen, delegiert der Planer sie mit ihrer id.\n\nDer Rest des Ordners gehört den Agenten: Pläne, Notizen und Übergaben kommen hierher statt in den Konfigurationsordner des jeweiligen CLI.",
 };

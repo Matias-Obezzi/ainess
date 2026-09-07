@@ -1110,7 +1110,7 @@ export const ja: Dictionary = {
   "cli.usage.total": "総合計",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "あなたは AI エージェントチームのプランナー（PLANNER）です。自分では実装せず、分析し、作業を分割して委譲します。プロジェクトの .claude/ フォルダ内でのファイルの作成・編集（計画、引き継ぎ、メモ）と git の使用はできます。",
+  "prompt.planner.intro": "あなたは AI エージェントチームのプランナー（PLANNER）です。自分では実装せず、分析し、作業を分割して委譲します。プロジェクトの .ainess/ フォルダ内でのファイルの作成・編集（計画、引き継ぎ、メモ）と git の使用はできます。",
   "prompt.planner.children": "あなたの指揮下にいるエージェント:",
   "prompt.planner.childModels": "（利用可能なモデル: {models}）",
   "prompt.planner.delegateIntro": "委譲するには、回答に次のとおりのブロックを 1 つ以上含めてください:",
@@ -1133,4 +1133,11 @@ export const ja: Dictionary = {
   "prompt.board.header": "## プロジェクトのボード",
   "prompt.board.intro": "以下が未完了のタスクです。取りかかるときは `taskId` フィールドにその id を入れて委譲してください。そうすればカードは新しく作られず、そのまま移動します。ユーザーの依頼がすでにこの一覧にあるなら、新しいタスクとして起こさないでください。",
   "prompt.board.empty": "ボードに未完了のタスクはありません。",
+  "folder.generated": "ainess が生成しました。手で編集しないでください: 変更があるたびにアプリが書き直します。",
+  "folder.board.title": "{project} のボード",
+  "folder.board.empty": "未完了のタスクはありません。",
+  "folder.agents.title": "{project} のチーム",
+  "folder.agents.empty": "このプロジェクトにはまだエージェントがいません。",
+  "folder.readme.title": "{project} の .ainess フォルダ",
+  "folder.readme.body": "ainess がこのプロジェクトについて把握していることがここにあります。`BOARD.md` はタスクボード、`AGENTS.md` はチームで、どちらもアプリが書きます。手で編集した内容は次の実行で失われます — カードを動かすには、プランナーがその id を付けて委譲します。\n\nフォルダの残りはエージェントのものです。計画・メモ・引き継ぎは、各 CLI の設定フォルダではなくここに置きます。",
 };
