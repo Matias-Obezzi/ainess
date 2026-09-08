@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Added
 
+- **Agents on the same task know about each other.** A planner splitting work between two
+  implementers started each of them blind: neither knew the other was there, both reached for the
+  same files, and the planner got back two answers that disagreed. Each one is now told who else is
+  working on this same task and what they were asked to do — and that what somebody else has in
+  their hands is theirs to change, not yours to overwrite. It travels every turn, like the board,
+  because it is the kind of thing that changes while you work.
+
 - **A hook can write to "the boss" instead of to somebody by name.** The agent to instruct now
   offers the top of the hierarchy — the project's root planner, the same agent the composer, the
   CLI and the phone write to by default — resolved when the hook fires rather than when it is

@@ -243,6 +243,30 @@ Con `gh` ya instalado y la rama del worktree lista, el paso que falta es el que 
 
 ### Noche del 8 al 9 de septiembre de 2026
 
-- Revisión completa escrita y commiteada. El trabajo arranca por los bugs (A) y sigue por las
-  inconsistencias (B); lo de comunicación (C/D) va después porque cambia el protocolo, y las
-  features (E) quedan para cuando vos elijas cuáles.
+Revisión escrita y siete ítems cerrados, cada uno con sus tests y su entrada en el CHANGELOG. En
+orden, y con el commit al lado:
+
+1. `8d31200` — la revisión entera, este archivo.
+2. `f0e0253` — **A1, A2 y A3**: la delegación que no llega a nadie ya no cuelga la tarea; una
+   corrida que no puede arrancar cierra su tarjeta; el tope de rondas avisa y cierra en *necesita
+   tu atención*. De paso, `.ainess/history/` dejó de commitearse.
+3. `83182eb` — **B1**: unas treinta frases que salían en español fijo pasaron a los siete
+   diccionarios. La marca de «interrumpido» ahora se reconoce en cualquier idioma, así que un
+   proceso huérfano de ayer se sigue limpiando hoy.
+4. `118a251` — **B2**: un solo constructor de prompt. En un chat el agente ahora puede pedirte una
+   decisión, y las skills se nombran en vez de pegarse enteras.
+5. `cf7b635` — **A4** (y **B3** descartado): la tarjeta parada en *en revisión* detrás de una
+   corrida muerta se resuelve sola en el próximo arranque.
+6. `efbde04` — **C2**: cada agente sabe quién más está trabajando en su misma tarea y qué le tocó.
+
+**Lo que dejé sin tocar a propósito.** Todo lo que cambia el protocolo entre agentes (C1, C3, C4,
+C5) y lo que abre la puerta de vuelta desde el agente hacia la app (D1 a D4) son decisiones de
+producto, no arreglos: cambian cómo se escriben las tareas y qué puede hacer un agente sin
+preguntarte. Están descritos arriba con su propuesta; elegí cuáles querés y los armo. Lo mismo con
+las features (E). Queda pendiente también **B4**, la auditoría del CLI, que es leer antes que
+escribir.
+
+**Estado del repo.** Todo en `dev`, pusheado. `npx tsc --noEmit` limpio, 649 tests en 74 archivos
+en verde, `npm run build:cli` bien. `cargo check` sigue fallando por una ruta vieja en
+`src-tauri/target` que apunta a `projectsis`: es de antes, no lo tocó nada de esta noche, y se
+arregla con `cargo clean`.
