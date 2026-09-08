@@ -4,7 +4,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
   Bell,
-  CheckCheck,
   CircleAlert,
   CircleCheck,
   Download,
@@ -106,6 +105,18 @@ export function NotificationBell() {
   const clearNotifications = useAppStore(state => state.clearNotifications);
   const openProject = useAppStore(state => state.openProject);
 
+  /**
+   * Opening the panel is reading it.
+   *
+   * Everything the bell holds is on screen at once, so the badge asking for attention after you
+   * have looked is asking twice. Anything that lands while the panel is open is read too — it is
+   * just as much in front of you as the rest.
+   */
+  useEffect(() => {
+    if (!open) return;
+    if (items.some(n => !n.read)) markNotificationsRead();
+  }, [open, items, markNotificationsRead]);
+
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -182,21 +193,6 @@ export function NotificationBell() {
         <PopoverContent ref={contentRef} align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  aria-label={t("notifications.markAllRead")}
-                  disabled={unread === 0}
-                  onClick={() => markNotificationsRead()}
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t("notifications.markAllRead")}</TooltipContent>
-            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
