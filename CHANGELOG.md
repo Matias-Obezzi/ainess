@@ -3,7 +3,7 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
-## Unreleased
+## 0.5.0 — 2026-09-08
 
 ### Added
 
@@ -26,6 +26,16 @@ Settings → About.
   it asks for changes. The planner waits for that review and reads it before carrying on.
 - **Variables that complete themselves.** Typing `{{` in a hook's message, title or arguments opens
   the list of variables the event carries: arrows to pick one, Enter to insert it.
+
+- **The side panes are dragged to the width you want.** The menu on the left and the dock on the
+  right were fixed at 260 and 380 pixels. Both have a divider now, and the width you leave is
+  remembered per machine.
+- **Pull, push and switch branch without leaving the app.** The repo popover of the project header
+  had only numbers in it; it now has the branch — local ones, remote ones you do not have yet, and
+  a first entry that asks for a name and creates one — plus a pull and a push. All of it is off
+  while an agent is working in that project: git moving files under a run is how one ends up half
+  applied to the wrong branch. The pull only fast-forwards, so it stops and says why instead of
+  leaving a merge behind, and the first push of a new branch sets its upstream.
 
 ### Fixed
 
