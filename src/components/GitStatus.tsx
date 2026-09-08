@@ -213,6 +213,9 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Both buttons wear what the select next to them wears: `size="sm"` alone would not match. */
+const FIELD_BUTTON = "h-7 gap-1.5 rounded-lg bg-transparent px-2 text-xs dark:bg-input/30 dark:hover:bg-input/50";
+
 /** The value the "new branch" entry of the select carries; no branch can be called this. */
 const NEW_BRANCH = " new";
 /** Remote entries keep their remote in the name, so "origin/main" cannot collide with "main". */
@@ -298,7 +301,7 @@ function RepoActions({ projectId, workspaceDir, status, onCreateBranch }: {
         type="button"
         variant="outline"
         size="sm"
-        className="h-7 gap-1.5 px-2 text-xs"
+        className={FIELD_BUTTON}
         disabled={busy}
         title={agentsWorking ? t("git.agentsWorking") : t("git.pullHint")}
         onClick={() => void perform("pull", () => pullBranch(workspaceDir))}
@@ -309,7 +312,7 @@ function RepoActions({ projectId, workspaceDir, status, onCreateBranch }: {
         type="button"
         variant="outline"
         size="sm"
-        className="h-7 gap-1.5 px-2 text-xs"
+        className={FIELD_BUTTON}
         disabled={busy}
         title={agentsWorking ? t("git.agentsWorking") : t("git.pushHint")}
         onClick={() => void perform("push", () => pushBranch(workspaceDir, status))}
