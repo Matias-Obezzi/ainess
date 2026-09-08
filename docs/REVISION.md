@@ -257,10 +257,18 @@ un `JSON.stringify` completo y un `localStorage.setItem` sincrónico por pulsaci
 hilo principal. Ahora el estado en memoria sigue siendo inmediato y el disco se escribe como mucho
 cada 400 ms, con volcado inmediato al cerrar o esconder la ventana para no perder nada.
 
-**Lo que falta medir.** Ni el hilo de la conversación ni el panel de comunicación virtualizan: se
-dibujan todos los mensajes, y el tope en memoria es 3000 por proyecto. Encima, mientras un agente
-escribe, cada pedacito de texto que llega actualiza el store y vuelve a dibujar el hilo entero. Eso
-explicaría que empeore cuanto más contenido hay. Antes de tocarlo hay que medirlo.
+**Segunda causa, arreglada** — *«What the agent is saying, gathered before it is written»*. Cada
+pedacito de texto que llegaba de un CLI era una escritura al store: una copia del array entero de
+mensajes para agregarle una letra al último, más una copia del mapa de corridas por la línea cruda,
+más un recorrido de todos los mensajes en el suscriptor que decide qué guardar. Por token. Con
+historial largo, eso es trabajo proporcional a todo lo dicho hasta ahora — justo por qué se ponía
+peor con el correr del día. Ahora se juntan y se aplican de a uno cada 80 ms, y se vuelcan en el
+acto cuando una corrida termina, se detiene o se cierra la ventana, así que nada llega tarde ni se
+pierde.
+
+**Lo que falta.** Ni el hilo ni el panel de comunicación limitan lo que dibujan: pintan todos los
+mensajes, con tope de 3000 por proyecto, y ninguna fila está memoizada. Con las escrituras ya
+juntadas, eso es lo que queda.
 
 ### `[x]` F3 · Al cambiar de proyecto se perdía la conversación en la que estabas — *«Open it the way I left it»*
 
