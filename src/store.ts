@@ -465,6 +465,7 @@ const pendingSaves = new Map<string, { value: Record<string, string>; timer: Ret
 
 /** Flushes all pending string map writes to localStorage immediately. */
 export function flushStringMapSaves(): void {
+  orchestrator.flushStream();
   for (const [key, pending] of pendingSaves.entries()) {
     clearTimeout(pending.timer);
     saveStringMap(key, pending.value);

@@ -12,6 +12,7 @@ import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
+import { StreamBuffer } from "@/lib/stream-buffer";
 import { resolveDelegations } from "@/lib/delegation";
 
 let listenersAttached = false;
@@ -68,6 +69,7 @@ async function resolveCwd(projectId: string, agent: AgentConfig, project: Projec
 
 /** Closes a run that never reached a process: killed, agent idle, and the feed says why. */
 function finishNeverSpawned(runId: string, projectId: string, agentId: string, reason: string): void {
+  flushStream();
   useAppStore.setState(state => {
     const pRuntime = state.runtime[projectId] || {};
     return {
@@ -82,23 +84,98 @@ function finishNeverSpawned(runId: string, projectId: string, agentId: string, r
   onRunFinished(runId);
 }
 
-function appendCommText(agentId: string, runId: string, projectId: string, delta: string) {
+/**
+ * What the CLIs are saying right now, held for a moment before it reaches the store.
+ *
+ * Every delta used to be a write: a copy of the whole message array to add one letter to the last
+ * one, plus a copy of the runs map for the raw line. With a long history that is work proportional
+ * to everything ever said, once per token, and it is what made the window heavy while an agent
+ * typed. The deltas are gathered here and applied together, at most every 80 ms.
+ */
+const streamBuffer = new StreamBuffer();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function flushStream() {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (streamBuffer.isEmpty()) return;
+
+  const deltas = streamBuffer.take();
+  if (deltas.size === 0) return;
+
   useAppStore.setState(state => {
-    const msgId = `text-${runId}`;
-    const idx = state.messages.findIndex(m => m.id === msgId);
-    if (idx >= 0) {
-      const newMsgs = [...state.messages];
-      newMsgs[idx] = { ...newMsgs[idx], text: newMsgs[idx].text + delta };
-      return { messages: newMsgs };
-    } else {
-      return {
-        messages: [
-          ...state.messages,
-          { id: msgId, ts: Date.now(), runId, projectId, fromAgentId: agentId, kind: "text", text: delta }
-        ]
-      };
+    let runsChanged = false;
+    const runs = { ...state.runs };
+    let messagesChanged = false;
+    let messages = [...state.messages];
+    let addedMessages = 0;
+
+    const runIdsWithText = new Set<string>();
+    for (const [runId, delta] of deltas.entries()) {
+      if (delta.text) runIdsWithText.add(runId);
     }
+
+    const msgIndices = new Map<string, number>();
+    if (runIdsWithText.size > 0) {
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId)) {
+          msgIndices.set(m.runId, i);
+        }
+      }
+    }
+
+    for (const [runId, delta] of deltas.entries()) {
+      const r = runs[runId];
+      if (!r) continue;
+
+      if (delta.lines.length > 0) {
+        runs[runId] = {
+          ...r,
+          rawLines: [...r.rawLines, ...delta.lines].slice(-2000)
+        };
+        runsChanged = true;
+      }
+
+      if (delta.text) {
+        const idx = msgIndices.get(runId);
+        if (idx !== undefined) {
+          messages[idx] = { ...messages[idx], text: messages[idx].text + delta.text };
+          messagesChanged = true;
+        } else {
+          messages.push({
+            id: `text-${runId}`,
+            ts: Date.now(),
+            runId,
+            projectId: r.projectId,
+            fromAgentId: r.agentId,
+            kind: "text",
+            text: delta.text
+          });
+          messagesChanged = true;
+          addedMessages++;
+        }
+      }
+    }
+
+    if (addedMessages > 0 && messages.length > TRIM_MESSAGES_AT) {
+      messages = trimMessagesInMemory(messages);
+    }
+
+    if (!runsChanged && !messagesChanged) return state;
+    return {
+      ...(runsChanged ? { runs } : {}),
+      ...(messagesChanged ? { messages } : {})
+    };
   });
+}
+
+function scheduleStreamFlush() {
+  if (flushTimer === null) {
+    flushTimer = setTimeout(flushStream, 80);
+  }
 }
 
 export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string } }): string | undefined {
@@ -314,19 +391,7 @@ function handleOutput(e: RunOutputEvent) {
   const provider = PROVIDERS[agent.provider];
   const events = provider.parseLine(e.line, e.stream);
 
-  useAppStore.setState(state => {
-    const r = state.runs[e.runId];
-    if (!r) return state;
-    return {
-      runs: {
-        ...state.runs,
-        [e.runId]: {
-          ...r,
-          rawLines: [...r.rawLines, e.line].slice(-2000)
-        }
-      }
-    };
-  });
+  streamBuffer.pushLine(e.runId, e.line);
 
   for (const ev of events) {
     if (ev.type === "session") {
@@ -337,7 +402,7 @@ function handleOutput(e: RunOutputEvent) {
         };
       });
     } else if (ev.type === "text") {
-      appendCommText(run.agentId, e.runId, run.projectId, ev.text);
+      streamBuffer.pushText(e.runId, ev.text);
     } else if (ev.type === "tool") {
       const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
@@ -365,9 +430,12 @@ function handleOutput(e: RunOutputEvent) {
       addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
     }
   }
+
+  scheduleStreamFlush();
 }
 
 function handleExit(e: RunExitEvent) {
+  flushStream();
   const store = useAppStore.getState();
   const run = store.runs[e.runId];
   if (!run) return;
@@ -1121,6 +1189,7 @@ const cancelledRuns = new Set<string>();
 const stoppedBeforeSpawn = new Set<string>();
 
 export async function stopAgent(agentId: string, projectId: string): Promise<void> {
+  flushStream();
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   if (runtime?.currentRunId) {
@@ -1159,6 +1228,7 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
 }
 
 export async function stopAll(projectId?: string): Promise<void> {
+  flushStream();
   const store = useAppStore.getState();
   if (projectId) {
     const pRuntime = store.runtime[projectId];

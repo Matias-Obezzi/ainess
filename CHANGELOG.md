@@ -34,6 +34,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **An agent typing no longer costs more the longer you have been working.** Every delta a CLI sent
+  was a write: a copy of the whole message list to add one letter to the end of it, plus a copy of
+  the runs map for the raw line, plus a pass over every message to decide what to save. Per token.
+  With a long history that is work proportional to everything ever said, which is exactly why the
+  window got heavier as the day went on. The deltas are gathered and applied together, at most every
+  80 ms, and flushed on the spot when a run ends or is stopped so nothing arrives late or missing.
+
 - **A project opens the way you left it, conversation included.** Switching to another project and
   coming back dropped you in the orchestrator thread, even if you had been talking in one of that
   project's chats: the sidebar asked for the project *and no chat*, and that is exactly what it got.

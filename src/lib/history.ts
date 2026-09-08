@@ -66,6 +66,23 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
 
 const filePath = (projectId: string) => `history/${projectId}.json`;
 
+/**
+ * Finds the projects whose messages changed without walking the whole unchanged prefix.
+ */
+export function changedProjectsFromMessages(next: CommMessage[], prev: CommMessage[]): string[] {
+  if (next === prev) return [];
+  const changed = new Set<string>();
+  const len = Math.max(next.length, prev.length);
+  for (let i = len - 1; i >= 0; i--) {
+    const n = next[i];
+    const p = prev[i];
+    if (n === p) break;
+    if (n && n.projectId) changed.add(n.projectId);
+    if (p && p.projectId) changed.add(p.projectId);
+  }
+  return Array.from(changed);
+}
+
 /** Subscribe once to the store and persist whichever project's runs/messages/approvals changed. */
 export function attachHistoryPersistence(): void {
   if (subscribed) return;
@@ -92,10 +109,8 @@ export function attachHistoryPersistence(): void {
       }
     }
     if (state.messages !== prev.messages) {
-      const p = prev.messages;
-      for (let i = 0; i < state.messages.length; i++) {
-        const m = state.messages[i];
-        if (p[i] !== m && m.projectId) changed.add(m.projectId);
+      for (const projectId of changedProjectsFromMessages(state.messages, prev.messages)) {
+        changed.add(projectId);
       }
     }
     if (state.questions !== prev.questions) {
