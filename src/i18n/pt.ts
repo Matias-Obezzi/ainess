@@ -1326,6 +1326,8 @@ export const pt: Dictionary = {
   "hooks.failed": "O hook {name} falhou: {error}",
 
   "tool.failed": "A ferramenta {name} falhou: {error}",
+  "tool.failedShort": "{name} falhou",
+  "tool.failedRepeatedly": "{name} falhou {n} vezes seguidas nesta execução: o agente pode estar travado.",
 
   "chat.runError": "[Erro: {error}]",
   "chat.runFailed": "a execução falhou",

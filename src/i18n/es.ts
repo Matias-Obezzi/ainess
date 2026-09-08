@@ -1328,6 +1328,8 @@ export const es: Dictionary = {
   "hooks.failed": "El hook {name} falló: {error}",
 
   "tool.failed": "Falló la herramienta {name}: {error}",
+  "tool.failedShort": "{name} falló",
+  "tool.failedRepeatedly": "{name} falló {n} veces seguidas en esta corrida: puede que el agente esté trabado.",
 
   "chat.runError": "[Error: {error}]",
   "chat.runFailed": "la corrida falló",

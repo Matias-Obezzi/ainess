@@ -1326,6 +1326,8 @@ export const de: Dictionary = {
   "hooks.failed": "Der Hook {name} ist fehlgeschlagen: {error}",
 
   "tool.failed": "Werkzeug {name} fehlgeschlagen: {error}",
+  "tool.failedShort": "{name} fehlgeschlagen",
+  "tool.failedRepeatedly": "{name} ist {n} Mal hintereinander in diesem Lauf fehlgeschlagen: Der Agent könnte feststecken.",
 
   "chat.runError": "[Fehler: {error}]",
   "chat.runFailed": "der Lauf ist fehlgeschlagen",

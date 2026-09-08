@@ -1328,6 +1328,8 @@ export const en: Dictionary = {
   "hooks.failed": "Hook {name} failed: {error}",
 
   "tool.failed": "Tool {name} failed: {error}",
+  "tool.failedShort": "{name} failed",
+  "tool.failedRepeatedly": "{name} failed {n} times in a row in this run: the agent may be stuck.",
 
   "chat.runError": "[Error: {error}]",
   "chat.runFailed": "the run failed",

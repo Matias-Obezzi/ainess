@@ -1327,6 +1327,8 @@ export const ja: Dictionary = {
   "hooks.failed": "フック {name} が失敗しました: {error}",
 
   "tool.failed": "ツール {name} が失敗しました: {error}",
+  "tool.failedShort": "{name} が失敗しました",
+  "tool.failedRepeatedly": "この実行で {name} が {n} 回連続で失敗しました: エージェントがスタックしている可能性があります。",
 
   "chat.runError": "[エラー: {error}]",
   "chat.runFailed": "実行に失敗しました",

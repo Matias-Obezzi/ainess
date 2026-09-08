@@ -81,6 +81,8 @@ describe("antigravity provider", () => {
     expect(active[0]).toMatchObject({ type: "tool", name: "write_to_file" });
     // DONE steps are not logged twice.
     expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"tool","state":"DONE","tool_name":"write_to_file"}}', "stdout")).toEqual([]);
+    // ERROR steps are emitted as tool events with failed: true.
+    expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"tool","state":"ERROR","tool_name":"write_to_file"}}', "stdout")).toEqual([{ type: "tool", name: "write_to_file", failed: true, error: "" }]);
     const result = p.parseLine('{"event":"result","result":{"conversation_id":"c1","status":"SUCCESS","response":"hecho"}}', "stdout");
     expect(result).toEqual([{ type: "result", text: "hecho", sessionId: "c1" }]);
     expect(p.parseLine("not json", "stderr")).toEqual([{ type: "error", text: "not json" }]);

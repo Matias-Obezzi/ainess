@@ -326,6 +326,28 @@ Recomiendo la 1: Inicio ya es medio eso a medias, y una pantalla que sólo tiene
 pasa algo se siente vacía la mitad del tiempo. Falta que elijas.
 
 ---
+### `[x]` F6 · Una herramienta interna que falla parecía que se rompía todo — *«A tool failing is the agent's own business»*
+
+**Qué pasaba.** El `view_file` de Antigravity falla, el agente reintenta y sigue — pero en el hilo
+aparecía una tarjeta roja con ícono de alerta, «The tool view_file failed», idéntica a una falla de
+verdad. Para quien mira no significa nada y parece que se rompió la app.
+
+**Qué se hizo.** Una herramienta que falla dejó de ser un error: es una fila más de la actividad de
+la corrida, en ámbar, con el detalle de lo que dijo el proveedor a un hover de distancia. El rojo
+queda para lo que sí es una falla: la corrida que muere, la cuota, el CLI que no está.
+
+**Lo que no se tapa.** Si la MISMA herramienta falla tres veces en la misma corrida, eso ya no es
+ruido sino un agente dando vueltas: ahí sale un aviso, uno solo, diciendo cuál y cuántas veces.
+
+### `[x]` F7 · Los botones flotaban encima del input — *«A tool failing is the agent's own business»*
+
+El reloj del botón de enviar se fue: siempre es el avión de papel. Encolar sigue funcionando igual
+—si el agente está trabajando, Enter encola— y el tooltip lo sigue diciendo. El clip de adjuntar
+bajó a la barra de abajo, solo a la izquierda; el agente, el modelo, las aprobaciones y la cuota se
+agruparon a la derecha.
+
+---
+
 ## Bitácora
 
 ### Noche del 8 al 9 de septiembre de 2026

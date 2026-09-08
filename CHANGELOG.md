@@ -43,6 +43,17 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A tool failing inside an agent stops looking like the app broke.** Antigravity's `view_file`
+  fails, the agent retries and carries on — and the conversation showed a red alarm about it, the
+  same shape a real failure gets. It is a line in the run's activity now, in amber, with what the
+  provider said one hover away. Red is kept for what is actually broken. The one case worth saying
+  out loud is still said: the same tool failing three times in a run means the agent is going in
+  circles, and that gets a single line naming it.
+- **The composer's buttons stop crowding the box.** The send button no longer turns into a clock —
+  queueing works exactly as before, Enter queues while an agent is busy and the tooltip says so —
+  and the paperclip moved down to the bar, alone on the left, with the agent, the model, the
+  approvals and the quota gathered on the right.
+
 - **`ais run` fails when the task failed, in any language.** It decided its exit code by looking for
   the Spanish words of "CLI not found" in the feed — text that stopped existing the day those
   messages started coming out of the dictionaries. On an English machine a task that died for want

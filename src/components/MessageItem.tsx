@@ -57,7 +57,14 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
         ) : (
-          <div className={cn("mt-1 whitespace-pre-wrap break-words", isMono && "font-mono text-xs text-muted-foreground")}>
+          <div
+            className={cn(
+              "mt-1 whitespace-pre-wrap break-words",
+              isMono && "font-mono text-xs",
+              message.kind === "tool" && message.meta?.failed ? "text-amber-600 dark:text-amber-400" : (isMono ? "text-muted-foreground" : "")
+            )}
+            title={message.kind === "tool" && message.meta?.failed && message.meta?.error ? message.meta.error : undefined}
+          >
             {message.text}
           </div>
         )}

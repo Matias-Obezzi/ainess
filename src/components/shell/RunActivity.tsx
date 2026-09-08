@@ -13,6 +13,7 @@ import { useT } from "@/i18n/useT";
 import { formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
 import { CornerDownRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /** Kinds that belong in the activity stream (a `result` would just repeat the final answer). */
 const ACTIVITY_KINDS = new Set(["text", "tool", "delegation", "error", "stderr", "system"]);
@@ -108,10 +109,14 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
 
   if (msg.kind === "tool") {
     const Icon = toolIcon(msg.meta?.tool ?? msg.text);
+    const isFailed = msg.meta?.failed;
+    const title = isFailed && msg.meta?.error ? `${msg.text}\n\n${msg.meta.error}` : msg.text;
+    const colorClass = isFailed ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
     return (
-      <div className="flex items-start gap-1.5 font-mono text-xs text-muted-foreground" title={msg.text}>
+      <div className={cn("flex items-start gap-1.5 font-mono text-xs", colorClass)} title={title}>
         <Icon className="h-3.5 w-3.5 shrink-0 mt-[1px]" />
-        <span className="break-all">{msg.meta?.summary ?? msg.text}</span>
+        {/* A failed call says so: its summary describes the call, not what became of it. */}
+        <span className="break-all">{isFailed ? msg.text : (msg.meta?.summary ?? msg.text)}</span>
       </div>
     );
   }

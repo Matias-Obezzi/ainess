@@ -159,7 +159,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     const params = tool_info?.parameters;
     const detail = params ? JSON.stringify(params).substring(0, 200) : undefined;
     if (state === "ACTIVE") return [{ type: "tool", name, detail, input: params }];
-    if (state === "ERROR") return [{ type: "error", text: translateNow("tool.failed", { name, error: "" }).replace(/:$/, "").trim() }];
+    if (state === "ERROR") return [{ type: "tool", name, failed: true, error: "" }];
     return [];
   }
   if (obj.event === "result" && obj.result) {
@@ -268,7 +268,7 @@ function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEve
       const detail = state.input !== undefined ? JSON.stringify(state.input).substring(0, 200) : undefined;
       events.push({ type: "tool", name, detail, input: state.input });
     } else if (state.status === "error") {
-      events.push({ type: "error", text: translateNow("tool.failed", { name, error: state.error ?? "" }).replace(/:(\s*)$/, "$1").trim() });
+      events.push({ type: "tool", name, failed: true, error: state.error ?? "" });
     }
   }
 

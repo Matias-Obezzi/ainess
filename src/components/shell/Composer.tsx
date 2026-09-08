@@ -17,7 +17,7 @@ import { isChatActive } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
 import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
 import { useT } from "@/i18n/useT";
-import { Clock, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
+import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import {
   MAX_ATTACHMENT_BYTES,
@@ -450,19 +450,6 @@ export function Composer() {
             }}
           />
           <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {!compact && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => fileInputRef.current?.click()}
-                title={t("attachments.attachHint")}
-                aria-label={t("attachments.attach")}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            )}
             {busy && (
               <Button
                 variant="destructive"
@@ -486,73 +473,89 @@ export function Composer() {
                 title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
                 aria-label={willQueue ? t("composer.queue") : t("composer.send")}
               >
-                {willQueue ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                <Send className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
 
-        {(!chatMode || quotaAgent) && (
+        {(!chatMode || quotaAgent || !compact) && (
           <div className="flex gap-2 items-center flex-wrap">
-            {!chatMode && (
-              <>
-                <Select value={targetId} onValueChange={setTargetId}>
-                  <SelectTrigger className="w-[150px] h-8 text-xs">
-                    <SelectValue placeholder={t("composer.target")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map(a => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {compact && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
-                    aria-label={t("composer.pickModel")}
-                    onClick={() => setShowModel(v => !v)}
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-
-                {(!compact || showModel) && (
-                <Select value={targetModel} onValueChange={setTargetModel}>
-                  <SelectTrigger className="w-[170px] h-8 text-xs">
-                    <SelectValue placeholder={t("common.model")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
-                    {modelOptions.map(m => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                    <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                )}
-
-                {targetModel === "custom" && (!compact || showModel) && (
-                  <Input
-                    className="h-8 w-[150px] text-xs"
-                    placeholder={t("composer.typeModel")}
-                    value={customModel}
-                    onChange={e => setCustomModel(e.target.value)}
-                  />
-                )}
-
-              </>
+            {!compact && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => fileInputRef.current?.click()}
+                title={t("attachments.attachHint")}
+                aria-label={t("attachments.attach")}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
             )}
 
-            {/* Both live at the right end: what is waiting for you, and what is left to spend. */}
-            <div className="ml-auto flex items-center gap-1">
-              <ApprovalsPill />
-              {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
+            {/* Everything you set or watch lives at the right end: who answers, on which model,
+                what is waiting for you and what is left to spend. The left is for the box itself. */}
+            <div className="ml-auto flex items-center gap-2 flex-wrap">
+              {!chatMode && (
+                <>
+                  <Select value={targetId} onValueChange={setTargetId}>
+                    <SelectTrigger className="w-[150px] h-8 text-xs">
+                      <SelectValue placeholder={t("composer.target")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map(a => (
+                        <SelectItem key={a.id} value={a.id}>
+                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {compact && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      aria-label={t("composer.pickModel")}
+                      onClick={() => setShowModel(v => !v)}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+
+                  {(!compact || showModel) && (
+                  <Select value={targetModel} onValueChange={setTargetModel}>
+                    <SelectTrigger className="w-[170px] h-8 text-xs">
+                      <SelectValue placeholder={t("common.model")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
+                      {modelOptions.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                      <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  )}
+
+                  {targetModel === "custom" && (!compact || showModel) && (
+                    <Input
+                      className="h-8 w-[150px] text-xs"
+                      placeholder={t("composer.typeModel")}
+                      value={customModel}
+                      onChange={e => setCustomModel(e.target.value)}
+                    />
+                  )}
+                </>
+              )}
+
+              <div className="flex items-center gap-1">
+                <ApprovalsPill />
+                {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
+              </div>
             </div>
           </div>
         )}

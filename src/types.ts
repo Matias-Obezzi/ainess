@@ -405,7 +405,7 @@ export interface CommMessage {
   kind: MessageKind;
   text: string;
   /** Only on `tool` messages: what the agent called and a one-line summary of it. */
-  meta?: { tool: string; summary: string; input?: unknown };
+  meta?: { tool: string; summary: string; input?: unknown; failed?: boolean; error?: string };
 }
 
 export interface Delegation {
@@ -517,7 +517,7 @@ export interface RunExitEvent {
 export type ParsedEvent =
   | { type: "session"; sessionId: string }
   | { type: "text"; text: string }
-  | { type: "tool"; name: string; detail?: string; input?: unknown }
+  | { type: "tool"; name: string; detail?: string; input?: unknown; failed?: boolean; error?: string }
   | { type: "result"; text: string; sessionId?: string; usage?: RunUsage }
   | { type: "error"; text: string }
   | { type: "raw"; text: string };

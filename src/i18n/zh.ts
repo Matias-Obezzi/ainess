@@ -1326,6 +1326,8 @@ export const zh: Dictionary = {
   "hooks.failed": "钩子 {name} 失败：{error}",
 
   "tool.failed": "工具 {name} 失败：{error}",
+  "tool.failedShort": "{name} 失败",
+  "tool.failedRepeatedly": "在此次运行中 {name} 连续失败了 {n} 次：代理可能卡住了。",
 
   "chat.runError": "[错误: {error}]",
   "chat.runFailed": "运行失败",

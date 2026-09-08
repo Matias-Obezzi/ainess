@@ -14,7 +14,9 @@ import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, 
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { resolveDelegations } from "@/lib/delegation";
+import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 
+const toolFailures = new Map<string, number>();
 let listenersAttached = false;
 
 export async function attachListeners(): Promise<void> {
@@ -437,17 +439,40 @@ function handleOutput(e: RunOutputEvent) {
     } else if (ev.type === "text") {
       streamBuffer.pushText(e.runId, ev.text);
     } else if (ev.type === "tool") {
-      const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
-      addMessage({
-        projectId: run.projectId,
-        fromAgentId: run.agentId,
-        kind: "tool",
-        text: text.substring(0, 300),
-        runId: e.runId,
-        meta: { tool: ev.name, summary, input: ev.input },
-      });
+      if (ev.failed) {
+        addMessage({
+          projectId: run.projectId,
+          fromAgentId: run.agentId,
+          kind: "tool",
+          text: translateNow("tool.failedShort", { name: ev.name }),
+          runId: e.runId,
+          meta: { tool: ev.name, summary, input: ev.input, failed: true, error: ev.error },
+        });
+
+        const count = bumpToolFailure(toolFailures, run.id, ev.name);
+        if (count === REPEATED_FAILURE_AT) {
+          addMessage({
+            projectId: run.projectId,
+            fromAgentId: "system",
+            toAgentId: run.agentId,
+            kind: "system",
+            text: translateNow("tool.failedRepeatedly", { name: ev.name, n: String(REPEATED_FAILURE_AT) }),
+            runId: run.id
+          });
+        }
+      } else {
+        const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
+        addMessage({
+          projectId: run.projectId,
+          fromAgentId: run.agentId,
+          kind: "tool",
+          text: text.substring(0, 300),
+          runId: e.runId,
+          meta: { tool: ev.name, summary, input: ev.input },
+        });
+      }
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
@@ -595,6 +620,9 @@ function onRunFinished(runId: string) {
     // whose block closed on the very last delta. What was handed over already is skipped.
     emitNewNotes(run, run.output);
     notesEmitted.delete(run.id);
+    for (const key of toolFailures.keys()) {
+      if (key.startsWith(`${run.id}:`)) toolFailures.delete(key);
+    }
   }
 
   if (!asked && (run.status === "done" || run.status === "killed")) {
