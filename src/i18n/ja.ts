@@ -1251,6 +1251,8 @@ export const ja: Dictionary = {
   "prompt.ask.intro": "自分が決めるべきでない判断が欠けているときは、推測せず、このようなブロックで質問し、回答をそこで終えてください。",
   "prompt.ask.schema": "{\"question\":\"短く具体的な質問\",\"options\":[\"選択肢 1\",\"選択肢 2\"],\"multiple\":false}",
   "prompt.ask.rules": "選択肢は 2 つ以上。複数選べる場合は `multiple` を true にします。ユーザーは自分で回答を書くこともできるので、そのための選択肢は加えないでください。回答が来たら、同じ会話の中で続きを進めます。",
+  "project.openFolder": "フォルダを開く",
+  "project.openFolderFailed": "フォルダを開けませんでした",
   "prompt.board.header": "## プロジェクトのボード",
   "prompt.board.intro": "以下が未完了のタスクです。取りかかるときは `taskId` フィールドにその id を入れて委譲してください。そうすればカードは新しく作られず、そのまま移動します。ユーザーの依頼がすでにこの一覧にあるなら、新しいタスクとして起こさないでください。",
   "prompt.board.empty": "ボードに未完了のタスクはありません。",

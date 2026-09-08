@@ -19,6 +19,7 @@ import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
 import { toast } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
+import { openFolder } from "@/lib/open-external";
 import { confirm } from "@/lib/confirm";
 import { openExternal } from "@/lib/open-external";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,7 +28,7 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { pendingApprovals } from "@/lib/approvals";
 import type { Chat, Project } from "@/types";
-import {
+import { FolderOpen,
   Bot,
   Bug,
   ChevronDown,
@@ -157,21 +158,29 @@ export function Sidebar() {
 
   // The three-dot menu and the right click on a project row share these actions; only the right
   // click, where the pointer is already on the row, offers the path.
-  const projectActions = (p: Project, opts?: { copyPath?: boolean }): MenuAction[] => [
+  /**
+   * What a project offers. The right click and the three dots are the same menu in two shapes, so
+   * they render this same list: the path used to be in one and not the other.
+   */
+  const projectActions = (p: Project): MenuAction[] => [
     { key: "edit", label: t("sidebar.editProject"), icon: Pencil, onSelect: () => editProject(p) },
     { key: "new-chat", label: t("sidebar.newChat"), icon: Plus, onSelect: () => newChat(p.id) },
     { key: "new-conversation", label: t("sidebar.newConversation"), icon: RotateCcw, onSelect: () => newConversation(p.id) },
-    ...(opts?.copyPath
-      ? [
-          {
-            key: "copy-path",
-            label: t("sidebar.copyPath"),
-            icon: Copy,
-            disabled: !p.workspaceDir,
-            onSelect: () => void copyText(p.workspaceDir, t("sidebar.pathCopied")),
-          } satisfies MenuAction,
-        ]
-      : []),
+    {
+      key: "open-folder",
+      label: t("project.openFolder"),
+      icon: FolderOpen,
+      disabled: !p.workspaceDir,
+      separatorBefore: true,
+      onSelect: () => void openFolder(p.workspaceDir),
+    },
+    {
+      key: "copy-path",
+      label: t("sidebar.copyPath"),
+      icon: Copy,
+      disabled: !p.workspaceDir,
+      onSelect: () => void copyText(p.workspaceDir, t("sidebar.pathCopied")),
+    },
     {
       key: "delete",
       label: t("common.delete"),
@@ -182,17 +191,13 @@ export function Sidebar() {
     },
   ];
 
-  const chatActions = (chat: Chat, projectId: string, opts?: { open?: boolean }): MenuAction[] => [
-    ...(opts?.open
-      ? [
-          {
-            key: "open",
-            label: t("common.open"),
-            icon: MessageCircle,
-            onSelect: () => openProject(projectId, chat.id),
-          } satisfies MenuAction,
-        ]
-      : []),
+  const chatActions = (chat: Chat, projectId: string): MenuAction[] => [
+    {
+      key: "open",
+      label: t("common.open"),
+      icon: MessageCircle,
+      onSelect: () => openProject(projectId, chat.id),
+    },
     { key: "rename", label: t("common.rename"), icon: Pencil, onSelect: () => editChat(chat.id) },
     {
       key: "delete",
@@ -290,7 +295,7 @@ export function Sidebar() {
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-56">
-                  <ContextActionItems actions={projectActions(p, { copyPath: true })} />
+                  <ContextActionItems actions={projectActions(p)} />
                 </ContextMenuContent>
               </ContextMenu>
 
@@ -342,7 +347,7 @@ export function Sidebar() {
                           </div>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48">
-                          <ContextActionItems actions={chatActions(chat, p.id, { open: true })} />
+                          <ContextActionItems actions={chatActions(chat, p.id)} />
                         </ContextMenuContent>
                       </ContextMenu>
                     );

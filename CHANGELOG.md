@@ -48,6 +48,10 @@ let one of them fall behind.
 
 ### Fixed
 
+- A project opens its folder in the file manager, from the right click and from the three dots
+  alike — and those two menus now offer the same actions everywhere they are the same thing. The
+  project's path was in the right click and not in the dots, and a chat's "Open" the other way
+  round.
 - A project can no longer be given two orchestrators at the root. The team dialog asks for a parent
   for the second one, which is where it belonged anyway: side by side they both read the whole
   board and can take the same card, only the first is ever the default the composer, the CLI and

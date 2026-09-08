@@ -15,6 +15,16 @@ export async function openExternal(url: string): Promise<void> {
 }
 
 /**
+ * The menu action: shows the folder and says so when it cannot, which is every build that is not
+ * the desktop app (the browser preview, the phone) — there is no file manager to open there.
+ */
+export async function openFolder(path: string): Promise<void> {
+  const { toast } = await import("@/components/ui/toast");
+  const { translateNow } = await import("@/i18n/useT");
+  if (!(await revealPath(path))) toast.error(translateNow("project.openFolderFailed"));
+}
+
+/**
  * Shows a folder (or a file) in the system file manager. Uses `revealItemInDir`, which the
  * opener plugin allows by default: `openPath` would mean widening the plugin's scope to every
  * path on the machine. Answers false when there is nothing to open (browser preview).

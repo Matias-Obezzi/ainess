@@ -1250,6 +1250,8 @@ export const de: Dictionary = {
   "prompt.ask.intro": "Fehlt dir eine Entscheidung, die nicht deine ist, rate nicht: Frag danach mit einem solchen Block und beende deine Antwort dort.",
   "prompt.ask.schema": "{\"question\":\"die Frage, kurz und konkret\",\"options\":[\"Option 1\",\"Option 2\"],\"multiple\":false}",
   "prompt.ask.rules": "Mindestens zwei Optionen; `multiple` auf true, wenn mehrere gewählt werden können. Der Benutzer kann auch selbst eine Antwort schreiben, also füge dafür keine Option hinzu. Sobald er antwortet, machst du im selben Gespräch weiter.",
+  "project.openFolder": "Den Ordner öffnen",
+  "project.openFolderFailed": "Der Ordner konnte nicht geöffnet werden",
   "prompt.board.header": "## Das Board des Projekts",
   "prompt.board.intro": "Das sind die offenen Aufgaben. Um eine davon zu übernehmen, delegiere sie mit ihrer id im Feld `taskId`: dann wandert die Karte, statt dass eine zweite entsteht. Öffne die Anfrage des Benutzers nicht als neue Aufgabe, wenn sie bereits in dieser Liste steht.",
   "prompt.board.empty": "Auf dem Board gibt es keine offenen Aufgaben.",

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { copyText } from "@/lib/clipboard";
+import { openFolder } from "@/lib/open-external";
 import { confirm } from "@/lib/confirm";
 import { formatTimeAgo, truncate } from "@/lib/format";
 import { runStatusLabelKey } from "@/lib/labels";
@@ -105,8 +106,16 @@ export function HomeScreen() {
   };
 
   const projectActions = (p: Project): MenuAction[] => [
-    { key: "open", label: t("common.open"), icon: FolderOpen, onSelect: () => openProject(p.id, null) },
+    { key: "open", label: t("common.open"), icon: FolderKanban, onSelect: () => openProject(p.id, null) },
     { key: "edit", label: t("common.edit"), icon: Pencil, onSelect: () => editProject(p) },
+    {
+      key: "open-folder",
+      label: t("project.openFolder"),
+      icon: FolderOpen,
+      disabled: !p.workspaceDir,
+      separatorBefore: true,
+      onSelect: () => void openFolder(p.workspaceDir),
+    },
     {
       key: "copy-path",
       label: t("home.copyPath"),
