@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **Home is where you find out what is waiting.** Above the projects, two lists that cross all of
+  them: what is waiting on you — a delegation held for approval, a question nobody answered, a card
+  the board left in *needs you* — and who is working right now, on what, and since when. Every line
+  puts you where the thing is: the thread for an approval or a question, the board with the card
+  open for a task. Both disappear when there is nothing in them, so a quiet Home looks like it
+  always did. And the badge that used to mark the last project you opened is gone: you are on Home
+  precisely because you are not in it. In its place, each card says what is happening inside —
+  "2 trabajando · 1 esperándote".
+
 - **Agents on the same task know about each other.** A planner splitting work between two
   implementers started each of them blind: neither knew the other was there, both reached for the
   same files, and the planner got back two answers that disagreed. Each one is now told who else is

@@ -96,7 +96,16 @@ export const fr: Dictionary = {
 
   // ---- Home screen ----
   "home.title": "Projets",
-  "home.current": "Actuel",
+  "home.attention.title": "En attente",
+  "home.attention.kind.approval": "Approbation",
+  "home.attention.kind.question": "Question",
+  "home.attention.kind.task": "Tâche",
+  "home.working.title": "En cours",
+  "home.more": "et {n} de plus",
+  "home.counts.working.one": "{n} en cours",
+  "home.counts.working.other": "{n} en cours",
+  "home.counts.needsYou.one": "{n} en attente",
+  "home.counts.needsYou.other": "{n} en attente",
   "home.copyPath": "Copier le chemin",
   "home.formerAgent": "Ancien agent",
   "home.empty.title": "Pas encore de projets",

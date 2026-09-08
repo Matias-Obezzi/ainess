@@ -96,7 +96,16 @@ export const zh: Dictionary = {
 
   // ---- Home screen ----
   "home.title": "项目",
-  "home.current": "当前",
+  "home.attention.title": "等待中",
+  "home.attention.kind.approval": "批准",
+  "home.attention.kind.question": "问题",
+  "home.attention.kind.task": "任务",
+  "home.working.title": "工作中",
+  "home.more": "还有 {n} 个",
+  "home.counts.working.one": "{n} 个工作中",
+  "home.counts.working.other": "{n} 个工作中",
+  "home.counts.needsYou.one": "{n} 个等待中",
+  "home.counts.needsYou.other": "{n} 个等待中",
   "home.copyPath": "复制路径",
   "home.formerAgent": "原智能体",
   "home.empty.title": "还没有项目",

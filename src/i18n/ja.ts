@@ -97,7 +97,16 @@ export const ja: Dictionary = {
 
   // ---- Home screen ----
   "home.title": "プロジェクト",
-  "home.current": "現在",
+  "home.attention.title": "対応待ち",
+  "home.attention.kind.approval": "承認",
+  "home.attention.kind.question": "質問",
+  "home.attention.kind.task": "タスク",
+  "home.working.title": "現在作業中",
+  "home.more": "他 {n} 件",
+  "home.counts.working.one": "{n} 件作業中",
+  "home.counts.working.other": "{n} 件作業中",
+  "home.counts.needsYou.one": "{n} 件対応待ち",
+  "home.counts.needsYou.other": "{n} 件対応待ち",
   "home.copyPath": "パスをコピー",
   "home.formerAgent": "以前のエージェント",
   "home.empty.title": "まだプロジェクトがありません",

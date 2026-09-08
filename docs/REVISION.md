@@ -277,14 +277,14 @@ app: vuelve al proyecto y a la conversación donde estabas.
 Lo que sigue siendo global, no por proyecto: si el tablero estaba en columnas o en grafo, y qué
 paneles del dock tenías abiertos.
 
-### `[ ]` F4 · El cartel de «actual» en Inicio no sirve para nada
+### `[x]` F4 · El cartel de «actual» en Inicio no sirve para nada — *«Home stops naming the last door you used»*
 
 Estás en Inicio justamente porque no estás en ese proyecto: saber cuál abriste último no te deja
 hacer nada, y ocupa el renglón donde debería ir lo que sí importa. La propuesta es cambiarlo por lo
 que esa pantalla ya calcula y no muestra: cuántos agentes trabajan, cuántas aprobaciones esperan,
 si algo falló. Va junto con F5.
 
-### `[ ]` F5 · Una pantalla de lo que necesita atención y lo que está trabajando
+### `[x]` F5 · Una pantalla de lo que necesita atención y lo que está trabajando — *«Home stops naming the last door you used»*
 
 Dos formas. **(1)** Inicio se convierte en eso: arriba una franja con *te necesitan* (aprobaciones,
 preguntas, tareas en «necesita tu atención», corridas fallidas) y *trabajando ahora* (agente, tarea,

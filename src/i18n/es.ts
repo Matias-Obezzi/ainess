@@ -97,7 +97,16 @@ export const es: Dictionary = {
 
   // ---- Home screen ----
   "home.title": "Proyectos",
-  "home.current": "Actual",
+  "home.attention.title": "Te necesitan",
+  "home.attention.kind.approval": "Aprobación",
+  "home.attention.kind.question": "Pregunta",
+  "home.attention.kind.task": "Tarea",
+  "home.working.title": "Trabajando ahora",
+  "home.more": "y {n} más",
+  "home.counts.working.one": "{n} trabajando",
+  "home.counts.working.other": "{n} trabajando",
+  "home.counts.needsYou.one": "{n} esperándote",
+  "home.counts.needsYou.other": "{n} esperándote",
   "home.copyPath": "Copiar ruta",
   "home.formerAgent": "Agente anterior",
   "home.empty.title": "Todavía no hay proyectos",
