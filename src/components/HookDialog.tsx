@@ -11,6 +11,7 @@ import { ProviderLogo } from "@/components/ProviderLogo";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore, selectAgentsByProject } from "@/store";
 import { AgentOptions } from "@/components/AgentOptions";
+import { BOSS_TARGET } from "@/lib/team";
 import { useT } from "@/i18n/useT";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
@@ -257,9 +258,16 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    {/* Not an agent: whoever is on top when the hook fires. */}
+                    <SelectItem value={BOSS_TARGET}>{t("hookDialog.theBoss")}</SelectItem>
                     <AgentOptions groups={byProject} />
                   </SelectContent>
                 </Select>
+                {agentId === BOSS_TARGET && (
+                  <p className="text-xs text-muted-foreground">
+                    {scope === "all" ? t("hookDialog.theBoss.everyProject") : t("hookDialog.theBoss.hint")}
+                  </p>
+                )}
               </div>
             )}
 

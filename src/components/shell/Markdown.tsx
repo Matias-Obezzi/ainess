@@ -1,10 +1,10 @@
 // Markdown renderer for agent answers and live text. Styles come from Tailwind classes here
 // (no @tailwindcss/typography), so the output matches the shell's own type scale.
-import { isValidElement, useState, type MouseEvent, type ReactNode } from "react";
+import { isValidElement, useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { parseDelegations } from "@/lib/providers";
-import { isTauri } from "@/lib/tauri";
+import { openExternal, webUrl } from "@/lib/open-external";
 import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
 import { ChevronDown, ChevronRight, Share2 } from "lucide-react";
@@ -20,11 +20,6 @@ function nodeText(node: ReactNode): string {
   return "";
 }
 
-function openLink(e: MouseEvent<HTMLAnchorElement>, href?: string) {
-  if (!href || !isTauri()) return;
-  e.preventDefault();
-  void import("@tauri-apps/plugin-opener").then(m => m.openUrl(href)).catch(() => {});
-}
 
 /** First non-empty line of a task, for the collapsed preview. */
 function firstLine(text: string): string {
@@ -101,17 +96,25 @@ const components: Components = {
   ),
   hr: () => <hr className="my-3 border-border" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="text-primary underline underline-offset-2 break-all"
-      onClick={e => openLink(e, href)}
-    >
-      {children}
-    </a>
-  ),
+  // An agent writes two kinds of link: web addresses, and paths inside the repo it is working on.
+  // Only the first is something to open. The second never gets an `href`, because an `<a>` with a
+  // relative one is followed by the window itself — inside the desktop app that means leaving for
+  // `tauri.localhost/<path>`, with the whole app gone from under you.
+  a: ({ href, children }) => {
+    const url = webUrl(href);
+    if (!url) return <span className="break-all underline decoration-dotted underline-offset-2">{children}</span>;
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="text-primary underline underline-offset-2 break-all"
+        onClick={e => { e.preventDefault(); void openExternal(url); }}
+      >
+        {children}
+      </a>
+    );
+  },
   code: ({ className, children }) => (
     <code className={cn("bg-background/60 rounded px-1 py-0.5 font-mono text-[0.9em] break-words", className)}>
       {children}

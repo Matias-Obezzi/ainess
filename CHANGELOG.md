@@ -4,6 +4,37 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Added
+
+- **A hook can write to "the boss" instead of to somebody by name.** The agent to instruct now
+  offers the top of the hierarchy — the project's root planner, the same agent the composer, the
+  CLI and the phone write to by default — resolved when the hook fires rather than when it is
+  saved, so rearranging the team never leaves it pointing at somebody who is no longer in charge.
+  Left unfiltered it reaches the boss of *every* project, which is what makes one scheduled hook
+  enough for all of them; narrowed to a project it is that one's boss, and an event an agent
+  caused stays in the project where it happened.
+
+### Fixed
+
+- **Links in an agent's answer took the whole app to `tauri.localhost`.** Agents write two kinds
+  of link and the app treated them as one: a web address, and a path inside the repo they are
+  working on (`src/lib/foo.ts`, `README.md`). The second is not something to open, and left on an
+  `<a href>` the desktop window followed it — off to `tauri.localhost/src/lib/foo.ts`, with the app
+  gone from under you. Only real addresses are links now, and they open in the real browser; a
+  repo path is left as text you can read. A `javascript:` or `data:` link — which an agent can
+  write, deliberately or not — is never one at all.
+- **An agent could not switch models when its parent told it to.** A planner naming a `model` for
+  a task was only obeyed while "choose the model" was on in Configuración, so with it off — the
+  default — an implementer told to retry on another model because its own had run out of quota was
+  quietly started on the same exhausted one again. A model the parent asks for is honoured either
+  way now; that setting decides whether the planner is *told to pick* one, not whether its pick
+  counts. And a child that ran out of quota no longer reaches its parent as a wall of CLI error
+  text: it is said plainly, with the models of that same CLI still worth trying — its own family
+  left out, since quota is spent per family — and with the reminder that a task can carry a
+  `model`. When the CLI has no other model, the parent is told to say so rather than retry.
+
 ## 0.7.0 — 2026-09-08
 
 ### Added

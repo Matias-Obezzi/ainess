@@ -2,7 +2,7 @@ import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSk
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, finalOutputFromLines } from "@/lib/providers";
-import { recordAntigravityOutcome } from "@/lib/quota";
+import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
@@ -473,8 +473,12 @@ function onRunFinished(runId: string) {
         for (const task of delegations) {
           const childAgent = childFor(children, task.agent);
           if (childAgent) {
+            // A model the parent asked for is obeyed whether or not "choose the model" is on:
+            // that setting decides whether the planner is *told to pick* one, not whether a pick
+            // it made counts. With it off, an agent told to retry on another model because its
+            // own ran out of quota was silently started on the same one again.
             let modelToUse: string | undefined = undefined;
-            if (task.model && store.config.autoModel) {
+            if (task.model) {
               const providerSpec = PROVIDERS[childAgent.provider];
               const allowed = new Set(providerSpec?.defaultModels || []);
               if (childAgent.model) allowed.add(childAgent.model);
@@ -717,6 +721,23 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
   taskSync.taskOnReviewStarted(task.id, reviewRunId);
 }
 
+/**
+ * What to add under a child's answer when the child did not fail at the work but ran out of quota.
+ *
+ * Left alone, the parent reads a wall of CLI error text, cannot tell "the model is spent" from
+ * "the task is impossible", and re-delegates onto the same exhausted model. So it is told plainly
+ * what happened, which models are left, and that it may name one — the `model` field is not in the
+ * delegate schema unless "choose the model" is on, and it is honoured either way.
+ */
+function quotaNote(childRun: Run, childAgent: AgentConfig | undefined): string {
+  if (childRun.status !== "error" || !childAgent) return "";
+  if (!outOfQuota(childRun.output)) return "";
+  const spent = childRun.model ?? childAgent.model;
+  const others = alternativeModels(childAgent.provider, spent);
+  if (others.length === 0) return `\n${translateNow("prompt.quota.spentNoOthers", { name: childAgent.name })}\n`;
+  return `\n${translateNow("prompt.quota.spent", { name: childAgent.name, models: others.join(", ") })}\n`;
+}
+
 function maybeContinueParent(parentRunId: string) {
   const store = useAppStore.getState();
   const parentRun = store.runs[parentRunId];
@@ -731,10 +752,12 @@ function maybeContinueParent(parentRunId: string) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
 
-    let outputText = "Resultados de tus agentes:\n\n";
+    let outputText = translateNow("prompt.results.header") + "\n\n";
     for (const childRun of children) {
       const childAgent = selectAgent(store, childRun.agentId);
-      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n\n`;
+      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n`;
+      outputText += quotaNote(childRun, childAgent);
+      outputText += "\n";
     }
 
     const cancelled = cancelledRuns.delete(parentRunId);
