@@ -56,7 +56,7 @@ entera sólo si estaba mirando.
 **Propuesta.** Cerrar la tarea en *necesita tu atención*, notificar como se notifica un fallo, y
 dejar en el detalle en qué ronda quedó y qué estaba haciendo.
 
-### `[ ]` A4 · Una tarjeta que quedó apuntando a una corrida muerta no se recupera
+### `[x]` A4 · Una tarjeta que quedó apuntando a una corrida muerta no se recupera — *«Nobody comes back for the card in review»*
 
 **Qué pasa.** La reconciliación de arranque sólo corrige tarjetas en *en curso*. Una que quedó en
 *en revisión* apuntando a una corrida que ya no está (historial recortado, app cerrada a mitad)
@@ -97,7 +97,7 @@ una copia divergida del constructor real.
 **Propuesta.** Que el chat use el constructor de siempre con un modo "chat" (sin tablero ni
 delegación, con `ask`), y que lo propio del chat sea sólo la lista de participantes.
 
-### `[ ]` B3 · Quedan diálogos con los colores puestos a mano
+### `[-]` B3 · Quedan diálogos con los colores puestos a mano — descartado: no quedaba ninguno
 
 **Qué pasa.** El de hooks ya se arregló, pero conviene barrer el resto en busca de `bg-[#…]` y
 `text-gray-…`, que ignoran el tema y se vuelven ilegibles en claro.
@@ -105,6 +105,15 @@ delegación, con `ask`), y que lo propio del chat sea sólo la lista de particip
 **Dónde.** `src/components/*.tsx`.
 
 **Propuesta.** Barrido y reemplazo por los tokens del tema.
+
+**Resultado.** El barrido se hizo y no encontró nada real: con el diálogo de hooks arreglado, lo que
+queda es color a propósito y se queda como está — el fondo blanco atrás del QR (que un QR necesita
+en los dos temas), el ámbar con texto negro de los badges de aviso, el gris del punto de estado
+«libre», y los verdes y rojos del diff, que ya vienen en pareja clara/oscura. De paso: los cuatro
+reemplazos que se habían intentado (`text-white` → `text-destructive-foreground` en botones, badges
+y el botón de cerrar la ventana, y el velo del modal a `bg-background/80`) estaban mal y se
+revirtieron: este proyecto no define el token `--destructive-foreground`, así que el texto blanco
+sobre el rojo se habría vuelto texto oscuro sobre rojo.
 
 ### `[ ]` B4 · El CLI `ais` no conoce las reglas nuevas
 

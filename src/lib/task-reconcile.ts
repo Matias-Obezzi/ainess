@@ -8,6 +8,7 @@
 // This is the same set of rules as task-sync, applied after the fact instead of on the event.
 import { useAppStore, selectProjectAgents } from "@/store";
 import type { Run, Task, TaskStatus } from "@/types";
+import { parseReviewVerdict } from "@/lib/review";
 
 export interface BoardFix {
   taskId: string;
@@ -25,8 +26,27 @@ export interface BoardFix {
 export function boardFixes(tasks: Task[], runs: Record<string, Run>, opts: { hasReviewer: boolean }): BoardFix[] {
   const fixes: BoardFix[] = [];
   for (const task of tasks) {
-    if (task.archived || task.status !== "working" || !task.runId) continue;
+    if (task.archived || !task.runId) continue;
+    if (task.status !== "working" && task.status !== "in-review") continue;
+
     const run = runs[task.runId];
+
+    if (task.status === "in-review") {
+      if (!run) {
+        fixes.push({ taskId: task.id, status: "needs-you" });
+        continue;
+      }
+      if (!run.review) continue;
+      if (run.status === "running") continue;
+      if (run.status === "error" || run.status === "killed") {
+        fixes.push({ taskId: task.id, status: "needs-you" });
+        continue;
+      }
+      const verdict = parseReviewVerdict(run.output);
+      fixes.push({ taskId: task.id, status: verdict === "approved" ? "ready" : "needs-you" });
+      continue;
+    }
+
     // The run is not in memory at all: trimmed, or from a history that is no longer there. Either
     // way nothing is going to move this card, and a person has to look at it.
     if (!run) {

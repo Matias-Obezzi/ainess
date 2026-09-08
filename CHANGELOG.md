@@ -18,6 +18,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A card left in review comes back.** The board is put back in step with its runs on every launch,
+  but only for cards *en curso*. One parked *en revisión* behind a review that died with the app —
+  or whose run fell out of a trimmed history — stayed there forever. It is read now the same way the
+  live flow reads it: approved goes to ready, changes and failures come back to you, and a card a
+  person dragged there by hand is still nobody's business but theirs.
+
 - **An agent in a chat is the same agent as in a task.** The chat built its own system prompt, in
   Spanish, without the `ask` block — so an agent you were talking to could not ask you for a
   decision — and with every skill pasted in whole instead of pointed at in the repo. Chats go
