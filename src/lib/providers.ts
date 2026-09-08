@@ -637,12 +637,25 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[] }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean }): string {
   const t = translateNow;
   let prompt = "";
 
+  // Who this is, before anything else. A team where the same person writes to the planner and to
+  // an implementer needs each of them to know which one it is: one delegates, the other does the
+  // work, and an implementer that answered by delegating left the app waiting for a team it does
+  // not have.
+  if (extras?.fromUser) {
+    prompt += t("prompt.direct.header", {
+      name: agent.name,
+      role: t(roleLabelKey[agent.role] ?? "label.role.custom"),
+    });
+    if (agent.role !== "planner") prompt += " " + t("prompt.direct.doItYourself");
+    prompt += "\n\n";
+  }
+
   if (agent.role === "planner") {
-    prompt = t("prompt.planner.intro");
+    prompt += t("prompt.planner.intro");
     if (children.length > 0) {
       prompt += " " + t("prompt.planner.children") + "\n";
       for (const child of children) {
@@ -688,9 +701,9 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       }
     }
   } else if (agent.role === "implementer") {
-    prompt = t("prompt.implementer");
+    prompt += t("prompt.implementer");
   } else if (agent.role === "reviewer") {
-    prompt = t("prompt.reviewer");
+    prompt += t("prompt.reviewer");
   } else if (agent.role === "custom") {
     // Only use agent.systemPrompt (appended at the end)
   }

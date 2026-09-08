@@ -1214,6 +1214,8 @@ export const ja: Dictionary = {
   "prompt.planner.noChildren": "指揮下のエージェントはいません。タスクに直接答えてください。",
   "prompt.planner.teamFile": "プロジェクトのチーム全体は `.ainess/AGENTS.md` にあります。",
   "prompt.planner.othersExist": "このプロジェクトには他のエージェント（{names}）がいますが、あなたの指揮下にはいません。階層ビューであなたの下に置かれるまで委譲できません。自分で作業をせず、そのことをユーザーに伝えてください。",
+  "prompt.direct.header": "ユーザーはあなたに直接書いています。あなたは {name}、このチームの{role}です。",
+  "prompt.direct.doItYourself": "自分で作業して返答してください。委任も、誰かを待つこともしないでください。",
   "prompt.implementer": "あなたは実装者（IMPLEMENTER）です。プランナーからタスクを受け取り、ワークスペースで変更を行います。終わったら、変更した内容（ファイル）、検証した内容、残っていることや詰まっていることを簡潔にまとめて答えてください。",
   "prompt.reviewer": "あなたはレビュアー（REVIEWER）です。変更をレビューし、見つけた問題や改善の提案を答えてください。",
   "prompt.profile.header": "## ユーザーについて",

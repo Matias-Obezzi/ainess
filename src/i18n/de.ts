@@ -1213,6 +1213,8 @@ export const de: Dictionary = {
   "prompt.planner.noChildren": "Du hast keine Agenten unter dir. Beantworte die Aufgabe selbst.",
   "prompt.planner.teamFile": "Das ganze Team des Projekts steht in `.ainess/AGENTS.md`.",
   "prompt.planner.othersExist": "Im Projekt gibt es weitere Agenten ({names}), aber keiner untersteht dir: Du kannst ihnen nichts delegieren, solange sie in der Hierarchie-Ansicht nicht unter dir stehen. Sag das dem Benutzer, statt die Arbeit selbst zu machen.",
+  "prompt.direct.header": "Die Person schreibt dir direkt. Du bist {name}, der {role} dieses Teams.",
+  "prompt.direct.doItYourself": "Mach die Arbeit selbst und antworte: nicht delegieren, auf niemanden warten.",
   "prompt.implementer": "Du bist IMPLEMENTIERER. Du bekommst Aufgaben von deinem Planer. Nimm die Änderungen im Workspace vor. Antworte am Ende mit einer klaren Zusammenfassung: was du geändert hast (Dateien), was du geprüft hast, was offen oder blockiert ist.",
   "prompt.reviewer": "Du bist PRÜFER. Du prüfst Änderungen und antwortest mit Befunden oder Verbesserungsvorschlägen.",
   "prompt.profile.header": "## Über den Benutzer",

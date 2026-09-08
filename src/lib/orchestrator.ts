@@ -10,7 +10,7 @@ import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
-import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
 
 let listenersAttached = false;
@@ -179,6 +179,9 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
+    // No parent run means the user is talking to this agent itself, which is worth saying: an
+    // implementer told to do something by its planner and by the user reads the same prompt.
+    fromUser: opts.parentRunId === null,
     skills,
     sharedContext,
     profile: store.config.profile,
@@ -447,11 +450,18 @@ function onRunFinished(runId: string) {
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
       if (delegations.length > 0) {
-        waitingForChildren = true;
-        agentStatus = "waiting";
+        // Every delegation naming somebody who is not there means nobody is coming: the agent
+        // used to sit at "waiting for its team" until the end of time. It happens to an agent that
+        // is not a planner and answers by delegating anyway.
+        if (noneLand(delegations, children)) {
+          waitingForChildren = false;
+        } else {
+          waitingForChildren = true;
+          agentStatus = "waiting";
+        }
 
         for (const task of delegations) {
-          const childAgent = children.find(c => c.name.toLowerCase() === task.agent.toLowerCase() || c.id === task.agent);
+          const childAgent = childFor(children, task.agent);
           if (childAgent) {
             let modelToUse: string | undefined = undefined;
             if (task.model && store.config.autoModel) {
@@ -770,6 +780,16 @@ function maybeContinueParent(parentRunId: string) {
  */
 function isBusy(status: AgentStatus | undefined): boolean {
   return status === "working" || status === "waiting";
+}
+
+/** The child a delegation names, by name (however it was capitalised) or by id. */
+export function childFor(children: AgentConfig[], name: string): AgentConfig | undefined {
+  return children.find(c => c.name.toLowerCase() === name.toLowerCase() || c.id === name);
+}
+
+/** True when not one of these delegations names somebody who is actually under this agent. */
+export function noneLand(delegations: Delegation[], children: AgentConfig[]): boolean {
+  return delegations.every(d => !childFor(children, d.agent));
 }
 
 function processQueuedInstructions(agentId: string, projectId: string) {

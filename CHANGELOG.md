@@ -32,6 +32,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- An agent you write to yourself is told who it is. It reads the same prompt whether the work came
+  from its planner or from you, so an implementer answered a message of yours by delegating it on
+  — and then sat at "waiting for its team".
+- And that wait is over anyway: a delegation naming somebody who is not under that agent left it
+  waiting for a team that was never coming. When not one of them lands, the agent is free again.
 - A link in a terminal opens with one click. Only the ones a CLI marked itself were links at all,
   and those needed Ctrl held; now any URL in the output is one, and it opens in the real browser.
 - On the phone, the keyboard covered the box you were typing in. The page deliberately does not
