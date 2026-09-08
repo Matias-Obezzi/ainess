@@ -1001,6 +1001,7 @@ export const ja: Dictionary = {
 
   // ---- Skill dialog ----
   "skillDialog.edit": "スキルを編集",
+  "skillDialog.descriptionHint": "エージェントが最初に読むのはこの一行だけで、開くかどうかもここで決めます。何のためのもので、いつ使うのかを書いてください。",
   "skillDialog.content": "内容",
 
   // ---- Project dialog ----
@@ -1244,6 +1245,7 @@ export const ja: Dictionary = {
   "prompt.profile.name": "名前: {name}",
   "prompt.profile.preferences": "仕事の進め方の好み: {preferences}",
   "prompt.sharedContext.header": "## チーム共有のコンテキスト",
+  "prompt.skills.intro": "リポジトリの中にあります。作業がそれに関わるときに該当するものを開いてください。すべて読む必要はありません。",
   "prompt.skills.header": "## スキル",
   "prompt.ask.header": "## ユーザーに決めてもらうとき",
   "prompt.ask.intro": "自分が決めるべきでない判断が欠けているときは、推測せず、このようなブロックで質問し、回答をそこで終えてください。",

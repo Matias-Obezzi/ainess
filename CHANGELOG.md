@@ -8,6 +8,12 @@ let one of them fall behind.
 
 ### Added
 
+- **Skills are opened when they apply, not poured into every run.** A skill used to travel whole
+  inside the system prompt of every agent it was enabled for: five skills were five manuals in every
+  run, read or not. Each one is now written to `.ainess/skills/<name>/SKILL.md` and the prompt
+  carries only its name, one line of what it is for and that path — the agent opens the one the work
+  is about, and whatever else the skill needs (a script, a template) can sit in the same folder.
+  That one line of description is what it decides from, and the editor now says so.
 - **Notifications make a sound.** Two short notes, rising when something needs you and falling when
   something finished, so you can tell them apart without looking. The app synthesises them — no file
   in the installer, and it plays the same in the window, from the tray (the app keeps running there,

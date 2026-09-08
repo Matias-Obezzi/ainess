@@ -1,5 +1,6 @@
 import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
@@ -637,6 +638,12 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
+/** The first line of a skill with no description of its own, as a stand-in for one. */
+function firstLine(text: string): string {
+  const line = text.split("\n").map(l => l.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
+  return line.length > 120 ? `${line.slice(0, 119)}…` : line;
+}
+
 export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean }): string {
   const t = translateNow;
   let prompt = "";
@@ -720,11 +727,15 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     if (extras.sharedContext && extras.sharedContext.trim()) {
       prompt += (prompt ? "\n\n" : "") + t("prompt.sharedContext.header") + "\n" + extras.sharedContext;
     }
+    // Name, one line of what it is for, and where it lives. Not the instructions themselves: five
+    // skills used to be five manuals inside every run, read or not. The agent opens the one the
+    // work is about (see `writeSkillFiles`), which is also how it reaches whatever sits beside it.
     const validSkills = extras.skills?.filter(s => s.content.trim()) || [];
     if (validSkills.length > 0) {
-      prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header");
+      prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header") + "\n" + t("prompt.skills.intro");
       for (const skill of validSkills) {
-        prompt += `\n### ${skill.name}\n${skill.content}`;
+        const what = skill.description?.trim() || firstLine(skill.content);
+        prompt += `\n- **${skill.name}** — ${what} → \`${skillRelativePath(skill)}\``;
       }
     }
   }

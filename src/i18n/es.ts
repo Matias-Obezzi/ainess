@@ -1001,6 +1001,7 @@ export const es: Dictionary = {
 
   // ---- Skill dialog ----
   "skillDialog.edit": "Editar skill",
+  "skillDialog.descriptionHint": "Es lo único que el agente lee de entrada: por esta línea decide si abrir la skill. Decí para qué sirve y cuándo aplica.",
   "skillDialog.content": "Contenido",
 
   // ---- Project dialog ----
@@ -1245,6 +1246,7 @@ export const es: Dictionary = {
   "prompt.profile.name": "Nombre: {name}",
   "prompt.profile.preferences": "Preferencias de trabajo: {preferences}",
   "prompt.sharedContext.header": "## Contexto compartido del equipo",
+  "prompt.skills.intro": "Están escritas en el repo. Abrí la que corresponda cuando la tarea sea de eso; no hace falta leerlas todas.",
   "prompt.skills.header": "## Skills",
   "prompt.ask.header": "## Cuando necesites que el usuario decida",
   "prompt.ask.intro": "Si te falta una decisión que no te corresponde tomar, no adivines: pedila con un bloque así y terminá tu respuesta ahí.",

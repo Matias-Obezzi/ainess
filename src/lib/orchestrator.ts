@@ -198,6 +198,10 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const mcpServers = selectMcpFor(store, agent.id);
 
   const doSpawn = async () => {
+    // Right before the run, so what the agent opens is what the settings say right now. Only the
+    // ones this agent has: the prompt names them by path and the file has to be there.
+    if (project) await writeSkillFiles(project, skills);
+
     let mcpConfigPath: string | undefined;
     // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
     // Antigravity is configured machine-wide instead (`ais mcp sync`), and the rest have no way in
@@ -827,6 +831,7 @@ function processQueuedInstructions(agentId: string, projectId: string) {
 
 import { emitHookEvent } from "@/lib/hooks";
 import { recordTurn } from "@/lib/agent-history";
+import { writeSkillFiles } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });

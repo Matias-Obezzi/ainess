@@ -1000,6 +1000,7 @@ export const zh: Dictionary = {
 
   // ---- Skill dialog ----
   "skillDialog.edit": "编辑技能",
+  "skillDialog.descriptionHint": "这是智能体最先读到的全部内容：它据此决定要不要打开这个 skill。写清楚它有什么用、什么时候适用。",
   "skillDialog.content": "内容",
 
   // ---- Project dialog ----
@@ -1243,6 +1244,7 @@ export const zh: Dictionary = {
   "prompt.profile.name": "姓名：{name}",
   "prompt.profile.preferences": "工作偏好：{preferences}",
   "prompt.sharedContext.header": "## 团队共享上下文",
+  "prompt.skills.intro": "它们写在仓库里。工作涉及哪一个就打开哪一个，不必全部读完。",
   "prompt.skills.header": "## 技能",
   "prompt.ask.header": "## 当需要用户来决定时",
   "prompt.ask.intro": "如果缺少一个不该由你来做的决定，不要猜：用这样的代码块把它问出来，并在那里结束你的回答。",
