@@ -4,6 +4,18 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
+### Nuevo
+
+- **La app te contesta en un chat que ya tenés abierto.** En Configuración hay una sección
+  Mensajería: pegás un token de bot de @BotFather en Telegram, la prendés y le escribís al bot —
+  cualquier cosa que digas arranca una tarea, `/status` te dice quién trabaja y qué te espera,
+  `/approve` y `/answer` resuelven lo que te necesita, `/stop` frena. Esto no expone nada: la app es
+  la que sale a preguntar, así que no hay túnel, ni puerto, ni dirección que alguien pueda
+  encontrar. Sólo los chats de la lista pueden dar órdenes, la lista vacía no autoriza a nadie, y a
+  un desconocido no se le responde nada — su id aparece en Configuración con un botón para
+  autorizarlo, que es también como averiguás el tuyo. Lo que te llega a la campana te llega también
+  al chat, y lo que está esperándote te dice qué contestar.
+
 ### Arreglado
 
 - **Un solo botón al lado de la caja, y es el que hace falta en ese momento.** Enviar cuando no hay

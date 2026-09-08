@@ -4,6 +4,18 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Die App antwortet in einem Chat, den du ohnehin offen hast.** In den Einstellungen gibt es einen
+  Bereich Messaging: du fügst ein Bot-Token von @BotFather auf Telegram ein, schaltest es an und
+  schreibst dem Bot — alles, was du sagst, startet eine Aufgabe, `/status` sagt, wer arbeitet und was
+  auf dich wartet, `/approve` und `/answer` erledigen, was dich braucht, `/stop` stoppt. Dabei wird
+  nichts geöffnet: die App fragt von sich aus nach, also kein Tunnel, kein Port, keine Adresse, die
+  jemand finden könnte. Nur die Chats auf der Liste dürfen Befehle geben, eine leere Liste erlaubt
+  niemandem etwas, und ein Fremder bekommt gar keine Antwort — seine Id taucht in den Einstellungen
+  mit einem Knopf zum Erlauben auf, und so findest du auch deine eigene. Was die Glocke erreicht,
+  erreicht auch den Chat, und was auf dich wartet, sagt dir, was du zurückschreiben sollst.
+
 ### Behoben
 
 - **Ein Knopf neben der Box, und zwar der, den der Moment verlangt.** Senden, wenn nichts läuft;

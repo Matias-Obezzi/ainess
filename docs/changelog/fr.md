@@ -4,6 +4,18 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **L'app te répond dans une conversation que tu as déjà ouverte.** Les réglages ont une section
+  Messagerie : tu colles un jeton de bot d'@BotFather sur Telegram, tu l'actives et tu écris au bot —
+  tout ce que tu dis lance une tâche, `/status` dit qui travaille et ce qui t'attend, `/approve` et
+  `/answer` règlent ce qui a besoin de toi, `/stop` arrête tout. Rien n'est exposé : c'est l'app qui
+  sort demander, donc pas de tunnel, pas de port, pas d'adresse à trouver. Seules les conversations
+  de la liste peuvent donner des ordres, une liste vide n'autorise personne, et un inconnu n'a aucune
+  réponse — son identifiant apparaît dans les réglages avec un bouton pour l'autoriser, ce qui est
+  aussi comme ça que tu découvres le tien. Ce qui arrive à la cloche arrive aussi au chat, et ce qui
+  t'attend te dit quoi répondre.
+
 ### Corrigé
 
 - **Un seul bouton à côté de la boîte, et c'est celui qu'il faut sur le moment.** Envoyer quand rien

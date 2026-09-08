@@ -6,6 +6,18 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **The app answers to a chat you already have open.** Settings has a Mensajería section: paste a
+  bot token from Telegram's @BotFather, turn it on, and write to the bot — anything you say starts a
+  task, `/status` says who is working and what is waiting, `/approve` and `/answer` settle what needs
+  you, `/stop` stops. Nothing is exposed by this: the app is the one that goes out and asks, so
+  there is no tunnel, no port and no address for anyone to find. Only the chat ids on the list may
+  give orders, an empty list allows nobody, and a stranger gets no reply at all — their id shows up
+  in the settings with a button to allow it, which is also how you find out your own. Whatever
+  reaches the bell reaches the chat too, and the ones that are waiting for you say what to write
+  back.
+
 ### Fixed
 
 - **One button by the box, and it is whatever the moment calls for.** Send while nothing is running,

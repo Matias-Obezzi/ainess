@@ -11,6 +11,7 @@ import { pendingApprovals } from "@/lib/approvals";
 import { translateNow } from "@/i18n/useT";
 import { truncate } from "@/lib/format";
 import { log } from "@/lib/logger";
+import { notificationText } from "./notify";
 import { parseBridgeCommand, type BridgeCommand } from "./commands";
 import { TelegramProvider } from "./telegram";
 import type { BridgeProvider, BridgeProviderId, IncomingMessage } from "./types";
@@ -166,8 +167,7 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
 }
 
 async function onMessage(provider: BridgeProvider, message: IncomingMessage): Promise<void> {
-  const allowed = useAppStore.getState().config.messaging?.telegram?.allowedChatIds ?? [];
-  if (!isAllowed(message.chatId, allowed)) {
+  if (!isAllowed(message.chatId, allowedChats())) {
     // Not a word back: confirming the bot exists is the one thing a stranger learns for free.
     lastUnknown = message.chatId;
     log.warn("bridge", `mensaje de un chat no autorizado (${message.chatId})`);
@@ -210,4 +210,61 @@ export async function stopBridge(): Promise<void> {
 /** Whether a channel is connected right now, for the settings screen. */
 export function bridgeRunning(id: BridgeProviderId = "telegram"): boolean {
   return providers.has(id);
+}
+
+/** Everyone this app is allowed to talk to right now. */
+function allowedChats(): string[] {
+  return useAppStore.getState().config.messaging?.telegram?.allowedChatIds ?? [];
+}
+
+/**
+ * A message to one chat on demand, for the "test it" button in the settings.
+ *
+ * It works with the bridge off too: nobody should have to turn something on to find out whether the
+ * token they just pasted is the right one.
+ */
+export async function sendTest(chatId: string): Promise<void> {
+  const existing = providers.get("telegram");
+  if (existing) {
+    await existing.send(chatId, translateNow("bridge.test.message"));
+    return;
+  }
+  const token = useAppStore.getState().config.messaging?.telegram?.token;
+  if (!token) throw new Error(translateNow("messaging.testNoToken"));
+  await new TelegramProvider(token).send(chatId, translateNow("bridge.test.message"));
+}
+
+let notificationsAttached = false;
+let seenNotification: string | null = null;
+
+/**
+ * Forwards to the channel whatever reached the bell.
+ *
+ * One subscription for the life of the app, watching the same list the bell reads — so there is
+ * never a second opinion about what deserves your attention, only a second place it arrives. Only
+ * the newest one is sent: the list is rewritten whole on every change, and re-reading it would
+ * repeat everything it holds.
+ */
+export function attachBridgeNotifications(): void {
+  if (notificationsAttached) return;
+  notificationsAttached = true;
+  seenNotification = useAppStore.getState().notifications[0]?.id ?? null;
+
+  useAppStore.subscribe((state, prev) => {
+    if (state.notifications === prev.notifications) return;
+    const newest = state.notifications[0];
+    if (!newest || newest.id === seenNotification) return;
+    seenNotification = newest.id;
+    if (providers.size === 0) return;
+
+    const project = newest.projectId
+      ? state.config.projects.find(p => p.id === newest.projectId)?.name
+      : undefined;
+    const text = notificationText(newest, project);
+    for (const provider of providers.values()) {
+      for (const chatId of allowedChats()) {
+        void provider.send(chatId, text).catch(e => log.warn("bridge", `no se pudo avisar: ${e}`));
+      }
+    }
+  });
 }

@@ -40,7 +40,7 @@ export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "diagnostics" | "about";
+export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -302,6 +302,10 @@ export interface AppState {
   /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
   toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
+  /** Turns the messaging bridge on or off, keeping the config in sync. */
+  toggleBridge(enabled: boolean): Promise<void>;
+  /** Picks up a changed token or list of chats: stop, then start again. */
+  restartBridge(): Promise<void>;
   stopRemote(): Promise<void>;
   refreshRemoteStatus(): Promise<void>;
   regenerateRemoteToken(): Promise<void>;
@@ -928,6 +932,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
+  toggleBridge: async (enabled) => {
+    const bridge = await import("@/lib/bridge");
+    const messaging = get().config.messaging ?? {};
+    // The defaults first, then whatever was configured, and the switch last: it is the one thing
+    // this call is about.
+    const telegram = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging.telegram, enabled };
+    get().updateConfig({ messaging: { ...messaging, telegram } });
+    if (enabled) await bridge.startBridge(); else await bridge.stopBridge();
+  },
+
+  restartBridge: async () => {
+    const bridge = await import("@/lib/bridge");
+    await bridge.stopBridge();
+    if (get().config.messaging?.telegram?.enabled) await bridge.startBridge();
+  },
+
   toggleRemote: async (enabled) => {
     const before = get().config.remote;
     set({ remoteBusy: true });
@@ -2186,6 +2206,16 @@ async function runInit(): Promise<void> {
     void recovery.reapAfterCrash();
 
     set({ loaded: true });
+
+    // The messaging bridge, if there is one: nothing is exposed by turning it on — the app is the
+    // one that goes out and asks — but it is still a way into this machine, so it only runs where
+    // the app itself runs and only when it was asked for. What reaches the bell is forwarded from
+    // the same place the bell reads, wired once whether or not any channel is on today.
+    if (isTauri()) {
+      const bridge = await import("@/lib/bridge");
+      bridge.attachBridgeNotifications();
+      if (config.messaging?.telegram?.enabled) await bridge.startBridge().catch(() => {});
+    }
 
     // Remote access is opt-in; a failure (port busy) must not break startup. A reload of the
     // frontend finds the server already up: adopt it instead of trying to start a second one.

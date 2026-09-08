@@ -4,7 +4,7 @@
 //
 // `SettingsSection` is imported as a type only (erased at runtime), so importing this module from
 // store.ts does not create a runtime cycle even though store.ts defines SettingsSection.
-import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, Stethoscope, Info, type LucideIcon } from "lucide-react";
+import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, MessageCircle, Stethoscope, Info, type LucideIcon } from "lucide-react";
 import type { SettingsSection } from "@/store";
 
 /** Sidebar groups, in the order they are shown. */
@@ -49,6 +49,7 @@ export const SETTINGS_SECTIONS_META: SettingsSectionMeta[] = [
   { id: "hooks",       labelKey: "settings.section.hooks",       helpKey: "settings.help.hooks",       group: "automation", optionKeys: options("hooks",       ["byEvent", "slackAction", "commandAction", "filter"]),                                                                                          icon: Webhook },
   { id: "context",     labelKey: "settings.section.context",     helpKey: "settings.help.context",     group: "agents",     optionKeys: options("context",     ["shared"]),                                                                                                                                      icon: FileText },
   { id: "remote",      labelKey: "settings.section.remote",      helpKey: "settings.help.remote",      group: "access",     optionKeys: options("remote",      ["lan", "port", "token", "qr", "tunnel", "tunnelProvider", "domainType", "domain", "ngrokAuthtoken", "ngrokApiKey", "installNgrok", "detectAgain"]), icon: Smartphone },
+  { id: "messaging",   labelKey: "settings.section.messaging",   helpKey: "settings.help.messaging",   group: "access",     optionKeys: options("messaging",   ["enable", "token", "chats", "project", "test"]),                                                                                                 icon: MessageCircle },
   { id: "diagnostics", labelKey: "settings.section.diagnostics", helpKey: "settings.help.diagnostics", group: "app",        optionKeys: options("diagnostics", ["recheck", "copy"]),                                                                                                                            icon: Stethoscope },
   { id: "about",       labelKey: "settings.section.about",       helpKey: "settings.help.about",       group: "app",        optionKeys: options("about",       ["version", "checkUpdates", "openLogs", "copyDiagnostics", "repository"]),                                                                       icon: Info },
 ];
