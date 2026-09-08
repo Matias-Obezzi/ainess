@@ -45,8 +45,22 @@ let one of them fall behind.
   it stops what is running and hands the message over right away. Nothing is repeated — what the
   agent did is on disk and what it said is in its own session, which the run that follows resumes
   — and it is told that its turn was cut, so it does not read the transcript as one it finished.
+- **Commands in the box.** Typing `/` on an empty composer opens a short list: `/compact` has every
+  agent of the project start a new session — nothing is lost, since each one is pointed at its own
+  file in `.ainess/history/` and reads back only what the new work needs — and `/cost` opens what
+  the project has spent. Anything else in the box is a message, so "look at the /compact of Claude"
+  still goes to the team untouched.
 
 ### Fixed
+
+- **The instructions were being sent again on every turn.** An agent's preamble — its role, the
+  delegate and ask schemas, the shared context, the profile, the list of skills — went with every
+  message of a conversation the CLI was already carrying forward. With Claude that was the same
+  paragraphs billed turn after turn; with the providers that take the instructions inside the
+  prompt (Antigravity, Copilot, opencode and the rest) it also left a copy of them in the
+  transcript, for good, so a long session paid for it many times over. They go once now, on the
+  turn that opens the session. What still goes every turn is the board, which is the part that
+  changes.
 
 - A project opens its folder in the file manager, from the right click and from the three dots
   alike — and those two menus now offer the same actions everywhere they are the same thing. The
