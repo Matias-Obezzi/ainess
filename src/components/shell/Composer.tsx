@@ -22,6 +22,7 @@ import { InlineQuestion } from "@/components/InlineQuestion";
 import { questionForComposer } from "@/lib/pending-question";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
+import { cn } from "@/lib/utils";
 import {
   MAX_ATTACHMENT_BYTES,
   attachmentsBlock,
@@ -32,6 +33,13 @@ import {
 
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
 const sentHistory: string[] = [];
+
+/**
+ * The two dropdowns of the bottom bar, dressed like the paperclip beside them: no border, no fill,
+ * and the same grey under the pointer. They sit next to the box all day and pick something you
+ * rarely change — a framed control for that is a frame around nothing.
+ */
+const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
 
 /** One attached file before it is sent: images show themselves, the rest show their name. */
 function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
@@ -592,7 +600,7 @@ export function Composer() {
               {!chatMode && (
                 <>
                   <Select value={targetId} onValueChange={setTargetId}>
-                    <SelectTrigger className="w-[150px] h-8 text-xs">
+                    <SelectTrigger className={cn("w-[150px]", FLAT_SELECT)}>
                       <SelectValue placeholder={t("composer.target")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -619,7 +627,7 @@ export function Composer() {
 
                   {(!compact || showModel) && (
                   <Select value={targetModel} onValueChange={setTargetModel}>
-                    <SelectTrigger className="w-[170px] h-8 text-xs">
+                    <SelectTrigger className={cn("w-[170px]", FLAT_SELECT)}>
                       <SelectValue placeholder={t("common.model")} />
                     </SelectTrigger>
                     <SelectContent>
