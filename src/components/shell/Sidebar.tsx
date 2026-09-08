@@ -262,13 +262,14 @@ export function Sidebar() {
                       >
                         {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </button>
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
+                      {/* Working shows in the dot itself: the orange count next to the name read
+                          like something waiting for an answer. */}
+                      <div
+                        className={`w-2 h-2 rounded-full shrink-0 ${running > 0 ? "animate-breathe" : ""}`}
+                        style={{ backgroundColor: p.color || "#4f8cff" }}
+                        title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
+                      />
                       <span className="truncate flex-1 font-medium">{p.name}</span>
-                      {running > 0 && (
-                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/30">
-                          {running}
-                        </Badge>
-                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button

@@ -15,6 +15,10 @@ Settings → About.
 
 ### Fixed
 
+- A project with agents working shows it in its own dot, which breathes slowly. It used to wear
+  an orange count next to its name, which read like something waiting for an answer — the amber
+  badge at the bottom of the sidebar, the one that does need you, is now the only thing that
+  looks like that.
 - Deleting from the right-click menu asked in the pill at the top of the window, the shape meant
   for the phone, instead of the dialog. It only happened while working on the app, and it could
   also lose the question altogether.
