@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
@@ -769,6 +770,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       notifications: notifications.pushNotification(state.notifications, n, { id: crypto.randomUUID(), ts: Date.now() }),
     }));
+    // Every notification comes through here, window open or in the tray: the webview keeps running
+    // when the window is hidden, which is what lets a sound reach you at all from there.
+    const sound = get().config.notificationSound;
+    if (soundEnabled(sound)) playChime(chimeFor(n.kind), sound);
   },
   markNotificationsRead: () => {
     set(state => ({ notifications: notifications.markAllRead(state.notifications) }));

@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, languageNames, type Language } from "@/i18n";
 import { useT } from "@/i18n/useT";
+import { Button } from "@/components/ui/button";
+import { SoundDialog } from "@/components/SoundDialog";
+import { playChime, soundEnabled } from "@/lib/sound";
 
 /** Value of the auto-archive select that means "never"; a Select cannot hold null. */
 const NEVER = "never";
@@ -20,6 +23,7 @@ export function GeneralSection() {
   const updateConfig = useAppStore(state => state.updateConfig);
   const setMaxRounds = useAppStore(state => state.setMaxRounds);
 
+  const [soundOpen, setSoundOpen] = useState(false);
   const [maxRoundsText, setMaxRoundsText] = useState(String(config.maxRounds));
   useEffect(() => {
     setMaxRoundsText(String(config.maxRounds));
@@ -96,6 +100,23 @@ export function GeneralSection() {
               <label className="text-sm font-semibold">{t("settings.option.general.notifyResults")}</label>
               <span className="text-sm text-muted-foreground">{t("settings.general.notifyResultsHint")}</span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={soundEnabled(config.notificationSound)}
+              onCheckedChange={(checked) => {
+                updateConfig({ notificationSound: { ...config.notificationSound, enabled: checked } });
+                // Turning it on plays it: the only way to know what you just agreed to.
+                if (checked) playChime("attention", config.notificationSound);
+              }}
+            />
+            <div className="flex min-w-0 flex-col">
+              <label className="text-sm font-semibold">{t("settings.option.general.sound")}</label>
+              <span className="text-sm text-muted-foreground">{t("settings.general.soundHint")}</span>
+            </div>
+            <Button variant="outline" size="sm" className="ml-auto shrink-0" onClick={() => setSoundOpen(true)}>
+              {t("sound.edit")}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -194,6 +215,9 @@ export function GeneralSection() {
           <span className="text-sm text-muted-foreground">{t("settings.general.autoArchiveHint")}</span>
         </CardContent>
       </Card>
+
+      {/* Remounted per opening, so it always starts from what is saved. */}
+      {soundOpen && <SoundDialog key="sound" open onOpenChange={setSoundOpen} />}
     </div>
   );
 }

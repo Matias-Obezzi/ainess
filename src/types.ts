@@ -247,6 +247,24 @@ export interface TrayConfig {
   notifyResults: boolean;
 }
 
+/**
+ * What a notification sounds like. Missing means the app's own two notes: nothing here has to be
+ * set for the sound to work, and every field only says how it differs from that.
+ */
+export interface SoundSettings {
+  /** Off only when it was turned off. */
+  enabled?: boolean;
+  /** The two notes of the "something needs you" chime, in Hz; the other one is them reversed. */
+  notes?: [number, number];
+  wave?: OscillatorType;
+  /** 0 to 1. */
+  volume?: number;
+  /** A sound of your own, as a data URL. When it is here, it plays instead of the notes. */
+  file?: string;
+  /** What that file was called, so the setting can say which one it is. */
+  fileName?: string;
+}
+
 /** A saved order: a prompt you reuse, optionally bound to one agent and model. */
 export interface Preset {
   id: string;
@@ -288,6 +306,8 @@ export interface AppConfig {
   autoUpdateCheck: boolean;
   /** Archive done tasks older than this many days; null never archives on its own. */
   autoArchiveDoneDays: number | null;
+  /** The sound every notification makes, in the window and from the tray (see lib/sound.ts). */
+  notificationSound?: SoundSettings;
 }
 
 export interface AgentRuntime {

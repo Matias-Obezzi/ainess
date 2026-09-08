@@ -8,6 +8,11 @@ let one of them fall behind.
 
 ### Added
 
+- **Notifications make a sound.** Two short notes, rising when something needs you and falling when
+  something finished, so you can tell them apart without looking. The app synthesises them — no file
+  in the installer, and it plays the same in the window, from the tray (the app keeps running there,
+  which is what lets the sound reach you) and on the phone. Configuración → General turns it off,
+  and its editor tunes the notes, the wave and the volume, or takes a sound of your own.
 - **Each agent's history, in the project.** `.ainess/history/` gets one file per agent, appended
   as its turns end: who asked, what was asked and what came back, for the work it was given and for
   the chats. The app keeps all of it in its own storage, where only the app can read it; this is the
