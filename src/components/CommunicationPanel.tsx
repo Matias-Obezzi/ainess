@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageKind } from "@/types";
 import { kindLabelKey } from "@/lib/labels";
+import { confirm } from "@/lib/confirm";
 import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
@@ -126,7 +127,10 @@ export function CommunicationPanel() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearMessages(currentProjectId || undefined)} title={t("comm.clear")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => {
+          const ok = await confirm({ title: t("comm.clear.title"), description: t("comm.clear.body"), destructive: true, confirmText: t("common.delete") });
+          if (ok) clearMessages(currentProjectId || undefined);
+        }} title={t("comm.clear")}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>

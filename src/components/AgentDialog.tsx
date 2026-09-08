@@ -154,6 +154,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   // `undefined` while the repo has not been read yet: the switch stays available until we know.
   const projectIsRepo = useAppStore(state => (targetProjectId ? state.repoState[targetProjectId]?.isRepo : undefined));
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
+  const approveDelegations = useAppStore(state => state.config.approveDelegations);
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -163,7 +164,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [modelOption, setModelOption] = useState<string>(DEFAULT_MODEL_OPTION);
   const [otherModel, setOtherModel] = useState("");
   const [autoApprove, setAutoApprove] = useState(false);
-  const [requireApproval, setRequireApproval] = useState(false);
+  const [approvalMode, setApprovalMode] = useState<"inherit" | "always" | "never">("inherit");
   const [worktree, setWorktree] = useState(false);
   const [description, setDescription] = useState("");
   /** Once the user writes their own, the default stops following the role and the provider. */
@@ -200,7 +201,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setParentId(agent.parentId);
         setModelFromAgent(agent.provider, agent.model, models[agent.provider] || []);
         setAutoApprove(agent.autoApprove);
-        setRequireApproval(agent.requireApproval ?? false);
+        setApprovalMode(agent.requireApproval === undefined ? "inherit" : agent.requireApproval ? "always" : "never");
         setWorktree(agent.worktree ?? false);
         setDescription(agent.description || "");
         setDescriptionEdited(true);
@@ -223,7 +224,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setModelOption(DEFAULT_MODEL_OPTION);
         setOtherModel("");
         setAutoApprove(false);
-        setRequireApproval(false);
+        setApprovalMode("inherit");
         setWorktree(false);
         setDescription("");
         setDescriptionEdited(false);
@@ -303,7 +304,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       parentId,
       model: resolvedModel || undefined,
       autoApprove,
-      requireApproval: requireApproval || undefined,
+      requireApproval: approvalMode === "inherit" ? undefined : approvalMode === "always",
       worktree: worktree || undefined,
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
@@ -494,9 +495,23 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
               <Label htmlFor="auto-approve">{t("agentDialog.autoApprove")}</Label>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Switch checked={requireApproval} onCheckedChange={setRequireApproval} id="require-approval" />
-              <Label htmlFor="require-approval">{t("agentDialog.requireApproval")}</Label>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold">{t("agentDialog.approvalMode")}</label>
+              <Select value={approvalMode} onValueChange={(val: "inherit" | "always" | "never") => setApprovalMode(val)}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">{t("agentDialog.approvalMode.inherit")}</SelectItem>
+                  <SelectItem value="always">{t("agentDialog.approvalMode.always")}</SelectItem>
+                  <SelectItem value="never">{t("agentDialog.approvalMode.never")}</SelectItem>
+                </SelectContent>
+              </Select>
+              {approvalMode === "inherit" && (
+                <span className="text-sm text-muted-foreground block">
+                  {approveDelegations ? t("agentDialog.approvalModeInheritOn") : t("agentDialog.approvalModeInheritOff")}
+                </span>
+              )}
             </div>
 
             <div className="space-y-1">

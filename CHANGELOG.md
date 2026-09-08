@@ -3,6 +3,31 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Added
+
+- **Each agent gets a say over approvals.** The switch on an agent is now three ways: follow the
+  general setting, always ask, never ask. Before it could only add a gate, never lift one — with
+  "Approve every delegation" on, turning it off on an agent did nothing at all, and the dialog gave
+  no hint that something else was forcing it. It now says, right under the field, what the general
+  setting is doing today.
+- **The reviewer actually reviews.** A delegated task that finished well moved to *in review*
+  whenever the project had a reviewer, and stayed there forever: nobody ever told the reviewer. It
+  is handed over now — the reviewer gets the original task and what was delivered, and the card
+  moves on its own to *ready* when it approves, or back to *needs you*, findings in the detail, when
+  it asks for changes. The planner waits for that review and reads it before carrying on.
+- **Variables that complete themselves.** Typing `{{` in a hook's message, title or arguments opens
+  the list of variables the event carries: arrows to pick one, Enter to insert it.
+
+### Fixed
+
+- Emptying the conversation asks first. The bin in the communication panel used to wipe the whole
+  history on one click.
+- The hook dialog was the only one with its colours hardcoded, so the line explaining which
+  variables you can use was grey on grey. It follows the theme now, and lists every variable as a
+  chip you can read.
+
 ## 0.4.0 — 2026-09-07
 
 ### Added

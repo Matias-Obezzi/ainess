@@ -1,4 +1,4 @@
-import type { Approval, Project } from "@/types";
+import type { Approval, Project, AgentConfig } from "@/types";
 
 /**
  * The approvals the user can actually act on.
@@ -19,4 +19,12 @@ export function pendingApprovals(
   return Object.values(approvals)
     .filter(a => a.status === "pending" && live.has(a.projectId) && (projectId == null || a.projectId === projectId))
     .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/**
+ * Resolves whether a delegated task requires approval based on the agent's specific override
+ * and the global fallback configuration.
+ */
+export function delegationNeedsApproval(agent: Pick<AgentConfig, "requireApproval">, approveDelegations: boolean): boolean {
+  return agent.requireApproval ?? approveDelegations;
 }
