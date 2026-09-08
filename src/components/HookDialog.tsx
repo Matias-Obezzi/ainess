@@ -16,11 +16,21 @@ const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.finished", label: "task.finished" },
   { value: "task.failed", label: "task.failed" },
   { value: "delegation", label: "delegation" },
+  { value: "approval.requested", label: "approval.requested" },
   { value: "run.finished", label: "run.finished" },
   { value: "run.failed", label: "run.failed" },
   { value: "agent.stopped", label: "agent.stopped" },
-  { value: "result", label: "result" }
+  { value: "result", label: "result" },
+  // The machine's own conditions (src/lib/system-hooks.ts).
+  { value: "app.started", label: "app.started" },
+  { value: "schedule", label: "schedule" },
+  { value: "internet.lost", label: "internet.lost" },
+  { value: "internet.back", label: "internet.back" },
+  { value: "file.changed", label: "file.changed" },
 ];
+
+/** The ones with no agent behind them: their project is whatever the filter says, or the open one. */
+const SYSTEM_EVENTS: HookEvent[] = ["app.started", "schedule", "internet.lost", "internet.back", "file.changed"];
 
 const ACTIONS = [
   { value: "slack", labelKey: "hookDialog.action.slack" },
@@ -56,6 +66,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const [argsStr, setArgsStr] = useState(hook?.action.type === "command" ? hook.action.args.join(" ") : "");
   const [agentId, setAgentId] = useState(hook?.action.type === "instruct" ? hook.action.agentId : "");
   
+  // When a "schedule" hook fires: a time of day, or every so many minutes.
+  const [scheduleKind, setScheduleKind] = useState<"at" | "every">(hook?.schedule?.at ? "at" : "every");
+  const [scheduleAt, setScheduleAt] = useState(hook?.schedule?.at ?? "09:00");
+  const [scheduleEvery, setScheduleEvery] = useState(String(hook?.schedule?.everyMinutes ?? 30));
+
   // Filter fields
   const [filterAgentId, setFilterAgentId] = useState(hook?.filter?.agentId || "all");
   const [filterProjectId, setFilterProjectId] = useState(hook?.filter?.projectId || "all");
@@ -84,6 +99,13 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
       event,
       enabled,
       action,
+      ...(event === "schedule"
+        ? {
+            schedule: scheduleKind === "at"
+              ? { at: scheduleAt }
+              : { everyMinutes: Math.max(1, Number(scheduleEvery) || 30) },
+          }
+        : {}),
       filter: (filterAgentId !== "all" || filterProjectId !== "all") ? {
         ...(filterAgentId !== "all" ? { agentId: filterAgentId } : {}),
         ...(filterProjectId !== "all" ? { projectId: filterProjectId } : {})
@@ -132,6 +154,35 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               </Select>
             </div>
           </div>
+
+          {/* Only a clock needs to be told when. */}
+          {event === "schedule" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("hookDialog.when")}</Label>
+                <Select value={scheduleKind} onValueChange={(v) => setScheduleKind(v as "at" | "every")}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="at">{t("hookDialog.when.at")}</SelectItem>
+                    <SelectItem value="every">{t("hookDialog.when.every")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{scheduleKind === "at" ? t("hookDialog.when.atLabel") : t("hookDialog.when.everyLabel")}</Label>
+                {scheduleKind === "at" ? (
+                  <Input type="time" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} />
+                ) : (
+                  <Input type="number" min={1} value={scheduleEvery} onChange={e => setScheduleEvery(e.target.value)} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* What the machine's own events can and cannot do. */}
+          {SYSTEM_EVENTS.includes(event) && (
+            <p className="text-xs text-muted-foreground">{t("hookDialog.systemEventHint")}</p>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

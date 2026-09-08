@@ -115,6 +115,7 @@ export interface Formation {
 }
 
 export type HookEvent =
+  // Something an agent did.
   | "approval.requested"
   | "task.started"
   | "task.finished"
@@ -123,7 +124,17 @@ export type HookEvent =
   | "run.finished"
   | "run.failed"
   | "agent.stopped"
-  | "result";
+  | "result"
+  // Something that happened to the machine, with no agent behind it (see src/lib/system-hooks.ts).
+  /** The app was opened. */
+  | "app.started"
+  /** A clock: at a time of day, or every so many minutes. */
+  | "schedule"
+  /** The machine lost its connection, or got it back. */
+  | "internet.lost"
+  | "internet.back"
+  /** Something changed in a project's folder, filtered of noise and debounced. */
+  | "file.changed";
 
 export type HookAction =
   | { type: "slack"; webhookUrl: string; template: string }
@@ -140,6 +151,13 @@ export interface Hook {
   enabled: boolean;
   filter?: { agentId?: string; projectId?: string };
   action: HookAction;
+  /** Only for "schedule": when it fires. `at` wins if both are set. */
+  schedule?: {
+    /** Time of day, "HH:MM" on the machine's clock. */
+    at?: string;
+    /** Every so many minutes, counted from when the app opened. */
+    everyMinutes?: number;
+  };
 }
 
 /** A delegated task (or instruction) waiting for the user's go-ahead. */

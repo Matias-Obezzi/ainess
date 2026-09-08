@@ -948,6 +948,12 @@ export const zh: Dictionary = {
   "hookDialog.agentToInstruct": "要指示的智能体",
   "hookDialog.title": "标题",
   "hookDialog.template": "模板",
+  "hookDialog.when": "何时",
+  "hookDialog.when.at": "在某个时刻",
+  "hookDialog.when.every": "每隔几分钟",
+  "hookDialog.when.atLabel": "时间",
+  "hookDialog.when.everyLabel": "分钟",
+  "hookDialog.systemEventHint": "这个事件不来自任何智能体：项目取自下方的过滤器，或者当前打开的那个。它只在应用打开时运行，且每分钟最多触发一次。",
   "hookDialog.variables": "变量：",
   "hookDialog.variablesHint": "在消息中键入 {{ 以选择变量。您可以使用 {{output|300}} 截断值。",
 

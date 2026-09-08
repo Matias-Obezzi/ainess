@@ -949,6 +949,12 @@ export const ja: Dictionary = {
   "hookDialog.agentToInstruct": "指示するエージェント",
   "hookDialog.title": "タイトル",
   "hookDialog.template": "テンプレート",
+  "hookDialog.when": "いつ",
+  "hookDialog.when.at": "時刻を指定",
+  "hookDialog.when.every": "何分おき",
+  "hookDialog.when.atLabel": "時刻",
+  "hookDialog.when.everyLabel": "分",
+  "hookDialog.systemEventHint": "このイベントはエージェント発ではありません。対象プロジェクトは下のフィルタ、なければ開いているものです。アプリが開いている間だけ動き、1分に1回までしか発火しません。",
   "hookDialog.variables": "変数:",
   "hookDialog.variablesHint": "メッセージ内で {{ と入力して変数を選択します。{{output|300}} で値をトリムできます。",
 

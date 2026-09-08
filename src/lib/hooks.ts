@@ -17,53 +17,64 @@ export interface HookContext {
   model?: string;   // para delegation
 }
 
-export async function emitHookEvent(event: HookEvent, vars: Record<string, any>, ctx: HookContext): Promise<void> {
+/**
+ * `ctx` can be a function of the hook: a system event (a clock, the connection, a file) has no
+ * agent or run behind it, so each hook says which project it is about — its own filter — instead
+ * of all of them sharing one context.
+ */
+export async function emitHookEvent(
+  event: HookEvent,
+  vars: Record<string, any>,
+  ctx: HookContext | ((hook: Hook) => HookContext),
+): Promise<void> {
   const store = useAppStore.getState();
   const hooks = store.config.hooks || [];
-  
-  // Base vars: event, project, workspace, agent, agentRole, time
   const time = new Date().toISOString();
-  const templateVars = {
-    event,
-    time,
-    project: ctx.project?.name || "",
-    workspace: ctx.project?.workspaceDir || "",
-    agent: ctx.agent?.name || "",
-    agentRole: ctx.agent?.role || "",
-    runId: ctx.runId || "",
-    round: ctx.round?.toString() || "",
-    prompt: ctx.prompt || "",
-    output: ctx.output || "",
-    error: ctx.error || "",
-    taskPrompt: ctx.taskPrompt || "",
-    toAgent: ctx.toAgent || "",
-    task: ctx.task || "",
-    model: ctx.model || "",
-    ...vars
-  };
+  const contextOf = (hook: Hook): HookContext => (typeof ctx === "function" ? ctx(hook) : ctx);
 
   const activeHooks = hooks.filter(h => {
     if (!h.enabled) return false;
     if (h.event !== event) return false;
+    const hookCtx = contextOf(h);
     if (h.filter) {
-      if (h.filter.agentId && h.filter.agentId !== ctx.agent?.id) return false;
-      if (h.filter.projectId && h.filter.projectId !== ctx.project?.id) return false;
+      if (h.filter.agentId && h.filter.agentId !== hookCtx.agent?.id) return false;
+      if (h.filter.projectId && h.filter.projectId !== hookCtx.project?.id) return false;
     }
     return true;
   });
 
   for (const hook of activeHooks) {
+    const hookCtx = contextOf(hook);
+    // Base vars: event, project, workspace, agent, agentRole, time
+    const templateVars = {
+      event,
+      time,
+      project: hookCtx.project?.name || "",
+      workspace: hookCtx.project?.workspaceDir || "",
+      agent: hookCtx.agent?.name || "",
+      agentRole: hookCtx.agent?.role || "",
+      runId: hookCtx.runId || "",
+      round: hookCtx.round?.toString() || "",
+      prompt: hookCtx.prompt || "",
+      output: hookCtx.output || "",
+      error: hookCtx.error || "",
+      taskPrompt: hookCtx.taskPrompt || "",
+      toAgent: hookCtx.toAgent || "",
+      task: hookCtx.task || "",
+      model: hookCtx.model || "",
+      ...vars
+    };
     // execute non-blocking
-    executeHookAction(hook, templateVars, ctx).catch(err => {
+    executeHookAction(hook, templateVars, hookCtx).catch(err => {
       // report error in system feed
       const msg = `Hook ${hook.name} falló: ${err.message}`;
       log.error("hooks", msg, err);
-      if (ctx.project) {
+      if (hookCtx.project) {
         useAppStore.setState(s => ({
           messages: [...s.messages, {
             id: crypto.randomUUID(),
             ts: Date.now(),
-            projectId: ctx.project?.id,
+            projectId: hookCtx.project?.id,
             fromAgentId: "user",
             kind: "system",
             text: msg

@@ -948,6 +948,12 @@ export const pt: Dictionary = {
   "hookDialog.agentToInstruct": "Agente a instruir",
   "hookDialog.title": "Título",
   "hookDialog.template": "Modelo",
+  "hookDialog.when": "Quando",
+  "hookDialog.when.at": "Em um horário",
+  "hookDialog.when.every": "A cada tantos minutos",
+  "hookDialog.when.atLabel": "Horário",
+  "hookDialog.when.everyLabel": "Minutos",
+  "hookDialog.systemEventHint": "Este evento não vem de nenhum agente: o projeto é o do filtro abaixo, ou o que estiver aberto. Roda enquanto o app está aberto, e nunca mais de uma vez por minuto.",
   "hookDialog.variables": "Variáveis:",
   "hookDialog.variablesHint": "Digite {{ na mensagem para escolher uma variável. Você pode cortar um valor com {{output|300}}.",
 

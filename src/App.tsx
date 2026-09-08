@@ -19,6 +19,7 @@ import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
 import { useQuotaSync } from "@/hooks/useQuotaSync";
 import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
+import { useSystemHooks } from "@/hooks/useSystemHooks";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
 import { getTransport } from "@/lib/transport";
@@ -58,6 +59,7 @@ export default function App() {
   useQuotaSync();
   useRepoSync();
   useRepoWatch();
+  useSystemHooks();
   const { open: changelogOpen, setOpen: setChangelogOpen } = useChangelogOnUpdate();
 
   // Every global shortcut is resolved from the one table in src/lib/shortcuts.ts, which is also

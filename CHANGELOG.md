@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **Hooks on the machine's own conditions.** Until now a hook answered something an agent did.
+  Five more events answer the machine instead: the app opening, a clock (at a time of day or every
+  so many minutes), the connection dropping and coming back, and a file changing in a project's
+  folder — that last one riding the watcher that was already there, so the noise (`.git`,
+  `node_modules`, build output) never reaches it. They run while the app is open, no more than once
+  a minute each, and the project they act on is the one in the hook's own filter, or whichever is
+  open. `approval.requested`, which was already being fired, is finally in the list you can pick
+  from.
 - **The changelog in your language.** The dialog that opens after an update, and Configuración →
   Acerca de, now show the notes translated. English stays in `CHANGELOG.md` and each other language
   has its own file, which the release check keeps in step with the version being published.
