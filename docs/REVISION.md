@@ -115,7 +115,7 @@ y el botón de cerrar la ventana, y el velo del modal a `bg-background/80`) esta
 revirtieron: este proyecto no define el token `--destructive-foreground`, así que el texto blanco
 sobre el rojo se habría vuelto texto oscuro sobre rojo.
 
-### `[ ]` B4 · El CLI `ais` no conoce las reglas nuevas
+### `[x]` B4 · El CLI `ais` no conoce las reglas nuevas — auditado: *«The CLI was reading the feed in Spanish»*
 
 **Qué pasa.** El CLI arranca corridas por su cuenta; hay que revisar si respeta el gate de
 aprobación por agente y el flujo de revisión que se agregaron, o si son sólo de la app.
@@ -123,6 +123,24 @@ aprobación por agente y el flujo de revisión que se agregaron, o si son sólo 
 **Dónde.** `src/cli/main.ts`.
 
 **Propuesta.** Auditarlo y alinearlo.
+
+**Resultado de la auditoría.** La premisa era casi toda falsa: `ais run` entra por `submitPrompt`,
+o sea por el mismo orquestador que la app, así que ya respeta el gate de aprobación por agente, el
+ajuste general, el flujo de revisión y todo lo que se arregló estos días. Sale con código 3 cuando
+una delegación queda esperando tu visto bueno, que es lo correcto.
+
+Pero encontró un bug real, y era mío: para decidir si `ais run` termina con código 1, el CLI
+buscaba en el feed un mensaje que contuviera el texto «No se encontró el CLI» — un literal en
+español que dejó de existir cuando esos mensajes pasaron a los diccionarios (B1). En una máquina
+en inglés, una tarea que fallaba porque faltaba un CLI salía con código 0: verde en el script que
+la llamó. Ahora se mira lo que importa, que es si alguna corrida de esa tarea terminó en error,
+sin importar en qué idioma se lo contó.
+
+**Lo que queda como decisión tuya.** La ayuda y los mensajes propios del CLI (unas 90 líneas de
+`console.log`) están en español fijo, aunque el CLI ya resuelve idioma con `nodeI18n` y lo usa para
+el `doctor`. Traducirlo todo son 90 claves × 7 idiomas: mucho trabajo para el valor que tiene, así
+que no lo hice por mi cuenta. Decime si querés el CLI en siete idiomas o si se queda en español a
+propósito.
 
 ---
 

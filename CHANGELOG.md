@@ -34,6 +34,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- **`ais run` fails when the task failed, in any language.** It decided its exit code by looking for
+  the Spanish words of "CLI not found" in the feed — text that stopped existing the day those
+  messages started coming out of the dictionaries. On an English machine a task that died for want
+  of a CLI exited zero, green to whatever script had called it. It reads the runs now.
+
 - **The conversation stops repainting itself whole.** The thread and the communication feed drew
   every message they had — three thousand per project — and not one row was memoised, so anything
   that touched the store redrew all of them. They draw the last stretch now, with a line at the top
