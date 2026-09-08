@@ -181,6 +181,7 @@ export const ja: Dictionary = {
   "markdown.invalidDelegation": "形式が無効な委任です",
 
   // ---- Right dock ----
+  "dock.dragToResize": "ドラッグして幅を調整",
   "dock.dragToSplit": "ドラッグして高さを調整",
   "dock.comm.title": "コミュニケーション",
   "dock.comm.subtitle": "エージェントとあなたのやり取りすべて",

@@ -112,6 +112,8 @@ export interface AppState {
   termPanelOpen: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
+  /** Width in px of the two side panes, as the user dragged them. */
+  paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
   settingsOpen: boolean;
   settingsSection: SettingsSection;
@@ -139,6 +141,7 @@ export interface AppState {
   toggleDiffPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
+  setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
   toggleSidebar(open?: boolean): void;
   toggleSearch(open?: boolean): void;
@@ -391,6 +394,7 @@ interface UiPrefs {
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
   dockSizes: Record<DockSectionId, number>;
+  paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
   sidebarOpen: boolean;
@@ -425,6 +429,18 @@ function saveDrafts(drafts: Record<string, string>): void {
   }
 }
 
+/** The two side panes the user can drag: the menu on the left, the dock on the right. */
+export type PaneId = "sidebar" | "dock";
+
+export const PANE_DEFAULT_WIDTH: Record<PaneId, number> = { sidebar: 260, dock: 380 };
+export const PANE_MIN_WIDTH: Record<PaneId, number> = { sidebar: 180, dock: 280 };
+export const PANE_MAX_WIDTH: Record<PaneId, number> = { sidebar: 480, dock: 900 };
+
+export function clampPaneWidth(pane: PaneId, value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : PANE_DEFAULT_WIDTH[pane];
+  return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
+}
+
 const UI_PREFS_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
@@ -434,6 +450,7 @@ const defaultUiPrefs: UiPrefs = {
   diffPanelOpen: false,
   termPanelOpen: false,
   dockSizes: { comm: 1, diff: 1, term: 1 },
+  paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
   sidebarOpen: true,
@@ -474,6 +491,10 @@ function loadUiPrefs(): UiPrefs {
     }
 
     return {
+      paneWidths: {
+        sidebar: clampPaneWidth("sidebar", parsed.paneWidths?.sidebar),
+        dock: clampPaneWidth("dock", parsed.paneWidths?.dock),
+      },
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       taskView: parsed.taskView === "graph" ? "graph" : "board",
@@ -502,6 +523,7 @@ function saveUiPrefs(): void {
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
       dockSizes: s.dockSizes,
+      paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
       sidebarOpen: s.sidebarOpen,
@@ -677,6 +699,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  setPaneWidth: (pane, width) => {
+    set(s => ({ paneWidths: { ...s.paneWidths, [pane]: clampPaneWidth(pane, width) } }));
+    saveUiPrefs();
+  },
   setDockSizes: (sizes) => {
     set(s => {
       const comm = sizes.comm !== undefined ? clampDockSize(sizes.comm) : s.dockSizes.comm;
@@ -1828,6 +1854,7 @@ async function runInit(): Promise<void> {
       diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,
       dockSizes: prefs.dockSizes,
+      paneWidths: prefs.paneWidths,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
       sidebarOpen: prefs.sidebarOpen,

@@ -181,6 +181,7 @@ export const es: Dictionary = {
   "markdown.invalidDelegation": "Delegación con formato inválido",
 
   // ---- Right dock ----
+  "dock.dragToResize": "Arrastrá para cambiar el ancho",
   "dock.dragToSplit": "Arrastrá para repartir el alto",
   "dock.comm.title": "Comunicación",
   "dock.comm.subtitle": "Todo lo que se dicen los agentes y vos",

@@ -180,6 +180,7 @@ export const zh: Dictionary = {
   "markdown.invalidDelegation": "委派格式无效",
 
   // ---- Right dock ----
+  "dock.dragToResize": "拖动以调整宽度",
   "dock.dragToSplit": "拖动以分配高度",
   "dock.comm.title": "通信",
   "dock.comm.subtitle": "智能体之间以及和你说的所有内容",

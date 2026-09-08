@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
+import { ResizeHandle } from "./ResizeHandle";
 import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
 import { TerminalDockSection } from "./TerminalDockSection";
@@ -17,6 +18,8 @@ export function RightDock() {
   const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
   const dockSizes = useAppStore(state => state.dockSizes);
+  const width = useAppStore(state => state.paneWidths.dock);
+  const setPaneWidth = useAppStore(state => state.setPaneWidth);
   const setDockSizes = useAppStore(state => state.setDockSizes);
   
   const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null });
@@ -69,7 +72,21 @@ export function RightDock() {
   const openSections = sections.filter(s => s.open);
 
   return (
-    <aside className="w-[380px] shrink-0 border-l border-border bg-card flex flex-col max-[1100px]:absolute max-[1100px]:right-0 max-[1100px]:top-12 max-[1100px]:bottom-0 max-[1100px]:z-20 max-[1100px]:shadow-xl">
+    <>
+    {/* Narrow windows float the dock over the content, where a divider would have nothing to push. */}
+    <ResizeHandle
+      side="right"
+      width={width}
+      min={PANE_MIN_WIDTH.dock}
+      max={PANE_MAX_WIDTH.dock}
+      onResize={w => setPaneWidth("dock", w)}
+      className="max-[1100px]:hidden"
+    />
+    <aside
+      className="shrink-0 border-l border-border bg-card flex flex-col max-[1100px]:absolute max-[1100px]:right-0 max-[1100px]:top-12 max-[1100px]:bottom-0 max-[1100px]:z-20 max-[1100px]:shadow-xl"
+      // Dragged wider than the window it later ends up in, the dock would run off the screen.
+      style={{ width, maxWidth: "100vw" }}
+    >
       {openSections.length === 1 ? (
         openSections[0].component
       ) : openSections.length > 1 ? (
@@ -97,5 +114,6 @@ export function RightDock() {
         </div>
       ) : null}
     </aside>
+    </>
   );
 }

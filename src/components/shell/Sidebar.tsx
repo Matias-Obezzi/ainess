@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore, selectProjectAgents } from "@/store";
+import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
+import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -59,6 +60,10 @@ export function Sidebar() {
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
   const sidebarOpen = useAppStore(state => state.sidebarOpen);
+  const width = useAppStore(state => state.paneWidths.sidebar);
+  const setPaneWidth = useAppStore(state => state.setPaneWidth);
+  // While the divider is held the width follows the pointer, so the open/close animation is off.
+  const [resizing, setResizing] = useState(false);
   const openHome = useAppStore(state => state.openHome);
   const openProject = useAppStore(state => state.openProject);
   const openSettings = useAppStore(state => state.openSettings);
@@ -200,13 +205,17 @@ export function Sidebar() {
   ];
 
   return (
+    <>
     <aside
-      className={`shrink-0 overflow-hidden bg-card transition-[width] duration-200 ${
-        sidebarOpen ? "w-[260px] border-r border-border" : "w-0"
+      className={`shrink-0 overflow-hidden bg-card ${resizing ? "" : "transition-[width] duration-200"} ${
+        sidebarOpen ? "border-r border-border" : ""
       }`}
+      style={{ width: sidebarOpen ? width : 0 }}
       aria-hidden={!sidebarOpen}
     >
-      <div className="w-[260px] h-full flex flex-col">
+      {/* The inner column keeps its width while the outer one animates to zero, so closing
+          slides the menu out instead of squeezing it. */}
+      <div className="h-full flex flex-col" style={{ width }}>
       <div className="p-3 flex flex-col gap-2 border-b border-border">
         <Button
           variant={screen === "home" ? "secondary" : "ghost"}
@@ -407,5 +416,16 @@ export function Sidebar() {
       )}
       </div>
     </aside>
+    {sidebarOpen && (
+      <ResizeHandle
+        side="left"
+        width={width}
+        min={PANE_MIN_WIDTH.sidebar}
+        max={PANE_MAX_WIDTH.sidebar}
+        onResize={w => setPaneWidth("sidebar", w)}
+        onResizingChange={setResizing}
+      />
+    )}
+    </>
   );
 }
