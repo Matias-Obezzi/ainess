@@ -1,3 +1,4 @@
+import { translateNow } from "@/i18n/useT";
 // I/O side of the ngrok account integration: shells out to the ngrok CLI, reads `ngrok.yml` and
 // calls the ngrok API. Parsing lives in src/lib/ngrok.ts so it can be unit-tested without a
 // transport. See PLAN.md for the security rules (credentials never touch ainess's own config or
@@ -62,7 +63,7 @@ export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void):
   onPhase("detecting");
   const found = await transport.tunnelDetect();
   if (!found.ngrok) {
-    throw new Error("winget terminó pero ngrok sigue sin aparecer. Reiniciá la app y probá de nuevo.");
+    throw new Error(translateNow("ngrok.notDetected"));
   }
 
   const versionRes = await runNgrok(found.ngrok, ["--version"]);
@@ -118,7 +119,7 @@ async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
     const found = await getTransport().tunnelDetect().catch(() => ({ ngrok: null, cloudflared: null }));
     if (!found.ngrok) {
       log.warn("tunnel", "no se pudo actualizar ngrok: no está instalado");
-      return { status: "failed", version: null, message: "ngrok no está instalado" };
+      return { status: "failed", version: null, message: translateNow("ngrok.notInstalled") };
     }
     path = found.ngrok;
     res = await runNgrok(path, ["update"]);
@@ -214,7 +215,7 @@ export async function ngrokReservedDomains(ngrokPath: string): Promise<string[]>
     "ngrok-version": "2",
   });
   if (httpRes.status === 401 || httpRes.status === 403) {
-    throw new Error("La API key de ngrok no es válida");
+    throw new Error(translateNow("ngrok.invalidApiKey"));
   }
   if (httpRes.status !== 200) {
     throw new Error(`La API de ngrok respondió HTTP ${httpRes.status}`);

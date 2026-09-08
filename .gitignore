@@ -31,3 +31,6 @@ dist-cli/
 
 # Phone page bundle (npm run build:remote)
 dist-remote/
+
+# Per-agent transcripts the app writes as it works: local noise, not part of the project.
+.ainess/history/

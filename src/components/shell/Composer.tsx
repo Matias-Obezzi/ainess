@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
@@ -17,8 +17,9 @@ import { isChatActive } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
 import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
 import { useT } from "@/i18n/useT";
-import { Clock, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
+import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
+import { Typewriter } from "@/components/ui/typewriter";
 import {
   MAX_ATTACHMENT_BYTES,
   attachmentsBlock,
@@ -97,8 +98,6 @@ export function Composer() {
   const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
-  const [targetModel, setTargetModel] = useState<string>("none");
-  const [customModel, setCustomModel] = useState("");
 
   // Agents can be created or deleted from Settings; keep the target pointing at something real.
   useEffect(() => {
@@ -140,6 +139,27 @@ export function Composer() {
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+
+  // The model of this conversation, remembered next to its draft: picking one, going to the board
+  // and coming back used to say "default model" again while the box below still held the prompt.
+  // Which of the three the select shows follows from the stored value — one of the CLI's own, or
+  // one typed by hand. The only thing it cannot say is "custom, nothing typed yet".
+  const composerModel = useAppStore(state => state.composerModels[draftKey] ?? "");
+  const setComposerModel = useAppStore(state => state.setComposerModel);
+  const [wantsCustom, setWantsCustom] = useState(false);
+  useEffect(() => { setWantsCustom(false); }, [draftKey]);
+  const targetModel = wantsCustom
+    ? "custom"
+    : composerModel
+      ? (modelOptions.includes(composerModel) ? composerModel : "custom")
+      : "none";
+  const setTargetModel = (value: string) => {
+    setWantsCustom(value === "custom");
+    // "Other…" starts from an empty box: the model picked before is not silently kept as its value.
+    setComposerModel(draftKey, value === "custom" || value === "none" ? "" : value);
+  };
+  const customModel = composerModel;
+  const setCustomModel = (value: string) => setComposerModel(draftKey, value);
   // An order bound to another agent would run somewhere else than what the composer says, so only
   // the ones for this target (and the ones bound to nobody) are offered.
   const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
@@ -148,10 +168,8 @@ export function Composer() {
   const applyPreset = (preset: Preset) => {
     setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
     if (preset.agentId) setTargetId(preset.agentId);
-    if (preset.model) {
-      setTargetModel(preset.model);
-      setCustomModel("");
-    }
+    // One value now, so one call: the old pair set the model and then blanked it.
+    if (preset.model) setComposerModel(draftKey, preset.model);
   };
 
   // Whose quota the ring shows: the agent of a one-on-one chat, or the one the prompt is aimed at
@@ -357,6 +375,23 @@ export function Composer() {
       : t("composer.placeholder.team");
   const hint = compact ? placeholder : `${placeholder} ${t("composer.sendShortcut")}`;
 
+  /**
+   * An empty box says the same thing forever, and what it says is the least it could: one of five
+   * things to do with the team, typed and swapped every few seconds. The shortcut is one of them
+   * rather than a permanent tail, which is how it stops being furniture and gets read once.
+   *
+   * Only where there is a team to talk to, and never on the phone: less movement, less battery, and
+   * the box there is small enough that a moving line is in the way.
+   */
+  const rotating = !chatMode && !noTeam && !compact;
+  const rotatingHints = useMemo(() => [
+    t("composer.placeholder.team"),
+    t("composer.placeholder.rotate1"),
+    t("composer.placeholder.rotate2"),
+    t("composer.placeholder.rotate3"),
+    t("composer.placeholder.shortcut"),
+  ], [t]);
+
   return (
     <div className="border-t border-border p-3 shrink-0 bg-background">
       <div className="max-w-3xl mx-auto flex flex-col gap-2">
@@ -417,10 +452,21 @@ export function Composer() {
             onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={hint}
+            placeholder={rotating ? "" : hint}
+            aria-label={placeholder}
             rows={2}
             className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
           />
+          {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
+              Nothing to click through, nothing to read out: the label above is what is announced. */}
+          {rotating && !text && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
+            >
+              <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} />
+            </span>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -433,19 +479,6 @@ export function Composer() {
             }}
           />
           <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {!compact && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => fileInputRef.current?.click()}
-                title={t("attachments.attachHint")}
-                aria-label={t("attachments.attach")}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            )}
             {busy && (
               <Button
                 variant="destructive"
@@ -469,73 +502,89 @@ export function Composer() {
                 title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
                 aria-label={willQueue ? t("composer.queue") : t("composer.send")}
               >
-                {willQueue ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                <Send className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
 
-        {(!chatMode || quotaAgent) && (
+        {(!chatMode || quotaAgent || !compact) && (
           <div className="flex gap-2 items-center flex-wrap">
-            {!chatMode && (
-              <>
-                <Select value={targetId} onValueChange={setTargetId}>
-                  <SelectTrigger className="w-[150px] h-8 text-xs">
-                    <SelectValue placeholder={t("composer.target")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map(a => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {compact && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
-                    aria-label={t("composer.pickModel")}
-                    onClick={() => setShowModel(v => !v)}
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-
-                {(!compact || showModel) && (
-                <Select value={targetModel} onValueChange={setTargetModel}>
-                  <SelectTrigger className="w-[170px] h-8 text-xs">
-                    <SelectValue placeholder={t("common.model")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
-                    {modelOptions.map(m => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                    <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                )}
-
-                {targetModel === "custom" && (!compact || showModel) && (
-                  <Input
-                    className="h-8 w-[150px] text-xs"
-                    placeholder={t("composer.typeModel")}
-                    value={customModel}
-                    onChange={e => setCustomModel(e.target.value)}
-                  />
-                )}
-
-              </>
+            {!compact && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => fileInputRef.current?.click()}
+                title={t("attachments.attachHint")}
+                aria-label={t("attachments.attach")}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
             )}
 
-            {/* Both live at the right end: what is waiting for you, and what is left to spend. */}
-            <div className="ml-auto flex items-center gap-1">
-              <ApprovalsPill />
-              {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
+            {/* Everything you set or watch lives at the right end: who answers, on which model,
+                what is waiting for you and what is left to spend. The left is for the box itself. */}
+            <div className="ml-auto flex items-center gap-2 flex-wrap">
+              {!chatMode && (
+                <>
+                  <Select value={targetId} onValueChange={setTargetId}>
+                    <SelectTrigger className="w-[150px] h-8 text-xs">
+                      <SelectValue placeholder={t("composer.target")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map(a => (
+                        <SelectItem key={a.id} value={a.id}>
+                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {compact && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      aria-label={t("composer.pickModel")}
+                      onClick={() => setShowModel(v => !v)}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+
+                  {(!compact || showModel) && (
+                  <Select value={targetModel} onValueChange={setTargetModel}>
+                    <SelectTrigger className="w-[170px] h-8 text-xs">
+                      <SelectValue placeholder={t("common.model")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
+                      {modelOptions.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                      <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  )}
+
+                  {targetModel === "custom" && (!compact || showModel) && (
+                    <Input
+                      className="h-8 w-[150px] text-xs"
+                      placeholder={t("composer.typeModel")}
+                      value={customModel}
+                      onChange={e => setCustomModel(e.target.value)}
+                    />
+                  )}
+                </>
+              )}
+
+              <div className="flex items-center gap-1">
+                <ApprovalsPill />
+                {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
+              </div>
             </div>
           </div>
         )}

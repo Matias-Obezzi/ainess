@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useAppStore, selectProjectAgents } from "@/store";
+import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { MessageItem } from "./MessageItem";
+import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
@@ -11,7 +13,7 @@ import { confirm } from "@/lib/confirm";
 import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
-const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
+const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "note", "stderr"];
 
 export function CommunicationPanel() {
   const t = useT();
@@ -31,10 +33,17 @@ export function CommunicationPanel() {
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [filterKinds, setFilterKinds] = useState<Set<MessageKind>>(new Set(allKinds));
   
+  const [limit, setLimit] = useState(200);
+
+  useEffect(() => {
+    setLimit(200);
+  }, [currentProjectId, filterAgent, filterKinds]);
+
   const [stickToBottom, setStickToBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [newCount, setNewCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
 
   const prevMessagesLength = useRef(messages.length);
 
@@ -52,7 +61,7 @@ export function CommunicationPanel() {
       if (stickToBottom) {
         bottomRef.current?.scrollIntoView();
       } else {
-        setHasNewMessages(true);
+        setNewCount(n => n + (messages.length - prevMessagesLength.current));
       }
     }
     prevMessagesLength.current = messages.length;
@@ -60,17 +69,16 @@ export function CommunicationPanel() {
 
   const onScroll = () => {
     if (!scrollContainerRef.current) return;
-    const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 40;
+    const isAtBottom = isNearBottom(scrollContainerRef.current);
     setStickToBottom(isAtBottom);
     if (isAtBottom) {
-      setHasNewMessages(false);
+      setNewCount(0);
     }
   };
 
   const scrollToBottom = () => {
     setStickToBottom(true);
-    setHasNewMessages(false);
+    setNewCount(0);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -92,6 +100,23 @@ export function CommunicationPanel() {
     }
     return true;
   });
+
+  const { shown, hidden } = windowOf(filteredMessages, limit);
+
+  const handleShowOlder = () => {
+    if (scrollContainerRef.current) {
+      prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+    }
+    setLimit(l => l + 200);
+  };
+
+  useLayoutEffect(() => {
+    if (prevScrollHeightRef.current !== null && scrollContainerRef.current) {
+      const newScrollHeight = scrollContainerRef.current.scrollHeight;
+      scrollContainerRef.current.scrollTop += (newScrollHeight - prevScrollHeightRef.current);
+      prevScrollHeightRef.current = null;
+    }
+  }, [shown.length]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
@@ -149,7 +174,14 @@ export function CommunicationPanel() {
           />
         ) : (
           <div className="flex flex-col relative">
-            {filteredMessages.map(m => (
+            {hidden > 0 && (
+              <div className="flex justify-center py-2">
+                <Button variant="ghost" size="sm" className="text-xs" onClick={handleShowOlder}>
+                  {t("comm.showOlder", { n: hidden })}
+                </Button>
+              </div>
+            )}
+            {shown.map(m => (
               <MessageItem key={m.id} message={m} />
             ))}
             <div ref={bottomRef} />
@@ -157,14 +189,14 @@ export function CommunicationPanel() {
         )}
       </div>
 
-      {!stickToBottom && hasNewMessages && (
+      {!stickToBottom && newCount > 0 && (
         <Button
           size="sm"
           className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2"
           onClick={scrollToBottom}
         >
           <ArrowDown className="h-4 w-4" />
-          {t("comm.goToEnd")}
+          {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
         </Button>
       )}
     </div>

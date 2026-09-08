@@ -7,6 +7,7 @@ import { AgentAvatar } from "@/components/ProviderLogo";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { Separator } from "@/components/ui/separator";
 import {
   formatCompact,
@@ -211,11 +212,30 @@ function TotalsCard({
   labels: { tokens: string; premiumRequests: string };
   t: TFunction;
 }) {
+  // The cost counts up and the rest of the line follows it, so the number you opened the panel for
+  // is the one that moves. `formatCost` shows four decimals under a cent: the ticker does the same,
+  // through the same Intl options, or it would land on a different number than the table says.
+  const rest = formatUsage({ ...totals, costUsd: 0 }, locale, labels);
   const line = formatUsage(totals, locale, labels);
+  const decimals = totals.costUsd > 0 && totals.costUsd < 0.01 ? 4 : 2;
   return (
     <div className="rounded-lg border border-border p-3">
       <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{line || t("usage.none")}</p>
+      <p className="mt-0.5 text-sm font-semibold">
+        {totals.costUsd > 0 ? (
+          <>
+            <NumberTicker
+              value={totals.costUsd}
+              decimals={decimals}
+              locale={locale}
+              format={{ style: "currency", currency: "USD", minimumFractionDigits: decimals, maximumFractionDigits: decimals }}
+            />
+            {rest ? ` · ${rest}` : ""}
+          </>
+        ) : (
+          line || t("usage.none")
+        )}
+      </p>
       <p className="text-[11px] text-muted-foreground">
         {plural(totals.runs, t("usage.runs.one", { n: totals.runs }), t("usage.runs.other", { n: totals.runs }))}
         {totals.unreported > 0 ? ` · ${t("usage.unreported", { n: totals.unreported })}` : ""}

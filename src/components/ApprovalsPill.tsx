@@ -8,6 +8,7 @@ import { ShieldCheck } from "lucide-react";
 import { useAppStore } from "@/store";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { Button } from "@/components/ui/button";
+import { MovingBorder } from "@/components/ui/moving-border";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { pendingApprovals } from "@/lib/approvals";
 import { plural } from "@/i18n";
@@ -34,19 +35,21 @@ export function ApprovalsPill({ className }: { className?: string }) {
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={cn("h-8 gap-1.5 px-2 text-xs text-amber-600 dark:text-amber-400", className)}
-          aria-label={label}
-          title={label}
-        >
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span className="tabular-nums">{pending.length}</span>
-        </Button>
-      </PopoverTrigger>
+      <MovingBorder radius="var(--radius-md)" color="currentColor" className={cn("text-amber-600 dark:text-amber-400 rounded-md", className)}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-xs rounded-[calc(var(--radius-md)-2px)]"
+            aria-label={label}
+            title={label}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{pending.length}</span>
+          </Button>
+        </PopoverTrigger>
+      </MovingBorder>
       <PopoverContent align="end" className="w-96 p-3">
         <ApprovalsPanel />
       </PopoverContent>

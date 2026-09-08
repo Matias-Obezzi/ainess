@@ -4,6 +4,173 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.8.0 — 2026-09-08
+
+### Added
+
+- **The empty box now says something, and it changes.** The composer's placeholder types one of five
+  lines and swaps every few seconds — what the team is for, what to hand over, that `/` opens the
+  commands, and the Enter shortcut, which stops being a permanent tail on the line and becomes
+  something you read once. It holds still for anyone who asked the system for less motion, and on
+  the phone it does not move at all.
+- **Movement where it means something.** A run that is still going has the light sweeping across the
+  step it is on, instead of a spinner; Home's "trabajando ahora" reads as alive; the approvals pill
+  wears a thread of light around it while — and only while — something is waiting for your answer;
+  and the money in the usage panel counts up to what it is, in the same currency format the tables
+  use. Nothing else was decorated: the thread, the feed and the board stay still, because a tool you
+  look at all day should only move when it is telling you something.
+- **An agent can say something before it is done.** Until now the only thing a delegated agent could
+  tell its planner was its final answer: get stuck two minutes in and nobody heard about it for
+  twenty. It can leave a `note` block as it works — blocked, slower than expected, something you
+  should know now — and the app hands it over while the run is still going, into the feed and to
+  whoever delegated the work.
+- **And it closes with what it actually did.** A `result` block naming the files it touched, what it
+  ran to check them and what it could not do. The prose stays; this is the part the planner reads
+  without having to interpret it, and it shows up in the run's detail as three short lists.
+- **Home is where you find out what is waiting.** Above the projects, two lists that cross all of
+  them: what is waiting on you — a delegation held for approval, a question nobody answered, a card
+  the board left in *needs you* — and who is working right now, on what, and since when. Every line
+  puts you where the thing is: the thread for an approval or a question, the board with the card
+  open for a task. Both disappear when there is nothing in them, so a quiet Home looks like it
+  always did. And the badge that used to mark the last project you opened is gone: you are on Home
+  precisely because you are not in it. In its place, each card says what is happening inside —
+  "2 trabajando · 1 esperándote".
+- **Agents on the same task know about each other.** A planner splitting work between two
+  implementers started each of them blind: neither knew the other was there, both reached for the
+  same files, and the planner got back two answers that disagreed. Each one is now told who else is
+  working on this same task and what they were asked to do — and that what somebody else has in
+  their hands is theirs to change, not yours to overwrite. It travels every turn, like the board,
+  because it is the kind of thing that changes while you work.
+- **A hook can write to "the boss" instead of to somebody by name.** The agent to instruct now
+  offers the top of the hierarchy — the project's root planner, the same agent the composer, the
+  CLI and the phone write to by default — resolved when the hook fires rather than when it is
+  saved, so rearranging the team never leaves it pointing at somebody who is no longer in charge.
+  Left unfiltered it reaches the boss of *every* project, which is what makes one scheduled hook
+  enough for all of them; narrowed to a project it is that one's boss, and an event an agent
+  caused stays in the project where it happened.
+
+### Fixed
+
+- **You can read back through a conversation while an agent is still writing.** In a chat, every
+  delta it sent dragged you back to the bottom — scrolling up to check what it had said two minutes
+  ago was impossible until it finished. The chat now does what the orchestrator thread already did:
+  it follows the bottom only while you are at the bottom, and when you are not, a pill in the corner
+  says how many messages came in and takes you there when you want it. The count is in all three
+  places now — chat, thread and the communication feed — instead of a bare "new messages".
+- **A long model name no longer breaks the new-chat dialog.** A participant's row is three dropdowns
+  and a bin in a grid, and a grid column will not go under the width of what it holds: pick a model
+  with a long name and the row stretched, the dialog stretched with it, and the name and mode fields
+  ended up hanging out of the card. The columns can shrink now and the name clamps.
+- **A tool failing inside an agent stops looking like the app broke.** Antigravity's `view_file`
+  fails, the agent retries and carries on — and the conversation showed a red alarm about it, the
+  same shape a real failure gets. It is a line in the run's activity now, in amber, with what the
+  provider said one hover away. Red is kept for what is actually broken. The one case worth saying
+  out loud is still said: the same tool failing three times in a run means the agent is going in
+  circles, and that gets a single line naming it.
+- **The composer's buttons stop crowding the box.** The send button no longer turns into a clock —
+  queueing works exactly as before, Enter queues while an agent is busy and the tooltip says so —
+  and the paperclip moved down to the bar, alone on the left, with the agent, the model, the
+  approvals and the quota gathered on the right.
+- **`ais run` fails when the task failed, in any language.** It decided its exit code by looking for
+  the Spanish words of "CLI not found" in the feed — text that stopped existing the day those
+  messages started coming out of the dictionaries. On an English machine a task that died for want
+  of a CLI exited zero, green to whatever script had called it. It reads the runs now.
+- **The conversation stops repainting itself whole.** The thread and the communication feed drew
+  every message they had — three thousand per project — and not one row was memoised, so anything
+  that touched the store redrew all of them. They draw the last stretch now, with a line at the top
+  to walk further back that keeps your place instead of jumping, and the rows only redraw when
+  something of theirs actually changed.
+- **An agent typing no longer costs more the longer you have been working.** Every delta a CLI sent
+  was a write: a copy of the whole message list to add one letter to the end of it, plus a copy of
+  the runs map for the raw line, plus a pass over every message to decide what to save. Per token.
+  With a long history that is work proportional to everything ever said, which is exactly why the
+  window got heavier as the day went on. The deltas are gathered and applied together, at most every
+  80 ms, and flushed on the spot when a run ends or is stopped so nothing arrives late or missing.
+- **A project opens the way you left it, conversation included.** Switching to another project and
+  coming back dropped you in the orchestrator thread, even if you had been talking in one of that
+  project's chats: the sidebar asked for the project *and no chat*, and that is exactly what it got.
+  Each project now remembers its last conversation as well as its view, and reopening the app comes
+  back to both. Asking for the thread on purpose still gives you the thread.
+- **Typing no longer writes to disk on every keystroke.** Each character saved every draft in the
+  app as JSON, synchronously, on the main thread — which is exactly the thread that has to keep up
+  with your typing. What you write still lands in the app instantly; the disk hears about it at
+  most every 400 ms, and immediately when the window closes or goes away, so nothing is lost.
+- **The notifications panel no longer opens with a tooltip already showing.** Opening it moved the
+  focus onto the first icon button, and a tooltip shows on focus as much as on hover.
+- **A card left in review comes back.** The board is put back in step with its runs on every launch,
+  but only for cards *en curso*. One parked *en revisión* behind a review that died with the app —
+  or whose run fell out of a trimmed history — stayed there forever. It is read now the same way the
+  live flow reads it: approved goes to ready, changes and failures come back to you, and a card a
+  person dragged there by hand is still nobody's business but theirs.
+- **An agent in a chat is the same agent as in a task.** The chat built its own system prompt, in
+  Spanish, without the `ask` block — so an agent you were talking to could not ask you for a
+  decision — and with every skill pasted in whole instead of pointed at in the repo. Chats go
+  through the one builder now: same profile, same shared context, same skills, same way of asking,
+  minus the board and the delegation an agent has no use for in a conversation.
+- **The app speaks your language all the way down.** The interface was translated and about thirty
+  messages underneath it were not: a stopped run, an approval, a rejected delegation, a hook that
+  failed, the errors the phone gets back, what an interrupted run leaves behind, the CLI that could
+  not be installed. In an English window they all came out in Spanish. They go through the same
+  dictionaries as everything else now — and a run interrupted by yesterday's build in another
+  language is still recognised as interrupted today.
+- **A delegation that names nobody no longer hangs the task.** A planner that misspelled an agent's
+  name — or named one that is not under it — was left waiting for a team that was never coming, its
+  card stuck at *en curso* until the app restarted. Now the mistake goes back to the planner with
+  the names it can actually use, so it delegates again; out of rounds, the task closes as needing
+  you instead of pretending to work.
+- **A run that cannot even start closes its card.** With the CLI missing, the run errored and the
+  board never heard about it.
+- **Hitting the round ceiling says so.** The task now closes as needing you, with the ceiling in the
+  detail and the same notification any failure gets, instead of ending quietly as if it had
+  finished.
+- **A planner that had forgotten how to delegate.** Sending the instructions only on the turn that
+  opens a session was right for the description — the role, the profile, the shared context, the
+  list of skills — and wrong for the two blocks an agent *acts* through. A CLI compacts its own
+  context as a session grows, and once the `delegate` block had been summarised away the planner
+  could no longer reach its own team: it went looking for an `ainess` command line and an MCP
+  tool, and ended up asking the user to delegate on its behalf, reasoning about the app it was
+  running inside as if it belonged to somebody else. The `delegate` and `ask` blocks now go on
+  every turn. They are the protocol, not the preamble.
+- **A crash no longer leaves agents working behind the app's back.** Closing the app walks every
+  agent process down; a crash — the task manager, a power cut, a panic — never reaches that, so
+  the CLIs kept going: still editing the workspace, still spending quota, with nobody reading
+  their output and the app that started them gone. Every run now writes down the process behind
+  it, and the next launch finds those, stops them and says so, across every project — including
+  the ones it does not load at startup, whose bookkeeping can wait but whose processes cannot.
+  A pid is never enough to kill on: they get handed out again, and the next holder is as likely
+  to be your own dev server as an agent, so a process is only stopped when its image *and* the
+  moment it started still match the run that recorded it.
+- **Each project remembers the view you left it on.** The board, the conversation and the
+  hierarchy were one setting shared by every project, so opening one in the hierarchy and coming
+  back to another showed the hierarchy there too. Each project keeps its own now — across
+  restarts, and reopening the app lands the last project where it was left. Clicking a chat is
+  still an explicit destination and opens the conversation.
+- **The model picked in a conversation is remembered with it.** Choosing one, walking to the board
+  and coming back said "default model" again while the box right below still held what you had
+  typed. It is now kept per conversation, next to the draft, model typed by hand included.
+- **A hook on a machine event no longer asks for an agent twice.** The "instruct an agent" action
+  sat under a filter that also listed agents, so the same dialog had two agent pickers meaning
+  different things. On a machine event — a clock, the connection, a file changing — nothing an
+  agent did sets the hook off, so filtering by one could only mean "never fire": those options are
+  gone there, leaving the action's own picker as the only one, and a hook that had one falls back
+  to that agent's project. The filter is also named for what it does now ("Escucha a").
+- **Links in an agent's answer took the whole app to `tauri.localhost`.** Agents write two kinds
+  of link and the app treated them as one: a web address, and a path inside the repo they are
+  working on (`src/lib/foo.ts`, `README.md`). The second is not something to open, and left on an
+  `<a href>` the desktop window followed it — off to `tauri.localhost/src/lib/foo.ts`, with the app
+  gone from under you. Only real addresses are links now, and they open in the real browser; a
+  repo path is left as text you can read. A `javascript:` or `data:` link — which an agent can
+  write, deliberately or not — is never one at all.
+- **An agent could not switch models when its parent told it to.** A planner naming a `model` for
+  a task was only obeyed while "choose the model" was on in Configuración, so with it off — the
+  default — an implementer told to retry on another model because its own had run out of quota was
+  quietly started on the same exhausted one again. A model the parent asks for is honoured either
+  way now; that setting decides whether the planner is *told to pick* one, not whether its pick
+  counts. And a child that ran out of quota no longer reaches its parent as a wall of CLI error
+  text: it is said plainly, with the models of that same CLI still worth trying — its own family
+  left out, since quota is spent per family — and with the reminder that a task can carry a
+  `model`. When the CLI has no other model, the parent is told to say so rather than retry.
+
 ## 0.7.0 — 2026-09-08
 
 ### Added

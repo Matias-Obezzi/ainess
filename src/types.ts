@@ -325,6 +325,17 @@ export interface AgentRuntime {
   queuedInstructions: string[];
 }
 
+/**
+ * The process behind a run, as the OS reported it when it started. Written down because a crash
+ * never gets to kill the CLIs it started: the next launch uses this to find them and, since pids
+ * are reused, to be sure it found the right ones (see `reap_orphans` in src-tauri/src/runner.rs).
+ */
+export interface SpawnedProcess {
+  pid: number;
+  /** The image name the OS reports, e.g. "node.exe". Empty when it could not be read. */
+  image: string;
+}
+
 export type RunStatus = "running" | "done" | "error" | "killed";
 
 /** What one run consumed, as reported by its CLI. Every field is optional: each one reports less. */
@@ -368,6 +379,8 @@ export interface Run {
   usage?: RunUsage;
   /** Set when this run is a review of another agent's finished run. */
   review?: { ofRunId: string; taskId: string };
+  /** The CLI process behind it, so a crashed app's leftovers can be found on the next launch. */
+  process?: SpawnedProcess;
 }
 
 export type MessageKind =
@@ -379,6 +392,7 @@ export type MessageKind =
   | "result" // final answer of a run
   | "system"
   | "error"
+  | "note"
   | "stderr";
 
 export interface CommMessage {
@@ -391,7 +405,7 @@ export interface CommMessage {
   kind: MessageKind;
   text: string;
   /** Only on `tool` messages: what the agent called and a one-line summary of it. */
-  meta?: { tool: string; summary: string; input?: unknown };
+  meta?: { tool: string; summary: string; input?: unknown; failed?: boolean; error?: string };
 }
 
 export interface Delegation {
@@ -503,7 +517,7 @@ export interface RunExitEvent {
 export type ParsedEvent =
   | { type: "session"; sessionId: string }
   | { type: "text"; text: string }
-  | { type: "tool"; name: string; detail?: string; input?: unknown }
+  | { type: "tool"; name: string; detail?: string; input?: unknown; failed?: boolean; error?: string }
   | { type: "result"; text: string; sessionId?: string; usage?: RunUsage }
   | { type: "error"; text: string }
   | { type: "raw"; text: string };

@@ -2,6 +2,8 @@ import { Hook, HookEvent, Project, AgentConfig } from "@/types";
 import { getTransport } from "./transport";
 import { useAppStore } from "@/store";
 import { log } from "@/lib/logger";
+import { BOSS_TARGET, bossOf } from "@/lib/team";
+import { translateNow } from "@/i18n/useT";
 
 export interface HookContext {
   project?: Project;
@@ -67,7 +69,7 @@ export async function emitHookEvent(
     // execute non-blocking
     executeHookAction(hook, templateVars, hookCtx).catch(err => {
       // report error in system feed
-      const msg = `Hook ${hook.name} falló: ${err.message}`;
+      const msg = translateNow("hooks.failed", { name: hook.name, error: err.message });
       log.error("hooks", msg, err);
       if (hookCtx.project) {
         useAppStore.setState(s => ({
@@ -87,6 +89,32 @@ export async function emitHookEvent(
 
 // Anti-loop protection
 const instructHookCounts = new Map<string, number>();
+
+/**
+ * Who an instruct hook actually writes to. A named agent is one agent in one project; `BOSS_TARGET`
+ * is resolved when the hook fires, so it survives the team being rearranged:
+ *
+ * - filtered to a project → that project's boss;
+ * - fired by something an agent did → the boss of the project it happened in;
+ * - fired by the machine (a clock, the connection, the app opening) with no project filter → the
+ *   boss of every project, which is the point of the option: one hook, every team's top agent.
+ */
+export function instructTargets(hook: Hook, ctx: HookContext): Array<{ agentId: string; projectId: string }> {
+  const action = hook.action;
+  if (action.type !== "instruct") return [];
+  if (action.agentId !== BOSS_TARGET) {
+    return ctx.project ? [{ agentId: action.agentId, projectId: ctx.project.id }] : [];
+  }
+
+  const projects = useAppStore.getState().config.projects;
+  const wanted = hook.filter?.projectId ?? (ctx.agent ? ctx.project?.id : undefined);
+  const reach = wanted ? projects.filter(p => p.id === wanted) : projects;
+
+  return reach.flatMap(project => {
+    const boss = bossOf(project.agents ?? []);
+    return boss ? [{ agentId: boss.id, projectId: project.id }] : [];
+  });
+}
 
 async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: HookContext) {
   const { renderTemplate } = await import("./template");
@@ -153,15 +181,14 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
       const countKey = `${hook.id}:${rootId}`;
       const count = instructHookCounts.get(countKey) || 0;
       if (count >= 5) {
-        throw new Error("Límite de 5 ejecuciones de instrucción alcanzado para esta tarea (protección anti-loop).");
+        throw new Error(translateNow("hooks.loopLimit", { n: 5 }));
       }
       instructHookCounts.set(countKey, count + 1);
       
       const { instructAgent } = await import("./orchestrator");
       const text = renderTemplate(action.template, vars);
-      if (ctx.project) {
-        // execute instructed prompt
-        await instructAgent(action.agentId, text, ctx.project.id);
+      for (const target of instructTargets(hook, ctx)) {
+        await instructAgent(target.agentId, text, target.projectId);
       }
       break;
     }

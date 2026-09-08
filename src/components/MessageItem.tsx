@@ -1,3 +1,4 @@
+import { memo, useState } from "react";
 import { CommMessage } from "@/types";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
@@ -6,11 +7,10 @@ import { kindLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
-import { useState } from "react";
 import { RunDetailDialog } from "./RunDetailDialog";
 import { ErrorMessage } from "./ErrorMessage";
 
-export function MessageItem({ message }: { message: CommMessage }) {
+export const MessageItem = memo(function MessageItem({ message }: { message: CommMessage }) {
   const t = useT();
   const agents = useAppStore(selectAllAgents);
   
@@ -57,7 +57,14 @@ export function MessageItem({ message }: { message: CommMessage }) {
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
         ) : (
-          <div className={cn("mt-1 whitespace-pre-wrap break-words", isMono && "font-mono text-xs text-muted-foreground")}>
+          <div
+            className={cn(
+              "mt-1 whitespace-pre-wrap break-words",
+              isMono && "font-mono text-xs",
+              message.kind === "tool" && message.meta?.failed ? "text-amber-600 dark:text-amber-400" : (isMono ? "text-muted-foreground" : "")
+            )}
+            title={message.kind === "tool" && message.meta?.failed && message.meta?.error ? message.meta.error : undefined}
+          >
             {message.text}
           </div>
         )}
@@ -69,4 +76,4 @@ export function MessageItem({ message }: { message: CommMessage }) {
       />
     </>
   );
-}
+});

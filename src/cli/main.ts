@@ -1360,8 +1360,12 @@ async function main() {
 
     if (prevState.activeTaskRunId[projectId] && !state.activeTaskRunId[projectId]) {
       if (!values.json) process.stdout.write("\n");
-      const errs = state.messages.find(m => m.projectId === projectId && m.kind === "error" && m.text.includes("No se encontró el CLI"));
-      const isError = errs || state.runs[prevState.activeTaskRunId[projectId] as string]?.status === "error";
+      // Whether the task failed is a question for the runs, not for the words in the feed: this
+      // used to look for the Spanish text of "CLI not found", which stopped being the text at all
+      // the day those messages started coming out of the dictionaries. Any run of this task ending
+      // in error is the failure, wherever in the tree it happened.
+      const rootRunId = prevState.activeTaskRunId[projectId] as string;
+      const isError = Object.values(state.runs).some(r => r.rootRunId === rootRunId && r.status === "error");
       void flushAll().finally(() => process.exit(isError ? 1 : 0));
     }
   });

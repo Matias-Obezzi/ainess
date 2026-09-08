@@ -184,6 +184,22 @@
   50% { opacity: 0.35; transform: scale(0.85); }
 }
 
+/* The cursor of the typewriter placeholder (see components/ui/typewriter.tsx). */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* The light that sweeps across text while a run is alive (components/ui/shimmer.tsx). */
+@keyframes shimmer {
+  from { background-position: 200% center; }
+  to { background-position: -200% center; }
+}
+
+/* The thread of light around something that is waiting for you (components/ui/moving-border.tsx). */
+@keyframes moving-border {
+  to { transform: rotate(360deg); }
+}
+
 @layer utilities {
   .animate-breathe { animation: ais-breathe 2.4s ease-in-out infinite; }
   /* Someone who asked for less movement gets none. */

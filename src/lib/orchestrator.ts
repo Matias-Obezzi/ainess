@@ -1,8 +1,8 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, finalOutputFromLines } from "@/lib/providers";
-import { recordAntigravityOutcome } from "@/lib/quota";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, finalOutputFromLines } from "@/lib/providers";
+import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
@@ -12,7 +12,11 @@ import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
+import { StreamBuffer } from "@/lib/stream-buffer";
+import { resolveDelegations } from "@/lib/delegation";
+import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 
+const toolFailures = new Map<string, number>();
 let listenersAttached = false;
 
 export async function attachListeners(): Promise<void> {
@@ -67,6 +71,7 @@ async function resolveCwd(projectId: string, agent: AgentConfig, project: Projec
 
 /** Closes a run that never reached a process: killed, agent idle, and the feed says why. */
 function finishNeverSpawned(runId: string, projectId: string, agentId: string, reason: string): void {
+  flushStream();
   useAppStore.setState(state => {
     const pRuntime = state.runtime[projectId] || {};
     return {
@@ -81,23 +86,130 @@ function finishNeverSpawned(runId: string, projectId: string, agentId: string, r
   onRunFinished(runId);
 }
 
-function appendCommText(agentId: string, runId: string, projectId: string, delta: string) {
+/**
+ * What the CLIs are saying right now, held for a moment before it reaches the store.
+ *
+ * Every delta used to be a write: a copy of the whole message array to add one letter to the last
+ * one, plus a copy of the runs map for the raw line. With a long history that is work proportional
+ * to everything ever said, once per token, and it is what made the window heavy while an agent
+ * typed. The deltas are gathered here and applied together, at most every 80 ms.
+ */
+const streamBuffer = new StreamBuffer();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function flushStream() {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (streamBuffer.isEmpty()) return;
+
+  const deltas = streamBuffer.take();
+  if (deltas.size === 0) return;
+
   useAppStore.setState(state => {
-    const msgId = `text-${runId}`;
-    const idx = state.messages.findIndex(m => m.id === msgId);
-    if (idx >= 0) {
-      const newMsgs = [...state.messages];
-      newMsgs[idx] = { ...newMsgs[idx], text: newMsgs[idx].text + delta };
-      return { messages: newMsgs };
-    } else {
-      return {
-        messages: [
-          ...state.messages,
-          { id: msgId, ts: Date.now(), runId, projectId, fromAgentId: agentId, kind: "text", text: delta }
-        ]
-      };
+    let runsChanged = false;
+    const runs = { ...state.runs };
+    let messagesChanged = false;
+    let messages = [...state.messages];
+    let addedMessages = 0;
+
+    const runIdsWithText = new Set<string>();
+    for (const [runId, delta] of deltas.entries()) {
+      if (delta.text) runIdsWithText.add(runId);
     }
+
+    const msgIndices = new Map<string, number>();
+    if (runIdsWithText.size > 0) {
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId)) {
+          msgIndices.set(m.runId, i);
+        }
+      }
+    }
+
+    for (const [runId, delta] of deltas.entries()) {
+      const r = runs[runId];
+      if (!r) continue;
+
+      if (delta.lines.length > 0) {
+        runs[runId] = {
+          ...r,
+          rawLines: [...r.rawLines, ...delta.lines].slice(-2000)
+        };
+        runsChanged = true;
+      }
+
+      if (delta.text) {
+        const idx = msgIndices.get(runId);
+        if (idx !== undefined) {
+          messages[idx] = { ...messages[idx], text: messages[idx].text + delta.text };
+          messagesChanged = true;
+        } else {
+          messages.push({
+            id: `text-${runId}`,
+            ts: Date.now(),
+            runId,
+            projectId: r.projectId,
+            fromAgentId: r.agentId,
+            kind: "text",
+            text: delta.text
+          });
+          messagesChanged = true;
+          addedMessages++;
+        }
+      }
+    }
+
+    if (addedMessages > 0 && messages.length > TRIM_MESSAGES_AT) {
+      messages = trimMessagesInMemory(messages);
+    }
+
+    if (!runsChanged && !messagesChanged) return state;
+    return {
+      ...(runsChanged ? { runs } : {}),
+      ...(messagesChanged ? { messages } : {})
+    };
   });
+
+  // A note is worth having while the agent is still working, which is the whole point of it, so it
+  // is looked for on the way past instead of when the run ends. What gets parsed is the message
+  // just written rather than the delta, so a block split across two flushes still reads.
+  for (const runId of deltas.keys()) {
+    const current = useAppStore.getState();
+    const run = current.runs[runId];
+    if (!run) continue;
+    const streamed = current.messages.find(m => m.id === `text-${runId}`);
+    if (streamed) emitNewNotes(run, streamed.text);
+  }
+}
+
+/** How many `note` blocks of a run already reached the feed, so none is handed over twice. */
+const notesEmitted = new Map<string, number>();
+
+/**
+ * The `note` blocks of a run that have not been passed on yet.
+ *
+ * Called while the text is still arriving, and once more when the run ends: the counter is what
+ * keeps that second pass from repeating what the first one already said.
+ */
+function emitNewNotes(run: Run, text: string): void {
+  const notes = parseNotes(text);
+  const already = notesEmitted.get(run.id) ?? 0;
+  if (notes.length <= already) return;
+  const parentRun = run.parentRunId ? useAppStore.getState().runs[run.parentRunId] : undefined;
+  const toAgentId = parentRun ? parentRun.agentId : "user";
+  for (const note of notes.slice(already)) {
+    addMessage({ projectId: run.projectId, fromAgentId: run.agentId, toAgentId, kind: "note", text: note, runId: run.id });
+  }
+  notesEmitted.set(run.id, notes.length);
+}
+
+function scheduleStreamFlush() {
+  if (flushTimer === null) {
+    flushTimer = setTimeout(flushStream, 80);
+  }
 }
 
 export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string } }): string | undefined {
@@ -156,7 +268,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     : store.binaries[agent.provider];
 
   if (!binary || !binary.path) {
-    const err = `No se encontró el CLI de ${provider.label}. Instalalo o configurá un comando custom.`;
+    const err = translateNow("system.cliMissing", { cli: provider.label });
     useAppStore.setState(state => {
       const pRuntime = state.runtime[opts.projectId] || {};
       return {
@@ -171,7 +283,14 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       };
     });
     addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: err, runId });
-    setTimeout(() => onRunFinished(runId), 0);
+    // The board card is opened by whoever called us, right after this returns, so settling it has
+    // to wait a tick: done here and now it would move a card that does not exist yet, and the card
+    // would sit at "working" behind a run that never started.
+    setTimeout(() => {
+      const errorRun = useAppStore.getState().runs[runId];
+      if (errorRun) taskSync.taskOnRunFinished(errorRun);
+      onRunFinished(runId);
+    }, 0);
     return runId;
   }
 
@@ -182,6 +301,21 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
     r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
+
+  const thisRoot = opts.rootRunId ?? runId;
+  const projectRuntime = store.runtime[opts.projectId] || {};
+  const teammates: { name: string; task: string }[] = [];
+  for (const [otherId, rt] of Object.entries(projectRuntime)) {
+    if (otherId === agent.id) continue;
+    if (rt.status !== "working") continue;
+    if (!rt.currentTask || !rt.currentRunId) continue;
+    const otherRun = store.runs[rt.currentRunId];
+    if (otherRun && otherRun.rootRunId === thisRoot) {
+      const otherAgent = selectAgent(store, otherId);
+      if (otherAgent) teammates.push({ name: otherAgent.name, task: rt.currentTask });
+    }
+  }
+
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
     // implementer told to do something by its planner and by the user reads the same prompt.
@@ -199,6 +333,8 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // A session that is being carried on already read the preamble; only what changed goes again.
     resuming: !!sessionId,
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
+    teammates: teammates.length > 0 ? teammates : undefined,
+    canNote: opts.parentRunId !== null,
   });
 
   const mcpServers = selectMcpFor(store, agent.id);
@@ -247,7 +383,15 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       mcpConfigPath
     });
 
-    await getTransport().spawnRun({ runId, ...spawnOpts });
+    const spawned = await getTransport().spawnRun({ runId, ...spawnOpts });
+    // Written down with the run, and so onto disk: if this app dies without getting to kill its
+    // agents, the next launch has what it needs to find the process it left behind.
+    if (spawned) {
+      useAppStore.setState(state => {
+        const run = state.runs[runId];
+        return run ? { runs: { ...state.runs, [runId]: { ...run, process: spawned } } } : state;
+      });
+    }
   };
 
   doSpawn().catch(err => {
@@ -282,19 +426,7 @@ function handleOutput(e: RunOutputEvent) {
   const provider = PROVIDERS[agent.provider];
   const events = provider.parseLine(e.line, e.stream);
 
-  useAppStore.setState(state => {
-    const r = state.runs[e.runId];
-    if (!r) return state;
-    return {
-      runs: {
-        ...state.runs,
-        [e.runId]: {
-          ...r,
-          rawLines: [...r.rawLines, e.line].slice(-2000)
-        }
-      }
-    };
-  });
+  streamBuffer.pushLine(e.runId, e.line);
 
   for (const ev of events) {
     if (ev.type === "session") {
@@ -305,19 +437,42 @@ function handleOutput(e: RunOutputEvent) {
         };
       });
     } else if (ev.type === "text") {
-      appendCommText(run.agentId, e.runId, run.projectId, ev.text);
+      streamBuffer.pushText(e.runId, ev.text);
     } else if (ev.type === "tool") {
-      const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
-      addMessage({
-        projectId: run.projectId,
-        fromAgentId: run.agentId,
-        kind: "tool",
-        text: text.substring(0, 300),
-        runId: e.runId,
-        meta: { tool: ev.name, summary, input: ev.input },
-      });
+      if (ev.failed) {
+        addMessage({
+          projectId: run.projectId,
+          fromAgentId: run.agentId,
+          kind: "tool",
+          text: translateNow("tool.failedShort", { name: ev.name }),
+          runId: e.runId,
+          meta: { tool: ev.name, summary, input: ev.input, failed: true, error: ev.error },
+        });
+
+        const count = bumpToolFailure(toolFailures, run.id, ev.name);
+        if (count === REPEATED_FAILURE_AT) {
+          addMessage({
+            projectId: run.projectId,
+            fromAgentId: "system",
+            toAgentId: run.agentId,
+            kind: "system",
+            text: translateNow("tool.failedRepeatedly", { name: ev.name, n: String(REPEATED_FAILURE_AT) }),
+            runId: run.id
+          });
+        }
+      } else {
+        const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
+        addMessage({
+          projectId: run.projectId,
+          fromAgentId: run.agentId,
+          kind: "tool",
+          text: text.substring(0, 300),
+          runId: e.runId,
+          meta: { tool: ev.name, summary, input: ev.input },
+        });
+      }
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
@@ -333,9 +488,12 @@ function handleOutput(e: RunOutputEvent) {
       addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
     }
   }
+
+  scheduleStreamFlush();
 }
 
 function handleExit(e: RunExitEvent) {
+  flushStream();
   const store = useAppStore.getState();
   const run = store.runs[e.runId];
   if (!run) return;
@@ -347,7 +505,7 @@ function handleExit(e: RunExitEvent) {
   const finalUsage = spec?.finalUsage ? spec.finalUsage(run.rawLines) : undefined;
   const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
-  const output = e.killed ? "[detenido por el usuario]" : collected;
+  const output = e.killed ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:
@@ -455,33 +613,46 @@ function onRunFinished(runId: string) {
     agentStatus = "waiting";
   }
 
+  let retryUnknownPayload: { prompt: string, gaveUpText?: string } | undefined;
+
+  if (run.status === "done" || run.status === "killed") {
+    // Whatever the stream did not carry: a note that only shows up in the final answer, or one
+    // whose block closed on the very last delta. What was handed over already is skipped.
+    emitNewNotes(run, run.output);
+    notesEmitted.delete(run.id);
+    for (const key of toolFailures.keys()) {
+      if (key.startsWith(`${run.id}:`)) toolFailures.delete(key);
+    }
+  }
+
   if (!asked && (run.status === "done" || run.status === "killed")) {
     const children = selectChildren(store, run.projectId, agent.id);
+
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
       if (delegations.length > 0) {
-        // Every delegation naming somebody who is not there means nobody is coming: the agent
-        // used to sit at "waiting for its team" until the end of time. It happens to an agent that
-        // is not a planner and answers by delegating anyway.
-        if (noneLand(delegations, children)) {
-          waitingForChildren = false;
-        } else {
-          waitingForChildren = true;
-          agentStatus = "waiting";
-        }
+        const { resolved, unknown } = resolveDelegations(delegations, children);
+        let startedCount = 0;
+        let resolvedIdx = 0;
 
         for (const task of delegations) {
-          const childAgent = childFor(children, task.agent);
-          if (childAgent) {
+          if (unknown.includes(task.agent)) {
+            addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: translateNow("delegation.unknownAgent", { name: task.agent, agent: agent.name }), runId });
+          } else {
+            const childAgent = resolved[resolvedIdx++];
+            // A model the parent asked for is obeyed whether or not "choose the model" is on:
+            // that setting decides whether the planner is *told to pick* one, not whether a pick
+            // it made counts. With it off, an agent told to retry on another model because its
+            // own ran out of quota was silently started on the same one again.
             let modelToUse: string | undefined = undefined;
-            if (task.model && store.config.autoModel) {
+            if (task.model) {
               const providerSpec = PROVIDERS[childAgent.provider];
               const allowed = new Set(providerSpec?.defaultModels || []);
               if (childAgent.model) allowed.add(childAgent.model);
               if (allowed.has(task.model)) {
                 modelToUse = task.model;
               } else {
-                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: `Modelo "${task.model}" no está disponible para ${childAgent.name}, se ignorará.`, runId });
+                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: translateNow("system.modelUnavailable", { model: task.model, name: childAgent.name }), runId });
               }
             }
             const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
@@ -496,8 +667,21 @@ function onRunFinished(runId: string) {
               const childRunId = startRun(payload);
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
             }
+            startedCount++;
+          }
+        }
+
+        if (startedCount > 0) {
+          waitingForChildren = true;
+          agentStatus = "waiting";
+        } else if (unknown.length > 0) {
+          if (run.round + 1 <= store.config.maxRounds) {
+            const validNames = children.length > 0 ? children.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
+            retryUnknownPayload = { prompt: translateNow("delegation.retryUnknown", { names: unknown.join(", "), valid: validNames }) };
           } else {
-            addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
+            const gaveUpText = translateNow("delegation.gaveUp", { names: unknown.join(", ") });
+            retryUnknownPayload = { prompt: "", gaveUpText };
+            agentStatus = "idle";
           }
         }
       }
@@ -522,7 +706,21 @@ function onRunFinished(runId: string) {
     };
   });
 
-  if (!waitingForChildren) {
+  if (retryUnknownPayload) {
+    if (retryUnknownPayload.prompt) {
+      startRun({ agentId: agent.id, projectId: run.projectId, prompt: retryUnknownPayload.prompt, parentRunId: run.parentRunId, round: run.round + 1, rootRunId: run.rootRunId, resume: true });
+    } else {
+      addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: retryUnknownPayload.gaveUpText!, runId });
+      if (!run.parentRunId) {
+        useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+        taskSync.taskOnRootFinished(run.projectId, run.rootRunId, true, retryUnknownPayload.gaveUpText!);
+        void emitHookEvent("task.failed", {}, ctx);
+        notifyTaskOutcome(run, true);
+      } else {
+        maybeContinueParent(run.parentRunId);
+      }
+    }
+  } else if (!waitingForChildren) {
     if (!run.parentRunId) {
       // The streamed text and the final answer are the same words when the agent only talked, so
       // keeping both showed the reply twice. The result is the one that carries the "to user"
@@ -717,6 +915,23 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
   taskSync.taskOnReviewStarted(task.id, reviewRunId);
 }
 
+/**
+ * What to add under a child's answer when the child did not fail at the work but ran out of quota.
+ *
+ * Left alone, the parent reads a wall of CLI error text, cannot tell "the model is spent" from
+ * "the task is impossible", and re-delegates onto the same exhausted model. So it is told plainly
+ * what happened, which models are left, and that it may name one — the `model` field is not in the
+ * delegate schema unless "choose the model" is on, and it is honoured either way.
+ */
+function quotaNote(childRun: Run, childAgent: AgentConfig | undefined): string {
+  if (childRun.status !== "error" || !childAgent) return "";
+  if (!outOfQuota(childRun.output)) return "";
+  const spent = childRun.model ?? childAgent.model;
+  const others = alternativeModels(childAgent.provider, spent);
+  if (others.length === 0) return `\n${translateNow("prompt.quota.spentNoOthers", { name: childAgent.name })}\n`;
+  return `\n${translateNow("prompt.quota.spent", { name: childAgent.name, models: others.join(", ") })}\n`;
+}
+
 function maybeContinueParent(parentRunId: string) {
   const store = useAppStore.getState();
   const parentRun = store.runs[parentRunId];
@@ -731,24 +946,39 @@ function maybeContinueParent(parentRunId: string) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
 
-    let outputText = "Resultados de tus agentes:\n\n";
+    let outputText = translateNow("prompt.results.header") + "\n\n";
     for (const childRun of children) {
       const childAgent = selectAgent(store, childRun.agentId);
-      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n\n`;
+      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n`;
+      
+      // What the child says it did, in the shape the planner can act on. Only the lists with
+      // something in them: three empty headings say nothing and cost a paragraph.
+      const result = parseResult(childRun.output);
+      if (result) {
+        const lines: string[] = [];
+        if (result.files.length) lines.push(`**${translateNow("result.files")}:** ${result.files.join(", ")}`);
+        if (result.verified.length) lines.push(`**${translateNow("result.verified")}:** ${result.verified.join(", ")}`);
+        if (result.blocked.length) lines.push(`**${translateNow("result.blocked")}:** ${result.blocked.join(", ")}`);
+        if (lines.length) outputText += "\n" + lines.join("\n") + "\n";
+      }
+
+      outputText += quotaNote(childRun, childAgent);
+      outputText += "\n";
     }
 
     const cancelled = cancelledRuns.delete(parentRunId);
     if (cancelled || parentRun.round >= store.config.maxRounds) {
+      const isMaxRounds = !cancelled && parentRun.round >= store.config.maxRounds;
       addMessage({
         projectId: parentRun.projectId,
         fromAgentId: "system",
         toAgentId: parentRun.agentId,
         kind: "system",
-        text: cancelled ? `Tarea de ${parentAgent.name} detenida por el usuario` : "Se alcanzó el máximo de rondas"
+        text: cancelled ? translateNow("system.taskStopped", { name: parentAgent.name }) : translateNow("rounds.maxReached", { n: store.config.maxRounds })
       });
       if (cancelled) {
         useAppStore.setState(state => ({
-          runs: { ...state.runs, [parentRunId]: { ...state.runs[parentRunId], output: "[detenido por el usuario]" } }
+          runs: { ...state.runs, [parentRunId]: { ...state.runs[parentRunId], output: translateNow("system.stoppedByUser") } }
         }));
       }
 
@@ -765,11 +995,17 @@ function maybeContinueParent(parentRunId: string) {
 
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
-        taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+        
+        if (isMaxRounds) {
+          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, true, translateNow("rounds.maxReachedDetail", { n: store.config.maxRounds }));
+        } else {
+          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+        }
+
         const project = store.config.projects.find(p => p.id === parentRun.projectId);
         const rootRun = store.runs[parentRun.rootRunId];
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
-        if (cancelled || parentRun.status === "error") {
+        if (cancelled || parentRun.status === "error" || isMaxRounds) {
           void emitHookEvent("task.failed", {}, ctx);
           if (!cancelled) notifyTaskOutcome(parentRun, true);
         } else {
@@ -802,14 +1038,19 @@ function isBusy(status: AgentStatus | undefined): boolean {
   return status === "working" || status === "waiting";
 }
 
-/** The child a delegation names, by name (however it was capitalised) or by id. */
+/**
+ * The child a delegation names, by name (however it was capitalised) or by id.
+ *
+ * Both of these read the one matching rule out of `resolveDelegations`: the round hangs on who a
+ * name lands on, and two copies of that rule is one too many.
+ */
 export function childFor(children: AgentConfig[], name: string): AgentConfig | undefined {
-  return children.find(c => c.name.toLowerCase() === name.toLowerCase() || c.id === name);
+  return resolveDelegations([{ agent: name }], children).resolved[0];
 }
 
 /** True when not one of these delegations names somebody who is actually under this agent. */
 export function noneLand(delegations: Delegation[], children: AgentConfig[]): boolean {
-  return delegations.every(d => !childFor(children, d.agent));
+  return resolveDelegations(delegations, children).resolved.length === 0;
 }
 
 function processQueuedInstructions(agentId: string, projectId: string) {
@@ -957,7 +1198,7 @@ function settleApproval(approvalId: string, status: "approved" | "rejected", not
 export async function approveApproval(approvalId: string, note?: string): Promise<void> {
   const approval = settleApproval(approvalId, "approved", note);
   if (!approval) return;
-  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Aprobado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `${translateNow("system.approved", { summary: approval.summary })}${note ? ` (${note})` : ""}` });
   const runId = startRun(approval.payload);
   taskSync.taskOnApprovalSettled(approval.id, true, runId);
 }
@@ -967,7 +1208,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
   if (!approval) return;
   const store = useAppStore.getState();
   const { payload } = approval;
-  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Rechazado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `${translateNow("system.rejected", { summary: approval.summary })}${note ? ` (${note})` : ""}` });
   taskSync.taskOnApprovalSettled(approval.id, false);
   // Record the rejection as a finished child run so the planner gets it with the other results.
   const runId = crypto.randomUUID();
@@ -983,7 +1224,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
     startedAt: now,
     endedAt: now,
     exitCode: null,
-    output: `[rechazado por el usuario${note ? `: ${note}` : ""}]`,
+    output: note ? translateNow("system.rejectedRunWithNote", { note }) : translateNow("system.rejectedRun"),
     rawLines: [],
     childRunIds: [],
     round: payload.round,
@@ -1004,7 +1245,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
 /** Reject every pending approval that belongs to a run of this agent (used by stopAgent). */
 function rejectPendingApprovalsOf(agentId: string, projectId: string): number {
   const pending = Object.values(useAppStore.getState().approvals).filter(a => a.status === "pending" && a.projectId === projectId && a.agentId === agentId);
-  for (const a of pending) settleApproval(a.id, "rejected", "detenido por el usuario");
+  for (const a of pending) settleApproval(a.id, "rejected", translateNow("system.stoppedByUser"));
   return pending.length;
 }
 
@@ -1028,6 +1269,7 @@ const cancelledRuns = new Set<string>();
 const stoppedBeforeSpawn = new Set<string>();
 
 export async function stopAgent(agentId: string, projectId: string): Promise<void> {
+  flushStream();
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   if (runtime?.currentRunId) {
@@ -1066,6 +1308,7 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
 }
 
 export async function stopAll(projectId?: string): Promise<void> {
+  flushStream();
   const store = useAppStore.getState();
   if (projectId) {
     const pRuntime = store.runtime[projectId];

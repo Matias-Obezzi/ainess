@@ -68,4 +68,47 @@ describe("boardFixes", () => {
     ];
     expect(boardFixes(board, runs(run("r1", "done")), { hasReviewer: false })).toEqual([]);
   });
+
+  describe("in-review recovery", () => {
+    const reviewRun = (status: Run["status"], output: string = "") => {
+      const r = run("r1", status);
+      r.review = { ofRunId: "r0", taskId: "t1" };
+      r.output = output;
+      return runs(r);
+    };
+
+    it("moves to ready if the review run approved", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], reviewRun("done", "VEREDICTO: APROBADO"), { hasReviewer: true }))
+        .toEqual([{ taskId: "t1", status: "ready" }]);
+    });
+
+    it("moves to needs-you if the review run asked for changes", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], reviewRun("done", "VEREDICTO: CAMBIOS"), { hasReviewer: true }))
+        .toEqual([{ taskId: "t1", status: "needs-you" }]);
+    });
+
+    it("moves to needs-you if the review run failed", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], reviewRun("error"), { hasReviewer: true }))
+        .toEqual([{ taskId: "t1", status: "needs-you" }]);
+    });
+
+    it("moves to needs-you if the review run is gone", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], {}, { hasReviewer: true }))
+        .toEqual([{ taskId: "t1", status: "needs-you" }]);
+    });
+
+    it("leaves it alone if the review run is still going", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], reviewRun("running"), { hasReviewer: true }))
+        .toEqual([]);
+    });
+
+    it("leaves it alone if it has no runId", () => {
+      expect(boardFixes([task("t1", "in-review")], {}, { hasReviewer: true })).toEqual([]);
+    });
+
+    it("leaves it alone when the run behind it is not a review: the implementer finished and the reviewer has not started", () => {
+      expect(boardFixes([task("t1", "in-review", "r1")], runs(run("r1", "done")), { hasReviewer: true }))
+        .toEqual([]);
+    });
+  });
 });

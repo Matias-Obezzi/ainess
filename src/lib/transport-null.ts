@@ -5,6 +5,7 @@ const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app 
 // Used by the plain-browser preview (vite dev without Tauri): nothing can run or persist.
 export const nullTransport: Transport = {
   spawnRun: async () => {},
+  reapOrphans: async () => [],
   killRun: async () => false,
   onRunOutput: async () => () => {},
   onRunExit: async () => () => {},

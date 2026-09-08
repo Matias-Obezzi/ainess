@@ -19,6 +19,7 @@ import { translateNow } from "@/i18n/useT";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
+import * as recovery from "@/lib/recovery";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -84,6 +85,14 @@ export interface AppState {
   setDraft(key: string, text: string): void;
 
   /**
+   * The model last picked in each conversation, under the same key as the drafts. The composer
+   * held it in component state, so going to the board and coming back said "default model" again
+   * while the box right below it still held what you had typed.
+   */
+  composerModels: Record<string, string>;
+  setComposerModel(key: string, model: string): void;
+
+  /**
    * Messages written while a chat was mid-turn, sent when it ends. The orchestrator has had this
    * for its agents since it existed (`queuedInstructions`); a chat had nothing and the box was
    * simply disabled.
@@ -111,6 +120,13 @@ export interface AppState {
   // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
   screen: Screen;
   projectMode: ProjectMode;
+  /**
+   * Where each project was left, by id. Opening a project is "take me back to it", so moving
+   * between two of them must not drag the view of one onto the other (persisted).
+   */
+  projectModes: Record<string, ProjectMode>;
+  /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
+  projectChats: Record<string, string | null>;
   /** Board or dependency graph, inside the Tareas mode (persisted). */
   taskView: TaskView;
   commPanelOpen: boolean;
@@ -399,6 +415,8 @@ function runtimeFor(agents: AgentConfig[]): Record<string, AgentRuntime> {
 interface UiPrefs {
   screen: Screen;
   projectMode: ProjectMode;
+  projectModes: Record<string, ProjectMode>;
+  projectChats: Record<string, string | null>;
   taskView: TaskView;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
@@ -411,12 +429,16 @@ interface UiPrefs {
 }
 
 const DRAFTS_KEY = "ais.drafts";
+const COMPOSER_MODELS_KEY = "ais.composerModels";
 
-/** What was typed and not sent, kept across views and restarts. Guarded like the UI preferences. */
-function loadDrafts(): Record<string, string> {
+/**
+ * A map of conversation key to one string, kept across views and restarts. Guarded like the UI
+ * preferences: private mode, a full quota or a file another build wrote must not break the app.
+ */
+function loadStringMap(storageKey: string): Record<string, string> {
   if (typeof localStorage === "undefined") return {};
   try {
-    const raw = localStorage.getItem(DRAFTS_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
@@ -430,12 +452,53 @@ function loadDrafts(): Record<string, string> {
   }
 }
 
-function saveDrafts(drafts: Record<string, string>): void {
+function saveStringMap(storageKey: string, map: Record<string, string>): void {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+    localStorage.setItem(storageKey, JSON.stringify(map));
   } catch {
     // Private mode or quota: an unsent draft is not worth failing over.
+  }
+}
+
+const pendingSaves = new Map<string, { value: Record<string, string>; timer: ReturnType<typeof setTimeout> }>();
+
+/** Flushes all pending string map writes to localStorage immediately. */
+export function flushStringMapSaves(): void {
+  orchestrator.flushStream();
+  for (const [key, pending] of pendingSaves.entries()) {
+    clearTimeout(pending.timer);
+    saveStringMap(key, pending.value);
+  }
+  pendingSaves.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", flushStringMapSaves);
+  // On `document`, where the event is actually fired: in Tauri this is what arrives when the window
+  // is minimised or hidden, and it is the last chance to write before the app may not come back.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushStringMapSaves();
+  });
+}
+
+/**
+ * Persists string maps with a delay, so every keystroke updates the UI instantly but
+ * writes to disk happen at most once every 400ms, without blocking the main thread.
+ */
+export function saveStringMapSoon(storageKey: string, map: Record<string, string>): void {
+  const pending = pendingSaves.get(storageKey);
+  if (pending) {
+    pending.value = map;
+  } else {
+    const newPending = {
+      value: map,
+      timer: setTimeout(() => {
+        pendingSaves.delete(storageKey);
+        saveStringMap(storageKey, newPending.value);
+      }, 400),
+    };
+    pendingSaves.set(storageKey, newPending);
   }
 }
 
@@ -455,6 +518,8 @@ const UI_PREFS_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
+  projectModes: {},
+  projectChats: {},
   taskView: "board",
   commPanelOpen: false,
   diffPanelOpen: false,
@@ -467,6 +532,23 @@ const defaultUiPrefs: UiPrefs = {
 };
 
 const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
+
+/** The remembered view of each project, minus anything a past build wrote that is not one. */
+function sanitizeProjectModes(value: unknown): Record<string, ProjectMode> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, mode]) => VALID_PROJECT_MODES.includes(mode as ProjectMode)),
+  ) as Record<string, ProjectMode>;
+}
+
+function sanitizeProjectChats(value: unknown): Record<string, string | null> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, chat]) => typeof chat === "string" || chat === null),
+  ) as Record<string, string | null>;
+}
 
 // Derived from sections.ts so adding a new section only requires one edit.
 const VALID_SETTINGS_SECTIONS: SettingsSection[] = ALL_SETTINGS_SECTION_IDS;
@@ -507,6 +589,8 @@ function loadUiPrefs(): UiPrefs {
       },
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
+      projectModes: sanitizeProjectModes(parsed.projectModes),
+      projectChats: sanitizeProjectChats(parsed.projectChats),
       taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
@@ -528,6 +612,8 @@ function saveUiPrefs(): void {
     const prefs: UiPrefs = {
       screen: s.screen,
       projectMode: s.projectMode,
+      projectModes: s.projectModes,
+      projectChats: s.projectChats,
       taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
@@ -573,11 +659,16 @@ function applyNav(entry: NavEntry): void {
   if (entry.projectId && projectExists && entry.projectId !== state.currentProjectId) {
     state.setCurrentProject(entry.projectId);
   }
-  useAppStore.setState({
+  useAppStore.setState(s => ({
     screen,
     currentChatId: screen === "project" ? entry.chatId : state.currentChatId,
     projectMode: entry.projectMode,
-  });
+    // Walking back into a project leaves it showing what the arrow landed on, so leaving and
+    // returning by hand agrees with the history rather than undoing it.
+    projectModes: screen === "project" && entry.projectId
+      ? { ...s.projectModes, [entry.projectId]: entry.projectMode }
+      : s.projectModes,
+  }));
   if (screen === "project" && entry.chatId) void state.loadChatMessages(entry.chatId);
   saveUiPrefs();
 }
@@ -624,7 +715,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   historyLoading: {},
-  drafts: loadDrafts(),
+  drafts: loadStringMap(DRAFTS_KEY),
+  composerModels: loadStringMap(COMPOSER_MODELS_KEY),
   chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
@@ -652,22 +744,42 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  /**
+   * `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project, or the last remembered one.
+   */
   openProject: (projectId, chatId) => {
     const state = get();
     const sameProject = state.currentProjectId === projectId;
     let nextChatId: string | null;
     if (chatId === undefined) {
-      // Keep the open chat only when it belongs to this project.
+      // "Open it the way I left it": the chat already on screen when it belongs to this project,
+      // else the last one this project was left in, as long as it still exists.
       const current = state.currentChatId ? state.config.chats.find(c => c.id === state.currentChatId) : undefined;
-      nextChatId = sameProject && current && current.projectId === projectId ? current.id : null;
+      if (sameProject && current && current.projectId === projectId) {
+        nextChatId = current.id;
+      } else {
+        const rememberedId = state.projectChats[projectId] ?? null;
+        if (rememberedId && state.config.chats.some(c => c.id === rememberedId && c.projectId === projectId)) {
+          nextChatId = rememberedId;
+        } else {
+          nextChatId = null;
+        }
+      }
     } else {
       nextChatId = chatId;
     }
-    // Opening a project lands on its board; asking for a chat lands on the chat. Keeping the
-    // current chat (chatId undefined) means "come back here", so the mode is left alone.
-    const nextMode: ProjectMode = chatId === undefined ? state.projectMode : chatId === null ? "tasks" : "chat";
+    // Asking for a chat lands on the chat; anything else lands where this project was left. Not
+    // where the *last* project was left: that is what made opening B in the hierarchy and coming
+    // back to A show A's hierarchy too, when A had been a conversation all along.
+    const nextMode: ProjectMode = nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks");
     if (!sameProject) state.setCurrentProject(projectId);
-    set({ currentChatId: nextChatId, screen: "project", projectMode: nextMode });
+    set({
+      currentChatId: nextChatId,
+      screen: "project",
+      projectMode: nextMode,
+      projectModes: { ...state.projectModes, [projectId]: nextMode },
+      projectChats: { ...state.projectChats, [projectId]: nextChatId },
+    });
     pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: nextMode });
     if (nextChatId) void state.loadChatMessages(nextChatId);
     saveUiPrefs();
@@ -684,7 +796,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setProjectMode: (mode) => {
     const state = get();
-    set({ projectMode: mode });
+    set(s => ({
+      projectMode: mode,
+      // What this project is showing from now on, for when you come back to it.
+      projectModes: s.currentProjectId ? { ...s.projectModes, [s.currentProjectId]: mode } : s.projectModes,
+    }));
     pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
     saveUiPrefs();
   },
@@ -1068,6 +1184,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newHistoryLoading[id];
       const newSidebarCollapsed = { ...state.sidebarCollapsed };
       delete newSidebarCollapsed[id];
+      const newProjectModes = { ...state.projectModes };
+      delete newProjectModes[id];
+      const newProjectChats = { ...state.projectChats };
+      delete newProjectChats[id];
 
       // Back/forward must not offer a project that is gone; the index follows what is left.
       const keptNav = state.navHistory.filter(e => e.projectId !== id);
@@ -1095,6 +1215,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         remoteActiveChats: state.remoteActiveChats.filter(c => !goneChats.has(c)),
         historyLoading: newHistoryLoading,
         sidebarCollapsed: newSidebarCollapsed,
+        projectModes: newProjectModes,
+        projectChats: newProjectChats,
         navHistory,
         navIndex,
         // The search palette may have asked the board to open a card of this project.
@@ -1652,6 +1774,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newSessions[id];
       const newLoading = { ...state.chatLoading };
       delete newLoading[id];
+      
+      const newProjectChats = { ...state.projectChats };
+      // A project must not be left pointing at a chat that is gone.
+      const chatProject = state.config.chats.find(c => c.id === id)?.projectId;
+      if (chatProject && newProjectChats[chatProject] === id) {
+        newProjectChats[chatProject] = null;
+      }
+      
       return {
         config: { ...state.config, chats: newChats },
         chatMessages: newChatMessages,
@@ -1659,29 +1789,43 @@ export const useAppStore = create<AppState>()((set, get) => ({
         chatLoading: newLoading,
         remoteActiveChats: state.remoteActiveChats.filter(c => c !== id),
         currentChatId: state.currentChatId === id ? null : state.currentChatId,
+        projectChats: newProjectChats,
       };
     });
     debouncedSave();
+    saveUiPrefs();
   },
 
   setCurrentChat: (id) => {
     const state = get();
     if (state.currentChatId === id) return;
-    set({ currentChatId: id });
+    set({
+      currentChatId: id,
+      ...(state.currentProjectId ? { projectChats: { ...state.projectChats, [state.currentProjectId]: id } } : {})
+    });
     if (state.screen === "project" && state.currentProjectId) {
       pushNav({ screen: "project", projectId: state.currentProjectId, chatId: id, projectMode: state.projectMode });
     }
+    saveUiPrefs();
   },
 
   setDraft: (key, text) => {
     if (!key) return;
-    set(state => {
-      const drafts = { ...state.drafts };
-      if (text) drafts[key] = text;
-      else delete drafts[key];
-      saveDrafts(drafts);
-      return { drafts };
-    });
+    const drafts = { ...get().drafts };
+    if (text) drafts[key] = text;
+    else delete drafts[key];
+    set({ drafts });
+    saveStringMapSoon(DRAFTS_KEY, drafts);
+  },
+
+  setComposerModel: (key, model) => {
+    if (!key) return;
+    const composerModels = { ...get().composerModels };
+    // Empty is "whatever the agent is configured with": remembering that is remembering nothing.
+    if (model) composerModels[key] = model;
+    else delete composerModels[key];
+    set({ composerModels });
+    saveStringMapSoon(COMPOSER_MODELS_KEY, composerModels);
   },
 
   queueChatMessage: (chatId, text) => {
@@ -1938,13 +2082,24 @@ async function runInit(): Promise<void> {
     const prefs = loadUiPrefs();
     const lastProjectValid = !!config.lastProjectId && config.projects.some(p => p.id === config.lastProjectId);
     const screen: Screen = lastProjectValid ? "project" : "home";
+    // Reopening the app is reopening that project, so it lands where that project was left.
+    const startMode: ProjectMode = (lastProjectValid && config.lastProjectId
+      ? prefs.projectModes[config.lastProjectId]
+      : undefined) ?? prefs.projectMode;
+    const startChatId = lastProjectValid && config.lastProjectId
+      ? prefs.projectChats[config.lastProjectId] ?? null
+      : null;
+    const finalChatId = startChatId && config.chats.some(c => c.id === startChatId) ? startChatId : null;
     lastSavedConfig = config;
     set({
       config,
       runtime,
       currentProjectId: lastProjectValid ? config.lastProjectId : null,
+      currentChatId: finalChatId,
       screen,
-      projectMode: prefs.projectMode,
+      projectMode: startMode,
+      projectModes: prefs.projectModes,
+      projectChats: prefs.projectChats,
       taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
@@ -1957,8 +2112,8 @@ async function runInit(): Promise<void> {
       navHistory: [{
         screen,
         projectId: lastProjectValid ? config.lastProjectId : null,
-        chatId: null,
-        projectMode: prefs.projectMode,
+        chatId: finalChatId,
+        projectMode: startMode,
       }],
       navIndex: 0,
     });
@@ -1998,6 +2153,11 @@ async function runInit(): Promise<void> {
     // Load persisted notifications before marking the store as ready, so the bell
     // shows its badge without a flash of empty state on startup.
     await notificationStore.loadNotifications();
+
+    // Anything the previous run of the app left alive. A crash never reaches the shutdown that
+    // kills the agents, so this is where they are found and stopped — before the user sends
+    // anything new and ends up with two agents in the same workspace.
+    void recovery.reapAfterCrash();
 
     set({ loaded: true });
 

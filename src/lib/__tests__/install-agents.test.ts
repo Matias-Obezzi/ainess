@@ -6,6 +6,7 @@ import { PROVIDERS } from "@/lib/providers";
 import { nullTransport } from "@/lib/transport-null";
 import { setTransport } from "@/lib/transport";
 import type { ProviderId } from "@/types";
+import { translateNow } from "@/i18n/useT";
 
 describe("INSTALLERS", () => {
   it("covers every provider but the custom one, which is a command the user writes", () => {
@@ -89,7 +90,7 @@ describe("installProvider", () => {
       exec: async () => ({ code: 0, stdout: "added 1 package", stderr: "" }),
       detectBinaries: async () => ({}),
     });
-    await expect(installProvider("copilot", () => {})).rejects.toThrow(/Reiniciá la app/);
+    await expect(installProvider("copilot", () => {})).rejects.toThrow(translateNow("install.notDetected"));
   });
 
   it("refuses to run anything for a provider with no command", async () => {

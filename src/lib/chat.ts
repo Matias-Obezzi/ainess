@@ -3,6 +3,7 @@ import { useAppStore, selectAgent, selectSkillsFor } from "@/store";
 import { startRun, addMessage } from "@/lib/orchestrator";
 import { getTransport } from "@/lib/transport";
 import { recordTurn } from "@/lib/agent-history";
+import { buildSystemPrompt } from "@/lib/providers";
 import { translateNow } from "@/i18n/useT";
 import type { ChatMessage } from "@/types";
 
@@ -65,48 +66,22 @@ function buildChatSystemPrompt(chatId: string, agentId: string): string {
 
   const participant = chat.participants.find(p => p.agentId === agentId);
   const role = participant?.role || agent.role;
-
-  let prompt = `En esta conversación tu rol es: ${role}.`;
+  const others: { name: string; role: string }[] = [];
 
   if (chat.mode === "shared" && chat.participants.length > 1) {
-    prompt += "\n\nOtros participantes en esta conversación:";
     for (const p of chat.participants) {
       if (p.agentId === agentId) continue;
       const other = selectAgent(store, p.agentId);
-      prompt += `\n- ${other?.name || p.agentId} (${p.role})`;
-    }
-    prompt += "\n\nRespondé al último mensaje del usuario; podés referirte a lo que dijeron los otros participantes.";
-  }
-
-  // Append profile, shared context, and skills
-  const skills = selectSkillsFor(store, agentId);
-  const sharedContext = store.config.sharedContext;
-  const profile = store.config.profile;
-
-  if (profile && (profile.name || profile.about || profile.preferences)) {
-    prompt += "\n\n## Sobre el usuario\n";
-    if (profile.name) prompt += `Nombre: ${profile.name}\n`;
-    if (profile.about) prompt += `${profile.about}\n`;
-    if (profile.preferences) prompt += `Preferencias de trabajo: ${profile.preferences}\n`;
-  }
-
-  if (sharedContext && sharedContext.trim()) {
-    prompt += "\n\n## Contexto compartido del equipo\n" + sharedContext;
-  }
-
-  const validSkills = skills?.filter(s => s.content.trim()) || [];
-  if (validSkills.length > 0) {
-    prompt += "\n\n## Skills";
-    for (const skill of validSkills) {
-      prompt += `\n### ${skill.name}\n${skill.content}`;
+      others.push({ name: other?.name || p.agentId, role: p.role });
     }
   }
 
-  if (agent.systemPrompt) {
-    prompt += "\n\n" + agent.systemPrompt;
-  }
-
-  return prompt;
+  return buildSystemPrompt(agent, [], {
+    skills: selectSkillsFor(store, agentId) || [],
+    sharedContext: store.config.sharedContext,
+    profile: store.config.profile,
+    chat: { role, others }
+  });
 }
 
 // ---- Send a message and trigger turn ----
@@ -199,7 +174,7 @@ async function startTurn(
   // Build prompt: user message + previous responses in shared mode
   let prompt = userText;
   if (chat.mode === "shared" && previousResponses.length > 0) {
-    prompt += "\n\n---\nRespuestas anteriores de este turno:";
+    prompt += "\n\n---\n" + translateNow("prompt.chat.previousAnswers");
     for (const r of previousResponses) {
       prompt += `\n\n### ${r.name} (${r.role})\n${r.text}`;
     }
@@ -274,7 +249,7 @@ export function onChatRunFinished(runId: string): void {
   const agent = selectAgent(store, run.agentId);
   const agentName = agent?.name || run.agentId;
 
-  const output = run.status === "error" ? `[Error: ${run.output || "falló"}]` : (run.output || "");
+  const output = run.status === "error" ? (run.output ? translateNow("chat.runError", { error: run.output }) : translateNow("chat.runFailed")) : (run.output || "");
   const msgStatus = run.status === "error" ? "error" as const : "done" as const;
 
   // Save session for this chat+agent

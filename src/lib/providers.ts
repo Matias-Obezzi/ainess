@@ -1,5 +1,6 @@
 import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
@@ -158,7 +159,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     const params = tool_info?.parameters;
     const detail = params ? JSON.stringify(params).substring(0, 200) : undefined;
     if (state === "ACTIVE") return [{ type: "tool", name, detail, input: params }];
-    if (state === "ERROR") return [{ type: "error", text: `Falló la herramienta ${name}` }];
+    if (state === "ERROR") return [{ type: "tool", name, failed: true, error: "" }];
     return [];
   }
   if (obj.event === "result" && obj.result) {
@@ -267,7 +268,7 @@ function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEve
       const detail = state.input !== undefined ? JSON.stringify(state.input).substring(0, 200) : undefined;
       events.push({ type: "tool", name, detail, input: state.input });
     } else if (state.status === "error") {
-      events.push({ type: "error", text: `Falló la herramienta ${name}: ${state.error ?? ""}`.trim() });
+      events.push({ type: "tool", name, failed: true, error: state.error ?? "" });
     }
   }
 
@@ -644,11 +645,88 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
 }
 
 /**
+ * Who else is working on this same task right now, and what they were told to do.
+ *
+ * A planner splitting one task between two implementers used to start each of them blind: neither
+ * knew the other existed, both reached for the same files, and the planner got back two answers
+ * that contradicted each other. The app knew all along — it is what the agent list on screen is
+ * drawn from — and never told the one place it mattered.
+ */
+export function teammatesSection(mates: { name: string; task: string }[]): string {
+  if (mates.length === 0) return "";
+  const lines = [translateNow("prompt.teammates.header")];
+  for (const m of mates) {
+    const singleLineTask = m.task.replace(/\r?\n/g, " ");
+    lines.push(`- ${m.name}: ${truncate(singleLineTask, 120)}`);
+  }
+  lines.push(translateNow("prompt.teammates.rules"));
+  return lines.join("\n");
+}
+
+/**
  * The instructions an agent is started with, in the language the app is running in.
  *
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
+/**
+ * How a planner hands work out. This goes on *every* turn, unlike the rest of the preamble.
+ *
+ * It is not description, it is the only way the agent can act: without the block it cannot reach
+ * its own team. A CLI compacts its own context as a session grows, and once this had scrolled out
+ * of that summary the planner went hunting for an `ainess` command and an MCP tool to delegate
+ * with, reasoning about the app it is running inside as if it belonged to somebody else.
+ */
+function delegateSection(autoModel: boolean): string {
+  const t = translateNow;
+  const schema = t(autoModel ? "prompt.planner.delegateSchemaModel" : "prompt.planner.delegateSchema");
+  const extra = autoModel ? t("prompt.planner.autoModel") : "";
+  return [
+    t("prompt.planner.delegateIntro"),
+    "```delegate",
+    schema,
+    "```",
+    t("prompt.planner.delegateRules", { extra }),
+  ].join("\n");
+}
+
+/** How any agent asks the user for a decision. Every turn, for the same reason. */
+function askSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.ask.header"),
+    t("prompt.ask.intro"),
+    "```ask",
+    t("prompt.ask.schema"),
+    "```",
+    t("prompt.ask.rules"),
+  ].join("\n");
+}
+
+function noteSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.note.header"),
+    t("prompt.note.intro"),
+    "```note",
+    t("prompt.note.example"),
+    "```",
+    t("prompt.note.rules"),
+  ].join("\n");
+}
+
+function resultSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.result.header"),
+    t("prompt.result.intro"),
+    "```result",
+    t("prompt.result.schema"),
+    "```",
+    t("prompt.result.rules"),
+  ].join("\n");
+}
+
 /** The board, for the one agent it is written for: a planner with a team to hand it out to. */
 function boardFor(
   agent: AgentConfig,
@@ -665,87 +743,112 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean }): string {
   const t = translateNow;
   let prompt = "";
 
-  // Who this is, before anything else. A team where the same person writes to the planner and to
-  // an implementer needs each of them to know which one it is: one delegates, the other does the
-  // work, and an implementer that answered by delegating left the app waiting for a team it does
-  // not have.
-  if (extras?.fromUser) {
-    prompt += t("prompt.direct.header", {
-      name: agent.name,
-      role: t(roleLabelKey[agent.role] ?? "label.role.custom"),
-    });
-    if (agent.role !== "planner") prompt += " " + t("prompt.direct.doItYourself");
-    prompt += "\n\n";
-  }
-
-  // A resumed session read all of the below on its first turn and the CLI carries it forward, so
-  // sending it again buys nothing: with Claude it was re-billed every turn, and with the providers
-  // that take the instructions inside the prompt it left another copy of them in the transcript,
-  // for good. What does go every turn is the board, which is the one part that changes.
-  //
-  // ponytail: the delegate and ask schemas go with it. They are in the transcript; if an agent ever
-  // forgets the syntax deep into a long session, restate just those two here.
-  if (extras?.resuming) {
-    const board = boardFor(agent, children, extras);
-    if (board) prompt += (prompt ? "\n\n" : "") + board;
-    return prompt;
-  }
-
-  if (agent.role === "planner") {
-    prompt += t("prompt.planner.intro");
-    if (children.length > 0) {
-      prompt += " " + t("prompt.planner.children") + "\n";
-      for (const child of children) {
-        let childModelsInfo = "";
-        if (extras?.autoModel) {
-          const providerSpec = PROVIDERS[child.provider];
-          const models = new Set(providerSpec?.defaultModels || []);
-          if (child.model) models.add(child.model);
-          const modelsList = Array.from(models).join(", ");
-          if (modelsList) {
-            childModelsInfo = t("prompt.planner.childModels", { models: modelsList });
-          }
-        }
-        prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}${childModelsInfo}\n`;
-      }
-
-      const withModel = extras?.autoModel === true;
-      const schema = t(withModel ? "prompt.planner.delegateSchemaModel" : "prompt.planner.delegateSchema");
-      const extra = withModel ? t("prompt.planner.autoModel") : "";
-
-      prompt += [
-        t("prompt.planner.delegateIntro"),
-        "```delegate",
-        schema,
-        "```",
-        t("prompt.planner.delegateRules", { extra }),
-      ].join("\n");
-      // Where the whole team is written down, in the project itself.
-      prompt += "\n" + t("prompt.planner.teamFile");
-
-      // What there is to delegate. Right after the rules for delegating, so the planner reads how
-      // and what in one go.
-      const board = boardFor(agent, children, extras);
-      if (board) prompt += "\n\n" + board;
-    } else {
-      prompt += " " + t("prompt.planner.noChildren");
-      // A team can be built with everybody at the root: then a planner has nobody under it and
-      // used to answer as if it were alone in the project.
-      const others = (extras?.others ?? []).filter(a => a.id !== agent.id);
-      if (others.length > 0) {
-        prompt += " " + t("prompt.planner.othersExist", { names: others.map(a => a.name).join(", ") });
-      }
+  if (extras?.chat) {
+    if (extras.resuming) {
+      if (agent.role !== "custom") prompt += (prompt ? "\n\n" : "") + askSection();
+      return prompt;
     }
-  } else if (agent.role === "implementer") {
-    prompt += t("prompt.implementer");
-  } else if (agent.role === "reviewer") {
-    prompt += t("prompt.reviewer");
-  } else if (agent.role === "custom") {
-    // Only use agent.systemPrompt (appended at the end)
+    prompt += t("prompt.chat.role", { role: extras.chat.role });
+    if (extras.chat.others.length > 0) {
+      prompt += "\n\n" + t("prompt.chat.others.header");
+      for (const other of extras.chat.others) {
+        prompt += `\n- ${other.name} (${other.role})`;
+      }
+      prompt += "\n\n" + t("prompt.chat.others.rules");
+    }
+  } else {
+    // Who this is, before anything else. A team where the same person writes to the planner and to
+    // an implementer needs each of them to know which one it is: one delegates, the other does the
+    // work, and an implementer that answered by delegating left the app waiting for a team it does
+    // not have.
+    if (extras?.fromUser) {
+      prompt += t("prompt.direct.header", {
+        name: agent.name,
+        role: t(roleLabelKey[agent.role] ?? "label.role.custom"),
+      });
+      if (agent.role !== "planner") prompt += " " + t("prompt.direct.doItYourself");
+      prompt += "\n\n";
+    }
+
+    // A resumed session read all of the below on its first turn and the CLI carries it forward, so
+    // sending it again buys nothing: with Claude it was re-billed every turn, and with the providers
+    // that take the instructions inside the prompt it left another copy of them in the transcript,
+    // for good. What does go every turn is the board, which is the one part that changes.
+    //
+    // ponytail: the delegate and ask schemas go with it. They are in the transcript; if an agent ever
+    // forgets the syntax deep into a long session, restate just those two here.
+    if (extras?.resuming) {
+      // What changes between turns, and the two blocks the agent acts through. Everything else
+      // (its role, the profile, the shared context, the list of skills) was said on the turn
+      // that opened the session and is description, not a capability: losing that to a
+      // compaction costs nothing. Losing the blocks leaves an agent that cannot reach its own
+      // team or ask a question, and starts looking for a command line to do it with.
+      const parts: string[] = [];
+      const board = boardFor(agent, children, extras);
+      if (board) parts.push(board);
+      const mates = extras.teammates ? teammatesSection(extras.teammates) : "";
+      if (mates) parts.push(mates);
+      if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
+      if (agent.role !== "custom") parts.push(askSection());
+      if (extras.canNote) {
+        parts.push(noteSection());
+        parts.push(resultSection());
+      }
+      for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
+      return prompt;
+    }
+
+    if (agent.role === "planner") {
+      prompt += t("prompt.planner.intro");
+      if (children.length > 0) {
+        prompt += " " + t("prompt.planner.children") + "\n";
+        for (const child of children) {
+          let childModelsInfo = "";
+          if (extras?.autoModel) {
+            const providerSpec = PROVIDERS[child.provider];
+            const models = new Set(providerSpec?.defaultModels || []);
+            if (child.model) models.add(child.model);
+            const modelsList = Array.from(models).join(", ");
+            if (modelsList) {
+              childModelsInfo = t("prompt.planner.childModels", { models: modelsList });
+            }
+          }
+          prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}${childModelsInfo}\n`;
+        }
+
+        prompt += delegateSection(extras?.autoModel === true);
+        // Where the whole team is written down, in the project itself.
+        prompt += "\n" + t("prompt.planner.teamFile");
+
+        // What there is to delegate. Right after the rules for delegating, so the planner reads how
+        // and what in one go.
+        const board = boardFor(agent, children, extras);
+        if (board) prompt += "\n\n" + board;
+      } else {
+        prompt += " " + t("prompt.planner.noChildren");
+        // A team can be built with everybody at the root: then a planner has nobody under it and
+        // used to answer as if it were alone in the project.
+        const others = (extras?.others ?? []).filter(a => a.id !== agent.id);
+        if (others.length > 0) {
+          prompt += " " + t("prompt.planner.othersExist", { names: others.map(a => a.name).join(", ") });
+        }
+      }
+    } else if (agent.role === "implementer") {
+      prompt += t("prompt.implementer");
+    } else if (agent.role === "reviewer") {
+      prompt += t("prompt.reviewer");
+    } else if (agent.role === "custom") {
+      // Only use agent.systemPrompt (appended at the end)
+    }
+
+    if (extras?.teammates && extras.teammates.length > 0) {
+      const mates = teammatesSection(extras.teammates);
+      if (mates) prompt += (prompt ? "\n\n" : "") + mates;
+    }
   }
 
   if (extras) {
@@ -783,14 +886,12 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {
-    prompt += (prompt ? "\n\n" : "") + [
-      t("prompt.ask.header"),
-      t("prompt.ask.intro"),
-      "```ask",
-      t("prompt.ask.schema"),
-      "```",
-      t("prompt.ask.rules"),
-    ].join("\n");
+    prompt += (prompt ? "\n\n" : "") + askSection();
+  }
+  
+  if (extras?.canNote) {
+    prompt += (prompt ? "\n\n" : "") + noteSection();
+    prompt += (prompt ? "\n\n" : "") + resultSection();
   }
 
   if (agent.systemPrompt) {
@@ -880,4 +981,65 @@ export function parseDelegations(text: string): Delegation[] {
     }
   }
   return delegations;
+}
+
+/**
+ * The `note` blocks of an answer, in the order they were written.
+ *
+ * Unlike `ask` and `delegate`, a note carries plain text: it is what an agent says on the way past
+ * — blocked, slower than expected, something the planner should know now — and it is handed over
+ * without waiting for the run to end.
+ */
+export function parseNotes(text: string): string[] {
+  const out: string[] = [];
+  const regex = /```note[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const note = match[1].trim();
+    if (note) out.push(note);
+  }
+  return out;
+}
+
+export interface ParsedResult {
+  files: string[];
+  verified: string[];
+  blocked: string[];
+}
+
+/**
+ * The last `result` block of an answer: what was touched, what was checked, what is blocked.
+ *
+ * The prose stays the prose; this is the part a planner can act on without reading it twice. Any
+ * field may be missing, or arrive as a single string instead of a list, and a broken block is no
+ * block at all — like every other parser here, it answers with nothing rather than throwing.
+ */
+export function parseResult(text: string): ParsedResult | null {
+  const regex = /```result[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let lastMatch = null;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    lastMatch = match;
+  }
+  
+  if (!lastMatch) return null;
+  
+  try {
+    const obj = JSON.parse(lastMatch[1]);
+    if (!obj || typeof obj !== 'object') return null;
+    
+    const normalize = (val: any) => {
+      if (Array.isArray(val)) return val.filter(v => typeof v === 'string').map(v => v.trim()).filter(Boolean);
+      if (typeof val === 'string') return val.trim() ? [val.trim()] : [];
+      return [];
+    };
+    
+    return {
+      files: normalize(obj.files),
+      verified: normalize(obj.verified),
+      blocked: normalize(obj.blocked)
+    };
+  } catch {
+    return null;
+  }
 }

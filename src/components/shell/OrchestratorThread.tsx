@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { QueuedMessages } from "./QueuedMessages";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
-import { INTERRUPTED_OUTPUT } from "@/lib/history";
+import { interruptedOutput } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
@@ -39,6 +40,12 @@ export function OrchestratorThread() {
   const hasRunning = useAppStore(state =>
     Object.values(state.runs).some(r => r.projectId === currentProjectId && r.status === "running"),
   );
+
+  const [limit, setLimit] = useState(20);
+
+  useEffect(() => {
+    setLimit(20);
+  }, [currentProjectId]);
 
   // Written while an agent was working: it has not been handed over yet, and until now the thread
   // gave no sign of it.
@@ -66,8 +73,27 @@ export function OrchestratorThread() {
     [runs, currentProjectId],
   );
 
+  const { shown: shownRuns, hidden: hiddenRuns } = windowOf(rootRuns, limit);
+
+  const prevScrollHeightRef = useRef<number | null>(null);
+
+  const handleShowOlder = () => {
+    if (scrollRef.current) {
+      prevScrollHeightRef.current = scrollRef.current.scrollHeight;
+    }
+    setLimit(l => l + 20);
+  };
+
+  useLayoutEffect(() => {
+    if (prevScrollHeightRef.current !== null && scrollRef.current) {
+      const newScrollHeight = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop += (newScrollHeight - prevScrollHeightRef.current);
+      prevScrollHeightRef.current = null;
+    }
+  }, [shownRuns.length]);
+
   const [stickToBottom, setStickToBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [newCount, setNewCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevCount = useRef(rootRuns.length);
@@ -82,7 +108,7 @@ export function OrchestratorThread() {
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
       if (stickToBottom) bottomRef.current?.scrollIntoView();
-      else setHasNewMessages(true);
+      else setNewCount(n => n + (rootRuns.length - prevCount.current));
     }
     prevCount.current = rootRuns.length;
   }, [rootRuns.length, stickToBottom]);
@@ -130,15 +156,14 @@ export function OrchestratorThread() {
       lastHeight.current = scrollRef.current.clientHeight;
       return;
     }
-    const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
-    const atBottom = scrollHeight - scrollTop - clientHeight < 40;
+    const atBottom = isNearBottom(scrollRef.current);
     setStickToBottom(atBottom);
-    if (atBottom) setHasNewMessages(false);
+    if (atBottom) setNewCount(0);
   };
 
   const scrollToBottom = () => {
     setStickToBottom(true);
-    setHasNewMessages(false);
+    setNewCount(0);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -159,16 +184,23 @@ export function OrchestratorThread() {
           />
         ) : (
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
-            {rootRuns.map(run => <RunBubble key={run.id} run={run} />)}
+            {hiddenRuns > 0 && (
+              <div className="flex justify-center pb-2">
+                <Button variant="ghost" size="sm" className="text-xs" onClick={handleShowOlder}>
+                  {t("thread.showOlder", { n: hiddenRuns })}
+                </Button>
+              </div>
+            )}
+            {shownRuns.map(run => <RunBubble key={run.id} run={run} />)}
             <QueuedMessages messages={queued} />
             <div ref={bottomRef} />
           </div>
         )}
       </div>
 
-      {!stickToBottom && hasNewMessages && (
+      {!stickToBottom && newCount > 0 && (
         <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
-          <ArrowDown className="h-4 w-4" /> {t("thread.newMessages")}
+          <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
         </Button>
       )}
     </div>
@@ -186,24 +218,28 @@ function RunBubbleSkeleton() {
   );
 }
 
-function RunBubble({ run }: { run: Run }) {
+export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const t = useT();
   const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
   const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const steps = useActivityCount(run.id);
-  const allQuestions = useAppStore(state => state.questions);
-  const questions = useMemo(
-    () => Object.values(allQuestions).filter(q => q.runId === run.id).sort((a, b) => a.createdAt - b.createdAt),
-    [allQuestions, run.id],
+
+  const questionIdsStr = useAppStore(state =>
+    Object.values(state.questions)
+      .filter(q => q.runId === run.id)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map(q => q.id)
+      .join(',')
   );
+  const questionIds = useMemo(() => questionIdsStr ? questionIdsStr.split(',') : [], [questionIdsStr]);
 
   const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? pastAgent(t);
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
-  const interrupted = run.output === INTERRUPTED_OUTPUT;
+  const interrupted = run.output === interruptedOutput();
   const output = interrupted ? "" : (run.output ?? "");
   // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
   const usage = runUsageText(run, locale, t);
@@ -326,7 +362,7 @@ function RunBubble({ run }: { run: Run }) {
                   )}
 
                   {/* A run that ended asking something ends here, with the options it offered. */}
-                  {questions.map(q => <InlineQuestion key={q.id} questionId={q.id} />)}
+                  {questionIds.map(id => <InlineQuestion key={id} questionId={id} />)}
                 </>
               )}
             </div>
@@ -340,4 +376,4 @@ function RunBubble({ run }: { run: Run }) {
       <RunDetailDialog runId={run.id} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
-}
+});

@@ -154,7 +154,8 @@ export function NotificationBell() {
         </Tooltip>
 
         {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
-        <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0">
+        {/* We prevent auto-focus because it falls on the first icon button, making its tooltip appear on its own. */}
+        <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
             <Tooltip>

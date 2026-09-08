@@ -2,6 +2,184 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.8.0 — 2026-09-08
+
+### Nuevo
+
+- **La caja vacía ahora dice algo, y cambia.** El placeholder del composer escribe una de cinco
+  líneas y va cambiando cada pocos segundos: para qué está el equipo, qué le podés dejar, que `/`
+  abre los comandos y el atajo de Enter, que deja de ser una cola permanente en la línea y pasa a ser
+  algo que leés una vez. Se queda quieto para el que le pidió al sistema menos movimiento, y en el
+  teléfono no se mueve para nada.
+- **Movimiento donde significa algo.** Una corrida que sigue en marcha tiene la luz pasando de lado a
+  lado sobre el paso en el que está, en vez de un spinner; el "Trabajando ahora" de Inicio se lee
+  vivo; la píldora de aprobaciones lleva un hilo de luz alrededor mientras —y solo mientras— algo
+  espera tu respuesta; y la plata en el panel de consumo va subiendo hasta lo que es, con el mismo
+  formato de moneda que usan las tablas. No se decoró nada más: el hilo, el feed y el tablero se
+  queden quietos, porque una herramienta que mirás todo el día solo debería moverse cuando te está
+  diciendo algo.
+- **Un agente puede decir algo antes de terminar.** Hasta ahora lo único que un agente delegado podía
+  decirle a su planificador era su respuesta final: si se trababa a los dos minutos, nadie se
+  enteraba por veinte. Ahora puede dejar un bloque `note` mientras trabaja —trabado, más lento de lo
+  esperado, algo que deberías saber ya— y la app lo entrega mientras la corrida sigue, directo al
+  feed y a quien haya delegado el trabajo.
+- **Y cierra con lo que realmente hizo.** Un bloque `result` que nombra los archivos que tocó, qué
+  corrió para probarlos y qué no pudo hacer. La prosa queda; esta es la parte que el planificador lee
+  sin tener que interpretarla, y aparece en el detalle de la corrida como tres listas cortas.
+- **Inicio es donde te enterás de qué está esperando.** Arriba de los proyectos, dos listas que los
+  cruzan a todos: qué te está esperando a vos —una delegación frenada por aprobación, una pregunta
+  que nadie contestó, una tarjeta que el tablero dejó en *Necesita tu atención*— y quién está
+  trabajando ahora, en qué y desde cuándo. Cada línea te pone donde está la cosa: el hilo para una
+  aprobación o pregunta, el tablero con la tarjeta abierta para una tarea. Las dos desaparecen
+  cuando no hay nada en ellas, así que un Inicio tranquilo se ve igual que siempre. Y el badge que
+  marcaba el último proyecto que abriste ya no está: estás en Inicio justamente porque no estás en él.
+  En su lugar, cada tarjeta dice qué está pasando adentro: "2 trabajando · 1 esperándote".
+- **Los agentes en la misma tarea saben el uno del otro.** Un planificador partiendo trabajo entre
+  dos implementadores los arrancaba a ciegas: ninguno sabía que el otro estaba ahí, los dos tocaban
+  los mismos archivos y el planificador recibía dos respuestas que se contradecían. A cada uno ahora
+  se le dice quién más está trabajando en esta misma tarea y qué se le pidió hacer, y que lo que
+  alguien más tiene en sus manos es suyo para cambiar, no tuyo para pisar. Esto viaja en cada turno,
+  como el tablero, porque es la clase de cosa que cambia mientras trabajás.
+- **Un hook puede escribirle "al jefe" en vez de a alguien por nombre.** El agente a instruir ahora
+  ofrece el tope de la jerarquía —el planificador raíz del proyecto, el mismo agente al que el
+  composer, la CLI y el teléfono le escriben por omisión— que se resuelve cuando el hook se dispara y
+  no cuando se guarda, así que rearmar el equipo nunca lo deja apuntando a alguien que ya no está a
+  cargo. Si se deja sin filtrar, llega al jefe de *cada* proyecto, que es lo que hace que un solo
+  hook programado alcance para todos; achicado a un proyecto es el jefe de ese, y un evento que causó
+  un agente se queda en el proyecto donde pasó.
+
+### Arreglado
+
+- **Podés leer para atrás en una conversación mientras un agente sigue escribiendo.** En un chat,
+  cada delta que mandaba te arrastraba de vuelta al fondo: scrollear para arriba a ver qué había
+  dicho hace dos minutos era imposible hasta que terminara. El chat ahora hace lo que el hilo
+  orquestador ya hacía: sigue el fondo solo mientras estás en el fondo, y cuando no, una píldora en
+  la esquina te dice cuántos mensajes llegaron y te lleva ahí cuando querés. La cuenta ahora está en
+  los tres lados —chat, hilo y el feed de comunicación— en lugar de un "nuevos mensajes" a secas.
+- **Un nombre de modelo largo ya no rompe el diálogo de nuevo chat.** La fila de un participante son
+  tres desplegables y un tacho en una grilla, y una columna de grilla no se achica menos de lo que
+  contiene: si elegías un modelo con nombre largo la fila se estiraba, el diálogo se estiraba con
+  ella, y los campos de nombre y modo terminaban colgando afuera de la tarjeta. Las columnas ahora se
+  pueden achicar y el nombre se recorta.
+- **Que una herramienta falle adentro de un agente deja de verse como que la app se rompió.** El
+  `view_file` de Antigravity falla, el agente reintenta y sigue, y la conversación mostraba una alarma
+  roja al respecto, con la misma forma que tiene una falla real. Ahora es una línea en la actividad de
+  la corrida, en ámbar, con lo que dijo el proveedor a un hover de distancia. El rojo se guarda para
+  lo que de verdad está roto. El único caso que vale la pena decir en voz alta se sigue diciendo: que
+  la misma herramienta falle tres veces en una corrida significa que el agente está dando vueltas en
+  círculos, y eso se lleva una línea sola nombrándola.
+- **Los botones del composer dejan de amontonarse en la caja.** El botón de enviar ya no se convierte
+  en un reloj —encolar funciona exactamente igual que antes, el Enter encola mientras un agente está
+  ocupado y el tooltip lo dice— y el clip bajó a la barra, solo a la izquierda, con el agente, el
+  modelo, las aprobaciones y la cuota juntados a la derecha.
+- **`ais run` falla cuando la tarea falló, en cualquier idioma.** Decidía su código de salida buscando
+  las palabras en español de "CLI not found" en el feed —texto que dejó de existir el día que esos
+  mensajes empezaron a salir de los diccionarios. En una máquina en inglés, una tarea que moría por
+  falta de CLI salía con cero, verde para cualquier script que la hubiera llamado. Ahora lee las corridas.
+- **La conversación deja de repintarse entera.** El hilo y el feed de comunicación dibujaban cada
+  mensaje que tenían —tres mil por proyecto— y no había ni una fila memoizada, así que cualquier cosa
+  que tocara el store los redibujaba todos. Ahora dibujan el último tramo, con un link arriba para
+  caminar más atrás que te mantiene en tu lugar en vez de saltar, y las filas solo se redibujan
+  cuando algo suyo cambió de verdad.
+- **Que un agente escriba ya no sale más caro cuanto más tiempo lleves trabajando.** Cada delta que
+  mandaba una CLI era una escritura: una copia de toda la lista de mensajes para sumarle una letra al
+  final, más una copia del mapa de corridas para la línea cruda, más una pasada por cada mensaje para
+  decidir qué guardar. Por token. Con un historial largo, es trabajo proporcional a todo lo que se
+  dijo alguna vez, que es exactamente por qué la ventana se ponía más pesada a medida que pasaba el
+  día. Los deltas ahora se juntan y se aplican juntos, como mucho cada 80 ms, y se vuelcan en el acto
+  cuando una corrida termina o se frena para que nada llegue tarde o falte.
+- **Un proyecto abre como lo dejaste, conversación incluida.** Pasar a otro proyecto y volver te
+  dejaba en el hilo orquestador, incluso si venías hablando en uno de los chats de ese proyecto: la
+  barra lateral pedía el proyecto *y ningún chat*, y eso es exactamente lo que recibía. Ahora cada
+  proyecto se acuerda de su última conversación además de su vista, y reabrir la app vuelve a ambas.
+  Pedir el hilo a propósito te sigue dando el hilo.
+- **Tipear ya no escribe en disco en cada tecla.** Cada letra guardaba cada borrador de la app
+  como JSON, sincrónicamente, en el hilo principal —que es justamente el hilo que tiene que seguirle
+  el ritmo a tu escritura. Lo que escribís sigue aterrizando en la app al instante; el disco se
+  entera como mucho cada 400 ms, e inmediatamente cuando la ventana se cierra o pierde foco, para que
+  no se pierda nada.
+- **El panel de notificaciones ya no abre con un tooltip asomando.** Abrirlo le pasaba el foco al
+  primer botón de ícono, y un tooltip se muestra tanto con foco como con hover.
+- **Una tarjeta dejada en revisión vuelve.** Al tablero se lo vuelve a poner a la par de sus corridas
+  en cada arranque, pero solo para las tarjetas *Trabajando*. Una estacionada *En revisión* detrás de
+  una revisión que moría con la app —o cuya corrida se caía de un historial recortado— se quedaba ahí
+  para siempre. Ahora se lee de la misma manera que el flujo vivo: aprobada va a lista, cambios y
+  fallas vuelven a vos, y una tarjeta que alguien arrastró a mano sigue siendo asunto de esa persona.
+- **Un agente en un chat es el mismo agente que en una tarea.** El chat armaba su propio prompt de
+  sistema, sin el bloque `ask` —así que un agente con el que hablabas no podía pedirte una
+  decisión— y con cada skill pegada entera en vez de apuntada en el repo. Los chats pasan ahora
+  por el único constructor: mismo perfil, mismo contexto compartido, mismas skills, misma forma de
+  preguntar, menos el tablero y la delegación que a un agente no le sirven en una conversación.
+- **La app habla tu idioma hasta el fondo.** La interfaz estaba traducida y unos treinta mensajes por
+  debajo de ella no: una corrida parada, una aprobación, una delegación rechazada, un hook que
+  falló, los errores que el teléfono recibe, lo que deja atrás una corrida interrumpida, la CLI que
+  no se pudo instalar. En una ventana en inglés todos salían en español. Ahora pasan por los mismos
+  diccionarios que el resto —y una corrida que el build de ayer interrumpió en otro idioma hoy
+  se sigue reconociendo como interrumpida.
+- **Una delegación que no nombra a nadie ya no cuelga la tarea.** Un planificador que escribía mal el
+  nombre de un agente —o que nombraba a uno que no estaba bajo él— se quedaba esperando a un equipo
+  que nunca iba a llegar, y su tarjeta atascada en *Trabajando* hasta que la app se reiniciaba. Ahora
+  el error vuelve al planificador con los nombres que sí puede usar, para que delegue de nuevo;
+  sin más rondas, la tarea se cierra como que te necesita en lugar de fingir que trabaja.
+- **Una corrida que ni siquiera puede arrancar cierra su tarjeta.** Si faltaba la CLI, la corrida
+  daba error y el tablero nunca se enteraba.
+- **Tocar el techo de rondas te lo avisa.** Ahora la tarea se cierra como que te necesita, con el
+  techo en el detalle y la misma notificación que recibe cualquier falla, en lugar de terminar callada
+  como si hubiera finalizado.
+- **Un planificador que se había olvidado de cómo delegar.** Mandar las instrucciones solo en el turno
+  que abre una sesión estaba bien para la descripción —el rol, el perfil, el contexto compartido, la
+  lista de skills— y mal para los dos bloques con los que un agente *actúa*. Una CLI compacta su propio
+  contexto cuando una sesión crece, y una vez que el bloque `delegate` se había resumido para afuera, el
+  planificador ya no podía llegar a su propio equipo: iba a buscar una línea de comandos `ainess` y
+  una tool MCP, y terminaba pidiéndole al usuario que delegara en su nombre, razonando sobre la app
+  adentro de la cual corría como si fuera de otro. Los bloques `delegate` y `ask` ahora van en cada
+  turno. Son el protocolo, no el preámbulo.
+- **Un cuelgue ya no deja a los agentes trabajando a espaldas de la app.** Cerrar la app baja el
+  proceso de cada agente; un cuelgue —el administrador de tareas, un corte de luz, un pánico— nunca
+  llega a eso, así que las CLIs seguían de largo: seguían editando el workspace, seguían gastando
+  cuota, sin nadie leyendo su salida y con la app que las arrancó ya desaparecida. Cada corrida
+  ahora anota el proceso que tiene por detrás, y el próximo arranque los encuentra, los frena y
+  lo dice, en todos los proyectos —incluidos los que no carga al inicio, cuya contabilidad puede
+  esperar pero sus procesos no. Un pid nunca alcanza para matar: se reparten de nuevo, y el dueño
+  siguiente tiene tantas chances de ser tu propio servidor de desarrollo como un agente, así que
+  un proceso solo se frena cuando su imagen *y* el momento en que arrancó coinciden con los que
+  la corrida guardó.
+- **Cada proyecto se acuerda de la vista en que lo dejaste.** El tablero, la conversación y la
+  jerarquía eran un solo ajuste compartido por todos los proyectos, así que si abrías uno en la
+  jerarquía y volvías a otro, ahí también se veía la jerarquía. Ahora cada proyecto guarda la suya —
+  a través de reinicios, y reabrir la app aterriza en el último proyecto donde estaba. Hacer clic
+  en un chat sigue siendo un destino explícito y abre la conversación.
+- **El modelo elegido en una conversación se recuerda con ella.** Si elegías uno, ibas al tablero y
+  volvías, volvía a decir "modelo por omisión" mientras la caja justo abajo todavía tenía lo que
+  habías escrito. Ahora se guarda por conversación, al lado del borrador, incluido un modelo
+  escrito a mano.
+- **Un hook en un evento de máquina ya no pide un agente dos veces.** La acción de "instruir a un agente"
+  estaba abajo de un filtro que también listaba agentes, así que el mismo diálogo tenía dos selectores
+  de agentes significando cosas distintas. En un evento de la máquina —un reloj, la conexión, un archivo
+  que cambia— nada de lo que hizo un agente dispara el hook, así que filtrar por uno solo podía
+  significar "nunca te dispares": esas opciones se sacaron de ahí, dejando el selector propio de la
+  acción como el único, y un hook que tenía uno cae de vuelta al proyecto de ese agente. El filtro
+  ahora también lleva el nombre de lo que hace ("Escucha a").
+- **Los links en la respuesta de un agente se llevaban a toda la app a `tauri.localhost`.** Los
+  agentes escriben dos tipos de link y la app los trataba como uno solo: una dirección web y una ruta
+  adentro del repo en el que trabajan (`src/lib/foo.ts`, `README.md`). La segunda no es algo para
+  abrir, y si se la dejaba en un `<a href>`, la ventana de escritorio la seguía: allá se iba a
+  `tauri.localhost/src/lib/foo.ts`, con la app desapareciendo de abajo tuyo. Ahora solo las
+  direcciones reales son links, y se abren en el navegador de verdad; una ruta de repo queda como
+  texto para leer. Un link `javascript:` o `data:` —que un agente puede escribir, queriendo o no—
+  nunca llega a ser link para empezar.
+- **Un agente no podía cambiar de modelo cuando su padre se lo decía.** A un planificador que
+  nombraba un `model` para una tarea solo se le hacía caso mientras "elegir el modelo" estaba prendido
+  en Configuración, así que estando apagado —como viene por omisión— un implementador al que se le
+  dijo que reintente en otro modelo porque el suyo se quedó sin cuota arrancaba callado en el mismo
+  que ya estaba agotado. Un modelo que el padre pide se respeta de ambas formas ahora; ese ajuste
+  decide si al planificador *se le dice que elija* uno, no si su elección cuenta. Y que un hijo se
+  quede sin cuota ya no le llega al padre como una pared de error de la CLI: se le dice claro, con
+  los modelos de esa misma CLI que todavía vale la pena probar —dejando afuera a su propia familia,
+  ya que la cuota se gasta por familia— y con el recordatorio de que una tarea puede llevar un
+  `model`. Cuando la CLI no tiene otro modelo, se le dice al padre que avise en lugar de reintentar.
+
+
 ## 0.7.0 — 2026-09-08
 
 ### Nuevo

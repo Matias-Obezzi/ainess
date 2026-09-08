@@ -1,5 +1,11 @@
 export interface Transport {
-  spawnRun(opts: import("@/types").SpawnOptions): Promise<void>;
+  /** Starts a run. Answers with the process behind it where the platform can say (the app). */
+  spawnRun(opts: import("@/types").SpawnOptions): Promise<import("@/types").SpawnedProcess | void>;
+  /**
+   * Kills the CLI processes a crashed instance left running, and answers with the ids of the runs
+   * it actually killed. A process is only killed when it is still the one that run started.
+   */
+  reapOrphans(orphans: Array<{ runId: string; pid: number; image: string; startedAt: number }>): Promise<string[]>;
   killRun(runId: string): Promise<boolean>;
   onRunOutput(h: (e: import("@/types").RunOutputEvent) => void): Promise<() => void>;
   onRunExit(h: (e: import("@/types").RunExitEvent) => void): Promise<() => void>;

@@ -15,12 +15,14 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { formatClock } from "@/lib/format";
 import { confirm } from "@/lib/confirm";
+import { isNearBottom } from "@/lib/feed-window";
+import { plural } from "@/i18n";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
 import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { ChatMessage } from "@/types";
-import { Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
@@ -35,6 +37,11 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
   const [editOpen, setEditOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const [stickToBottom, setStickToBottom] = useState(true);
+  const [newCount, setNewCount] = useState(0);
+  const prevMessagesLength = useRef(0);
 
   const chat = chats.find(c => c.id === chatId);
   const messages: ChatMessage[] = chatMessages[chatId] || [];
@@ -63,20 +70,38 @@ export function ChatThread({ chatId }: { chatId: string }) {
     return () => cancelAnimationFrame(id);
   }, [chatId, chatLoading]);
 
+  // Another conversation is another bottom: what the last one had counted, and how many messages it
+  // had, mean nothing here.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, messages[messages.length - 1]?.text]);
+    setStickToBottom(true);
+    setNewCount(0);
+    prevMessagesLength.current = 0;
+  }, [chatId]);
+
+  useEffect(() => {
+    if (messages.length > prevMessagesLength.current) {
+      if (stickToBottom) {
+        endRef.current?.scrollIntoView({ behavior: "smooth" });
+      } else {
+        setNewCount(n => n + (messages.length - prevMessagesLength.current));
+      }
+    } else if (stickToBottom) {
+      // The last message growing as it is written: follow it, but only from the bottom.
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevMessagesLength.current = messages.length;
+  }, [messages.length, messages[messages.length - 1]?.text, stickToBottom]);
 
   // While an agent answers, its activity grows inside the bubble: follow the bottom on a timer
   // instead of reacting to every streamed delta.
   const answering = messages.some(m => m.status === "pending");
   useEffect(() => {
-    if (!answering) return;
+    if (!answering || !stickToBottom) return;
     const interval = setInterval(() => {
       requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
     }, 150);
     return () => clearInterval(interval);
-  }, [answering]);
+  }, [answering, stickToBottom]);
 
   if (!chat) {
     return (
@@ -85,6 +110,19 @@ export function ChatThread({ chatId }: { chatId: string }) {
       </div>
     );
   }
+
+  const onScroll = () => {
+    if (!scrollRef.current) return;
+    const isAtBottom = isNearBottom(scrollRef.current);
+    setStickToBottom(isAtBottom);
+    if (isAtBottom) setNewCount(0);
+  };
+
+  const scrollToBottom = () => {
+    setStickToBottom(true);
+    setNewCount(0);
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleRemove = async () => {
     const confirmed = await confirm({
@@ -99,7 +137,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden relative">
       <div className="px-4 py-2 border-b border-border flex items-center gap-2 shrink-0">
         <span className="font-semibold text-sm truncate">{chat.name}</span>
         <Badge variant="outline" className="text-[10px]">
@@ -118,7 +156,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollRef} onScroll={onScroll}>
         <div className="flex flex-col gap-3 max-w-3xl mx-auto">
           {chatLoading ? (
             <>
@@ -144,6 +182,11 @@ export function ChatThread({ chatId }: { chatId: string }) {
       {editOpen && (
         <ChatDialog key={chatId} open={editOpen} onOpenChange={setEditOpen} editChatId={chatId} />
       )}
+      {!stickToBottom && newCount > 0 && (
+        <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
+          <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
+        </Button>
+      )}
     </div>
   );
 }
@@ -153,6 +196,7 @@ function BubbleSkeleton({ align }: { align: "start" | "end" }) {
     <div className={`flex flex-col gap-1 ${align === "end" ? "items-end" : "items-start"}`}>
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-10 w-56 rounded-lg" />
+
     </div>
   );
 }

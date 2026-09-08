@@ -55,6 +55,7 @@ pub fn run() {
         .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             runner::spawn_run,
+            runner::reap_orphans,
             runner::kill_run,
             runner::running_runs,
             runner::exec_capture,

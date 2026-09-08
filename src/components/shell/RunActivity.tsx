@@ -13,6 +13,8 @@ import { useT } from "@/i18n/useT";
 import { formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
 import { CornerDownRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Shimmer } from "@/components/ui/shimmer";
 
 /** Kinds that belong in the activity stream (a `result` would just repeat the final answer). */
 const ACTIVITY_KINDS = new Set(["text", "tool", "delegation", "error", "stderr", "system"]);
@@ -108,10 +110,14 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
 
   if (msg.kind === "tool") {
     const Icon = toolIcon(msg.meta?.tool ?? msg.text);
+    const isFailed = msg.meta?.failed;
+    const title = isFailed && msg.meta?.error ? `${msg.text}\n\n${msg.meta.error}` : msg.text;
+    const colorClass = isFailed ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
     return (
-      <div className="flex items-start gap-1.5 font-mono text-xs text-muted-foreground" title={msg.text}>
+      <div className={cn("flex items-start gap-1.5 font-mono text-xs", colorClass)} title={title}>
         <Icon className="h-3.5 w-3.5 shrink-0 mt-[1px]" />
-        <span className="break-all">{msg.meta?.summary ?? msg.text}</span>
+        {/* A failed call says so: its summary describes the call, not what became of it. */}
+        <span className="break-all">{isFailed ? msg.text : (msg.meta?.summary ?? msg.text)}</span>
       </div>
     );
   }
@@ -173,7 +179,12 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
   );
 }
 
-/** Pulsing footer with the current step and the elapsed time. */
+/**
+ * The foot of a run that is still going: the step it is on, and how long it has been at it.
+ *
+ * The light sweeping across the line is the "alive" of it — a run that ended has no footer at
+ * all, so nothing moves once there is nothing happening.
+ */
 function ActivityFooter({ startedAt, label }: { startedAt: number; label?: string }) {
   const t = useT();
   const [now, setNow] = useState(Date.now());
@@ -184,8 +195,9 @@ function ActivityFooter({ startedAt, label }: { startedAt: number; label?: strin
 
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-      <span className="truncate">{label ? truncate(label, 70) : t("activity.thinking")}</span>
+      <Shimmer className="truncate">
+        {label ? truncate(label, 70) : t("activity.thinking")}
+      </Shimmer>
       <span className="ml-auto shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>
     </div>
   );

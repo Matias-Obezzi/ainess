@@ -251,9 +251,9 @@ export function Sidebar() {
                 <ContextMenuTrigger asChild>
                   <div
                     className={`group flex flex-col rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
-                    onClick={() => openProject(p.id, null)}
+                    onClick={() => openProject(p.id)}
                     // Right clicking a row selects it first, the way a file explorer does.
-                    onContextMenu={() => openProject(p.id, null)}
+                    onContextMenu={() => openProject(p.id)}
                   >
                     <div className="flex items-center gap-1">
                       <button

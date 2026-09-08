@@ -29,13 +29,24 @@ const task = (over: Partial<Task> = {}): Task => ({
 } as Task);
 
 describe("a resumed turn", () => {
-  it("drops everything the first turn already said", () => {
-    const first = buildSystemPrompt(agent(), [worker], extras);
+  it("drops the description the first turn already gave", () => {
+    const first = buildSystemPrompt(agent(), [worker], {
+      ...extras,
+      sharedContext: "El repo usa pnpm y los tests corren con vitest.",
+      profile: { name: "Matías", about: "Trabaja de noche", preferences: "Respuestas cortas" },
+    });
     const again = buildSystemPrompt(agent(), [worker], { ...extras, resuming: true });
-    expect(again.length).toBeLessThan(first.length / 2);
-    // The role, the delegate schema and the ask schema are all in the transcript already.
-    expect(again).not.toContain("```delegate");
-    expect(again).not.toContain("```ask");
+    expect(again.length).toBeLessThan(first.length);
+    expect(again).not.toContain("pnpm");
+    expect(again).not.toContain("Matías");
+  });
+
+  it("keeps the blocks the agent acts through, whatever the CLI did to its own context", () => {
+    // Not description: without these it cannot reach its team or ask anything, and a CLI that
+    // compacts a long session will summarise them away if they only went once.
+    const again = buildSystemPrompt(agent(), [worker], { ...extras, resuming: true });
+    expect(again).toContain("```delegate");
+    expect(again).toContain("```ask");
   });
 
   it("still carries the board, which is the part that changes between turns", () => {
@@ -43,8 +54,15 @@ describe("a resumed turn", () => {
     expect(prompt).toContain("Arreglar el login");
   });
 
-  it("says nothing at all to an agent with no board", () => {
-    expect(buildSystemPrompt(worker, [], { ...extras, resuming: true })).toBe("");
+  it("gives an agent with no team the way to ask, and no way to delegate", () => {
+    const prompt = buildSystemPrompt(worker, [], { ...extras, resuming: true });
+    expect(prompt).toContain("```ask");
+    expect(prompt).not.toContain("```delegate");
+  });
+
+  it("says nothing to a custom agent, whose protocol is its own", () => {
+    const custom = agent({ role: "custom" });
+    expect(buildSystemPrompt(custom, [], { ...extras, resuming: true })).toBe("");
   });
 
   it("keeps saying who is writing, because that changes turn to turn", () => {

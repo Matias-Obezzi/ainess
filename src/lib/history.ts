@@ -9,6 +9,7 @@ import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { dictionaries } from "@/i18n";
 
 interface HistoryFile {
   version: 1;
@@ -31,7 +32,18 @@ interface HistoryFile {
 }
 
 /** Output of a run that was still running when the app (or CLI) that owned it went away. */
-export const INTERRUPTED_OUTPUT = "[interrumpido: la aplicación se cerró mientras el agente trabajaba]";
+export function interruptedOutput(): string { return translateNow("system.interrupted"); }
+
+/**
+ * Whether an output is that mark, whichever language wrote it.
+ *
+ * The text is translated when the run is closed, and read back on a later launch that may be
+ * running in another language — comparing against today's wording alone would stop recognising a
+ * run this same app interrupted yesterday.
+ */
+export function isInterruptedOutput(text: string): boolean {
+  return Object.values(dictionaries).some(d => d["system.interrupted"] === text);
+}
 
 const MAX_RUNS = 300;
 const MAX_MESSAGES = 3000;
@@ -53,6 +65,23 @@ let subscribed = false;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 
 const filePath = (projectId: string) => `history/${projectId}.json`;
+
+/**
+ * Finds the projects whose messages changed without walking the whole unchanged prefix.
+ */
+export function changedProjectsFromMessages(next: CommMessage[], prev: CommMessage[]): string[] {
+  if (next === prev) return [];
+  const changed = new Set<string>();
+  const len = Math.max(next.length, prev.length);
+  for (let i = len - 1; i >= 0; i--) {
+    const n = next[i];
+    const p = prev[i];
+    if (n === p) break;
+    if (n && n.projectId) changed.add(n.projectId);
+    if (p && p.projectId) changed.add(p.projectId);
+  }
+  return Array.from(changed);
+}
 
 /** Subscribe once to the store and persist whichever project's runs/messages/approvals changed. */
 export function attachHistoryPersistence(): void {
@@ -80,10 +109,8 @@ export function attachHistoryPersistence(): void {
       }
     }
     if (state.messages !== prev.messages) {
-      const p = prev.messages;
-      for (let i = 0; i < state.messages.length; i++) {
-        const m = state.messages[i];
-        if (p[i] !== m && m.projectId) changed.add(m.projectId);
+      for (const projectId of changedProjectsFromMessages(state.messages, prev.messages)) {
+        changed.add(projectId);
       }
     }
     if (state.questions !== prev.questions) {
@@ -152,7 +179,7 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     for (const r of parsed.runs) {
       if (runs[r.id]) continue;
       if (r.status === "running") {
-        const closed: Run = { ...r, status: "killed", output: INTERRUPTED_OUTPUT, endedAt: now };
+        const closed: Run = { ...r, status: "killed", output: interruptedOutput(), endedAt: now };
         runs[r.id] = closed;
         interrupted.push(closed);
       } else {
@@ -348,6 +375,18 @@ export async function loadHistory(projectId: string): Promise<void> {
 
 /** Alias that reads better at call sites that want fresh data from other processes. */
 export const syncHistory = loadHistory;
+
+/**
+ * The runs a project's file still calls "running", read without touching the store.
+ *
+ * For the projects startup does not load (a machine with many of them loads only the last): their
+ * bookkeeping can wait until you open them, but the processes they left behind cannot — those are
+ * editing a repo right now. See `reapAfterCrash`.
+ */
+export async function runningRunsOnDisk(projectId: string): Promise<Run[]> {
+  const parsed = await readFile(projectId);
+  return (parsed?.runs ?? []).filter(r => r.status === "running");
+}
 
 /** Drop a project's runs, messages and approvals, in memory and on disk. */
 export async function clearHistory(projectId: string): Promise<void> {

@@ -91,6 +91,34 @@ export async function recordAntigravityOutcome(model: string | undefined, text: 
   await saveAntigravityPools(data);
 }
 
+/**
+ * How each CLI says the account has nothing left for this model. Deliberately narrow: a planner
+ * told the wrong reason retries on another model for nothing, so a phrase only belongs here when
+ * it can mean nothing else. Everything else is reported as the plain failure it is.
+ */
+const OUT_OF_QUOTA = [
+  /quota (reached|exceeded|exhausted)/i,   // Antigravity
+  /usage limit reached/i,                   // Claude Code
+  /rate.?limit(ed| reached| exceeded)/i,    // several
+  /out of (premium )?requests/i,            // Copilot
+  /insufficient (quota|credits|balance)/i,  // opencode and the OpenAI-shaped APIs
+];
+
+/** True when a run failed because the model had nothing left, not because the work went wrong. */
+export function outOfQuota(text: string): boolean {
+  return OUT_OF_QUOTA.some(re => re.test(text));
+}
+
+/**
+ * Models of the same CLI worth retrying on: not the one that ran out, and not its pool-mates —
+ * quota is spent per family, so the next gemini after a gemini ran out is the same wall again.
+ */
+export function alternativeModels(provider: ProviderId, failed: string | undefined): string[] {
+  const all = PROVIDERS[provider]?.defaultModels ?? [];
+  const deadPool = failed ? poolOf(failed) : null;
+  return all.filter(model => model !== failed && (!deadPool || poolOf(model) !== deadPool));
+}
+
 /** Current per-pool exhaustion state, as persisted on disk. */
 export async function antigravityQuota(): Promise<AntigravityPools["pools"]> {
   const data = await loadAntigravityPools();
