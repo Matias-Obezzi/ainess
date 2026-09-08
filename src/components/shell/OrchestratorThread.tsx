@@ -16,7 +16,7 @@ import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
-import { INTERRUPTED_OUTPUT } from "@/lib/history";
+import { interruptedOutput } from "@/lib/history";
 import { formatClock, formatElapsed } from "@/lib/format";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
@@ -203,7 +203,7 @@ function RunBubble({ run }: { run: Run }) {
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? pastAgent(t);
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
-  const interrupted = run.output === INTERRUPTED_OUTPUT;
+  const interrupted = run.output === interruptedOutput();
   const output = interrupted ? "" : (run.output ?? "");
   // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
   const usage = runUsageText(run, locale, t);

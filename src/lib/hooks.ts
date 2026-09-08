@@ -3,6 +3,7 @@ import { getTransport } from "./transport";
 import { useAppStore } from "@/store";
 import { log } from "@/lib/logger";
 import { BOSS_TARGET, bossOf } from "@/lib/team";
+import { translateNow } from "@/i18n/useT";
 
 export interface HookContext {
   project?: Project;
@@ -68,7 +69,7 @@ export async function emitHookEvent(
     // execute non-blocking
     executeHookAction(hook, templateVars, hookCtx).catch(err => {
       // report error in system feed
-      const msg = `Hook ${hook.name} falló: ${err.message}`;
+      const msg = translateNow("hooks.failed", { name: hook.name, error: err.message });
       log.error("hooks", msg, err);
       if (hookCtx.project) {
         useAppStore.setState(s => ({
@@ -180,7 +181,7 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
       const countKey = `${hook.id}:${rootId}`;
       const count = instructHookCounts.get(countKey) || 0;
       if (count >= 5) {
-        throw new Error("Límite de 5 ejecuciones de instrucción alcanzado para esta tarea (protección anti-loop).");
+        throw new Error(translateNow("hooks.loopLimit", { n: 5 }));
       }
       instructHookCounts.set(countKey, count + 1);
       

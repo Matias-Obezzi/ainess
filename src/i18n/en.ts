@@ -1285,5 +1285,44 @@ export const en: Dictionary = {
   "folder.history.answer": "Answered",
   "folder.history.fromUser": "User",
   "folder.readme.body": "What ainess knows about this project lives here. `BOARD.md` is the task board and `AGENTS.md` is the team: the app writes both, so anything you edit by hand is lost on the next run — to move a card, the planner delegates it with its id. `history/` keeps what each agent said, one file per agent, written by the app like the other two.\n\nThe rest of the folder belongs to the agents: plans, notes and handoffs go here rather than in each CLI's own config folder.\n\nIf a dev server is watching this repository, add `.ainess/` to what it ignores: every change of the board touches these files.",
-};
+  "system.stoppedByUser": "[stopped by you]",
+  "system.taskStopped": "{name}'s task was stopped by you",
+  "system.approved": "Approved: {summary}",
+  "system.rejected": "Rejected: {summary}",
+  "system.modelUnavailable": "Model \"{model}\" is not available for {name}: it is ignored.",
+  "system.cliMissing": "No {cli} CLI found. Install it or set a custom command.",
+  "system.rejectedRun": "[rejected by you]",
+  "system.rejectedRunWithNote": "[rejected by you: {note}]",
+  "system.interrupted": "[interrupted: the app closed while the agent was working]",
 
+  "hooks.loopLimit": "Hit the ceiling of {n} instructions for this task (loop guard).",
+  "hooks.failed": "Hook {name} failed: {error}",
+
+  "tool.failed": "Tool {name} failed: {error}",
+
+  "chat.runError": "[Error: {error}]",
+  "chat.runFailed": "the run failed",
+
+  "remote.err.invalidProject": "Invalid project",
+  "remote.err.projectBusy": "There is already a task running in this project. Send an instruction or stop it.",
+  "remote.err.invalidAgent": "Invalid agent",
+  "remote.err.missingTitle": "Missing title",
+  "remote.err.invalidStatus": "Invalid status",
+  "remote.err.noApproval": "Approval not found",
+  "remote.err.enableLocalFirst": "Turn on local remote access first",
+  "remote.err.missingText": "Missing text",
+  "remote.err.missingData": "Missing data",
+  "remote.err.noChat": "Chat not found",
+  "remote.err.missingProject": "Missing project",
+  "remote.err.missingTask": "Missing task",
+  "remote.err.noQuestion": "Question not found",
+  "remote.err.missingAnswer": "Missing answer",
+  "remote.err.unknownAction": "Unknown action: {action}",
+  "remote.err.invalidToken": "Invalid token",
+
+  "install.notDetected": "Installed, but the CLI hasn't appeared yet. Restart the app and detect again.",
+
+  "ngrok.notDetected": "winget finished but ngrok still hasn't appeared. Restart the app and try again.",
+  "ngrok.notInstalled": "ngrok is not installed",
+  "ngrok.invalidApiKey": "The ngrok API key is invalid",
+};

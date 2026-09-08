@@ -8,6 +8,7 @@ import type { AgentConfig, AgentQuestion, AgentStatus, Approval, Binaries, Chat,
 import { TASK_STATUSES } from "@/lib/tasks";
 import { pendingApprovals } from "@/lib/approvals";
 import { resolveLanguage, type Language } from "@/i18n";
+import { translateNow } from "@/i18n/useT";
 
 /**
  * Everything the phone needs to render the same React UI as the desktop app: the page is a
@@ -168,12 +169,12 @@ export async function handleRemoteCommand(action: string, payload: Record<string
       case "prompt": {
         const projectId = str("projectId");
         const text = str("text")?.trim();
-        if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: "Proyecto inválido" };
-        if (!text) return { error: "Falta el texto" };
-        if (s.activeTaskRunId[projectId]) return { error: "Ya hay una tarea en curso en este proyecto. Usá una instrucción o detenela." };
+        if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+        if (!text) return { error: translateNow("remote.err.missingText") };
+        if (s.activeTaskRunId[projectId]) return { error: translateNow("remote.err.projectBusy") };
         const roots = selectRoots(s, projectId);
         const agentId = str("agentId") ?? (roots.find(a => a.role === "planner") ?? roots[0])?.id;
-        if (!agentId || !selectProjectAgents(s, projectId).some(a => a.id === agentId)) return { error: "Agente inválido" };
+        if (!agentId || !selectProjectAgents(s, projectId).some(a => a.id === agentId)) return { error: translateNow("remote.err.invalidAgent") };
         await s.submitPrompt(text, agentId, projectId, { model: str("model") });
         return { ok: true, runId: useAppStore.getState().activeTaskRunId[projectId] };
       }
@@ -191,7 +192,7 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const projectId = str("projectId");
         const agentId = str("agentId");
         const text = str("text")?.trim();
-        if (!projectId || !agentId || !text) return { error: "Faltan datos" };
+        if (!projectId || !agentId || !text) return { error: translateNow("remote.err.missingData") };
         await s.instructAgent(agentId, text, projectId, { model: str("model") });
         return { ok: true };
       }
@@ -199,13 +200,13 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         // A chat turn is stopped on its own; everything else needs the project.
         const chatId = str("chatId");
         if (chatId) {
-          if (!s.config.chats.some(c => c.id === chatId)) return { error: "Chat inexistente" };
+          if (!s.config.chats.some(c => c.id === chatId)) return { error: translateNow("remote.err.noChat") };
           await s.stopChat(chatId);
           return { ok: true };
         }
         const projectId = str("projectId");
         const agentId = str("agentId");
-        if (!projectId) return { error: "Falta el proyecto" };
+        if (!projectId) return { error: translateNow("remote.err.missingProject") };
         if (agentId) await s.stopAgent(agentId, projectId); else await s.stopAll(projectId);
         return { ok: true };
       }
@@ -214,8 +215,8 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         if (str("op") === "create") {
           const projectId = str("projectId");
           const title = str("title")?.trim();
-          if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: "Proyecto inválido" };
-          if (!title) return { error: "Falta el título" };
+          if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+          if (!title) return { error: translateNow("remote.err.missingTitle") };
           const agentId = str("agentId");
           const task = s.addTask(projectId, {
             title,
@@ -225,12 +226,12 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           return { ok: true, taskId: task.id };
         }
         const id = str("taskId");
-        if (!id) return { error: "Falta la tarea" };
+        if (!id) return { error: translateNow("remote.err.missingTask") };
         const op = str("op") ?? "move";
         if (op === "archive") { s.archiveTask(id); return { ok: true }; }
         if (op === "delete") { s.removeTask(id); return { ok: true }; }
         const status = str("status");
-        if (!status || !TASK_STATUSES.includes(status as TaskStatus)) return { error: "Estado inválido" };
+        if (!status || !TASK_STATUSES.includes(status as TaskStatus)) return { error: translateNow("remote.err.invalidStatus") };
         s.moveTask(id, status as TaskStatus, typeof payload.index === "number" ? payload.index : 0);
         return { ok: true };
       }
@@ -239,30 +240,30 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const answer = Array.isArray(payload.answer)
           ? (payload.answer as unknown[]).filter((a): a is string => typeof a === "string" && a.trim().length > 0)
           : [];
-        if (!id || !s.questions[id]) return { error: "Pregunta inexistente" };
-        if (answer.length === 0) return { error: "Falta la respuesta" };
+        if (!id || !s.questions[id]) return { error: translateNow("remote.err.noQuestion") };
+        if (answer.length === 0) return { error: translateNow("remote.err.missingAnswer") };
         s.answerQuestion(id, answer);
         return { ok: true };
       }
       case "approve": {
         const id = str("approvalId");
         const decision = str("decision");
-        if (!id || !s.approvals[id]) return { error: "Aprobación inexistente" };
+        if (!id || !s.approvals[id]) return { error: translateNow("remote.err.noApproval") };
         if (decision === "reject") await s.reject(id, str("note")); else await s.approve(id, str("note"));
         return { ok: true };
       }
       case "chat": {
         const chatId = str("chatId");
         const text = str("text")?.trim();
-        if (!chatId || !text) return { error: "Faltan datos" };
-        if (!s.config.chats.some(c => c.id === chatId)) return { error: "Chat inexistente" };
+        if (!chatId || !text) return { error: translateNow("remote.err.missingData") };
+        if (!s.config.chats.some(c => c.id === chatId)) return { error: translateNow("remote.err.noChat") };
         await s.sendChatMessage(chatId, text);
         return { ok: true };
       }
       case "state":
         return buildSnapshot() as unknown as Record<string, unknown>;
       default:
-        return { error: `Acción desconocida: ${action}` };
+        return { error: translateNow("remote.err.unknownAction", { action }) };
     }
   } catch (e) {
     return { error: String(e instanceof Error ? e.message : e) };
@@ -352,7 +353,7 @@ export function tunnelUrl(publicUrl: string, token: string): string {
 export async function startTunnel(): Promise<TunnelStatus> {
   const { remote } = useAppStore.getState().config;
   const status = await getTransport().remoteStatus();
-  if (!status.running) throw new Error("Prendé primero el acceso remoto local");
+  if (!status.running) throw new Error(translateNow("remote.err.enableLocalFirst"));
   const info = await getTransport().tunnelStart(remote.tunnel.provider, remote.port, {
     domain: remote.tunnel.domain,
     tunnelName: remote.tunnel.tunnelName,

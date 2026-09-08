@@ -10,14 +10,14 @@
 // resumes the CLI session rather than starting over. This module is only about the processes.
 import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
-import { INTERRUPTED_OUTPUT, runningRunsOnDisk } from "@/lib/history";
+import { isInterruptedOutput, runningRunsOnDisk } from "@/lib/history";
 import { translateNow } from "@/i18n/useT";
 import { log } from "@/lib/logger";
 import type { Run } from "@/types";
 
 /** A run this process never saw end: still open, or closed by the merge as interrupted. */
 function leftHanging(run: Run): boolean {
-  return run.status === "running" || (run.status === "killed" && run.output === INTERRUPTED_OUTPUT);
+  return run.status === "running" || (run.status === "killed" && isInterruptedOutput(run.output));
 }
 
 /** What `reapOrphans` needs to recognise a process, for the runs that recorded one. */

@@ -2,7 +2,8 @@
 // operating system has handed to something else could be the user's own dev server.
 import { describe, it, expect } from "vitest";
 import { orphansOf } from "@/lib/recovery";
-import { INTERRUPTED_OUTPUT } from "@/lib/history";
+import { interruptedOutput } from "@/lib/history";
+import { es } from "@/i18n/es";
 import type { Run } from "@/types";
 
 const run = (over: Partial<Run>): Run => ({
@@ -30,7 +31,12 @@ describe("orphansOf", () => {
   });
 
   it("takes one the merge already closed as interrupted", () => {
-    const closed = run({ status: "killed", output: INTERRUPTED_OUTPUT });
+    const closed = run({ status: "killed", output: interruptedOutput() });
+    expect(orphansOf([closed])).toHaveLength(1);
+  });
+
+  it("recognises one interrupted by a build that was running in another language", () => {
+    const closed = run({ status: "killed", output: es["system.interrupted"] });
     expect(orphansOf([closed])).toHaveLength(1);
   });
 

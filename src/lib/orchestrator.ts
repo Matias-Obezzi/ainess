@@ -157,7 +157,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     : store.binaries[agent.provider];
 
   if (!binary || !binary.path) {
-    const err = `No se encontró el CLI de ${provider.label}. Instalalo o configurá un comando custom.`;
+    const err = translateNow("system.cliMissing", { cli: provider.label });
     useAppStore.setState(state => {
       const pRuntime = state.runtime[opts.projectId] || {};
       return {
@@ -363,7 +363,7 @@ function handleExit(e: RunExitEvent) {
   const finalUsage = spec?.finalUsage ? spec.finalUsage(run.rawLines) : undefined;
   const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
-  const output = e.killed ? "[detenido por el usuario]" : collected;
+  const output = e.killed ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:
@@ -500,7 +500,7 @@ function onRunFinished(runId: string) {
               if (allowed.has(task.model)) {
                 modelToUse = task.model;
               } else {
-                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: `Modelo "${task.model}" no está disponible para ${childAgent.name}, se ignorará.`, runId });
+                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: translateNow("system.modelUnavailable", { model: task.model, name: childAgent.name }), runId });
               }
             }
             const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
@@ -810,11 +810,11 @@ function maybeContinueParent(parentRunId: string) {
         fromAgentId: "system",
         toAgentId: parentRun.agentId,
         kind: "system",
-        text: cancelled ? `Tarea de ${parentAgent.name} detenida por el usuario` : translateNow("rounds.maxReached", { n: store.config.maxRounds })
+        text: cancelled ? translateNow("system.taskStopped", { name: parentAgent.name }) : translateNow("rounds.maxReached", { n: store.config.maxRounds })
       });
       if (cancelled) {
         useAppStore.setState(state => ({
-          runs: { ...state.runs, [parentRunId]: { ...state.runs[parentRunId], output: "[detenido por el usuario]" } }
+          runs: { ...state.runs, [parentRunId]: { ...state.runs[parentRunId], output: translateNow("system.stoppedByUser") } }
         }));
       }
 
@@ -1034,7 +1034,7 @@ function settleApproval(approvalId: string, status: "approved" | "rejected", not
 export async function approveApproval(approvalId: string, note?: string): Promise<void> {
   const approval = settleApproval(approvalId, "approved", note);
   if (!approval) return;
-  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Aprobado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `${translateNow("system.approved", { summary: approval.summary })}${note ? ` (${note})` : ""}` });
   const runId = startRun(approval.payload);
   taskSync.taskOnApprovalSettled(approval.id, true, runId);
 }
@@ -1044,7 +1044,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
   if (!approval) return;
   const store = useAppStore.getState();
   const { payload } = approval;
-  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `Rechazado: ${approval.summary}${note ? ` (${note})` : ""}` });
+  addMessage({ projectId: approval.projectId, fromAgentId: "user", toAgentId: approval.toAgentId, kind: "system", text: `${translateNow("system.rejected", { summary: approval.summary })}${note ? ` (${note})` : ""}` });
   taskSync.taskOnApprovalSettled(approval.id, false);
   // Record the rejection as a finished child run so the planner gets it with the other results.
   const runId = crypto.randomUUID();
@@ -1060,7 +1060,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
     startedAt: now,
     endedAt: now,
     exitCode: null,
-    output: `[rechazado por el usuario${note ? `: ${note}` : ""}]`,
+    output: note ? translateNow("system.rejectedRunWithNote", { note }) : translateNow("system.rejectedRun"),
     rawLines: [],
     childRunIds: [],
     round: payload.round,
@@ -1081,7 +1081,7 @@ export async function rejectApproval(approvalId: string, note?: string): Promise
 /** Reject every pending approval that belongs to a run of this agent (used by stopAgent). */
 function rejectPendingApprovalsOf(agentId: string, projectId: string): number {
   const pending = Object.values(useAppStore.getState().approvals).filter(a => a.status === "pending" && a.projectId === projectId && a.agentId === agentId);
-  for (const a of pending) settleApproval(a.id, "rejected", "detenido por el usuario");
+  for (const a of pending) settleApproval(a.id, "rejected", translateNow("system.stoppedByUser"));
   return pending.length;
 }
 

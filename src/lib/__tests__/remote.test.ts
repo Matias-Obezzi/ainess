@@ -8,14 +8,6 @@ vi.mock("@/lib/diagnostics", () => ({
 
 import { useAppStore } from "@/store";
 
-// Mock @/i18n
-vi.mock("@/i18n", () => ({
-  resolveLanguage: vi.fn().mockReturnValue("es"),
-  translate: vi.fn().mockReturnValue("translated"),
-  dictionaries: { es: {} },
-  baseDictionary: {}
-}));
-
 describe("remote snapshot and commands", () => {
   beforeEach(() => {
     vi.clearAllMocks();

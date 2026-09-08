@@ -1285,5 +1285,44 @@ export const es: Dictionary = {
   "folder.history.answer": "Respondió",
   "folder.history.fromUser": "Usuario",
   "folder.readme.body": "Acá vive lo que ainess sabe de este proyecto. `BOARD.md` es el tablero de tareas y `AGENTS.md` es el equipo: los escribe la app, así que lo que edites a mano se pierde en la próxima corrida — para mover una tarjeta, el planificador la delega con su id. `history/` guarda lo que dijo cada agente, un archivo por agente, y lo escribe la app igual que los otros dos.\n\nEl resto de la carpeta es de los agentes: planes, notas y handoffs van acá, y no en la carpeta de configuración de cada CLI.\n\nSi tenés un servidor de desarrollo mirando el repo, agregá `.ainess/` a lo que ignora: cada cambio del tablero toca estos archivos.",
-};
+  "system.stoppedByUser": "[detenido por el usuario]",
+  "system.taskStopped": "Tarea de {name} detenida por el usuario",
+  "system.approved": "Aprobado: {summary}",
+  "system.rejected": "Rechazado: {summary}",
+  "system.modelUnavailable": "El modelo «{model}» no está disponible para {name}: se ignora.",
+  "system.cliMissing": "No se encontró el CLI de {cli}. Instalalo o configurá un comando custom.",
+  "system.rejectedRun": "[rechazado por el usuario]",
+  "system.rejectedRunWithNote": "[rechazado por el usuario: {note}]",
+  "system.interrupted": "[interrumpido: la aplicación se cerró mientras el agente trabajaba]",
 
+  "hooks.loopLimit": "Se alcanzó el límite de {n} instrucciones para esta tarea (protección anti-bucle).",
+  "hooks.failed": "El hook {name} falló: {error}",
+
+  "tool.failed": "Falló la herramienta {name}: {error}",
+
+  "chat.runError": "[Error: {error}]",
+  "chat.runFailed": "la corrida falló",
+
+  "remote.err.invalidProject": "Proyecto inválido",
+  "remote.err.projectBusy": "Ya hay una tarea en curso en este proyecto. Usá una instrucción o detenela.",
+  "remote.err.invalidAgent": "Agente inválido",
+  "remote.err.missingTitle": "Falta el título",
+  "remote.err.invalidStatus": "Estado inválido",
+  "remote.err.noApproval": "Aprobación inexistente",
+  "remote.err.enableLocalFirst": "Prendé primero el acceso remoto local",
+  "remote.err.missingText": "Falta el texto",
+  "remote.err.missingData": "Faltan datos",
+  "remote.err.noChat": "Chat inexistente",
+  "remote.err.missingProject": "Falta el proyecto",
+  "remote.err.missingTask": "Falta la tarea",
+  "remote.err.noQuestion": "Pregunta inexistente",
+  "remote.err.missingAnswer": "Falta la respuesta",
+  "remote.err.unknownAction": "Acción desconocida: {action}",
+  "remote.err.invalidToken": "Token inválido",
+
+  "install.notDetected": "Se instaló, pero el CLI todavía no aparece. Reiniciá la app y volvé a detectar.",
+
+  "ngrok.notDetected": "winget terminó pero ngrok sigue sin aparecer. Reiniciá la app y probá de nuevo.",
+  "ngrok.notInstalled": "ngrok no está instalado",
+  "ngrok.invalidApiKey": "La API key de ngrok no es válida",
+};

@@ -274,7 +274,7 @@ export function onChatRunFinished(runId: string): void {
   const agent = selectAgent(store, run.agentId);
   const agentName = agent?.name || run.agentId;
 
-  const output = run.status === "error" ? `[Error: ${run.output || "falló"}]` : (run.output || "");
+  const output = run.status === "error" ? (run.output ? translateNow("chat.runError", { error: run.output }) : translateNow("chat.runFailed")) : (run.output || "");
   const msgStatus = run.status === "error" ? "error" as const : "done" as const;
 
   // Save session for this chat+agent

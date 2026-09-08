@@ -1,3 +1,4 @@
+import { translateNow } from "@/i18n/useT";
 // Installing an agent's CLI from the app.
 //
 // Every provider here is a program someone else ships, and the app can only find what is already
@@ -119,7 +120,7 @@ export async function installProvider(
   const found = binaries[provider]?.path;
   if (!found) {
     // A global npm install lands in a folder this process may not have in its PATH yet.
-    throw new Error("Se instaló, pero el CLI todavía no aparece. Reiniciá la app y volvé a detectar.");
+    throw new Error(translateNow("install.notDetected"));
   }
   return found;
 }

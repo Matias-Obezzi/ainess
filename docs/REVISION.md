@@ -71,7 +71,7 @@ existe o terminó, se resuelve como corresponde en vez de dejarla colgada.
 
 ## B. Inconsistencias
 
-### `[ ]` B1 · Media app habla siete idiomas y la otra media siempre habla español
+### `[x]` B1 · Media app habla siete idiomas y la otra media siempre habla español — *«Half the app answered in Spanish no matter what you set»*
 
 **Qué pasa.** La interfaz está traducida a siete idiomas, pero un montón de texto que el usuario
 lee sale del código en español fijo: "Delegación fallida…", "Aprobado:", "Rechazado:", "Se alcanzó

@@ -9,6 +9,7 @@ import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { dictionaries } from "@/i18n";
 
 interface HistoryFile {
   version: 1;
@@ -31,7 +32,18 @@ interface HistoryFile {
 }
 
 /** Output of a run that was still running when the app (or CLI) that owned it went away. */
-export const INTERRUPTED_OUTPUT = "[interrumpido: la aplicación se cerró mientras el agente trabajaba]";
+export function interruptedOutput(): string { return translateNow("system.interrupted"); }
+
+/**
+ * Whether an output is that mark, whichever language wrote it.
+ *
+ * The text is translated when the run is closed, and read back on a later launch that may be
+ * running in another language — comparing against today's wording alone would stop recognising a
+ * run this same app interrupted yesterday.
+ */
+export function isInterruptedOutput(text: string): boolean {
+  return Object.values(dictionaries).some(d => d["system.interrupted"] === text);
+}
 
 const MAX_RUNS = 300;
 const MAX_MESSAGES = 3000;
@@ -152,7 +164,7 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     for (const r of parsed.runs) {
       if (runs[r.id]) continue;
       if (r.status === "running") {
-        const closed: Run = { ...r, status: "killed", output: INTERRUPTED_OUTPUT, endedAt: now };
+        const closed: Run = { ...r, status: "killed", output: interruptedOutput(), endedAt: now };
         runs[r.id] = closed;
         interrupted.push(closed);
       } else {

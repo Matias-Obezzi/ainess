@@ -18,6 +18,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The app speaks your language all the way down.** The interface was translated and about thirty
+  messages underneath it were not: a stopped run, an approval, a rejected delegation, a hook that
+  failed, the errors the phone gets back, what an interrupted run leaves behind, the CLI that could
+  not be installed. In an English window they all came out in Spanish. They go through the same
+  dictionaries as everything else now — and a run interrupted by yesterday's build in another
+  language is still recognised as interrupted today.
+
 - **A delegation that names nobody no longer hangs the task.** A planner that misspelled an agent's
   name — or named one that is not under it — was left waiting for a team that was never coming, its
   card stuck at *en curso* until the app restarted. Now the mistake goes back to the planner with

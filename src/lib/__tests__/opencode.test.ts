@@ -82,7 +82,7 @@ describe("opencode parseLine", () => {
     ]);
     expect(parse(toolPart("completed", { output: "ok", title: "ls", metadata: {}, time: { start: 1, end: 2 } }))).toEqual([]);
     expect(parse(toolPart("error", { error: "permiso denegado", time: { start: 1, end: 2 } }))).toEqual([
-      { type: "error", text: "Falló la herramienta bash: permiso denegado" },
+      { type: "error", text: "Tool bash failed: permiso denegado" },
     ]);
   });
 
