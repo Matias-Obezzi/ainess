@@ -45,6 +45,7 @@ export function OrchestratorThread() {
   const runtime = useAppStore(state => currentProjectId ? state.runtime[currentProjectId] : undefined);
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
+  const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   const queued = useMemo(() => {
     if (!runtime || !currentProjectId) return [];
     return agents.flatMap(agent =>
@@ -53,9 +54,10 @@ export function OrchestratorThread() {
         // Only worth naming when the project has more than one agent to send to.
         to: agents.length > 1 ? agent.name : undefined,
         onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
+        onSendNow: () => void sendInstructionNow(currentProjectId, agent.id, index),
       })),
     );
-  }, [runtime, agents, currentProjectId, unqueueInstruction]);
+  }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
   const rootRuns = useMemo(
     () => Object.values(runs)

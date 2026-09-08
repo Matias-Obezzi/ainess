@@ -93,6 +93,9 @@ export interface AppState {
   unqueueChatMessage(chatId: string, index: number): void;
   /** The same, for an instruction waiting on a working agent. */
   unqueueInstruction(projectId: string, agentId: string, index: number): void;
+  /** Cuts the turn that is running short and sends the queued message now. */
+  sendChatNow(chatId: string, index: number): Promise<void>;
+  sendInstructionNow(projectId: string, agentId: string, index: number): Promise<void>;
   /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
   flushChatQueue(chatId: string): Promise<void>;
   /**
@@ -1673,6 +1676,25 @@ export const useAppStore = create<AppState>()((set, get) => ({
         },
       };
     });
+  },
+
+  sendChatNow: async (chatId, index) => {
+    const queued = get().chatQueues[chatId] ?? [];
+    const text = queued[index];
+    if (text === undefined) return;
+    set(state => ({
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index) },
+    }));
+    // Stopping is awaited so the turn is closed before the next one opens.
+    await get().stopChat(chatId);
+    const { translateNow } = await import("@/i18n/useT");
+    await get().sendChatMessage(chatId, `${translateNow("queued.interruptedNote")}
+
+${text}`);
+  },
+
+  sendInstructionNow: async (projectId, agentId, index) => {
+    await orchestrator.sendNowInterrupting(agentId, projectId, index);
   },
 
   flushChatQueue: async (chatId) => {

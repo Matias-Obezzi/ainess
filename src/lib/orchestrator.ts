@@ -729,6 +729,10 @@ function maybeContinueParent(parentRunId: string) {
         };
       });
 
+      // Nothing of the parent's own ends here, and the drain hangs off a run ending: without this
+      // a message waiting for it would sit there until it happened to run again.
+      processQueuedInstructions(parentRun.agentId, parentRun.projectId);
+
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
         taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
@@ -808,6 +812,34 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
       void emitHookEvent("task.started", {}, { project, agent, runId, prompt: text, taskPrompt: text });
     }
   }
+}
+
+/**
+ * Cuts the turn short and hands the message over now.
+ *
+ * Nothing is lost: what the agent did is already on disk, and what it said is in the CLI's own
+ * session, which the run that follows resumes. It is put at the head of the queue and the agent is
+ * stopped; the drain that every stop ends in is what starts it.
+ */
+export async function sendNowInterrupting(agentId: string, projectId: string, index: number): Promise<void> {
+  const store = useAppStore.getState();
+  const queue = store.runtime[projectId]?.[agentId]?.queuedInstructions ?? [];
+  const text = queue[index];
+  if (text === undefined) return;
+
+  const rest = queue.filter((_, i) => i !== index);
+  // The agent has to know its last turn was cut, or it reads the transcript as a turn it finished.
+  rest.unshift(`${translateNow("queued.interruptedNote")}
+
+${text}`);
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[projectId] || {};
+    return {
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: rest } } },
+    };
+  });
+
+  await stopAgent(agentId, projectId);
 }
 
 export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void> {

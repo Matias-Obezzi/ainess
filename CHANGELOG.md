@@ -5,6 +5,13 @@ Settings → About.
 
 ## Unreleased
 
+### Added
+
+- **Cutting a turn short to say something.** A message waiting for an agent has a second button:
+  it stops what is running and hands the message over right away. Nothing is repeated — what the
+  agent did is on disk and what it said is in its own session, which the run that follows resumes
+  — and it is told that its turn was cut, so it does not read the transcript as one it finished.
+
 ### Fixed
 
 - A message written while an agent was working showed up in Comunicación and nowhere else, as if
