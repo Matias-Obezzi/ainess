@@ -205,10 +205,14 @@ async function startTurn(
     }
   }
 
-  const systemPrompt = buildChatSystemPrompt(chatId, participant.agentId);
-
   // Get or create session for this chat+agent
   const sessionId = store.chatSessions[chatId]?.[participant.agentId];
+
+  // A turn that carries the session on does not carry the instructions with it: the CLI still has
+  // them from the first turn, and sending them again every turn was paying for the same paragraph
+  // over and over. A chat whose participants change mid-conversation keeps the roster it started
+  // with — reset its session (or start another chat) for the new one to be announced.
+  const systemPrompt = sessionId ? "" : buildChatSystemPrompt(chatId, participant.agentId);
 
   const turnId = crypto.randomUUID();
 

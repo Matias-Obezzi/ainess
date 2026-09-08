@@ -178,6 +178,10 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
+  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
+  // Nothing to read on the very first run of an agent: the file is written as the turns end.
+  const hasPast = Object.values(store.runs).some(r =>
+    r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
     // implementer told to do something by its planner and by the user reads the same prompt.
@@ -192,8 +196,10 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     agentName: (id) => selectAgent(store, id)?.name,
     // Who else is in this project, for the planner that has nobody under it.
     others: selectProjectAgents(store, opts.projectId).filter(a => a.parentId !== agent.id),
+    // A session that is being carried on already read the preamble; only what changed goes again.
+    resuming: !!sessionId,
+    historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
   });
-  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
   const mcpServers = selectMcpFor(store, agent.id);
 
@@ -830,8 +836,8 @@ function processQueuedInstructions(agentId: string, projectId: string) {
 }
 
 import { emitHookEvent } from "@/lib/hooks";
-import { recordTurn } from "@/lib/agent-history";
-import { writeSkillFiles } from "@/lib/project-folder";
+import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
+import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
