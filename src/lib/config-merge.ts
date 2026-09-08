@@ -33,5 +33,8 @@ export function mergeConfig(disk: AppConfig | null, mem: AppConfig, base: AppCon
     const b = (base?.[key] as Item[] | undefined) ?? m;
     (out as Record<IdCollection, Item[]>)[key] = mergeCollection(d, m, b);
   }
+  if (disk.messaging || mem.messaging) {
+    out.messaging = { ...disk.messaging, ...mem.messaging };
+  }
   return out;
 }
