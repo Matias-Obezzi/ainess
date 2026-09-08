@@ -136,7 +136,7 @@ corrida. Si se bloquea a los dos minutos, el planificador se entera veinte minut
 **Propuesta.** Un bloque `note` que el agente puede emitir y que llega al feed y al planificador
 sin cerrar la corrida, para "esto está bloqueado por X" o "voy por acá".
 
-### `[ ]` C2 · Los hermanos no se ven entre sí
+### `[x]` C2 · Los hermanos no se ven entre sí — *«Two hands on the same file»*
 
 **Qué pasa.** Dos implementadores trabajando la misma tarea no saben el uno del otro: pueden tocar
 los mismos archivos y pisarse. El planificador tampoco les dice qué le pidió al otro.
