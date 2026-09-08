@@ -7,7 +7,8 @@ export type BridgeCommand =
   | { kind: "answer"; id?: string; text: string }
   | { kind: "stop" }
   | { kind: "project"; name?: string }
-  | { kind: "help" };
+  | { kind: "help" }
+  | { kind: "start" };
 
 export function parseBridgeCommand(text: string): BridgeCommand {
   const trimmed = text.trim();
@@ -65,6 +66,10 @@ export function parseBridgeCommand(text: string): BridgeCommand {
       return { kind: "project", name: args || undefined };
     case "/help":
       return { kind: "help" };
+    // Telegram sends this by itself the first time a chat with the bot is opened. Read as anything
+    // else it would start a task that says "/start", which is nobody's idea of a first impression.
+    case "/start":
+      return { kind: "start" };
     default:
       // Unknown commands fall back to prompt
       return { kind: "prompt", text };

@@ -1356,6 +1356,7 @@ export const ja: Dictionary = {
   "remote.err.missingAnswer": "回答がありません",
   "remote.err.unknownAction": "不明なアクション: {action}",
   "remote.err.invalidToken": "無効なトークン",
+  "bridge.reply.welcome": "こんにちは。あなたのマシンで動いているエージェントのオーケストレーター、ainess です。やってほしいことを教えてください。",
   "bridge.reply.help": "やってほしいことを書けば、そのまま始めます。\n/status — 誰が作業中で、何があなたを待っているか\n/tasks — 開いているカード\n/approve <id> [メモ] — 承認\n/reject <id> [メモ] — 却下\n/answer [id] <テキスト> — 質問に答える\n/project [名前] — プロジェクトの確認・変更\n/stop — すべて停止\n/help — これ",
   "bridge.reply.started": "{project} で始めました。",
   "bridge.reply.stopped": "止めました。",

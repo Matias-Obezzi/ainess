@@ -1355,6 +1355,7 @@ export const zh: Dictionary = {
   "remote.err.missingAnswer": "缺少回答",
   "remote.err.unknownAction": "未知动作：{action}",
   "remote.err.invalidToken": "无效令牌",
+  "bridge.reply.welcome": "你好，我是 ainess：跑在你机器上的智能体编排器。告诉我你想做什么，我就开始。",
   "bridge.reply.help": "把你想做的事写给我，我就开始。\n/status — 谁在工作、什么在等你\n/tasks — 打开的卡片\n/approve <id> [备注] — 批准\n/reject <id> [备注] — 拒绝\n/answer [id] <文本> — 回答问题\n/project [名称] — 查看或切换项目\n/stop — 全部停止\n/help — 这个",
   "bridge.reply.started": "已经开始了，在 {project}。",
   "bridge.reply.stopped": "已停止。",

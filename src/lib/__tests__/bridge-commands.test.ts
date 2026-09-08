@@ -39,6 +39,11 @@ describe("parseBridgeCommand", () => {
     expect(parseBridgeCommand("/project ainess")).toEqual({ kind: "project", name: "ainess" });
   });
 
+  it("takes the /start Telegram sends on its own, instead of starting a task with it", () => {
+    expect(parseBridgeCommand("/start")).toEqual({ kind: "start" });
+    expect(parseBridgeCommand("/start@ainess_bot")).toEqual({ kind: "start" });
+  });
+
   it("treats a command it does not know as something to do, not as an error", () => {
     expect(parseBridgeCommand("/deploy ya")).toEqual({ kind: "prompt", text: "/deploy ya" });
   });

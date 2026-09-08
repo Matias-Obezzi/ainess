@@ -104,6 +104,11 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
     case "help":
       return translateNow("bridge.reply.help");
 
+    case "start":
+      // Said in the language the app is set to, and followed by what it can do: whoever just opened
+      // this chat has no idea what any of it is yet.
+      return translateNow("bridge.reply.welcome") + "\n\n" + translateNow("bridge.reply.help");
+
     case "status":
       return statusText(projectId);
 

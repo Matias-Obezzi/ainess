@@ -1355,6 +1355,7 @@ export const pt: Dictionary = {
   "remote.err.missingAnswer": "Falta a resposta",
   "remote.err.unknownAction": "Ação desconhecida: {action}",
   "remote.err.invalidToken": "Token inválido",
+  "bridge.reply.welcome": "Olá, eu sou o ainess: o orquestrador de agentes que roda na sua máquina. Diga o que você quer que seja feito e eu começo.",
   "bridge.reply.help": "Escreva o que você quer que seja feito e eu começo.\n/status — quem está trabalhando e o que espera por você\n/tasks — os cartões abertos\n/approve <id> [nota] — aprovar\n/reject <id> [nota] — rejeitar\n/answer [id] <texto> — responder uma pergunta\n/project [nome] — ver ou trocar de projeto\n/stop — parar tudo\n/help — isto",
   "bridge.reply.started": "Começando, em {project}.",
   "bridge.reply.stopped": "Parado.",
