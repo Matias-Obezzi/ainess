@@ -18,3 +18,16 @@ export function windowOf<T>(items: T[], limit: number): { shown: T[]; hidden: nu
     hidden: items.length - limit
   };
 }
+
+/**
+ * Distance in pixels from the bottom of a scrolling container to be considered "near the bottom",
+ * pinning the scroll to follow new content.
+ */
+export const STICK_TOLERANCE_PX = 40;
+
+/**
+ * Checks if a scrolling container is near the bottom.
+ */
+export function isNearBottom(el: { scrollHeight: number; scrollTop: number; clientHeight: number }, tolerance = STICK_TOLERANCE_PX): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < tolerance;
+}

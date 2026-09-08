@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { windowOf } from '../feed-window';
+import { windowOf, isNearBottom } from '../feed-window';
 
 describe('windowOf', () => {
   it('returns the last items and the hidden count when limit is less than total', () => {
@@ -24,5 +24,24 @@ describe('windowOf', () => {
     const items = [1, 2, 3];
     expect(windowOf(items, 0)).toEqual({ shown: [], hidden: 3 });
     expect(windowOf(items, -2)).toEqual({ shown: [], hidden: 3 });
+  });
+});
+
+describe('isNearBottom', () => {
+  it('returns true when right at the bottom', () => {
+    expect(isNearBottom({ scrollHeight: 1000, scrollTop: 900, clientHeight: 100 })).toBe(true);
+  });
+
+  it('returns true when within tolerance (10px)', () => {
+    expect(isNearBottom({ scrollHeight: 1000, scrollTop: 890, clientHeight: 100 })).toBe(true);
+  });
+
+  it('returns false when far from bottom (200px)', () => {
+    expect(isNearBottom({ scrollHeight: 1000, scrollTop: 700, clientHeight: 100 })).toBe(false);
+  });
+
+  it('respects a custom tolerance', () => {
+    expect(isNearBottom({ scrollHeight: 1000, scrollTop: 700, clientHeight: 100 }, 250)).toBe(true);
+    expect(isNearBottom({ scrollHeight: 1000, scrollTop: 700, clientHeight: 100 }, 150)).toBe(false);
   });
 });

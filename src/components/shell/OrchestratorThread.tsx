@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
-import { windowOf } from "@/lib/feed-window";
+import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { QueuedMessages } from "./QueuedMessages";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,7 @@ export function OrchestratorThread() {
   }, [shownRuns.length]);
 
   const [stickToBottom, setStickToBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [newCount, setNewCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevCount = useRef(rootRuns.length);
@@ -108,7 +108,7 @@ export function OrchestratorThread() {
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
       if (stickToBottom) bottomRef.current?.scrollIntoView();
-      else setHasNewMessages(true);
+      else setNewCount(n => n + (rootRuns.length - prevCount.current));
     }
     prevCount.current = rootRuns.length;
   }, [rootRuns.length, stickToBottom]);
@@ -156,15 +156,14 @@ export function OrchestratorThread() {
       lastHeight.current = scrollRef.current.clientHeight;
       return;
     }
-    const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
-    const atBottom = scrollHeight - scrollTop - clientHeight < 40;
+    const atBottom = isNearBottom(scrollRef.current);
     setStickToBottom(atBottom);
-    if (atBottom) setHasNewMessages(false);
+    if (atBottom) setNewCount(0);
   };
 
   const scrollToBottom = () => {
     setStickToBottom(true);
-    setHasNewMessages(false);
+    setNewCount(0);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -199,9 +198,9 @@ export function OrchestratorThread() {
         )}
       </div>
 
-      {!stickToBottom && hasNewMessages && (
+      {!stickToBottom && newCount > 0 && (
         <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
-          <ArrowDown className="h-4 w-4" /> {t("thread.newMessages")}
+          <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
         </Button>
       )}
     </div>

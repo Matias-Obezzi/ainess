@@ -188,7 +188,8 @@ export const ja: Dictionary = {
   "message.createTask": "これでタスクを作成",
   "thread.empty.title": "このプロジェクトにはまだタスクがありません",
   "thread.empty.body": "下にチームにやってほしいことを書いてください。プランナー(Claude)が分析し、実装担当に委任して、ここで返答します。例:「認証モジュールにテストを追加して、失敗した箇所を修正して」",
-  "thread.newMessages": "新着メッセージ",
+  "thread.newMessages.one": "{n} 件の新しいメッセージ",
+  "thread.newMessages.other": "{n} 件の新しいメッセージ",
   "thread.round": "ラウンド {n}",
   "thread.rawOutput": "生の出力を見る",
   "thread.activity.one": "アクティビティ ({n} ステップ・{elapsed})",
@@ -861,7 +862,6 @@ export const ja: Dictionary = {
   "comm.clear.body": "ここに表示されているメッセージは削除されます。この操作は元に戻せません。",
     "comm.showOlder": "前のメッセージを {n} 件表示",
   "thread.showOlder": "前のタスクを {n} 件表示",
-"comm.goToEnd": "最後に移動",
   "comm.empty.title": "まだ活動がありません",
   "comm.empty.body": "エージェント同士のやり取りが、作業が進むにつれてここに表示されます。",
 

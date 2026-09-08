@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useAppStore, selectProjectAgents } from "@/store";
-import { windowOf } from "@/lib/feed-window";
+import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { MessageItem } from "./MessageItem";
+import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
@@ -39,7 +40,7 @@ export function CommunicationPanel() {
   }, [currentProjectId, filterAgent, filterKinds]);
 
   const [stickToBottom, setStickToBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [newCount, setNewCount] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef<number | null>(null);
@@ -60,7 +61,7 @@ export function CommunicationPanel() {
       if (stickToBottom) {
         bottomRef.current?.scrollIntoView();
       } else {
-        setHasNewMessages(true);
+        setNewCount(n => n + (messages.length - prevMessagesLength.current));
       }
     }
     prevMessagesLength.current = messages.length;
@@ -68,17 +69,16 @@ export function CommunicationPanel() {
 
   const onScroll = () => {
     if (!scrollContainerRef.current) return;
-    const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 40;
+    const isAtBottom = isNearBottom(scrollContainerRef.current);
     setStickToBottom(isAtBottom);
     if (isAtBottom) {
-      setHasNewMessages(false);
+      setNewCount(0);
     }
   };
 
   const scrollToBottom = () => {
     setStickToBottom(true);
-    setHasNewMessages(false);
+    setNewCount(0);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -189,14 +189,14 @@ export function CommunicationPanel() {
         )}
       </div>
 
-      {!stickToBottom && hasNewMessages && (
+      {!stickToBottom && newCount > 0 && (
         <Button
           size="sm"
           className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2"
           onClick={scrollToBottom}
         >
           <ArrowDown className="h-4 w-4" />
-          {t("comm.goToEnd")}
+          {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
         </Button>
       )}
     </div>

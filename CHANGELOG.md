@@ -55,6 +55,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **You can read back through a conversation while an agent is still writing.** In a chat, every
+  delta it sent dragged you back to the bottom — scrolling up to check what it had said two minutes
+  ago was impossible until it finished. The chat now does what the orchestrator thread already did:
+  it follows the bottom only while you are at the bottom, and when you are not, a pill in the corner
+  says how many messages came in and takes you there when you want it. The count is in all three
+  places now — chat, thread and the communication feed — instead of a bare "new messages".
+
 - **A long model name no longer breaks the new-chat dialog.** A participant's row is three dropdowns
   and a bin in a grid, and a grid column will not go under the width of what it holds: pick a model
   with a long name and the row stretched, the dialog stretched with it, and the name and mode fields

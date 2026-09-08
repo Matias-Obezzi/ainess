@@ -188,7 +188,8 @@ export const en: Dictionary = {
   "message.createTask": "Create a task from this",
   "thread.empty.title": "No tasks in this project yet",
   "thread.empty.body": "Write below what you want the team to do. The planner (Claude) analyzes it, delegates to the implementers, and replies here. Example: \"Add tests for the auth module and fix whatever fails.\"",
-  "thread.newMessages": "New messages",
+  "thread.newMessages.one": "{n} new message",
+  "thread.newMessages.other": "{n} new messages",
   "thread.round": "Round {n}",
   "thread.rawOutput": "View raw output",
   "thread.activity.one": "Activity ({n} step · {elapsed})",
@@ -861,7 +862,6 @@ export const en: Dictionary = {
   "comm.clear.body": "The messages you see here are deleted. This cannot be undone.",
     "comm.showOlder": "Show {n} earlier messages",
   "thread.showOlder": "Show {n} earlier tasks",
-"comm.goToEnd": "Go to the end",
   "comm.empty.title": "No activity yet",
   "comm.empty.body": "You'll see what the agents say to each other here as they work.",
 

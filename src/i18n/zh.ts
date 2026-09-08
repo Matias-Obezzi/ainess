@@ -187,7 +187,8 @@ export const zh: Dictionary = {
   "message.createTask": "用它创建任务",
   "thread.empty.title": "这个项目还没有任务",
   "thread.empty.body": "在下面写下你想让团队做什么。规划者（Claude）会分析、委派给实现者，并在这里回复你。例如：「给认证模块加测试，并修好所有失败的用例。」",
-  "thread.newMessages": "新消息",
+  "thread.newMessages.one": "{n} 条新消息",
+  "thread.newMessages.other": "{n} 条新消息",
   "thread.round": "第 {n} 轮",
   "thread.rawOutput": "查看原始输出",
   "thread.activity.one": "活动（{n} 步 · {elapsed}）",
@@ -860,7 +861,6 @@ export const zh: Dictionary = {
   "comm.clear.body": "您在此处看到的消息将被删除。此操作无法撤销。",
     "comm.showOlder": "显示 {n} 条更早的消息",
   "thread.showOlder": "显示 {n} 个更早的任务",
-"comm.goToEnd": "跳到最新",
   "comm.empty.title": "还没有任何动态",
   "comm.empty.body": "智能体一边工作一边相互说的话会显示在这里。",
 
