@@ -1,11 +1,19 @@
 # Changelog
 
-What changed in each release, for the people who use it. The app shows this same file in
-Settings → About.
+What changed in each release, for the people who use it. This is the English one and the app shows
+it to English readers; the other languages are in `docs/changelog/`, and the release check will not
+let one of them fall behind.
 
 ## Unreleased
 
 ### Added
+
+- **The changelog in your language.** The dialog that opens after an update, and Configuración →
+  Acerca de, now show the notes translated. English stays in `CHANGELOG.md` and each other language
+  has its own file, which the release check keeps in step with the version being published.
+- **It looks for a new version every five minutes**, not only once at startup, so a release
+  published while the app is open reaches it the same day. The same offer as always, and the same
+  switch in Configuración turns it off.
 
 - **Cutting a turn short to say something.** A message waiting for an agent has a second button:
   it stops what is running and hands the message over right away. Nothing is repeated — what the
@@ -14,6 +22,9 @@ Settings → About.
 
 ### Fixed
 
+- The "new version available" toast showed the release note as it is written, so it read
+  `[CHANGELOG.md](https://…)`: a toast has no markdown to render it with. It says what it has to
+  say now, and what changed is in the changelog that opens after the update.
 - A message written while an agent was working showed up in Comunicación and nowhere else, as if
   the app had swallowed it. It now sits at the end of the conversation, dashed and with a clock,
   saying who it is waiting for, and it can be taken back before its turn comes.

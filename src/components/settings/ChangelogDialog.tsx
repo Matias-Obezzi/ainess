@@ -1,23 +1,19 @@
-// What a version brought, in the app.
+// What a version brought, in the app and in the reader's language.
 //
-// The file is the repo's own CHANGELOG.md, bundled as it is: one place to write, and what the app
-// shows is what the release notes say. It opens by itself the first time a new version runs, since
-// the moment someone wants to know what changed is right after it changed under them.
+// English is the repo's own CHANGELOG.md, and each other language has its own file under
+// docs/changelog/ (see src/lib/changelog.ts). It opens by itself the first time a new version
+// runs, since the moment someone wants to know what changed is right after it changed under them.
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Markdown } from "@/components/shell/Markdown";
 import { appVersion } from "@/lib/updates";
 import { lastSeenVersion, rememberSeenVersion } from "@/lib/seen-version";
-import { useT } from "@/i18n/useT";
-import changelog from "../../../CHANGELOG.md?raw";
-
-/** The whole file, minus its own heading: the dialog already has a title. */
-function body(): string {
-  return changelog.replace(/^#\s+Changelog\s*\n/, "").trim();
-}
+import { useLanguage, useT } from "@/i18n/useT";
+import { changelogFor } from "@/lib/changelog";
 
 export function ChangelogDialog({ open, onOpenChange }: { open: boolean; onOpenChange(open: boolean): void }) {
   const t = useT();
+  const language = useLanguage();
   const [version, setVersion] = useState("");
 
   useEffect(() => {
@@ -32,7 +28,7 @@ export function ChangelogDialog({ open, onOpenChange }: { open: boolean; onOpenC
           <DialogDescription>{t("changelog.description", { version })}</DialogDescription>
         </DialogHeader>
         <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4 text-sm">
-          <Markdown text={body()} />
+          <Markdown text={changelogFor(language)} />
         </div>
       </DialogContent>
     </Dialog>
