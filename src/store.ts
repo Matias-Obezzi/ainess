@@ -175,10 +175,15 @@ export interface AppState {
   goBack(): void;
   goForward(): void;
 
-  // ---- Integrated terminals (in memory only, never persisted) ----
+  // ---- Integrated terminals (the tabs live in memory only, never persisted) ----
   /** Open terminal tabs, in tab-bar order. */
   terminals: TerminalTab[];
-  activeTerminalId: string | null;
+  /**
+   * The tab each project was last looking at, keyed by project id (`"home"` with no project open).
+   * The tabs themselves do not survive a restart; which one was in front is cheap to remember and
+   * harmless when it points at a shell that is gone (the bar falls back to the first one).
+   */
+  activeTerminalIds: Record<string, string | null>;
   /** Shells detected on this machine, loaded once at startup (desktop app only). */
   shells: ShellInfo[];
   openTerminal(opts?: { shellId?: string; cwd?: string }): void;
@@ -426,6 +431,7 @@ interface UiPrefs {
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
   sidebarOpen: boolean;
+  activeTerminalIds: Record<string, string | null>;
 }
 
 const DRAFTS_KEY = "ais.drafts";
@@ -529,6 +535,7 @@ const defaultUiPrefs: UiPrefs = {
   settingsSection: "general",
   sidebarCollapsed: {},
   sidebarOpen: true,
+  activeTerminalIds: {},
 };
 
 const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
@@ -547,6 +554,14 @@ function sanitizeProjectChats(value: unknown): Record<string, string | null> {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
       .filter(([, chat]) => typeof chat === "string" || chat === null),
+  ) as Record<string, string | null>;
+}
+
+function sanitizeActiveTerminalIds(value: unknown): Record<string, string | null> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, id]) => typeof id === "string" || id === null),
   ) as Record<string, string | null>;
 }
 
@@ -599,6 +614,7 @@ function loadUiPrefs(): UiPrefs {
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
       sidebarOpen: parsed.sidebarOpen !== false,
+      activeTerminalIds: sanitizeActiveTerminalIds(parsed.activeTerminalIds),
     };
   } catch {
     return { ...defaultUiPrefs };
@@ -623,6 +639,7 @@ function saveUiPrefs(): void {
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
       sidebarOpen: s.sidebarOpen,
+      activeTerminalIds: s.activeTerminalIds,
     };
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
   } catch {
@@ -728,7 +745,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   shortcutsOpen: false,
   focusedTaskId: null,
   terminals: [],
-  activeTerminalId: null,
   shells: [],
 
   ...(() => {
@@ -1018,7 +1034,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set(s => ({
       terminals: [...s.terminals, terminal],
-      activeTerminalId: terminal.id,
+      activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
       termPanelOpen: true,
     }));
     saveUiPrefs();
@@ -1029,20 +1045,25 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     const index = state.terminals.findIndex(t => t.id === id);
     if (index === -1) return;
+    const tab = state.terminals[index];
+    const key = tab.projectId ?? "home";
     forgetPty(id);
     void getTransport().ptyKill(id).catch(e => log.warn("terminal", `no se pudo cerrar ${id}: ${e}`));
     const terminals = state.terminals.filter(t => t.id !== id);
-    let activeTerminalId = state.activeTerminalId;
-    if (activeTerminalId === id) {
-      const neighbour = terminals[Math.min(index, terminals.length - 1)];
-      activeTerminalId = neighbour ? neighbour.id : null;
+    let activeTerminalIds = { ...state.activeTerminalIds };
+    if (activeTerminalIds[key] === id) {
+      const projectTerminals = terminals.filter(t => t.projectId === tab.projectId);
+      const projIndex = state.terminals.filter(t => t.projectId === tab.projectId).findIndex(t => t.id === id);
+      const neighbour = projectTerminals[Math.min(projIndex, projectTerminals.length - 1)];
+      activeTerminalIds[key] = neighbour ? neighbour.id : null;
     }
-    set({ terminals, activeTerminalId });
+    set({ terminals, activeTerminalIds });
   },
 
   setActiveTerminal: (id) => {
-    if (!get().terminals.some(t => t.id === id)) return;
-    set({ activeTerminalId: id });
+    const tab = get().terminals.find(t => t.id === id);
+    if (!tab) return;
+    set(s => ({ activeTerminalIds: { ...s.activeTerminalIds, [tab.projectId ?? "home"]: id } }));
   },
 
   moveTerminal: (id, toIndex) => {
@@ -1197,6 +1218,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
       const wasCurrent = state.currentProjectId === id;
       const chatGone = state.currentChatId ? goneChats.has(state.currentChatId) : false;
+      const newActiveTerminalIds = { ...state.activeTerminalIds };
+      delete newActiveTerminalIds[id];
+
       return {
         config: { ...state.config, projects: newProjects, chats: newChats, hooks: newHooks },
         runtime: newRuntime,
@@ -1221,9 +1245,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         navIndex,
         // The search palette may have asked the board to open a card of this project.
         focusedTaskId: state.focusedTaskId && goneTasks.has(state.focusedTaskId) ? null : state.focusedTaskId,
-        // The shells keep running (only their tab, `exit` or closing the app may kill one), but
-        // they no longer belong to anything.
+        // The shells keep running (only their tab, `exit` or closing the app may kill one), but they
+        // no longer belong to anything: with the tab bar showing one project at a time, that is
+        // where they now appear — on the home screen, which is where a terminal with no project is.
         terminals: state.terminals.map(t => (t.projectId === id ? { ...t, projectId: null } : t)),
+        activeTerminalIds: newActiveTerminalIds,
         currentProjectId: wasCurrent ? null : state.currentProjectId,
         currentChatId: wasCurrent || chatGone ? null : state.currentChatId,
         // Losing the open project drops the user back to the home screen.

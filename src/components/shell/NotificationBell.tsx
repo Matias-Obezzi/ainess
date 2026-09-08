@@ -1,7 +1,7 @@
 // The bell in the window bar: the session's history of everything that asked for attention.
 // It is not the toast system (`components/ui/toast`), which only says things in the moment, nor
 // the OS notifications of `hooks/useSystemNotifications`: this is what is left afterwards.
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Bell,
   CheckCheck,
@@ -109,6 +109,29 @@ export function NotificationBell() {
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Radix closes popovers on outside click, but the title bar where this lives is a
+  // data-tauri-drag-region. A click there is intercepted by Tauri to drag the window,
+  // swallowing the event before it reaches Radix's dismiss layer. We catch it in the
+  // capture phase to close the panel manually.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (
+        contentRef.current?.contains(target) ||
+        triggerRef.current?.contains(target)
+      ) {
+        return;
+      }
+      toggleNotifications(false);
+    };
+    document.addEventListener("pointerdown", handler, { capture: true });
+    return () => document.removeEventListener("pointerdown", handler, { capture: true });
+  }, [open, toggleNotifications]);
+
   // The relative times only need to move while somebody is looking at them.
   useEffect(() => {
     if (!open) return;
@@ -134,6 +157,7 @@ export function NotificationBell() {
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
+                ref={triggerRef}
                 variant="ghost"
                 size="icon"
                 className="relative h-7 w-7"
@@ -155,7 +179,7 @@ export function NotificationBell() {
 
         {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
         {/* We prevent auto-focus because it falls on the first icon button, making its tooltip appear on its own. */}
-        <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
+        <PopoverContent ref={contentRef} align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
             <Tooltip>

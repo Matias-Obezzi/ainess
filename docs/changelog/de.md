@@ -51,6 +51,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Benachrichtigungs-Panel schließt sich, wenn du daneben klickst.** Es hängt an der
+  Titelleiste, die die Zone zum Ziehen des Fensters ist: ein Klick dort nimmt das System, um das
+  Fenster zu bewegen, und er erreicht nie die Schicht, die ein Popover schließt.
+- **Terminals gehören zu ihrem Projekt.** Du hast eines in einem Projekt geöffnet, bist zu einem
+  anderen gegangen und hast weiter die Tabs des ersten gesehen — deshalb schien ein Terminal auch im
+  falschen Ordner zu öffnen: es war das eines anderen Projekts, in dessen eigenem Ordner. Jetzt
+  zeigt jedes Projekt seine eigenen und merkt sich, welches vorn war. Ein gelöschtes Projekt lässt
+  seine Shells weiterlaufen, wie bisher — eine davon steckt vielleicht mitten in etwas — und sie
+  tauchen auf der Startseite auf, wo ein Terminal ohne Projekt hingehört.
 - **Du kannst in einer Konversation zurücklesen, während ein Agent noch schreibt.** In einem Chat
   zog dich jedes gesendete Delta zurück nach unten: hochzuscrollen, um zu prüfen, was er vor zwei
   Minuten gesagt hatte, war unmöglich, bis er fertig war. Der Chat macht jetzt, was der Orchestrator-Thread

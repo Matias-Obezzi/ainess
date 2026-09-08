@@ -134,8 +134,11 @@ export function ProjectScreen() {
             onClick={() => {
               const wasOpen = termPanelOpen;
               toggleTermPanel();
-              if (!wasOpen && useAppStore.getState().terminals.length === 0) {
-                useAppStore.getState().openTerminal();
+              const store = useAppStore.getState();
+              const currentProjectId = store.currentProjectId;
+              const projectTerminals = store.terminals.filter(t => t.projectId === currentProjectId);
+              if (!wasOpen && projectTerminals.length === 0) {
+                store.openTerminal();
               }
             }}
           >

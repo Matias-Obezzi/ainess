@@ -50,6 +50,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El panel de notificaciones se cierra al hacer clic afuera.** Cuelga de la barra de título, que es
+  la zona por la que se arrastra la ventana: un clic ahí lo toma el sistema para mover la ventana y
+  nunca llega a la capa que cierra el popover.
+- **Las terminales son de su proyecto.** Abrías una en un proyecto, te ibas a otro y seguías viendo
+  las pestañas del primero — que es también por qué parecía que una terminal se abría en la carpeta
+  equivocada: era la de otro proyecto, parada en su propia carpeta. Ahora cada proyecto muestra las
+  suyas y recuerda en cuál estaba. Borrar un proyecto sigue dejando sus shells vivas, como siempre
+  —alguna puede estar en medio de algo— y aparecen en Inicio, que es donde va una terminal sin
+  proyecto.
 - **Podés leer para atrás en una conversación mientras un agente sigue escribiendo.** En un chat,
   cada delta que mandaba te arrastraba de vuelta al fondo: scrollear para arriba a ver qué había
   dicho hace dos minutos era imposible hasta que terminara. El chat ahora hace lo que el hilo

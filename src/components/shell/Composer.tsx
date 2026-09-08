@@ -464,7 +464,7 @@ export function Composer() {
               aria-hidden
               className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
             >
-              <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} />
+              <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} cursor={false} />
             </span>
           )}
           <input

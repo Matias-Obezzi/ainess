@@ -50,6 +50,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O painel de notificações fecha ao clicar fora dele.** Ele fica preso à barra de título, que é a
+  área por onde se arrasta a janela: um clique ali é tomado pelo sistema para mover a janela e nunca
+  chega à camada que fecha o popover.
+- **Os terminais pertencem ao seu projeto.** Você abria um em um projeto, ia para outro e continuava
+  vendo as abas do primeiro — que é também por que um terminal parecia abrir na pasta errada: era o
+  de outro projeto, parado na pasta dele. Agora cada projeto mostra os seus e lembra em qual estava.
+  Apagar um projeto continua deixando os shells vivos, como sempre — algum pode estar no meio de
+  algo — e eles aparecem na tela inicial, que é onde fica um terminal sem projeto.
 - **Você pode ler uma conversa para trás enquanto um agente ainda está escrevendo.** Em um chat,
   cada delta que ele enviava arrastava você de volta para o fundo: rolar para cima para verificar o que ele tinha
   dito há dois minutos era impossível até que terminasse. O chat agora faz o que a thread
