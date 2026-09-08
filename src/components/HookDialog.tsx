@@ -3,6 +3,8 @@ import { Hook, HookEvent, HookAction } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TemplateInput } from "@/components/ui/template-input";
+import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -92,7 +94,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1e1e1e] border-[#333] text-gray-200">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? t("hookDialog.edit") : t("hooks.new")}</DialogTitle>
         </DialogHeader>
@@ -100,7 +102,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t("common.name")}</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} required className="bg-[#111] border-[#333]" />
+              <Input value={name} onChange={e => setName(e.target.value)} required />
             </div>
             <div className="space-y-2 flex flex-col justify-end">
               <div className="flex items-center space-x-2 pb-2">
@@ -114,8 +116,8 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>{t("hookDialog.event")}</Label>
               <Select value={event} onValueChange={(v) => setEvent(v as HookEvent)}>
-                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#1e1e1e] border-[#333]">
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
                   {EVENTS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -123,8 +125,8 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>{t("hookDialog.actionLabel")}</Label>
               <Select value={actionType} onValueChange={setActionType}>
-                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#1e1e1e] border-[#333]">
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
                   {ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{t(a.labelKey)}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -135,8 +137,8 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>{t("hookDialog.filterAgent")}</Label>
               <Select value={filterAgentId} onValueChange={setFilterAgentId}>
-                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#1e1e1e] border-[#333]">
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
                   <SelectItem value="all">{t("common.all")}</SelectItem>
                   {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
@@ -145,8 +147,8 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <div className="space-y-2">
               <Label>{t("hookDialog.filterProject")}</Label>
               <Select value={filterProjectId} onValueChange={setFilterProjectId}>
-                <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#1e1e1e] border-[#333]">
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
                   <SelectItem value="all">{t("common.all")}</SelectItem>
                   {store.config.projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
@@ -154,11 +156,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             </div>
           </div>
 
-          <div className="border border-[#333] p-4 rounded-md space-y-4">
+          <div className="border border-border p-4 rounded-md space-y-4">
             {(actionType === "slack" || actionType === "discord" || actionType === "webhook") && (
               <div className="space-y-2">
                 <Label>Webhook URL</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" className="bg-[#111] border-[#333]" />
+                <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" />
               </div>
             )}
             
@@ -166,11 +168,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               <>
                 <div className="space-y-2">
                   <Label>{t("hookDialog.command")}</Label>
-                  <Input value={program} onChange={e => setProgram(e.target.value)} required className="bg-[#111] border-[#333]" />
+                  <Input value={program} onChange={e => setProgram(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("hookDialog.args")}</Label>
-                  <Input value={argsStr} onChange={e => setArgsStr(e.target.value)} className="bg-[#111] border-[#333]" />
+                  <TemplateInput value={argsStr} onChange={setArgsStr} />
                 </div>
               </>
             )}
@@ -179,8 +181,8 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               <div className="space-y-2">
                 <Label>{t("hookDialog.agentToInstruct")}</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger className="bg-[#111] border-[#333] w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#1e1e1e] border-[#333]">
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
                     {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -190,22 +192,28 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             {actionType === "notify" && (
               <div className="space-y-2">
                 <Label>{t("hookDialog.title")}</Label>
-                <Input value={title} onChange={e => setTitle(e.target.value)} required className="bg-[#111] border-[#333]" />
+                <TemplateInput value={title} onChange={setTitle} required />
               </div>
             )}
 
             {actionType !== "command" && (
               <div className="space-y-2">
                 <Label>{t("hookDialog.template")}</Label>
-                <Input value={template} onChange={e => setTemplate(e.target.value)} required className="bg-[#111] border-[#333]" />
-                <p className="text-xs text-gray-500">{t("hookDialog.variables")} {'{{event}}'}, {'{{project}}'}, {'{{agent}}'}, {'{{output|300}}'}, {'{{error}}'}, {'{{time}}'}…</p>
+                <TemplateInput value={template} onChange={setTemplate} required />
+                <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                  {t("hookDialog.variables")}
+                  {TEMPLATE_VARS.map(v => (
+                    <code key={v} className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">{`{{${v}}}`}</code>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{t("hookDialog.variablesHint")}</p>
               </div>
             )}
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="ghost" type="button" onClick={onClose} className="text-gray-400 hover:text-white">{t("common.cancel")}</Button>
-            <Button type="submit" className="bg-[#007acc] hover:bg-[#0098ff] text-white">{t("common.save")}</Button>
+            <Button variant="ghost" type="button" onClick={onClose}>{t("common.cancel")}</Button>
+            <Button type="submit">{t("common.save")}</Button>
           </div>
         </form>
       </DialogContent>

@@ -9,7 +9,9 @@ import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
+import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { delegationNeedsApproval } from "@/lib/approvals";
 
 let listenersAttached = false;
 
@@ -98,7 +100,7 @@ function appendCommText(agentId: string, runId: string, projectId: string, delta
   });
 }
 
-export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string }): string | undefined {
+export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string } }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
@@ -120,6 +122,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     round: opts.round,
     model: opts.model,
     kind: opts.kind,
+    review: opts.review,
   };
 
   useAppStore.setState(state => {
@@ -354,6 +357,10 @@ function handleExit(e: RunExitEvent) {
 
   taskSync.taskOnRunFinished({ ...run, status, output, endedAt: Date.now(), exitCode: e.code });
 
+  if (agentForRun) {
+    maybeStartReview({ ...run, status, output, endedAt: Date.now(), exitCode: e.code }, agentForRun);
+  }
+
   if (agentForRun?.provider === "antigravity" && !e.killed) {
     const text = `${output}\n${run.rawLines.slice(-20).join("\n")}`;
     void recordAntigravityOutcome(run.model ?? agentForRun.model, text, status === "done");
@@ -461,7 +468,7 @@ function onRunFinished(runId: string) {
             addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
             void emitHookEvent("delegation", {}, { ...ctx, toAgent: childAgent.name, task: task.task, model: modelToUse || "" });
             const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse };
-            if (store.config.approveDelegations || childAgent.requireApproval) {
+            if (delegationNeedsApproval(childAgent, store.config.approveDelegations)) {
               // Gate: the child only runs once the user approves (app, CLI or phone).
               const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
@@ -637,6 +644,47 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
       runId: question.runId,
     });
   }
+}
+
+/**
+ * Starts a review run if the finished run was an implementer's delegated work,
+ * and a reviewer agent is available in the project.
+ */
+function maybeStartReview(run: Run, agent: AgentConfig): void {
+  if (run.status !== "done" || !run.parentRunId) return;
+  if (run.kind === "chat") return;
+  if (run.review) return;
+  
+  const store = useAppStore.getState();
+  const reviewer = pickReviewer(selectProjectAgents(store, run.projectId), agent.id);
+  if (!reviewer) return;
+  
+  const task = taskSync.taskForRun(run.projectId, run.id);
+  if (!task) return;
+  
+  const prompt = translateNow("review.prompt", { agent: agent.name, task: run.prompt, output: run.output });
+  const reviewRunId = startRun({
+    agentId: reviewer.id,
+    projectId: run.projectId,
+    prompt,
+    parentRunId: run.parentRunId,
+    round: run.round,
+    rootRunId: run.rootRunId,
+    review: { ofRunId: run.id, taskId: task.id }
+  });
+  
+  if (!reviewRunId) return;
+
+  // The reviewer's CLI may be missing: `startRun` closes that run in error on its own and no exit
+  // ever arrives, so nothing would move the card. Settle it here instead of parking it in a review
+  // nobody is doing.
+  const started = useAppStore.getState().runs[reviewRunId];
+  if (started && started.status !== "running") {
+    taskSync.taskOnRunFinished(started);
+    return;
+  }
+
+  taskSync.taskOnReviewStarted(task.id, reviewRunId);
 }
 
 function maybeContinueParent(parentRunId: string) {

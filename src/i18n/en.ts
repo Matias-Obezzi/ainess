@@ -120,6 +120,9 @@ export const en: Dictionary = {
   "projectScreen.hierarchy": "Hierarchy",
   "projectScreen.toggleComm": "Show or hide the communication panel",
   "projectScreen.comm": "Communication",
+  "projectScreen.toggleDiff": "Show or hide the diff",
+  "projectScreen.diff": "Diff",
+
   "projectScreen.toggleTerminals": "Show or hide the terminals (Ctrl+`)",
   "projectScreen.terminal": "Terminal",
 
@@ -178,9 +181,26 @@ export const en: Dictionary = {
   "markdown.invalidDelegation": "Delegation with invalid format",
 
   // ---- Right dock ----
+  "dock.dragToResize": "Drag to resize",
   "dock.dragToSplit": "Drag to split the height",
   "dock.comm.title": "Communication",
   "dock.comm.subtitle": "Everything the agents say to each other and to you",
+  "dock.diff.title": "Diff",
+  "dock.diff.subtitle": "The project's git changes",
+  "diff.mode.working": "Uncommitted",
+  "diff.mode.staged": "Staged",
+  "diff.mode.head": "Last commit",
+  "diff.refresh": "Refresh",
+  "diff.files.one": "{n} file",
+  "diff.files.other": "{n} files",
+  "diff.untracked.one": "{n} untracked file",
+  "diff.untracked.other": "{n} untracked files",
+  "diff.empty.title": "No changes",
+  "diff.empty.body": "When the agents touch the code, the diff shows up here.",
+  "diff.notARepo.title": "This project is not a git repository",
+  "diff.notARepo.body": "With no repository there is no diff to show.",
+  "diff.truncated": "The diff is huge: only the beginning is shown.",
+  "diff.binary": "Binary file",
 
   // ---- Notifications ----
   "notifications.title": "Notifications",
@@ -451,7 +471,7 @@ export const en: Dictionary = {
   "settings.general.orchestrationTitle": "Orchestration",
   "settings.general.maxRoundsHint": "How many automatic continuations the planner can chain for the same user task.",
   "settings.general.autoModelHint": "If on, the planner automatically picks the right model (flash, pro, etc) for each task delegated to the agents.",
-  "settings.general.approveDelegationsHint": "Every task the planner delegates stays on hold until you approve it from the app, the CLI, or your phone.",
+  "settings.general.approveDelegationsHint": "Every task delegated by the planner will be on hold until you approve it from the app, the CLI or your phone. Each agent can change this in their settings.",
   "settings.general.boardTitle": "Task board",
   "settings.general.boardDescription": "How the board tidies itself up without being asked.",
   "settings.general.autoArchiveNever": "Never",
@@ -712,6 +732,9 @@ export const en: Dictionary = {
   "approvals.lines.one": "{n} line",
   "approvals.lines.other": "{n} lines",
   "approvals.notePlaceholder": "Optional note (the agent gets it if you reject)",
+  "review.prompt": "Review the work just finished by {agent}.\n\nOriginal task:\n{task}\n\nOutput:\n{output}\n\nCheck the repository to verify it. End your response with a final line saying exactly VERDICT: APPROVED if it's correct, or VERDICT: CHANGES if something needs fixing, and in that case list what needs changing above.",
+  "review.changes": "The reviewer requested changes:\n{output}",
+  "review.failed": "The review could not finish: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "New agent",
@@ -729,7 +752,12 @@ export const en: Dictionary = {
   "agentDialog.otherModel": "Other…",
   "agentDialog.otherModelPlaceholder": "E.g.: gemini-3.1-pro-high",
   "agentDialog.autoApprove": "Auto-approve tools",
-  "agentDialog.requireApproval": "Needs your approval to receive delegated tasks",
+  "agentDialog.approvalMode": "Approval to receive delegated tasks",
+  "agentDialog.approvalMode.inherit": "Follow the general setting",
+  "agentDialog.approvalMode.always": "Always ask me",
+  "agentDialog.approvalMode.never": "Never ask me",
+  "agentDialog.approvalModeInheritOn": "Right now the general setting asks for your approval on every delegation.",
+  "agentDialog.approvalModeInheritOff": "Right now no delegation needs your approval.",
   "agentDialog.worktree": "Work in its own worktree",
   "agentDialog.worktreeHint": "The {branch} branch and a folder next to the project get created. Dependencies are installed there the first time, so the first run takes longer.",
   "agentDialog.notARepo": "The project is not a git repository: a worktree cannot be created.",
@@ -779,6 +807,8 @@ export const en: Dictionary = {
   "comm.kinds": "Types",
   "comm.kindsSome": "Types ({n}/{total})",
   "comm.clear": "Clear",
+  "comm.clear.title": "Clear the conversation?",
+  "comm.clear.body": "The messages you see here are deleted. This cannot be undone.",
   "comm.goToEnd": "Go to the end",
   "comm.empty.title": "No activity yet",
   "comm.empty.body": "You'll see what the agents say to each other here as they work.",
@@ -824,6 +854,19 @@ export const en: Dictionary = {
   "git.aheadBehind": "Ahead / behind",
   "git.upToDate": "up to date",
   "git.aheadBehindValue": "{ahead} to push · {behind} to pull",
+  "git.pull": "Pull",
+  "git.pullHint": "Bring the commits from the remote (fast-forward only)",
+  "git.push": "Push",
+  "git.pushHint": "Push this branch to the remote",
+  "git.switchBranch": "Switch branch",
+  "git.newBranch": "New branch…",
+  "git.newBranchFrom": "Created from wherever the repo is now.",
+  "git.branchPlaceholder": "my-branch",
+  "git.branchCreated": "Branch {branch} created",
+  "git.agentsWorking": "The agents are working in this repo",
+  "git.done": "Done",
+  "git.failed": "It did not work",
+  "git.noGit": "git was not found",
   "git.openPullRequests": "Open pull requests",
   "git.noOpenPullRequests": "No open pull requests.",
 
@@ -878,6 +921,7 @@ export const en: Dictionary = {
   "hookDialog.title": "Title",
   "hookDialog.template": "Template",
   "hookDialog.variables": "Variables:",
+  "hookDialog.variablesHint": "Type {{ in the message to pick a variable. You can trim a value with {{output|300}}.",
 
   // ---- MCP dialog ----
   "mcpDialog.new": "New MCP server",
@@ -1158,3 +1202,4 @@ export const en: Dictionary = {
   "folder.readme.title": "The .ainess folder of {project}",
   "folder.readme.body": "What ainess knows about this project lives here. `BOARD.md` is the task board and `AGENTS.md` is the team: the app writes both, so anything you edit by hand is lost on the next run — to move a card, the planner delegates it with its id.\n\nThe rest of the folder belongs to the agents: plans, notes and handoffs go here rather than in each CLI's own config folder.\n\nIf a dev server is watching this repository, add `.ainess/` to what it ignores: every change of the board touches these files.",
 };
+

@@ -3,6 +3,48 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## 0.5.0 — 2026-09-08
+
+### Added
+
+- **The diff, next to the conversation.** A third section in the right dock, alongside Comunicación
+  and Terminales: the project's git changes, file by file, with the hunks coloured and every file
+  collapsible. It reads the uncommitted work, what is staged, or the last commit, lists the
+  untracked files that `git diff` leaves out, and refreshes itself when a run ends — which is
+  exactly when the working tree has just changed under the agents' hands. Read-only: nothing in it
+  writes to your repository. The dock now takes any two or three of its sections at once, each pair
+  split by a divider you can drag.
+- **Each agent gets a say over approvals.** The switch on an agent is now three ways: follow the
+  general setting, always ask, never ask. Before it could only add a gate, never lift one — with
+  "Approve every delegation" on, turning it off on an agent did nothing at all, and the dialog gave
+  no hint that something else was forcing it. It now says, right under the field, what the general
+  setting is doing today.
+- **The reviewer actually reviews.** A delegated task that finished well moved to *in review*
+  whenever the project had a reviewer, and stayed there forever: nobody ever told the reviewer. It
+  is handed over now — the reviewer gets the original task and what was delivered, and the card
+  moves on its own to *ready* when it approves, or back to *needs you*, findings in the detail, when
+  it asks for changes. The planner waits for that review and reads it before carrying on.
+- **Variables that complete themselves.** Typing `{{` in a hook's message, title or arguments opens
+  the list of variables the event carries: arrows to pick one, Enter to insert it.
+
+- **The side panes are dragged to the width you want.** The menu on the left and the dock on the
+  right were fixed at 260 and 380 pixels. Both have a divider now, and the width you leave is
+  remembered per machine.
+- **Pull, push and switch branch without leaving the app.** The repo popover of the project header
+  had only numbers in it; it now has the branch — local ones, remote ones you do not have yet, and
+  a first entry that asks for a name and creates one — plus a pull and a push. All of it is off
+  while an agent is working in that project: git moving files under a run is how one ends up half
+  applied to the wrong branch. The pull only fast-forwards, so it stops and says why instead of
+  leaving a merge behind, and the first push of a new branch sets its upstream.
+
+### Fixed
+
+- Emptying the conversation asks first. The bin in the communication panel used to wipe the whole
+  history on one click.
+- The hook dialog was the only one with its colours hardcoded, so the line explaining which
+  variables you can use was grey on grey. It follows the theme now, and lists every variable as a
+  chip you can read.
+
 ## 0.4.0 — 2026-09-07
 
 ### Added

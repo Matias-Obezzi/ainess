@@ -11,7 +11,7 @@ import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
 import { useT } from "@/i18n/useT";
-import { GitBranch, ListTodo, MessageSquare, PanelRight, TerminalSquare } from "lucide-react";
+import { GitBranch, ListTodo, MessageSquare, PanelRight, TerminalSquare, FileDiff } from "lucide-react";
 
 /** The working screen for one project: top bar, task board / thread / hierarchy, and the composer. */
 export function ProjectScreen() {
@@ -21,7 +21,9 @@ export function ProjectScreen() {
   const projectMode = useAppStore(state => state.projectMode);
   const setProjectMode = useAppStore(state => state.setProjectMode);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
+  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
+  const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
   const runtime = useAppStore(state => state.runtime);
@@ -114,6 +116,15 @@ export function ProjectScreen() {
             onClick={() => toggleCommPanel()}
           >
             <PanelRight className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.comm")}</span>
+          </Button>
+          <Button
+            variant={diffPanelOpen ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7"
+            title={t("projectScreen.toggleDiff")}
+            onClick={() => toggleDiffPanel()}
+          >
+            <FileDiff className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.diff")}</span>
           </Button>
           <Button
             variant={termPanelOpen ? "secondary" : "ghost"}

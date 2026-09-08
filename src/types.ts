@@ -45,7 +45,12 @@ export interface AgentConfig {
   customCommand?: CustomCommand;
   /** Hex color used for badges and graph nodes. */
   color?: string;
-  /** Tasks delegated to this agent wait for the user's approval before running. */
+  /**
+   * Defines if delegated tasks require approval before running.
+   * `true`: Always require approval.
+   * `false`: Never require approval.
+   * `undefined`: Inherit from the global `approveDelegations` setting.
+   */
   requireApproval?: boolean;
   /** Run this agent in its own git worktree (own branch, sibling folder). See src/lib/worktree.ts. */
   worktree?: boolean;
@@ -323,6 +328,8 @@ export interface Run {
   kind?: "task" | "chat";
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
+  /** Set when this run is a review of another agent's finished run. */
+  review?: { ofRunId: string; taskId: string };
 }
 
 export type MessageKind =
@@ -554,3 +561,5 @@ export interface Task {
   order: number;
   archived: boolean;
 }
+/** The sections of the right dock. */
+export type DockSectionId = "comm" | "diff" | "term";

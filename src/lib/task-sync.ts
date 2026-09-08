@@ -7,6 +7,8 @@
 import { useAppStore, selectProjectAgents } from "@/store";
 import { truncate } from "@/lib/format";
 import type { Run, Task } from "@/types";
+import { translateNow } from "@/i18n/useT";
+import { parseReviewVerdict } from "@/lib/review";
 
 /** Title of a task: its first meaningful line, without markdown decoration. */
 function titleFrom(text: string): string {
@@ -20,6 +22,10 @@ function tasksOf(projectId: string): Task[] {
 
 function findByRun(projectId: string, runId: string): Task | undefined {
   return tasksOf(projectId).find(t => t.runId === runId);
+}
+
+export function taskForRun(projectId: string, runId: string): Task | undefined {
+  return findByRun(projectId, runId);
 }
 
 /** The card a planner named, matched on the short id it was shown (see `shortTaskId`). */
@@ -134,6 +140,12 @@ export function taskOnApprovalSettled(approvalId: string, approved: boolean, run
   });
 }
 
+export function taskOnReviewStarted(taskId: string, reviewRunId: string): void {
+  guard(() => {
+    useAppStore.getState().updateTask(taskId, { status: "in-review", runId: reviewRunId });
+  });
+}
+
 /**
  * A delegated run ended: to review when somebody reviews around here, ready otherwise. A failure
  * goes back to the user with the error in the detail. Root runs are left alone: their task closes
@@ -141,6 +153,29 @@ export function taskOnApprovalSettled(approvalId: string, approved: boolean, run
  */
 export function taskOnRunFinished(run: Run): void {
   guard(() => {
+    if (run.review) {
+      const store = useAppStore.getState();
+      const reviewedTask = (store.tasks[run.projectId] || []).find(t => t.id === run.review!.taskId);
+      if (!reviewedTask) return;
+      if (run.status === "error" || run.status === "killed") {
+        store.updateTask(run.review.taskId, { 
+          status: "needs-you", 
+          detail: [reviewedTask.detail, translateNow("review.failed", { error: run.output })].filter(Boolean).join("\n\n") 
+        });
+      } else {
+        const verdict = parseReviewVerdict(run.output);
+        if (verdict === "approved") {
+          store.updateTask(run.review.taskId, { status: "ready" });
+        } else {
+          store.updateTask(run.review.taskId, { 
+            status: "needs-you", 
+            detail: [reviewedTask.detail, translateNow("review.changes", { output: run.output })].filter(Boolean).join("\n\n") 
+          });
+        }
+      }
+      return;
+    }
+
     if (!run.parentRunId) return;
     const task = findByRun(run.projectId, run.id);
     if (!task) return;

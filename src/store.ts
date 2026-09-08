@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
@@ -106,10 +106,14 @@ export interface AppState {
   /** Board or dependency graph, inside the Tareas mode (persisted). */
   taskView: TaskView;
   commPanelOpen: boolean;
+  /** Whether the diff section of the right dock is open (persisted). */
+  diffPanelOpen: boolean;
   /** Whether the terminals section of the right dock is open (persisted). */
   termPanelOpen: boolean;
-  /** Fraction of the dock height taken by Comunicación when both sections are open (0.3–0.8, persisted). */
-  dockSplit: number;
+  /** Flex weights for the sections of the right dock. */
+  dockSizes: Record<DockSectionId, number>;
+  /** Width in px of the two side panes, as the user dragged them. */
+  paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
   settingsOpen: boolean;
   settingsSection: SettingsSection;
@@ -134,8 +138,10 @@ export interface AppState {
   setProjectMode(mode: ProjectMode): void;
   setTaskView(view: TaskView): void;
   toggleCommPanel(open?: boolean): void;
+  toggleDiffPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
-  setDockSplit(value: number): void;
+  setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
+  setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
   toggleSidebar(open?: boolean): void;
   toggleSearch(open?: boolean): void;
@@ -385,8 +391,10 @@ interface UiPrefs {
   projectMode: ProjectMode;
   taskView: TaskView;
   commPanelOpen: boolean;
+  diffPanelOpen: boolean;
   termPanelOpen: boolean;
-  dockSplit: number;
+  dockSizes: Record<DockSectionId, number>;
+  paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
   sidebarOpen: boolean;
@@ -421,14 +429,28 @@ function saveDrafts(drafts: Record<string, string>): void {
   }
 }
 
+/** The two side panes the user can drag: the menu on the left, the dock on the right. */
+export type PaneId = "sidebar" | "dock";
+
+export const PANE_DEFAULT_WIDTH: Record<PaneId, number> = { sidebar: 260, dock: 380 };
+export const PANE_MIN_WIDTH: Record<PaneId, number> = { sidebar: 180, dock: 280 };
+export const PANE_MAX_WIDTH: Record<PaneId, number> = { sidebar: 480, dock: 900 };
+
+export function clampPaneWidth(pane: PaneId, value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : PANE_DEFAULT_WIDTH[pane];
+  return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
+}
+
 const UI_PREFS_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
   taskView: "board",
   commPanelOpen: false,
+  diffPanelOpen: false,
   termPanelOpen: false,
-  dockSplit: 0.5,
+  dockSizes: { comm: 1, diff: 1, term: 1 },
+  paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
   sidebarOpen: true,
@@ -446,13 +468,9 @@ function sanitizeSettingsSection(value: unknown): SettingsSection {
   return "general";
 }
 
-/** The dock divider never lets either section shrink below a usable height. */
-export const MIN_DOCK_SPLIT = 0.3;
-export const MAX_DOCK_SPLIT = 0.8;
-
-function clampDockSplit(value: unknown): number {
-  const n = typeof value === "number" && Number.isFinite(value) ? value : defaultUiPrefs.dockSplit;
-  return Math.min(MAX_DOCK_SPLIT, Math.max(MIN_DOCK_SPLIT, n));
+function clampDockSize(value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : 1;
+  return Math.min(5, Math.max(0.2, n));
 }
 
 /** localStorage does not exist in the CLI/node build, so every access is guarded. */
@@ -461,14 +479,29 @@ function loadUiPrefs(): UiPrefs {
   try {
     const raw = localStorage.getItem(UI_PREFS_KEY);
     if (!raw) return { ...defaultUiPrefs };
-    const parsed = JSON.parse(raw) as Partial<UiPrefs>;
+    const parsed = JSON.parse(raw) as any;
+    
+    let dockSizes = defaultUiPrefs.dockSizes;
+    if (parsed.dockSizes && typeof parsed.dockSizes === "object") {
+      dockSizes = {
+        comm: clampDockSize(parsed.dockSizes.comm),
+        diff: clampDockSize(parsed.dockSizes.diff),
+        term: clampDockSize(parsed.dockSizes.term),
+      };
+    }
+
     return {
+      paneWidths: {
+        sidebar: clampPaneWidth("sidebar", parsed.paneWidths?.sidebar),
+        dock: clampPaneWidth("dock", parsed.paneWidths?.dock),
+      },
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
+      diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
-      dockSplit: clampDockSplit(parsed.dockSplit),
+      dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
       sidebarOpen: parsed.sidebarOpen !== false,
@@ -487,8 +520,10 @@ function saveUiPrefs(): void {
       projectMode: s.projectMode,
       taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
+      diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
-      dockSplit: s.dockSplit,
+      dockSizes: s.dockSizes,
+      paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
       sidebarOpen: s.sidebarOpen,
@@ -654,13 +689,27 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  toggleDiffPanel: (open) => {
+    set(s => ({ diffPanelOpen: open ?? !s.diffPanelOpen }));
+    saveUiPrefs();
+  },
+
   toggleTermPanel: (open) => {
     set(s => ({ termPanelOpen: open ?? !s.termPanelOpen }));
     saveUiPrefs();
   },
 
-  setDockSplit: (value) => {
-    set({ dockSplit: clampDockSplit(value) });
+  setPaneWidth: (pane, width) => {
+    set(s => ({ paneWidths: { ...s.paneWidths, [pane]: clampPaneWidth(pane, width) } }));
+    saveUiPrefs();
+  },
+  setDockSizes: (sizes) => {
+    set(s => {
+      const comm = sizes.comm !== undefined ? clampDockSize(sizes.comm) : s.dockSizes.comm;
+      const diff = sizes.diff !== undefined ? clampDockSize(sizes.diff) : s.dockSizes.diff;
+      const term = sizes.term !== undefined ? clampDockSize(sizes.term) : s.dockSizes.term;
+      return { dockSizes: { comm, diff, term } };
+    });
     saveUiPrefs();
   },
 
@@ -1802,8 +1851,10 @@ async function runInit(): Promise<void> {
       projectMode: prefs.projectMode,
       taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
+      diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,
-      dockSplit: prefs.dockSplit,
+      dockSizes: prefs.dockSizes,
+      paneWidths: prefs.paneWidths,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
       sidebarOpen: prefs.sidebarOpen,
