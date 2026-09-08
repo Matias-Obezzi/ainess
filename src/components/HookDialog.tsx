@@ -92,6 +92,20 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   // What the hook is about: everything, one project, or one agent. An agent implies its project,
   // so the two old fields could only ever agree or cancel each other out.
   const [scope, setScope] = useState(scopeOf(hook));
+  const systemEvent = SYSTEM_EVENTS.includes(event);
+
+  /**
+   * Nothing an agent did sets off a machine event, so a filter on an agent could only ever mean
+   * "never fire" — the hook was saved and then silently did nothing. Switching to one of those
+   * events falls back to that agent's project, which is what the filter was really narrowing.
+   */
+  const chooseEvent = (next: HookEvent) => {
+    setEvent(next);
+    if (!SYSTEM_EVENTS.includes(next) || !scope.startsWith("agent:")) return;
+    const agentId = scope.slice("agent:".length);
+    const owner = byProject.find(g => g.agents.some(a => a.id === agentId));
+    setScope(owner ? `project:${owner.project.id}` : "all");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +166,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t("hookDialog.event")}</Label>
-              <Select value={event} onValueChange={(v) => setEvent(v as HookEvent)}>
+              <Select value={event} onValueChange={(v) => chooseEvent(v as HookEvent)}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {EVENTS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
@@ -195,38 +209,54 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
           )}
 
           {/* What the machine's own events can and cannot do. */}
-          {SYSTEM_EVENTS.includes(event) && (
+          {systemEvent && (
             <p className="text-xs text-muted-foreground">{t("hookDialog.systemEventHint")}</p>
           )}
 
           {/* One field, not two: an agent belongs to one project, so picking it said the project
-              too and the pair only ever asked the same thing twice. */}
+              too and the pair only ever asked the same thing twice.
+
+              This one says what sets the hook off; the action below says who hears about it. On a
+              machine event nothing sets it off but the machine, so there are no agents to pick
+              from here and the only agent field on screen is the one in the action. */}
           <div className="space-y-2">
             <Label>{t("hookDialog.filter")}</Label>
             <Select value={scope} onValueChange={setScope}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("hookDialog.filter.everything")}</SelectItem>
-                {byProject.map(({ project, agents: projectAgents }) => (
-                  <SelectGroup key={project.id}>
-                    <SelectLabel className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: project.color || "#4f8cff" }}
-                      />
-                      {project.name}
-                    </SelectLabel>
-                    <SelectItem value={`project:${project.id}`}>{t("hookDialog.filter.wholeProject")}</SelectItem>
-                    {projectAgents.map(a => (
-                      <SelectItem key={a.id} value={`agent:${a.id}`}>
+                {systemEvent
+                  ? byProject.map(({ project }) => (
+                      <SelectItem key={project.id} value={`project:${project.id}`}>
                         <span className="inline-flex items-center gap-1.5">
-                          <ProviderLogo provider={a.provider} size={14} />
-                          {a.name}
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: project.color || "#4f8cff" }}
+                          />
+                          {project.name}
                         </span>
                       </SelectItem>
+                    ))
+                  : byProject.map(({ project, agents: projectAgents }) => (
+                      <SelectGroup key={project.id}>
+                        <SelectLabel className="flex items-center gap-1.5">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: project.color || "#4f8cff" }}
+                          />
+                          {project.name}
+                        </SelectLabel>
+                        <SelectItem value={`project:${project.id}`}>{t("hookDialog.filter.wholeProject")}</SelectItem>
+                        {projectAgents.map(a => (
+                          <SelectItem key={a.id} value={`agent:${a.id}`}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <ProviderLogo provider={a.provider} size={14} />
+                              {a.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
-                  </SelectGroup>
-                ))}
               </SelectContent>
             </Select>
           </div>

@@ -97,8 +97,6 @@ export function Composer() {
   const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
-  const [targetModel, setTargetModel] = useState<string>("none");
-  const [customModel, setCustomModel] = useState("");
 
   // Agents can be created or deleted from Settings; keep the target pointing at something real.
   useEffect(() => {
@@ -140,6 +138,27 @@ export function Composer() {
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
   const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+
+  // The model of this conversation, remembered next to its draft: picking one, going to the board
+  // and coming back used to say "default model" again while the box below still held the prompt.
+  // Which of the three the select shows follows from the stored value — one of the CLI's own, or
+  // one typed by hand. The only thing it cannot say is "custom, nothing typed yet".
+  const composerModel = useAppStore(state => state.composerModels[draftKey] ?? "");
+  const setComposerModel = useAppStore(state => state.setComposerModel);
+  const [wantsCustom, setWantsCustom] = useState(false);
+  useEffect(() => { setWantsCustom(false); }, [draftKey]);
+  const targetModel = wantsCustom
+    ? "custom"
+    : composerModel
+      ? (modelOptions.includes(composerModel) ? composerModel : "custom")
+      : "none";
+  const setTargetModel = (value: string) => {
+    setWantsCustom(value === "custom");
+    // "Other…" starts from an empty box: the model picked before is not silently kept as its value.
+    setComposerModel(draftKey, value === "custom" || value === "none" ? "" : value);
+  };
+  const customModel = composerModel;
+  const setCustomModel = (value: string) => setComposerModel(draftKey, value);
   // An order bound to another agent would run somewhere else than what the composer says, so only
   // the ones for this target (and the ones bound to nobody) are offered.
   const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
@@ -148,10 +167,8 @@ export function Composer() {
   const applyPreset = (preset: Preset) => {
     setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
     if (preset.agentId) setTargetId(preset.agentId);
-    if (preset.model) {
-      setTargetModel(preset.model);
-      setCustomModel("");
-    }
+    // One value now, so one call: the old pair set the model and then blanked it.
+    if (preset.model) setComposerModel(draftKey, preset.model);
   };
 
   // Whose quota the ring shows: the agent of a one-on-one chat, or the one the prompt is aimed at

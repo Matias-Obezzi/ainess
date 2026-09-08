@@ -965,7 +965,7 @@ export const zh: Dictionary = {
   "hookDialog.action.instruct": "指示智能体",
   "hookDialog.action.notify": "通知",
   "hookDialog.defaultNotifyTitle": "提醒",
-  "hookDialog.filter": "作用范围",
+  "hookDialog.filter": "监听",
   "hookDialog.filter.everything": "全部",
   "hookDialog.filter.wholeProject": "整个项目",
   "hookDialog.command": "命令",

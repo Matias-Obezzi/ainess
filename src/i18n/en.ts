@@ -966,7 +966,7 @@ export const en: Dictionary = {
   "hookDialog.action.instruct": "Instruct agent",
   "hookDialog.action.notify": "Notification",
   "hookDialog.defaultNotifyTitle": "Notice",
-  "hookDialog.filter": "Applies to",
+  "hookDialog.filter": "Watches",
   "hookDialog.filter.everything": "Everything",
   "hookDialog.filter.wholeProject": "The whole project",
   "hookDialog.command": "Command",

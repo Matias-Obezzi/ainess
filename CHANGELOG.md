@@ -18,6 +18,20 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Each project remembers the view you left it on.** The board, the conversation and the
+  hierarchy were one setting shared by every project, so opening one in the hierarchy and coming
+  back to another showed the hierarchy there too. Each project keeps its own now — across
+  restarts, and reopening the app lands the last project where it was left. Clicking a chat is
+  still an explicit destination and opens the conversation.
+- **The model picked in a conversation is remembered with it.** Choosing one, walking to the board
+  and coming back said "default model" again while the box right below still held what you had
+  typed. It is now kept per conversation, next to the draft, model typed by hand included.
+- **A hook on a machine event no longer asks for an agent twice.** The "instruct an agent" action
+  sat under a filter that also listed agents, so the same dialog had two agent pickers meaning
+  different things. On a machine event — a clock, the connection, a file changing — nothing an
+  agent did sets the hook off, so filtering by one could only mean "never fire": those options are
+  gone there, leaving the action's own picker as the only one, and a hook that had one falls back
+  to that agent's project. The filter is also named for what it does now ("Escucha a").
 - **Links in an agent's answer took the whole app to `tauri.localhost`.** Agents write two kinds
   of link and the app treated them as one: a web address, and a path inside the repo they are
   working on (`src/lib/foo.ts`, `README.md`). The second is not something to open, and left on an
