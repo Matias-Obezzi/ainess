@@ -18,6 +18,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A planner that had forgotten how to delegate.** Sending the instructions only on the turn that
+  opens a session was right for the description — the role, the profile, the shared context, the
+  list of skills — and wrong for the two blocks an agent *acts* through. A CLI compacts its own
+  context as a session grows, and once the `delegate` block had been summarised away the planner
+  could no longer reach its own team: it went looking for an `ainess` command line and an MCP
+  tool, and ended up asking the user to delegate on its behalf, reasoning about the app it was
+  running inside as if it belonged to somebody else. The `delegate` and `ask` blocks now go on
+  every turn. They are the protocol, not the preamble.
 - **A crash no longer leaves agents working behind the app's back.** Closing the app walks every
   agent process down; a crash — the task manager, a power cut, a panic — never reaches that, so
   the CLIs kept going: still editing the workspace, still spending quota, with nobody reading

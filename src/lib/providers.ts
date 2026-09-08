@@ -649,6 +649,40 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
+/**
+ * How a planner hands work out. This goes on *every* turn, unlike the rest of the preamble.
+ *
+ * It is not description, it is the only way the agent can act: without the block it cannot reach
+ * its own team. A CLI compacts its own context as a session grows, and once this had scrolled out
+ * of that summary the planner went hunting for an `ainess` command and an MCP tool to delegate
+ * with, reasoning about the app it is running inside as if it belonged to somebody else.
+ */
+function delegateSection(autoModel: boolean): string {
+  const t = translateNow;
+  const schema = t(autoModel ? "prompt.planner.delegateSchemaModel" : "prompt.planner.delegateSchema");
+  const extra = autoModel ? t("prompt.planner.autoModel") : "";
+  return [
+    t("prompt.planner.delegateIntro"),
+    "```delegate",
+    schema,
+    "```",
+    t("prompt.planner.delegateRules", { extra }),
+  ].join("\n");
+}
+
+/** How any agent asks the user for a decision. Every turn, for the same reason. */
+function askSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.ask.header"),
+    t("prompt.ask.intro"),
+    "```ask",
+    t("prompt.ask.schema"),
+    "```",
+    t("prompt.ask.rules"),
+  ].join("\n");
+}
+
 /** The board, for the one agent it is written for: a planner with a team to hand it out to. */
 function boardFor(
   agent: AgentConfig,
@@ -690,8 +724,17 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   // ponytail: the delegate and ask schemas go with it. They are in the transcript; if an agent ever
   // forgets the syntax deep into a long session, restate just those two here.
   if (extras?.resuming) {
+    // What changes between turns, and the two blocks the agent acts through. Everything else
+    // (its role, the profile, the shared context, the list of skills) was said on the turn
+    // that opened the session and is description, not a capability: losing that to a
+    // compaction costs nothing. Losing the blocks leaves an agent that cannot reach its own
+    // team or ask a question, and starts looking for a command line to do it with.
+    const parts: string[] = [];
     const board = boardFor(agent, children, extras);
-    if (board) prompt += (prompt ? "\n\n" : "") + board;
+    if (board) parts.push(board);
+    if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
+    if (agent.role !== "custom") parts.push(askSection());
+    for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
     return prompt;
   }
 
@@ -713,17 +756,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
         prompt += `- ${child.name} (${child.role}): ${child.description ?? ""}${childModelsInfo}\n`;
       }
 
-      const withModel = extras?.autoModel === true;
-      const schema = t(withModel ? "prompt.planner.delegateSchemaModel" : "prompt.planner.delegateSchema");
-      const extra = withModel ? t("prompt.planner.autoModel") : "";
-
-      prompt += [
-        t("prompt.planner.delegateIntro"),
-        "```delegate",
-        schema,
-        "```",
-        t("prompt.planner.delegateRules", { extra }),
-      ].join("\n");
+      prompt += delegateSection(extras?.autoModel === true);
       // Where the whole team is written down, in the project itself.
       prompt += "\n" + t("prompt.planner.teamFile");
 
@@ -783,14 +816,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {
-    prompt += (prompt ? "\n\n" : "") + [
-      t("prompt.ask.header"),
-      t("prompt.ask.intro"),
-      "```ask",
-      t("prompt.ask.schema"),
-      "```",
-      t("prompt.ask.rules"),
-    ].join("\n");
+    prompt += (prompt ? "\n\n" : "") + askSection();
   }
 
   if (agent.systemPrompt) {
