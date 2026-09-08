@@ -106,7 +106,7 @@ export function HomeScreen() {
   };
 
   const projectActions = (p: Project): MenuAction[] => [
-    { key: "open", label: t("common.open"), icon: FolderKanban, onSelect: () => openProject(p.id, null) },
+    { key: "open", label: t("common.open"), icon: FolderKanban, onSelect: () => openProject(p.id) },
     { key: "edit", label: t("common.edit"), icon: Pencil, onSelect: () => editProject(p) },
     {
       key: "open-folder",
@@ -167,7 +167,7 @@ export function HomeScreen() {
                   <Card
                     role="button"
                     className={`p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-primary/50 ${isCurrent ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => openProject(p.id, null)}
+                    onClick={() => openProject(p.id)}
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
@@ -217,7 +217,7 @@ export function HomeScreen() {
                     </div>
 
                     <div className="flex gap-2 mt-auto pt-2" onClick={e => e.stopPropagation()}>
-                      <Button size="sm" className="flex-1" onClick={() => openProject(p.id, null)}>{t("common.open")}</Button>
+                      <Button size="sm" className="flex-1" onClick={() => openProject(p.id)}>{t("common.open")}</Button>
                       <Button size="sm" variant="outline" onClick={() => editProject(p)}>
                         {t("common.edit")}
                       </Button>

@@ -25,6 +25,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A project opens the way you left it, conversation included.** Switching to another project and
+  coming back dropped you in the orchestrator thread, even if you had been talking in one of that
+  project's chats: the sidebar asked for the project *and no chat*, and that is exactly what it got.
+  Each project now remembers its last conversation as well as its view, and reopening the app comes
+  back to both. Asking for the thread on purpose still gives you the thread.
+
 - **Typing no longer writes to disk on every keystroke.** Each character saved every draft in the
   app as JSON, synchronously, on the main thread — which is exactly the thread that has to keep up
   with your typing. What you write still lands in the app instantly; the disk hears about it at

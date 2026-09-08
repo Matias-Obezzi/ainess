@@ -125,6 +125,8 @@ export interface AppState {
    * between two of them must not drag the view of one onto the other (persisted).
    */
   projectModes: Record<string, ProjectMode>;
+  /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
+  projectChats: Record<string, string | null>;
   /** Board or dependency graph, inside the Tareas mode (persisted). */
   taskView: TaskView;
   commPanelOpen: boolean;
@@ -414,6 +416,7 @@ interface UiPrefs {
   screen: Screen;
   projectMode: ProjectMode;
   projectModes: Record<string, ProjectMode>;
+  projectChats: Record<string, string | null>;
   taskView: TaskView;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
@@ -515,6 +518,7 @@ const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
   projectModes: {},
+  projectChats: {},
   taskView: "board",
   commPanelOpen: false,
   diffPanelOpen: false,
@@ -535,6 +539,14 @@ function sanitizeProjectModes(value: unknown): Record<string, ProjectMode> {
     Object.entries(value as Record<string, unknown>)
       .filter(([, mode]) => VALID_PROJECT_MODES.includes(mode as ProjectMode)),
   ) as Record<string, ProjectMode>;
+}
+
+function sanitizeProjectChats(value: unknown): Record<string, string | null> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, chat]) => typeof chat === "string" || chat === null),
+  ) as Record<string, string | null>;
 }
 
 // Derived from sections.ts so adding a new section only requires one edit.
@@ -577,6 +589,7 @@ function loadUiPrefs(): UiPrefs {
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       projectModes: sanitizeProjectModes(parsed.projectModes),
+      projectChats: sanitizeProjectChats(parsed.projectChats),
       taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
@@ -599,6 +612,7 @@ function saveUiPrefs(): void {
       screen: s.screen,
       projectMode: s.projectMode,
       projectModes: s.projectModes,
+      projectChats: s.projectChats,
       taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
@@ -729,14 +743,27 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  /**
+   * `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project, or the last remembered one.
+   */
   openProject: (projectId, chatId) => {
     const state = get();
     const sameProject = state.currentProjectId === projectId;
     let nextChatId: string | null;
     if (chatId === undefined) {
-      // Keep the open chat only when it belongs to this project.
+      // "Open it the way I left it": the chat already on screen when it belongs to this project,
+      // else the last one this project was left in, as long as it still exists.
       const current = state.currentChatId ? state.config.chats.find(c => c.id === state.currentChatId) : undefined;
-      nextChatId = sameProject && current && current.projectId === projectId ? current.id : null;
+      if (sameProject && current && current.projectId === projectId) {
+        nextChatId = current.id;
+      } else {
+        const rememberedId = state.projectChats[projectId] ?? null;
+        if (rememberedId && state.config.chats.some(c => c.id === rememberedId && c.projectId === projectId)) {
+          nextChatId = rememberedId;
+        } else {
+          nextChatId = null;
+        }
+      }
     } else {
       nextChatId = chatId;
     }
@@ -750,6 +777,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       screen: "project",
       projectMode: nextMode,
       projectModes: { ...state.projectModes, [projectId]: nextMode },
+      projectChats: { ...state.projectChats, [projectId]: nextChatId },
     });
     pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: nextMode });
     if (nextChatId) void state.loadChatMessages(nextChatId);
@@ -1157,6 +1185,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newSidebarCollapsed[id];
       const newProjectModes = { ...state.projectModes };
       delete newProjectModes[id];
+      const newProjectChats = { ...state.projectChats };
+      delete newProjectChats[id];
 
       // Back/forward must not offer a project that is gone; the index follows what is left.
       const keptNav = state.navHistory.filter(e => e.projectId !== id);
@@ -1185,6 +1215,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         historyLoading: newHistoryLoading,
         sidebarCollapsed: newSidebarCollapsed,
         projectModes: newProjectModes,
+        projectChats: newProjectChats,
         navHistory,
         navIndex,
         // The search palette may have asked the board to open a card of this project.
@@ -1742,6 +1773,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete newSessions[id];
       const newLoading = { ...state.chatLoading };
       delete newLoading[id];
+      
+      const newProjectChats = { ...state.projectChats };
+      // A project must not be left pointing at a chat that is gone.
+      const chatProject = state.config.chats.find(c => c.id === id)?.projectId;
+      if (chatProject && newProjectChats[chatProject] === id) {
+        newProjectChats[chatProject] = null;
+      }
+      
       return {
         config: { ...state.config, chats: newChats },
         chatMessages: newChatMessages,
@@ -1749,18 +1788,24 @@ export const useAppStore = create<AppState>()((set, get) => ({
         chatLoading: newLoading,
         remoteActiveChats: state.remoteActiveChats.filter(c => c !== id),
         currentChatId: state.currentChatId === id ? null : state.currentChatId,
+        projectChats: newProjectChats,
       };
     });
     debouncedSave();
+    saveUiPrefs();
   },
 
   setCurrentChat: (id) => {
     const state = get();
     if (state.currentChatId === id) return;
-    set({ currentChatId: id });
+    set({
+      currentChatId: id,
+      ...(state.currentProjectId ? { projectChats: { ...state.projectChats, [state.currentProjectId]: id } } : {})
+    });
     if (state.screen === "project" && state.currentProjectId) {
       pushNav({ screen: "project", projectId: state.currentProjectId, chatId: id, projectMode: state.projectMode });
     }
+    saveUiPrefs();
   },
 
   setDraft: (key, text) => {
@@ -2040,14 +2085,20 @@ async function runInit(): Promise<void> {
     const startMode: ProjectMode = (lastProjectValid && config.lastProjectId
       ? prefs.projectModes[config.lastProjectId]
       : undefined) ?? prefs.projectMode;
+    const startChatId = lastProjectValid && config.lastProjectId
+      ? prefs.projectChats[config.lastProjectId] ?? null
+      : null;
+    const finalChatId = startChatId && config.chats.some(c => c.id === startChatId) ? startChatId : null;
     lastSavedConfig = config;
     set({
       config,
       runtime,
       currentProjectId: lastProjectValid ? config.lastProjectId : null,
+      currentChatId: finalChatId,
       screen,
       projectMode: startMode,
       projectModes: prefs.projectModes,
+      projectChats: prefs.projectChats,
       taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
@@ -2060,7 +2111,7 @@ async function runInit(): Promise<void> {
       navHistory: [{
         screen,
         projectId: lastProjectValid ? config.lastProjectId : null,
-        chatId: null,
+        chatId: finalChatId,
         projectMode: startMode,
       }],
       navIndex: 0,

@@ -262,12 +262,20 @@ dibujan todos los mensajes, y el tope en memoria es 3000 por proyecto. Encima, m
 escribe, cada pedacito de texto que llega actualiza el store y vuelve a dibujar el hilo entero. Eso
 explicaría que empeore cuanto más contenido hay. Antes de tocarlo hay que medirlo.
 
-### `[-]` F3 · ¿Guarda el estado del proyecto (chat/tareas/jerarquía) al volver? — ya estaba
+### `[x]` F3 · Al cambiar de proyecto se perdía la conversación en la que estabas — *«Open it the way I left it»*
 
-Sí lo guarda: `projectModes` en `src/store.ts` es por proyecto, y `openProject` restaura el modo con
-el que dejaste *ese* proyecto, no el del último abierto. Lo que NO es por proyecto: si el tablero
-estaba en columnas o en grafo, y qué paneles del dock tenías abiertos. Si igual ves que te cambia,
-falta el caso exacto (¿arranque en frío? ¿desde una notificación?) para perseguirlo.
+El modo (Tareas / Chat / Jerarquía) sí se guardaba por proyecto: lo verifiqué con un test contra el
+store. Lo que no se guardaba era **en qué conversación estabas**. La fila del proyecto en la barra
+lateral abría con un `null` explícito, que en `openProject` significa «el hilo del orquestador, no un
+chat»: estabas hablando en un chat de A, ibas a B, volvías a A y aparecías en el hilo.
+
+Ahora cada proyecto recuerda también su última conversación, y abrir un proyecto sin decir cuál
+significa «abrilo como lo dejé» — con la conversación de vuelta, o el hilo si ese chat ya no existe.
+Pedir el hilo a propósito (la fila «Orquestador») sigue llevándote al hilo. Vale también al abrir la
+app: vuelve al proyecto y a la conversación donde estabas.
+
+Lo que sigue siendo global, no por proyecto: si el tablero estaba en columnas o en grafo, y qué
+paneles del dock tenías abiertos.
 
 ### `[ ]` F4 · El cartel de «actual» en Inicio no sirve para nada
 
