@@ -3,6 +3,13 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Fixed
+
+- The `{{` list of a hook now says what each variable holds, instead of only its name, and the
+  arrows scroll it: past the eighth one the highlight used to move below the fold.
+
 ## 0.5.0 — 2026-09-08
 
 ### Added

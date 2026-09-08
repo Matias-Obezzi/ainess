@@ -203,7 +203,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                   {t("hookDialog.variables")}
                   {TEMPLATE_VARS.map(v => (
-                    <code key={v} className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">{`{{${v}}}`}</code>
+                    <code key={v} title={t(`templateVar.${v}`)} className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">{`{{${v}}}`}</code>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">{t("hookDialog.variablesHint")}</p>
