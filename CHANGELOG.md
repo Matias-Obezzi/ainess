@@ -32,6 +32,9 @@ let one of them fall behind.
 
 ### Fixed
 
+- The agent lists that reach across projects — the one a hook instructs, the one a hook is filtered
+  to, the one an order is bound to — group the agents under the project each belongs to, with its
+  colour. Two projects with an "Orchestrator" each read the same before.
 - An agent you write to yourself is told who it is. It reads the same prompt whether the work came
   from its planner or from you, so an implementer answered a message of yours by delegating it on
   — and then sat at "waiting for its team".

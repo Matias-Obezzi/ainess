@@ -8,7 +8,8 @@ import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useAppStore, selectAllAgents } from "@/store";
+import { useAppStore, selectAgentsByProject } from "@/store";
+import { AgentOptions } from "@/components/AgentOptions";
 import { useT } from "@/i18n/useT";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
@@ -47,7 +48,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const t = useT();
   const isEditing = !!hook;
   const store = useAppStore();
-  const agents = useAppStore(selectAllAgents);
+  const byProject = useAppStore(selectAgentsByProject);
   const [name, setName] = useState(hook?.name || "");
   const [event, setEvent] = useState<HookEvent>(hook?.event || "task.finished");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
@@ -191,7 +192,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("common.all")}</SelectItem>
-                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                  <AgentOptions groups={byProject} />
                 </SelectContent>
               </Select>
             </div>
@@ -234,7 +235,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    <AgentOptions groups={byProject} />
                   </SelectContent>
                 </Select>
               </div>

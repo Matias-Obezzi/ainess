@@ -2007,6 +2007,22 @@ export function selectAllAgents(state: AppState): AgentConfig[] {
   return agents;
 }
 
+let byProjectCache: { projects: Project[]; groups: { project: Project; agents: AgentConfig[] }[] } | null = null;
+
+/**
+ * The same agents as `selectAllAgents`, kept in their projects. Two projects can each have an
+ * "Orchestrator", and a list that flattens them says nothing about which is which.
+ */
+export function selectAgentsByProject(state: AppState): { project: Project; agents: AgentConfig[] }[] {
+  const projects = state.config.projects;
+  if (byProjectCache && byProjectCache.projects === projects) return byProjectCache.groups;
+  const groups = projects
+    .map(project => ({ project, agents: project.agents ?? [] }))
+    .filter(group => group.agents.length > 0);
+  byProjectCache = { projects, groups };
+  return groups;
+}
+
 export function selectChildren(state: AppState, projectId: string | null | undefined, agentId: string): AgentConfig[] {
   return selectProjectAgents(state, projectId).filter(a => a.parentId === agentId);
 }
