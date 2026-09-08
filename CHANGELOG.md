@@ -15,6 +15,9 @@ Settings → About.
 
 ### Fixed
 
+- Deleting from the right-click menu asked in the pill at the top of the window, the shape meant
+  for the phone, instead of the dialog. It only happened while working on the app, and it could
+  also lose the question altogether.
 - The `{{` list of a hook now says what each variable holds, instead of only its name, and the
   arrows scroll it: past the eighth one the highlight used to move below the fold.
 
