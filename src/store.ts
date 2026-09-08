@@ -168,6 +168,8 @@ export interface AppState {
   closeTerminal(id: string): void;
   setActiveTerminal(id: string): void;
   renameTerminal(id: string, title: string): void;
+  /** Reorders the tab bar: the tab lands at `toIndex` of the list as it is shown. */
+  moveTerminal(id: string, toIndex: number): void;
   markTerminalExited(id: string, code: number | null): void;
 
   init(): Promise<void>;
@@ -920,6 +922,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setActiveTerminal: (id) => {
     if (!get().terminals.some(t => t.id === id)) return;
     set({ activeTerminalId: id });
+  },
+
+  moveTerminal: (id, toIndex) => {
+    set(s => {
+      const from = s.terminals.findIndex(t => t.id === id);
+      if (from === -1) return {};
+      const terminals = [...s.terminals];
+      const [tab] = terminals.splice(from, 1);
+      // Dropping past the end lands at the end; anything else keeps the order the tabs were shown.
+      terminals.splice(Math.max(0, Math.min(toIndex, terminals.length)), 0, tab);
+      return { terminals };
+    });
   },
 
   renameTerminal: (id, title) => {

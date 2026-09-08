@@ -8,6 +8,8 @@ let one of them fall behind.
 
 ### Added
 
+- **Terminal tabs are dragged into the order you want**, like any tabbed editor: the one being
+  carried fades and a line shows where it would land.
 - **Hooks on the machine's own conditions.** Until now a hook answered something an agent did.
   Five more events answer the machine instead: the app opening, a clock (at a time of day or every
   so many minutes), the connection dropping and coming back, and a file changing in a project's
@@ -30,6 +32,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- A link in a terminal opens with one click. Only the ones a CLI marked itself were links at all,
+  and those needed Ctrl held; now any URL in the output is one, and it opens in the real browser.
+- On the phone, the keyboard covered the box you were typing in. The page deliberately does not
+  resize itself when the keyboard opens — that used to throw the conversation off its bottom
+  anchor mid-task — so the shell is shortened by exactly what the keyboard takes instead.
 - The "new version available" toast showed the release note as it is written, so it read
   `[CHANGELOG.md](https://…)`: a toast has no markdown to render it with. It says what it has to
   say now, and what changed is in the changelog that opens after the update.
