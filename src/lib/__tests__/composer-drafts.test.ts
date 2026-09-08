@@ -1,7 +1,7 @@
 // Two things about writing a message. It was component state, so changing view threw it away; and
 // while an agent was thinking the box was disabled, which is not how a conversation goes.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useAppStore } from "@/store";
+import { useAppStore, flushStringMapSaves } from "@/store";
 
 beforeEach(() => {
   useAppStore.setState({ drafts: {}, chatQueues: {} });
@@ -35,7 +35,10 @@ describe("drafts", () => {
     });
 
     useAppStore.getState().setDraft("project:p1", "sigue acá");
+    flushStringMapSaves();
+    
     expect(JSON.parse(store.get("ais.drafts") ?? "{}")["project:p1"]).toBe("sigue acá");
+    
     vi.unstubAllGlobals();
   });
 

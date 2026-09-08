@@ -458,6 +458,46 @@ function saveStringMap(storageKey: string, map: Record<string, string>): void {
   }
 }
 
+const pendingSaves = new Map<string, { value: Record<string, string>; timer: ReturnType<typeof setTimeout> }>();
+
+/** Flushes all pending string map writes to localStorage immediately. */
+export function flushStringMapSaves(): void {
+  for (const [key, pending] of pendingSaves.entries()) {
+    clearTimeout(pending.timer);
+    saveStringMap(key, pending.value);
+  }
+  pendingSaves.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", flushStringMapSaves);
+  // On `document`, where the event is actually fired: in Tauri this is what arrives when the window
+  // is minimised or hidden, and it is the last chance to write before the app may not come back.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushStringMapSaves();
+  });
+}
+
+/**
+ * Persists string maps with a delay, so every keystroke updates the UI instantly but
+ * writes to disk happen at most once every 400ms, without blocking the main thread.
+ */
+export function saveStringMapSoon(storageKey: string, map: Record<string, string>): void {
+  const pending = pendingSaves.get(storageKey);
+  if (pending) {
+    pending.value = map;
+  } else {
+    const newPending = {
+      value: map,
+      timer: setTimeout(() => {
+        pendingSaves.delete(storageKey);
+        saveStringMap(storageKey, newPending.value);
+      }, 400),
+    };
+    pendingSaves.set(storageKey, newPending);
+  }
+}
+
 /** The two side panes the user can drag: the menu on the left, the dock on the right. */
 export type PaneId = "sidebar" | "dock";
 
@@ -1725,25 +1765,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setDraft: (key, text) => {
     if (!key) return;
-    set(state => {
-      const drafts = { ...state.drafts };
-      if (text) drafts[key] = text;
-      else delete drafts[key];
-      saveStringMap(DRAFTS_KEY, drafts);
-      return { drafts };
-    });
+    const drafts = { ...get().drafts };
+    if (text) drafts[key] = text;
+    else delete drafts[key];
+    set({ drafts });
+    saveStringMapSoon(DRAFTS_KEY, drafts);
   },
 
   setComposerModel: (key, model) => {
     if (!key) return;
-    set(state => {
-      const composerModels = { ...state.composerModels };
-      // Empty is "whatever the agent is configured with": remembering that is remembering nothing.
-      if (model) composerModels[key] = model;
-      else delete composerModels[key];
-      saveStringMap(COMPOSER_MODELS_KEY, composerModels);
-      return { composerModels };
-    });
+    const composerModels = { ...get().composerModels };
+    // Empty is "whatever the agent is configured with": remembering that is remembering nothing.
+    if (model) composerModels[key] = model;
+    else delete composerModels[key];
+    set({ composerModels });
+    saveStringMapSoon(COMPOSER_MODELS_KEY, composerModels);
   },
 
   queueChatMessage: (chatId, text) => {

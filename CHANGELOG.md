@@ -25,6 +25,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Typing no longer writes to disk on every keystroke.** Each character saved every draft in the
+  app as JSON, synchronously, on the main thread — which is exactly the thread that has to keep up
+  with your typing. What you write still lands in the app instantly; the disk hears about it at
+  most every 400 ms, and immediately when the window closes or goes away, so nothing is lost.
+- **The notifications panel no longer opens with a tooltip already showing.** Opening it moved the
+  focus onto the first icon button, and a tooltip shows on focus as much as on hover.
+
 - **A card left in review comes back.** The board is put back in step with its runs on every launch,
   but only for cards *en curso*. One parked *en revisión* behind a review that died with the app —
   or whose run fell out of a trimmed history — stayed there forever. It is read now the same way the

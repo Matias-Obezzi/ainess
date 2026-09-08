@@ -239,6 +239,53 @@ Con `gh` ya instalado y la rama del worktree lista, el paso que falta es el que 
 
 ---
 
+## F. Del uso diario (9 de septiembre)
+
+Lo que apareció usando la app, no leyendo el código.
+
+### `[x]` F1 · El panel de notificaciones se abre mostrando un tooltip solo — *«The panel opened with its own tooltip showing»*
+
+**Qué pasaba.** Abrías la campana y aparecía solo, sin pasar el mouse, el globito de «marcar todo
+como leído» — o el de vaciar, cuando no había nada sin leer. El popover de Radix mueve el foco
+adentro al abrirse, cae en el primer botón de ícono, y el tooltip se muestra con foco además de con
+hover. Ya no se autoenfoca; con Tab se sigue recorriendo igual.
+
+### `[~]` F2 · La ventana se siente pesada al escribir y al moverla
+
+**Primera causa, arreglada.** Cada tecla escribía TODOS los borradores en disco: `setDraft` hacía
+un `JSON.stringify` completo y un `localStorage.setItem` sincrónico por pulsación, bloqueando el
+hilo principal. Ahora el estado en memoria sigue siendo inmediato y el disco se escribe como mucho
+cada 400 ms, con volcado inmediato al cerrar o esconder la ventana para no perder nada.
+
+**Lo que falta medir.** Ni el hilo de la conversación ni el panel de comunicación virtualizan: se
+dibujan todos los mensajes, y el tope en memoria es 3000 por proyecto. Encima, mientras un agente
+escribe, cada pedacito de texto que llega actualiza el store y vuelve a dibujar el hilo entero. Eso
+explicaría que empeore cuanto más contenido hay. Antes de tocarlo hay que medirlo.
+
+### `[-]` F3 · ¿Guarda el estado del proyecto (chat/tareas/jerarquía) al volver? — ya estaba
+
+Sí lo guarda: `projectModes` en `src/store.ts` es por proyecto, y `openProject` restaura el modo con
+el que dejaste *ese* proyecto, no el del último abierto. Lo que NO es por proyecto: si el tablero
+estaba en columnas o en grafo, y qué paneles del dock tenías abiertos. Si igual ves que te cambia,
+falta el caso exacto (¿arranque en frío? ¿desde una notificación?) para perseguirlo.
+
+### `[ ]` F4 · El cartel de «actual» en Inicio no sirve para nada
+
+Estás en Inicio justamente porque no estás en ese proyecto: saber cuál abriste último no te deja
+hacer nada, y ocupa el renglón donde debería ir lo que sí importa. La propuesta es cambiarlo por lo
+que esa pantalla ya calcula y no muestra: cuántos agentes trabajan, cuántas aprobaciones esperan,
+si algo falló. Va junto con F5.
+
+### `[ ]` F5 · Una pantalla de lo que necesita atención y lo que está trabajando
+
+Dos formas. **(1)** Inicio se convierte en eso: arriba una franja con *te necesitan* (aprobaciones,
+preguntas, tareas en «necesita tu atención», corridas fallidas) y *trabajando ahora* (agente, tarea,
+hace cuánto), cruzando todos los proyectos y clickeable; abajo, los proyectos con esa info en la
+tarjeta. **(2)** Una entrada nueva en la barra lateral al lado de Inicio, y dejar Inicio como está.
+Recomiendo la 1: Inicio ya es medio eso a medias, y una pantalla que sólo tiene contenido cuando
+pasa algo se siente vacía la mitad del tiempo. Falta que elijas.
+
+---
 ## Bitácora
 
 ### Noche del 8 al 9 de septiembre de 2026
