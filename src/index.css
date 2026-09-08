@@ -184,6 +184,11 @@
   50% { opacity: 0.35; transform: scale(0.85); }
 }
 
+/* The cursor of the typewriter placeholder (see components/ui/typewriter.tsx). */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
 @layer utilities {
   .animate-breathe { animation: ais-breathe 2.4s ease-in-out infinite; }
   /* Someone who asked for less movement gets none. */

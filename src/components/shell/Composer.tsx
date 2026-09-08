@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
@@ -19,6 +19,7 @@ import { activeCommandQuery, compactProject, matchCommands, parseCommand, type C
 import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
+import { Typewriter } from "@/components/ui/typewriter";
 import {
   MAX_ATTACHMENT_BYTES,
   attachmentsBlock,
@@ -374,6 +375,23 @@ export function Composer() {
       : t("composer.placeholder.team");
   const hint = compact ? placeholder : `${placeholder} ${t("composer.sendShortcut")}`;
 
+  /**
+   * An empty box says the same thing forever, and what it says is the least it could: one of five
+   * things to do with the team, typed and swapped every few seconds. The shortcut is one of them
+   * rather than a permanent tail, which is how it stops being furniture and gets read once.
+   *
+   * Only where there is a team to talk to, and never on the phone: less movement, less battery, and
+   * the box there is small enough that a moving line is in the way.
+   */
+  const rotating = !chatMode && !noTeam && !compact;
+  const rotatingHints = useMemo(() => [
+    t("composer.placeholder.team"),
+    t("composer.placeholder.rotate1"),
+    t("composer.placeholder.rotate2"),
+    t("composer.placeholder.rotate3"),
+    t("composer.placeholder.shortcut"),
+  ], [t]);
+
   return (
     <div className="border-t border-border p-3 shrink-0 bg-background">
       <div className="max-w-3xl mx-auto flex flex-col gap-2">
@@ -434,10 +452,21 @@ export function Composer() {
             onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={hint}
+            placeholder={rotating ? "" : hint}
+            aria-label={placeholder}
             rows={2}
             className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
           />
+          {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
+              Nothing to click through, nothing to read out: the label above is what is announced. */}
+          {rotating && !text && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
+            >
+              <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} />
+            </span>
+          )}
           <input
             ref={fileInputRef}
             type="file"
