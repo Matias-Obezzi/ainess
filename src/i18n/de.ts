@@ -150,6 +150,7 @@ export const de: Dictionary = {
   "composer.placeholder.rotate2": "Gib eine Aufgabe ab und mach mit deiner weiter…",
   "composer.placeholder.rotate3": "Tippe / für die Befehle…",
   "composer.placeholder.shortcut": "Enter sendet, Shift+Enter macht einen Zeilenumbruch",
+  "composer.placeholder.busy": "Schreib, während er arbeitet: Enter stellt es für danach in die Warteschlange",
   "composer.sendShortcut": "(Enter zum Senden, Umschalt+Enter für einen Zeilenumbruch)",
   "command.compact": "Den Kontext aller Agenten verdichten",
   "command.compact.done": "Kontext verdichtet: {count} Agent(en) fangen neu an, mit der Historie in Reichweite.",

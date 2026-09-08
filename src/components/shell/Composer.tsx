@@ -264,12 +264,11 @@ export function Composer() {
   const canSend = (!!text.trim() || attachments.length > 0) && (chatMode
     ? !!currentChatId
     : !!targetId && !!currentProjectId && !(targetModel === "custom" && !customModel.trim()));
-  /** Sending now means "when this turn ends": the agent is mid-answer and cannot be interrupted. */
-  const willQueue = busy && canSend;
-
   /**
    * Enter sends, Ctrl+Enter queues. Queueing is also what sending does while the agent is mid
-   * answer: there is nothing to interrupt it with, so what you write waits its turn.
+   * answer: there is nothing to interrupt it with, so what you write waits its turn. No button says
+   * this any more — while an agent works there is one button and it stops it — so the empty box
+   * does (see `hint`).
    */
   const handleSend = (opts?: { queue?: boolean }) => {
     // An order to the app, not a message: it runs even with no team and nothing is sent anywhere.
@@ -403,7 +402,11 @@ export function Composer() {
     : noTeam
       ? t("composer.placeholder.noTeam")
       : t("composer.placeholder.team");
-  const hint = compact ? placeholder : `${placeholder} ${t("composer.sendShortcut")}`;
+  // While an agent answers, the button by the box is the stop button and no longer says that what
+  // you write will wait its turn. The empty box is where that has to be said instead.
+  const hint = busy
+    ? t("composer.placeholder.busy")
+    : compact ? placeholder : `${placeholder} ${t("composer.sendShortcut")}`;
 
   /**
    * An empty box says the same thing forever, and what it says is the least it could: one of five
@@ -413,7 +416,7 @@ export function Composer() {
    * Only where there is a team to talk to, and never on the phone: less movement, less battery, and
    * the box there is small enough that a moving line is in the way.
    */
-  const rotating = !chatMode && !noTeam && !compact;
+  const rotating = !chatMode && !noTeam && !compact && !busy;
   const rotatingHints = useMemo(() => [
     t("composer.placeholder.team"),
     t("composer.placeholder.rotate1"),
@@ -531,8 +534,12 @@ export function Composer() {
                 <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} cursor={false} />
               </span>
             )}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1">
-              {busy && (
+            {/* One button, and it is whatever the moment calls for: while an agent is answering
+                there is nothing to send that would not wait its turn anyway, and what you want at
+                hand is the way to stop it. Sending while it works still exists — Enter queues, and
+                the box says so — it just no longer needs a button of its own crowding the text. */}
+            <div className="absolute bottom-2 right-2">
+              {busy ? (
                 <Button
                   variant="destructive"
                   size="icon"
@@ -543,17 +550,14 @@ export function Composer() {
                 >
                   <Square className="h-4 w-4" />
                 </Button>
-              )}
-              {/* While something is running this queues instead of interrupting: the box no longer
-                  goes grey mid-answer, which is the moment you most want to add something. */}
-              {(!busy || canSend) && (
+              ) : (
                 <Button
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => handleSend()}
                   disabled={!canSend}
-                  title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
-                  aria-label={willQueue ? t("composer.queue") : t("composer.send")}
+                  title={t("composer.sendHint")}
+                  aria-label={t("composer.send")}
                 >
                   <Send className="h-4 w-4" />
                 </Button>

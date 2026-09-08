@@ -6,6 +6,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un seul bouton à côté de la boîte, et c'est celui qu'il faut sur le moment.** Envoyer quand rien
+  ne tourne, arrêter pendant qu'un agent répond — les deux ne s'entassent plus par-dessus le texte
+  que tu écris. Rien n'a changé en dessous : Entrée envoie toujours et, pendant que l'agent
+  travaille, met toujours en file ce que tu écris pour la fin du tour — ce que la boîte vide te dit
+  maintenant, à la place d'un second bouton.
 - **La question d'un agent prend la place de la boîte.** Elle vivait dans la bulle de l'exécution :
   utile tant que tu la regardes, inutile dès que tu as fait défiler — et pire, ce que tu écrivais
   dans la boîte avec une question ouverte lançait une nouvelle exécution et laissait l'agent

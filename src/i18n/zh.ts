@@ -150,6 +150,7 @@ export const zh: Dictionary = {
   "composer.placeholder.rotate2": "把一件事交出去，继续做你自己的…",
   "composer.placeholder.rotate3": "输入 / 查看命令…",
   "composer.placeholder.shortcut": "Enter 发送，Shift+Enter 换行",
+  "composer.placeholder.busy": "它工作时你也可以写：按 Enter 会排队，等这轮结束后发出",
   "composer.sendShortcut": "（Enter 发送，Shift+Enter 换行）",
   "command.compact": "压缩所有代理的上下文",
   "command.compact.done": "上下文已压缩：{count} 个代理重新开始，历史记录随时可查。",

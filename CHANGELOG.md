@@ -8,6 +8,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- **One button by the box, and it is whatever the moment calls for.** Send while nothing is running,
+  stop while an agent is answering — the two no longer sit side by side over the text you are
+  writing. Nothing changed underneath: Enter still sends, and while an agent works it still queues
+  what you write for when the turn ends, which is now what the empty box tells you instead of a
+  second button.
 - **A question from an agent takes the place of the box.** It used to sit inside the run's bubble,
   which is fine while you are looking at it and useless once you have scrolled past — and worse,
   anything typed into the box while a question was open started a new run and left the agent waiting

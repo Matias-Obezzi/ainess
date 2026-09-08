@@ -6,6 +6,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un solo botón al lado de la caja, y es el que hace falta en ese momento.** Enviar cuando no hay
+  nada corriendo, detener mientras un agente contesta — los dos ya no se amontonan encima del texto
+  que estás escribiendo. Abajo no cambió nada: Enter sigue enviando, y mientras el agente trabaja
+  sigue encolando lo que escribas para cuando termine el turno, que ahora es lo que te dice la caja
+  vacía en lugar de un segundo botón.
 - **La pregunta de un agente ocupa el lugar de la caja.** Vivía adentro de la burbuja de la corrida:
   sirve mientras la estás mirando y no sirve más apenas seguís scrolleando — y peor, lo que
   escribieras en la caja con una pregunta abierta arrancaba una corrida nueva y dejaba al agente

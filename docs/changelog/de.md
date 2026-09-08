@@ -6,6 +6,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Knopf neben der Box, und zwar der, den der Moment verlangt.** Senden, wenn nichts läuft;
+  stoppen, während ein Agent antwortet — die beiden drängeln sich nicht mehr über dem Text, den du
+  schreibst. Darunter hat sich nichts geändert: Enter sendet weiterhin und stellt, während der Agent
+  arbeitet, weiterhin in die Warteschlange für das Ende des Zugs — was jetzt die leere Box sagt
+  statt eines zweiten Knopfes.
 - **Die Frage eines Agenten nimmt den Platz der Box ein.** Sie lebte in der Blase des Laufs: nützlich,
   solange du hinschaust, nutzlos, sobald du weitergescrollt hast — und schlimmer, was du bei offener
   Frage in die Box geschrieben hast, startete einen neuen Lauf und ließ den Agenten auf eine Antwort

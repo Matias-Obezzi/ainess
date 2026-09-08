@@ -6,6 +6,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um único botão ao lado da caixa, e é o que faz falta naquele momento.** Enviar quando nada está
+  rodando, parar enquanto um agente responde — os dois não se amontoam mais sobre o texto que você
+  está escrevendo. Por baixo nada mudou: Enter continua enviando e, enquanto o agente trabalha,
+  continua enfileirando o que você escrever para quando o turno terminar, que é o que a caixa vazia
+  diz agora em vez de um segundo botão.
 - **A pergunta de um agente ocupa o lugar da caixa.** Ela ficava dentro da bolha da execução: serve
   enquanto você está olhando e não serve mais assim que rola a tela — e pior, o que você escrevesse
   na caixa com uma pergunta aberta começava uma execução nova e deixava o agente esperando uma

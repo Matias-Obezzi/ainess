@@ -150,6 +150,7 @@ export const pt: Dictionary = {
   "composer.placeholder.rotate2": "Delegue uma tarefa e siga com a sua…",
   "composer.placeholder.rotate3": "Digite / para ver os comandos…",
   "composer.placeholder.shortcut": "Enter envia, Shift+Enter quebra a linha",
+  "composer.placeholder.busy": "Escreva enquanto ele trabalha: Enter enfileira para quando o turno terminar",
   "composer.sendShortcut": "(Enter para enviar, Shift+Enter quebra de linha)",
   "command.compact": "Compactar o contexto de todos os agentes",
   "command.compact.done": "Contexto compactado: {count} agente(s) recomeçam com o histórico à mão.",

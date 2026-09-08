@@ -151,6 +151,7 @@ export const ja: Dictionary = {
   "composer.placeholder.rotate2": "タスクを任せて、自分の作業に戻りましょう…",
   "composer.placeholder.rotate3": "/ を入力するとコマンドが出ます…",
   "composer.placeholder.shortcut": "Enter で送信、Shift+Enter で改行",
+  "composer.placeholder.busy": "作業中でも書けます。Enter を押すと、ターンが終わったときに送るよう予約します",
   "composer.sendShortcut": "（Enter で送信、Shift+Enter で改行）",
   "command.compact": "すべてのエージェントのコンテキストを圧縮",
   "command.compact.done": "コンテキストを圧縮しました：{count} 体のエージェントが履歴を手元に置いてやり直します。",

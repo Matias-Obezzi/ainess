@@ -151,6 +151,7 @@ export const en: Dictionary = {
   "composer.placeholder.rotate2": "Hand a task over and get on with yours…",
   "composer.placeholder.rotate3": "Type / to see the commands…",
   "composer.placeholder.shortcut": "Enter sends, Shift+Enter starts a new line",
+  "composer.placeholder.busy": "Write while it works: Enter queues it for when the turn ends",
   "composer.sendShortcut": "(Enter to send, Shift+Enter for a line break)",
   "command.compact": "Compact every agent's context",
   "command.compact.done": "Context compacted: {count} agent(s) start over with the history within reach.",
