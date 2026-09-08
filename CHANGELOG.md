@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## Unreleased
+## 0.7.0 — 2026-09-08
 
 ### Added
 
@@ -40,7 +40,6 @@ let one of them fall behind.
 - **It looks for a new version every five minutes**, not only once at startup, so a release
   published while the app is open reaches it the same day. The same offer as always, and the same
   switch in Configuración turns it off.
-
 - **Cutting a turn short to say something.** A message waiting for an agent has a second button:
   it stops what is running and hands the message over right away. Nothing is repeated — what the
   agent did is on disk and what it said is in its own session, which the run that follows resumes
@@ -61,7 +60,6 @@ let one of them fall behind.
   transcript, for good, so a long session paid for it many times over. They go once now, on the
   turn that opens the session. What still goes every turn is the board, which is the part that
   changes.
-
 - A project opens its folder in the file manager, from the right click and from the three dots
   alike — and those two menus now offer the same actions everywhere they are the same thing. The
   project's path was in the right click and not in the dots, and a chat's "Open" the other way

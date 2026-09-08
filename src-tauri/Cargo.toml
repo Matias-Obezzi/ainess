@@ -1,6 +1,6 @@
 [package]
 name = "ais"
-version = "0.6.0"
+version = "0.7.0"
 description = "Orquestador local de agentes de IA"
 authors = ["you"]
 edition = "2021"
