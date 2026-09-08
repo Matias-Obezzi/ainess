@@ -5,15 +5,17 @@
 // phone, where a box in the middle of the screen is the wrong shape for a thumb. Components shared
 // by both builds just call `confirm` and never learn which one they are running in.
 import { island } from "@/components/ui/island";
-import { askInDialog, dialogAvailable, type ConfirmRequest } from "@/components/ui/confirm-dialog";
+import { askInDialog, type ConfirmRequest } from "@/components/ui/confirm-dialog";
 import { isRemoteBuild } from "@/lib/platform";
 import { translateNow } from "@/i18n/useT";
 
 export type { ConfirmRequest };
 
 export function confirm(request: ConfirmRequest): Promise<boolean> {
-  // No host mounted (a test, a component rendered on its own): the island still answers.
-  if (isRemoteBuild() || !dialogAvailable()) return island.confirm(request);
+  // The shape is decided by the build alone. It used to also fall back to the island whenever no
+  // dialog host had registered, which turned a hot reload of the host into "the desktop asks like
+  // a phone"; the dialog holds the question instead until its host is there.
+  if (isRemoteBuild()) return island.confirm(request);
   return askInDialog(request);
 }
 

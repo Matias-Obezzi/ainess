@@ -26,18 +26,29 @@ interface Pending extends ConfirmRequest {
   resolve: (answer: boolean) => void;
 }
 
-/** Set while the host is mounted; `askInDialog` is only reachable through it. */
-let openRequest: ((pending: Pending) => void) | null = null;
-
-/** Whether a dialog host is around to answer. `confirm()` needs to know before it picks. */
-export function dialogAvailable(): boolean {
-  return openRequest !== null;
+interface Registry {
+  /** Set while a host is mounted; `askInDialog` only reaches the dialog through it. */
+  open: ((pending: Pending) => void) | null;
+  /** Asked before a host registered. Held, never dropped: a question has to reach somebody. */
+  waiting: Pending[];
 }
 
+/**
+ * On `globalThis`, not in this module's scope. A hot reload during development gives the module a
+ * second copy, and the mounted host would be registered in one while whoever asks reads the other:
+ * the question then reached nobody.
+ */
+const registry: Registry = ((globalThis as unknown as { __aisConfirm?: Registry }).__aisConfirm ??= {
+  open: null,
+  waiting: [],
+});
+
 export function askInDialog(request: ConfirmRequest): Promise<boolean> {
-  const open = openRequest;
-  if (!open) return Promise.resolve(false);
-  return new Promise<boolean>(resolve => open({ ...request, resolve }));
+  return new Promise<boolean>(resolve => {
+    const pending: Pending = { ...request, resolve };
+    if (registry.open) registry.open(pending);
+    else registry.waiting.push(pending);
+  });
 }
 
 /** Mount once, near the root of the desktop app. */
@@ -45,12 +56,18 @@ export function ConfirmDialogHost() {
   const t = useT();
   const [pending, setPending] = useState<Pending | null>(null);
 
+  // On every render, not once on mount: a hot reload re-runs this module with an empty
+  // registration while the mounted component keeps its effects, and the app would then have no
+  // way to ask anything.
   useEffect(() => {
-    openRequest = setPending;
+    registry.open = setPending;
+    const held = registry.waiting.shift();
+    if (held) setPending(held);
     return () => {
-      openRequest = null;
+      // Only if it is still ours: a second host taking over must not be unregistered by the first.
+      if (registry.open === setPending) registry.open = null;
     };
-  }, []);
+  });
 
   // Closing by any means — Escape, the overlay, the cancel button — is a no.
   const answer = (value: boolean) => {

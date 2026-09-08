@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { TEMPLATE_VARS, activeVarQuery, applyVarSuggestion } from "@/lib/template-vars";
+import { useT } from "@/i18n/useT";
 
 export interface TemplateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   value: string;
@@ -9,7 +10,9 @@ export interface TemplateInputProps extends Omit<React.InputHTMLAttributes<HTMLI
 
 export const TemplateInput = React.forwardRef<HTMLInputElement, TemplateInputProps>(
   ({ value, onChange, className, ...props }, forwardedRef) => {
+    const t = useT();
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const listRef = React.useRef<HTMLDivElement>(null);
     const [queryInfo, setQueryInfo] = React.useState<{ start: number; query: string } | null>(null);
     const [activeIndex, setActiveIndex] = React.useState(0);
 
@@ -38,6 +41,11 @@ export const TemplateInput = React.forwardRef<HTMLInputElement, TemplateInputPro
       const q = queryInfo.query.toLowerCase();
       return TEMPLATE_VARS.filter(v => v.toLowerCase().startsWith(q));
     }, [queryInfo]);
+
+    // The arrows move the highlight; without this the one they land on stays below the fold.
+    React.useEffect(() => {
+      listRef.current?.children[activeIndex]?.scrollIntoView({ block: "nearest" });
+    }, [activeIndex]);
 
     const acceptSuggestion = (name: string) => {
       if (!queryInfo || !inputRef.current) return;
@@ -94,15 +102,17 @@ export const TemplateInput = React.forwardRef<HTMLInputElement, TemplateInputPro
           {...props}
         />
         {queryInfo && filteredVars.length > 0 && (
-          <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div ref={listRef} className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
             {filteredVars.map((v, i) => (
               <div
                 key={v}
                 onClick={() => acceptSuggestion(v)}
                 onMouseEnter={() => setActiveIndex(i)}
-                className={`px-2 py-1 text-xs cursor-pointer font-mono ${i === activeIndex ? "bg-accent text-accent-foreground" : ""}`}
+                className={`flex items-baseline gap-2 px-2 py-1 text-xs cursor-pointer ${i === activeIndex ? "bg-accent text-accent-foreground" : ""}`}
               >
-                {`{{${v}}}`}
+                <span className="shrink-0 font-mono">{`{{${v}}}`}</span>
+                {/* What the variable holds: the names alone say very little. */}
+                <span className="truncate text-[11px] text-muted-foreground">{t(`templateVar.${v}`)}</span>
               </div>
             ))}
           </div>

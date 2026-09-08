@@ -3,6 +3,28 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## 0.6.0 — 2026-09-08
+
+### Added
+
+- **Files go with the message.** A clip in the composer, or Ctrl+V straight into the box: a
+  screenshot, a PDF, a log. Images show a thumbnail before they go and anything else its name and
+  size, and either can be taken back out. On send, the file is copied into the project's own
+  `.ainess/attachments/` folder and the prompt carries its path — which is the one thing every CLI
+  can do with an attachment, since they all read the repo they work in.
+
+### Fixed
+
+- A project with agents working shows it in its own dot, which breathes slowly. It used to wear
+  an orange count next to its name, which read like something waiting for an answer — the amber
+  badge at the bottom of the sidebar, the one that does need you, is now the only thing that
+  looks like that.
+- Deleting from the right-click menu asked in the pill at the top of the window, the shape meant
+  for the phone, instead of the dialog. It only happened while working on the app, and it could
+  also lose the question altogether.
+- The `{{` list of a hook now says what each variable holds, instead of only its name, and the
+  arrows scroll it: past the eighth one the highlight used to move below the fold.
+
 ## 0.5.0 — 2026-09-08
 
 ### Added

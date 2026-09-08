@@ -6,19 +6,14 @@ import type { ConfirmRequest } from "@/components/ui/confirm-dialog";
 
 const islandConfirm = vi.fn(async (_request: ConfirmRequest) => true);
 const askInDialog = vi.fn(async (_request: ConfirmRequest) => true);
-let hostMounted = true;
 
 vi.mock("@/components/ui/island", () => ({ island: { confirm: islandConfirm } }));
-vi.mock("@/components/ui/confirm-dialog", () => ({
-  askInDialog,
-  dialogAvailable: () => hostMounted,
-}));
+vi.mock("@/components/ui/confirm-dialog", () => ({ askInDialog }));
 
 beforeEach(() => {
   vi.resetModules();
   islandConfirm.mockClear();
   askInDialog.mockClear();
-  hostMounted = true;
 });
 
 describe("confirm", () => {
@@ -38,13 +33,14 @@ describe("confirm", () => {
     expect(askInDialog).not.toHaveBeenCalled();
   });
 
-  it("falls back to the island when no dialog is mounted", async () => {
-    // A component rendered on its own, or a test: the question still has to be asked somewhere.
-    hostMounted = false;
+  it("still asks in the dialog when its host has not registered yet", async () => {
+    // It used to answer in the island whenever no host had registered, and a hot reload of the
+    // host module is enough for that: the desktop then asked like a phone. The dialog holds the
+    // question until its host is there.
     const { confirm } = await import("@/lib/confirm");
     await confirm({ title: "¿Seguro?" });
-    expect(islandConfirm).toHaveBeenCalledTimes(1);
-    expect(askInDialog).not.toHaveBeenCalled();
+    expect(askInDialog).toHaveBeenCalledTimes(1);
+    expect(islandConfirm).not.toHaveBeenCalled();
   });
 
   it("says what will be deleted, and that it cannot be undone", async () => {
