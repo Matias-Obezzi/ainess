@@ -2,6 +2,8 @@
 import { useAppStore, selectAgent, selectSkillsFor } from "@/store";
 import { startRun, addMessage } from "@/lib/orchestrator";
 import { getTransport } from "@/lib/transport";
+import { recordTurn } from "@/lib/agent-history";
+import { translateNow } from "@/i18n/useT";
 import type { ChatMessage } from "@/types";
 
 /** Tracks the current turn: chatId → { pending participant indices, turnId, responses so far } */
@@ -319,6 +321,15 @@ export function onChatRunFinished(runId: string): void {
 
   // Persist
   void persistMessages(chatId);
+
+  // And into the project's own folder, where the agent can read it back (see agent-history.ts).
+  {
+    const project = store.config.projects.find(p => p.id === run.projectId);
+    const agent = project?.agents?.find(a => a.id === run.agentId);
+    if (project && agent) {
+      void recordTurn(project, agent, { from: `${translateNow("folder.history.fromUser")} · ${chat.name}`, prompt: run.prompt, answer: output });
+    }
+  }
 
   // Continue to next participant
   const newResponses = [

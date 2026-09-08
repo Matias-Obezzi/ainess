@@ -542,6 +542,16 @@ function onRunFinished(runId: string) {
   }
 
   processQueuedInstructions(agent.id, run.projectId);
+
+  // What was said, into the project itself, where the agent can read it next time (and so can you,
+  // with an editor). Failures and stops are written too: knowing a turn ended badly is the point.
+  if (project) {
+    const parent = run.parentRunId ? store.runs[run.parentRunId] : undefined;
+    const from = parent
+      ? selectAgent(store, parent.agentId)?.name ?? translateNow("folder.history.fromUser")
+      : translateNow("folder.history.fromUser");
+    void recordTurn(project, agent, { from, prompt: run.prompt, answer: run.output });
+  }
 }
 
 /**
@@ -816,6 +826,7 @@ function processQueuedInstructions(agentId: string, projectId: string) {
 }
 
 import { emitHookEvent } from "@/lib/hooks";
+import { recordTurn } from "@/lib/agent-history";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });

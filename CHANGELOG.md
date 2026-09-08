@@ -8,6 +8,11 @@ let one of them fall behind.
 
 ### Added
 
+- **Each agent's history, in the project.** `.ainess/history/` gets one file per agent, appended
+  as its turns end: who asked, what was asked and what came back, for the work it was given and for
+  the chats. The app keeps all of it in its own storage, where only the app can read it; this is the
+  way in for an agent that comes back tomorrow, and for you with an editor. Old turns are dropped
+  whole when the file fills up, never cut in half.
 - **Terminal tabs are dragged into the order you want**, like any tabbed editor: the one being
   carried fades and a line shows where it would land.
 - **Hooks on the machine's own conditions.** Until now a hook answered something an agent did.
@@ -32,6 +37,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- Changing an agent's CLI kept the session of the old one, and the next run handed Antigravity a
+  session id Claude had opened — which fails on the spot, since it is a name the other one has
+  never heard. The session is dropped now when the CLI changes, and when the agent moves in or out
+  of its own worktree, which is the other half of what a session is tied to.
+- The repository watcher no longer wakes on the app's own `.ainess/` folder: the board, the team
+  and now the history are written there as the work happens, and a file hook would have been
+  answering the app instead of the user.
 - A hook asked twice what it is about: one field for the agent and another for the project. It is
   one now — everything, a whole project, or one agent under it — since an agent belongs to exactly
   one project and the pair could only agree or contradict each other into never firing.

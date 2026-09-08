@@ -1147,14 +1147,36 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateAgent: (projectId, agentId, patch) => {
-    set((state) => ({
-      config: {
+    set((state) => {
+      const before = state.config.projects.find(p => p.id === projectId)?.agents?.find(a => a.id === agentId);
+      const config = {
         ...state.config,
         projects: state.config.projects.map(p => p.id === projectId
           ? { ...p, agents: (p.agents ?? []).map(a => a.id === agentId ? { ...a, ...patch, id: a.id } : a) }
           : p),
-      },
-    }));
+      };
+
+      // A session belongs to the CLI that opened it, in the folder it ran in. Handing the id of a
+      // Claude session to Antigravity is handing it a name it has never heard, and the run fails on
+      // the spot; the same goes for a session opened in a folder the agent no longer works in.
+      const runtime = state.runtime[projectId]?.[agentId];
+      const movedOn = before && runtime?.sessionId && (
+        (patch.provider !== undefined && patch.provider !== before.provider) ||
+        (patch.worktree !== undefined && !!patch.worktree !== !!before.worktree)
+      );
+      if (!movedOn) return { config };
+
+      return {
+        config,
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...state.runtime[projectId],
+            [agentId]: { ...runtime, sessionId: undefined, sessionUpdatedAt: Date.now() },
+          },
+        },
+      };
+    });
     debouncedSave();
   },
 

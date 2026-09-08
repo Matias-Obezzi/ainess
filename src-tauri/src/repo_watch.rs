@@ -50,6 +50,9 @@ fn is_noise(path: &Path) -> bool {
         let parent = if i > 0 { segments[i - 1].as_str() } else { "" };
         let noise = match segment.as_str() {
             "node_modules" | ".next" | ".venv" | "__pycache__" => true,
+            // The app's own folder in the project. It writes the board, the team and the history
+            // there as the work happens, and a watcher that woke on those would be watching us.
+            ".ainess" => true,
             // git writes most of a commit here, and none of it shows up in `git status`.
             "objects" | "lfs" => parent == ".git",
             "debug" | "release" => parent == "target",
@@ -182,6 +185,7 @@ mod tests {
     fn drops_what_churns_without_changing_git() {
         for path in [
             "C:/dev/app/.git/objects/ab/cdef",
+            "C:/dev/app/.ainess/history/orchestrator.md",
             "C:/dev/app/node_modules/react/index.js",
             // The folder itself arrives as an event, with nothing after its name.
             "C:/dev/app/node_modules",

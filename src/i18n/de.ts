@@ -1236,5 +1236,8 @@ export const de: Dictionary = {
   "folder.agents.title": "Das Team von {project}",
   "folder.agents.empty": "Dieses Projekt hat noch keine Agenten.",
   "folder.readme.title": "Der Ordner .ainess von {project}",
-  "folder.readme.body": "Was ainess über dieses Projekt weiß, liegt hier. `BOARD.md` ist das Aufgabenboard und `AGENTS.md` das Team: beide schreibt die App, von Hand Geändertes geht beim nächsten Lauf verloren — um eine Karte zu bewegen, delegiert der Planer sie mit ihrer id.\n\nDer Rest des Ordners gehört den Agenten: Pläne, Notizen und Übergaben kommen hierher statt in den Konfigurationsordner des jeweiligen CLI.\n\nWenn ein Dev-Server dieses Repository beobachtet, nimm `.ainess/` in seine Ignorierliste auf: jede Änderung am Board schreibt diese Dateien.",
+  "folder.history.title": "Verlauf von {agent} in {project}",
+  "folder.history.answer": "Antwortete",
+  "folder.history.fromUser": "Benutzer",
+  "folder.readme.body": "Was ainess über dieses Projekt weiß, liegt hier. `BOARD.md` ist das Aufgabenboard und `AGENTS.md` das Team: beide schreibt die App, von Hand Geändertes geht beim nächsten Lauf verloren — um eine Karte zu bewegen, delegiert der Planer sie mit ihrer id. `history/` hält fest, was jeder Agent gesagt hat, eine Datei pro Agent, von der App geschrieben wie die anderen beiden.\n\nDer Rest des Ordners gehört den Agenten: Pläne, Notizen und Übergaben kommen hierher statt in den Konfigurationsordner des jeweiligen CLI.\n\nWenn ein Dev-Server dieses Repository beobachtet, nimm `.ainess/` in seine Ignorierliste auf: jede Änderung am Board schreibt diese Dateien.",
 };
