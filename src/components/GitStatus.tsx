@@ -277,7 +277,7 @@ function RepoActions({ projectId, workspaceDir, status, onCreateBranch }: {
     <>
     <div className="mt-2 flex items-center gap-1.5">
       <Select value={status?.branch ?? ""} onValueChange={onPick} disabled={busy}>
-        <SelectTrigger size="sm" className="h-7 min-w-0 flex-1 text-xs" title={t("git.switchBranch")}>
+        <SelectTrigger size="sm" className="min-w-0 flex-1 text-xs data-[size=sm]:h-7" title={t("git.switchBranch")}>
           <SelectValue placeholder={t("git.noBranch")} />
         </SelectTrigger>
         <SelectContent className="max-h-72">
