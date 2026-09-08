@@ -121,6 +121,8 @@ export const es: Dictionary = {
   "projectScreen.hierarchy": "Jerarquía",
   "projectScreen.toggleComm": "Mostrar u ocultar el panel de comunicación",
   "projectScreen.comm": "Comunicación",
+  "projectScreen.toggleDiff": "Mostrar u ocultar el diff",
+  "projectScreen.diff": "Diff",
   "projectScreen.toggleTerminals": "Mostrar u ocultar las terminales (Ctrl+`)",
   "projectScreen.terminal": "Terminal",
 
@@ -182,6 +184,22 @@ export const es: Dictionary = {
   "dock.dragToSplit": "Arrastrá para repartir el alto",
   "dock.comm.title": "Comunicación",
   "dock.comm.subtitle": "Todo lo que se dicen los agentes y vos",
+  "dock.diff.title": "Diff",
+  "dock.diff.subtitle": "Los cambios de git del proyecto",
+  "diff.mode.working": "Sin commitear",
+  "diff.mode.staged": "Preparado",
+  "diff.mode.head": "Último commit",
+  "diff.refresh": "Actualizar",
+  "diff.files.one": "{n} archivo",
+  "diff.files.other": "{n} archivos",
+  "diff.untracked.one": "{n} archivo sin seguimiento",
+  "diff.untracked.other": "{n} archivos sin seguimiento",
+  "diff.empty.title": "No hay cambios",
+  "diff.empty.body": "Cuando los agentes toquen el código, el diff aparece acá.",
+  "diff.notARepo.title": "El proyecto no es un repositorio git",
+  "diff.notARepo.body": "Sin repositorio no hay diff que mostrar.",
+  "diff.truncated": "El diff es enorme: se muestra sólo el principio.",
+  "diff.binary": "Archivo binario",
 
   // ---- Notifications ----
   "notifications.title": "Notificaciones",
@@ -1170,3 +1188,4 @@ export const es: Dictionary = {
   "folder.readme.title": "La carpeta .ainess de {project}",
   "folder.readme.body": "Acá vive lo que ainess sabe de este proyecto. `BOARD.md` es el tablero de tareas y `AGENTS.md` es el equipo: los escribe la app, así que lo que edites a mano se pierde en la próxima corrida — para mover una tarjeta, el planificador la delega con su id.\n\nEl resto de la carpeta es de los agentes: planes, notas y handoffs van acá, y no en la carpeta de configuración de cada CLI.\n\nSi tenés un servidor de desarrollo mirando el repo, agregá `.ainess/` a lo que ignora: cada cambio del tablero toca estos archivos.",
 };
+

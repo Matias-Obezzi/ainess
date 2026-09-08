@@ -7,6 +7,13 @@ Settings → About.
 
 ### Added
 
+- **The diff, next to the conversation.** A third section in the right dock, alongside Comunicación
+  and Terminales: the project's git changes, file by file, with the hunks coloured and every file
+  collapsible. It reads the uncommitted work, what is staged, or the last commit, lists the
+  untracked files that `git diff` leaves out, and refreshes itself when a run ends — which is
+  exactly when the working tree has just changed under the agents' hands. Read-only: nothing in it
+  writes to your repository. The dock now takes any two or three of its sections at once, each pair
+  split by a divider you can drag.
 - **Each agent gets a say over approvals.** The switch on an agent is now three ways: follow the
   general setting, always ask, never ask. Before it could only add a gate, never lift one — with
   "Approve every delegation" on, turning it off on an agent did nothing at all, and the dialog gave

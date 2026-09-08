@@ -561,3 +561,5 @@ export interface Task {
   order: number;
   archived: boolean;
 }
+/** The sections of the right dock. */
+export type DockSectionId = "comm" | "diff" | "term";

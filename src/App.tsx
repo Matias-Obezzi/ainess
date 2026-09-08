@@ -30,6 +30,7 @@ export default function App() {
   const loaded = useAppStore(state => state.loaded);
   const screen = useAppStore(state => state.screen);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
+  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
 
   useEffect(() => {
@@ -141,7 +142,7 @@ export default function App() {
           {screen === "project" && <ProjectScreen />}
         </main>
 
-        {(commPanelOpen || termPanelOpen) && screen === "project" && <RightDock />}
+        {(commPanelOpen || diffPanelOpen || termPanelOpen) && screen === "project" && <RightDock />}
       </div>
 
       <SettingsDialog />

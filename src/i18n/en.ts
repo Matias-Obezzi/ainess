@@ -120,6 +120,9 @@ export const en: Dictionary = {
   "projectScreen.hierarchy": "Hierarchy",
   "projectScreen.toggleComm": "Show or hide the communication panel",
   "projectScreen.comm": "Communication",
+  "projectScreen.toggleDiff": "Show or hide the diff",
+  "projectScreen.diff": "Diff",
+
   "projectScreen.toggleTerminals": "Show or hide the terminals (Ctrl+`)",
   "projectScreen.terminal": "Terminal",
 
@@ -181,6 +184,22 @@ export const en: Dictionary = {
   "dock.dragToSplit": "Drag to split the height",
   "dock.comm.title": "Communication",
   "dock.comm.subtitle": "Everything the agents say to each other and to you",
+  "dock.diff.title": "Diff",
+  "dock.diff.subtitle": "The project's git changes",
+  "diff.mode.working": "Uncommitted",
+  "diff.mode.staged": "Staged",
+  "diff.mode.head": "Last commit",
+  "diff.refresh": "Refresh",
+  "diff.files.one": "{n} file",
+  "diff.files.other": "{n} files",
+  "diff.untracked.one": "{n} untracked file",
+  "diff.untracked.other": "{n} untracked files",
+  "diff.empty.title": "No changes",
+  "diff.empty.body": "When the agents touch the code, the diff shows up here.",
+  "diff.notARepo.title": "This project is not a git repository",
+  "diff.notARepo.body": "With no repository there is no diff to show.",
+  "diff.truncated": "The diff is huge: only the beginning is shown.",
+  "diff.binary": "Binary file",
 
   // ---- Notifications ----
   "notifications.title": "Notifications",
@@ -1169,3 +1188,4 @@ export const en: Dictionary = {
   "folder.readme.title": "The .ainess folder of {project}",
   "folder.readme.body": "What ainess knows about this project lives here. `BOARD.md` is the task board and `AGENTS.md` is the team: the app writes both, so anything you edit by hand is lost on the next run — to move a card, the planner delegates it with its id.\n\nThe rest of the folder belongs to the agents: plans, notes and handoffs go here rather than in each CLI's own config folder.\n\nIf a dev server is watching this repository, add `.ainess/` to what it ignores: every change of the board touches these files.",
 };
+
