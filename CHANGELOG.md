@@ -32,6 +32,9 @@ let one of them fall behind.
 
 ### Fixed
 
+- A hook asked twice what it is about: one field for the agent and another for the project. It is
+  one now — everything, a whole project, or one agent under it — since an agent belongs to exactly
+  one project and the pair could only agree or contradict each other into never firing.
 - The agent lists that reach across projects — the one a hook instructs, the one a hook is filtered
   to, the one an order is bound to — group the agents under the project each belongs to, with its
   colour. Two projects with an "Orchestrator" each read the same before.

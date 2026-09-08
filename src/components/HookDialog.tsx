@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { TemplateInput } from "@/components/ui/template-input";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProviderLogo } from "@/components/ProviderLogo";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore, selectAgentsByProject } from "@/store";
 import { AgentOptions } from "@/components/AgentOptions";
@@ -30,6 +31,22 @@ const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "file.changed", label: "file.changed" },
 ];
 
+/**
+ * What the one "applies to" field carries, both ways. An agent belongs to exactly one project, so
+ * a hook filtered to an agent is already filtered to its project: there is nothing to lose here.
+ */
+export function scopeOf(hook?: Hook): string {
+  if (hook?.filter?.agentId) return `agent:${hook.filter.agentId}`;
+  if (hook?.filter?.projectId) return `project:${hook.filter.projectId}`;
+  return "all";
+}
+
+export function filterOf(scope: string): Hook["filter"] {
+  if (scope.startsWith("agent:")) return { agentId: scope.slice("agent:".length) };
+  if (scope.startsWith("project:")) return { projectId: scope.slice("project:".length) };
+  return undefined;
+}
+
 /** The ones with no agent behind them: their project is whatever the filter says, or the open one. */
 const SYSTEM_EVENTS: HookEvent[] = ["app.started", "schedule", "internet.lost", "internet.back", "file.changed"];
 
@@ -47,7 +64,6 @@ const PRESET_SLACK = "✅ {{agent}} terminó en {{project}}: {{output|300}}";
 export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onClose: () => void, hook?: Hook, onSave: (h: Hook) => void }) {
   const t = useT();
   const isEditing = !!hook;
-  const store = useAppStore();
   const byProject = useAppStore(selectAgentsByProject);
   const [name, setName] = useState(hook?.name || "");
   const [event, setEvent] = useState<HookEvent>(hook?.event || "task.finished");
@@ -72,9 +88,9 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const [scheduleAt, setScheduleAt] = useState(hook?.schedule?.at ?? "09:00");
   const [scheduleEvery, setScheduleEvery] = useState(String(hook?.schedule?.everyMinutes ?? 30));
 
-  // Filter fields
-  const [filterAgentId, setFilterAgentId] = useState(hook?.filter?.agentId || "all");
-  const [filterProjectId, setFilterProjectId] = useState(hook?.filter?.projectId || "all");
+  // What the hook is about: everything, one project, or one agent. An agent implies its project,
+  // so the two old fields could only ever agree or cancel each other out.
+  const [scope, setScope] = useState(scopeOf(hook));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,10 +123,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               : { everyMinutes: Math.max(1, Number(scheduleEvery) || 30) },
           }
         : {}),
-      filter: (filterAgentId !== "all" || filterProjectId !== "all") ? {
-        ...(filterAgentId !== "all" ? { agentId: filterAgentId } : {}),
-        ...(filterProjectId !== "all" ? { projectId: filterProjectId } : {})
-      } : undefined
+      filter: filterOf(scope)
     };
     onSave(newHook);
   };
@@ -185,27 +198,36 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             <p className="text-xs text-muted-foreground">{t("hookDialog.systemEventHint")}</p>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>{t("hookDialog.filterAgent")}</Label>
-              <Select value={filterAgentId} onValueChange={setFilterAgentId}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("common.all")}</SelectItem>
-                  <AgentOptions groups={byProject} />
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("hookDialog.filterProject")}</Label>
-              <Select value={filterProjectId} onValueChange={setFilterProjectId}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("common.all")}</SelectItem>
-                  {store.config.projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* One field, not two: an agent belongs to one project, so picking it said the project
+              too and the pair only ever asked the same thing twice. */}
+          <div className="space-y-2">
+            <Label>{t("hookDialog.filter")}</Label>
+            <Select value={scope} onValueChange={setScope}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("hookDialog.filter.everything")}</SelectItem>
+                {byProject.map(({ project, agents: projectAgents }) => (
+                  <SelectGroup key={project.id}>
+                    <SelectLabel className="flex items-center gap-1.5">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: project.color || "#4f8cff" }}
+                      />
+                      {project.name}
+                    </SelectLabel>
+                    <SelectItem value={`project:${project.id}`}>{t("hookDialog.filter.wholeProject")}</SelectItem>
+                    {projectAgents.map(a => (
+                      <SelectItem key={a.id} value={`agent:${a.id}`}>
+                        <span className="inline-flex items-center gap-1.5">
+                          <ProviderLogo provider={a.provider} size={14} />
+                          {a.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="border border-border p-4 rounded-md space-y-4">
