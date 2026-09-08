@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **An agent can say something before it is done.** Until now the only thing a delegated agent could
+  tell its planner was its final answer: get stuck two minutes in and nobody heard about it for
+  twenty. It can leave a `note` block as it works — blocked, slower than expected, something you
+  should know now — and the app hands it over while the run is still going, into the feed and to
+  whoever delegated the work.
+- **And it closes with what it actually did.** A `result` block naming the files it touched, what it
+  ran to check them and what it could not do. The prose stays; this is the part the planner reads
+  without having to interpret it, and it shows up in the run's detail as three short lists.
+
 - **Home is where you find out what is waiting.** Above the projects, two lists that cross all of
   them: what is waiting on you — a delegation held for approval, a question nobody answered, a card
   the board left in *needs you* — and who is working right now, on what, and since when. Every line

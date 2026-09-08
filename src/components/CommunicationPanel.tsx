@@ -12,7 +12,7 @@ import { confirm } from "@/lib/confirm";
 import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
-const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "stderr"];
+const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "note", "stderr"];
 
 export function CommunicationPanel() {
   const t = useT();

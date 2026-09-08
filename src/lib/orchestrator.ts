@@ -1,7 +1,7 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, finalOutputFromLines } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, finalOutputFromLines } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -170,6 +170,38 @@ export function flushStream() {
       ...(messagesChanged ? { messages } : {})
     };
   });
+
+  // A note is worth having while the agent is still working, which is the whole point of it, so it
+  // is looked for on the way past instead of when the run ends. What gets parsed is the message
+  // just written rather than the delta, so a block split across two flushes still reads.
+  for (const runId of deltas.keys()) {
+    const current = useAppStore.getState();
+    const run = current.runs[runId];
+    if (!run) continue;
+    const streamed = current.messages.find(m => m.id === `text-${runId}`);
+    if (streamed) emitNewNotes(run, streamed.text);
+  }
+}
+
+/** How many `note` blocks of a run already reached the feed, so none is handed over twice. */
+const notesEmitted = new Map<string, number>();
+
+/**
+ * The `note` blocks of a run that have not been passed on yet.
+ *
+ * Called while the text is still arriving, and once more when the run ends: the counter is what
+ * keeps that second pass from repeating what the first one already said.
+ */
+function emitNewNotes(run: Run, text: string): void {
+  const notes = parseNotes(text);
+  const already = notesEmitted.get(run.id) ?? 0;
+  if (notes.length <= already) return;
+  const parentRun = run.parentRunId ? useAppStore.getState().runs[run.parentRunId] : undefined;
+  const toAgentId = parentRun ? parentRun.agentId : "user";
+  for (const note of notes.slice(already)) {
+    addMessage({ projectId: run.projectId, fromAgentId: run.agentId, toAgentId, kind: "note", text: note, runId: run.id });
+  }
+  notesEmitted.set(run.id, notes.length);
 }
 
 function scheduleStreamFlush() {
@@ -300,6 +332,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     resuming: !!sessionId,
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
     teammates: teammates.length > 0 ? teammates : undefined,
+    canNote: opts.parentRunId !== null,
   });
 
   const mcpServers = selectMcpFor(store, agent.id);
@@ -556,6 +589,13 @@ function onRunFinished(runId: string) {
   }
 
   let retryUnknownPayload: { prompt: string, gaveUpText?: string } | undefined;
+
+  if (run.status === "done" || run.status === "killed") {
+    // Whatever the stream did not carry: a note that only shows up in the final answer, or one
+    // whose block closed on the very last delta. What was handed over already is skipped.
+    emitNewNotes(run, run.output);
+    notesEmitted.delete(run.id);
+  }
 
   if (!asked && (run.status === "done" || run.status === "killed")) {
     const children = selectChildren(store, run.projectId, agent.id);
@@ -882,6 +922,18 @@ function maybeContinueParent(parentRunId: string) {
     for (const childRun of children) {
       const childAgent = selectAgent(store, childRun.agentId);
       outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n`;
+      
+      // What the child says it did, in the shape the planner can act on. Only the lists with
+      // something in them: three empty headings say nothing and cost a paragraph.
+      const result = parseResult(childRun.output);
+      if (result) {
+        const lines: string[] = [];
+        if (result.files.length) lines.push(`**${translateNow("result.files")}:** ${result.files.join(", ")}`);
+        if (result.verified.length) lines.push(`**${translateNow("result.verified")}:** ${result.verified.join(", ")}`);
+        if (result.blocked.length) lines.push(`**${translateNow("result.blocked")}:** ${result.blocked.join(", ")}`);
+        if (lines.length) outputText += "\n" + lines.join("\n") + "\n";
+      }
+
       outputText += quotaNote(childRun, childAgent);
       outputText += "\n";
     }

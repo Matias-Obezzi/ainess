@@ -1,3 +1,5 @@
+const NL = String.fromCharCode(10);
+
 // The streamed text of a run reaches the feed in one write per flush, not one per token: that is
 // the whole point of the buffer (see `flushStream`), and the only place the behaviour is visible
 // end to end is through the transport handler the orchestrator subscribes with.
@@ -64,5 +66,26 @@ describe("streamed output", () => {
     useAppStore.setState({ runs: {} } as never);
     expect(() => flushStream()).not.toThrow();
     expect(useAppStore.getState().messages).toHaveLength(0);
+  });
+  it("hands a note over while the run is still going", () => {
+    const note = ["```note", "el build tarda 20 minutos, sigo", "```"].join(NL);
+    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: note }] } }), stream: "stdout" } as never);
+    flushStream();
+
+    const notes = useAppStore.getState().messages.filter(m => m.kind === "note");
+    expect(notes.map(m => m.text)).toEqual(["el build tarda 20 minutos, sigo"]);
+    expect(useAppStore.getState().runs.r1.status).toBe("running");
+  });
+
+  it("does not hand the same note over twice, however many flushes go by", () => {
+    // Its own run: what has already been handed over is remembered per run, for the life of the run.
+    useAppStore.setState({ runs: { ...useAppStore.getState().runs, r2: run({ id: "r2" }) } } as never);
+    const note = ["```note", "ojo con el worktree", "```"].join(NL);
+    emitOutput!({ runId: "r2", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: note }] } }), stream: "stdout" } as never);
+    flushStream();
+    emitOutput!({ runId: "r2", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: " y sigo escribiendo" }] } }), stream: "stdout" } as never);
+    flushStream();
+
+    expect(useAppStore.getState().messages.filter(m => m.kind === "note")).toHaveLength(1);
   });
 });

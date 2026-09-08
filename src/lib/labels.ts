@@ -36,6 +36,7 @@ export const kindLabelKey: Record<MessageKind, string> = {
   result: "label.kind.result",
   system: "label.kind.system",
   error: "label.kind.error",
+  note: "label.kind.note",
   stderr: "label.kind.stderr"
 };
 

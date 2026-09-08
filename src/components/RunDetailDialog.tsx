@@ -3,6 +3,7 @@ import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useT, useLocale } from "@/i18n/useT";
+import { parseResult } from "@/lib/providers";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
@@ -28,6 +29,7 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
   const duration = run.endedAt ? ((run.endedAt - run.startedAt) / 1000).toFixed(1) + "s" : "-";
   const startStr = new Date(run.startedAt).toLocaleTimeString(locale);
   const endStr = run.endedAt ? new Date(run.endedAt).toLocaleTimeString(locale) : "-";
+  const parsedRes = run ? parseResult(run.output) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,6 +67,15 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
             <div className="whitespace-pre-wrap text-sm border p-2 rounded bg-background">
               {run.output || t("thread.noOutput")}
             </div>
+            {parsedRes && (
+              <div className="mt-2 text-sm border p-2 rounded bg-muted">
+                <div className="flex flex-col gap-1">
+                  <div><strong>{t("result.files")}:</strong> {parsedRes.files.length ? parsedRes.files.join(", ") : "-"}</div>
+                  <div><strong>{t("result.verified")}:</strong> {parsedRes.verified.length ? parsedRes.verified.join(", ") : "-"}</div>
+                  <div><strong>{t("result.blocked")}:</strong> {parsedRes.blocked.length ? parsedRes.blocked.join(", ") : "-"}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 min-h-[200px] flex flex-col">

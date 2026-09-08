@@ -703,6 +703,30 @@ function askSection(): string {
   ].join("\n");
 }
 
+function noteSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.note.header"),
+    t("prompt.note.intro"),
+    "```note",
+    t("prompt.note.example"),
+    "```",
+    t("prompt.note.rules"),
+  ].join("\n");
+}
+
+function resultSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.result.header"),
+    t("prompt.result.intro"),
+    "```result",
+    t("prompt.result.schema"),
+    "```",
+    t("prompt.result.rules"),
+  ].join("\n");
+}
+
 /** The board, for the one agent it is written for: a planner with a team to hand it out to. */
 function boardFor(
   agent: AgentConfig,
@@ -719,7 +743,7 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[] }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -770,6 +794,10 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       if (mates) parts.push(mates);
       if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
       if (agent.role !== "custom") parts.push(askSection());
+      if (extras.canNote) {
+        parts.push(noteSection());
+        parts.push(resultSection());
+      }
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
     }
@@ -860,6 +888,11 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   if (agent.role !== "custom") {
     prompt += (prompt ? "\n\n" : "") + askSection();
   }
+  
+  if (extras?.canNote) {
+    prompt += (prompt ? "\n\n" : "") + noteSection();
+    prompt += (prompt ? "\n\n" : "") + resultSection();
+  }
 
   if (agent.systemPrompt) {
     prompt += (prompt ? "\n\n" : "") + agent.systemPrompt;
@@ -948,4 +981,65 @@ export function parseDelegations(text: string): Delegation[] {
     }
   }
   return delegations;
+}
+
+/**
+ * The `note` blocks of an answer, in the order they were written.
+ *
+ * Unlike `ask` and `delegate`, a note carries plain text: it is what an agent says on the way past
+ * — blocked, slower than expected, something the planner should know now — and it is handed over
+ * without waiting for the run to end.
+ */
+export function parseNotes(text: string): string[] {
+  const out: string[] = [];
+  const regex = /```note[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const note = match[1].trim();
+    if (note) out.push(note);
+  }
+  return out;
+}
+
+export interface ParsedResult {
+  files: string[];
+  verified: string[];
+  blocked: string[];
+}
+
+/**
+ * The last `result` block of an answer: what was touched, what was checked, what is blocked.
+ *
+ * The prose stays the prose; this is the part a planner can act on without reading it twice. Any
+ * field may be missing, or arrive as a single string instead of a list, and a broken block is no
+ * block at all — like every other parser here, it answers with nothing rather than throwing.
+ */
+export function parseResult(text: string): ParsedResult | null {
+  const regex = /```result[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let lastMatch = null;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    lastMatch = match;
+  }
+  
+  if (!lastMatch) return null;
+  
+  try {
+    const obj = JSON.parse(lastMatch[1]);
+    if (!obj || typeof obj !== 'object') return null;
+    
+    const normalize = (val: any) => {
+      if (Array.isArray(val)) return val.filter(v => typeof v === 'string').map(v => v.trim()).filter(Boolean);
+      if (typeof val === 'string') return val.trim() ? [val.trim()] : [];
+      return [];
+    };
+    
+    return {
+      files: normalize(obj.files),
+      verified: normalize(obj.verified),
+      blocked: normalize(obj.blocked)
+    };
+  } catch {
+    return null;
+  }
 }

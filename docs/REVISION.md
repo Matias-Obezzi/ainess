@@ -146,7 +146,7 @@ propósito.
 
 ## C. Comunicación entre agentes
 
-### `[ ]` C1 · Un hijo no puede decir nada hasta que termina
+### `[x]` C1 · Un hijo no puede decir nada hasta que termina — *«A word from the agent before it is done»*
 
 **Qué pasa.** El único canal del implementador hacia su planificador es el resultado final de la
 corrida. Si se bloquea a los dos minutos, el planificador se entera veinte minutos después.
@@ -171,7 +171,7 @@ terminar, contarle al planificador y esperar otra ronda.
 **Propuesta.** Un bloque `handoff` que el planificador pueda autorizar en el prompt, o dejarlo
 explícitamente fuera y documentarlo.
 
-### `[ ]` C4 · El resultado del hijo es un texto suelto
+### `[x]` C4 · El resultado del hijo es un texto suelto — *«A word from the agent before it is done»*
 
 **Qué pasa.** El planificador recibe prosa: sin archivos tocados, sin qué se verificó, sin qué
 quedó bloqueado. Cada implementador lo cuenta como quiere y el planificador tiene que adivinar.

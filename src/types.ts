@@ -392,6 +392,7 @@ export type MessageKind =
   | "result" // final answer of a run
   | "system"
   | "error"
+  | "note"
   | "stderr";
 
 export interface CommMessage {
