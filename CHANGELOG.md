@@ -8,6 +8,18 @@ let one of them fall behind.
 
 ### Added
 
+- **The empty box now says something, and it changes.** The composer's placeholder types one of five
+  lines and swaps every few seconds — what the team is for, what to hand over, that `/` opens the
+  commands, and the Enter shortcut, which stops being a permanent tail on the line and becomes
+  something you read once. It holds still for anyone who asked the system for less motion, and on
+  the phone it does not move at all.
+- **Movement where it means something.** A run that is still going has the light sweeping across the
+  step it is on, instead of a spinner; Home's "trabajando ahora" reads as alive; the approvals pill
+  wears a thread of light around it while — and only while — something is waiting for your answer;
+  and the money in the usage panel counts up to what it is, in the same currency format the tables
+  use. Nothing else was decorated: the thread, the feed and the board stay still, because a tool you
+  look at all day should only move when it is telling you something.
+
 - **An agent can say something before it is done.** Until now the only thing a delegated agent could
   tell its planner was its final answer: get stuck two minutes in and nobody heard about it for
   twenty. It can leave a `note` block as it works — blocked, slower than expected, something you

@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/StatusDot";
 import { ProjectDialog } from "@/components/ProjectDialog";
+import { Shimmer } from "@/components/ui/shimmer";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -21,7 +22,7 @@ import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import type { Project, Run } from "@/types";
-import { Copy, Folder, FolderKanban, FolderOpen, Pencil, PlayCircle, Trash2, Bell, Loader2 } from "lucide-react";
+import { Copy, Folder, FolderKanban, FolderOpen, Pencil, PlayCircle, Trash2, Bell } from "lucide-react";
 import { attentionItems, workingItems, countsByProject } from "@/lib/attention";
 import { AgentAvatar } from "@/components/ProviderLogo";
 
@@ -208,7 +209,7 @@ export function HomeScreen() {
           {workingList.length > 0 && (
             <div className="flex flex-col gap-2 mb-4">
               <h3 className="font-semibold flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> {t("home.working.title")}
+                <Shimmer>{t("home.working.title")}</Shimmer>
               </h3>
               <div className="flex flex-col gap-1">
                 {workingList.slice(0, 6).map(item => (
