@@ -43,6 +43,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A long model name no longer breaks the new-chat dialog.** A participant's row is three dropdowns
+  and a bin in a grid, and a grid column will not go under the width of what it holds: pick a model
+  with a long name and the row stretched, the dialog stretched with it, and the name and mode fields
+  ended up hanging out of the card. The columns can shrink now and the name clamps.
+
 - **A tool failing inside an agent stops looking like the app broke.** Antigravity's `view_file`
   fails, the agent retries and carries on — and the conversation showed a red alarm about it, the
   same shape a real failure gets. It is a line in the run's activity now, in amber, with what the

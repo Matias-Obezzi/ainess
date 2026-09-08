@@ -116,9 +116,13 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                 const modelIds = provider ? (models[provider]?.map(m => m.id) ?? PROVIDERS[provider]?.defaultModels ?? []) : [];
                 return (
                   <div key={idx} className="rounded-md border border-border p-2 flex flex-col gap-2">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                    {/* `1fr` is `minmax(auto, 1fr)`: a column refuses to go under the width of
+                        what it holds, so a model with a long name stretched the row, the row
+                        stretched the dialog, and the fields above it hung out of the card.
+                        `minmax(0, 1fr)` lets the three columns shrink and the value clamp. */}
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
                       <Select value={p.agentId} onValueChange={v => updateParticipant(idx, { agentId: v, model: undefined })}>
-                        <SelectTrigger className="w-full" title={t("chatDialog.agent")}>
+                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.agent")}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -131,7 +135,7 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                         value={CHAT_ROLES.includes(p.role) ? p.role : OTHER_ROLE}
                         onValueChange={v => updateParticipant(idx, { role: v === OTHER_ROLE ? "" : v })}
                       >
-                        <SelectTrigger className="w-full" title={t("chatDialog.roleHint")}>
+                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.roleHint")}>
                           <SelectValue placeholder={t("chatDialog.role")} />
                         </SelectTrigger>
                         <SelectContent>
@@ -145,7 +149,7 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
                         value={!p.model ? DEFAULT_MODEL : modelIds.includes(p.model) ? p.model : OTHER_MODEL}
                         onValueChange={v => updateParticipant(idx, { model: v === DEFAULT_MODEL ? undefined : v === OTHER_MODEL ? "custom" : v })}
                       >
-                        <SelectTrigger className="w-full" title={t("chatDialog.modelHint")}>
+                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.modelHint")}>
                           <SelectValue placeholder={t("common.model")} />
                         </SelectTrigger>
                         <SelectContent>
