@@ -7,10 +7,13 @@ import type {
   RunExitEvent,
   RunOutputEvent,
   SpawnOptions,
+  SpawnedProcess,
 } from "@/types";
 
 export const ipc = {
-  spawnRun: (opts: SpawnOptions) => invoke<void>("spawn_run", { opts }),
+  spawnRun: (opts: SpawnOptions) => invoke<SpawnedProcess>("spawn_run", { opts }),
+  reapOrphans: (orphans: Array<{ runId: string; pid: number; image: string; startedAt: number }>) =>
+    invoke<string[]>("reap_orphans", { orphans }),
   killRun: (runId: string) => invoke<boolean>("kill_run", { runId }),
   runningRuns: () => invoke<string[]>("running_runs"),
   loadConfig: () => invoke<AppConfig | null>("load_config"),

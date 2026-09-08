@@ -1193,6 +1193,8 @@ export const ja: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} が中断されました",
+  "notify.orphansKilled": "生き残っていた {n} 件のプロセスを終了しました",
+  "notify.orphansKilledBody": "前回アプリが突然終了し、そのエージェントは動き続けていました。リポジトリを確認してください。途中の変更が残っている可能性があります。",
   "notify.leftHalfwayIn": "{name} が {project} で中断されました",
   "notify.runsLeftHalfway": "{n} 件の実行が中断されました",
   "notify.runsLeftHalfwayIn": "{n} 件の実行が {project} で中断されました",

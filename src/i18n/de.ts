@@ -1192,6 +1192,8 @@ export const de: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} wurde nicht fertig",
+  "notify.orphansKilled": "{n} Prozess(e) beendet, die noch liefen",
+  "notify.orphansKilledBody": "Die App wurde beim letzten Mal abrupt beendet und ihre Agenten arbeiteten weiter. Sieh im Repo nach: es können halbfertige Änderungen liegen.",
   "notify.leftHalfwayIn": "{name} wurde nicht fertig in {project}",
   "notify.runsLeftHalfway": "{n} Runs wurden nicht fertig",
   "notify.runsLeftHalfwayIn": "{n} Runs wurden nicht fertig in {project}",

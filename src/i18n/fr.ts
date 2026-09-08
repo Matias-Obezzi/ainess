@@ -1192,6 +1192,8 @@ export const fr: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} est resté à moitié fait",
+  "notify.orphansKilled": "{n} processus laissés en marche ont été fermés",
+  "notify.orphansKilledBody": "L'application s'est fermée brutalement la dernière fois et ses agents ont continué à travailler. Vérifiez le dépôt : il peut y avoir des changements à moitié faits.",
   "notify.leftHalfwayIn": "{name} est resté à moitié fait dans {project}",
   "notify.runsLeftHalfway": "{n} exécutions sont restées à moitié faites",
   "notify.runsLeftHalfwayIn": "{n} exécutions sont restées à moitié faites dans {project}",

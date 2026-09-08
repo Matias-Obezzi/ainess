@@ -10,6 +10,7 @@ const NOT_AVAILABLE = "Esto solo está disponible en la app de escritorio";
  */
 export const remoteTransport: Transport = {
   spawnRun: async () => {},
+  reapOrphans: async () => [],
   killRun: async () => false,
   onRunOutput: async () => () => {},
   onRunExit: async () => () => {},

@@ -1193,6 +1193,8 @@ export const en: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} was left half-done",
+  "notify.orphansKilled": "Closed {n} process(es) that had been left running",
+  "notify.orphansKilledBody": "The app closed abruptly last time and its agents kept working. Check the repo: there may be half-finished changes.",
   "notify.leftHalfwayIn": "{name} was left half-done in {project}",
   "notify.runsLeftHalfway": "{n} runs were left half-done",
   "notify.runsLeftHalfwayIn": "{n} runs were left half-done in {project}",

@@ -192,18 +192,41 @@ fn pump<R: std::io::Read + Send + 'static>(
     })
 }
 
+/// What the frontend needs to find this process again after the app has died and come back.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Spawned {
+    pub pid: u32,
+    pub image: String,
+}
+
+/// The image name the OS reports for a pid, read from the same source `reap_orphans` reads, so
+/// the two are comparable. Only this pid is scanned: refreshing every process is not free.
+fn image_of(pid: u32) -> Option<String> {
+    let key = sysinfo::Pid::from_u32(pid);
+    let mut system = sysinfo::System::new();
+    system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[key]), true);
+    system.process(key).map(|p| p.name().to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 pub fn spawn_run(
     app: AppHandle,
     state: State<'_, RunnerState>,
     opts: SpawnOptions,
-) -> Result<(), String> {
+) -> Result<Spawned, String> {
     let mut cmd = build_command(&opts);
     let mut child = cmd.spawn().map_err(|e| {
         let msg = format!("No se pudo iniciar `{}`: {e}", opts.program);
         logging::append(&app, "error", "runner", &format!("run {}: {msg}", opts.run_id));
         msg
     })?;
+    // Handed back so the run can be written down with them. A crash never reaches `shutdown`, and
+    // the CLI it started keeps working on the repo with nobody left to read its output: the next
+    // launch needs these to find that process again, and to be sure it is still that one and not
+    // whatever inherited its pid (see `reap_orphans`).
+    let pid = child.id();
+    let image = image_of(pid).unwrap_or_default();
     logging::append(
         &app,
         "info",
@@ -268,7 +291,7 @@ pub fn spawn_run(
         );
     });
 
-    Ok(())
+    Ok(Spawned { pid, image })
 }
 
 #[tauri::command]
@@ -319,6 +342,83 @@ pub fn shutdown(app: &tauri::AppHandle) {
 #[tauri::command]
 pub fn running_runs(state: State<'_, RunnerState>) -> Vec<String> {
     state.children.lock().unwrap().keys().cloned().collect()
+}
+
+/// One run a previous instance of the app left running, as the frontend wrote it down.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Orphan {
+    pub run_id: String,
+    pub pid: u32,
+    /// The image the run was started as, taken from the process itself at spawn time.
+    pub image: String,
+    /// When the run started, in milliseconds since the epoch.
+    pub started_at: i64,
+}
+
+/// How far the process's own start time may sit from the run's before they are not the same thing.
+const START_SLACK_MS: i64 = 120_000;
+
+/// Whether the process now holding a pid is still the one that run started.
+///
+/// The whole safety of reaping rests here. A pid says nothing on its own — the operating system
+/// hands them out again, and the next holder is as likely to be the user's dev server as an agent.
+/// Both the image and the moment it started have to agree before anything is killed.
+///
+/// `process_start_secs` is whole seconds since the epoch, as the OS reports it; `started_at_ms` is
+/// the run's own timestamp in milliseconds.
+fn should_reap(process_name: &str, process_start_secs: u64, image: &str, started_at_ms: i64) -> bool {
+    if image.is_empty() || process_name != image {
+        return false;
+    }
+    let drift = (process_start_secs as i64) * 1000 - started_at_ms;
+    drift.abs() <= START_SLACK_MS
+}
+
+/// Kills the CLI processes a crashed instance of the app left behind.
+///
+/// A clean exit goes through `shutdown` and takes every agent with it; a crash never gets there,
+/// and the CLIs keep editing the workspace with nobody reading their output. This is the next
+/// launch cleaning up after that one.
+///
+/// A pid on its own is not proof of anything: the operating system reuses them, and killing a
+/// recycled one would take down whatever holds it now — the user's own dev server, say, which is
+/// as likely to be `node.exe` as an agent is. So a process is only killed when its image *and* its
+/// start time still match the run that recorded it. Returns the ids of the runs actually killed.
+#[tauri::command]
+pub fn reap_orphans(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
+    if orphans.is_empty() {
+        return Vec::new();
+    }
+    let mut system = sysinfo::System::new();
+    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let mut killed = Vec::new();
+    for orphan in orphans {
+        let Some(process) = system.process(sysinfo::Pid::from_u32(orphan.pid)) else {
+            continue; // Already gone: nothing to clean up.
+        };
+        if !should_reap(
+            &process.name().to_string_lossy(),
+            process.start_time(),
+            &orphan.image,
+            orphan.started_at,
+        ) {
+            continue;
+        }
+        kill_tree(orphan.pid);
+        logging::append(
+            &app,
+            "warn",
+            "runner",
+            &format!(
+                "run {}: proceso {} ({}) quedó vivo tras un cierre inesperado, matado",
+                orphan.run_id, orphan.pid, orphan.image
+            ),
+        );
+        killed.push(orphan.run_id);
+    }
+    killed
 }
 
 /// Hard limit for `exec_capture`, matching the 60 s the Node transport passes to
@@ -443,6 +543,84 @@ fn kill_tree(pid: u32) {
 
 #[cfg(test)]
 mod tests {
+
+    // ---- Reaping what a crash left behind (see `should_reap`) ----
+
+    /// A run started at this moment, in milliseconds; its process reports the same in seconds.
+    const RUN_MS: i64 = 1_764_000_000_000;
+    const PROC_SECS: u64 = 1_764_000_000;
+
+    #[test]
+    fn reaps_the_process_that_is_still_the_one_the_run_started() {
+        assert!(super::should_reap("node.exe", PROC_SECS, "node.exe", RUN_MS));
+        // Started a little before the run was written down: still the same launch.
+        assert!(super::should_reap("node.exe", PROC_SECS - 30, "node.exe", RUN_MS));
+    }
+
+    #[test]
+    fn refuses_a_pid_now_held_by_something_else() {
+        // The user's own editor, or anything at all: same pid, different program.
+        assert!(!super::should_reap("Code.exe", PROC_SECS, "node.exe", RUN_MS));
+    }
+
+    #[test]
+    fn refuses_the_same_program_started_at_another_time() {
+        // The dangerous case: the dev server is `node.exe` too. Only the clock tells them apart.
+        assert!(!super::should_reap("node.exe", PROC_SECS + 3_600, "node.exe", RUN_MS));
+        assert!(!super::should_reap("node.exe", PROC_SECS - 3_600, "node.exe", RUN_MS));
+    }
+
+    #[test]
+    fn refuses_a_run_that_never_recorded_an_image() {
+        // Older runs, and any spawn whose image could not be read: nothing to match against.
+        assert!(!super::should_reap("node.exe", PROC_SECS, "", RUN_MS));
+    }
+
+    /// The assumption everything above rests on: that the OS, through sysinfo, reports the image
+    /// name and the start time of a process we started in the units `should_reap` expects. Spawns
+    /// a real one rather than trusting the documentation.
+    #[test]
+    fn reads_a_real_process_the_way_should_reap_expects() {
+        use std::process::{Command, Stdio};
+        let started_at_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64;
+
+        #[cfg(windows)]
+        let mut child = Command::new("ping")
+            .args(["-n", "30", "127.0.0.1"])
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("spawn");
+        #[cfg(not(windows))]
+        let mut child = Command::new("sleep").arg("30").stdout(Stdio::null()).spawn().expect("spawn");
+
+        let pid = child.id();
+        let image = super::image_of(pid).expect("the process we just started must be visible");
+        assert!(!image.is_empty());
+
+        let key = sysinfo::Pid::from_u32(pid);
+        let mut system = sysinfo::System::new();
+        system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[key]), true);
+        let process = system.process(key).expect("still running");
+
+        assert!(
+            super::should_reap(&process.name().to_string_lossy(), process.start_time(), &image, started_at_ms),
+            "image {image}, start {} vs run {started_at_ms}",
+            process.start_time(),
+        );
+        // And the same process is refused once it is claimed to be a much older run.
+        assert!(!super::should_reap(
+            &process.name().to_string_lossy(),
+            process.start_time(),
+            &image,
+            started_at_ms - 3_600_000,
+        ));
+
+        let _ = child.kill();
+        let _ = child.wait();
+    }
 
     // ---- Batch shims (see `unwrap_shim`) ----
 

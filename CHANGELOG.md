@@ -18,6 +18,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A crash no longer leaves agents working behind the app's back.** Closing the app walks every
+  agent process down; a crash — the task manager, a power cut, a panic — never reaches that, so
+  the CLIs kept going: still editing the workspace, still spending quota, with nobody reading
+  their output and the app that started them gone. Every run now writes down the process behind
+  it, and the next launch finds those, stops them and says so, across every project — including
+  the ones it does not load at startup, whose bookkeeping can wait but whose processes cannot.
+  A pid is never enough to kill on: they get handed out again, and the next holder is as likely
+  to be your own dev server as an agent, so a process is only stopped when its image *and* the
+  moment it started still match the run that recorded it.
 - **Each project remembers the view you left it on.** The board, the conversation and the
   hierarchy were one setting shared by every project, so opening one in the hierarchy and coming
   back to another showed the hierarchy there too. Each project keeps its own now — across

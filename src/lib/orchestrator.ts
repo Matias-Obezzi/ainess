@@ -247,7 +247,15 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       mcpConfigPath
     });
 
-    await getTransport().spawnRun({ runId, ...spawnOpts });
+    const spawned = await getTransport().spawnRun({ runId, ...spawnOpts });
+    // Written down with the run, and so onto disk: if this app dies without getting to kill its
+    // agents, the next launch has what it needs to find the process it left behind.
+    if (spawned) {
+      useAppStore.setState(state => {
+        const run = state.runs[runId];
+        return run ? { runs: { ...state.runs, [runId]: { ...run, process: spawned } } } : state;
+      });
+    }
   };
 
   doSpawn().catch(err => {

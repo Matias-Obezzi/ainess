@@ -19,6 +19,7 @@ import { translateNow } from "@/i18n/useT";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
+import * as recovery from "@/lib/recovery";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -2064,6 +2065,11 @@ async function runInit(): Promise<void> {
     // Load persisted notifications before marking the store as ready, so the bell
     // shows its badge without a flash of empty state on startup.
     await notificationStore.loadNotifications();
+
+    // Anything the previous run of the app left alive. A crash never reaches the shutdown that
+    // kills the agents, so this is where they are found and stopped — before the user sends
+    // anything new and ends up with two agents in the same workspace.
+    void recovery.reapAfterCrash();
 
     set({ loaded: true });
 

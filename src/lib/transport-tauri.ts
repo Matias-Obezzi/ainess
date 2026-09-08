@@ -6,6 +6,7 @@ import type { PtyExitEvent, PtyOutputEvent, ShellInfo, StorageStat } from "@/typ
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
 export const tauriTransport: Transport = {
   spawnRun: async (opts) => ipc.spawnRun(opts),
+  reapOrphans: async (orphans) => ipc.reapOrphans(orphans),
   killRun: async (runId) => ipc.killRun(runId),
   onRunOutput: async (h) => onRunOutput(h),
   onRunExit: async (h) => onRunExit(h),

@@ -1192,6 +1192,8 @@ export const zh: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} 做到一半停下了",
+  "notify.orphansKilled": "关闭了 {n} 个残留在运行的进程",
+  "notify.orphansKilledBody": "上次应用是被突然关掉的，它的智能体还在继续干活。检查一下仓库：可能有做到一半的改动。",
   "notify.leftHalfwayIn": "{name} 在 {project} 做到一半停下了",
   "notify.runsLeftHalfway": "{n} 次运行做到一半停下了",
   "notify.runsLeftHalfwayIn": "{n} 次运行在 {project} 做到一半停下了",

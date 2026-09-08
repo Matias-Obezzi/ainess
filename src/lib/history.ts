@@ -349,6 +349,18 @@ export async function loadHistory(projectId: string): Promise<void> {
 /** Alias that reads better at call sites that want fresh data from other processes. */
 export const syncHistory = loadHistory;
 
+/**
+ * The runs a project's file still calls "running", read without touching the store.
+ *
+ * For the projects startup does not load (a machine with many of them loads only the last): their
+ * bookkeeping can wait until you open them, but the processes they left behind cannot — those are
+ * editing a repo right now. See `reapAfterCrash`.
+ */
+export async function runningRunsOnDisk(projectId: string): Promise<Run[]> {
+  const parsed = await readFile(projectId);
+  return (parsed?.runs ?? []).filter(r => r.status === "running");
+}
+
 /** Drop a project's runs, messages and approvals, in memory and on disk. */
 export async function clearHistory(projectId: string): Promise<void> {
   loadedProjects.add(projectId);

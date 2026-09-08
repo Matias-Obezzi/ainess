@@ -310,6 +310,10 @@ export function killAllSync(): void {
 }
 
 export const nodeTransport: Transport = {
+  // `ais run` starts its agents and waits for them: nothing of its own outlives it to be reaped,
+  // and the app's leftovers are the app's to clean up, where the pids were written down.
+  reapOrphans: async () => [],
+
   spawnRun: async (opts: SpawnOptions) => {
     const env = { ...process.env, ...(opts.env || {}), NO_COLOR: "1", FORCE_COLOR: "0", CI: "1" };
     const resolved = resolveProgram(opts.program, opts.args);

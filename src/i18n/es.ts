@@ -1193,6 +1193,8 @@ export const es: Dictionary = {
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} quedó a medias",
+  "notify.orphansKilled": "Se cerraron {n} proceso(s) que habían quedado vivos",
+  "notify.orphansKilledBody": "La app se cerró de golpe la vez pasada y sus agentes siguieron trabajando. Revisá el repo: puede haber cambios a medio hacer.",
   "notify.leftHalfwayIn": "{name} quedó a medias en {project}",
   "notify.runsLeftHalfway": "{n} corridas quedaron a medias",
   "notify.runsLeftHalfwayIn": "{n} corridas quedaron a medias en {project}",
