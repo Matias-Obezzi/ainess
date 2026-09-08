@@ -1251,6 +1251,8 @@ export const fr: Dictionary = {
   "prompt.chat.others.rules": "Réponds au dernier message de l'utilisateur ; tu peux te référer à ce que les autres participants ont dit.",
   "prompt.chat.previousAnswers": "Réponses précédentes dans ce tour :",
   "prompt.implementer": "Tu es IMPLÉMENTEUR. Tu reçois des tâches de ton planificateur. Fais les changements dans l'espace de travail. Une fois terminé, réponds par un résumé clair : ce que tu as changé (fichiers), ce que tu as vérifié, ce qui reste ou est bloqué.",
+  "prompt.teammates.header": "## En parallèle avec vous\nEn ce moment même, sur cette même tâche, travaillent également :",
+  "prompt.teammates.rules": "Ne touchez pas à ce que quelqu'un d'autre a entre les mains : si votre travail croise le leur, dites-le dans votre réponse au lieu de l'écraser.",
   "prompt.reviewer": "Tu es RELECTEUR. Tu relis les changements et réponds par des constats ou des suggestions.",
   "prompt.profile.header": "## À propos de l'utilisateur",
   "prompt.profile.name": "Nom : {name}",

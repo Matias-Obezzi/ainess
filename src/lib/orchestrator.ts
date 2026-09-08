@@ -190,6 +190,21 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
     r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
+
+  const thisRoot = opts.rootRunId ?? runId;
+  const projectRuntime = store.runtime[opts.projectId] || {};
+  const teammates: { name: string; task: string }[] = [];
+  for (const [otherId, rt] of Object.entries(projectRuntime)) {
+    if (otherId === agent.id) continue;
+    if (rt.status !== "working") continue;
+    if (!rt.currentTask || !rt.currentRunId) continue;
+    const otherRun = store.runs[rt.currentRunId];
+    if (otherRun && otherRun.rootRunId === thisRoot) {
+      const otherAgent = selectAgent(store, otherId);
+      if (otherAgent) teammates.push({ name: otherAgent.name, task: rt.currentTask });
+    }
+  }
+
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
     // implementer told to do something by its planner and by the user reads the same prompt.
@@ -207,6 +222,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // A session that is being carried on already read the preamble; only what changed goes again.
     resuming: !!sessionId,
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
+    teammates: teammates.length > 0 ? teammates : undefined,
   });
 
   const mcpServers = selectMcpFor(store, agent.id);

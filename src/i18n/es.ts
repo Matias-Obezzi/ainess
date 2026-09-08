@@ -1253,6 +1253,8 @@ export const es: Dictionary = {
   "prompt.chat.others.rules": "Respondé al último mensaje del usuario; podés referirte a lo que dijeron los otros participantes.",
   "prompt.chat.previousAnswers": "Respuestas anteriores de este turno:",
   "prompt.implementer": "Sos IMPLEMENTADOR. Recibís tareas de tu planificador. Hacé los cambios en el workspace. Al terminar respondé un resumen claro: qué cambiaste (archivos), qué verificaste, qué quedó pendiente o bloqueado.",
+  "prompt.teammates.header": "## En paralelo con vos\nAhora mismo, en esta misma tarea, están trabajando:",
+  "prompt.teammates.rules": "No toques lo que otro tiene en la mano: si tu trabajo se cruza con el suyo, decilo en tu respuesta en vez de pisarlo.",
   "prompt.reviewer": "Sos REVISOR. Revisás cambios y respondés hallazgos o sugerencias de mejora.",
   "prompt.profile.header": "## Sobre el usuario",
   "prompt.profile.name": "Nombre: {name}",

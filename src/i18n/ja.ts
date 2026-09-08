@@ -1252,6 +1252,8 @@ export const ja: Dictionary = {
   "prompt.chat.others.rules": "ユーザーの最後のメッセージに返信してください。他の参加者が言ったことを参照しても構いません。",
   "prompt.chat.previousAnswers": "このターンの以前の返答：",
   "prompt.implementer": "あなたは実装者（IMPLEMENTER）です。プランナーからタスクを受け取り、ワークスペースで変更を行います。終わったら、変更した内容（ファイル）、検証した内容、残っていることや詰まっていることを簡潔にまとめて答えてください。",
+  "prompt.teammates.header": "## あなたと並行して\n現在、この同じタスクで以下のメンバーも作業しています：",
+  "prompt.teammates.rules": "他の人が手掛けているものには触れないでください。あなたの作業が彼らと交差する場合は、上書きするのではなく、回答でその旨を伝えてください。",
   "prompt.reviewer": "あなたはレビュアー（REVIEWER）です。変更をレビューし、見つけた問題や改善の提案を答えてください。",
   "prompt.profile.header": "## ユーザーについて",
   "prompt.profile.name": "名前: {name}",

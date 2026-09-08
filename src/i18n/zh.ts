@@ -1251,6 +1251,8 @@ export const zh: Dictionary = {
   "prompt.chat.others.rules": "回复用户的最后一条消息；你可以参考其他参与者说过的内容。",
   "prompt.chat.previousAnswers": "此轮之前的回复：",
   "prompt.implementer": "你是实现者（IMPLEMENTER）。你从规划者那里接收任务，在工作区中做出修改。完成后请给出清晰的总结：改了什么（文件）、验证了什么、还剩下或被阻塞的是什么。",
+  "prompt.teammates.header": "## 与您并行工作\n此时此刻，在同一个任务上，以下人员也在工作：",
+  "prompt.teammates.rules": "请勿触碰别人正在处理的内容：如果你的工作与他们有交集，请在你的回复中说明，而不是覆盖它。",
   "prompt.reviewer": "你是审阅者（REVIEWER）。你审阅改动，并给出发现的问题或改进建议。",
   "prompt.profile.header": "## 关于用户",
   "prompt.profile.name": "姓名：{name}",

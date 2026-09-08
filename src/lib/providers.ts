@@ -1,5 +1,6 @@
 import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
@@ -644,6 +645,25 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
 }
 
 /**
+ * Who else is working on this same task right now, and what they were told to do.
+ *
+ * A planner splitting one task between two implementers used to start each of them blind: neither
+ * knew the other existed, both reached for the same files, and the planner got back two answers
+ * that contradicted each other. The app knew all along — it is what the agent list on screen is
+ * drawn from — and never told the one place it mattered.
+ */
+export function teammatesSection(mates: { name: string; task: string }[]): string {
+  if (mates.length === 0) return "";
+  const lines = [translateNow("prompt.teammates.header")];
+  for (const m of mates) {
+    const singleLineTask = m.task.replace(/\r?\n/g, " ");
+    lines.push(`- ${m.name}: ${truncate(singleLineTask, 120)}`);
+  }
+  lines.push(translateNow("prompt.teammates.rules"));
+  return lines.join("\n");
+}
+
+/**
  * The instructions an agent is started with, in the language the app is running in.
  *
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
@@ -699,7 +719,7 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] } }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[] }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -746,6 +766,8 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       const parts: string[] = [];
       const board = boardFor(agent, children, extras);
       if (board) parts.push(board);
+      const mates = extras.teammates ? teammatesSection(extras.teammates) : "";
+      if (mates) parts.push(mates);
       if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
       if (agent.role !== "custom") parts.push(askSection());
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
@@ -793,6 +815,11 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       prompt += t("prompt.reviewer");
     } else if (agent.role === "custom") {
       // Only use agent.systemPrompt (appended at the end)
+    }
+
+    if (extras?.teammates && extras.teammates.length > 0) {
+      const mates = teammatesSection(extras.teammates);
+      if (mates) prompt += (prompt ? "\n\n" : "") + mates;
     }
   }
 
