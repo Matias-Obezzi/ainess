@@ -6,6 +6,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **La question d'un agent prend la place de la boîte.** Elle vivait dans la bulle de l'exécution :
+  utile tant que tu la regardes, inutile dès que tu as fait défiler — et pire, ce que tu écrivais
+  dans la boîte avec une question ouverte lançait une nouvelle exécution et laissait l'agent
+  attendre une réponse qui n'arriverait jamais. La question se tient maintenant là où tu allais
+  écrire, avec ses options en boutons et de la place pour ta propre réponse ; s'il y en a plusieurs
+  en attente, elle le dit, et elles viennent une par une. « Écrire autre chose » te rend la boîte
+  sans rien répondre.
 - **Le panneau de notifications se ferme quand tu cliques ailleurs.** Il pend de la barre de titre,
   qui est la zone par laquelle on déplace la fenêtre : un clic là est pris par le système pour
   déplacer la fenêtre et n'atteint jamais la couche qui ferme le popover.

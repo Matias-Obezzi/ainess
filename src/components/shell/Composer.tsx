@@ -18,6 +18,8 @@ import { UsageDialog } from "@/components/UsageDialog";
 import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
 import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
+import { InlineQuestion } from "@/components/InlineQuestion";
+import { questionForComposer } from "@/lib/pending-question";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
 import {
@@ -94,6 +96,37 @@ export function Composer() {
   // written into the user's repo for a message they may never send.
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const questions = useAppStore(state => state.questions);
+  const runs = useAppStore(state => state.runs);
+
+  const chatMode = !!currentChatId;
+  const chat = currentChatId ? config.chats.find(c => c.id === currentChatId) : undefined;
+
+  const pendingQuestionData = useMemo(() => {
+    const chatAgentIds = chat ? chat.participants.map(p => p.agentId) : [];
+    return questionForComposer(questions, runs, {
+      projectId: currentProjectId,
+      chatId: currentChatId,
+      chatAgentIds,
+    });
+  }, [questions, runs, currentProjectId, currentChatId, chat]);
+
+  const pendingQuestionId = pendingQuestionData?.question.id;
+  const [writeInstead, setWriteInstead] = useState(false);
+  useEffect(() => {
+    setWriteInstead(false);
+  }, [pendingQuestionId]);
+
+  const wasShowingQuestion = useRef(false);
+  useEffect(() => {
+    const isShowingQuestion = !!pendingQuestionData && !writeInstead;
+    if (wasShowingQuestion.current && !isShowingQuestion) {
+      textareaRef.current?.focus();
+    }
+    wasShowingQuestion.current = isShowingQuestion;
+  }, [pendingQuestionData, writeInstead]);
 
   const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
@@ -113,9 +146,6 @@ export function Composer() {
     const interval = setInterval(() => setTick(t => t + 1), 500);
     return () => clearInterval(interval);
   }, [currentChatId]);
-
-  const chat = currentChatId ? config.chats.find(c => c.id === currentChatId) : undefined;
-  const chatMode = !!currentChatId;
 
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
@@ -428,85 +458,109 @@ export function Composer() {
         )}
 
         {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
-        <div className="relative">
-          {menuOpen && (
-            <div className="absolute bottom-full left-0 z-20 mb-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
-              {commandMatches.map((command, i) => (
-                <button
-                  key={command.id}
-                  type="button"
-                  // The box keeps the focus: losing it would close the list before the click lands.
-                  onMouseDown={e => { e.preventDefault(); runCommand(command); }}
-                  onMouseEnter={() => setCommandIndex(i)}
-                  className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs ${i === commandIndex ? "bg-accent text-accent-foreground" : ""}`}
-                >
-                  <span className="font-mono">/{command.name}</span>
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{t(command.descriptionKey)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
-          <Textarea
-            value={text}
-            onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={rotating ? "" : hint}
-            aria-label={placeholder}
-            rows={2}
-            className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
-          />
-          {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
-              Nothing to click through, nothing to read out: the label above is what is announced. */}
-          {rotating && !text && (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
+        {/* Out of the box and its question alike: the paperclip that opens it lives in the bar
+            below, which is on screen either way, and a hidden input inside a branch that vanishes
+            is a button that does nothing. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          onChange={e => {
+            if (e.target.files) addFiles(e.target.files);
+            // Same file twice in a row fires no change unless the field is cleared.
+            e.target.value = "";
+          }}
+        />
+
+        {pendingQuestionData && !writeInstead ? (
+          <div className="flex flex-col gap-1">
+            {pendingQuestionData.pending > 1 && (
+              <p className="text-xs text-muted-foreground">
+                {t("questions.pending", { n: pendingQuestionData.pending })}
+              </p>
+            )}
+            <InlineQuestion questionId={pendingQuestionData.question.id} size="md" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 self-start text-xs text-muted-foreground"
+              onClick={() => setWriteInstead(true)}
             >
-              <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} cursor={false} />
-            </span>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            hidden
-            onChange={e => {
-              if (e.target.files) addFiles(e.target.files);
-              // Same file twice in a row fires no change unless the field is cleared.
-              e.target.value = "";
-            }}
-          />
-          <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {busy && (
-              <Button
-                variant="destructive"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleStop}
-                title={t("composer.stopHint")}
-                aria-label={t("composer.stop")}
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-            )}
-            {/* While something is running this queues instead of interrupting: the box no longer
-                goes grey mid-answer, which is the moment you most want to add something. */}
-            {(!busy || canSend) && (
-              <Button
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handleSend()}
-                disabled={!canSend}
-                title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
-                aria-label={willQueue ? t("composer.queue") : t("composer.send")}
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            )}
+              {t("questions.writeInstead")}
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="relative">
+            {menuOpen && (
+              <div className="absolute bottom-full left-0 z-20 mb-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+                {commandMatches.map((command, i) => (
+                  <button
+                    key={command.id}
+                    type="button"
+                    // The box keeps the focus: losing it would close the list before the click lands.
+                    onMouseDown={e => { e.preventDefault(); runCommand(command); }}
+                    onMouseEnter={() => setCommandIndex(i)}
+                    className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs ${i === commandIndex ? "bg-accent text-accent-foreground" : ""}`}
+                  >
+                    <span className="font-mono">/{command.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{t(command.descriptionKey)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
+            <Textarea
+              ref={textareaRef}
+              value={text}
+              onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={rotating ? "" : hint}
+              aria-label={placeholder}
+              rows={2}
+              className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
+            />
+            {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
+                Nothing to click through, nothing to read out: the label above is what is announced. */}
+            {rotating && !text && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
+              >
+                <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} cursor={false} />
+              </span>
+            )}
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              {busy && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleStop}
+                  title={t("composer.stopHint")}
+                  aria-label={t("composer.stop")}
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              )}
+              {/* While something is running this queues instead of interrupting: the box no longer
+                  goes grey mid-answer, which is the moment you most want to add something. */}
+              {(!busy || canSend) && (
+                <Button
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleSend()}
+                  disabled={!canSend}
+                  title={willQueue ? t("composer.queueHint") : t("composer.sendHint")}
+                  aria-label={willQueue ? t("composer.queue") : t("composer.send")}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {(!chatMode || quotaAgent || !compact) && (
           <div className="flex gap-2 items-center flex-wrap">

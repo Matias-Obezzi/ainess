@@ -6,6 +6,12 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La pregunta de un agente ocupa el lugar de la caja.** Vivía adentro de la burbuja de la corrida:
+  sirve mientras la estás mirando y no sirve más apenas seguís scrolleando — y peor, lo que
+  escribieras en la caja con una pregunta abierta arrancaba una corrida nueva y dejaba al agente
+  esperando una respuesta que no iba a llegar. Ahora la pregunta se para donde ibas a escribir, con
+  sus opciones como botones y lugar para una respuesta tuya; si hay más de una esperando lo dice y
+  van de a una. «Escribir otra cosa» te devuelve la caja sin responder nada.
 - **El panel de notificaciones se cierra al hacer clic afuera.** Cuelga de la barra de título, que es
   la zona por la que se arrastra la ventana: un clic ahí lo toma el sistema para mover la ventana y
   nunca llega a la capa que cierra el popover.

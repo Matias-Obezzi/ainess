@@ -6,6 +6,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **A pergunta de um agente ocupa o lugar da caixa.** Ela ficava dentro da bolha da execução: serve
+  enquanto você está olhando e não serve mais assim que rola a tela — e pior, o que você escrevesse
+  na caixa com uma pergunta aberta começava uma execução nova e deixava o agente esperando uma
+  resposta que nunca chegaria. Agora a pergunta fica onde você ia escrever, com as opções como
+  botões e espaço para uma resposta sua; se houver mais de uma esperando, ela avisa, e vêm uma de
+  cada vez. "Escrever outra coisa" devolve a caixa sem responder nada.
 - **O painel de notificações fecha ao clicar fora dele.** Ele fica preso à barra de título, que é a
   área por onde se arrasta a janela: um clique ali é tomado pelo sistema para mover a janela e nunca
   chega à camada que fecha o popover.

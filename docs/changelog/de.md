@@ -6,6 +6,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die Frage eines Agenten nimmt den Platz der Box ein.** Sie lebte in der Blase des Laufs: nützlich,
+  solange du hinschaust, nutzlos, sobald du weitergescrollt hast — und schlimmer, was du bei offener
+  Frage in die Box geschrieben hast, startete einen neuen Lauf und ließ den Agenten auf eine Antwort
+  warten, die nie kam. Jetzt steht die Frage dort, wo du schreiben wolltest, mit ihren Optionen als
+  Schaltflächen und Platz für eine eigene Antwort; warten mehrere, sagt sie es, und sie kommen
+  nacheinander. "Etwas anderes schreiben" gibt dir die Box zurück, ohne zu antworten.
 - **Das Benachrichtigungs-Panel schließt sich, wenn du daneben klickst.** Es hängt an der
   Titelleiste, die die Zone zum Ziehen des Fensters ist: ein Klick dort nimmt das System, um das
   Fenster zu bewegen, und er erreicht nie die Schicht, die ein Popover schließt.

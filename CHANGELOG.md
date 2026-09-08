@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A question from an agent takes the place of the box.** It used to sit inside the run's bubble,
+  which is fine while you are looking at it and useless once you have scrolled past — and worse,
+  anything typed into the box while a question was open started a new run and left the agent waiting
+  for an answer that was never coming. The question now stands where you would have written, with
+  its options as buttons and room for an answer of your own; with more than one waiting it says so
+  and they come one at a time. "Escribir otra cosa" gives the box back without answering.
+
 - **The notifications panel closes when you click away from it.** It hangs from the title bar, which
   is the window's drag region: a click there is taken by the system to move the window and never
   reaches the layer that dismisses a popover.

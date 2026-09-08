@@ -766,6 +766,8 @@ export const de: Dictionary = {
   "questions.send": "Antworten",
   "questions.answered": "Du hast geantwortet: {answer}",
   "questions.agentGone": "Der Agent, der gefragt hat, ist weg: deine Antwort hatte kein Ziel.",
+  "questions.pending": "{n} Fragen warten auf dich",
+  "questions.writeInstead": "Etwas anderes schreiben",
   "approvals.reject": "Ablehnen",
   "approvals.copyTask": "Aufgabe kopieren",
   "approvals.taskCopied": "Aufgabe kopiert",

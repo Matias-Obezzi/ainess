@@ -767,6 +767,8 @@ export const ja: Dictionary = {
   "questions.send": "回答する",
   "questions.answered": "回答しました：{answer}",
   "questions.agentGone": "質問したエージェントはもういません。回答の届け先がありませんでした。",
+  "questions.pending": "{n}件の質問があなたの回答を待っています",
+  "questions.writeInstead": "別のことを書く",
   "approvals.reject": "却下",
   "approvals.copyTask": "タスクをコピー",
   "approvals.taskCopied": "タスクをコピーしました",
