@@ -853,7 +853,9 @@ export const de: Dictionary = {
   "comm.clear": "Leeren",
   "comm.clear.title": "Unterhaltung leeren?",
   "comm.clear.body": "Die Nachrichten, die du hier siehst, werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
-  "comm.goToEnd": "Ans Ende springen",
+    "comm.showOlder": "{n} ältere Nachrichten anzeigen",
+  "thread.showOlder": "{n} ältere Aufgaben anzeigen",
+"comm.goToEnd": "Ans Ende springen",
   "comm.empty.title": "Noch keine Aktivität",
   "comm.empty.body": "Hier siehst du, was die Agenten während der Arbeit untereinander besprechen.",
 

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useAppStore, selectProjectAgents } from "@/store";
+import { windowOf } from "@/lib/feed-window";
 import { MessageItem } from "./MessageItem";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,10 +32,17 @@ export function CommunicationPanel() {
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [filterKinds, setFilterKinds] = useState<Set<MessageKind>>(new Set(allKinds));
   
+  const [limit, setLimit] = useState(200);
+
+  useEffect(() => {
+    setLimit(200);
+  }, [currentProjectId, filterAgent, filterKinds]);
+
   const [stickToBottom, setStickToBottom] = useState(true);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
 
   const prevMessagesLength = useRef(messages.length);
 
@@ -93,6 +101,23 @@ export function CommunicationPanel() {
     return true;
   });
 
+  const { shown, hidden } = windowOf(filteredMessages, limit);
+
+  const handleShowOlder = () => {
+    if (scrollContainerRef.current) {
+      prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+    }
+    setLimit(l => l + 200);
+  };
+
+  useLayoutEffect(() => {
+    if (prevScrollHeightRef.current !== null && scrollContainerRef.current) {
+      const newScrollHeight = scrollContainerRef.current.scrollHeight;
+      scrollContainerRef.current.scrollTop += (newScrollHeight - prevScrollHeightRef.current);
+      prevScrollHeightRef.current = null;
+    }
+  }, [shown.length]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       <div className="p-2 border-b border-border flex items-center gap-2">
@@ -149,7 +174,14 @@ export function CommunicationPanel() {
           />
         ) : (
           <div className="flex flex-col relative">
-            {filteredMessages.map(m => (
+            {hidden > 0 && (
+              <div className="flex justify-center py-2">
+                <Button variant="ghost" size="sm" className="text-xs" onClick={handleShowOlder}>
+                  {t("comm.showOlder", { n: hidden })}
+                </Button>
+              </div>
+            )}
+            {shown.map(m => (
               <MessageItem key={m.id} message={m} />
             ))}
             <div ref={bottomRef} />

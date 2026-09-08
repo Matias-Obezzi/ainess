@@ -250,7 +250,7 @@ como leído» — o el de vaciar, cuando no había nada sin leer. El popover de 
 adentro al abrirse, cae en el primer botón de ícono, y el tooltip se muestra con foco además de con
 hover. Ya no se autoenfoca; con Tab se sigue recorriendo igual.
 
-### `[~]` F2 · La ventana se siente pesada al escribir y al moverla
+### `[x]` F2 · La ventana se siente pesada al escribir y al moverla — *«A feed is read from the bottom»*
 
 **Primera causa, arreglada.** Cada tecla escribía TODOS los borradores en disco: `setDraft` hacía
 un `JSON.stringify` completo y un `localStorage.setItem` sincrónico por pulsación, bloqueando el
@@ -266,9 +266,15 @@ peor con el correr del día. Ahora se juntan y se aplican de a uno cada 80 ms, y
 acto cuando una corrida termina, se detiene o se cierra la ventana, así que nada llega tarde ni se
 pierde.
 
-**Lo que falta.** Ni el hilo ni el panel de comunicación limitan lo que dibujan: pintan todos los
-mensajes, con tope de 3000 por proyecto, y ninguna fila está memoizada. Con las escrituras ya
-juntadas, eso es lo que queda.
+**Tercera causa, arreglada** — *«A feed is read from the bottom»*. El hilo y el panel de
+comunicación pintaban todo: hasta 3000 mensajes por proyecto, y ninguna fila memoizada, así que
+cualquier cambio del store las redibujaba todas. Ahora se dibujan los últimos 200 mensajes (y las
+últimas 20 tareas en el hilo), con un «ver anteriores» que trae más sin saltar el scroll, y las
+filas están memoizadas de verdad — el selector de agentes ya devolvía la misma referencia, y el de
+preguntas, que armaba un array nuevo en cada render, ahora no.
+
+**Queda medir en tu máquina.** Las tres causas eran de las que empeoran con el uso, así que la
+prueba real es un día largo de trabajo: si todavía se siente pesada, contame en qué momento.
 
 ### `[x]` F3 · Al cambiar de proyecto se perdía la conversación en la que estabas — *«Open it the way I left it»*
 

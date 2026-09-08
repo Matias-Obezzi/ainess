@@ -854,7 +854,9 @@ export const es: Dictionary = {
   "comm.clear": "Limpiar",
   "comm.clear.title": "¿Vaciar la conversación?",
   "comm.clear.body": "Se borran los mensajes que ves acá. Esta acción no se puede deshacer.",
-  "comm.goToEnd": "Ir al final",
+    "comm.showOlder": "Ver {n} mensajes anteriores",
+  "thread.showOlder": "Ver {n} tareas anteriores",
+"comm.goToEnd": "Ir al final",
   "comm.empty.title": "Todavía no hay actividad",
   "comm.empty.body": "Acá vas a ver lo que se dicen los agentes entre sí a medida que trabajan.",
 

@@ -854,7 +854,9 @@ export const en: Dictionary = {
   "comm.clear": "Clear",
   "comm.clear.title": "Clear the conversation?",
   "comm.clear.body": "The messages you see here are deleted. This cannot be undone.",
-  "comm.goToEnd": "Go to the end",
+    "comm.showOlder": "Show {n} earlier messages",
+  "thread.showOlder": "Show {n} earlier tasks",
+"comm.goToEnd": "Go to the end",
   "comm.empty.title": "No activity yet",
   "comm.empty.body": "You'll see what the agents say to each other here as they work.",
 

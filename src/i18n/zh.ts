@@ -853,7 +853,9 @@ export const zh: Dictionary = {
   "comm.clear": "清空",
   "comm.clear.title": "清空对话？",
   "comm.clear.body": "您在此处看到的消息将被删除。此操作无法撤销。",
-  "comm.goToEnd": "跳到最新",
+    "comm.showOlder": "显示 {n} 条更早的消息",
+  "thread.showOlder": "显示 {n} 个更早的任务",
+"comm.goToEnd": "跳到最新",
   "comm.empty.title": "还没有任何动态",
   "comm.empty.body": "智能体一边工作一边相互说的话会显示在这里。",
 

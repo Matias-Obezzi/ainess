@@ -34,6 +34,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The conversation stops repainting itself whole.** The thread and the communication feed drew
+  every message they had — three thousand per project — and not one row was memoised, so anything
+  that touched the store redrew all of them. They draw the last stretch now, with a line at the top
+  to walk further back that keeps your place instead of jumping, and the rows only redraw when
+  something of theirs actually changed.
+
 - **An agent typing no longer costs more the longer you have been working.** Every delta a CLI sent
   was a write: a copy of the whole message list to add one letter to the end of it, plus a copy of
   the runs map for the raw line, plus a pass over every message to decide what to save. Per token.

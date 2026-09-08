@@ -853,7 +853,9 @@ export const fr: Dictionary = {
   "comm.clear": "Effacer",
   "comm.clear.title": "Vider la conversation ?",
   "comm.clear.body": "Les messages que vous voyez ici seront supprimés. Cette action est irréversible.",
-  "comm.goToEnd": "Aller à la fin",
+    "comm.showOlder": "Afficher {n} messages précédents",
+  "thread.showOlder": "Afficher {n} tâches précédentes",
+"comm.goToEnd": "Aller à la fin",
   "comm.empty.title": "Pas encore d'activité",
   "comm.empty.body": "Ici tu vas voir ce que les agents se disent entre eux au fur et à mesure qu'ils travaillent.",
 

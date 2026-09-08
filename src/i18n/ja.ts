@@ -854,7 +854,9 @@ export const ja: Dictionary = {
   "comm.clear": "クリア",
   "comm.clear.title": "会話をクリアしますか？",
   "comm.clear.body": "ここに表示されているメッセージは削除されます。この操作は元に戻せません。",
-  "comm.goToEnd": "最後に移動",
+    "comm.showOlder": "前のメッセージを {n} 件表示",
+  "thread.showOlder": "前のタスクを {n} 件表示",
+"comm.goToEnd": "最後に移動",
   "comm.empty.title": "まだ活動がありません",
   "comm.empty.body": "エージェント同士のやり取りが、作業が進むにつれてここに表示されます。",
 
