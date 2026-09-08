@@ -1,4 +1,4 @@
-# The .ainess folder of ais
+# The .ainess folder of ainess
 
 What ainess knows about this project lives here. `BOARD.md` is the task board and `AGENTS.md` is the team: the app writes both, so anything you edit by hand is lost on the next run — to move a card, the planner delegates it with its id.
 
