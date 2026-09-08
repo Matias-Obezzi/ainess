@@ -538,12 +538,15 @@ export function Composer() {
                 there is nothing to send that would not wait its turn anyway, and what you want at
                 hand is the way to stop it. Sending while it works still exists — Enter queues, and
                 the box says so — it just no longer needs a button of its own crowding the text. */}
+            {/* No filled shape sitting on the text: the icon carries it, and the only colour is the
+                grey the rest of the app uses to say "your pointer is here". A square and a paper
+                plane are already two different things without painting one of them red. */}
             <div className="absolute bottom-2 right-2">
               {busy ? (
                 <Button
-                  variant="destructive"
+                  variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 text-foreground hover:bg-accent"
                   onClick={handleStop}
                   title={t("composer.stopHint")}
                   aria-label={t("composer.stop")}
@@ -552,8 +555,9 @@ export function Composer() {
                 </Button>
               ) : (
                 <Button
+                  variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 text-foreground hover:bg-accent"
                   onClick={() => handleSend()}
                   disabled={!canSend}
                   title={t("composer.sendHint")}
@@ -573,7 +577,7 @@ export function Composer() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 text-foreground hover:bg-accent"
                 onClick={() => fileInputRef.current?.click()}
                 title={t("attachments.attachHint")}
                 aria-label={t("attachments.attach")}
