@@ -89,6 +89,10 @@ export interface AppState {
    */
   chatQueues: Record<string, string[]>;
   queueChatMessage(chatId: string, text: string): void;
+  /** Takes one queued message back before its turn comes. */
+  unqueueChatMessage(chatId: string, index: number): void;
+  /** The same, for an instruction waiting on a working agent. */
+  unqueueInstruction(projectId: string, agentId: string, index: number): void;
   /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
   flushChatQueue(chatId: string): Promise<void>;
   /**
@@ -1640,6 +1644,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       chatQueues: { ...state.chatQueues, [chatId]: [...(state.chatQueues[chatId] ?? []), text] },
     }));
+  },
+
+  unqueueChatMessage: (chatId, index) => {
+    set(state => ({
+      chatQueues: {
+        ...state.chatQueues,
+        [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index),
+      },
+    }));
+  },
+
+  unqueueInstruction: (projectId, agentId, index) => {
+    set(state => {
+      const projectRuntime = state.runtime[projectId];
+      const runtime = projectRuntime?.[agentId];
+      if (!runtime) return {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...projectRuntime,
+            [agentId]: {
+              ...runtime,
+              queuedInstructions: (runtime.queuedInstructions ?? []).filter((_, i) => i !== index),
+            },
+          },
+        },
+      };
+    });
   },
 
   flushChatQueue: async (chatId) => {

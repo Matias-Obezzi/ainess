@@ -3,6 +3,17 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
+## Unreleased
+
+### Fixed
+
+- A message written while an agent was working showed up in Comunicación and nowhere else, as if
+  the app had swallowed it. It now sits at the end of the conversation, dashed and with a clock,
+  saying who it is waiting for, and it can be taken back before its turn comes.
+- That message could also be handed over too early: an agent that delegates ends its own run
+  before its team has finished, and the queue was emptied there — the message ran beside the work
+  it was meant to follow. It waits now until the agent is really free.
+
 ## 0.6.0 — 2026-09-08
 
 ### Added

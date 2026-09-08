@@ -73,3 +73,24 @@ describe("messages written mid-turn", () => {
     expect(sent).toHaveLength(0);
   });
 });
+
+describe("taking a queued message back", () => {
+  it("drops the one picked, and leaves the rest in order", () => {
+    useAppStore.setState({ chatQueues: { c1: ["primero", "segundo", "tercero"] } });
+    useAppStore.getState().unqueueChatMessage("c1", 1);
+    expect(useAppStore.getState().chatQueues["c1"]).toEqual(["primero", "tercero"]);
+  });
+
+  it("does the same for an instruction waiting on an agent", () => {
+    useAppStore.setState({
+      runtime: { p1: { a1: { agentId: "a1", status: "working", queuedInstructions: ["uno", "dos"] } } },
+    } as never);
+    useAppStore.getState().unqueueInstruction("p1", "a1", 0);
+    expect(useAppStore.getState().runtime.p1.a1.queuedInstructions).toEqual(["dos"]);
+  });
+
+  it("has nothing to do for an agent that is not there", () => {
+    useAppStore.setState({ runtime: {} });
+    expect(() => useAppStore.getState().unqueueInstruction("p1", "a1", 0)).not.toThrow();
+  });
+});

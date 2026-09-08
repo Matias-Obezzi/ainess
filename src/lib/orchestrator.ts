@@ -760,10 +760,20 @@ function maybeContinueParent(parentRunId: string) {
   }
 }
 
+/**
+ * An agent that cannot be handed anything new: it is answering, or it delegated and is waiting for
+ * what it delegated. After an error or a stop it is free again.
+ */
+function isBusy(status: AgentStatus | undefined): boolean {
+  return status === "working" || status === "waiting";
+}
+
 function processQueuedInstructions(agentId: string, projectId: string) {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
-  if (!runtime || runtime.status === "working") return;
+  // Every run end calls this, and the end of the run that delegated is not the end of the work:
+  // handing the message over there would have it run beside its own children.
+  if (!runtime || isBusy(runtime.status)) return;
 
   const queued = runtime.queuedInstructions ?? [];
   if (queued.length > 0) {
@@ -808,7 +818,7 @@ export async function instructAgent(agentId: string, text: string, projectId: st
 
   addMessage({ projectId, fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
 
-  if (runtime?.status === "working") {
+  if (isBusy(runtime?.status)) {
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {

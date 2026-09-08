@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore, selectAllAgents } from "@/store";
+import { QueuedMessages } from "./QueuedMessages";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +38,14 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
   const chat = chats.find(c => c.id === chatId);
   const messages: ChatMessage[] = chatMessages[chatId] || [];
+
+  // Sent while the chat was mid-answer: it waits its turn, and says so.
+  const chatQueue = useAppStore(state => state.chatQueues[chatId]);
+  const unqueueChatMessage = useAppStore(state => state.unqueueChatMessage);
+  const queued = useMemo(
+    () => (chatQueue ?? []).map((text, index) => ({ text, onCancel: () => unqueueChatMessage(chatId, index) })),
+    [chatQueue, chatId, unqueueChatMessage],
+  );
 
   useEffect(() => {
     void loadChatMessages(chatId);
@@ -121,6 +130,8 @@ export function ChatThread({ chatId }: { chatId: string }) {
           ) : (
             messages.map(msg => <ChatBubble key={msg.id} message={msg} projectId={chat?.projectId} />)
           )}
+          {/* Written while the chat was answering: it goes when this turn ends. */}
+          <QueuedMessages messages={queued} />
           <div ref={endRef} />
         </div>
       </div>
