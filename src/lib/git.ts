@@ -170,3 +170,26 @@ export function parsePullRequests(json: string): PullRequest[] {
   }
   return pullRequests;
 }
+
+/**
+ * Parses `git for-each-ref --format=%(refname) refs/heads refs/remotes`.
+ *
+ * `origin/HEAD` is a pointer to the default branch, not a branch to switch to, and a remote branch
+ * that already has a local copy would be the same line twice in the list: both are dropped here.
+ */
+export function parseBranches(stdout: string): { local: string[]; remote: string[] } {
+  const local: string[] = [];
+  const remote: string[] = [];
+  for (const raw of stdout.split("\n")) {
+    const line = raw.replace(/\r$/, "").trim();
+    if (line.startsWith("refs/heads/")) {
+      local.push(line.slice("refs/heads/".length));
+    } else if (line.startsWith("refs/remotes/")) {
+      const name = line.slice("refs/remotes/".length);
+      if (!name.endsWith("/HEAD")) remote.push(name);
+    }
+  }
+  // The short name of "origin/feat/x" is "feat/x": only the remote is cut off.
+  const short = (name: string) => name.slice(name.indexOf("/") + 1);
+  return { local, remote: remote.filter(name => !local.includes(short(name))) };
+}

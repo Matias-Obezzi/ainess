@@ -1,8 +1,10 @@
-// Reads the state of a project's repository: branch, uncommitted changes, ahead/behind, and the
-// open pull requests when the GitHub CLI is around. Read-only on purpose: nothing here fetches,
-// pulls or writes anything into the user's repo. Parsing lives in `src/lib/git.ts`.
+// The state of a project's repository — branch, uncommitted changes, ahead/behind, open pull
+// requests — and the four things the user can ask of it from the header: pull, push, switch branch
+// and create one. Reading never writes; the writing ones are only ever called from a button.
+// Parsing lives in `src/lib/git.ts`.
 import { getTransport } from "@/lib/transport";
-import { parseGitStatus, parsePullRequests, type GitStatus, type PullRequest } from "@/lib/git";
+import { parseBranches, parseGitStatus, parsePullRequests, type GitStatus, type PullRequest } from "@/lib/git";
+import { translateNow } from "@/i18n/useT";
 
 /** Why the pull request list is empty even though the folder is a repo. */
 export type PrsUnavailable = "no-gh" | "no-auth" | "no-remote";
@@ -29,9 +31,9 @@ interface ExecResult {
 }
 
 /** Runs a command and swallows the failure to spawn it: a missing binary is an answer, not an error. */
-async function run(program: string, args: string[], cwd: string): Promise<ExecResult | null> {
+async function run(program: string, args: string[], cwd: string, timeoutSecs = TIMEOUT_SECS): Promise<ExecResult | null> {
   try {
-    return await getTransport().exec(program, args, cwd, TIMEOUT_SECS);
+    return await getTransport().exec(program, args, cwd, timeoutSecs);
   } catch {
     return null;
   }
@@ -103,4 +105,58 @@ export async function readRepoStatus(workspaceDir: string): Promise<GitStatus | 
   const result = await run("git", ["status", "--porcelain=v2", "--branch"], workspaceDir);
   if (!result || result.code !== 0) return null;
   return parseGitStatus(result.stdout);
+}
+
+/** Talking to the remote is slower than reading the working tree: minutes, on a big repo. */
+const NETWORK_TIMEOUT_SECS = 180;
+
+export interface GitCommandResult {
+  ok: boolean;
+  /** What git said, for the toast: its last lines, which is where the reason is. */
+  message: string;
+}
+
+/** Runs one git command that changes something and turns its output into a sentence. */
+async function write(args: string[], cwd: string, timeoutSecs: number): Promise<GitCommandResult> {
+  const result = await run("git", args, cwd, timeoutSecs);
+  if (!result) return { ok: false, message: translateNow("git.noGit") };
+  // git talks on stderr even when it worked ("Everything up-to-date" is the exception).
+  const text = (result.stderr.trim() || result.stdout.trim()).split("\n").filter(Boolean);
+  return { ok: result.code === 0, message: text.slice(-3).join("\n") };
+}
+
+/** Every branch that can be switched to: the local ones, and the remote ones without a local copy. */
+export async function listBranches(workspaceDir: string): Promise<{ local: string[]; remote: string[] }> {
+  const result = await run("git", ["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"], workspaceDir);
+  if (!result || result.code !== 0) return { local: [], remote: [] };
+  return parseBranches(result.stdout);
+}
+
+/**
+ * Brings the branch up to date. `--ff-only` on purpose: a pull that cannot fast-forward stops and
+ * says so instead of leaving a merge — or a conflict — in a repo an agent may be working in.
+ */
+export function pullBranch(workspaceDir: string): Promise<GitCommandResult> {
+  return write(["pull", "--ff-only"], workspaceDir, NETWORK_TIMEOUT_SECS);
+}
+
+/** Pushes the current branch, creating it on the remote the first time. */
+export function pushBranch(workspaceDir: string, status: GitStatus | null): Promise<GitCommandResult> {
+  const args = status?.upstream || !status?.branch
+    ? ["push"]
+    : ["push", "--set-upstream", "origin", status.branch];
+  return write(args, workspaceDir, NETWORK_TIMEOUT_SECS);
+}
+
+/**
+ * Switches branch. A remote one ("origin/feat/x") comes in as its full name and git makes the local
+ * branch that tracks it.
+ */
+export function switchBranch(workspaceDir: string, branch: string, remote: boolean): Promise<GitCommandResult> {
+  return write(remote ? ["switch", "--track", branch] : ["switch", branch], workspaceDir, TIMEOUT_SECS);
+}
+
+/** Creates a branch from where the repo is now, and moves onto it. */
+export function createBranch(workspaceDir: string, branch: string): Promise<GitCommandResult> {
+  return write(["switch", "--create", branch], workspaceDir, TIMEOUT_SECS);
 }

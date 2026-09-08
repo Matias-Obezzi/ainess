@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGitStatus, parsePullRequests } from "@/lib/git";
+import { parseBranches, parseGitStatus, parsePullRequests } from "@/lib/git";
 
 describe("parseGitStatus", () => {
   it("reads the branch, its upstream and how far ahead or behind it is", () => {
@@ -167,5 +167,28 @@ describe("parsePullRequests", () => {
         updatedAt: 0,
       },
     ]);
+  });
+});
+
+describe("parseBranches", () => {
+  it("separates the local ones from the remote ones", () => {
+    const out = [
+      "refs/heads/main",
+      "refs/heads/dev",
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/main",
+      "refs/remotes/origin/feat/coupons",
+    ].join("\n");
+
+    expect(parseBranches(out)).toEqual({
+      local: ["main", "dev"],
+      // origin/HEAD is a pointer, and origin/main is already local: neither is worth offering.
+      remote: ["origin/feat/coupons"],
+    });
+  });
+
+  it("survives an empty answer and \rLF", () => {
+    expect(parseBranches("")).toEqual({ local: [], remote: [] });
+    expect(parseBranches("refs/heads/main\r\n").local).toEqual(["main"]);
   });
 });
