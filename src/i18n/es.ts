@@ -128,6 +128,12 @@ export const es: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "el chat",
+  "attachments.attach": "Adjuntar",
+  "attachments.attachHint": "Adjuntar un archivo (o pegarlo con Ctrl+V)",
+  "attachments.remove": "Sacar",
+  "attachments.tooBig": "{name} pesa más de {max}",
+  "attachments.saveFailed": "No se pudo guardar algún archivo adjunto",
+  "attachments.promptHeader": "Archivos adjuntos (leelos desde el repo):",
   "composer.placeholder.chat": "Mensaje para {name}…",
   "composer.placeholder.noTeam": "Este proyecto todavía no tiene agentes…",
   "composer.placeholder.team": "Pedile algo al equipo…",

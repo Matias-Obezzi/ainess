@@ -18,6 +18,7 @@ export const nullTransport: Transport = {
   httpGet: async () => ({ status: 0, body: "" }),
   readHomeFile: async () => null,
   writeFileAbs: async () => {},
+  writeFileBytes: async () => {},
   readFileAbs: async () => null,
   storageStat: async () => null,
   portAvailable: async () => null,

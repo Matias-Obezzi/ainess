@@ -20,6 +20,9 @@ export interface Transport {
   /** Writes a file by absolute path, creating its folder. For the `.ainess/` folder of a project. */
   writeFileAbs(path: string, content: string): Promise<void>;
 
+  /** Writes a file that is not text (an attached image, a PDF), passed base64-encoded. */
+  writeFileBytes(path: string, dataB64: string): Promise<void>;
+
   // Read-only probes for the diagnostics section and `ais doctor`.
   /**
    * Size, file count and writability of one folder of the app's own storage: the logs folder

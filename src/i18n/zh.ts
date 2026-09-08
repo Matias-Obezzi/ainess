@@ -127,6 +127,12 @@ export const zh: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "该聊天",
+  "attachments.attach": "添加附件",
+  "attachments.attachHint": "添加文件（也可以用 Ctrl+V 粘贴）",
+  "attachments.remove": "移除",
+  "attachments.tooBig": "{name} 超过 {max}",
+  "attachments.saveFailed": "有附件没能保存",
+  "attachments.promptHeader": "附件（请从仓库中读取）：",
   "composer.placeholder.chat": "给 {name} 的消息…",
   "composer.placeholder.noTeam": "这个项目还没有智能体…",
   "composer.placeholder.team": "给团队安排点什么…",

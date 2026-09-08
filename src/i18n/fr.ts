@@ -127,6 +127,12 @@ export const fr: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "le chat",
+  "attachments.attach": "Joindre",
+  "attachments.attachHint": "Joindre un fichier (ou colle-le avec Ctrl+V)",
+  "attachments.remove": "Enlever",
+  "attachments.tooBig": "{name} dépasse {max}",
+  "attachments.saveFailed": "Un fichier joint n'a pas pu être enregistré",
+  "attachments.promptHeader": "Fichiers joints (lis-les depuis le dépôt) :",
   "composer.placeholder.chat": "Message pour {name}…",
   "composer.placeholder.noTeam": "Ce projet n'a pas encore d'agents…",
   "composer.placeholder.team": "Demandez quelque chose à l'équipe…",

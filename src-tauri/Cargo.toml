@@ -38,6 +38,8 @@ local-ip-address = "0.6"
 portable-pty = "0.9"
 notify = "8.2.0"
 flate2 = "1.1.10"
+# What the user attaches in the composer travels base64-encoded through the webview.
+base64 = "0.22"
 tauri-plugin-single-instance = "2.4.4"
 
 

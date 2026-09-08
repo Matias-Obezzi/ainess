@@ -128,6 +128,12 @@ export const ja: Dictionary = {
 
   // ---- Composer ----
   "composer.theChat": "このチャット",
+  "attachments.attach": "添付",
+  "attachments.attachHint": "ファイルを添付（Ctrl+V で貼り付けも可）",
+  "attachments.remove": "外す",
+  "attachments.tooBig": "{name} は {max} を超えています",
+  "attachments.saveFailed": "添付ファイルを保存できませんでした",
+  "attachments.promptHeader": "添付ファイル（リポジトリから読んでください）:",
   "composer.placeholder.chat": "{name} へのメッセージ…",
   "composer.placeholder.noTeam": "このプロジェクトにはまだエージェントがいません…",
   "composer.placeholder.team": "チームに何か頼む…",

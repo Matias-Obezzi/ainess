@@ -469,6 +469,11 @@ export const nodeTransport: Transport = {
     fs.writeFileSync(absPath, content, "utf-8");
   },
 
+  writeFileBytes: async (absPath: string, dataB64: string) => {
+    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    fs.writeFileSync(absPath, Buffer.from(dataB64, "base64"));
+  },
+
   readFileAbs: async (absPath: string) => {
     try {
       return fs.readFileSync(absPath, "utf-8");

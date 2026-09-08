@@ -117,6 +117,21 @@ pub fn write_file_abs(path: String, content: String) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Writes a file whose content is not text: what the user attaches in the composer (an image, a
+/// PDF) arrives base64-encoded because that is what survives the trip through the webview.
+#[tauri::command]
+pub fn write_file_bytes(path: String, data_b64: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data_b64.as_bytes())
+        .map_err(|e| e.to_string())?;
+    let path = std::path::PathBuf::from(&path);
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    fs::write(&path, bytes).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn read_file_abs(path: String) -> Result<Option<String>, String> {
     let path = std::path::Path::new(&path);
@@ -145,5 +160,33 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "# Tablero
 ");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// What the user attaches is not text: it comes base64-encoded and has to land byte for byte.
+    #[test]
+    fn writes_an_attachment_back_to_its_own_bytes() {
+        let dir = std::env::temp_dir().join(format!("ainess-attach-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join(".ainess").join("attachments").join("captura.png");
+        // The first bytes of a PNG, zero included: nothing here survives being treated as text.
+        let bytes: Vec<u8> = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff];
+
+        super::write_file_bytes(
+            file.to_string_lossy().into_owned(),
+            "iVBORw0KGgoA/w==".into(),
+        )
+        .unwrap();
+
+        assert_eq!(std::fs::read(&file).unwrap(), bytes);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A broken payload is an error, not a file full of rubbish.
+    #[test]
+    fn refuses_something_that_is_not_base64() {
+        let file = std::env::temp_dir().join("ainess-attach-bad.bin");
+        let _ = std::fs::remove_file(&file);
+        assert!(super::write_file_bytes(file.to_string_lossy().into_owned(), "no es base64!!".into()).is_err());
+        assert!(!file.exists());
     }
 }

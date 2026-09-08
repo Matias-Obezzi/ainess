@@ -5,6 +5,14 @@ Settings → About.
 
 ## Unreleased
 
+### Added
+
+- **Files go with the message.** A clip in the composer, or Ctrl+V straight into the box: a
+  screenshot, a PDF, a log. Images show a thumbnail before they go and anything else its name and
+  size, and either can be taken back out. On send, the file is copied into the project's own
+  `.ainess/attachments/` folder and the prompt carries its path — which is the one thing every CLI
+  can do with an attachment, since they all read the repo they work in.
+
 ### Fixed
 
 - The `{{` list of a hook now says what each variable holds, instead of only its name, and the
