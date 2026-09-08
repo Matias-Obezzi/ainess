@@ -745,6 +745,7 @@ export const ja: Dictionary = {
   // ---- Agent dialog ----
   "agentDialog.newAgent": "新しいエージェント",
   "agentDialog.color": "色",
+  "agentDialog.twoOrchestrators": "親のいないオーケストレーターがすでにいます（{name}）。こちらには親を選んでください。ルートに 2 つあると、両方が同じボードを読み、進行中のタスクを上書きし合います。",
   "agentDialog.duplicateName": "このチームには同じ名前のエージェントがすでにあります。",
   "agentDialog.provider": "プロバイダー",
   "agentDialog.onlyDetected": "この端末で検出された CLI だけを表示しています。",

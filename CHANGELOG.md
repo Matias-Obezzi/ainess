@@ -37,6 +37,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- A project can no longer be given two orchestrators at the root. The team dialog asks for a parent
+  for the second one, which is where it belonged anyway: side by side they both read the whole
+  board and can take the same card, only the first is ever the default the composer, the CLI and
+  the phone write to, and the project's single "task in progress" pointer let one overwrite the
+  other — leaving the first task without its card moved, its hooks or its notification. A team that
+  already has two says so as soon as you open either of them.
 - Changing an agent's CLI kept the session of the old one, and the next run handed Antigravity a
   session id Claude had opened — which fails on the spot, since it is a name the other one has
   never heard. The session is dropped now when the CLI changes, and when the agent moves in or out

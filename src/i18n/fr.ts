@@ -744,6 +744,7 @@ export const fr: Dictionary = {
   // ---- Agent dialog ----
   "agentDialog.newAgent": "Nouvel agent",
   "agentDialog.color": "Couleur",
+  "agentDialog.twoOrchestrators": "Il y a déjà un orchestrateur sans parent ({name}). Donne un parent à celui-ci : avec deux à la racine, les deux lisent tout le tableau et écrasent la tâche en cours de l'autre.",
   "agentDialog.duplicateName": "Un autre agent de cette équipe porte déjà ce nom.",
   "agentDialog.provider": "Provider",
   "agentDialog.onlyDetected": "Seules les CLI détectées sur cette machine sont proposées.",

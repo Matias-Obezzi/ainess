@@ -744,6 +744,7 @@ export const zh: Dictionary = {
   // ---- Agent dialog ----
   "agentDialog.newAgent": "新建智能体",
   "agentDialog.color": "颜色",
+  "agentDialog.twoOrchestrators": "已经有一个没有上级的编排者（{name}）。给这个选一个上级：根上有两个时，它们会读到同一个看板，还会互相覆盖进行中的任务。",
   "agentDialog.duplicateName": "这个团队里已经有同名的智能体了。",
   "agentDialog.provider": "提供方",
   "agentDialog.onlyDetected": "仅显示在本机检测到的 CLI。",
