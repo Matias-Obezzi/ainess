@@ -4,6 +4,20 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **The notifications panel closes when you click away from it.** It hangs from the title bar, which
+  is the window's drag region: a click there is taken by the system to move the window and never
+  reaches the layer that dismisses a popover.
+- **Terminals belong to their project.** Open one in a project, walk to another, and you were still
+  looking at the first project's tabs — which is also why a terminal seemed to open in the wrong
+  folder: it was another project's shell, sitting in its own folder. Each project shows its own tabs
+  now, and remembers which one it was on. Deleting a project still leaves its shells running, as it
+  always did — one of them may be in the middle of something — and they turn up on the home screen,
+  which is where a terminal with no project belongs.
+
 ## 0.8.0 — 2026-09-08
 
 ### Added
@@ -51,15 +65,6 @@ let one of them fall behind.
 
 ### Fixed
 
-- **The notifications panel closes when you click away from it.** It hangs from the title bar, which
-  is the window's drag region: a click there is taken by the system to move the window and never
-  reaches the layer that dismisses a popover.
-- **Terminals belong to their project.** Open one in a project, walk to another, and you were still
-  looking at the first project's tabs — which is also why a terminal seemed to open in the wrong
-  folder: it was another project's shell, sitting in its own folder. Each project shows its own tabs
-  now, and remembers which one it was on. Deleting a project still leaves its shells running, as it
-  always did — one of them may be in the middle of something — and they turn up on the home screen,
-  which is where a terminal with no project belongs.
 - **You can read back through a conversation while an agent is still writing.** In a chat, every
   delta it sent dragged you back to the bottom — scrolling up to check what it had said two minutes
   ago was impossible until it finished. The chat now does what the orchestrator thread already did:

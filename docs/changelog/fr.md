@@ -2,6 +2,20 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Le panneau de notifications se ferme quand tu cliques ailleurs.** Il pend de la barre de titre,
+  qui est la zone par laquelle on déplace la fenêtre : un clic là est pris par le système pour
+  déplacer la fenêtre et n'atteint jamais la couche qui ferme le popover.
+- **Les terminaux appartiennent à leur projet.** Tu en ouvrais un dans un projet, tu passais à un
+  autre et tu voyais toujours les onglets du premier — c'est aussi pourquoi un terminal semblait
+  s'ouvrir dans le mauvais dossier : c'était celui d'un autre projet, dans son propre dossier.
+  Chaque projet montre les siens maintenant, et se souvient duquel il s'agissait. Supprimer un
+  projet laisse toujours ses shells en vie, comme avant — l'un d'eux est peut-être en train de faire
+  quelque chose — et ils réapparaissent sur l'écran d'accueil, là où va un terminal sans projet.
+
 ## 0.8.0 — 2026-09-08
 
 ### Nouveau
@@ -50,15 +64,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
-- **Le panneau de notifications se ferme quand tu cliques ailleurs.** Il pend de la barre de titre,
-  qui est la zone par laquelle on déplace la fenêtre : un clic là est pris par le système pour
-  déplacer la fenêtre et n'atteint jamais la couche qui ferme le popover.
-- **Les terminaux appartiennent à leur projet.** Tu en ouvrais un dans un projet, tu passais à un
-  autre et tu voyais toujours les onglets du premier — c'est aussi pourquoi un terminal semblait
-  s'ouvrir dans le mauvais dossier : c'était celui d'un autre projet, dans son propre dossier.
-  Chaque projet montre les siens maintenant, et se souvient duquel il s'agissait. Supprimer un
-  projet laisse toujours ses shells en vie, comme avant — l'un d'eux est peut-être en train de faire
-  quelque chose — et ils réapparaissent sur l'écran d'accueil, là où va un terminal sans projet.
 - **Tu peux relire une conversation en arrière pendant qu'un agent est encore en train d'écrire.** Dans un chat,
   chaque delta qu'il envoyait te ramenait en bas : scroller vers le haut pour vérifier ce qu'il avait dit il y a deux
   minutes était impossible jusqu'à ce qu'il ait terminé. Le chat fait maintenant ce que le fil de l'orchestrateur
