@@ -12,6 +12,7 @@ import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
+import { resolveDelegations } from "@/lib/delegation";
 
 let listenersAttached = false;
 
@@ -171,7 +172,14 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       };
     });
     addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: err, runId });
-    setTimeout(() => onRunFinished(runId), 0);
+    // The board card is opened by whoever called us, right after this returns, so settling it has
+    // to wait a tick: done here and now it would move a card that does not exist yet, and the card
+    // would sit at "working" behind a run that never started.
+    setTimeout(() => {
+      const errorRun = useAppStore.getState().runs[runId];
+      if (errorRun) taskSync.taskOnRunFinished(errorRun);
+      onRunFinished(runId);
+    }, 0);
     return runId;
   }
 
@@ -463,24 +471,23 @@ function onRunFinished(runId: string) {
     agentStatus = "waiting";
   }
 
+  let retryUnknownPayload: { prompt: string, gaveUpText?: string } | undefined;
+
   if (!asked && (run.status === "done" || run.status === "killed")) {
     const children = selectChildren(store, run.projectId, agent.id);
+
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
       if (delegations.length > 0) {
-        // Every delegation naming somebody who is not there means nobody is coming: the agent
-        // used to sit at "waiting for its team" until the end of time. It happens to an agent that
-        // is not a planner and answers by delegating anyway.
-        if (noneLand(delegations, children)) {
-          waitingForChildren = false;
-        } else {
-          waitingForChildren = true;
-          agentStatus = "waiting";
-        }
+        const { resolved, unknown } = resolveDelegations(delegations, children);
+        let startedCount = 0;
+        let resolvedIdx = 0;
 
         for (const task of delegations) {
-          const childAgent = childFor(children, task.agent);
-          if (childAgent) {
+          if (unknown.includes(task.agent)) {
+            addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: translateNow("delegation.unknownAgent", { name: task.agent, agent: agent.name }), runId });
+          } else {
+            const childAgent = resolved[resolvedIdx++];
             // A model the parent asked for is obeyed whether or not "choose the model" is on:
             // that setting decides whether the planner is *told to pick* one, not whether a pick
             // it made counts. With it off, an agent told to retry on another model because its
@@ -508,8 +515,21 @@ function onRunFinished(runId: string) {
               const childRunId = startRun(payload);
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
             }
+            startedCount++;
+          }
+        }
+
+        if (startedCount > 0) {
+          waitingForChildren = true;
+          agentStatus = "waiting";
+        } else if (unknown.length > 0) {
+          if (run.round + 1 <= store.config.maxRounds) {
+            const validNames = children.length > 0 ? children.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
+            retryUnknownPayload = { prompt: translateNow("delegation.retryUnknown", { names: unknown.join(", "), valid: validNames }) };
           } else {
-            addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: `Delegación fallida: no se encontró al agente "${task.agent}" bajo el mando de ${agent.name}.`, runId });
+            const gaveUpText = translateNow("delegation.gaveUp", { names: unknown.join(", ") });
+            retryUnknownPayload = { prompt: "", gaveUpText };
+            agentStatus = "idle";
           }
         }
       }
@@ -534,7 +554,21 @@ function onRunFinished(runId: string) {
     };
   });
 
-  if (!waitingForChildren) {
+  if (retryUnknownPayload) {
+    if (retryUnknownPayload.prompt) {
+      startRun({ agentId: agent.id, projectId: run.projectId, prompt: retryUnknownPayload.prompt, parentRunId: run.parentRunId, round: run.round + 1, rootRunId: run.rootRunId, resume: true });
+    } else {
+      addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: retryUnknownPayload.gaveUpText!, runId });
+      if (!run.parentRunId) {
+        useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+        taskSync.taskOnRootFinished(run.projectId, run.rootRunId, true, retryUnknownPayload.gaveUpText!);
+        void emitHookEvent("task.failed", {}, ctx);
+        notifyTaskOutcome(run, true);
+      } else {
+        maybeContinueParent(run.parentRunId);
+      }
+    }
+  } else if (!waitingForChildren) {
     if (!run.parentRunId) {
       // The streamed text and the final answer are the same words when the agent only talked, so
       // keeping both showed the reply twice. The result is the one that carries the "to user"
@@ -770,12 +804,13 @@ function maybeContinueParent(parentRunId: string) {
 
     const cancelled = cancelledRuns.delete(parentRunId);
     if (cancelled || parentRun.round >= store.config.maxRounds) {
+      const isMaxRounds = !cancelled && parentRun.round >= store.config.maxRounds;
       addMessage({
         projectId: parentRun.projectId,
         fromAgentId: "system",
         toAgentId: parentRun.agentId,
         kind: "system",
-        text: cancelled ? `Tarea de ${parentAgent.name} detenida por el usuario` : "Se alcanzó el máximo de rondas"
+        text: cancelled ? `Tarea de ${parentAgent.name} detenida por el usuario` : translateNow("rounds.maxReached", { n: store.config.maxRounds })
       });
       if (cancelled) {
         useAppStore.setState(state => ({
@@ -796,11 +831,17 @@ function maybeContinueParent(parentRunId: string) {
 
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
-        taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+        
+        if (isMaxRounds) {
+          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, true, translateNow("rounds.maxReachedDetail", { n: store.config.maxRounds }));
+        } else {
+          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+        }
+
         const project = store.config.projects.find(p => p.id === parentRun.projectId);
         const rootRun = store.runs[parentRun.rootRunId];
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
-        if (cancelled || parentRun.status === "error") {
+        if (cancelled || parentRun.status === "error" || isMaxRounds) {
           void emitHookEvent("task.failed", {}, ctx);
           if (!cancelled) notifyTaskOutcome(parentRun, true);
         } else {
@@ -833,14 +874,19 @@ function isBusy(status: AgentStatus | undefined): boolean {
   return status === "working" || status === "waiting";
 }
 
-/** The child a delegation names, by name (however it was capitalised) or by id. */
+/**
+ * The child a delegation names, by name (however it was capitalised) or by id.
+ *
+ * Both of these read the one matching rule out of `resolveDelegations`: the round hangs on who a
+ * name lands on, and two copies of that rule is one too many.
+ */
 export function childFor(children: AgentConfig[], name: string): AgentConfig | undefined {
-  return children.find(c => c.name.toLowerCase() === name.toLowerCase() || c.id === name);
+  return resolveDelegations([{ agent: name }], children).resolved[0];
 }
 
 /** True when not one of these delegations names somebody who is actually under this agent. */
 export function noneLand(delegations: Delegation[], children: AgentConfig[]): boolean {
-  return delegations.every(d => !childFor(children, d.agent));
+  return resolveDelegations(delegations, children).resolved.length === 0;
 }
 
 function processQueuedInstructions(agentId: string, projectId: string) {

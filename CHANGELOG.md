@@ -18,6 +18,17 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A delegation that names nobody no longer hangs the task.** A planner that misspelled an agent's
+  name — or named one that is not under it — was left waiting for a team that was never coming, its
+  card stuck at *en curso* until the app restarted. Now the mistake goes back to the planner with
+  the names it can actually use, so it delegates again; out of rounds, the task closes as needing
+  you instead of pretending to work.
+- **A run that cannot even start closes its card.** With the CLI missing, the run errored and the
+  board never heard about it.
+- **Hitting the round ceiling says so.** The task now closes as needing you, with the ceiling in the
+  detail and the same notification any failure gets, instead of ending quietly as if it had
+  finished.
+
 - **A planner that had forgotten how to delegate.** Sending the instructions only on the turn that
   opens a session was right for the description — the role, the profile, the shared context, the
   list of skills — and wrong for the two blocks an agent *acts* through. A CLI compacts its own

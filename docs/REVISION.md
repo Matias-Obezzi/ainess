@@ -10,7 +10,7 @@ La casilla dice en qué anda.
 
 - `[ ]` pendiente
 - `[~]` en curso (hay un implementador trabajándolo)
-- `[x]` hecho y commiteado — el hash está al final de la línea
+- `[x]` hecho y commiteado — el título del commit está al lado
 - `[-]` descartado, con el motivo
 
 **Cómo usarlo**: marcá, tachá o comentá lo que quieras. Lo que taches se saca; lo que agregues, se
@@ -20,7 +20,7 @@ agrega. La bitácora del final cuenta qué pasó cada noche.
 
 ## A. Bugs
 
-### `[ ]` A1 · Una delegación a un agente que no existe cuelga la tarea para siempre
+### `[x]` A1 · Una delegación a un agente que no existe cuelga la tarea para siempre — *«A name that lands on nobody»*
 
 **Qué pasa.** El planificador delega y escribe mal el nombre del agente (o nombra a uno que no está
 bajo su mando). La app avisa del error en el feed, pero el planificador ya quedó marcado como
@@ -35,7 +35,7 @@ aprobación). Si son cero, no se espera a nadie: se le devuelve el error al plan
 ronda más, diciéndole qué nombres no existen y cuáles son los válidos, para que corrija. Si ya no
 quedan rondas, la tarea se cierra en *necesita tu atención* con el motivo.
 
-### `[ ]` A2 · Una corrida que no puede ni arrancar deja la tarjeta en "en curso"
+### `[x]` A2 · Una corrida que no puede ni arrancar deja la tarjeta en "en curso" — *«A name that lands on nobody»*
 
 **Qué pasa.** Si al agente le falta el CLI, `startRun` marca la corrida como error y avisa, pero ese
 camino no pasa por el cierre normal de corridas, así que el tablero nunca se entera: la tarjeta se
@@ -45,7 +45,7 @@ queda en *en curso* hasta que el próximo arranque de la app la reconcilie.
 
 **Propuesta.** Cerrar la tarjeta ahí mismo, con el mismo camino que usa una corrida que termina mal.
 
-### `[ ]` A3 · El tope de rondas termina la tarea sin decir nada útil
+### `[x]` A3 · El tope de rondas termina la tarea sin decir nada útil — *«A name that lands on nobody»*
 
 **Qué pasa.** Cuando se alcanza `maxRounds`, el feed recibe "Se alcanzó el máximo de rondas" y ahí
 muere: no hay notificación, la tarjeta raíz se cierra como si hubiera salido bien y el usuario se
