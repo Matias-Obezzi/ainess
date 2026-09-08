@@ -84,7 +84,7 @@ los mensajes de instalación de CLIs y de ngrok. En una ventana en inglés esto 
 
 **Propuesta.** Pasarlos todos por `translateNow` con claves nuevas en los siete diccionarios.
 
-### `[ ]` B2 · Un agente en un chat es un agente distinto al mismo agente en una tarea
+### `[x]` B2 · Un agente en un chat es un agente distinto al mismo agente en una tarea — *«The same agent, whichever door you come in by»*
 
 **Qué pasa.** El prompt de sistema de los chats se arma en otro lado y con otras reglas: en español
 fijo, sin el bloque `ask` (o sea que en un chat el agente no puede pedirte una decisión), con las

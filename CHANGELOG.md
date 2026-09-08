@@ -18,6 +18,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **An agent in a chat is the same agent as in a task.** The chat built its own system prompt, in
+  Spanish, without the `ask` block — so an agent you were talking to could not ask you for a
+  decision — and with every skill pasted in whole instead of pointed at in the repo. Chats go
+  through the one builder now: same profile, same shared context, same skills, same way of asking,
+  minus the board and the delegation an agent has no use for in a conversation.
+
 - **The app speaks your language all the way down.** The interface was translated and about thirty
   messages underneath it were not: a stopped run, an approval, a rejected delegation, a hook that
   failed, the errors the phone gets back, what an interrupted run leaves behind, the CLI that could
