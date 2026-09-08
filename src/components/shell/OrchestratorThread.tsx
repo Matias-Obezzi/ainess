@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
-import { useAppStore, selectAllAgents } from "@/store";
+import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { QueuedMessages } from "./QueuedMessages";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +39,25 @@ export function OrchestratorThread() {
   const hasRunning = useAppStore(state =>
     Object.values(state.runs).some(r => r.projectId === currentProjectId && r.status === "running"),
   );
+
+  // Written while an agent was working: it has not been handed over yet, and until now the thread
+  // gave no sign of it.
+  const runtime = useAppStore(state => currentProjectId ? state.runtime[currentProjectId] : undefined);
+  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
+  const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
+  const queued = useMemo(() => {
+    if (!runtime || !currentProjectId) return [];
+    return agents.flatMap(agent =>
+      (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
+        text,
+        // Only worth naming when the project has more than one agent to send to.
+        to: agents.length > 1 ? agent.name : undefined,
+        onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
+        onSendNow: () => void sendInstructionNow(currentProjectId, agent.id, index),
+      })),
+    );
+  }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
   const rootRuns = useMemo(
     () => Object.values(runs)
@@ -130,7 +150,7 @@ export function OrchestratorThread() {
             <RunBubbleSkeleton />
             <RunBubbleSkeleton />
           </div>
-        ) : rootRuns.length === 0 ? (
+        ) : rootRuns.length === 0 && queued.length === 0 ? (
           <EmptyState
             icon={MessagesSquare}
             title={t("thread.empty.title")}
@@ -140,6 +160,7 @@ export function OrchestratorThread() {
         ) : (
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             {rootRuns.map(run => <RunBubble key={run.id} run={run} />)}
+            <QueuedMessages messages={queued} />
             <div ref={bottomRef} />
           </div>
         )}

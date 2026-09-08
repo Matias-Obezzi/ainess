@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
+import { fileChangedInProject } from "@/lib/system-hooks";
 import { log } from "@/lib/logger";
 
 /**
@@ -42,6 +43,8 @@ export function useRepoWatch(): void {
         timers.set(projectId, setTimeout(() => {
           timers.delete(projectId);
           void useAppStore.getState().refreshRepoStatus(projectId).catch(() => {});
+          // The same settled burst is what a "file.changed" hook is waiting for.
+          fileChangedInProject(projectId);
         }, SETTLE_MS));
       })
       .then(off => {

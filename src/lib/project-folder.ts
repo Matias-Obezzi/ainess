@@ -16,7 +16,7 @@ import { translateNow } from "@/i18n/useT";
 import { shortTaskId } from "@/lib/providers";
 import { PROVIDERS } from "@/lib/providers";
 import { TASK_STATUSES } from "@/lib/tasks";
-import type { AgentConfig, Project, Task, TaskStatus } from "@/types";
+import type { AgentConfig, Project, Skill, Task, TaskStatus } from "@/types";
 
 export const FOLDER = ".ainess";
 
@@ -35,6 +35,55 @@ const ROLE_KEY: Record<AgentConfig["role"], string> = {
   reviewer: "label.role.reviewer",
   custom: "label.role.custom",
 };
+
+/** A folder name from a skill's name: no separators, no surprises, never empty. */
+export function skillSlug(skill: { id: string; name: string }): string {
+  const clean = skill.name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return clean || `skill-${skill.id.slice(0, 8)}`;
+}
+
+/** Where a skill's instructions live inside the project, relative to the workspace. */
+export function skillRelativePath(skill: { id: string; name: string }): string {
+  return `${FOLDER}/skills/${skillSlug(skill)}/SKILL.md`;
+}
+
+/** One skill as its own file: what it is at the top, the instructions below. */
+export function skillMarkdown(skill: Skill): string {
+  const lines = [`# ${skill.name}`, ""];
+  if (skill.description?.trim()) lines.push(`> ${skill.description.trim()}`, "");
+  lines.push(skill.content.trim(), "");
+  return lines.join("\n");
+}
+
+/**
+ * Writes the skills of a project so an agent can open the one it needs.
+ *
+ * They used to travel whole inside every system prompt — five skills were five manuals in every
+ * run, read or not. Now the prompt carries a name, a line of description and this path, and the
+ * agent reads the file when the work is about that. A skill's own scripts and templates can sit
+ * next to it in the same folder.
+ */
+export async function writeSkillFiles(project: Project, skills: Skill[]): Promise<void> {
+  if (!project.workspaceDir) return;
+  const transport = getTransport();
+  for (const skill of skills) {
+    if (!skill.content.trim()) continue;
+    const path = filePath(project.workspaceDir, `skills/${skillSlug(skill)}/SKILL.md`);
+    const content = skillMarkdown(skill);
+    try {
+      if ((await transport.readFileAbs(path)) === content) continue;
+      await transport.writeFileAbs(path, content);
+    } catch {
+      // The folder is a courtesy to the agents, never a step of the run.
+    }
+  }
+}
 
 /** Joins a workspace and a file of the folder, with the separator the workspace already uses. */
 export function filePath(workspaceDir: string, name: string): string {

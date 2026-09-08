@@ -2,6 +2,8 @@
 import { useAppStore, selectAgent, selectSkillsFor } from "@/store";
 import { startRun, addMessage } from "@/lib/orchestrator";
 import { getTransport } from "@/lib/transport";
+import { recordTurn } from "@/lib/agent-history";
+import { translateNow } from "@/i18n/useT";
 import type { ChatMessage } from "@/types";
 
 /** Tracks the current turn: chatId → { pending participant indices, turnId, responses so far } */
@@ -203,10 +205,14 @@ async function startTurn(
     }
   }
 
-  const systemPrompt = buildChatSystemPrompt(chatId, participant.agentId);
-
   // Get or create session for this chat+agent
   const sessionId = store.chatSessions[chatId]?.[participant.agentId];
+
+  // A turn that carries the session on does not carry the instructions with it: the CLI still has
+  // them from the first turn, and sending them again every turn was paying for the same paragraph
+  // over and over. A chat whose participants change mid-conversation keeps the roster it started
+  // with — reset its session (or start another chat) for the new one to be announced.
+  const systemPrompt = sessionId ? "" : buildChatSystemPrompt(chatId, participant.agentId);
 
   const turnId = crypto.randomUUID();
 
@@ -319,6 +325,15 @@ export function onChatRunFinished(runId: string): void {
 
   // Persist
   void persistMessages(chatId);
+
+  // And into the project's own folder, where the agent can read it back (see agent-history.ts).
+  {
+    const project = store.config.projects.find(p => p.id === run.projectId);
+    const agent = project?.agents?.find(a => a.id === run.agentId);
+    if (project && agent) {
+      void recordTurn(project, agent, { from: `${translateNow("folder.history.fromUser")} · ${chat.name}`, prompt: run.prompt, answer: output });
+    }
+  }
 
   // Continue to next participant
   const newResponses = [

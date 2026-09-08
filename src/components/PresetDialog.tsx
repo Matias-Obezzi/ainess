@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useAppStore, selectAllAgents } from "@/store";
+import { useAppStore, selectAllAgents, selectAgentsByProject } from "@/store";
+import { AgentOptions } from "@/components/AgentOptions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
   const t = useT();
   const store = useAppStore();
   const agents = useAppStore(selectAllAgents);
+  const byProject = useAppStore(selectAgentsByProject);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agentId, setAgentId] = useState<string>("none");
@@ -83,9 +85,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
                 <SelectTrigger className="w-full"><SelectValue placeholder={t("presetDialog.anyAgent")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t("presetDialog.anyAgent")}</SelectItem>
-                  {agents.map(a => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
+                  <AgentOptions groups={byProject} />
                 </SelectContent>
               </Select>
             </div>

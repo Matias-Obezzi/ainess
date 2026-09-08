@@ -1,5 +1,6 @@
 import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
@@ -318,6 +319,17 @@ function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[
   return [{ type: "text", text: line + "\n" }];
 }
 
+/**
+ * The prompt as it goes to a CLI that has no system slot of its own: the instructions on top, the
+ * task underneath. On a resumed turn there are no instructions left to send — the session already
+ * read them — and the headers are dropped with them, because a "## Tarea" with an empty preamble
+ * above it is one more thing for the model to read and nothing for it to learn.
+ */
+function withSystem(input: { systemPrompt: string; prompt: string }): string {
+  if (!input.systemPrompt.trim()) return input.prompt;
+  return `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+}
+
 export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   claude: {
     id: "claude",
@@ -364,7 +376,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     supportsSessions: true,
     promptVia: "arg",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       const args = ["-p", prompt, "--output-format", "stream-json", "--print-timeout", "30m"];
       // Without --add-dir agy treats an unregistered cwd as "outside of project" and
       // works in its own scratch folder instead of the workspace.
@@ -408,7 +420,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     promptVia: "arg",
     note: "En modo no interactivo Copilot exige --allow-all-tools; con auto-aprobación se usa --yolo (también rutas y URLs).",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       // -p without --allow-all-tools makes every tool call fail, so it is always on;
       // --yolo additionally lifts the path/URL checks.
       const args = ["-p", prompt, "--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
@@ -432,7 +444,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       const args = ["-p", prompt];
       if (input.agent.autoApprove) args.push("--yolo");
       if (input.agent.model) args.push("-m", input.agent.model);
@@ -448,7 +460,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       const args = ["exec", prompt];
       if (input.agent.autoApprove) args.push("--full-auto");
       if (input.agent.model) args.push("-m", input.agent.model);
@@ -466,7 +478,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     buildCommand: (input) => {
       const cmd = input.agent.customCommand;
       if (!cmd) throw new Error("Missing custom command config");
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       
       let args = [...cmd.args];
       let hasPrompt = false;
@@ -498,7 +510,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     buildCommand: (input) => {
       const model = input.agent.model;
       if (!model) throw new Error("Ollama requires a model to be selected");
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       return {
         program: input.binaryPath,
         args: ["run", model],
@@ -517,7 +529,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     supportsSessions: false,
     promptVia: "arg",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       const args = ["--message", prompt, "--yes-always"];
       if (input.agent.model) args.push("--model", input.agent.model);
       return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
@@ -538,7 +550,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     promptVia: "stdin",
     note: "Los modelos son «proveedor/modelo» (por ejemplo google/gemini-3-flash) y salen de `opencode models`. Conectá la cuenta o la API key con `opencode auth login`: la clave queda en opencode, ainess no la guarda. Sin auto-aprobación las herramientas quedan denegadas, así que un implementador la necesita.",
     buildCommand: (input) => {
-      const prompt = `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+      const prompt = withSystem(input);
       const args = ["run", "--format", "json"];
       if (input.cwd) args.push("--dir", input.cwd);
       if (input.agent.model) args.push("--model", input.agent.model);
@@ -637,12 +649,54 @@ export function boardSection(tasks: Task[], agentName: (id: string) => string | 
  * These used to be Spanish literals, so an English window got a team that answered in Spanish:
  * the interface was translated and the thing that decides how the agent writes was not.
  */
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[] }): string {
+/** The board, for the one agent it is written for: a planner with a team to hand it out to. */
+function boardFor(
+  agent: AgentConfig,
+  children: AgentConfig[],
+  extras?: { tasks?: Task[]; agentName?: (id: string) => string | undefined },
+): string {
+  if (agent.role !== "planner" || children.length === 0 || !extras?.tasks) return "";
+  return boardSection(extras.tasks, extras.agentName ?? (() => undefined));
+}
+
+/** The first line of a skill with no description of its own, as a stand-in for one. */
+function firstLine(text: string): string {
+  const line = text.split("\n").map(l => l.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
+  return line.length > 120 ? `${line.slice(0, 119)}…` : line;
+}
+
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string }): string {
   const t = translateNow;
   let prompt = "";
 
+  // Who this is, before anything else. A team where the same person writes to the planner and to
+  // an implementer needs each of them to know which one it is: one delegates, the other does the
+  // work, and an implementer that answered by delegating left the app waiting for a team it does
+  // not have.
+  if (extras?.fromUser) {
+    prompt += t("prompt.direct.header", {
+      name: agent.name,
+      role: t(roleLabelKey[agent.role] ?? "label.role.custom"),
+    });
+    if (agent.role !== "planner") prompt += " " + t("prompt.direct.doItYourself");
+    prompt += "\n\n";
+  }
+
+  // A resumed session read all of the below on its first turn and the CLI carries it forward, so
+  // sending it again buys nothing: with Claude it was re-billed every turn, and with the providers
+  // that take the instructions inside the prompt it left another copy of them in the transcript,
+  // for good. What does go every turn is the board, which is the one part that changes.
+  //
+  // ponytail: the delegate and ask schemas go with it. They are in the transcript; if an agent ever
+  // forgets the syntax deep into a long session, restate just those two here.
+  if (extras?.resuming) {
+    const board = boardFor(agent, children, extras);
+    if (board) prompt += (prompt ? "\n\n" : "") + board;
+    return prompt;
+  }
+
   if (agent.role === "planner") {
-    prompt = t("prompt.planner.intro");
+    prompt += t("prompt.planner.intro");
     if (children.length > 0) {
       prompt += " " + t("prompt.planner.children") + "\n";
       for (const child of children) {
@@ -675,9 +729,8 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
 
       // What there is to delegate. Right after the rules for delegating, so the planner reads how
       // and what in one go.
-      if (extras?.tasks) {
-        prompt += "\n\n" + boardSection(extras.tasks, extras.agentName ?? (() => undefined));
-      }
+      const board = boardFor(agent, children, extras);
+      if (board) prompt += "\n\n" + board;
     } else {
       prompt += " " + t("prompt.planner.noChildren");
       // A team can be built with everybody at the root: then a planner has nobody under it and
@@ -688,9 +741,9 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       }
     }
   } else if (agent.role === "implementer") {
-    prompt = t("prompt.implementer");
+    prompt += t("prompt.implementer");
   } else if (agent.role === "reviewer") {
-    prompt = t("prompt.reviewer");
+    prompt += t("prompt.reviewer");
   } else if (agent.role === "custom") {
     // Only use agent.systemPrompt (appended at the end)
   }
@@ -707,12 +760,23 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     if (extras.sharedContext && extras.sharedContext.trim()) {
       prompt += (prompt ? "\n\n" : "") + t("prompt.sharedContext.header") + "\n" + extras.sharedContext;
     }
+    // Name, one line of what it is for, and where it lives. Not the instructions themselves: five
+    // skills used to be five manuals inside every run, read or not. The agent opens the one the
+    // work is about (see `writeSkillFiles`), which is also how it reaches whatever sits beside it.
     const validSkills = extras.skills?.filter(s => s.content.trim()) || [];
     if (validSkills.length > 0) {
-      prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header");
+      prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header") + "\n" + t("prompt.skills.intro");
       for (const skill of validSkills) {
-        prompt += `\n### ${skill.name}\n${skill.content}`;
+        const what = skill.description?.trim() || firstLine(skill.content);
+        prompt += `\n- **${skill.name}** — ${what} → \`${skillRelativePath(skill)}\``;
       }
+    }
+
+    // A session that starts over — /compact, a changed provider, "Nueva conversación" — is a CLI
+    // with no memory of any of this. What was said is on disk, so the agent is told where instead
+    // of being handed it: it opens the file if the work needs it, which is what it was written for.
+    if (extras.historyFile) {
+      prompt += (prompt ? "\n\n" : "") + t("prompt.history", { file: extras.historyFile });
     }
   }
 

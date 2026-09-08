@@ -8,7 +8,9 @@
 // when its tab is closed (see disposeTerminal).
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { openExternal } from "@/lib/open-external";
 import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
@@ -54,6 +56,16 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
   });
   const fit = new FitAddon();
   term.loadAddon(fit);
+
+  // A URL in the output is a link, and one click opens it in the real browser. Both halves are
+  // needed: the addon finds the ones printed as plain text, and `linkHandler` takes the ones the
+  // CLI marks itself (OSC 8), which xterm otherwise only opens with Ctrl held.
+  const openLink = (_event: MouseEvent, uri: string) => {
+    void openExternal(uri);
+  };
+  term.loadAddon(new WebLinksAddon(openLink));
+  term.options.linkHandler = { activate: openLink };
+
   term.open(host);
   try {
     fit.fit();

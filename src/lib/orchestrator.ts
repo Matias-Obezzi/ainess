@@ -10,7 +10,7 @@ import { truncate } from "@/lib/format";
 import { translateNow } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
-import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
 
 let listenersAttached = false;
@@ -178,7 +178,14 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
+  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
+  // Nothing to read on the very first run of an agent: the file is written as the turns end.
+  const hasPast = Object.values(store.runs).some(r =>
+    r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
+    // No parent run means the user is talking to this agent itself, which is worth saying: an
+    // implementer told to do something by its planner and by the user reads the same prompt.
+    fromUser: opts.parentRunId === null,
     skills,
     sharedContext,
     profile: store.config.profile,
@@ -189,12 +196,18 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     agentName: (id) => selectAgent(store, id)?.name,
     // Who else is in this project, for the planner that has nobody under it.
     others: selectProjectAgents(store, opts.projectId).filter(a => a.parentId !== agent.id),
+    // A session that is being carried on already read the preamble; only what changed goes again.
+    resuming: !!sessionId,
+    historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
   });
-  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
 
   const mcpServers = selectMcpFor(store, agent.id);
 
   const doSpawn = async () => {
+    // Right before the run, so what the agent opens is what the settings say right now. Only the
+    // ones this agent has: the prompt names them by path and the file has to be there.
+    if (project) await writeSkillFiles(project, skills);
+
     let mcpConfigPath: string | undefined;
     // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
     // Antigravity is configured machine-wide instead (`ais mcp sync`), and the rest have no way in
@@ -447,11 +460,18 @@ function onRunFinished(runId: string) {
     if (children.length > 0) {
       const delegations = parseDelegations(run.output);
       if (delegations.length > 0) {
-        waitingForChildren = true;
-        agentStatus = "waiting";
+        // Every delegation naming somebody who is not there means nobody is coming: the agent
+        // used to sit at "waiting for its team" until the end of time. It happens to an agent that
+        // is not a planner and answers by delegating anyway.
+        if (noneLand(delegations, children)) {
+          waitingForChildren = false;
+        } else {
+          waitingForChildren = true;
+          agentStatus = "waiting";
+        }
 
         for (const task of delegations) {
-          const childAgent = children.find(c => c.name.toLowerCase() === task.agent.toLowerCase() || c.id === task.agent);
+          const childAgent = childFor(children, task.agent);
           if (childAgent) {
             let modelToUse: string | undefined = undefined;
             if (task.model && store.config.autoModel) {
@@ -532,6 +552,16 @@ function onRunFinished(runId: string) {
   }
 
   processQueuedInstructions(agent.id, run.projectId);
+
+  // What was said, into the project itself, where the agent can read it next time (and so can you,
+  // with an editor). Failures and stops are written too: knowing a turn ended badly is the point.
+  if (project) {
+    const parent = run.parentRunId ? store.runs[run.parentRunId] : undefined;
+    const from = parent
+      ? selectAgent(store, parent.agentId)?.name ?? translateNow("folder.history.fromUser")
+      : translateNow("folder.history.fromUser");
+    void recordTurn(project, agent, { from, prompt: run.prompt, answer: run.output });
+  }
 }
 
 /**
@@ -729,6 +759,10 @@ function maybeContinueParent(parentRunId: string) {
         };
       });
 
+      // Nothing of the parent's own ends here, and the drain hangs off a run ending: without this
+      // a message waiting for it would sit there until it happened to run again.
+      processQueuedInstructions(parentRun.agentId, parentRun.projectId);
+
       if (!parentRun.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
         taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
@@ -760,10 +794,30 @@ function maybeContinueParent(parentRunId: string) {
   }
 }
 
+/**
+ * An agent that cannot be handed anything new: it is answering, or it delegated and is waiting for
+ * what it delegated. After an error or a stop it is free again.
+ */
+function isBusy(status: AgentStatus | undefined): boolean {
+  return status === "working" || status === "waiting";
+}
+
+/** The child a delegation names, by name (however it was capitalised) or by id. */
+export function childFor(children: AgentConfig[], name: string): AgentConfig | undefined {
+  return children.find(c => c.name.toLowerCase() === name.toLowerCase() || c.id === name);
+}
+
+/** True when not one of these delegations names somebody who is actually under this agent. */
+export function noneLand(delegations: Delegation[], children: AgentConfig[]): boolean {
+  return delegations.every(d => !childFor(children, d.agent));
+}
+
 function processQueuedInstructions(agentId: string, projectId: string) {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
-  if (!runtime || runtime.status === "working") return;
+  // Every run end calls this, and the end of the run that delegated is not the end of the work:
+  // handing the message over there would have it run beside its own children.
+  if (!runtime || isBusy(runtime.status)) return;
 
   const queued = runtime.queuedInstructions ?? [];
   if (queued.length > 0) {
@@ -782,6 +836,8 @@ function processQueuedInstructions(agentId: string, projectId: string) {
 }
 
 import { emitHookEvent } from "@/lib/hooks";
+import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
+import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
@@ -800,6 +856,34 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
   }
 }
 
+/**
+ * Cuts the turn short and hands the message over now.
+ *
+ * Nothing is lost: what the agent did is already on disk, and what it said is in the CLI's own
+ * session, which the run that follows resumes. It is put at the head of the queue and the agent is
+ * stopped; the drain that every stop ends in is what starts it.
+ */
+export async function sendNowInterrupting(agentId: string, projectId: string, index: number): Promise<void> {
+  const store = useAppStore.getState();
+  const queue = store.runtime[projectId]?.[agentId]?.queuedInstructions ?? [];
+  const text = queue[index];
+  if (text === undefined) return;
+
+  const rest = queue.filter((_, i) => i !== index);
+  // The agent has to know its last turn was cut, or it reads the transcript as a turn it finished.
+  rest.unshift(`${translateNow("queued.interruptedNote")}
+
+${text}`);
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[projectId] || {};
+    return {
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: rest } } },
+    };
+  });
+
+  await stopAgent(agentId, projectId);
+}
+
 export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void> {
   const store = useAppStore.getState();
   // The agent has to belong to this project's team: nobody else can be given work here.
@@ -808,7 +892,7 @@ export async function instructAgent(agentId: string, text: string, projectId: st
 
   addMessage({ projectId, fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
 
-  if (runtime?.status === "working") {
+  if (isBusy(runtime?.status)) {
     useAppStore.setState(state => {
       const pRuntime = state.runtime[projectId] || {};
       return {

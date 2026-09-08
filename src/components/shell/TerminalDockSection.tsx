@@ -30,9 +30,13 @@ export function TerminalDockSection() {
   const closeTerminal = useAppStore(state => state.closeTerminal);
   const setActiveTerminal = useAppStore(state => state.setActiveTerminal);
   const renameTerminal = useAppStore(state => state.renameTerminal);
+  const moveTerminal = useAppStore(state => state.moveTerminal);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  /** The tab being carried, and where it would land in the bar. */
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const renameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -140,13 +144,41 @@ export function TerminalDockSection() {
 
       {terminals.length > 0 && (
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1">
-          {terminals.map(tab => (
+          {terminals.map((tab, index) => (
             <ContextMenu key={tab.id}>
               <ContextMenuTrigger asChild>
                 <div
                   role="button"
                   tabIndex={0}
                   title={`${tab.title} — ${tab.cwd || "home"}`}
+                  // Dragged by the tab itself. Not while renaming: there the pointer is selecting
+                  // text in the field, and a drag would take the tab instead.
+                  draggable={renamingId !== tab.id}
+                  onDragStart={e => {
+                    setDragging(tab.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    // Firefox starts no drag at all without something on the transfer.
+                    e.dataTransfer.setData("text/plain", tab.id);
+                  }}
+                  onDragEnd={() => { setDragging(null); setDropIndex(null); }}
+                  onDragOver={e => {
+                    if (!dragging || dragging === tab.id) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    // Past the middle of a tab means "after it", the way tab bars behave.
+                    const box = e.currentTarget.getBoundingClientRect();
+                    setDropIndex(e.clientX > box.left + box.width / 2 ? index + 1 : index);
+                  }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    if (dragging && dropIndex !== null) {
+                      const from = terminals.findIndex(t => t.id === dragging);
+                      // Removing it first shifts everything after it one to the left.
+                      moveTerminal(dragging, from < dropIndex ? dropIndex - 1 : dropIndex);
+                    }
+                    setDragging(null);
+                    setDropIndex(null);
+                  }}
                   onClick={() => setActiveTerminal(tab.id)}
                   // Right clicking a tab brings it to the front first, like any tabbed editor.
                   onContextMenu={() => setActiveTerminal(tab.id)}
@@ -162,6 +194,10 @@ export function TerminalDockSection() {
                     tab.id === activeTerminalId
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:bg-accent/50",
+                    dragging === tab.id && "opacity-40",
+                    // Where it would land, drawn as a line on that side.
+                    dragging && dragging !== tab.id && dropIndex === index && "border-l-2 border-primary",
+                    dragging && dragging !== tab.id && dropIndex === index + 1 && "border-r-2 border-primary",
                   )}
                 >
                   <TerminalSquare className="h-3.5 w-3.5 shrink-0" />

@@ -1,7 +1,107 @@
 # Changelog
 
-What changed in each release, for the people who use it. The app shows this same file in
-Settings → About.
+What changed in each release, for the people who use it. This is the English one and the app shows
+it to English readers; the other languages are in `docs/changelog/`, and the release check will not
+let one of them fall behind.
+
+## 0.7.0 — 2026-09-08
+
+### Added
+
+- **Skills are opened when they apply, not poured into every run.** A skill used to travel whole
+  inside the system prompt of every agent it was enabled for: five skills were five manuals in every
+  run, read or not. Each one is now written to `.ainess/skills/<name>/SKILL.md` and the prompt
+  carries only its name, one line of what it is for and that path — the agent opens the one the work
+  is about, and whatever else the skill needs (a script, a template) can sit in the same folder.
+  That one line of description is what it decides from, and the editor now says so.
+- **Notifications make a sound.** Two short notes, rising when something needs you and falling when
+  something finished, so you can tell them apart without looking. The app synthesises them — no file
+  in the installer, and it plays the same in the window, from the tray (the app keeps running there,
+  which is what lets the sound reach you) and on the phone. Configuración → General turns it off,
+  and its editor tunes the notes, the wave and the volume, or takes a sound of your own.
+- **Each agent's history, in the project.** `.ainess/history/` gets one file per agent, appended
+  as its turns end: who asked, what was asked and what came back, for the work it was given and for
+  the chats. The app keeps all of it in its own storage, where only the app can read it; this is the
+  way in for an agent that comes back tomorrow, and for you with an editor. Old turns are dropped
+  whole when the file fills up, never cut in half.
+- **Terminal tabs are dragged into the order you want**, like any tabbed editor: the one being
+  carried fades and a line shows where it would land.
+- **Hooks on the machine's own conditions.** Until now a hook answered something an agent did.
+  Five more events answer the machine instead: the app opening, a clock (at a time of day or every
+  so many minutes), the connection dropping and coming back, and a file changing in a project's
+  folder — that last one riding the watcher that was already there, so the noise (`.git`,
+  `node_modules`, build output) never reaches it. They run while the app is open, no more than once
+  a minute each, and the project they act on is the one in the hook's own filter, or whichever is
+  open. `approval.requested`, which was already being fired, is finally in the list you can pick
+  from.
+- **The changelog in your language.** The dialog that opens after an update, and Configuración →
+  Acerca de, now show the notes translated. English stays in `CHANGELOG.md` and each other language
+  has its own file, which the release check keeps in step with the version being published.
+- **It looks for a new version every five minutes**, not only once at startup, so a release
+  published while the app is open reaches it the same day. The same offer as always, and the same
+  switch in Configuración turns it off.
+- **Cutting a turn short to say something.** A message waiting for an agent has a second button:
+  it stops what is running and hands the message over right away. Nothing is repeated — what the
+  agent did is on disk and what it said is in its own session, which the run that follows resumes
+  — and it is told that its turn was cut, so it does not read the transcript as one it finished.
+- **Commands in the box.** Typing `/` on an empty composer opens a short list: `/compact` has every
+  agent of the project start a new session — nothing is lost, since each one is pointed at its own
+  file in `.ainess/history/` and reads back only what the new work needs — and `/cost` opens what
+  the project has spent. Anything else in the box is a message, so "look at the /compact of Claude"
+  still goes to the team untouched.
+
+### Fixed
+
+- **The instructions were being sent again on every turn.** An agent's preamble — its role, the
+  delegate and ask schemas, the shared context, the profile, the list of skills — went with every
+  message of a conversation the CLI was already carrying forward. With Claude that was the same
+  paragraphs billed turn after turn; with the providers that take the instructions inside the
+  prompt (Antigravity, Copilot, opencode and the rest) it also left a copy of them in the
+  transcript, for good, so a long session paid for it many times over. They go once now, on the
+  turn that opens the session. What still goes every turn is the board, which is the part that
+  changes.
+- A project opens its folder in the file manager, from the right click and from the three dots
+  alike — and those two menus now offer the same actions everywhere they are the same thing. The
+  project's path was in the right click and not in the dots, and a chat's "Open" the other way
+  round.
+- A project can no longer be given two orchestrators at the root. The team dialog asks for a parent
+  for the second one, which is where it belonged anyway: side by side they both read the whole
+  board and can take the same card, only the first is ever the default the composer, the CLI and
+  the phone write to, and the project's single "task in progress" pointer let one overwrite the
+  other — leaving the first task without its card moved, its hooks or its notification. A team that
+  already has two says so as soon as you open either of them.
+- Changing an agent's CLI kept the session of the old one, and the next run handed Antigravity a
+  session id Claude had opened — which fails on the spot, since it is a name the other one has
+  never heard. The session is dropped now when the CLI changes, and when the agent moves in or out
+  of its own worktree, which is the other half of what a session is tied to.
+- The repository watcher no longer wakes on the app's own `.ainess/` folder: the board, the team
+  and now the history are written there as the work happens, and a file hook would have been
+  answering the app instead of the user.
+- A hook asked twice what it is about: one field for the agent and another for the project. It is
+  one now — everything, a whole project, or one agent under it — since an agent belongs to exactly
+  one project and the pair could only agree or contradict each other into never firing.
+- The agent lists that reach across projects — the one a hook instructs, the one a hook is filtered
+  to, the one an order is bound to — group the agents under the project each belongs to, with its
+  colour. Two projects with an "Orchestrator" each read the same before.
+- An agent you write to yourself is told who it is. It reads the same prompt whether the work came
+  from its planner or from you, so an implementer answered a message of yours by delegating it on
+  — and then sat at "waiting for its team".
+- And that wait is over anyway: a delegation naming somebody who is not under that agent left it
+  waiting for a team that was never coming. When not one of them lands, the agent is free again.
+- A link in a terminal opens with one click. Only the ones a CLI marked itself were links at all,
+  and those needed Ctrl held; now any URL in the output is one, and it opens in the real browser.
+- On the phone, the keyboard covered the box you were typing in. The page deliberately does not
+  resize itself when the keyboard opens — that used to throw the conversation off its bottom
+  anchor mid-task — so the shell is shortened by exactly what the keyboard takes instead.
+- The "new version available" toast showed the release note as it is written, so it read
+  `[CHANGELOG.md](https://…)`: a toast has no markdown to render it with. It says what it has to
+  say now, and what changed is in the changelog that opens after the update.
+- A message written while an agent was working showed up in Comunicación and nowhere else, as if
+  the app had swallowed it. It now sits at the end of the conversation, dashed and with a clock,
+  saying who it is waiting for, and it can be taken back before its turn comes.
+- That message could also be handed over too early: an agent that delegates ends its own run
+  before its team has finished, and the queue was emptied there — the message ran beside the work
+  it was meant to follow. It waits now until the agent is really free.
 
 ## 0.6.0 — 2026-09-08
 

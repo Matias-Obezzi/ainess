@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
+import { rootPlannerClash } from "@/lib/team";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,6 +285,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
    */
   const duplicateName = roster.some(a => a.id !== id && a.name.trim().toLowerCase() === name.trim().toLowerCase());
 
+  /** A project answers to one orchestrator; a second one goes under the first (see lib/team.ts). */
+  const otherRootPlanner = rootPlannerClash(roster, { id, role, parentId });
+
   const handleProviderChange = (value: ProviderId) => {
     setProvider(value);
     if (!agent && (name.trim() === "" || name === suggestedName)) {
@@ -454,6 +458,11 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     ))}
                   </SelectContent>
                 </Select>
+                {otherRootPlanner && (
+                  <p className="text-xs text-destructive">
+                    {t("agentDialog.twoOrchestrators", { name: otherRootPlanner.name })}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>{t("common.model")}</Label>
@@ -610,7 +619,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || duplicateName || (!onSave && !targetProjectId)}>{t("common.save")}</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || duplicateName || !!otherRootPlanner || (!onSave && !targetProjectId)}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

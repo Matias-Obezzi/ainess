@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
+import { UsageDialog } from "@/components/UsageDialog";
+import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
 import { useT } from "@/i18n/useT";
 import { Clock, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
@@ -180,6 +182,36 @@ export function Composer() {
     addFiles(files);
   };
 
+  // ---- commands ----
+  // `/` on an otherwise empty box opens the list; anything else in it is a message.
+  const [usageOpen, setUsageOpen] = useState(false);
+  // Only on the project's own thread: a chat keeps its sessions somewhere else, and compacting
+  // one would be plain forgetting — there is no history file behind it to read back.
+  const commandQuery = currentProjectId && !chatMode ? activeCommandQuery(text) : null;
+  const commandMatches = commandQuery === null ? [] : matchCommands(commandQuery);
+  const [commandIndex, setCommandIndex] = useState(0);
+  const menuOpen = commandMatches.length > 0;
+  useEffect(() => { setCommandIndex(0); }, [commandQuery]);
+
+  /** Runs one and empties the box. Commands never reach an agent, so nothing is queued or sent. */
+  const runCommand = (command: ChatCommand) => {
+    if (!currentProjectId) return;
+    setText("");
+    setHistoryIndex(null);
+    if (command.id === "compact") {
+      const count = compactProject(currentProjectId);
+      toast.success(t("command.compact.done", { count }));
+    } else if (command.id === "cost") {
+      setUsageOpen(true);
+    }
+  };
+
+  /** Completes the highlighted name and runs it: picking from the list is the whole gesture. */
+  const pickCommand = () => {
+    const command = commandMatches[commandIndex];
+    if (command) runCommand(command);
+  };
+
   const busy = chatMode ? chatBusy : targetWorking;
   const canSend = (!!text.trim() || attachments.length > 0) && (chatMode
     ? !!currentChatId
@@ -192,6 +224,9 @@ export function Composer() {
    * answer: there is nothing to interrupt it with, so what you write waits its turn.
    */
   const handleSend = (opts?: { queue?: boolean }) => {
+    // An order to the app, not a message: it runs even with no team and nothing is sent anywhere.
+    const command = currentProjectId && !chatMode ? parseCommand(text) : undefined;
+    if (command) return runCommand(command);
     if (!canSend) return;
     const queue = opts?.queue === true || busy;
     const files = attachments;
@@ -258,6 +293,26 @@ export function Composer() {
   // listener in App.tsx, but they are still declared in src/lib/shortcuts.ts (group "composer"),
   // which is what the Ctrl+/ dialog documents. Adding one here means adding it there too.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // The command list takes the keys it needs before anything else: while it is open, the arrows
+    // are walking it rather than the prompts sent earlier.
+    if (menuOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const step = e.key === "ArrowDown" ? 1 : commandMatches.length - 1;
+        setCommandIndex(i => (i + step) % commandMatches.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        pickCommand();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setText("");
+        return;
+      }
+    }
     // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -339,6 +394,23 @@ export function Composer() {
 
         {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
         <div className="relative">
+          {menuOpen && (
+            <div className="absolute bottom-full left-0 z-20 mb-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+              {commandMatches.map((command, i) => (
+                <button
+                  key={command.id}
+                  type="button"
+                  // The box keeps the focus: losing it would close the list before the click lands.
+                  onMouseDown={e => { e.preventDefault(); runCommand(command); }}
+                  onMouseEnter={() => setCommandIndex(i)}
+                  className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs ${i === commandIndex ? "bg-accent text-accent-foreground" : ""}`}
+                >
+                  <span className="font-mono">/{command.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{t(command.descriptionKey)}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
           <Textarea
             value={text}
@@ -466,6 +538,11 @@ export function Composer() {
               {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
             </div>
           </div>
+        )}
+
+        {/* What `/cost` opens: the same panel as the button in the header, from the keyboard. */}
+        {currentProjectId && (
+          <UsageDialog projectId={currentProjectId} open={usageOpen} onOpenChange={setUsageOpen} />
         )}
       </div>
     </div>

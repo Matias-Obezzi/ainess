@@ -85,6 +85,9 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
             <div className="space-y-1">
               <Label>{t("common.description")}</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} />
+              {/* This line is the whole of what the agent reads by default: it decides from here
+                  whether to open the skill at all. */}
+              <p className="text-xs text-muted-foreground">{t("skillDialog.descriptionHint")}</p>
             </div>
 
             <div className="space-y-1 flex-1 flex flex-col min-h-[200px]">

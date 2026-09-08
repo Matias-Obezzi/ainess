@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
+import { useKeyboardInset } from "./useKeyboardInset";
 import { Toaster, toast } from "@/components/ui/toast";
 import { roleLabelKey, statusLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
@@ -162,8 +163,13 @@ export function RemoteApp() {
  * the tab bar at the bottom would shift (and hide behind Chrome) whenever the viewport changed.
  */
 function Shell({ children }: { children: React.ReactNode }) {
+  useKeyboardInset();
   return (
-    <div className="h-svh w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden">
+    <div
+      className="w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden"
+      // Shortened by whatever the keyboard is covering, so the box being typed in stays visible.
+      style={{ height: "calc(100svh - var(--kb, 0px))" }}
+    >
       {children}
     </div>
   );

@@ -115,6 +115,7 @@ export interface Formation {
 }
 
 export type HookEvent =
+  // Something an agent did.
   | "approval.requested"
   | "task.started"
   | "task.finished"
@@ -123,7 +124,17 @@ export type HookEvent =
   | "run.finished"
   | "run.failed"
   | "agent.stopped"
-  | "result";
+  | "result"
+  // Something that happened to the machine, with no agent behind it (see src/lib/system-hooks.ts).
+  /** The app was opened. */
+  | "app.started"
+  /** A clock: at a time of day, or every so many minutes. */
+  | "schedule"
+  /** The machine lost its connection, or got it back. */
+  | "internet.lost"
+  | "internet.back"
+  /** Something changed in a project's folder, filtered of noise and debounced. */
+  | "file.changed";
 
 export type HookAction =
   | { type: "slack"; webhookUrl: string; template: string }
@@ -140,6 +151,13 @@ export interface Hook {
   enabled: boolean;
   filter?: { agentId?: string; projectId?: string };
   action: HookAction;
+  /** Only for "schedule": when it fires. `at` wins if both are set. */
+  schedule?: {
+    /** Time of day, "HH:MM" on the machine's clock. */
+    at?: string;
+    /** Every so many minutes, counted from when the app opened. */
+    everyMinutes?: number;
+  };
 }
 
 /** A delegated task (or instruction) waiting for the user's go-ahead. */
@@ -229,6 +247,24 @@ export interface TrayConfig {
   notifyResults: boolean;
 }
 
+/**
+ * What a notification sounds like. Missing means the app's own two notes: nothing here has to be
+ * set for the sound to work, and every field only says how it differs from that.
+ */
+export interface SoundSettings {
+  /** Off only when it was turned off. */
+  enabled?: boolean;
+  /** The two notes of the "something needs you" chime, in Hz; the other one is them reversed. */
+  notes?: [number, number];
+  wave?: OscillatorType;
+  /** 0 to 1. */
+  volume?: number;
+  /** A sound of your own, as a data URL. When it is here, it plays instead of the notes. */
+  file?: string;
+  /** What that file was called, so the setting can say which one it is. */
+  fileName?: string;
+}
+
 /** A saved order: a prompt you reuse, optionally bound to one agent and model. */
 export interface Preset {
   id: string;
@@ -270,6 +306,8 @@ export interface AppConfig {
   autoUpdateCheck: boolean;
   /** Archive done tasks older than this many days; null never archives on its own. */
   autoArchiveDoneDays: number | null;
+  /** The sound every notification makes, in the window and from the tray (see lib/sound.ts). */
+  notificationSound?: SoundSettings;
 }
 
 export interface AgentRuntime {

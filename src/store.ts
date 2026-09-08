@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
 import * as orchestrator from "@/lib/orchestrator";
 import * as history from "@/lib/history";
@@ -89,6 +90,13 @@ export interface AppState {
    */
   chatQueues: Record<string, string[]>;
   queueChatMessage(chatId: string, text: string): void;
+  /** Takes one queued message back before its turn comes. */
+  unqueueChatMessage(chatId: string, index: number): void;
+  /** The same, for an instruction waiting on a working agent. */
+  unqueueInstruction(projectId: string, agentId: string, index: number): void;
+  /** Cuts the turn that is running short and sends the queued message now. */
+  sendChatNow(chatId: string, index: number): Promise<void>;
+  sendInstructionNow(projectId: string, agentId: string, index: number): Promise<void>;
   /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
   flushChatQueue(chatId: string): Promise<void>;
   /**
@@ -161,6 +169,8 @@ export interface AppState {
   closeTerminal(id: string): void;
   setActiveTerminal(id: string): void;
   renameTerminal(id: string, title: string): void;
+  /** Reorders the tab bar: the tab lands at `toIndex` of the list as it is shown. */
+  moveTerminal(id: string, toIndex: number): void;
   markTerminalExited(id: string, code: number | null): void;
 
   init(): Promise<void>;
@@ -760,6 +770,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       notifications: notifications.pushNotification(state.notifications, n, { id: crypto.randomUUID(), ts: Date.now() }),
     }));
+    // Every notification comes through here, window open or in the tray: the webview keeps running
+    // when the window is hidden, which is what lets a sound reach you at all from there.
+    const sound = get().config.notificationSound;
+    if (soundEnabled(sound)) playChime(chimeFor(n.kind), sound);
   },
   markNotificationsRead: () => {
     set(state => ({ notifications: notifications.markAllRead(state.notifications) }));
@@ -913,6 +927,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setActiveTerminal: (id) => {
     if (!get().terminals.some(t => t.id === id)) return;
     set({ activeTerminalId: id });
+  },
+
+  moveTerminal: (id, toIndex) => {
+    set(s => {
+      const from = s.terminals.findIndex(t => t.id === id);
+      if (from === -1) return {};
+      const terminals = [...s.terminals];
+      const [tab] = terminals.splice(from, 1);
+      // Dropping past the end lands at the end; anything else keeps the order the tabs were shown.
+      terminals.splice(Math.max(0, Math.min(toIndex, terminals.length)), 0, tab);
+      return { terminals };
+    });
   },
 
   renameTerminal: (id, title) => {
@@ -1126,14 +1152,36 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateAgent: (projectId, agentId, patch) => {
-    set((state) => ({
-      config: {
+    set((state) => {
+      const before = state.config.projects.find(p => p.id === projectId)?.agents?.find(a => a.id === agentId);
+      const config = {
         ...state.config,
         projects: state.config.projects.map(p => p.id === projectId
           ? { ...p, agents: (p.agents ?? []).map(a => a.id === agentId ? { ...a, ...patch, id: a.id } : a) }
           : p),
-      },
-    }));
+      };
+
+      // A session belongs to the CLI that opened it, in the folder it ran in. Handing the id of a
+      // Claude session to Antigravity is handing it a name it has never heard, and the run fails on
+      // the spot; the same goes for a session opened in a folder the agent no longer works in.
+      const runtime = state.runtime[projectId]?.[agentId];
+      const movedOn = before && runtime?.sessionId && (
+        (patch.provider !== undefined && patch.provider !== before.provider) ||
+        (patch.worktree !== undefined && !!patch.worktree !== !!before.worktree)
+      );
+      if (!movedOn) return { config };
+
+      return {
+        config,
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...state.runtime[projectId],
+            [agentId]: { ...runtime, sessionId: undefined, sessionUpdatedAt: Date.now() },
+          },
+        },
+      };
+    });
     debouncedSave();
   },
 
@@ -1642,6 +1690,54 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }));
   },
 
+  unqueueChatMessage: (chatId, index) => {
+    set(state => ({
+      chatQueues: {
+        ...state.chatQueues,
+        [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index),
+      },
+    }));
+  },
+
+  unqueueInstruction: (projectId, agentId, index) => {
+    set(state => {
+      const projectRuntime = state.runtime[projectId];
+      const runtime = projectRuntime?.[agentId];
+      if (!runtime) return {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...projectRuntime,
+            [agentId]: {
+              ...runtime,
+              queuedInstructions: (runtime.queuedInstructions ?? []).filter((_, i) => i !== index),
+            },
+          },
+        },
+      };
+    });
+  },
+
+  sendChatNow: async (chatId, index) => {
+    const queued = get().chatQueues[chatId] ?? [];
+    const text = queued[index];
+    if (text === undefined) return;
+    set(state => ({
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index) },
+    }));
+    // Stopping is awaited so the turn is closed before the next one opens.
+    await get().stopChat(chatId);
+    const { translateNow } = await import("@/i18n/useT");
+    await get().sendChatMessage(chatId, `${translateNow("queued.interruptedNote")}
+
+${text}`);
+  },
+
+  sendInstructionNow: async (projectId, agentId, index) => {
+    await orchestrator.sendNowInterrupting(agentId, projectId, index);
+  },
+
   flushChatQueue: async (chatId) => {
     const queued = get().chatQueues[chatId] ?? [];
     if (queued.length === 0) return;
@@ -1936,6 +2032,22 @@ export function selectAllAgents(state: AppState): AgentConfig[] {
   const agents = projects.flatMap(p => p.agents ?? []);
   allAgentsCache = { projects, agents };
   return agents;
+}
+
+let byProjectCache: { projects: Project[]; groups: { project: Project; agents: AgentConfig[] }[] } | null = null;
+
+/**
+ * The same agents as `selectAllAgents`, kept in their projects. Two projects can each have an
+ * "Orchestrator", and a list that flattens them says nothing about which is which.
+ */
+export function selectAgentsByProject(state: AppState): { project: Project; agents: AgentConfig[] }[] {
+  const projects = state.config.projects;
+  if (byProjectCache && byProjectCache.projects === projects) return byProjectCache.groups;
+  const groups = projects
+    .map(project => ({ project, agents: project.agents ?? [] }))
+    .filter(group => group.agents.length > 0);
+  byProjectCache = { projects, groups };
+  return groups;
 }
 
 export function selectChildren(state: AppState, projectId: string | null | undefined, agentId: string): AgentConfig[] {
