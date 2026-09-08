@@ -193,7 +193,10 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
 
   const doSpawn = async () => {
     let mcpConfigPath: string | undefined;
-    if (agent.provider === "claude" && mcpServers.length > 0) {
+    // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
+    // Antigravity is configured machine-wide instead (`ais mcp sync`), and the rest have no way in
+    // yet — see Configuración → MCP.
+    if ((agent.provider === "claude" || agent.provider === "copilot") && mcpServers.length > 0) {
       const obj: any = { mcpServers: {} };
       for (const s of mcpServers) {
         if (s.transport === "http") {

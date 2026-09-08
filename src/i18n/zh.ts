@@ -563,6 +563,7 @@ export const zh: Dictionary = {
   "mcp.new": "新建 MCP",
   "mcp.delete": "删除这个 MCP 服务器？",
   "mcp.syncWithAntigravity": "与 Antigravity 同步",
+  "mcp.reach": "Claude Code 和 GitHub Copilot 每次运行都会拿到。Antigravity 需要先同步（⋯ 菜单）。其他 CLI 目前还接收不到：请在各自的 CLI 里配置。",
   "mcp.syncDone": "同步成功：新增 {added} 个，移除 {removed} 个",
   "mcp.syncFailed": "同步 MCP 出错",
   "mcp.empty.title": "还没有 MCP 服务器",
@@ -1154,5 +1155,5 @@ export const zh: Dictionary = {
   "folder.agents.title": "{project} 的团队",
   "folder.agents.empty": "这个项目还没有智能体。",
   "folder.readme.title": "{project} 的 .ainess 目录",
-  "folder.readme.body": "ainess 关于这个项目所知道的都放在这里。`BOARD.md` 是任务看板，`AGENTS.md` 是团队：两者都由应用写入，手动改动会在下次运行时丢失 —— 要移动一张卡片，规划者用它的 id 去委派。\n\n目录的其余部分属于智能体：计划、笔记和交接放在这里，而不是各个 CLI 自己的配置目录。",
+  "folder.readme.body": "ainess 关于这个项目所知道的都放在这里。`BOARD.md` 是任务看板，`AGENTS.md` 是团队：两者都由应用写入，手动改动会在下次运行时丢失 —— 要移动一张卡片，规划者用它的 id 去委派。\n\n目录的其余部分属于智能体：计划、笔记和交接放在这里，而不是各个 CLI 自己的配置目录。\n\n如果有开发服务器在监视这个仓库，请把 `.ainess/` 加入它的忽略列表：看板每次变化都会写这些文件。",
 };

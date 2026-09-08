@@ -563,6 +563,7 @@ export const pt: Dictionary = {
   "mcp.new": "Novo MCP",
   "mcp.delete": "Excluir o servidor MCP?",
   "mcp.syncWithAntigravity": "Sincronizar com Antigravity",
+  "mcp.reach": "Claude Code e GitHub Copilot os recebem a cada execução. O Antigravity, depois de sincronizar (menu ⋯). Os outros CLIs ainda não têm como recebê-los: configure-os no próprio CLI.",
   "mcp.syncDone": "Sincronização concluída: {added} adicionados, {removed} removidos",
   "mcp.syncFailed": "Erro ao sincronizar MCP",
   "mcp.empty.title": "Ainda não há servidores MCP",
@@ -1154,5 +1155,5 @@ export const pt: Dictionary = {
   "folder.agents.title": "Equipe de {project}",
   "folder.agents.empty": "Este projeto ainda não tem agentes.",
   "folder.readme.title": "A pasta .ainess de {project}",
-  "folder.readme.body": "Aqui fica o que o ainess sabe deste projeto. `BOARD.md` é o quadro de tarefas e `AGENTS.md` é a equipe: os dois são escritos pelo app, então o que você editar à mão se perde na próxima execução — para mover um cartão, o planejador o delega com o id dele.\n\nO resto da pasta é dos agentes: planos, notas e handoffs vão aqui, e não na pasta de configuração de cada CLI.",
+  "folder.readme.body": "Aqui fica o que o ainess sabe deste projeto. `BOARD.md` é o quadro de tarefas e `AGENTS.md` é a equipe: os dois são escritos pelo app, então o que você editar à mão se perde na próxima execução — para mover um cartão, o planejador o delega com o id dele.\n\nO resto da pasta é dos agentes: planos, notas e handoffs vão aqui, e não na pasta de configuração de cada CLI.\n\nSe um servidor de desenvolvimento observa este repositório, adicione `.ainess/` ao que ele ignora: cada mudança do quadro toca estes arquivos.",
 };

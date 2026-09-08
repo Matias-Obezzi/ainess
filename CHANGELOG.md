@@ -3,7 +3,7 @@
 What changed in each release, for the people who use it. The app shows this same file in
 Settings → About.
 
-## Unreleased
+## 0.4.0 — 2026-09-07
 
 ### Added
 
@@ -13,6 +13,15 @@ Settings → About.
   card moves when a delegation names it, not when somebody edits the markdown — and the rest of
   the folder is the agents': plans, notes and handoffs go there now instead of into each CLI's own
   configuration folder.
+- **Dragging a card on the phone.** Hold one, carry it to another column's chip to move it, or
+  onto another card to take that card's place. The board follows it to the column it lands in.
+- **A browser for the agents.** The Playwright MCP server was already one click away in
+  Configuración → MCP (⋯ → suggested); what was missing is that the servers reached more than one
+  CLI. GitHub Copilot now gets them on every run too, through the file Claude Code already got
+  (`--additional-mcp-config`), so an agent on either can open the app, click around, read the DOM
+  and take screenshots. The section says which CLIs receive them and which have to be configured
+  in the CLI itself — before, enabling a server for an agent that could not receive it did nothing
+  and said nothing.
 - **The phone tells you when something needs you.** A bell in its header asks for permission, and
   from then on a delegation waiting for a yes, a question, or a task that came back reaches you
   while the page is in the background or the screen is locked. It is the browser's own
@@ -45,6 +54,21 @@ Settings → About.
 - A run cut off by Claude Code's own ceiling — "background tasks still running after 600s" — said
   only that it took too long. It now says what was holding it: something the agent left running in
   the background, and what to ask it to do about that.
+- **Moving a card reloaded the whole window.** The `.ainess/` folder is written into the project
+  whenever the board is saved, and a dev server watching that project reloads the page when a file
+  under it changes — including the app's own, whose project is its own repository. Two halves: a
+  file that would come out the same is not written at all, so the board being saved does not wake
+  up anything watching the repo, and the folder is out of what the app's own dev server watches.
+  The `README.md` in the folder says it too, for a project with a dev server of its own.
+- A card let go anywhere but on a column is now let go: an unhandled drop belongs to the browser,
+  which does what it likes with it, and in a window that reads as the screen reloading.
+- **Drag and drop on the board did nothing in the app.** The webview keeps the drag events for
+  itself on Windows unless it is told not to — "disabling it is required to use HTML5 drag and
+  drop on the frontend", says Tauri's own config schema — so a card could be picked up and never
+  dropped. Nothing here wants files dropped from Explorer, so it is off.
+- An option of a question that was a whole sentence ran off the side of the screen. The options
+  wrap now, and stack on a narrow one. The `ask` block that describes the question was also being
+  printed above it as raw JSON: the question is drawn from it, so it is no longer written out.
 - On the phone, the board's columns run past the edge of the screen and nothing said so. The strip
   fades on whichever side still has columns on it.
 - The communication panel opened at the oldest line of the project instead of at what just

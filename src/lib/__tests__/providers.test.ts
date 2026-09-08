@@ -165,6 +165,30 @@ describe("plain-text providers and system prompt", () => {
   });
 });
 
+describe("MCP servers reaching an agent", () => {
+  const withMcp = { prompt: "hola", systemPrompt: "sos", binaryPath: "copilot.cmd", mcpConfigPath: "C:/cfg/mcp/a1.json" };
+
+  // Verified against `copilot --help` on Windows: "--additional-mcp-config <json>  Additional MCP
+  // servers configuration as JSON string or file path (prefix with @)".
+  it("hands Copilot the same file Claude Code gets, by path", () => {
+    const { args } = PROVIDERS.copilot.buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp });
+    const i = args.indexOf("--additional-mcp-config");
+    expect(i).toBeGreaterThan(-1);
+    expect(args[i + 1]).toBe("@C:/cfg/mcp/a1.json");
+  });
+
+  it("says nothing about MCP when there is none", () => {
+    const { args } = PROVIDERS.copilot.buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp, mcpConfigPath: undefined });
+    expect(args).not.toContain("--additional-mcp-config");
+  });
+
+  it("keeps passing it to Claude Code as it did", () => {
+    const { args } = PROVIDERS.claude.buildCommand({ agent: agent({ provider: "claude" }), ...withMcp });
+    const i = args.indexOf("--mcp-config");
+    expect(args[i + 1]).toBe("C:/cfg/mcp/a1.json");
+  });
+});
+
 describe("copilot provider", () => {
   const copilot = PROVIDERS.copilot;
   const msg = (content: string, toolRequests: unknown[] = []) =>

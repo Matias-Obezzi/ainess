@@ -564,6 +564,7 @@ export const ja: Dictionary = {
   "mcp.new": "新しいMCP",
   "mcp.delete": "MCPサーバーを削除しますか?",
   "mcp.syncWithAntigravity": "Antigravityと同期",
+  "mcp.reach": "Claude Code と GitHub Copilot は実行のたびに受け取ります。Antigravity は同期（⋯ メニュー）のあとで受け取ります。他の CLI にはまだ渡す方法がないので、その CLI 側で設定してください。",
   "mcp.syncDone": "同期が完了しました: {added} 件追加、{removed} 件削除",
   "mcp.syncFailed": "MCPの同期に失敗しました",
   "mcp.empty.title": "まだMCPサーバーがありません",
@@ -1155,5 +1156,5 @@ export const ja: Dictionary = {
   "folder.agents.title": "{project} のチーム",
   "folder.agents.empty": "このプロジェクトにはまだエージェントがいません。",
   "folder.readme.title": "{project} の .ainess フォルダ",
-  "folder.readme.body": "ainess がこのプロジェクトについて把握していることがここにあります。`BOARD.md` はタスクボード、`AGENTS.md` はチームで、どちらもアプリが書きます。手で編集した内容は次の実行で失われます — カードを動かすには、プランナーがその id を付けて委譲します。\n\nフォルダの残りはエージェントのものです。計画・メモ・引き継ぎは、各 CLI の設定フォルダではなくここに置きます。",
+  "folder.readme.body": "ainess がこのプロジェクトについて把握していることがここにあります。`BOARD.md` はタスクボード、`AGENTS.md` はチームで、どちらもアプリが書きます。手で編集した内容は次の実行で失われます — カードを動かすには、プランナーがその id を付けて委譲します。\n\nフォルダの残りはエージェントのものです。計画・メモ・引き継ぎは、各 CLI の設定フォルダではなくここに置きます。\n\nこのリポジトリを開発サーバーが監視している場合は、`.ainess/` を無視対象に加えてください。ボードが変わるたびにこれらのファイルが書かれます。",
 };

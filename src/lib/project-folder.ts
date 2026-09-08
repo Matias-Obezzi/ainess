@@ -124,8 +124,13 @@ export async function writeProjectFolder(
     ["README.md", readmeMarkdown(project)],
   ];
   for (const [name, content] of files) {
+    const path = filePath(project.workspaceDir, name);
     try {
-      await transport.writeFileAbs(filePath(project.workspaceDir, name), content);
+      // Whoever watches this repository — a dev server, a test runner, the agent's own tools —
+      // wakes up on a write, even one that changes nothing. So the file is read first and only
+      // written when it would come out different.
+      if ((await transport.readFileAbs(path)) === content) continue;
+      await transport.writeFileAbs(path, content);
     } catch {
       // The folder is a courtesy to the agents, never a step of the run.
     }

@@ -61,6 +61,23 @@ export default function App() {
 
   // Every global shortcut is resolved from the one table in src/lib/shortcuts.ts, which is also
   // what the Ctrl+/ dialog documents, so the keys and their description cannot drift apart.
+  /**
+   * A card let go anywhere but on a column used to reload the whole window.
+   *
+   * An unhandled `drop` is the browser's to deal with, and what it does with one carrying text is
+   * navigate to it — inside the app that reads as the screen reloading, and the card never moves.
+   * The board prevents the default on its own columns; this covers everything around them.
+   */
+  useEffect(() => {
+    const swallow = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
+
   useEffect(() => {
     const platform = shortcutPlatform();
     const handler = (e: KeyboardEvent) => {
