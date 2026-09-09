@@ -16,6 +16,7 @@ import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
 import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
+import { fenceRegions, insideFence, lineIndent } from "@/lib/fences";
 import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { InlineQuestion } from "@/components/InlineQuestion";
@@ -40,6 +41,27 @@ const sentHistory: string[] = [];
  * rarely change — a framed control for that is a frame around nothing.
  */
 const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
+
+/** The text of the box with each ``` region wrapped for a background — the fence highlight layer's content. */
+function renderFenceHighlight(text: string, regions: Array<{ start: number; end: number }>) {
+  if (regions.length === 0) return null;
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  regions.forEach((region, i) => {
+    if (region.start > cursor) nodes.push(text.slice(cursor, region.start));
+    nodes.push(
+      // No `font-mono` here, tempting as it is: this layer only works while every character sits
+      // exactly where the textarea puts it, and a different font would wrap at a different column
+      // and slide every line after it out of place. The background is the whole of the signal.
+      <span key={i} className="rounded bg-muted/50">
+        {text.slice(region.start, region.end)}
+      </span>
+    );
+    cursor = region.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes;
+}
 
 /** One attached file before it is sent: images show themselves, the rest show their name. */
 function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
@@ -105,6 +127,7 @@ export function Composer() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const questions = useAppStore(state => state.questions);
   const runs = useAppStore(state => state.runs);
@@ -165,6 +188,8 @@ export function Composer() {
     setDraft(draftKey, next);
   };
   const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
+  // Where the ``` regions are, for the highlight layer behind the box and for Enter/Tab above.
+  const fenceHighlightRegions = useMemo(() => fenceRegions(text), [text]);
 
   // Unlike what is typed, an attachment does not follow you to another conversation: it was picked
   // for the one you were in.
@@ -368,10 +393,59 @@ export function Composer() {
         return;
       }
     }
-    // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free.
+    // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free —
+    // unless the caret sits in a ``` fence, where Enter has to stay a line break (see below).
     if (e.key === "Enter" && !e.shiftKey) {
+      const caret = e.currentTarget.selectionStart;
+      if (!e.ctrlKey && !e.metaKey) {
+        // A line that is only a fence opener (```lang) with the fence still unclosed: Enter closes
+        // it for you instead of sending, so you never have to remember the trailing ```.
+        const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+        const nextBreak = text.indexOf("\n", caret);
+        const lineEnd = nextBreak === -1 ? text.length : nextBreak;
+        const line = text.slice(lineStart, lineEnd);
+        if (/^\s*```[^`]*$/.test(line)) {
+          const stillOpen = fenceRegions(text).some(r => r.start === lineStart && r.end === text.length);
+          if (stillOpen) {
+            e.preventDefault();
+            const indent = lineIndent(text, caret);
+            const before = text.slice(0, caret);
+            const after = text.slice(e.currentTarget.selectionEnd);
+            setText(before + "\n" + indent + "\n" + indent + "```" + after);
+            const newCaret = caret + 1 + indent.length;
+            requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
+            return;
+          }
+        }
+      }
+      if (insideFence(text, caret)) {
+        e.preventDefault();
+        // Ctrl/Cmd+Enter is the only way left to send from the keyboard here, since plain Enter is
+        // a line break inside a fence — it sends immediately (or queues if busy) like the button.
+        if (e.ctrlKey || e.metaKey) {
+          handleSend();
+          return;
+        }
+        const indent = lineIndent(text, caret);
+        const before = text.slice(0, caret);
+        const after = text.slice(e.currentTarget.selectionEnd);
+        setText(before + "\n" + indent + after);
+        const newCaret = caret + 1 + indent.length;
+        requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
+        return;
+      }
       e.preventDefault();
       handleSend({ queue: e.ctrlKey || e.metaKey });
+      return;
+    }
+    if (e.key === "Tab" && insideFence(text, e.currentTarget.selectionStart)) {
+      e.preventDefault();
+      const caret = e.currentTarget.selectionStart;
+      const before = text.slice(0, caret);
+      const after = text.slice(e.currentTarget.selectionEnd);
+      setText(before + "  " + after);
+      const newCaret = caret + 2;
+      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
       return;
     }
     if (e.key === "Escape" && busy) {
@@ -520,6 +594,18 @@ export function Composer() {
                 ))}
               </div>
             )}
+            {/* The background behind ``` regions: same font metrics and padding as the textarea on
+                top of it, so its text lines up exactly. Its own text is invisible (`text-transparent`)
+                — only the span backgrounds show through — the textarea's text is what gets read. Kept
+                mounted even with nothing to highlight, so there is no flash of misaligned layout. */}
+            <div
+              ref={highlightRef}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-transparent md:text-sm pr-12"
+            >
+              {renderFenceHighlight(text, fenceHighlightRegions)}
+              {"\n"}
+            </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
               ref={textareaRef}
@@ -527,10 +613,11 @@ export function Composer() {
               onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating ? "" : hint}
               aria-label={placeholder}
               rows={2}
-              className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
+              className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
