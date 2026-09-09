@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **A paleta busca o que foi dito, não só como as coisas se chamam.** Ela encontrava projetos,
+  tarefas, chats e agentes pelo nome, que é o que você precisa no dia — e duas semanas depois o que
+  você lembra é uma frase, não um título. Digite três letras e voltam também as mensagens do feed do
+  projeto e de todos os chats, da mais nova para a mais antiga, cada uma mostrada com as palavras
+  que você buscou no meio da linha, e não com o que a mensagem começava dizendo. Acentos e
+  maiúsculas não importam, nem a quebra de linha que ficou entre as suas duas palavras.
+
 - **O diff de uma execução, não o do projeto inteiro.** O painel de diff mostra a árvore de
   trabalho do projeto, o que responde "o que está acontecendo no repositório" e nunca "o que esta
   tarefa mexeu". Agora cada execução lembra onde rodou — o workspace do projeto ou o worktree do

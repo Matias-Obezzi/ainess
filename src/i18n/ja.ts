@@ -53,6 +53,7 @@ export const ja: Dictionary = {
   "common.search": "検索",
   "common.yes": "はい",
   "common.no": "いいえ",
+  "common.you": "あなた",
 
   // ---- Sidebar ----
   "sidebar.home": "ホーム",
@@ -250,6 +251,7 @@ export const ja: Dictionary = {
   "search.group.settings": "設定",
   "search.group.tasks": "タスク",
   "search.group.actions": "アクション",
+  "search.group.messages": "メッセージ",
   "search.action.createTask": "タスクを作成:「{query}」",
   "search.action.shortcuts": "キーボードショートカット",
 

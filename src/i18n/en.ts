@@ -52,6 +52,7 @@ export const en: Dictionary = {
   "common.search": "Search",
   "common.yes": "Yes",
   "common.no": "No",
+  "common.you": "You",
 
   // ---- Sidebar ----
   "sidebar.home": "Home",
@@ -250,6 +251,7 @@ export const en: Dictionary = {
   "search.group.settings": "Settings",
   "search.group.tasks": "Tasks",
   "search.group.actions": "Actions",
+  "search.group.messages": "Messages",
   "search.action.createTask": "Create task: “{query}”",
   "search.action.shortcuts": "Keyboard shortcuts",
 

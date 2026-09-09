@@ -6,13 +6,9 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/useT";
 // Single source of truth for section metadata — no component imports, bundle-safe.
 import { SETTINGS_SECTIONS_META } from "@/components/settings/sections";
+import { normalize, searchMessages } from "@/lib/message-search";
 
-/** Lowercases and strips accents so "orquestacion" matches "Orquestación". */
-function normalize(text: string): string {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
-type Group = "projects" | "tasks" | "chats" | "agents" | "settings" | "actions";
+type Group = "projects" | "tasks" | "chats" | "agents" | "settings" | "actions" | "messages";
 
 const GROUP_LABEL_KEY: Record<Group, string> = {
   projects: "search.group.projects",
@@ -21,6 +17,7 @@ const GROUP_LABEL_KEY: Record<Group, string> = {
   agents: "search.group.agents",
   settings: "search.group.settings",
   actions: "search.group.actions",
+  messages: "search.group.messages",
 };
 
 interface Result {
@@ -41,6 +38,13 @@ function openTaskOnBoard(projectId: string, taskId: string): void {
   state.openProject(projectId, null);
   state.setProjectMode("tasks");
   state.focusTask(taskId);
+}
+
+/** Lands on the project with chat mode active. */
+function openProjectFeed(projectId: string): void {
+  const state = useAppStore.getState();
+  state.openProject(projectId, null);
+  state.setProjectMode("chat");
 }
 
 export function SearchPalette() {
@@ -164,8 +168,46 @@ export function SearchPalette() {
       });
     }
 
+    // Read rather than subscribe: the feed is rewritten every time a token arrives, and a palette
+    // that is not on screen has no business re-rendering — let alone re-searching — eighty times a
+    // second while an agent talks. A snapshot taken as you type is what you are looking at anyway.
+    const feed = searchOpen ? useAppStore.getState() : undefined;
+    const chatSources = feed ? chats.map(c => ({ id: c.id, messages: feed.chatMessages[c.id] ?? [] })) : [];
+    const messageHits = feed ? searchMessages(query, { messages: feed.messages, chats: chatSources }, PER_GROUP) : [];
+    for (const hit of messageHits) {
+      const who = hit.from === "user" ? t("common.you") : (agents.find(a => a.id === hit.from)?.name ?? hit.from);
+      const source = hit.source;
+      let where = "";
+      if (source.kind === "chat") {
+        const chat = chats.find(c => c.id === source.chatId);
+        where = chat?.name ?? "";
+      } else {
+        const project = projects.find(p => p.id === source.projectId);
+        where = project?.name ?? "";
+      }
+      const hint = where ? `${who} · ${where}` : who;
+
+      out.push({
+        key: `message:${source.kind}:${hit.id}`,
+        group: "messages",
+        label: hit.excerpt,
+        hint,
+        icon: MessageCircle,
+        run: () => {
+          if (source.kind === "chat") {
+            const chat = chats.find(c => c.id === source.chatId);
+            if (chat) {
+              openProject(chat.projectId, chat.id);
+            }
+          } else {
+            openProjectFeed(source.projectId);
+          }
+        },
+      });
+    }
+
     return out;
-  }, [query, projects, chats, agents, tasks, currentProjectId, openProject, openSettings, addTask, focusTask, toggleShortcuts, t]);
+  }, [query, projects, chats, agents, tasks, currentProjectId, searchOpen, openProject, openSettings, addTask, focusTask, toggleShortcuts, t]);
 
   // The query shrinks the list, so keep the cursor inside it.
   useEffect(() => {

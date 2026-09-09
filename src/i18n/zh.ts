@@ -52,6 +52,7 @@ export const zh: Dictionary = {
   "common.search": "搜索",
   "common.yes": "是",
   "common.no": "否",
+  "common.you": "你",
 
   // ---- Sidebar ----
   "sidebar.home": "首页",
@@ -249,6 +250,7 @@ export const zh: Dictionary = {
   "search.group.settings": "设置",
   "search.group.tasks": "任务",
   "search.group.actions": "操作",
+  "search.group.messages": "消息",
   "search.action.createTask": "创建任务：“{query}”",
   "search.action.shortcuts": "键盘快捷键",
 

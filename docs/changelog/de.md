@@ -6,6 +6,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Die Palette durchsucht, was gesagt wurde, nicht nur, wie die Dinge heißen.** Sie fand Projekte,
+  Aufgaben, Chats und Agenten am Namen — was man am selben Tag braucht. Zwei Wochen später erinnert
+  man sich aber an einen Satz, nicht an einen Titel. Drei Zeichen genügen, und die Nachrichten aus
+  dem Projekt-Feed und aus jedem Chat kommen mit zurück, die neuesten zuerst, jede mit den gesuchten
+  Wörtern mitten in der Zeile statt mit dem, womit die Nachricht zufällig anfing. Akzente und
+  Groß- und Kleinschreibung spielen keine Rolle, und der Zeilenumbruch zwischen den zwei Wörtern
+  auch nicht.
+
 - **Das Diff eines Laufs, nicht das des ganzen Projekts.** Das Diff-Panel zeigt den Arbeitsbaum des
   Projekts — das beantwortet „was ist in diesem Repository los" und nie „was hat diese Aufgabe
   angefasst". Jeder Lauf merkt sich jetzt, wo er lief (im Projekt-Workspace oder im eigenen Worktree

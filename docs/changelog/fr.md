@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **La palette cherche ce qui a été dit, pas seulement comment les choses s'appellent.** Elle
+  trouvait projets, tâches, conversations et agents par leur nom — ce dont on a besoin le jour même.
+  Deux semaines plus tard, ce dont on se souvient est une phrase, pas un titre. Trois caractères
+  suffisent et les messages du fil du projet et de toutes les conversations reviennent aussi, du
+  plus récent au plus ancien, chacun affiché avec les mots cherchés au milieu de la ligne plutôt
+  qu'avec ce par quoi le message commençait. Les accents et les majuscules n'y changent rien, ni le
+  saut de ligne resté entre vos deux mots.
+
 - **Le diff d'une exécution, pas celui du projet entier.** Le panneau de diff montre l'arbre de
   travail du projet, ce qui répond à « que se passe-t-il dans ce dépôt » et jamais à « qu'a touché
   cette tâche ». Chaque exécution se souvient désormais d'où elle a tourné — l'espace de travail du

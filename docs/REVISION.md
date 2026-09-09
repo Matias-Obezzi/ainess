@@ -246,7 +246,7 @@ PR o pasarle a alguien.
 Las órdenes guardadas son de a una. Encadenarlas ("planificá → implementá → revisá → PR") las
 convierte en recetas de verdad.
 
-### `[ ]` E5 · Buscar dentro de la conversación
+### `[x]` E5 · Buscar dentro de la conversación — *«The palette searches what was said»*
 
 La paleta busca proyectos, tareas, chats y agentes, pero no lo que se dijo. Lo que buscás a las dos
 semanas es una frase.
@@ -406,3 +406,15 @@ archivos en el bloque `result`, ni de que haya commiteado.
 El panel es el mismo, con una prop. Sin `run` se comporta exactamente como antes; con `run` esconde
 el selector de modo, porque acotado a una corrida hay un solo diff posible. Las corridas viejas no
 tienen `baseSha` y lo dicen, en vez de mostrar un diff que no es el suyo.
+
+### 8 de septiembre de 2026 — buscar lo que se dijo
+
+**E5**. La paleta busca ahora en el feed del proyecto y en todos los chats, con un módulo puro
+(`src/lib/message-search.ts`) que no conoce el store ni React. El grupo va último a propósito: los
+otros seis son navegación —dónde ir— y este es memoria; el que escribe dos letras quiere lo primero.
+
+Dos cosas que no son obvias. El extracto se centra en el match, no arranca del principio del
+mensaje: un extracto que no muestra la palabra que buscaste no es un extracto. Y la paleta *lee* el
+feed en vez de suscribirse a él — el feed se reescribe con cada token que llega, y una paleta
+cerrada no tiene por qué volver a renderizarse, mucho menos volver a buscar, ochenta veces por
+segundo mientras un agente habla.

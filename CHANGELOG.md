@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Added
 
+- **The palette searches what was said, not just what things are called.** It found projects,
+  tasks, chats and agents by name, which is what you need on the day — and two weeks later what you
+  remember is a phrase, not a title. Type three characters and the messages of the project's feed
+  and of every chat come back too, newest first, each one shown with the words you searched for in
+  the middle of the line rather than whatever the message happened to start with. Accents and case
+  do not matter, and neither does the line break the writer put between your two words.
+
 - **The diff of one run, not of the whole project.** The diff panel shows the project's working
   tree, which answers "what is going on in this repo" and never "what did this task touch". Every
   run now remembers where it ran — the project workspace, or the agent's own worktree — and which
