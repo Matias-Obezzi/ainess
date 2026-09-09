@@ -1202,7 +1202,7 @@ export const es: Dictionary = {
 
   // ---- Phone page ----
   "phone.noToken.title": "Falta el token",
-  "phone.noToken.body": "Abrí esta página desde el QR de la app (Configuración → Remoto) o desde la URL que imprime «ais serve».",
+  "phone.noToken.body": "Abrí esta página desde el QR de la app (Configuración → Remoto) o desde la URL que imprime «ainess serve».",
   "phone.badToken.title": "Token inválido",
   "phone.badToken.body": "El token cambió o venció. Volvé a escanear el QR desde la app.",
   "phone.token.label": "Token",

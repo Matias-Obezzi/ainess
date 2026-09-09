@@ -5,14 +5,14 @@
   "version": "0.8.0",
   "type": "module",
   "bin": {
-    "ais": "bin/ais.js"
+    "ainess": "bin/ainess.js"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && npm run build:remote",
     "build:remote": "vite build --config vite.remote.config.ts",
     "build:cli": "npm run build:remote && vite build --config vite.cli.config.ts",
-    "cli": "node bin/ais.js",
+    "cli": "node bin/ainess.js",
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",

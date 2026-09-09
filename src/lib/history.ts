@@ -2,8 +2,8 @@
 // Files live at <configDir>/history/<projectId>.json and are written with a debounce
 // from a single store subscription, so the orchestrator does not need to know about it.
 //
-// Several processes may write the same file (the app, `ais run`, `ais approvals approve`,
-// `ais serve`), so every save first merges what is on disk, and the app re-syncs the
+// Several processes may write the same file (the app, `ainess run`, `ainess approvals approve`,
+// `ainess serve`), so every save first merges what is on disk, and the app re-syncs the
 // current project periodically to see decisions taken elsewhere.
 import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";

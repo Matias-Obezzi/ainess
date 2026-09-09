@@ -19,7 +19,7 @@ import type { ProviderQuota, StorageStat } from "@/types";
 const t = (key: string, vars?: Record<string, string | number>) =>
   vars ? `${key} ${JSON.stringify(vars)}` : key;
 
-/** Real Spanish, the way `ais doctor` renders it. */
+/** Real Spanish, the way `ainess doctor` renders it. */
 const spanish = (key: string, vars?: Record<string, string | number>) => translate(es, es, key, vars);
 
 const okQuota = (provider: string): ProviderQuota => ({

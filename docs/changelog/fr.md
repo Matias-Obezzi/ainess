@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'application s'appelle ainess partout, exécutable compris.** Elle s'appelait `ais`, et
+  l'ancien nom a survécu là où personne ne regarde : dans la crate Rust, et donc dans le binaire —
+  l'application installée était `ainess\ais.exe`, ce qu'affichaient le gestionnaire de tâches,
+  l'invite du pare-feu et la liste de démarrage. La ligne de commande a suivi : `ais run` et
+  `ais serve` deviennent `ainess run` et `ainess serve`, et `ais` n'existe plus. Rien de ce que vous
+  aviez n'est perdu : brouillons, largeurs de panneaux et jeton du téléphone sont enregistrés sous
+  de nouveaux noms et continuent de lire les anciens.
+
 - **Fini les fenêtres de console qui clignotent par-dessus ce que vous regardiez.** Arrêter une
   exécution, fermer l'application, une exécution qui dépasse son délai, couper le tunnel et chaque
   vérification d'un processus périmé appelaient `taskkill` ou `tasklist`, et Windows attribue une

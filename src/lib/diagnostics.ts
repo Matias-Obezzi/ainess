@@ -1,5 +1,5 @@
 // System diagnostics: a handful of read-only checks shared by Configuración → Diagnóstico and
-// `ais doctor`. Each check is a pure function from a snapshot of the machine to
+// `ainess doctor`. Each check is a pure function from a snapshot of the machine to
 // `{ id, level, title, detail, hint? }`, so it can be unit-tested; `collectDiagnostics` is the
 // only part that does I/O and it never fixes anything, it only measures.
 //
@@ -55,7 +55,7 @@ export interface DiagnosticsInput {
   portFree: boolean | null;
   /**
    * Whether this process is the one that would be serving. The LAN server lives inside the app
-   * (or inside `ais serve`), so a plain `ais doctor` cannot tell "off" from "served by the app".
+   * (or inside `ainess serve`), so a plain `ainess doctor` cannot tell "off" from "served by the app".
    */
   canObserveRemote: boolean;
   tunnel: {
@@ -173,7 +173,7 @@ export function checkRemote(input: DiagnosticsInput, t: Translate): DiagnosticRe
     };
   }
   if (enabled) {
-    // Another process (the app, or `ais serve`) may well be serving it: that is not an error here.
+    // Another process (the app, or `ainess serve`) may well be serving it: that is not an error here.
     if (!input.canObserveRemote) {
       return { id: "remote", level: "warn", title, detail: t("diagnostics.remote.notThisProcess", { port }) };
     }
@@ -401,7 +401,7 @@ export async function collectDiagnosticsInput(opts: CollectOptions = {}): Promis
     },
     portFree,
     // Only the desktop app hosts the LAN server for the whole session; the CLI does it only
-    // inside `ais serve`, so a `ais doctor` process can never see it running.
+    // inside `ainess serve`, so a `ainess doctor` process can never see it running.
     canObserveRemote: isTauri(),
     tunnel: {
       enabled: !!config.remote.tunnel?.enabled,

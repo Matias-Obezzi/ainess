@@ -1,4 +1,4 @@
-//! Read-only probes the "Diagnóstico" section (and `ais doctor`) needs and the rest of the
+//! Read-only probes the "Diagnóstico" section (and `ainess doctor`) needs and the rest of the
 //! backend does not already expose: how big a folder of the app's own storage is and whether it
 //! can be written, plus whether a TCP port is free.
 //!

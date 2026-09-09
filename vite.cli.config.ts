@@ -15,7 +15,7 @@ export default defineConfig({
     target: "node22",
     rollupOptions: {
       output: {
-        entryFileNames: "ais.js",
+        entryFileNames: "ainess.js",
         format: "es",
       },
     },

@@ -7,9 +7,11 @@ import type { RemoteSnapshot } from "@/lib/remote";
 import { createTask } from "@/lib/tasks";
 import type { AgentConfig, AgentQuestion, AgentRuntime, Approval, Project, Run, Task } from "@/types";
 import type { DiagnosticResult } from "@/lib/diagnostics";
+import { readWithLegacy } from "@/lib/storage-keys";
 
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
-const TOKEN_KEY = "ais.remote.token";
+const TOKEN_KEY = "ainess.remote.token";
+const TOKEN_LEGACY_KEY = "ais.remote.token";
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 10000;
 
@@ -46,7 +48,10 @@ export function getToken(): string | null {
     }
   } catch { /* malformed URL */ }
   if (!token) {
-    try { token = sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
+    try {
+      token = readWithLegacy(sessionStorage, TOKEN_KEY, TOKEN_LEGACY_KEY)
+        ?? readWithLegacy(localStorage, TOKEN_KEY, TOKEN_LEGACY_KEY);
+    } catch { /* private mode */ }
   }
   cachedToken = token;
   return token;

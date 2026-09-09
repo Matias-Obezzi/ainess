@@ -1201,7 +1201,7 @@ export const zh: Dictionary = {
 
   // ---- Phone page ----
   "phone.noToken.title": "缺少 Token",
-  "phone.noToken.body": "请从应用里的二维码（设置 → 远程），或者「ais serve」打印出来的 URL 打开这个页面。",
+  "phone.noToken.body": "请从应用里的二维码（设置 → 远程），或者「ainess serve」打印出来的 URL 打开这个页面。",
   "phone.badToken.title": "Token 无效",
   "phone.badToken.body": "Token 变了或者过期了。请重新扫描应用里的二维码。",
   "phone.token.label": "令牌",

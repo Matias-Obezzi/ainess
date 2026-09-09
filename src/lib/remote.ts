@@ -297,7 +297,7 @@ export async function attachRemote(): Promise<void> {
 }
 
 /**
- * The boards are read lazily when a project is opened, and `ais serve` opens none: without this
+ * The boards are read lazily when a project is opened, and `ainess serve` opens none: without this
  * the phone would get an empty Tasks tab from a CLI server.
  */
 async function loadEveryBoard(): Promise<void> {

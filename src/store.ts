@@ -20,6 +20,7 @@ import { translateNow } from "@/i18n/useT";
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
+import { readWithLegacy } from "@/lib/storage-keys";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -117,7 +118,7 @@ export interface AppState {
   /** Tasks per project, loaded from disk on demand (see src/lib/task-store.ts). */
   tasks: Record<string, Task[]>;
 
-  // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
+  // ---- Shell navigation (persisted in localStorage under "ainess.ui") ----
   screen: Screen;
   projectMode: ProjectMode;
   /**
@@ -438,17 +439,19 @@ interface UiPrefs {
   activeTerminalIds: Record<string, string | null>;
 }
 
-const DRAFTS_KEY = "ais.drafts";
-const COMPOSER_MODELS_KEY = "ais.composerModels";
+const DRAFTS_KEY = "ainess.drafts";
+const DRAFTS_LEGACY_KEY = "ais.drafts";
+const COMPOSER_MODELS_KEY = "ainess.composerModels";
+const COMPOSER_MODELS_LEGACY_KEY = "ais.composerModels";
 
 /**
  * A map of conversation key to one string, kept across views and restarts. Guarded like the UI
  * preferences: private mode, a full quota or a file another build wrote must not break the app.
  */
-function loadStringMap(storageKey: string): Record<string, string> {
+function loadStringMap(storageKey: string, legacyKey?: string): Record<string, string> {
   if (typeof localStorage === "undefined") return {};
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = legacyKey ? readWithLegacy(localStorage, storageKey, legacyKey) : localStorage.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
@@ -524,7 +527,8 @@ export function clampPaneWidth(pane: PaneId, value: unknown): number {
   return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
 }
 
-const UI_PREFS_KEY = "ais.ui";
+const UI_PREFS_KEY = "ainess.ui";
+const UI_PREFS_LEGACY_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
@@ -588,7 +592,7 @@ function clampDockSize(value: unknown): number {
 function loadUiPrefs(): UiPrefs {
   if (typeof localStorage === "undefined") return { ...defaultUiPrefs };
   try {
-    const raw = localStorage.getItem(UI_PREFS_KEY);
+    const raw = readWithLegacy(localStorage, UI_PREFS_KEY, UI_PREFS_LEGACY_KEY);
     if (!raw) return { ...defaultUiPrefs };
     const parsed = JSON.parse(raw) as any;
     
@@ -736,8 +740,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   historyLoading: {},
-  drafts: loadStringMap(DRAFTS_KEY),
-  composerModels: loadStringMap(COMPOSER_MODELS_KEY),
+  drafts: loadStringMap(DRAFTS_KEY, DRAFTS_LEGACY_KEY),
+  composerModels: loadStringMap(COMPOSER_MODELS_KEY, COMPOSER_MODELS_LEGACY_KEY),
   chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
@@ -1115,7 +1119,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   saveConfig: async () => {
-    // Several processes share the file (app, `ais run`, `ais serve`): merge with what is on disk
+    // Several processes share the file (app, `ainess run`, `ainess serve`): merge with what is on disk
     // so a project or chat another process added since we loaded is not wiped by our copy.
     let disk: AppConfig | null = null;
     try { disk = await getTransport().loadConfig(); } catch { /* unreadable: our copy wins */ }

@@ -3,7 +3,7 @@ import { renderTemplate } from "@/lib/template";
 
 describe("renderTemplate", () => {
   it("replaces variables and leaves unknown ones empty", () => {
-    expect(renderTemplate("{{agent}} terminó en {{project}}{{nada}}", { agent: "Obrero", project: "ais" })).toBe("Obrero terminó en ais");
+    expect(renderTemplate("{{agent}} terminó en {{project}}{{nada}}", { agent: "Obrero", project: "ainess" })).toBe("Obrero terminó en ainess");
   });
 
   it("truncates with {{var|N}}", () => {

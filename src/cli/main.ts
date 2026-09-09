@@ -35,7 +35,7 @@ async function main() {
   setTransport(nodeTransport);
   // Everything the CLI prints (and any crash) also goes to the shared log file.
   installConsoleCapture();
-  log.info("cli", `ais ${process.argv.slice(2).join(" ")}`);
+  log.info("cli", `ainess ${process.argv.slice(2).join(" ")}`);
   await useAppStore.getState().init();
   const store = useAppStore.getState();
   const { locale, t } = nodeI18n(store.config.language, process.env);
@@ -72,7 +72,7 @@ async function main() {
   }
 
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.log("ainess CLI (ais) — Uso: ais [opciones] <prompt>");
+    console.log("ainess CLI — Uso: ainess [opciones] <prompt>");
     console.log("  -a, --agent <nombre>   Agente a usar");
     console.log("  -w, --workspace <dir>  Directorio de trabajo (busca o crea proyecto)");
     console.log("  -p, --project <nombre> Proyecto a usar");
@@ -101,9 +101,9 @@ async function main() {
   const first = args[0];
 
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
-  // through `ais run "<texto>"` or contain spaces). Rejecting it avoids burning tokens.
+  // through `ainess run "<texto>"` or contain spaces). Rejecting it avoids burning tokens.
   if (!first.startsWith("-") && !KNOWN.has(first) && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
-    error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ais run "<texto>"`);
+    error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ainess run "<texto>"`);
   }
 
   if (first === "detect") {
@@ -139,14 +139,14 @@ async function main() {
     } else if (sub === "set") {
       const provider = args[2] as ProviderId;
       const rp = args[3];
-      if (!provider || !rp) error("Uso: ais detect set <provider> <ruta>");
+      if (!provider || !rp) error("Uso: ainess detect set <provider> <ruta>");
       store.updateConfig({ binaryOverrides: { ...store.config.binaryOverrides, [provider]: rp } });
       await store.detectBinaries();
       print({ ok: true }, "Override seteado.");
       process.exit(0);
     } else if (sub === "clear") {
       const provider = args[2] as ProviderId;
-      if (!provider) error("Uso: ais detect clear <provider>");
+      if (!provider) error("Uso: ainess detect clear <provider>");
       const overrides = { ...store.config.binaryOverrides };
       delete overrides[provider];
       store.updateConfig({ binaryOverrides: overrides });
@@ -181,7 +181,7 @@ async function main() {
     process.exit(0);
   }
 
-  // `ais doctor`: the same checks the app's Diagnóstico section runs, printed in Spanish. Exit
+  // `ainess doctor`: the same checks the app's Diagnóstico section runs, printed in Spanish. Exit
   // code 1 when any of them is an error, so a script can gate on it.
   if (first === "doctor") {
     const { collectDiagnostics, formatDiagnosticsReport, worstLevel } = await import("@/lib/diagnostics");
@@ -296,7 +296,7 @@ async function main() {
       if (jsonOutput) {
         console.log(JSON.stringify(team));
       } else {
-        if (team.length === 0) console.log("Este proyecto no tiene agentes. Aplicá una formación: ais formations apply <nombre>");
+        if (team.length === 0) console.log("Este proyecto no tiene agentes. Aplicá una formación: ainess formations apply <nombre>");
         for (const a of team) {
           const parent = a.parentId ? team.find(x => x.id === a.parentId)?.name || a.parentId : "root";
           console.log(`- ${a.name} [${a.role}] (Provider: ${a.provider}, Parent: ${parent})`);
@@ -446,7 +446,7 @@ async function main() {
         strict: false,
       });
       const wanted = fp[0];
-      if (!wanted) error("Uso: ais formations apply <nombre> [-p proyecto | -w dir]");
+      if (!wanted) error("Uso: ainess formations apply <nombre> [-p proyecto | -w dir]");
       const formation = live().config.formations.find(f => f.name.toLowerCase() === wanted.toLowerCase());
       if (!formation) error(`Formación "${wanted}" no encontrada.`);
       const projectId = resolveProjectId(fv.project as string | undefined, fv.workspace as string | undefined);
@@ -456,7 +456,7 @@ async function main() {
       print({ ok: true, added }, `Formación "${formation.name}" aplicada: ${added} agentes agregados.`);
       process.exit(0);
     }
-    error("Uso: ais formations list | apply <nombre> [-p proyecto | -w dir]");
+    error("Uso: ainess formations list | apply <nombre> [-p proyecto | -w dir]");
   }
 
   if (first === "skills") {
@@ -757,7 +757,7 @@ async function main() {
 
     if (hp[0] === "show") {
       const prefix = hp[1];
-      if (!prefix) error("Uso: ais history show <runId>");
+      if (!prefix) error("Uso: ainess history show <runId>");
       const run = runs.find(r => r.id.startsWith(prefix));
       if (!run) error(`No hay un run que empiece con "${prefix}".`);
       if (jsonOutput || hv.json) { console.log(JSON.stringify(run)); process.exit(0); }
@@ -878,10 +878,10 @@ async function main() {
     const remote = store.config.remote;
     if (sub === "url") {
       if (args.includes("--tunnel")) {
-        // The tunnel only exists inside a running `ais serve --tunnel` (or the app).
+        // The tunnel only exists inside a running `ainess serve --tunnel` (or the app).
         const st = await nodeTransport.tunnelStatus();
         if (!st.running || !st.url) {
-          error("No hay un tunel activo en este proceso. Levantalo con `ais serve --tunnel` o desde la app (Configuracion -> Remoto).");
+          error("No hay un tunel activo en este proceso. Levantalo con `ainess serve --tunnel` o desde la app (Configuracion -> Remoto).");
         }
         const turl = tunnelUrl(st.url!, remote.token);
         print({ url: turl, provider: st.provider }, turl);
@@ -901,7 +901,7 @@ async function main() {
       }
       process.exit(0);
     }
-    error("Uso: ais remote url | token [--regenerate]");
+    error("Uso: ainess remote url | token [--regenerate]");
   }
 
   if (first === "serve") {
@@ -993,7 +993,7 @@ async function main() {
     }
     if (sub === "approve" || sub === "reject") {
       const prefix = args[2];
-      if (!prefix) error(`Uso: ais approvals ${sub} <id> [--note "..."]`);
+      if (!prefix) error(`Uso: ainess approvals ${sub} <id> [--note "..."]`);
       const { values: av } = parseArgs({ args: args.slice(3), options: { note: { type: "string" } }, strict: false });
       const target = pending.find(a => a.id.startsWith(prefix));
       if (!target) error(`No hay una aprobación pendiente que empiece con "${prefix}".`);
@@ -1024,7 +1024,7 @@ async function main() {
       await flushAll();
       process.exit(0);
     }
-    error("Uso: ais approvals list | approve <id> [--note] | reject <id> [--note]");
+    error("Uso: ainess approvals list | approve <id> [--note] | reject <id> [--note]");
   }
 
   if (first === "projects") {
@@ -1131,7 +1131,7 @@ async function main() {
 
     const isSend = cp[0] === "send";
     const chatName = isSend ? cp[1] : (cv.name as string | undefined);
-    if (isSend && !chatName) error("Uso: ais chat send <nombre-chat> \"texto\"");
+    if (isSend && !chatName) error("Uso: ainess chat send <nombre-chat> \"texto\"");
 
     // Find an existing chat by name in this project, or create one from the participants.
     let chat = chatName
@@ -1239,7 +1239,7 @@ async function main() {
     store.updateConfig({ autoModel: Boolean(values["auto-model"]) });
   }
 
-  // `run` may come after options (ais -a X run "..."), so strip it wherever it is.
+  // `run` may come after options (ainess -a X run "..."), so strip it wherever it is.
   let prompt = positionals[0] === "run" ? positionals.slice(1).join(" ") : positionals.join(" ");
 
   if (values.preset) {
@@ -1291,7 +1291,7 @@ async function main() {
   } else {
     const planner = roots.find(r => r.role === "planner");
     agentId = (planner || roots[0])?.id;
-    if (!agentId) error("Este proyecto no tiene agentes. Aplicá una formación: ais formations apply <nombre>");
+    if (!agentId) error("Este proyecto no tiene agentes. Aplicá una formación: ainess formations apply <nombre>");
   }
 
   if (values["max-rounds"]) store.setMaxRounds(parseInt(String(values["max-rounds"]), 10));
@@ -1342,7 +1342,7 @@ async function main() {
     }
 
     // A delegation waiting for approval parks the task: report it and exit so the user can
-    // decide with `ais approvals approve <id>` (or from the app / phone) later.
+    // decide with `ainess approvals approve <id>` (or from the app / phone) later.
     if (state.approvals !== prevState.approvals) {
       const s = useAppStore.getState();
       const pending = Object.values(s.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
@@ -1351,7 +1351,7 @@ async function main() {
         if (!values.json) {
           console.log("\n\x1b[33mEsperando tu aprobación:\x1b[0m");
           for (const a of pending) console.log(`  ${a.id.slice(0, 8)}  ${a.summary}`);
-          console.log("Aprobá con: ais approvals approve <id>   (o rechazá con reject)");
+          console.log("Aprobá con: ainess approvals approve <id>   (o rechazá con reject)");
         }
         void flushAll().finally(() => process.exit(3));
         return;

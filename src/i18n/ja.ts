@@ -1202,7 +1202,7 @@ export const ja: Dictionary = {
 
   // ---- Phone page ----
   "phone.noToken.title": "トークンがありません",
-  "phone.noToken.body": "このページはアプリのQR (設定 → リモート) から、または「ais serve」が表示するURLから開いてください。",
+  "phone.noToken.body": "このページはアプリのQR (設定 → リモート) から、または「ainess serve」が表示するURLから開いてください。",
   "phone.badToken.title": "無効なトークン",
   "phone.badToken.body": "トークンが変更されたか、期限が切れました。アプリからもう一度QRをスキャンしてください。",
   "phone.token.label": "トークン",

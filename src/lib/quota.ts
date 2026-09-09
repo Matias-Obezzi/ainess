@@ -640,7 +640,7 @@ export function formatResetsAt(ms?: number): string | undefined {
   return new Date(ms).toLocaleString(activeLocale(), { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Plain-text rendering of a single quota row, used by `ais quota`. */
+/** Plain-text rendering of a single quota row, used by `ainess quota`. */
 export function formatQuotaLine(item: QuotaItem): string {
   const bits: string[] = [`${item.label}:`];
   if (item.unlimited) {

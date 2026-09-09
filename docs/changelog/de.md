@@ -59,6 +59,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die App heißt jetzt überall ainess, die ausführbare Datei eingeschlossen.** Früher hieß sie
+  `ais`, und der alte Name überlebte dort, wo niemand hinsieht: im Rust-Crate und damit in der
+  Binärdatei — die installierte App war `ainess\ais.exe`, und genau das zeigten Task-Manager,
+  Firewall-Abfrage und Autostart-Liste. Die Kommandozeile zog mit: Aus `ais run` und `ais serve`
+  werden `ainess run` und `ainess serve`, und `ais` gibt es nicht mehr. Nichts von dem, was du
+  hattest, geht verloren: Entwürfe, Panel-Breiten und das Token des Telefons liegen unter neuen
+  Namen und lesen weiterhin die alten.
+
 - **Keine Konsolenfenster mehr, die über dem aufblitzen, was du gerade ansiehst.** Einen Lauf
   stoppen, die App schließen, ein Lauf mit Zeitüberschreitung, den Tunnel beenden und jede Prüfung
   auf einen alten Prozess griffen zu `taskkill` oder `tasklist` — und Windows gibt einem

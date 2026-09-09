@@ -29,7 +29,7 @@ export interface Transport {
   /** Writes a file that is not text (an attached image, a PDF), passed base64-encoded. */
   writeFileBytes(path: string, dataB64: string): Promise<void>;
 
-  // Read-only probes for the diagnostics section and `ais doctor`.
+  // Read-only probes for the diagnostics section and `ainess doctor`.
   /**
    * Size, file count and writability of one folder of the app's own storage: the logs folder
    * (`scope` "logs") or the config folder (`scope` "config", optionally narrowed by

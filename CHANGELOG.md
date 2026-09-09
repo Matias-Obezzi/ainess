@@ -56,6 +56,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The app is called ainess everywhere now, executable included.** It used to be called `ais`, and
+  the old name survived where nobody looks: the Rust crate, and therefore the binary — the installed
+  app was `ainess\ais.exe`, which is what Task Manager, the firewall prompt and the startup list
+  showed you. The command line moved with it: `ais run` and `ais serve` are now `ainess run` and
+  `ainess serve`, and `ais` no longer exists. Nothing you had is lost — drafts, panel widths and the
+  phone's token are stored under new names and still read the old ones.
+
 - **No more console windows blinking over what you were looking at.** Stopping a run, closing the
   app, a run that timed out, stopping the tunnel and every check for a stale process all reached for
   `taskkill` or `tasklist`, and Windows hands a console window to a console program started from a

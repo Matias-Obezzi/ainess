@@ -220,7 +220,7 @@ installed to the home screen. Notifications with the page closed would need Web 
 here.
 
 Turn it on from the window bar button or Settings → Remote, then scan the QR. From the
-terminal, `ais serve` does the same with the CLI's orchestrator. The page is the same React app,
+terminal, `ainess serve` does the same with the CLI's orchestrator. The page is the same React app,
 built to a single self-contained `dist-remote/index.html` that both servers embed and send
 compressed.
 
@@ -267,9 +267,9 @@ The ngrok agent is kept current on its own, because ngrok refuses connections fr
 than the minimum its account requires.
 
 ```bash
-ais serve --tunnel                       # the provider saved in the config
-ais serve --tunnel ngrok --tunnel-domain something.ngrok-free.app
-ais remote url --tunnel                  # public URL of this process's tunnel
+ainess serve --tunnel                       # the provider saved in the config
+ainess serve --tunnel ngrok --tunnel-domain something.ngrok-free.app
+ainess remote url --tunnel                  # public URL of this process's tunnel
 ```
 
 Anyone with the public URL and the token can operate the app. If it leaked, regenerate the token.
@@ -278,7 +278,7 @@ Anyone with the public URL and the token can operate the app. If it leaked, rege
 
 - **Skills** — reusable instructions injected into the system prompt, for all agents or some.
 - **MCP servers** — extra tools. Claude gets them per session with `--mcp-config`; Antigravity is
-  synced machine-wide with `ais mcp sync`.
+  synced machine-wide with `ainess mcp sync`.
 - **Shared context** — a block of text every agent receives about the project or the team.
 - **Profile** — who you are and how you like to work, also injected into the system prompt.
 
@@ -298,41 +298,41 @@ Template variables: `{{event}}`, `{{project}}`, `{{workspace}}`, `{{agent}}`, `{
 `{{toAgent}}`, `{{task}}` and `{{model}}` on `delegation`. Truncate any of them with `{{output|300}}`.
 
 ```bash
-ais hooks add SlackNotify --event task.finished --action slack \
+ainess hooks add SlackNotify --event task.finished --action slack \
   --url https://hooks.slack.com/services/T000... \
   --template "{{agent}} finished in {{project}}: {{output|300}}"
 
-ais hooks add Review --event run.finished --filter-agent Implementer --action instruct \
+ainess hooks add Review --event run.finished --filter-agent Implementer --action instruct \
   --agent Reviewer --template "Review these changes: {{output}}"
 ```
 
 ## CLI
 
 The same orchestrator without the window. `npm run build:cli` produces it; run it with
-`node bin/ais.js` or the `ais` binary.
+`node bin/ainess.js` or the `ainess` binary.
 
 ```bash
-ais "Add tests for the auth module" -w C:\repo    # run a task
-ais -a Claude -p MyProject --max-rounds 4 "..."   # pick agent, project, rounds
-ais projects add MyProject --dir C:\repo
-ais agents list -p MyProject                      # the team of a project
-ais agents add --name QA --provider antigravity --role reviewer --parent Claude -p MyProject
-ais formations list                               # saved teams
-ais formations apply "Full team" -p MyProject     # copy one into a project
-ais detect                                        # what is installed, and where
-ais doctor                                        # the same checks the app runs on itself
-ais quota [provider] [--json]                     # what is left
-ais usage                                         # what the runs cost
-ais history -w C:\repo --limit 20                 # recent runs
-ais history show 3f2a                             # one run in full
-ais status                                        # saved state per project
-ais approvals list | approve <id> | reject <id>
-ais chat -a Antigravity -w C:\repo                # interactive chat
-ais chat --shared "Claude:architect,Antigravity:critic" -w C:\repo
-ais serve --port 4710                             # phone server
+ainess "Add tests for the auth module" -w C:\repo    # run a task
+ainess -a Claude -p MyProject --max-rounds 4 "..."   # pick agent, project, rounds
+ainess projects add MyProject --dir C:\repo
+ainess agents list -p MyProject                      # the team of a project
+ainess agents add --name QA --provider antigravity --role reviewer --parent Claude -p MyProject
+ainess formations list                               # saved teams
+ainess formations apply "Full team" -p MyProject     # copy one into a project
+ainess detect                                        # what is installed, and where
+ainess doctor                                        # the same checks the app runs on itself
+ainess quota [provider] [--json]                     # what is left
+ainess usage                                         # what the runs cost
+ainess history -w C:\repo --limit 20                 # recent runs
+ainess history show 3f2a                             # one run in full
+ainess status                                        # saved state per project
+ainess approvals list | approve <id> | reject <id>
+ainess chat -a Antigravity -w C:\repo                # interactive chat
+ainess chat --shared "Claude:architect,Antigravity:critic" -w C:\repo
+ainess serve --port 4710                             # phone server
 ```
 
-`ais run` exits with code 3 when a delegation is left waiting for approval.
+`ainess run` exits with code 3 when a delegation is left waiting for approval.
 
 ## Languages
 
