@@ -1,210 +1,218 @@
-// Curated catalog offered from "Agregar sugeridos" in the Skills and MCP settings sections.
+/**
+ * Curated catalog offered from the "Suggested" action in Skills and MCP settings.
+ *
+ * Content division:
+ * - Agent content (names, skill instructions, MCP commands and arguments) is part of
+ *   the codebase and prompt context, so it is strictly kept in English.
+ * - User-facing explanations (descriptions and requirement warnings) are UI strings
+ *   and reference i18n keys so they are translated into the user's active language.
+ */
 import type { McpServer, Skill } from "@/types";
 
 export type SuggestedMcp = Omit<McpServer, "id" | "enabledFor"> & {
-  description: string;
-  /** Shown as a warning when the entry needs manual editing before it works (a path, a token). */
-  requires?: string;
+  /** i18n key of the one-line description shown in the picker. */
+  descriptionKey: string;
+  /** i18n key of the warning shown when the entry needs editing before it works. */
+  requiresKey?: string;
+};
+
+export type SuggestedSkill = Omit<Skill, "id" | "enabledFor" | "description"> & {
+  descriptionKey: string;
 };
 
 export const SUGGESTED_MCP: SuggestedMcp[] = [
   {
     name: "Filesystem",
-    description: "Acceso a archivos de una carpeta",
+    descriptionKey: "suggested.mcp.filesystem.description",
     transport: "stdio",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "<carpeta>"],
-    requires: "Reemplazá <carpeta> por la ruta",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "<folder>"],
+    requiresKey: "suggested.mcp.filesystem.requires",
   },
   {
     name: "GitHub",
-    description: "Repositorios, issues y pull requests de GitHub",
+    descriptionKey: "suggested.mcp.github.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-github"],
     env: { GITHUB_PERSONAL_ACCESS_TOKEN: "" },
-    requires: "Completá GITHUB_PERSONAL_ACCESS_TOKEN",
+    requiresKey: "suggested.mcp.github.requires",
   },
   {
     name: "Git",
-    description: "Operar un repositorio git local",
+    descriptionKey: "suggested.mcp.git.description",
     transport: "stdio",
     command: "uvx",
     args: ["mcp-server-git"],
-    requires: "Requiere tener instalado uv",
+    requiresKey: "suggested.mcp.git.requires",
   },
   {
     name: "Fetch",
-    description: "Descargar páginas web como texto",
+    descriptionKey: "suggested.mcp.fetch.description",
     transport: "stdio",
     command: "uvx",
     args: ["mcp-server-fetch"],
-    requires: "Requiere tener instalado uv",
+    requiresKey: "suggested.mcp.fetch.requires",
   },
   {
     name: "Memory",
-    description: "Memoria persistente entre sesiones",
+    descriptionKey: "suggested.mcp.memory.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-memory"],
   },
   {
     name: "Sequential Thinking",
-    description: "Razonamiento paso a paso para tareas complejas",
+    descriptionKey: "suggested.mcp.sequential-thinking.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
   },
   {
     name: "Playwright",
-    description: "Un navegador para los agentes: abrir la app, hacer clic, leer el DOM y sacar capturas",
+    descriptionKey: "suggested.mcp.playwright.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@playwright/mcp@latest"],
   },
   {
     name: "Context7",
-    description: "Documentación actualizada de librerías",
+    descriptionKey: "suggested.mcp.context7.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@upstash/context7-mcp"],
   },
   {
     name: "PostgreSQL",
-    description: "Consultar una base de datos PostgreSQL",
+    descriptionKey: "suggested.mcp.postgresql.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-postgres", "<connection-string>"],
-    requires: "Reemplazá <connection-string> por la cadena de conexión",
+    requiresKey: "suggested.mcp.postgresql.requires",
   },
   {
     name: "SQLite",
-    description: "Consultar una base de datos SQLite",
+    descriptionKey: "suggested.mcp.sqlite.description",
     transport: "stdio",
     command: "uvx",
-    args: ["mcp-server-sqlite", "--db-path", "<archivo.db>"],
-    requires: "Reemplazá <archivo.db> por la ruta y requiere uv",
+    args: ["mcp-server-sqlite", "--db-path", "<file.db>"],
+    requiresKey: "suggested.mcp.sqlite.requires",
   },
   {
     name: "Brave Search",
-    description: "Buscar en la web con Brave Search",
+    descriptionKey: "suggested.mcp.brave-search.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-brave-search"],
     env: { BRAVE_API_KEY: "" },
-    requires: "Completá BRAVE_API_KEY",
+    requiresKey: "suggested.mcp.brave-search.requires",
   },
   {
     name: "Slack",
-    description: "Leer y enviar mensajes de Slack",
+    descriptionKey: "suggested.mcp.slack.description",
     transport: "stdio",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-slack"],
     env: { SLACK_BOT_TOKEN: "", SLACK_TEAM_ID: "" },
-    requires: "Completá SLACK_BOT_TOKEN y SLACK_TEAM_ID",
+    requiresKey: "suggested.mcp.slack.requires",
   },
 ];
 
-export const SUGGESTED_SKILLS: Array<Omit<Skill, "id" | "enabledFor">> = [
+export const SUGGESTED_SKILLS: SuggestedSkill[] = [
   {
-    name: "Commits convencionales",
-    description: "Mensajes de commit consistentes",
-    content: `Al hacer commits, usá el formato Conventional Commits:
-- feat: nueva funcionalidad
-- fix: corrección de un bug
-- refactor: cambio de código sin alterar comportamiento
-- docs: solo documentación
-- test: agregar o corregir tests
-- chore: tareas de mantenimiento
+    name: "Conventional Commits",
+    descriptionKey: "suggested.skill.conventional-commits.description",
+    content: `When creating commits, use the Conventional Commits format:
+- feat: new feature
+- fix: bug fix
+- refactor: code change that neither fixes a bug nor adds a feature
+- docs: documentation only
+- test: adding or correcting tests
+- chore: maintenance tasks
 
-El mensaje debe empezar en minúscula, en modo imperativo ("agrega", no "agregado"),
-y explicar el "por qué" cuando no sea obvio.`,
+The commit message must start in lowercase, use the imperative mood ("add", not "added"),
+and explain the "why" when it is not obvious.`,
   },
   {
-    name: "Revisión de código",
-    description: "Checklist antes de aprobar un cambio",
-    content: `Antes de dar por buena una revisión de código, chequeá:
-- ¿El cambio resuelve el problema pedido sin tocar código no relacionado?
-- ¿Hay manejo de errores para las rutas que pueden fallar?
-- ¿Los nombres de variables y funciones son claros?
-- ¿Se agregaron o actualizaron tests para el comportamiento nuevo?
-- ¿Hay código duplicado que se podría extraer?
-- ¿Quedaron console.log, TODOs o comentarios de debug?`,
+    name: "Code Review",
+    descriptionKey: "suggested.skill.code-review.description",
+    content: `Before approving a code review, check:
+- Does the change solve the requested problem without touching unrelated code?
+- Is there error handling for paths that can fail?
+- Are variable and function names clear?
+- Were tests added or updated for the new behavior?
+- Is there duplicated code that could be extracted?
+- Are there leftover console.log calls, TODOs, or debug comments?`,
   },
   {
-    name: "Tests primero",
-    description: "Escribir el test antes de la implementación",
-    content: `Cuando implementes una funcionalidad nueva o corrijas un bug:
-1. Escribí primero un test que falle mostrando el comportamiento esperado.
-2. Implementá el código mínimo para que el test pase.
-3. Refactorizá manteniendo los tests en verde.
-4. Corré toda la suite de tests antes de dar por terminada la tarea, no solo el test nuevo.`,
+    name: "Tests First",
+    descriptionKey: "suggested.skill.tests-first.description",
+    content: `When implementing a new feature or fixing a bug:
+1. First write a failing test that demonstrates the expected behavior.
+2. Implement the minimum code necessary to make the test pass.
+3. Refactor while keeping tests green.
+4. Run the entire test suite before considering the task finished, not just the new test.`,
   },
   {
-    name: "Documentar cambios",
-    description: "Mantener README y CHANGELOG al día",
-    content: `Cuando un cambio afecta cómo se usa o configura el proyecto:
-- Actualizá el README si cambia un comando, una opción o el setup.
-- Si existe un CHANGELOG, agregá una entrada breve describiendo el cambio.
-- No documentes detalles de implementación que puedan quedar obsoletos rápido; documentá
-  el comportamiento observable.`,
+    name: "Document Changes",
+    descriptionKey: "suggested.skill.document-changes.description",
+    content: `When a change affects how the project is used or configured:
+- Update the README if a command, option, or setup step changes.
+- If a CHANGELOG exists, add a brief entry describing the change.
+- Do not document implementation details that might quickly become obsolete; document
+  observable behavior.`,
   },
   {
-    name: "Seguridad básica",
-    description: "Secretos, inputs y dependencias",
-    content: `Antes de cerrar una tarea, revisá:
-- Que no queden credenciales, tokens o claves hardcodeadas en el código o en commits.
-- Que los inputs de usuario se validen antes de usarlos en queries, comandos de shell o rutas
-  de archivo (evitar inyección SQL, command injection y path traversal).
-- Que las dependencias nuevas sean de una fuente confiable y no dupliquen algo ya instalado.`,
+    name: "Basic Security",
+    descriptionKey: "suggested.skill.basic-security.description",
+    content: `Before closing a task, verify:
+- No credentials, tokens, or secret keys are left hardcoded in code or commits.
+- User inputs are validated before being used in queries, shell commands, or file
+  paths (prevent SQL injection, command injection, and path traversal).
+- New dependencies come from a trusted source and do not duplicate existing packages.`,
   },
   {
-    name: "Respuestas concisas",
-    description: "Ir al grano en las explicaciones",
-    content: `Al responder o explicar un cambio, priorizá la brevedad:
-- Explicá el "qué" y el "por qué" en pocas líneas antes de mostrar código.
-- Evitá repetir el plan completo o narrar cada paso intermedio.
-- Si el pedido es simple, la respuesta también debe serlo.`,
+    name: "Concise Responses",
+    descriptionKey: "suggested.skill.concise-responses.description",
+    content: `When answering or explaining a change, prioritize brevity:
+- Explain the "what" and "why" in a few lines before showing code.
+- Avoid repeating the entire plan or narrating every intermediate step.
+- If the request is simple, the response should be simple as well.`,
   },
   {
-    name: "Plan antes de implementar",
-    description: "Pensar el enfoque antes de tocar código",
-    content: `Para tareas que tocan más de un archivo o tienen ambigüedad:
-1. Primero explorá el código relevante para entender el estado actual.
-2. Esbozá un plan corto (qué archivos cambian y por qué) antes de escribir código.
-3. Si el pedido es ambiguo, tomá la decisión más conservadora y anotala, no preguntes si podés
-  seguir de forma autónoma.`,
+    name: "Plan Before Implementing",
+    descriptionKey: "suggested.skill.plan-before-implementing.description",
+    content: `For tasks that touch more than one file or have ambiguity:
+1. First explore relevant code to understand the current state.
+2. Outline a short plan (which files change and why) before writing code.
+3. If the request is ambiguous, make the most conservative decision and record it; do not ask if you can proceed autonomously.`,
   },
   {
-    name: "Verificar antes de terminar",
-    description: "Correr tests y typecheck antes de cerrar",
-    content: `Antes de considerar una tarea terminada:
-- Corré el build/typecheck del proyecto y arreglá los errores que introduzcas.
-- Corré la suite de tests relevante, no solo la que creíste afectada.
-- Si el proyecto tiene lint configurado, corré también el lint sobre los archivos tocados.
-- No des la tarea por terminada si alguna de estas verificaciones falla.`,
+    name: "Verify Before Finishing",
+    descriptionKey: "suggested.skill.verify-before-finishing.description",
+    content: `Before considering a task finished:
+- Run the project's build/typecheck and fix any errors you introduced.
+- Run the relevant test suite, not just the one you believed was affected.
+- If the project has lint configured, also run lint on the touched files.
+- Do not consider the task finished if any of these checks fail.`,
   },
   {
-    name: "Estilo TypeScript estricto",
-    description: "Buenas prácticas de tipado",
-    content: `Al escribir TypeScript:
-- Evitá "any"; usá tipos concretos o genéricos.
-- No dejes variables o imports sin usar (noUnusedLocals).
-- Preferí interfaces/tipos explícitos en los contratos públicos (props, retornos de funciones
-  exportadas) y dejá que el resto se infiera.
-- Manejá los "null"/"undefined" explícitamente en vez de castear con "!" salvo que sea
-  imposible que ocurra.`,
+    name: "Strict TypeScript Style",
+    descriptionKey: "suggested.skill.strict-typescript-style.description",
+    content: `When writing TypeScript:
+- Avoid "any"; use concrete or generic types.
+- Do not leave unused variables or imports (noUnusedLocals).
+- Prefer explicit interfaces/types in public contracts (props, exported function return types)
+  and let the rest be inferred.
+- Handle "null"/"undefined" explicitly instead of casting with "!" unless it is impossible to occur.`,
   },
   {
-    name: "Accesibilidad básica en UI",
-    description: "Checklist rápido de accesibilidad",
-    content: `Al construir componentes de interfaz:
-- Todo elemento clickeable debe ser un <button>, un <a> o tener role="button" y ser
-  navegable por teclado.
-- Los inputs deben tener un <label> asociado (o aria-label si no hay label visible).
-- Los íconos que transmiten información (no solo decorativos) deben tener texto alternativo
-  o aria-label.
-- Verificá que el contraste de texto sobre fondo sea legible, especialmente en estados
-  deshabilitados o "muted".`,
+    name: "Basic UI Accessibility",
+    descriptionKey: "suggested.skill.basic-ui-accessibility.description",
+    content: `When building UI components:
+- Every clickable element must be a <button>, an <a>, or have role="button" and be keyboard navigable.
+- Inputs must have an associated <label> (or aria-label if no visible label is present).
+- Icons that convey information (not purely decorative) must have alternative text or aria-label.
+- Verify that text contrast against the background is legible, especially in disabled or "muted" states.`,
   },
 ];

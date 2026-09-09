@@ -59,6 +59,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die vorgeschlagenen Skills sind für den Agenten geschrieben und dir in deiner Sprache
+  erklärt.** Der Katalog hinter „Vorschläge" war durchgehend spanisch: die Namen, die Anweisungen,
+  die ein Agent tatsächlich liest, und die einzeiligen Beschreibungen in der Liste. Die Anweisungen
+  sind Code — sie gehen in den Prompt eines Agenten und in eine Datei im Projektordner —, also sind
+  sie jetzt englisch wie der Rest des Repositorys. Was für dich geschrieben ist, wird stattdessen
+  übersetzt, in allen sieben Sprachen, und ein Test lässt keinen neuen Vorschlag durch, bevor ihn
+  jede Sprache hat.
+
 - **Zwei Chats mit demselben Agenten sind wieder zwei Gespräche.** Ein Agent hatte genau ein Fach
   für seine Provider-Sitzung, und darin lag jeweils das Gespräch, das zuletzt gesprochen hatte. Du
   öffnest einen zweiten Chat mit einem Agenten, mit dem du schon sprichst, gehst zurück zum ersten —

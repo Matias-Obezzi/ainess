@@ -55,6 +55,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **As skills sugeridas são escritas para o agente e explicadas para você no seu idioma.** O
+  catálogo por trás de "Sugeridas" estava todo em espanhol: os nomes, as instruções que o agente de
+  fato lê e as descrições de uma linha da lista. As instruções são código — vão para o prompt de um
+  agente e para um arquivo na pasta do projeto —, então agora estão em inglês, como o resto do
+  repositório. O que está escrito para você é traduzido, nos sete idiomas, e há um teste que não
+  deixa entrar uma sugestão nova até que todos os idiomas a tenham.
+
 - **Dois chats com o mesmo agente voltam a ser duas conversas.** O agente tinha um único
   compartimento para a sua sessão, e esse compartimento guardava a última conversa que tivesse
   falado. Você abria um segundo chat com um agente com quem já estava falando, voltava ao primeiro,

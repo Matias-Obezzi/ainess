@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Les compétences suggérées sont écrites pour l'agent et expliquées pour vous dans votre
+  langue.** Le catalogue derrière « Suggestions » était entièrement en espagnol : les noms, les
+  instructions que l'agent lit réellement, et les descriptions d'une ligne de la liste. Les
+  instructions sont du code — elles vont dans le prompt d'un agent et dans un fichier du dossier du
+  projet — elles sont donc en anglais désormais, comme le reste du dépôt. Ce qui est écrit pour vous
+  est traduit, dans les sept langues, et un test refuse toute nouvelle suggestion tant que chaque
+  langue ne l'a pas.
+
 - **Deux conversations avec le même agent redeviennent deux conversations.** L'agent n'avait qu'un
   seul emplacement pour sa session, et cet emplacement contenait la conversation qui avait parlé en
   dernier. Vous ouvriez une deuxième conversation avec un agent à qui vous parliez déjà, vous

@@ -56,6 +56,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The suggested skills are written for the agent, and explained to you in your own language.**
+  The catalogue behind "Suggested" was Spanish throughout: the names, the instructions an agent
+  actually reads, and the one-line descriptions in the picker. The instructions are code — they go
+  into an agent's prompt and into a file in the project folder — so they are English now, like the
+  rest of the repository. What is written for you is translated instead, in all seven languages, and
+  a test refuses to let a new suggestion in until every language has it.
+
 - **Two chats with the same agent are two conversations again.** An agent had one slot for its
   provider session, and that slot held whichever conversation had spoken last. Open a second chat
   with an agent you are already talking to, go back to the first, and it answered you with the
