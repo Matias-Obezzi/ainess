@@ -59,6 +59,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Fenster zu ziehen friert nicht mehr ein und springt nicht mehr.** Ein externes Programm
+  auszuführen — das `git status`, das jede Minute aktualisiert, ein `git diff`, eine
+  `--version`-Abfrage — hielt den Thread fest, der die Fensternachrichten pumpt, bis das Programm
+  fertig war. Windows zieht ein Fenster mit einer modalen Schleife auf genau diesem Thread; ein Zug,
+  der zufällig auf so einen Aufruf traf, blieb stehen und sprang dann dorthin, wo der Zeiger
+  inzwischen war. Diese Befehle laufen jetzt außerhalb dieses Threads, ebenso das Lesen und
+  Schreiben von Konfiguration und Logs. Die Konfiguration wird zudem daneben geschrieben und
+  darübergelegt, damit niemand je eine halbe liest.
+
 - **Die App heißt jetzt überall ainess, die ausführbare Datei eingeschlossen.** Früher hieß sie
   `ais`, und der alte Name überlebte dort, wo niemand hinsieht: im Rust-Crate und damit in der
   Binärdatei — die installierte App war `ainess\ais.exe`, und genau das zeigten Task-Manager,

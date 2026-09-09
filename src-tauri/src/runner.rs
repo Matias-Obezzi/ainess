@@ -402,7 +402,13 @@ fn should_reap(process_name: &str, process_start_secs: u64, image: &str, started
 /// as likely to be `node.exe` as an agent is. So a process is only killed when its image *and* its
 /// start time still match the run that recorded it. Returns the ids of the runs actually killed.
 #[tauri::command]
-pub fn reap_orphans(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
+pub async fn reap_orphans(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || reap_orphans_blocking(app, orphans))
+        .await
+        .unwrap_or_default()
+}
+
+fn reap_orphans_blocking(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
     if orphans.is_empty() {
         return Vec::new();
     }
@@ -449,8 +455,25 @@ pub struct ExecResult {
     pub stderr: String,
 }
 
+/// This command must remain `async`: a synchronous Tauri command runs on the main thread that
+/// pumps window messages. Because `exec_capture` blocks waiting for child process execution
+/// (up to 60 seconds), running synchronously freezes the message pump. On Windows, window dragging
+/// uses a modal loop on that main thread, so blocking it causes dragging to freeze and jump.
+/// Offloading execution to `spawn_blocking` keeps the main thread responsive.
 #[tauri::command]
-pub fn exec_capture(
+pub async fn exec_capture(
+    app: AppHandle,
+    program: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    timeout_secs: Option<u64>,
+) -> Result<ExecResult, String> {
+    tauri::async_runtime::spawn_blocking(move || exec_capture_blocking(app, program, args, cwd, timeout_secs))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn exec_capture_blocking(
     app: AppHandle,
     program: String,
     args: Vec<String>,

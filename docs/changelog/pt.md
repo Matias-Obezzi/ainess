@@ -55,6 +55,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Arrastar a janela não congela nem dá saltos.** Rodar um programa externo — o `git status` que
+  atualiza a cada minuto, um `git diff`, uma sondagem de `--version` — segurava a thread que bombeia
+  as mensagens da janela até o programa terminar. O Windows arrasta uma janela com um laço modal
+  nessa mesma thread, então um arraste que caísse em cima de um desses travava e depois pulava para
+  onde o ponteiro tivesse chegado. Esses comandos, e a leitura e escrita de configuração e logs,
+  agora rodam fora dessa thread. Salvar a configuração também escreve ao lado e renomeia por cima,
+  para que ninguém leia metade de uma.
+
 - **O app se chama ainess em todo lugar, executável incluído.** Antes se chamava `ais`, e o nome
   antigo sobreviveu onde ninguém olha: o crate de Rust e, portanto, o binário — o app instalado era
   `ainess\ais.exe`, que é o que o Gerenciador de Tarefas, o aviso do firewall e a lista de

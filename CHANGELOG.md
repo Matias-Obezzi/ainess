@@ -56,6 +56,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Dragging the window no longer freezes and jumps.** Running an external program — the `git
+  status` that refreshes every minute, a `git diff`, a `--version` probe — held the thread that
+  pumps window messages until the program was done. Windows drags a window with a modal loop on
+  that same thread, so a drag that happened to land on one of those stopped dead and then jumped to
+  wherever the pointer had got to. Those commands, and reading and writing config and logs, now run
+  off that thread. Saving the config also writes beside the file and renames over it, so nobody
+  ever reads half of one.
+
 - **The app is called ainess everywhere now, executable included.** It used to be called `ais`, and
   the old name survived where nobody looks: the Rust crate, and therefore the binary — the installed
   app was `ainess\ais.exe`, which is what Task Manager, the firewall prompt and the startup list

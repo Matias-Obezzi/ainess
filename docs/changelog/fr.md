@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Faire glisser la fenêtre ne fige plus et ne saute plus.** Lancer un programme externe — le `git
+  status` qui se rafraîchit chaque minute, un `git diff`, une sonde `--version` — retenait le fil
+  qui pompe les messages de la fenêtre jusqu'à la fin du programme. Windows déplace une fenêtre avec
+  une boucle modale sur ce même fil : un déplacement qui tombait sur l'un de ces appels se figeait,
+  puis sautait là où le pointeur était arrivé. Ces commandes, ainsi que la lecture et l'écriture de
+  la configuration et des journaux, s'exécutent désormais hors de ce fil. La configuration est en
+  outre écrite à côté puis renommée par-dessus, pour que personne n'en lise jamais la moitié.
+
 - **L'application s'appelle ainess partout, exécutable compris.** Elle s'appelait `ais`, et
   l'ancien nom a survécu là où personne ne regarde : dans la crate Rust, et donc dans le binaire —
   l'application installée était `ainess\ais.exe`, ce qu'affichaient le gestionnaire de tâches,
