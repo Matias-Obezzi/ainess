@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## 0.9.0 — 2026-09-08
+## 0.10.0 — 2026-09-09
 
 ### Added
 
@@ -22,6 +22,40 @@ let one of them fall behind.
   that carries your indentation and Tab is two spaces; and the fenced part of what you are writing
   has a background so you can see where it starts and ends. Ctrl+Enter sends from inside a fence,
   since plain Enter no longer can.
+
+### Fixed
+
+- **A question is asked in one place.** It appeared as a bubble in the thread and took over the box
+  at the same time, both of them live, both of them the same question. The box keeps it, since that
+  is where you can answer with the whole composer. Once answered it goes back to the thread as a
+  read-only line — which is the only record there that it was ever asked.
+
+- **Answering a question from the box actually answers it.** An agent asks something, you choose to
+  write your reply in the composer rather than in the question's own field, you send — and the
+  question stayed open. It came back over the box every time you re-entered the conversation, it sat
+  in the bell and on Home and in `/status`, and the run that asked went on waiting for an answer it
+  had already been given, while your message started a separate run of its own. An agent that asked
+  something is stopped waiting for you, so what you type next is the answer, wherever you typed it.
+
+- **Home says each thing once.** It had become the screen for what needs you, but the old grid of
+  project cards was still underneath it, so an agent at work appeared three times: in the working
+  list, inside its project's card, and again in that card's counter. Every card also carried its own
+  Open, Edit and Delete buttons — a red one on each — for actions the card's own click and its
+  right-click menu already covered. Now the whole screen is one kind of row: what needs you, what is
+  working, and the projects, in that order. A project row shows one line of state and, only when
+  there is something, a small count of what is waiting and what is running. When nothing is waiting,
+  it says so in a line rather than leaving you to work it out.
+
+- **The suggested skills are written for the agent, and explained to you in your own language.**
+  The catalogue behind "Suggested" was Spanish throughout: the names, the instructions an agent
+  actually reads, and the one-line descriptions in the picker. The instructions are code — they go
+  into an agent's prompt and into a file in the project folder — so they are English now, like the
+  rest of the repository. What is written for you is translated instead, in all seven languages, and
+  a test refuses to let a new suggestion in until every language has it.
+
+## 0.9.0 — 2026-09-08
+
+### Added
 
 - **A spending limit per project, and the warning before you burn through it.** The usage screen
   could always tell you what a project had cost. It could not stop it. A project now takes a daily
@@ -70,34 +104,6 @@ let one of them fall behind.
   back.
 
 ### Fixed
-
-- **A question is asked in one place.** It appeared as a bubble in the thread and took over the box
-  at the same time, both of them live, both of them the same question. The box keeps it, since that
-  is where you can answer with the whole composer. Once answered it goes back to the thread as a
-  read-only line — which is the only record there that it was ever asked.
-
-- **Answering a question from the box actually answers it.** An agent asks something, you choose to
-  write your reply in the composer rather than in the question's own field, you send — and the
-  question stayed open. It came back over the box every time you re-entered the conversation, it sat
-  in the bell and on Home and in `/status`, and the run that asked went on waiting for an answer it
-  had already been given, while your message started a separate run of its own. An agent that asked
-  something is stopped waiting for you, so what you type next is the answer, wherever you typed it.
-
-- **Home says each thing once.** It had become the screen for what needs you, but the old grid of
-  project cards was still underneath it, so an agent at work appeared three times: in the working
-  list, inside its project's card, and again in that card's counter. Every card also carried its own
-  Open, Edit and Delete buttons — a red one on each — for actions the card's own click and its
-  right-click menu already covered. Now the whole screen is one kind of row: what needs you, what is
-  working, and the projects, in that order. A project row shows one line of state and, only when
-  there is something, a small count of what is waiting and what is running. When nothing is waiting,
-  it says so in a line rather than leaving you to work it out.
-
-- **The suggested skills are written for the agent, and explained to you in your own language.**
-  The catalogue behind "Suggested" was Spanish throughout: the names, the instructions an agent
-  actually reads, and the one-line descriptions in the picker. The instructions are code — they go
-  into an agent's prompt and into a file in the project folder — so they are English now, like the
-  rest of the repository. What is written for you is translated instead, in all seven languages, and
-  a test refuses to let a new suggestion in until every language has it.
 
 - **Two chats with the same agent are two conversations again.** An agent had one slot for its
   provider session, and that slot held whichever conversation had spoken last. Open a second chat
@@ -161,6 +167,7 @@ let one of them fall behind.
   writing. Nothing changed underneath: Enter still sends, and while an agent works it still queues
   what you write for when the turn ends, which is now what the empty box tells you instead of a
   second button.
+
 - **A question from an agent takes the place of the box.** It used to sit inside the run's bubble,
   which is fine while you are looking at it and useless once you have scrolled past — and worse,
   anything typed into the box while a question was open started a new run and left the agent waiting
@@ -171,6 +178,7 @@ let one of them fall behind.
 - **The notifications panel closes when you click away from it.** It hangs from the title bar, which
   is the window's drag region: a click there is taken by the system to move the window and never
   reaches the layer that dismisses a popover.
+
 - **Terminals belong to their project.** Open one in a project, walk to another, and you were still
   looking at the first project's tabs — which is also why a terminal seemed to open in the wrong
   folder: it was another project's shell, sitting in its own folder. Each project shows its own tabs

@@ -2,7 +2,7 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
-## 0.9.0 — 2026-09-08
+## 0.10.0 — 2026-09-09
 
 ### Nuevo
 
@@ -20,6 +20,42 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   adentro de una cerca Enter baja de línea conservando tu indentación y Tab mete dos espacios; y la
   parte encercada de lo que estás escribiendo tiene un fondo, así ves dónde empieza y dónde termina.
   Ctrl+Enter envía desde adentro de una cerca, ya que Enter solo ya no puede.
+
+### Arreglado
+
+- **Una pregunta se hace en un solo lugar.** Aparecía como burbuja en el hilo y tomaba la caja al
+  mismo tiempo, las dos vivas, las dos la misma pregunta. Se la queda la caja, que es donde podés
+  contestar con el composer entero. Una vez respondida vuelve al hilo como una línea de sólo
+  lectura — que es lo único que registra ahí que alguna vez se preguntó.
+
+- **Responder desde la caja ahora responde de verdad.** Un agente te pregunta algo, elegís escribir
+  la respuesta en la caja en vez de en el campo de la pregunta, mandás — y la pregunta quedaba
+  abierta. Te volvía a tapar la caja cada vez que entrabas de nuevo a la conversación, seguía en la
+  campanita, en Inicio y en `/status`, y la corrida que preguntó seguía esperando una respuesta que
+  ya le habías dado, mientras tu mensaje arrancaba una corrida aparte. Un agente que preguntó algo
+  está frenado esperándote, así que lo que escribas después es la respuesta, la escribas donde la
+  escribas.
+
+- **Inicio dice cada cosa una sola vez.** Se había vuelto la pantalla de lo que te necesita, pero
+  la grilla vieja de tarjetas de proyecto seguía abajo, así que un agente trabajando aparecía tres
+  veces: en la lista de lo que está trabajando, adentro de la tarjeta de su proyecto, y otra vez en
+  el contador de esa misma tarjeta. Cada tarjeta traía además sus propios botones Abrir, Editar y
+  Eliminar —uno rojo en cada una— para acciones que ya cubrían el click de la tarjeta y su menú
+  contextual. Ahora la pantalla entera es un solo tipo de fila: lo que te necesita, lo que está
+  trabajando, y los proyectos, en ese orden. La fila de un proyecto muestra una sola línea de estado
+  y, sólo cuando hay algo, un contador chico de qué te espera y qué está corriendo. Cuando no hay
+  nada esperándote, te lo dice en una línea en vez de dejarte deducirlo.
+
+- **Los skills sugeridos están escritos para el agente, y explicados para vos en tu idioma.** El
+  catálogo detrás de «Agregar sugeridos» estaba entero en español: los nombres, las instrucciones que
+  el agente efectivamente lee, y las descripciones de una línea de la lista. Las instrucciones son
+  código —van al prompt de un agente y a un archivo en la carpeta del proyecto—, así que ahora están
+  en inglés, como el resto del repositorio. Lo que está escrito para vos se traduce, en los siete
+  idiomas, y hay un test que no deja entrar un sugerido nuevo hasta que lo tengan todos.
+
+## 0.9.0 — 2026-09-08
+
+### Nuevo
 
 - **Un tope de gasto por proyecto, y el aviso antes de quemarlo.** La pantalla de uso siempre supo
   decirte cuánto había costado un proyecto. Lo que no podía era frenarlo. Ahora un proyecto acepta un
@@ -71,36 +107,6 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   al chat, y lo que está esperándote te dice qué contestar.
 
 ### Arreglado
-
-- **Una pregunta se hace en un solo lugar.** Aparecía como burbuja en el hilo y tomaba la caja al
-  mismo tiempo, las dos vivas, las dos la misma pregunta. Se la queda la caja, que es donde podés
-  contestar con el composer entero. Una vez respondida vuelve al hilo como una línea de sólo
-  lectura — que es lo único que registra ahí que alguna vez se preguntó.
-
-- **Responder desde la caja ahora responde de verdad.** Un agente te pregunta algo, elegís escribir
-  la respuesta en la caja en vez de en el campo de la pregunta, mandás — y la pregunta quedaba
-  abierta. Te volvía a tapar la caja cada vez que entrabas de nuevo a la conversación, seguía en la
-  campanita, en Inicio y en `/status`, y la corrida que preguntó seguía esperando una respuesta que
-  ya le habías dado, mientras tu mensaje arrancaba una corrida aparte. Un agente que preguntó algo
-  está frenado esperándote, así que lo que escribas después es la respuesta, la escribas donde la
-  escribas.
-
-- **Inicio dice cada cosa una sola vez.** Se había vuelto la pantalla de lo que te necesita, pero
-  la grilla vieja de tarjetas de proyecto seguía abajo, así que un agente trabajando aparecía tres
-  veces: en la lista de lo que está trabajando, adentro de la tarjeta de su proyecto, y otra vez en
-  el contador de esa misma tarjeta. Cada tarjeta traía además sus propios botones Abrir, Editar y
-  Eliminar —uno rojo en cada una— para acciones que ya cubrían el click de la tarjeta y su menú
-  contextual. Ahora la pantalla entera es un solo tipo de fila: lo que te necesita, lo que está
-  trabajando, y los proyectos, en ese orden. La fila de un proyecto muestra una sola línea de estado
-  y, sólo cuando hay algo, un contador chico de qué te espera y qué está corriendo. Cuando no hay
-  nada esperándote, te lo dice en una línea en vez de dejarte deducirlo.
-
-- **Los skills sugeridos están escritos para el agente, y explicados para vos en tu idioma.** El
-  catálogo detrás de «Agregar sugeridos» estaba entero en español: los nombres, las instrucciones que
-  el agente efectivamente lee, y las descripciones de una línea de la lista. Las instrucciones son
-  código —van al prompt de un agente y a un archivo en la carpeta del proyecto—, así que ahora están
-  en inglés, como el resto del repositorio. Lo que está escrito para vos se traduce, en los siete
-  idiomas, y hay un test que no deja entrar un sugerido nuevo hasta que lo tengan todos.
 
 - **Dos chats con el mismo agente vuelven a ser dos conversaciones.** El agente tenía un solo
   casillero para su sesión, y ese casillero guardaba la última conversación que hubiera hablado.
@@ -168,15 +174,18 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   que estás escribiendo. Abajo no cambió nada: Enter sigue enviando, y mientras el agente trabaja
   sigue encolando lo que escribas para cuando termine el turno, que ahora es lo que te dice la caja
   vacía en lugar de un segundo botón.
+
 - **La pregunta de un agente ocupa el lugar de la caja.** Vivía adentro de la burbuja de la corrida:
   sirve mientras la estás mirando y no sirve más apenas seguís scrolleando — y peor, lo que
   escribieras en la caja con una pregunta abierta arrancaba una corrida nueva y dejaba al agente
   esperando una respuesta que no iba a llegar. Ahora la pregunta se para donde ibas a escribir, con
   sus opciones como botones y lugar para una respuesta tuya; si hay más de una esperando lo dice y
   van de a una. «Escribir otra cosa» te devuelve la caja sin responder nada.
+
 - **El panel de notificaciones se cierra al hacer clic afuera.** Cuelga de la barra de título, que es
   la zona por la que se arrastra la ventana: un clic ahí lo toma el sistema para mover la ventana y
   nunca llega a la capa que cierra el popover.
+
 - **Las terminales son de su proyecto.** Abrías una en un proyecto, te ibas a otro y seguías viendo
   las pestañas del primero — que es también por qué parecía que una terminal se abría en la carpeta
   equivocada: era la de otro proyecto, parada en su propia carpeta. Ahora cada proyecto muestra las

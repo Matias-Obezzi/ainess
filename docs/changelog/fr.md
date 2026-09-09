@@ -2,7 +2,7 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## 0.9.0 — 2026-09-08
+## 0.10.0 — 2026-09-09
 
 ### Nouveau
 
@@ -22,6 +22,44 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   Tab fait deux espaces ; et la partie clôturée de ce que vous écrivez reçoit un fond, pour voir où
   elle commence et où elle finit. Ctrl+Entrée envoie depuis l'intérieur, puisque Entrée seule ne le
   peut plus.
+
+### Corrigé
+
+- **Une question se pose à un seul endroit.** Elle apparaissait en bulle dans le fil et prenait la
+  boîte en même temps, les deux vivantes, les deux la même question. C'est la boîte qui la garde,
+  puisque c'est là que vous pouvez répondre avec tout le composer. Une fois répondue, elle revient
+  dans le fil en ligne non modifiable — la seule trace qu'elle y ait jamais été posée.
+
+- **Répondre depuis la boîte répond vraiment.** Un agent pose une question, vous choisissez
+  d'écrire la réponse dans la boîte plutôt que dans le champ de la question, vous envoyez — et la
+  question restait ouverte. Elle revenait recouvrir la boîte à chaque retour dans la conversation,
+  elle restait dans la cloche, sur l'accueil et dans `/status`, et l'exécution qui avait posé la
+  question continuait d'attendre une réponse déjà donnée, pendant que votre message lançait une
+  exécution à part. Un agent qui a posé une question est arrêté à vous attendre : ce que vous
+  écrivez ensuite est la réponse, où que vous l'ayez écrite.
+
+- **L'accueil dit chaque chose une seule fois.** Il était devenu l'écran de ce qui vous attend,
+  mais l'ancienne grille de cartes de projet était toujours en dessous : un agent au travail
+  apparaissait trois fois — dans la liste de ce qui travaille, dans la carte de son projet, et
+  encore dans le compteur de cette même carte. Chaque carte portait en plus ses propres boutons
+  Ouvrir, Modifier et Supprimer — un rouge sur chacune — pour des actions que le clic sur la carte
+  et son menu contextuel couvraient déjà. Désormais tout l'écran est un seul type de rangée : ce
+  qui vous attend, ce qui travaille, et les projets, dans cet ordre. La rangée d'un projet montre
+  une seule ligne d'état et, seulement s'il y a quelque chose, un petit compte de ce qui attend et
+  de ce qui tourne. Quand rien ne vous attend, elle le dit en une ligne plutôt que de vous laisser
+  le déduire.
+
+- **Les compétences suggérées sont écrites pour l'agent et expliquées pour vous dans votre
+  langue.** Le catalogue derrière « Suggestions » était entièrement en espagnol : les noms, les
+  instructions que l'agent lit réellement, et les descriptions d'une ligne de la liste. Les
+  instructions sont du code — elles vont dans le prompt d'un agent et dans un fichier du dossier du
+  projet — elles sont donc en anglais désormais, comme le reste du dépôt. Ce qui est écrit pour vous
+  est traduit, dans les sept langues, et un test refuse toute nouvelle suggestion tant que chaque
+  langue ne l'a pas.
+
+## 0.9.0 — 2026-09-08
+
+### Nouveau
 
 - **Un plafond de dépense par projet, et l'alerte avant de l'avoir brûlé.** L'écran d'utilisation a
   toujours su dire ce qu'un projet avait coûté. Il ne pouvait pas l'arrêter. Un projet accepte
@@ -76,38 +114,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   t'attend te dit quoi répondre.
 
 ### Corrigé
-
-- **Une question se pose à un seul endroit.** Elle apparaissait en bulle dans le fil et prenait la
-  boîte en même temps, les deux vivantes, les deux la même question. C'est la boîte qui la garde,
-  puisque c'est là que vous pouvez répondre avec tout le composer. Une fois répondue, elle revient
-  dans le fil en ligne non modifiable — la seule trace qu'elle y ait jamais été posée.
-
-- **Répondre depuis la boîte répond vraiment.** Un agent pose une question, vous choisissez
-  d'écrire la réponse dans la boîte plutôt que dans le champ de la question, vous envoyez — et la
-  question restait ouverte. Elle revenait recouvrir la boîte à chaque retour dans la conversation,
-  elle restait dans la cloche, sur l'accueil et dans `/status`, et l'exécution qui avait posé la
-  question continuait d'attendre une réponse déjà donnée, pendant que votre message lançait une
-  exécution à part. Un agent qui a posé une question est arrêté à vous attendre : ce que vous
-  écrivez ensuite est la réponse, où que vous l'ayez écrite.
-
-- **L'accueil dit chaque chose une seule fois.** Il était devenu l'écran de ce qui vous attend,
-  mais l'ancienne grille de cartes de projet était toujours en dessous : un agent au travail
-  apparaissait trois fois — dans la liste de ce qui travaille, dans la carte de son projet, et
-  encore dans le compteur de cette même carte. Chaque carte portait en plus ses propres boutons
-  Ouvrir, Modifier et Supprimer — un rouge sur chacune — pour des actions que le clic sur la carte
-  et son menu contextuel couvraient déjà. Désormais tout l'écran est un seul type de rangée : ce
-  qui vous attend, ce qui travaille, et les projets, dans cet ordre. La rangée d'un projet montre
-  une seule ligne d'état et, seulement s'il y a quelque chose, un petit compte de ce qui attend et
-  de ce qui tourne. Quand rien ne vous attend, elle le dit en une ligne plutôt que de vous laisser
-  le déduire.
-
-- **Les compétences suggérées sont écrites pour l'agent et expliquées pour vous dans votre
-  langue.** Le catalogue derrière « Suggestions » était entièrement en espagnol : les noms, les
-  instructions que l'agent lit réellement, et les descriptions d'une ligne de la liste. Les
-  instructions sont du code — elles vont dans le prompt d'un agent et dans un fichier du dossier du
-  projet — elles sont donc en anglais désormais, comme le reste du dépôt. Ce qui est écrit pour vous
-  est traduit, dans les sept langues, et un test refuse toute nouvelle suggestion tant que chaque
-  langue ne l'a pas.
 
 - **Deux conversations avec le même agent redeviennent deux conversations.** L'agent n'avait qu'un
   seul emplacement pour sa session, et cet emplacement contenait la conversation qui avait parlé en
@@ -178,6 +184,7 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   que tu écris. Rien n'a changé en dessous : Entrée envoie toujours et, pendant que l'agent
   travaille, met toujours en file ce que tu écris pour la fin du tour — ce que la boîte vide te dit
   maintenant, à la place d'un second bouton.
+
 - **La question d'un agent prend la place de la boîte.** Elle vivait dans la bulle de l'exécution :
   utile tant que tu la regardes, inutile dès que tu as fait défiler — et pire, ce que tu écrivais
   dans la boîte avec une question ouverte lançait une nouvelle exécution et laissait l'agent
@@ -185,9 +192,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   écrire, avec ses options en boutons et de la place pour ta propre réponse ; s'il y en a plusieurs
   en attente, elle le dit, et elles viennent une par une. « Écrire autre chose » te rend la boîte
   sans rien répondre.
+
 - **Le panneau de notifications se ferme quand tu cliques ailleurs.** Il pend de la barre de titre,
   qui est la zone par laquelle on déplace la fenêtre : un clic là est pris par le système pour
   déplacer la fenêtre et n'atteint jamais la couche qui ferme le popover.
+
 - **Les terminaux appartiennent à leur projet.** Tu en ouvrais un dans un projet, tu passais à un
   autre et tu voyais toujours les onglets du premier — c'est aussi pourquoi un terminal semblait
   s'ouvrir dans le mauvais dossier : c'était celui d'un autre projet, dans son propre dossier.

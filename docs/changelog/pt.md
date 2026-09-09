@@ -2,7 +2,7 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
-## 0.9.0 — 2026-09-08
+## 0.10.0 — 2026-09-09
 
 ### Novo
 
@@ -20,6 +20,42 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   o Enter quebra a linha mantendo a sua indentação e o Tab põe dois espaços; e a parte cercada do
   que você está escrevendo ganha um fundo, para você ver onde começa e onde termina. O Ctrl+Enter
   envia de dentro de uma cerca, já que o Enter sozinho não pode mais.
+
+### Corrigido
+
+- **Uma pergunta é feita num lugar só.** Ela aparecia como balão no fio e tomava a caixa ao mesmo
+  tempo, as duas vivas, as duas a mesma pergunta. A caixa fica com ela, que é onde você pode
+  responder com o composer inteiro. Depois de respondida, ela volta ao fio como uma linha somente
+  de leitura — que é o único registro ali de que um dia foi feita.
+
+- **Responder pela caixa agora responde de verdade.** Um agente pergunta algo, você escolhe
+  escrever a resposta na caixa em vez do campo da pergunta, envia — e a pergunta continuava aberta.
+  Ela voltava a cobrir a caixa toda vez que você entrava de novo na conversa, seguia no sino, na
+  tela inicial e no `/status`, e a execução que perguntou continuava esperando uma resposta que já
+  tinha recebido, enquanto a sua mensagem começava uma execução à parte. Um agente que perguntou
+  algo está parado esperando você, então o que você escrever depois é a resposta, onde quer que a
+  escreva.
+
+- **A tela inicial diz cada coisa uma só vez.** Ela tinha virado a tela do que precisa de você, mas
+  a grade antiga de cartões de projeto continuava embaixo, então um agente trabalhando aparecia três
+  vezes: na lista do que está trabalhando, dentro do cartão do seu projeto e de novo no contador
+  desse mesmo cartão. Cada cartão trazia ainda os seus próprios botões Abrir, Editar e Excluir — um
+  vermelho em cada um — para ações que o clique do cartão e o menu de contexto já cobriam. Agora a
+  tela inteira é um único tipo de linha: o que precisa de você, o que está trabalhando e os
+  projetos, nessa ordem. A linha de um projeto mostra uma única linha de estado e, só quando há
+  algo, uma contagem pequena do que espera e do que está rodando. Quando nada está esperando, ela
+  diz isso numa linha em vez de deixar você deduzir.
+
+- **As skills sugeridas são escritas para o agente e explicadas para você no seu idioma.** O
+  catálogo por trás de "Sugeridas" estava todo em espanhol: os nomes, as instruções que o agente de
+  fato lê e as descrições de uma linha da lista. As instruções são código — vão para o prompt de um
+  agente e para um arquivo na pasta do projeto —, então agora estão em inglês, como o resto do
+  repositório. O que está escrito para você é traduzido, nos sete idiomas, e há um teste que não
+  deixa entrar uma sugestão nova até que todos os idiomas a tenham.
+
+## 0.9.0 — 2026-09-08
+
+### Novo
 
 - **Um teto de gasto por projeto, e o aviso antes de queimá-lo.** A tela de uso sempre soube dizer
   quanto um projeto tinha custado. O que ela não podia era freá-lo. Agora um projeto aceita um teto
@@ -69,36 +105,6 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   o que responder.
 
 ### Corrigido
-
-- **Uma pergunta é feita num lugar só.** Ela aparecia como balão no fio e tomava a caixa ao mesmo
-  tempo, as duas vivas, as duas a mesma pergunta. A caixa fica com ela, que é onde você pode
-  responder com o composer inteiro. Depois de respondida, ela volta ao fio como uma linha somente
-  de leitura — que é o único registro ali de que um dia foi feita.
-
-- **Responder pela caixa agora responde de verdade.** Um agente pergunta algo, você escolhe
-  escrever a resposta na caixa em vez do campo da pergunta, envia — e a pergunta continuava aberta.
-  Ela voltava a cobrir a caixa toda vez que você entrava de novo na conversa, seguia no sino, na
-  tela inicial e no `/status`, e a execução que perguntou continuava esperando uma resposta que já
-  tinha recebido, enquanto a sua mensagem começava uma execução à parte. Um agente que perguntou
-  algo está parado esperando você, então o que você escrever depois é a resposta, onde quer que a
-  escreva.
-
-- **A tela inicial diz cada coisa uma só vez.** Ela tinha virado a tela do que precisa de você, mas
-  a grade antiga de cartões de projeto continuava embaixo, então um agente trabalhando aparecia três
-  vezes: na lista do que está trabalhando, dentro do cartão do seu projeto e de novo no contador
-  desse mesmo cartão. Cada cartão trazia ainda os seus próprios botões Abrir, Editar e Excluir — um
-  vermelho em cada um — para ações que o clique do cartão e o menu de contexto já cobriam. Agora a
-  tela inteira é um único tipo de linha: o que precisa de você, o que está trabalhando e os
-  projetos, nessa ordem. A linha de um projeto mostra uma única linha de estado e, só quando há
-  algo, uma contagem pequena do que espera e do que está rodando. Quando nada está esperando, ela
-  diz isso numa linha em vez de deixar você deduzir.
-
-- **As skills sugeridas são escritas para o agente e explicadas para você no seu idioma.** O
-  catálogo por trás de "Sugeridas" estava todo em espanhol: os nomes, as instruções que o agente de
-  fato lê e as descrições de uma linha da lista. As instruções são código — vão para o prompt de um
-  agente e para um arquivo na pasta do projeto —, então agora estão em inglês, como o resto do
-  repositório. O que está escrito para você é traduzido, nos sete idiomas, e há um teste que não
-  deixa entrar uma sugestão nova até que todos os idiomas a tenham.
 
 - **Dois chats com o mesmo agente voltam a ser duas conversas.** O agente tinha um único
   compartimento para a sua sessão, e esse compartimento guardava a última conversa que tivesse
@@ -164,15 +170,18 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   está escrevendo. Por baixo nada mudou: Enter continua enviando e, enquanto o agente trabalha,
   continua enfileirando o que você escrever para quando o turno terminar, que é o que a caixa vazia
   diz agora em vez de um segundo botão.
+
 - **A pergunta de um agente ocupa o lugar da caixa.** Ela ficava dentro da bolha da execução: serve
   enquanto você está olhando e não serve mais assim que rola a tela — e pior, o que você escrevesse
   na caixa com uma pergunta aberta começava uma execução nova e deixava o agente esperando uma
   resposta que nunca chegaria. Agora a pergunta fica onde você ia escrever, com as opções como
   botões e espaço para uma resposta sua; se houver mais de uma esperando, ela avisa, e vêm uma de
   cada vez. "Escrever outra coisa" devolve a caixa sem responder nada.
+
 - **O painel de notificações fecha ao clicar fora dele.** Ele fica preso à barra de título, que é a
   área por onde se arrasta a janela: um clique ali é tomado pelo sistema para mover a janela e nunca
   chega à camada que fecha o popover.
+
 - **Os terminais pertencem ao seu projeto.** Você abria um em um projeto, ia para outro e continuava
   vendo as abas do primeiro — que é também por que um terminal parecia abrir na pasta errada: era o
   de outro projeto, parado na pasta dele. Agora cada projeto mostra os seus e lembra em qual estava.
