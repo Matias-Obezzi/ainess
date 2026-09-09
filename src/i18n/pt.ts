@@ -805,7 +805,7 @@ export const pt: Dictionary = {
   "questions.answered": "Você respondeu: {answer}",
   "questions.agentGone": "O agente que perguntou não existe mais: sua resposta não chegou a lugar nenhum.",
   "questions.pending": "{n} perguntas esperando sua resposta",
-  "questions.writeInstead": "Escrever outra coisa",
+  "questions.writeInstead": "Responder pela caixa",
   "approvals.reject": "Rejeitar",
   "approvals.copyTask": "Copiar a tarefa",
   "approvals.taskCopied": "Tarefa copiada",

@@ -64,6 +64,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Answering a question from the box actually answers it.** An agent asks something, you choose to
+  write your reply in the composer rather than in the question's own field, you send — and the
+  question stayed open. It came back over the box every time you re-entered the conversation, it sat
+  in the bell and on Home and in `/status`, and the run that asked went on waiting for an answer it
+  had already been given, while your message started a separate run of its own. An agent that asked
+  something is stopped waiting for you, so what you type next is the answer, wherever you typed it.
+
 - **Home says each thing once.** It had become the screen for what needs you, but the old grid of
   project cards was still underneath it, so an agent at work appeared three times: in the working
   list, inside its project's card, and again in that card's counter. Every card also carried its own

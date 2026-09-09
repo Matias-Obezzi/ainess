@@ -805,7 +805,7 @@ export const zh: Dictionary = {
   "questions.answered": "你回答了：{answer}",
   "questions.agentGone": "提问的智能体已不存在：你的回答没有去处。",
   "questions.pending": "{n}个问题等待您的回答",
-  "questions.writeInstead": "写点别的",
+  "questions.writeInstead": "在输入框里回答",
   "approvals.reject": "拒绝",
   "approvals.copyTask": "复制这个任务",
   "approvals.taskCopied": "任务已复制",

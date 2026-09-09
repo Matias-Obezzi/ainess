@@ -65,6 +65,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Responder desde la caja ahora responde de verdad.** Un agente te pregunta algo, elegís escribir
+  la respuesta en la caja en vez de en el campo de la pregunta, mandás — y la pregunta quedaba
+  abierta. Te volvía a tapar la caja cada vez que entrabas de nuevo a la conversación, seguía en la
+  campanita, en Inicio y en `/status`, y la corrida que preguntó seguía esperando una respuesta que
+  ya le habías dado, mientras tu mensaje arrancaba una corrida aparte. Un agente que preguntó algo
+  está frenado esperándote, así que lo que escribas después es la respuesta, la escribas donde la
+  escribas.
+
 - **Inicio dice cada cosa una sola vez.** Se había vuelto la pantalla de lo que te necesita, pero
   la grilla vieja de tarjetas de proyecto seguía abajo, así que un agente trabajando aparecía tres
   veces: en la lista de lo que está trabajando, adentro de la tarjeta de su proyecto, y otra vez en

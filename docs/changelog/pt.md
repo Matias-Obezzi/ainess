@@ -63,6 +63,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Responder pela caixa agora responde de verdade.** Um agente pergunta algo, você escolhe
+  escrever a resposta na caixa em vez do campo da pergunta, envia — e a pergunta continuava aberta.
+  Ela voltava a cobrir a caixa toda vez que você entrava de novo na conversa, seguia no sino, na
+  tela inicial e no `/status`, e a execução que perguntou continuava esperando uma resposta que já
+  tinha recebido, enquanto a sua mensagem começava uma execução à parte. Um agente que perguntou
+  algo está parado esperando você, então o que você escrever depois é a resposta, onde quer que a
+  escreva.
+
 - **A tela inicial diz cada coisa uma só vez.** Ela tinha virado a tela do que precisa de você, mas
   a grade antiga de cartões de projeto continuava embaixo, então um agente trabalhando aparecia três
   vezes: na lista do que está trabalhando, dentro do cartão do seu projeto e de novo no contador

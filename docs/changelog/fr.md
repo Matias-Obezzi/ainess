@@ -69,6 +69,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Répondre depuis la boîte répond vraiment.** Un agent pose une question, vous choisissez
+  d'écrire la réponse dans la boîte plutôt que dans le champ de la question, vous envoyez — et la
+  question restait ouverte. Elle revenait recouvrir la boîte à chaque retour dans la conversation,
+  elle restait dans la cloche, sur l'accueil et dans `/status`, et l'exécution qui avait posé la
+  question continuait d'attendre une réponse déjà donnée, pendant que votre message lançait une
+  exécution à part. Un agent qui a posé une question est arrêté à vous attendre : ce que vous
+  écrivez ensuite est la réponse, où que vous l'ayez écrite.
+
 - **L'accueil dit chaque chose une seule fois.** Il était devenu l'écran de ce qui vous attend,
   mais l'ancienne grille de cartes de projet était toujours en dessous : un agent au travail
   apparaissait trois fois — dans la liste de ce qui travaille, dans la carte de son projet, et

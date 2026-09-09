@@ -130,6 +130,7 @@ export function Composer() {
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const questions = useAppStore(state => state.questions);
+  const answerQuestion = useAppStore(state => state.answerQuestion);
   const runs = useAppStore(state => state.runs);
 
   const chatMode = !!currentChatId;
@@ -333,6 +334,17 @@ export function Composer() {
 
   /** Hands the message over, now or when whoever it is for is free. */
   const send = (value: string, queue: boolean) => {
+    // An agent that asked something is stopped waiting for you, so whatever you type next is the
+    // answer — whether you typed it in the question's own box or came out here to write it with the
+    // model picker and the attachments. Starting a fresh run instead left that agent waiting for an
+    // answer that never arrived, and left the question pending for good: back in the composer every
+    // time you returned, and still in the bell, on Home and in `/status`.
+    //
+    // Queueing does not apply here. The agent is not busy, it is blocked on you.
+    if (pendingQuestionData) {
+      answerQuestion(pendingQuestionData.question.id, [value]);
+      return;
+    }
     if (chatMode && currentChatId) {
       // Mid-turn the chat takes it and sends it when the turn ends (see `flushQueue` in lib/chat).
       if (queue && busy) queueChatMessage(currentChatId, value);

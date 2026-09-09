@@ -68,6 +68,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Aus dem Eingabefeld zu antworten beantwortet die Frage jetzt wirklich.** Ein Agent fragt etwas,
+  du schreibst die Antwort lieber im Eingabefeld als im Feld der Frage, du sendest — und die Frage
+  blieb offen. Sie legte sich bei jeder Rückkehr in das Gespräch wieder über das Feld, blieb in der
+  Glocke, auf dem Startbildschirm und in `/status`, und der fragende Lauf wartete weiter auf eine
+  Antwort, die er längst hatte, während deine Nachricht einen eigenen Lauf startete. Ein Agent, der
+  etwas gefragt hat, steht und wartet auf dich — was du als Nächstes schreibst, ist die Antwort,
+  ganz gleich wo du sie geschrieben hast.
+
 - **Der Startbildschirm sagt jede Sache genau einmal.** Er war zum Bildschirm für das geworden, was
   dich braucht — aber das alte Raster aus Projektkarten lag noch darunter. Ein arbeitender Agent
   erschien dreimal: in der Liste der laufenden Arbeit, in der Karte seines Projekts und noch einmal
