@@ -2,6 +2,138 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.9.0 — 2026-09-08
+
+### Novo
+
+- **Um teto de gasto por projeto, e o aviso antes de queimá-lo.** A tela de uso sempre soube dizer
+  quanto um projeto tinha custado. O que ela não podia era freá-lo. Agora um projeto aceita um teto
+  diário, um mensal, ou os dois, e você diz o que fazer quando ele é atingido: avisar, ou não deixar
+  novas execuções começarem. O aviso chega aos 80% — uma vez por dia, não uma por execução — e a tela
+  de uso desenha a barra contra o teto que está mais perto de estourar. Os números continuam sendo só
+  o que cada CLI realmente reportou: um provedor que não reporta nada não soma, e a tela diz isso em
+  vez de estimar.
+
+- **Um hook pode te avisar pelo Telegram, e há mais três momentos dos quais ficar sabendo.** As
+  outras duas ações de chat pedem um webhook que você precisa ir criar num servidor; esta reaproveita
+  o bot que você já configurou em Mensageria, então "quando uma tarefa terminar, me avise" é escolher
+  numa lista. Você pode nomear um chat ou deixar em branco para todos os da lista — e só os da lista,
+  porque um hook não pode ser a porta dos fundos que a contorna. Vieram junto três eventos novos: um
+  agente perguntou algo e está esperando, uma revisão pediu mudanças, e um agente ficou sem cota.
+
+- **A paleta busca o que foi dito, não só como as coisas se chamam.** Ela encontrava projetos,
+  tarefas, chats e agentes pelo nome, que é o que você precisa no dia — e duas semanas depois o que
+  você lembra é uma frase, não um título. Digite três letras e voltam também as mensagens do feed do
+  projeto e de todos os chats, da mais nova para a mais antiga, cada uma mostrada com as palavras
+  que você buscou no meio da linha, e não com o que a mensagem começava dizendo. Acentos e
+  maiúsculas não importam, nem a quebra de linha que ficou entre as suas duas palavras.
+
+- **O diff de uma execução, não o do projeto inteiro.** O painel de diff mostra a árvore de
+  trabalho do projeto, o que responde "o que está acontecendo no repositório" e nunca "o que esta
+  tarefa mexeu". Agora cada execução lembra onde rodou — o workspace do projeto ou o worktree do
+  próprio agente — e em que commit começou, então o detalhe de uma execução mostra o que mudou desde
+  então. As execuções anteriores a isto não lembram nenhuma das duas coisas, e dizem isso em vez de
+  inventar.
+
+- **Um agente pode mover o próprio cartão e abrir um para o que encontrou pelo caminho.** O quadro
+  ia só num sentido: o planejador lia e distribuía, e quem fazia o trabalho não via nem o próprio
+  cartão, muito menos podia avisar que travou. Agora qualquer agente pode deixar um bloco `task`
+  enquanto trabalha — um move o seu cartão e acrescenta uma linha de detalhe, o outro abre um cartão
+  sem responsável no backlog para algo que apareceu e não é da sua conta. Aparece no quadro enquanto
+  a execução continua, não quando termina, e o cartão do backlog diz quem o propôs. Fechar um cartão
+  continua não sendo decisão do agente.
+
+- **O app responde num chat que você já tem aberto.** Em Configurações há uma seção Mensageria:
+  você cola um token de bot do @BotFather no Telegram, liga e escreve para o bot — qualquer coisa
+  que você disser começa uma tarefa, `/status` diz quem está trabalhando e o que espera por você,
+  `/approve` e `/answer` resolvem o que precisa de você, `/stop` para tudo. Isso não expõe nada: é o
+  app que sai para perguntar, então não há túnel, nem porta, nem endereço que alguém possa achar. Só
+  os chats da lista podem dar ordens, a lista vazia não autoriza ninguém, e a um desconhecido não se
+  responde nada — o id dele aparece nas Configurações com um botão para autorizar, que é também como
+  você descobre o seu. O que chega ao sino chega também ao chat, e o que está esperando por você diz
+  o que responder.
+
+### Corrigido
+
+- **Dois chats com o mesmo agente voltam a ser duas conversas.** O agente tinha um único
+  compartimento para a sua sessão, e esse compartimento guardava a última conversa que tivesse
+  falado. Você abria um segundo chat com um agente com quem já estava falando, voltava ao primeiro,
+  e ele respondia com o contexto do outro — e um chat ainda por cima sobrescrevia a sessão que as
+  suas próprias tarefas usavam. Agora o chat entrega a sessão que é dele em vez de ler aquele
+  compartimento, guarda o que o provedor reporta junto do chat a que pertence, e um chat que ainda
+  não tem a sua começa do zero em vez de pedir emprestada. Responder a uma pergunta feita dentro de
+  um chat também fica lá dentro.
+
+- **Desligar todos os tipos no filtro de comunicação agora deixa a visão vazia.** O que você manda
+  a um agente era isento: aparecia dissesse o que dissesse o filtro, e nem constava na lista de
+  tipos, então não havia como desligá-lo. O botão dizia "Tipos (0/8)" e o painel continuava
+  mostrando coisas. Agora são dez tipos, os seus dois entre eles, e desligado é desligado. E quando
+  foi o filtro que esvaziou a visão, ele diz isso, em vez de garantir que não houve atividade.
+
+- **O painel de comunicação lê o que um agente escreveu do jeito que ele quis dizer.** Suas linhas
+  mostravam o markdown cru — os asteriscos, as crases, as cerquilhas — enquanto o mesmo texto
+  aparecia certo em todo o resto do app. Agora a prosa é renderizada: o que um agente disse, o que
+  delegou, com o que voltou e as suas notas. As linhas de ferramenta e o stderr ficam exatamente
+  como vieram, porque um caminho como `src/lib/__tests__/x.ts` não é uma instrução para deixar
+  metade dele em negrito, e o que você digitou é mostrado como você digitou, como o chat já faz.
+
+- **O filtro de tipos fica aberto enquanto você o usa, e não quebra mais o painel.** Escolher um
+  tipo fechava o menu, então deixar o feed em dois tipos era abri-lo cinco vezes. E o botão que o
+  abre diz "Tipos" até você desmarcar algo e "Tipos (7/8)" depois — um rótulo mais longo pelo qual
+  nada naquela linha tinha permissão de encolher, então o painel inteiro acabava mais largo que o
+  dock onde vive. Agora a linha cede, e a de cada mensagem também, onde dois nomes de agente, uma
+  hora, uma etiqueta e um botão brigavam pelo mesmo espaço estreito.
+
+- **Pedir o cru de uma mensagem mostra essa mensagem.** O botão de uma linha do painel de
+  comunicação abria a execução inteira — cada linha de stdout que a sessão tivesse produzido —, que
+  não é o que pede quem clica em cima de uma delegação. Agora mostra aquela mensagem: de quem para
+  quem, quando, o texto completo e, se for uma chamada de ferramenta, a ferramenta, a entrada dela e
+  o erro em que falhou, com um botão para copiar tudo. A execução inteira continua ali, um clique
+  mais adentro, que é onde devia estar. O botão também ganhou uma dica, e aparece em todas as
+  mensagens, não só nas que têm uma execução por trás.
+
+- **Arrastar a janela não congela nem dá saltos.** Rodar um programa externo — o `git status` que
+  atualiza a cada minuto, um `git diff`, uma sondagem de `--version` — segurava a thread que bombeia
+  as mensagens da janela até o programa terminar. O Windows arrasta uma janela com um laço modal
+  nessa mesma thread, então um arraste que caísse em cima de um desses travava e depois pulava para
+  onde o ponteiro tivesse chegado. Esses comandos, e a leitura e escrita de configuração e logs,
+  agora rodam fora dessa thread. Salvar a configuração também escreve ao lado e renomeia por cima,
+  para que ninguém leia metade de uma.
+
+- **O app se chama ainess em todo lugar, executável incluído.** Antes se chamava `ais`, e o nome
+  antigo sobreviveu onde ninguém olha: o crate de Rust e, portanto, o binário — o app instalado era
+  `ainess\ais.exe`, que é o que o Gerenciador de Tarefas, o aviso do firewall e a lista de
+  inicialização mostravam. A linha de comando foi junto: `ais run` e `ais serve` agora são
+  `ainess run` e `ainess serve`, e `ais` não existe mais. Nada do que você tinha se perde: rascunhos,
+  larguras de painel e o token do celular são gravados com nomes novos e continuam lendo os
+  antigos.
+
+- **Acabaram as janelas de console piscando por cima do que você estava olhando.** Parar uma
+  execução, fechar o app, uma execução que estourou o tempo, cortar o túnel e cada verificação de um
+  processo velho chamavam `taskkill` ou `tasklist`, e o Windows dá uma janela de console a um
+  programa de console iniciado por um app com janelas, a menos que se diga o contrário. As chamadas
+  que iniciam um agente sempre diziam; as de limpeza ao redor delas, não.
+
+- **Um único botão ao lado da caixa, e é o que faz falta naquele momento.** Enviar quando nada está
+  rodando, parar enquanto um agente responde — os dois não se amontoam mais sobre o texto que você
+  está escrevendo. Por baixo nada mudou: Enter continua enviando e, enquanto o agente trabalha,
+  continua enfileirando o que você escrever para quando o turno terminar, que é o que a caixa vazia
+  diz agora em vez de um segundo botão.
+- **A pergunta de um agente ocupa o lugar da caixa.** Ela ficava dentro da bolha da execução: serve
+  enquanto você está olhando e não serve mais assim que rola a tela — e pior, o que você escrevesse
+  na caixa com uma pergunta aberta começava uma execução nova e deixava o agente esperando uma
+  resposta que nunca chegaria. Agora a pergunta fica onde você ia escrever, com as opções como
+  botões e espaço para uma resposta sua; se houver mais de uma esperando, ela avisa, e vêm uma de
+  cada vez. "Escrever outra coisa" devolve a caixa sem responder nada.
+- **O painel de notificações fecha ao clicar fora dele.** Ele fica preso à barra de título, que é a
+  área por onde se arrasta a janela: um clique ali é tomado pelo sistema para mover a janela e nunca
+  chega à camada que fecha o popover.
+- **Os terminais pertencem ao seu projeto.** Você abria um em um projeto, ia para outro e continuava
+  vendo as abas do primeiro — que é também por que um terminal parecia abrir na pasta errada: era o
+  de outro projeto, parado na pasta dele. Agora cada projeto mostra os seus e lembra em qual estava.
+  Apagar um projeto continua deixando os shells vivos, como sempre — algum pode estar no meio de
+  algo — e eles aparecem na tela inicial, que é onde fica um terminal sem projeto.
+
 ## 0.8.0 — 2026-09-08
 
 ### Novo

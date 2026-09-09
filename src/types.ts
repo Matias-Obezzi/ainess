@@ -88,6 +88,16 @@ export interface McpServer {
   enabledFor: "all" | string[];
 }
 
+/** Spending limits and policy for a project. */
+export interface Budget {
+  /** Dollars per day. 0 or missing means no limit. */
+  dailyUsd?: number;
+  /** Dollars per month. 0 or missing means no limit. */
+  monthlyUsd?: number;
+  /** What to do when the limit is reached. */
+  onReached: "warn" | "block";
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -96,6 +106,8 @@ export interface Project {
   createdAt: number;
   /** The team that works on this project. Empty means the project has no agents yet. */
   agents: AgentConfig[];
+  /** Spending limits for runs in this project. Warns or blocks when reached. */
+  budget?: Budget;
 }
 
 /** A saved team template: what a new project starts with. */
@@ -125,6 +137,9 @@ export type HookEvent =
   | "run.failed"
   | "agent.stopped"
   | "result"
+  | "question.asked"
+  | "review.changes"
+  | "quota.exhausted"
   // Something that happened to the machine, with no agent behind it (see src/lib/system-hooks.ts).
   /** The app was opened. */
   | "app.started"
@@ -139,6 +154,8 @@ export type HookEvent =
 export type HookAction =
   | { type: "slack"; webhookUrl: string; template: string }
   | { type: "discord"; webhookUrl: string; template: string }
+  /** Reuses the bot and token already configured in Messaging; without chatId sends to all authorized chats. */
+  | { type: "telegram"; template: string; chatId?: string }
   | { type: "webhook"; url: string; method?: "POST"; headers?: Record<string, string>; bodyTemplate: string }
   | { type: "command"; program: string; args: string[]; cwd?: "workspace" | string }
   | { type: "instruct"; agentId: string; template: string }
@@ -275,6 +292,13 @@ export interface Preset {
   model?: string;
 }
 
+export interface MessagingChannelConfig {
+  enabled: boolean;
+  token: string;
+  allowedChatIds: string[];
+  projectId: string | null;
+}
+
 export interface AppConfig {
   version: 12;
   /** UI language; null follows the system. */
@@ -283,6 +307,7 @@ export interface AppConfig {
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
+  messaging?: { telegram?: MessagingChannelConfig };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];
@@ -373,8 +398,14 @@ export interface Run {
   /** Continuation round, starts at 0. */
   round: number;
   model?: string;
+  /** Where the CLI actually ran: the project workspace, or the agent's own worktree. */
+  cwd?: string;
+  /** The commit the workspace was on when the run started, so its own diff can be taken later. */
+  baseSha?: string;
   /** "task" (default) or "chat" — chat runs skip delegation parsing. */
   kind?: "task" | "chat";
+  /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
+  chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
   /** Set when this run is a review of another agent's finished run. */

@@ -1,4 +1,4 @@
-// Node implementation of the tunnel commands (used by `ais serve --tunnel`).
+// Node implementation of the tunnel commands (used by `ainess serve --tunnel`).
 // Mirrors src-tauri/src/tunnel.rs: spawn the binary hidden, read its output until the public
 // URL shows up (30 s timeout) and keep the child so it can be stopped and killed on exit.
 import { spawn, spawnSync, ChildProcess } from "node:child_process";

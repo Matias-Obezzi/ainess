@@ -1,10 +1,9 @@
 // The bell in the window bar: the session's history of everything that asked for attention.
 // It is not the toast system (`components/ui/toast`), which only says things in the moment, nor
 // the OS notifications of `hooks/useSystemNotifications`: this is what is left afterwards.
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Bell,
-  CheckCheck,
   CircleAlert,
   CircleCheck,
   Download,
@@ -106,8 +105,43 @@ export function NotificationBell() {
   const clearNotifications = useAppStore(state => state.clearNotifications);
   const openProject = useAppStore(state => state.openProject);
 
+  /**
+   * Opening the panel is reading it.
+   *
+   * Everything the bell holds is on screen at once, so the badge asking for attention after you
+   * have looked is asking twice. Anything that lands while the panel is open is read too — it is
+   * just as much in front of you as the rest.
+   */
+  useEffect(() => {
+    if (!open) return;
+    if (items.some(n => !n.read)) markNotificationsRead();
+  }, [open, items, markNotificationsRead]);
+
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Radix closes popovers on outside click, but the title bar where this lives is a
+  // data-tauri-drag-region. A click there is intercepted by Tauri to drag the window,
+  // swallowing the event before it reaches Radix's dismiss layer. We catch it in the
+  // capture phase to close the panel manually.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (
+        contentRef.current?.contains(target) ||
+        triggerRef.current?.contains(target)
+      ) {
+        return;
+      }
+      toggleNotifications(false);
+    };
+    document.addEventListener("pointerdown", handler, { capture: true });
+    return () => document.removeEventListener("pointerdown", handler, { capture: true });
+  }, [open, toggleNotifications]);
 
   // The relative times only need to move while somebody is looking at them.
   useEffect(() => {
@@ -134,6 +168,7 @@ export function NotificationBell() {
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
+                ref={triggerRef}
                 variant="ghost"
                 size="icon"
                 className="relative h-7 w-7"
@@ -155,24 +190,9 @@ export function NotificationBell() {
 
         {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
         {/* We prevent auto-focus because it falls on the first icon button, making its tooltip appear on its own. */}
-        <PopoverContent align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
+        <PopoverContent ref={contentRef} align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
           <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  aria-label={t("notifications.markAllRead")}
-                  disabled={unread === 0}
-                  onClick={() => markNotificationsRead()}
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t("notifications.markAllRead")}</TooltipContent>
-            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

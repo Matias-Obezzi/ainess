@@ -1,4 +1,4 @@
-// LAN server for the CLI (`ais serve`): node:http + SSE, same protocol as src-tauri/src/remote.rs.
+// LAN server for the CLI (`ainess serve`): node:http + SSE, same protocol as src-tauri/src/remote.rs.
 import * as http from "node:http";
 import * as zlib from "node:zlib";
 import * as os from "node:os";

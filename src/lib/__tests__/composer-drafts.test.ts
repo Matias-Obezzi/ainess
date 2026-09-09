@@ -37,7 +37,7 @@ describe("drafts", () => {
     useAppStore.getState().setDraft("project:p1", "sigue acá");
     flushStringMapSaves();
     
-    expect(JSON.parse(store.get("ais.drafts") ?? "{}")["project:p1"]).toBe("sigue acá");
+    expect(JSON.parse(store.get("ainess.drafts") ?? "{}")["project:p1"]).toBe("sigue acá");
     
     vi.unstubAllGlobals();
   });

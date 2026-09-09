@@ -1,13 +1,13 @@
-import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, finalOutputFromLines } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
-import { translateNow } from "@/i18n/useT";
+import { translateNow, activeLocale } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
@@ -15,8 +15,17 @@ import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
+import { emitHookEvent } from "@/lib/hooks";
+import { budgetState, budgetAllowsStart } from "@/lib/budget";
+import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 
 const toolFailures = new Map<string, number>();
+/**
+ * Tracks the last local day a budget warning notification was emitted for each project.
+ * A project can trigger dozens of runs in a single session: without this dedup, any run started
+ * while in the warning zone (80%+) would emit a duplicate notification.
+ */
+const budgetWarningEmitted = new Map<string, string>();
 let listenersAttached = false;
 
 export async function attachListeners(): Promise<void> {
@@ -181,12 +190,18 @@ export function flushStream() {
     const run = current.runs[runId];
     if (!run) continue;
     const streamed = current.messages.find(m => m.id === `text-${runId}`);
-    if (streamed) emitNewNotes(run, streamed.text);
+    if (streamed) {
+      emitNewNotes(run, streamed.text);
+      applyNewTaskOps(run, streamed.text);
+    }
   }
 }
 
 /** How many `note` blocks of a run already reached the feed, so none is handed over twice. */
 const notesEmitted = new Map<string, number>();
+
+/** How many `task` blocks of a run already took effect on the board, so none is applied twice. */
+const taskOpsApplied = new Map<string, number>();
 
 /**
  * The `note` blocks of a run that have not been passed on yet.
@@ -206,17 +221,137 @@ function emitNewNotes(run: Run, text: string): void {
   notesEmitted.set(run.id, notes.length);
 }
 
+function applyNewTaskOps(run: Run, text: string): void {
+  const ops = parseTaskOps(text);
+  const already = taskOpsApplied.get(run.id) ?? 0;
+  if (ops.length <= already) return;
+  const applied = taskSync.applyTaskOps(run, ops.slice(already));
+  taskOpsApplied.set(run.id, ops.length);
+  if (applied.length === 0) return;
+
+  const agent = selectAgent(useAppStore.getState(), run.agentId)?.name ?? run.agentId;
+  for (const op of applied) {
+    // A card that only gained a line of detail did not change state, and saying it moved to ""
+    // was the sentence that came out of pretending otherwise.
+    const text = op.kind === "create"
+      ? translateNow("task.opCreated", { agent, title: op.title })
+      : op.status
+        ? translateNow("task.opUpdated", { agent, status: translateNow(TASK_STATUS_KEY[op.status]) })
+        : translateNow("task.opNoted", { agent });
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: run.agentId,
+      toAgentId: "user",
+      kind: "system",
+      text,
+      runId: run.id,
+    });
+  }
+}
+
+/**
+ * The provider session a run is picking up, if any.
+ *
+ * An agent has one slot in `runtime` for its session, and that slot holds whichever conversation
+ * spoke last. That is fine for its tasks, which are one line of work. It is wrong for a chat: two
+ * chats with the same agent are two conversations, and reading that slot for one of them is how a
+ * message sent in one came back answered with the other's context.
+ *
+ * So a caller that owns its own session hands it over, and a chat never falls back to the agent's
+ * slot — a chat with no session of its own is a chat that has not started yet, and starting fresh
+ * is the right answer, not borrowing somebody else's.
+ */
+export function resumeSessionId(
+  opts: { resume?: boolean; sessionId?: string; chatId?: string },
+  agentSession: string | undefined,
+): string | undefined {
+  if (opts.sessionId) return opts.sessionId;
+  if (opts.chatId) return undefined;
+  return opts.resume ? agentSession : undefined;
+}
+
+/**
+ * Where the session a run just reported belongs: with its chat, or in the agent's own slot.
+ *
+ * Kept apart on purpose. A chat writing into the agent's slot is the same bug read backwards —
+ * it would hand the agent's next task the conversation you were having with it.
+ */
+function rememberSession(state: AppState, run: Run, sessionId: string | undefined): Partial<AppState> {
+  if (!sessionId) return {};
+  if (run.chatId) {
+    return {
+      chatSessions: {
+        ...state.chatSessions,
+        [run.chatId]: { ...(state.chatSessions[run.chatId] || {}), [run.agentId]: sessionId },
+      },
+    };
+  }
+  const pRuntime = state.runtime[run.projectId] || {};
+  return {
+    runtime: {
+      ...state.runtime,
+      [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId, sessionUpdatedAt: Date.now() } },
+    },
+  };
+}
+
 function scheduleStreamFlush() {
   if (flushTimer === null) {
     flushTimer = setTimeout(flushStream, 80);
   }
 }
 
-export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string } }): string | undefined {
+export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
   if (!agent || !project) return undefined;
+  const bState = budgetState(runsOfProject(store.runs, opts.projectId), project.budget);
+  if (!budgetAllowsStart(bState, project.budget)) {
+    const limitUsd = bState.limit?.usd ?? 0;
+    const spentUsd = bState.limit?.kind === "monthly" ? bState.spentMonth : bState.spentToday;
+    const locale = activeLocale();
+    const limit = formatCost(limitUsd, locale);
+    const spent = formatCost(spentUsd, locale);
+    const text = translateNow("budget.blocked", { limit, spent });
+
+    addMessage({
+      projectId: opts.projectId,
+      fromAgentId: "system",
+      toAgentId: opts.agentId,
+      kind: "error",
+      text,
+    });
+
+    store.notify({
+      kind: "info",
+      title: text,
+      projectId: opts.projectId,
+      agentId: opts.agentId,
+    });
+
+    return undefined;
+  }
+
+  if (bState.warning) {
+    const currentDay = dayKey(Date.now());
+    const lastWarnedDay = budgetWarningEmitted.get(opts.projectId);
+    if (lastWarnedDay !== currentDay) {
+      budgetWarningEmitted.set(opts.projectId, currentDay);
+      const limitUsd = bState.limit?.usd ?? 0;
+      const locale = activeLocale();
+      const limit = formatCost(limitUsd, locale);
+      const percent = Math.round((bState.ratio ?? 0) * 100);
+      const title = translateNow("budget.warning", { percent, limit });
+
+      store.notify({
+        kind: "info",
+        title,
+        projectId: opts.projectId,
+        agentId: opts.agentId,
+      });
+    }
+  }
 
   const runId = crypto.randomUUID();
   const run: Run = {
@@ -234,6 +369,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     round: opts.round,
     model: opts.model,
     kind: opts.kind,
+    chatId: opts.chatId,
     review: opts.review,
   };
 
@@ -297,7 +433,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
-  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
+  const sessionId = resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
     r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
@@ -315,6 +451,11 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       if (otherAgent) teammates.push({ name: otherAgent.name, task: rt.currentTask });
     }
   }
+
+  // Not `taskForRun(runId)`: this run has not started, so nothing points at it yet. What the agent
+  // is coming back to is the card its previous run in this same lineage left behind.
+  const cardTask = taskSync.cardForNextRun({ projectId: opts.projectId, agentId: opts.agentId, rootRunId: opts.rootRunId });
+  const card = cardTask ? { id: cardTask.id, title: cardTask.title, status: cardTask.status } : undefined;
 
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
@@ -335,6 +476,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
     teammates: teammates.length > 0 ? teammates : undefined,
     canNote: opts.parentRunId !== null,
+    card,
   });
 
   const mcpServers = selectMcpFor(store, agent.id);
@@ -346,7 +488,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
 
     let mcpConfigPath: string | undefined;
     // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
-    // Antigravity is configured machine-wide instead (`ais mcp sync`), and the rest have no way in
+    // Antigravity is configured machine-wide instead (`ainess mcp sync`), and the rest have no way in
     // yet — see Configuración → MCP.
     if ((agent.provider === "claude" || agent.provider === "copilot") && mcpServers.length > 0) {
       const obj: any = { mcpServers: {} };
@@ -365,6 +507,21 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // An agent with its own worktree runs there; a worktree that cannot be prepared stops the
     // run before it starts (the rejection lands in the catch below).
     const cwd = await resolveCwd(opts.projectId, agent, project, runId);
+
+    let baseSha: string | undefined;
+    try {
+      const rev = await getTransport().exec("git", ["rev-parse", "HEAD"], cwd, 10);
+      if (rev.code === 0 && rev.stdout.trim()) {
+        baseSha = rev.stdout.trim();
+      }
+    } catch {
+      // Not a git repo, repo without commits, or exec failed; leave baseSha undefined.
+    }
+
+    useAppStore.setState(state => {
+      const run = state.runs[runId];
+      return run ? { runs: { ...state.runs, [runId]: { ...run, cwd, baseSha } } } : state;
+    });
 
     // The user pressed stop while the worktree was being prepared. The install itself cannot be
     // taken back, but the agent is not launched on top of it.
@@ -430,12 +587,7 @@ function handleOutput(e: RunOutputEvent) {
 
   for (const ev of events) {
     if (ev.type === "session") {
-      useAppStore.setState(state => {
-        const pRuntime = state.runtime[run.projectId] || {};
-        return {
-          runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } }
-        };
-      });
+      useAppStore.setState(state => rememberSession(state, run, ev.sessionId));
     } else if (ev.type === "text") {
       streamBuffer.pushText(e.runId, ev.text);
     } else if (ev.type === "tool") {
@@ -477,11 +629,10 @@ function handleOutput(e: RunOutputEvent) {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
         if (!r) return state;
-        const pRuntime = state.runtime[run.projectId] || {};
         return {
           // Copilot's result carries usage but no text: keep whatever answer we already had.
           runs: { ...state.runs, [e.runId]: { ...r, output: ev.text || r.output, ...(ev.usage ? { usage: ev.usage } : {}) } },
-          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } } } : {})
+          ...(ev.sessionId ? rememberSession(state, run, ev.sessionId) : {})
         };
       });
     } else if (ev.type === "error") {
@@ -620,6 +771,8 @@ function onRunFinished(runId: string) {
     // whose block closed on the very last delta. What was handed over already is skipped.
     emitNewNotes(run, run.output);
     notesEmitted.delete(run.id);
+    applyNewTaskOps(run, run.output);
+    taskOpsApplied.delete(run.id);
     for (const key of toolFailures.keys()) {
       if (key.startsWith(`${run.id}:`)) toolFailures.delete(key);
     }
@@ -665,6 +818,13 @@ function onRunFinished(runId: string) {
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
             } else {
               const childRunId = startRun(payload);
+              // A child that never started is not a child to wait for. Counting it anyway left the
+              // planner waiting on a run that does not exist and its card in "working" for good —
+              // which is now reachable for a real reason, because a spent budget refuses to start.
+              if (!childRunId) {
+                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: translateNow("delegation.couldNotStart", { name: childAgent.name }), runId });
+                continue;
+              }
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
             }
             startedCount++;
@@ -792,6 +952,21 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
   const parsed = parseQuestions(run.output);
   if (parsed.length === 0) return false;
 
+  const store = useAppStore.getState();
+  const project = store.config.projects.find(p => p.id === run.projectId);
+  const rootRun = store.runs[run.rootRunId];
+  const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
+  const ctx = {
+    project,
+    agent,
+    runId: run.id,
+    round: run.round,
+    prompt: run.prompt,
+    output: run.output,
+    taskPrompt,
+    error: "",
+  };
+
   const questions: Record<string, AgentQuestion> = {};
   for (const q of parsed) {
     const id = crypto.randomUUID();
@@ -817,6 +992,7 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       text: q.question,
       runId: run.id,
     });
+    void emitHookEvent("question.asked", { question: q.question }, ctx);
   }
   useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
 
@@ -858,6 +1034,11 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     parentRunId: run?.parentRunId ?? null,
     round: question.round,
     resume: true,
+    // A question asked inside a chat is answered inside that chat. Without this the answer went to
+    // whatever session the agent's own slot was holding, which is the same crossing of wires read
+    // from the other end.
+    chatId: run?.chatId,
+    sessionId: run?.chatId ? store.chatSessions[run.chatId]?.[question.agentId] : undefined,
     rootRunId: question.rootRunId,
   });
 
@@ -923,10 +1104,22 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
  * what happened, which models are left, and that it may name one — the `model` field is not in the
  * delegate schema unless "choose the model" is on, and it is honoured either way.
  */
+/**
+ * The model a child ran out of, or `null` when quota is not what stopped it.
+ *
+ * Separate from the note it produces because running out of quota is an event and the note is a
+ * paragraph: something that fires a hook cannot live inside a function whose job is to build a
+ * string, or it fires again the day somebody builds that string twice.
+ */
+function spentModel(childRun: Run, childAgent: AgentConfig | undefined): string | undefined | null {
+  if (childRun.status !== "error" || !childAgent) return null;
+  if (!outOfQuota(childRun.output)) return null;
+  return childRun.model ?? childAgent.model;
+}
+
 function quotaNote(childRun: Run, childAgent: AgentConfig | undefined): string {
-  if (childRun.status !== "error" || !childAgent) return "";
-  if (!outOfQuota(childRun.output)) return "";
-  const spent = childRun.model ?? childAgent.model;
+  const spent = spentModel(childRun, childAgent);
+  if (spent === null || !childAgent) return "";
   const others = alternativeModels(childAgent.provider, spent);
   if (others.length === 0) return `\n${translateNow("prompt.quota.spentNoOthers", { name: childAgent.name })}\n`;
   return `\n${translateNow("prompt.quota.spent", { name: childAgent.name, models: others.join(", ") })}\n`;
@@ -960,6 +1153,21 @@ function maybeContinueParent(parentRunId: string) {
         if (result.verified.length) lines.push(`**${translateNow("result.verified")}:** ${result.verified.join(", ")}`);
         if (result.blocked.length) lines.push(`**${translateNow("result.blocked")}:** ${result.blocked.join(", ")}`);
         if (lines.length) outputText += "\n" + lines.join("\n") + "\n";
+      }
+
+      const spent = spentModel(childRun, childAgent);
+      if (spent !== null) {
+        const childRoot = store.runs[childRun.rootRunId];
+        void emitHookEvent("quota.exhausted", { model: spent ?? "" }, {
+          project: store.config.projects.find(p => p.id === childRun.projectId),
+          agent: childAgent,
+          runId: childRun.id,
+          round: childRun.round,
+          prompt: childRun.prompt,
+          output: childRun.output,
+          taskPrompt: childRoot ? childRoot.prompt : childRun.prompt,
+          error: childRun.output,
+        });
       }
 
       outputText += quotaNote(childRun, childAgent);
@@ -1076,7 +1284,6 @@ function processQueuedInstructions(agentId: string, projectId: string) {
   }
 }
 
-import { emitHookEvent } from "@/lib/hooks";
 import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 

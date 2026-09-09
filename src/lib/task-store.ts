@@ -103,7 +103,7 @@ export async function saveTasks(projectId: string): Promise<void> {
 }
 
 /**
- * The app and a `ais` process can have the same board open. Writing our copy flat would drop what
+ * The app and a `ainess` process can have the same board open. Writing our copy flat would drop what
  * the other one added, so the file is re-read first: cards only we know about are kept, cards only
  * it knows about come along, and for the ones both have the newer `updatedAt` wins.
  */

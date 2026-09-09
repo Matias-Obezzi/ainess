@@ -224,10 +224,26 @@ fn kill_child(mut child: Child) {
     let _ = child.wait();
 }
 
+/// A `taskkill` or a `tasklist` that does not flash a console window on the user's screen.
+///
+/// `Stdio::null()` silences the output but says nothing about the window: a console program
+/// started from a GUI app gets one allocated for it unless `CREATE_NO_WINDOW` says otherwise. The
+/// spawn that runs the tunnel always passed the flag; the housekeeping around it did not, so
+/// stopping a tunnel — and every stale-pid check on the way past — blinked a black rectangle over
+/// whatever the user was looking at.
+#[cfg(windows)]
+fn windowless(program: &str) -> Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut cmd = Command::new(program);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
 /// cloudflared and ngrok can spawn helpers, so the whole tree goes.
 fn kill_tree(pid: u32) {
     #[cfg(windows)]
-    let _ = Command::new("taskkill")
+    let _ = windowless("taskkill")
         .args(["/PID", &pid.to_string(), "/T", "/F"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -265,7 +281,7 @@ fn parse_pid_entry(raw: &str) -> Option<(u32, String, Option<u32>)> {
 fn process_image(pid: u32) -> Option<String> {
     #[cfg(windows)]
     {
-        let out = Command::new("tasklist")
+        let out = windowless("tasklist")
             .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
             .stderr(Stdio::null())
             .output()

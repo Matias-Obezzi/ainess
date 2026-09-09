@@ -20,6 +20,7 @@ import { translateNow } from "@/i18n/useT";
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
+import { readWithLegacy } from "@/lib/storage-keys";
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -40,7 +41,7 @@ export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "diagnostics" | "about";
+export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -117,7 +118,7 @@ export interface AppState {
   /** Tasks per project, loaded from disk on demand (see src/lib/task-store.ts). */
   tasks: Record<string, Task[]>;
 
-  // ---- Shell navigation (persisted in localStorage under "ais.ui") ----
+  // ---- Shell navigation (persisted in localStorage under "ainess.ui") ----
   screen: Screen;
   projectMode: ProjectMode;
   /**
@@ -175,10 +176,15 @@ export interface AppState {
   goBack(): void;
   goForward(): void;
 
-  // ---- Integrated terminals (in memory only, never persisted) ----
+  // ---- Integrated terminals (the tabs live in memory only, never persisted) ----
   /** Open terminal tabs, in tab-bar order. */
   terminals: TerminalTab[];
-  activeTerminalId: string | null;
+  /**
+   * The tab each project was last looking at, keyed by project id (`"home"` with no project open).
+   * The tabs themselves do not survive a restart; which one was in front is cheap to remember and
+   * harmless when it points at a shell that is gone (the bar falls back to the first one).
+   */
+  activeTerminalIds: Record<string, string | null>;
   /** Shells detected on this machine, loaded once at startup (desktop app only). */
   shells: ShellInfo[];
   openTerminal(opts?: { shellId?: string; cwd?: string }): void;
@@ -297,6 +303,10 @@ export interface AppState {
   /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
   toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
+  /** Turns the messaging bridge on or off, keeping the config in sync. */
+  toggleBridge(enabled: boolean): Promise<void>;
+  /** Picks up a changed token or list of chats: stop, then start again. */
+  restartBridge(): Promise<void>;
   stopRemote(): Promise<void>;
   refreshRemoteStatus(): Promise<void>;
   regenerateRemoteToken(): Promise<void>;
@@ -426,19 +436,22 @@ interface UiPrefs {
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
   sidebarOpen: boolean;
+  activeTerminalIds: Record<string, string | null>;
 }
 
-const DRAFTS_KEY = "ais.drafts";
-const COMPOSER_MODELS_KEY = "ais.composerModels";
+const DRAFTS_KEY = "ainess.drafts";
+const DRAFTS_LEGACY_KEY = "ais.drafts";
+const COMPOSER_MODELS_KEY = "ainess.composerModels";
+const COMPOSER_MODELS_LEGACY_KEY = "ais.composerModels";
 
 /**
  * A map of conversation key to one string, kept across views and restarts. Guarded like the UI
  * preferences: private mode, a full quota or a file another build wrote must not break the app.
  */
-function loadStringMap(storageKey: string): Record<string, string> {
+function loadStringMap(storageKey: string, legacyKey?: string): Record<string, string> {
   if (typeof localStorage === "undefined") return {};
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = legacyKey ? readWithLegacy(localStorage, storageKey, legacyKey) : localStorage.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
@@ -514,7 +527,8 @@ export function clampPaneWidth(pane: PaneId, value: unknown): number {
   return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
 }
 
-const UI_PREFS_KEY = "ais.ui";
+const UI_PREFS_KEY = "ainess.ui";
+const UI_PREFS_LEGACY_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
@@ -529,6 +543,7 @@ const defaultUiPrefs: UiPrefs = {
   settingsSection: "general",
   sidebarCollapsed: {},
   sidebarOpen: true,
+  activeTerminalIds: {},
 };
 
 const VALID_PROJECT_MODES: ProjectMode[] = ["tasks", "chat", "graph"];
@@ -547,6 +562,14 @@ function sanitizeProjectChats(value: unknown): Record<string, string | null> {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
       .filter(([, chat]) => typeof chat === "string" || chat === null),
+  ) as Record<string, string | null>;
+}
+
+function sanitizeActiveTerminalIds(value: unknown): Record<string, string | null> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, id]) => typeof id === "string" || id === null),
   ) as Record<string, string | null>;
 }
 
@@ -569,7 +592,7 @@ function clampDockSize(value: unknown): number {
 function loadUiPrefs(): UiPrefs {
   if (typeof localStorage === "undefined") return { ...defaultUiPrefs };
   try {
-    const raw = localStorage.getItem(UI_PREFS_KEY);
+    const raw = readWithLegacy(localStorage, UI_PREFS_KEY, UI_PREFS_LEGACY_KEY);
     if (!raw) return { ...defaultUiPrefs };
     const parsed = JSON.parse(raw) as any;
     
@@ -599,6 +622,7 @@ function loadUiPrefs(): UiPrefs {
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
       sidebarOpen: parsed.sidebarOpen !== false,
+      activeTerminalIds: sanitizeActiveTerminalIds(parsed.activeTerminalIds),
     };
   } catch {
     return { ...defaultUiPrefs };
@@ -623,6 +647,7 @@ function saveUiPrefs(): void {
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
       sidebarOpen: s.sidebarOpen,
+      activeTerminalIds: s.activeTerminalIds,
     };
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
   } catch {
@@ -715,8 +740,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   chatSessions: {},
   currentChatId: null,
   historyLoading: {},
-  drafts: loadStringMap(DRAFTS_KEY),
-  composerModels: loadStringMap(COMPOSER_MODELS_KEY),
+  drafts: loadStringMap(DRAFTS_KEY, DRAFTS_LEGACY_KEY),
+  composerModels: loadStringMap(COMPOSER_MODELS_KEY, COMPOSER_MODELS_LEGACY_KEY),
   chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
@@ -728,7 +753,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   shortcutsOpen: false,
   focusedTaskId: null,
   terminals: [],
-  activeTerminalId: null,
   shells: [],
 
   ...(() => {
@@ -912,6 +936,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
+  toggleBridge: async (enabled) => {
+    const bridge = await import("@/lib/bridge");
+    const messaging = get().config.messaging ?? {};
+    // The defaults first, then whatever was configured, and the switch last: it is the one thing
+    // this call is about.
+    const telegram = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging.telegram, enabled };
+    get().updateConfig({ messaging: { ...messaging, telegram } });
+    if (enabled) await bridge.startBridge(); else await bridge.stopBridge();
+  },
+
+  restartBridge: async () => {
+    const bridge = await import("@/lib/bridge");
+    await bridge.stopBridge();
+    if (get().config.messaging?.telegram?.enabled) await bridge.startBridge();
+  },
+
   toggleRemote: async (enabled) => {
     const before = get().config.remote;
     set({ remoteBusy: true });
@@ -1018,7 +1058,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set(s => ({
       terminals: [...s.terminals, terminal],
-      activeTerminalId: terminal.id,
+      activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
       termPanelOpen: true,
     }));
     saveUiPrefs();
@@ -1029,20 +1069,25 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     const index = state.terminals.findIndex(t => t.id === id);
     if (index === -1) return;
+    const tab = state.terminals[index];
+    const key = tab.projectId ?? "home";
     forgetPty(id);
     void getTransport().ptyKill(id).catch(e => log.warn("terminal", `no se pudo cerrar ${id}: ${e}`));
     const terminals = state.terminals.filter(t => t.id !== id);
-    let activeTerminalId = state.activeTerminalId;
-    if (activeTerminalId === id) {
-      const neighbour = terminals[Math.min(index, terminals.length - 1)];
-      activeTerminalId = neighbour ? neighbour.id : null;
+    let activeTerminalIds = { ...state.activeTerminalIds };
+    if (activeTerminalIds[key] === id) {
+      const projectTerminals = terminals.filter(t => t.projectId === tab.projectId);
+      const projIndex = state.terminals.filter(t => t.projectId === tab.projectId).findIndex(t => t.id === id);
+      const neighbour = projectTerminals[Math.min(projIndex, projectTerminals.length - 1)];
+      activeTerminalIds[key] = neighbour ? neighbour.id : null;
     }
-    set({ terminals, activeTerminalId });
+    set({ terminals, activeTerminalIds });
   },
 
   setActiveTerminal: (id) => {
-    if (!get().terminals.some(t => t.id === id)) return;
-    set({ activeTerminalId: id });
+    const tab = get().terminals.find(t => t.id === id);
+    if (!tab) return;
+    set(s => ({ activeTerminalIds: { ...s.activeTerminalIds, [tab.projectId ?? "home"]: id } }));
   },
 
   moveTerminal: (id, toIndex) => {
@@ -1074,7 +1119,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   saveConfig: async () => {
-    // Several processes share the file (app, `ais run`, `ais serve`): merge with what is on disk
+    // Several processes share the file (app, `ainess run`, `ainess serve`): merge with what is on disk
     // so a project or chat another process added since we loaded is not wiped by our copy.
     let disk: AppConfig | null = null;
     try { disk = await getTransport().loadConfig(); } catch { /* unreadable: our copy wins */ }
@@ -1197,6 +1242,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
       const wasCurrent = state.currentProjectId === id;
       const chatGone = state.currentChatId ? goneChats.has(state.currentChatId) : false;
+      const newActiveTerminalIds = { ...state.activeTerminalIds };
+      delete newActiveTerminalIds[id];
+
       return {
         config: { ...state.config, projects: newProjects, chats: newChats, hooks: newHooks },
         runtime: newRuntime,
@@ -1221,9 +1269,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         navIndex,
         // The search palette may have asked the board to open a card of this project.
         focusedTaskId: state.focusedTaskId && goneTasks.has(state.focusedTaskId) ? null : state.focusedTaskId,
-        // The shells keep running (only their tab, `exit` or closing the app may kill one), but
-        // they no longer belong to anything.
+        // The shells keep running (only their tab, `exit` or closing the app may kill one), but they
+        // no longer belong to anything: with the tab bar showing one project at a time, that is
+        // where they now appear — on the home screen, which is where a terminal with no project is.
         terminals: state.terminals.map(t => (t.projectId === id ? { ...t, projectId: null } : t)),
+        activeTerminalIds: newActiveTerminalIds,
         currentProjectId: wasCurrent ? null : state.currentProjectId,
         currentChatId: wasCurrent || chatGone ? null : state.currentChatId,
         // Losing the open project drops the user back to the home screen.
@@ -2160,6 +2210,16 @@ async function runInit(): Promise<void> {
     void recovery.reapAfterCrash();
 
     set({ loaded: true });
+
+    // The messaging bridge, if there is one: nothing is exposed by turning it on — the app is the
+    // one that goes out and asks — but it is still a way into this machine, so it only runs where
+    // the app itself runs and only when it was asked for. What reaches the bell is forwarded from
+    // the same place the bell reads, wired once whether or not any channel is on today.
+    if (isTauri()) {
+      const bridge = await import("@/lib/bridge");
+      bridge.attachBridgeNotifications();
+      if (config.messaging?.telegram?.enabled) await bridge.startBridge().catch(() => {});
+    }
 
     // Remote access is opt-in; a failure (port busy) must not break startup. A reload of the
     // frontend finds the server already up: adopt it instead of trying to start a second one.

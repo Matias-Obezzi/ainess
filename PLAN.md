@@ -153,8 +153,8 @@ al home del usuario, rechaza `..`) además de `httpPost`/`readTextFile`/`writeTe
 15 s en las requests HTTP (reqwest en Rust). Nunca se loguean tokens: solo viajan en el header.
 
 `refreshQuota`/`refreshModels` (store) no se llaman automáticamente al arrancar la app — solo al
-abrir el diálogo de un agente, al apretar "Actualizar" ahí, o desde `ais quota` en el CLI — para no
-pegarle a las APIs sin necesidad. El CLI `ais quota [provider] [--json]` sin argumento recorre los
+abrir el diálogo de un agente, al apretar "Actualizar" ahí, o desde `ainess quota` en el CLI — para no
+pegarle a las APIs sin necesidad. El CLI `ainess quota [provider] [--json]` sin argumento recorre los
 providers usados por algún agente configurado.
 
 **Dónde se ve la cuota**: `summarizeAgentQuota` (`src/lib/quota-summary.ts`, puro y testeado)
@@ -350,7 +350,7 @@ Configuración es un modal, no una pantalla), `settingsSection`, `sidebarCollaps
 `openProject(projectId, chatId?)`, `openSettings(section?)` (abre el modal), `closeSettings()`,
 `setProjectMode`, `toggleCommPanel`, `toggleTermPanel(open?)`, `setDockSplit(value)`,
 `toggleSidebarProject`, `toggleSidebar(open?)`, `toggleSearch(open?)`, `goBack()` y `goForward()`. Lo persistible va a `localStorage` bajo la clave
-`ais.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
+`ainess.ui` (con guard `typeof localStorage`, porque el CLI importa el store en node).
 
 **Barra de título** — `components/shell/TitleBar.tsx` (`h-10`, `bg-card border-b`). La ventana usa
 `"decorations": false` en `tauri.conf.json`, así que la barra es propia: el contenedor y el título
@@ -698,7 +698,7 @@ lleva booleanos para las credenciales de ngrok, la dirección del servidor se ar
 Un chequeo que no se puede correr acá sale como aviso con el motivo, no como error: sin backend
 (preview del navegador, celular) `storageStat` devuelve `null` y eso apaga la detección de binarios
 y de túnel; el servidor remoto solo se puede observar desde la app (`canObserveRemote`), así que
-`ais doctor` avisa en vez de fallar cuando está prendido en la configuración.
+`ainess doctor` avisa en vez de fallar cuando está prendido en la configuración.
 
 Dos comandos Rust nuevos, en `src-tauri/src/diagnostics.rs`, más sus métodos de `Transport`:
 
@@ -712,7 +712,7 @@ enseguida; camina como mucho 4 niveles. En `nodeTransport` son `fs` y `net.creat
 transports del navegador y del celular devuelven `null`.
 
 UI: `src/components/settings/DiagnosticsSection.tsx`, sección `diagnostics` de `SETTINGS_SECTIONS`
-(grupo `app`, icono `Stethoscope`), con "Volver a chequear" y "Copiar informe". CLI: `ais doctor
+(grupo `app`, icono `Stethoscope`), con "Volver a chequear" y "Copiar informe". CLI: `ainess doctor
 [--json]` imprime el mismo informe en español y termina con código 1 si hay algún error.
 
 ## Acceso remoto (celular)
@@ -815,7 +815,7 @@ espacios, path y barra final, pasa a minúsculas), `hasFixedUrl(provider, opts)`
 `fixedUrl(provider, opts)` (con `opts: { domain?, tunnelName? }`), `tunnelArgs(provider, port,
 opts?)`, `extractTunnelUrl(provider, line, opts?)`, `tunnelBinary`, `tunnelInstallCommand`,
 `tunnelDescription`. `src/lib/tunnel-node.ts` es la misma lógica con `child_process` para
-`ais serve --tunnel`.
+`ainess serve --tunnel`.
 
 `src-tauri/src/tunnel.rs`: `TunnelState { child, url, provider, fixed }` (`Mutex`), comandos
 `tunnel_start(provider, port, domain, tunnel_name)`, `tunnel_stop()`, `tunnel_status()` (con
@@ -915,9 +915,9 @@ ngrok" muestra el estado de cada credencial, deja cargarlas en un input `type="p
 "Traer mis dominios" para elegir el dominio de un select en vez de tipearlo. Las credenciales no se
 loguean nunca: `maskSecrets` además tapa `authtoken`/`api_key` por las dudas.
 
-CLI: `ais serve --tunnel [cloudflared|ngrok] [--tunnel-domain <dominio>] [--tunnel-name <nombre>]`
+CLI: `ainess serve --tunnel [cloudflared|ngrok] [--tunnel-domain <dominio>] [--tunnel-name <nombre>]`
 levanta el túnel junto con el servidor e imprime la URL pública (los overrides se guardan en la
-config, igual que `--tunnel <prov>`); `ais remote url --tunnel` devuelve la URL pública del túnel de
+config, igual que `--tunnel <prov>`); `ainess remote url --tunnel` devuelve la URL pública del túnel de
 ese proceso.
 
 ## Verificación

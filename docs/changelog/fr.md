@@ -2,6 +2,150 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.9.0 — 2026-09-08
+
+### Nouveau
+
+- **Un plafond de dépense par projet, et l'alerte avant de l'avoir brûlé.** L'écran d'utilisation a
+  toujours su dire ce qu'un projet avait coûté. Il ne pouvait pas l'arrêter. Un projet accepte
+  désormais un plafond journalier, un mensuel, ou les deux, et vous dites quoi faire quand il est
+  atteint : prévenir, ou refuser de démarrer de nouvelles exécutions. L'alerte arrive à 80 % — une
+  fois par jour, pas une fois par exécution — et l'écran d'utilisation trace la barre contre le
+  plafond le plus près de céder. Les chiffres restent uniquement ce que chaque CLI a réellement
+  rapporté : un fournisseur qui ne rapporte rien n'ajoute rien, et l'écran le dit au lieu
+  d'estimer.
+
+- **Un hook peut vous prévenir sur Telegram, et il y a trois moments de plus dont être averti.**
+  Les deux autres actions de chat réclament un webhook qu'il faut aller créer sur un serveur ;
+  celle-ci réutilise le bot déjà configuré dans Messagerie, si bien que « quand une tâche se
+  termine, préviens-moi » se choisit dans une liste. Vous pouvez nommer une conversation ou laisser
+  vide pour toutes celles de la liste — et seulement celles de la liste, car un hook n'a pas le
+  droit d'être la porte dérobée qui la contourne. Trois nouveaux événements l'accompagnent : un
+  agent a posé une question et attend, une relecture a demandé des changements, et un agent est
+  arrivé au bout de son quota.
+
+- **La palette cherche ce qui a été dit, pas seulement comment les choses s'appellent.** Elle
+  trouvait projets, tâches, conversations et agents par leur nom — ce dont on a besoin le jour même.
+  Deux semaines plus tard, ce dont on se souvient est une phrase, pas un titre. Trois caractères
+  suffisent et les messages du fil du projet et de toutes les conversations reviennent aussi, du
+  plus récent au plus ancien, chacun affiché avec les mots cherchés au milieu de la ligne plutôt
+  qu'avec ce par quoi le message commençait. Les accents et les majuscules n'y changent rien, ni le
+  saut de ligne resté entre vos deux mots.
+
+- **Le diff d'une exécution, pas celui du projet entier.** Le panneau de diff montre l'arbre de
+  travail du projet, ce qui répond à « que se passe-t-il dans ce dépôt » et jamais à « qu'a touché
+  cette tâche ». Chaque exécution se souvient désormais d'où elle a tourné — l'espace de travail du
+  projet, ou le worktree propre à l'agent — et du commit sur lequel elle a démarré : le détail d'une
+  exécution montre donc ce qui a bougé depuis. Les exécutions antérieures ne se souviennent
+  d'aucun des deux, et le disent au lieu de deviner.
+
+- **Un agent peut déplacer sa propre carte et en ouvrir une pour ce qu'il a trouvé en chemin.** Le
+  tableau n'allait que dans un sens : le planificateur le lisait et distribuait le travail, et celui
+  qui le faisait ne voyait même pas sa carte, encore moins de quoi dire qu'il était bloqué.
+  Désormais, tout agent peut laisser un bloc `task` pendant qu'il travaille — l'un déplace sa carte
+  et lui ajoute une ligne de détail, l'autre ouvre dans le backlog une carte non assignée pour
+  quelque chose qu'il a croisé et qui ne le concerne pas. Cela arrive sur le tableau pendant que
+  l'exécution continue, pas à la fin, et la carte du backlog dit qui l'a proposée. Fermer une carte
+  n'est toujours pas à l'agent de le décider.
+
+- **L'app te répond dans une conversation que tu as déjà ouverte.** Les réglages ont une section
+  Messagerie : tu colles un jeton de bot d'@BotFather sur Telegram, tu l'actives et tu écris au bot —
+  tout ce que tu dis lance une tâche, `/status` dit qui travaille et ce qui t'attend, `/approve` et
+  `/answer` règlent ce qui a besoin de toi, `/stop` arrête tout. Rien n'est exposé : c'est l'app qui
+  sort demander, donc pas de tunnel, pas de port, pas d'adresse à trouver. Seules les conversations
+  de la liste peuvent donner des ordres, une liste vide n'autorise personne, et un inconnu n'a aucune
+  réponse — son identifiant apparaît dans les réglages avec un bouton pour l'autoriser, ce qui est
+  aussi comme ça que tu découvres le tien. Ce qui arrive à la cloche arrive aussi au chat, et ce qui
+  t'attend te dit quoi répondre.
+
+### Corrigé
+
+- **Deux conversations avec le même agent redeviennent deux conversations.** L'agent n'avait qu'un
+  seul emplacement pour sa session, et cet emplacement contenait la conversation qui avait parlé en
+  dernier. Vous ouvriez une deuxième conversation avec un agent à qui vous parliez déjà, vous
+  reveniez à la première, et il vous répondait avec le contexte de l'autre — et une conversation
+  écrasait en prime la session qu'utilisaient ses propres tâches. Désormais une conversation remet
+  la session qui lui appartient au lieu de lire cet emplacement, range ce que rapporte le
+  fournisseur avec la conversation à laquelle il appartient, et une conversation qui n'en a pas
+  encore démarre à neuf plutôt que d'en emprunter une. Répondre à une question posée dans une
+  conversation y reste aussi.
+
+- **Éteindre tous les types dans le filtre de communication vide désormais la vue.** Ce que vous
+  envoyez à un agent en était exempté : il s'affichait quoi qu'en dise le filtre, et ne figurait
+  même pas dans la liste des types, donc rien ne permettait de l'éteindre. Le bouton indiquait
+  « Types (0/8) » pendant que le panneau continuait d'afficher des choses. Il y a dix types
+  maintenant, les deux vôtres compris, et éteint veut dire éteint. Et quand c'est le filtre qui a
+  vidé la vue, elle le dit, au lieu d'affirmer qu'il n'y a eu aucune activité.
+
+- **Le panneau de communication lit ce qu'un agent a écrit comme il l'entendait.** Ses lignes
+  affichaient le markdown brut — les astérisques, les accents graves, les dièses — alors que le même
+  texte s'affichait correctement partout ailleurs dans l'application. La prose est désormais rendue :
+  ce qu'un agent a dit, ce qu'il a délégué, ce avec quoi il est revenu, et ses notes. Les lignes
+  d'outil et stderr restent exactement telles qu'elles sont arrivées, car un chemin comme
+  `src/lib/__tests__/x.ts` n'est pas une consigne d'en mettre la moitié en gras ; et ce que vous
+  avez tapé est montré tel que vous l'avez tapé, comme le fait déjà la conversation.
+
+- **Le filtre de types reste ouvert pendant que vous vous en servez, et ne casse plus le panneau.**
+  Choisir un type fermait le menu : réduire le fil à deux types demandait de l'ouvrir cinq fois. Et
+  le bouton qui l'ouvre affiche « Types » jusqu'à ce que vous décochiez quelque chose, puis
+  « Types (7/8) » — une étiquette plus longue pour laquelle rien dans cette rangée n'avait le droit
+  de rétrécir, si bien que le panneau entier devenait plus large que le dock qui l'accueille. La
+  rangée cède maintenant, et celle de chaque message aussi, où deux noms d'agent, une heure, une
+  étiquette et un bouton se disputaient le même espace étroit.
+
+- **Demander le brut d'un message montre ce message.** Le bouton d'une ligne du panneau de
+  communication ouvrait l'exécution entière — chaque ligne de stdout que la session avait produite —
+  ce que ne demande personne en cliquant sur une délégation. Il montre désormais ce message : de qui
+  à qui, quand, le texte complet, et pour un appel d'outil l'outil, son entrée et l'erreur sur
+  laquelle il a échoué, avec un bouton pour tout copier. L'exécution entière est toujours là, un
+  clic plus loin, à sa place. Le bouton a aussi une infobulle et apparaît sur tous les messages, pas
+  seulement ceux qui ont une exécution derrière eux.
+
+- **Faire glisser la fenêtre ne fige plus et ne saute plus.** Lancer un programme externe — le `git
+  status` qui se rafraîchit chaque minute, un `git diff`, une sonde `--version` — retenait le fil
+  qui pompe les messages de la fenêtre jusqu'à la fin du programme. Windows déplace une fenêtre avec
+  une boucle modale sur ce même fil : un déplacement qui tombait sur l'un de ces appels se figeait,
+  puis sautait là où le pointeur était arrivé. Ces commandes, ainsi que la lecture et l'écriture de
+  la configuration et des journaux, s'exécutent désormais hors de ce fil. La configuration est en
+  outre écrite à côté puis renommée par-dessus, pour que personne n'en lise jamais la moitié.
+
+- **L'application s'appelle ainess partout, exécutable compris.** Elle s'appelait `ais`, et
+  l'ancien nom a survécu là où personne ne regarde : dans la crate Rust, et donc dans le binaire —
+  l'application installée était `ainess\ais.exe`, ce qu'affichaient le gestionnaire de tâches,
+  l'invite du pare-feu et la liste de démarrage. La ligne de commande a suivi : `ais run` et
+  `ais serve` deviennent `ainess run` et `ainess serve`, et `ais` n'existe plus. Rien de ce que vous
+  aviez n'est perdu : brouillons, largeurs de panneaux et jeton du téléphone sont enregistrés sous
+  de nouveaux noms et continuent de lire les anciens.
+
+- **Fini les fenêtres de console qui clignotent par-dessus ce que vous regardiez.** Arrêter une
+  exécution, fermer l'application, une exécution qui dépasse son délai, couper le tunnel et chaque
+  vérification d'un processus périmé appelaient `taskkill` ou `tasklist`, et Windows attribue une
+  fenêtre de console à un programme console lancé par une application fenêtrée, sauf si on lui dit
+  le contraire. Les appels qui démarrent un agent le disaient toujours ; pas ceux de ménage autour
+  d'eux.
+
+- **Un seul bouton à côté de la boîte, et c'est celui qu'il faut sur le moment.** Envoyer quand rien
+  ne tourne, arrêter pendant qu'un agent répond — les deux ne s'entassent plus par-dessus le texte
+  que tu écris. Rien n'a changé en dessous : Entrée envoie toujours et, pendant que l'agent
+  travaille, met toujours en file ce que tu écris pour la fin du tour — ce que la boîte vide te dit
+  maintenant, à la place d'un second bouton.
+- **La question d'un agent prend la place de la boîte.** Elle vivait dans la bulle de l'exécution :
+  utile tant que tu la regardes, inutile dès que tu as fait défiler — et pire, ce que tu écrivais
+  dans la boîte avec une question ouverte lançait une nouvelle exécution et laissait l'agent
+  attendre une réponse qui n'arriverait jamais. La question se tient maintenant là où tu allais
+  écrire, avec ses options en boutons et de la place pour ta propre réponse ; s'il y en a plusieurs
+  en attente, elle le dit, et elles viennent une par une. « Écrire autre chose » te rend la boîte
+  sans rien répondre.
+- **Le panneau de notifications se ferme quand tu cliques ailleurs.** Il pend de la barre de titre,
+  qui est la zone par laquelle on déplace la fenêtre : un clic là est pris par le système pour
+  déplacer la fenêtre et n'atteint jamais la couche qui ferme le popover.
+- **Les terminaux appartiennent à leur projet.** Tu en ouvrais un dans un projet, tu passais à un
+  autre et tu voyais toujours les onglets du premier — c'est aussi pourquoi un terminal semblait
+  s'ouvrir dans le mauvais dossier : c'était celui d'un autre projet, dans son propre dossier.
+  Chaque projet montre les siens maintenant, et se souvient duquel il s'agissait. Supprimer un
+  projet laisse toujours ses shells en vie, comme avant — l'un d'eux est peut-être en train de faire
+  quelque chose — et ils réapparaissent sur l'écran d'accueil, là où va un terminal sans projet.
+
 ## 0.8.0 — 2026-09-08
 
 ### Nouveau

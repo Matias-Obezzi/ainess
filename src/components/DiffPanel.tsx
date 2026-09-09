@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useAppStore, selectProject } from "@/store";
-import { readDiff, DiffMode } from "@/lib/git-diff";
+import { readDiff, readRunDiff, DiffMode } from "@/lib/git-diff";
 import { parseUnifiedDiff, DiffFile, diffTotals } from "@/lib/diff";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GitCompare, Loader2, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function DiffPanel() {
+export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } = {}) {
   const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
@@ -29,8 +30,52 @@ export function DiffPanel() {
   const isRepo = repoState?.isRepo;
 
   const generation = useRef(0);
+
+  const applyDiffResult = (res: { available: boolean; text: string; truncated: boolean; untracked: string[] }) => {
+    setAvailable(res.available);
+    if (res.available) {
+      const parsedFiles = parseUnifiedDiff(res.text);
+      setFiles(parsedFiles);
+      setUntracked(res.untracked);
+      setTruncated(res.truncated);
+      
+      setCollapsedPaths(prev => {
+        const next = new Set(prev);
+        for (const f of parsedFiles) {
+          const lines = f.hunks.reduce((acc, h) => acc + h.lines.length, 0);
+          if (lines > 400 && !next.has(f.path)) {
+            next.add(f.path);
+          }
+        }
+        return next;
+      });
+    } else {
+      setFiles([]);
+      setUntracked([]);
+      setTruncated(false);
+    }
+  };
   
   const load = () => {
+    if (run) {
+      if (!run.cwd || !run.baseSha) {
+        setFiles([]);
+        setUntracked([]);
+        setTruncated(false);
+        setAvailable(false);
+        return;
+      }
+      
+      setLoading(true);
+      const gen = ++generation.current;
+      readRunDiff(run.cwd, run.baseSha).then(res => {
+        if (generation.current !== gen) return;
+        setLoading(false);
+        applyDiffResult(res);
+      });
+      return;
+    }
+
     if (!currentProjectId || !workspaceDir || isRepo === false) {
       setFiles([]);
       setUntracked([]);
@@ -44,35 +89,14 @@ export function DiffPanel() {
     readDiff(workspaceDir, mode).then(res => {
       if (generation.current !== gen) return;
       setLoading(false);
-      setAvailable(res.available);
-      if (res.available) {
-        const parsedFiles = parseUnifiedDiff(res.text);
-        setFiles(parsedFiles);
-        setUntracked(res.untracked);
-        setTruncated(res.truncated);
-        
-        setCollapsedPaths(prev => {
-          const next = new Set(prev);
-          for (const f of parsedFiles) {
-            const lines = f.hunks.reduce((acc, h) => acc + h.lines.length, 0);
-            if (lines > 400 && !next.has(f.path)) {
-              next.add(f.path);
-            }
-          }
-          return next;
-        });
-      } else {
-        setFiles([]);
-        setUntracked([]);
-        setTruncated(false);
-      }
+      applyDiffResult(res);
     });
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProjectId, workspaceDir, mode, fetchedAt]);
+  }, [currentProjectId, workspaceDir, mode, fetchedAt, run?.cwd, run?.baseSha]);
 
   const toggleCollapsed = (path: string) => {
     setCollapsedPaths(prev => {
@@ -85,7 +109,21 @@ export function DiffPanel() {
 
   const totals = useMemo(() => diffTotals(files), [files]);
 
-  if (isRepo === false || !available) {
+  // A run with nothing to compare against, and one whose diff git refused to give: both are the
+  // same thing to read — there is no before. Telling someone their project is not a repository
+  // because one old run predates `baseSha` would be answering a question nobody asked.
+  if (run && (!run.baseSha || !available)) {
+    return (
+      <div className="flex h-full flex-col">
+        <EmptyState
+          icon={GitCompare}
+          title={t("diff.noBase")}
+        />
+      </div>
+    );
+  }
+
+  if (!available || isRepo === false) {
     return (
       <div className="flex h-full flex-col">
         <EmptyState
@@ -102,16 +140,22 @@ export function DiffPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border p-2">
-        <Select value={mode} onValueChange={(v) => setMode(v as DiffMode)}>
-          <SelectTrigger className="h-8 w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="working">{t("diff.mode.working")}</SelectItem>
-            <SelectItem value="staged">{t("diff.mode.staged")}</SelectItem>
-            <SelectItem value="head">{t("diff.mode.head")}</SelectItem>
-          </SelectContent>
-        </Select>
+        {run ? (
+          <Badge variant="outline" className="text-xs font-normal">
+            {t("diff.scopeTask")}
+          </Badge>
+        ) : (
+          <Select value={mode} onValueChange={(v) => setMode(v as DiffMode)}>
+            <SelectTrigger className="h-8 w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="working">{t("diff.mode.working")}</SelectItem>
+              <SelectItem value="staged">{t("diff.mode.staged")}</SelectItem>
+              <SelectItem value="head">{t("diff.mode.head")}</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
         <div className="flex items-center gap-3 text-xs">
           {!isEmpty && (

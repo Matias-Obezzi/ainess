@@ -3,12 +3,14 @@ import { CommMessage } from "@/types";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { kindLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
-import { RunDetailDialog } from "./RunDetailDialog";
+import { MessageDetailDialog } from "./MessageDetailDialog";
 import { ErrorMessage } from "./ErrorMessage";
+import { Markdown } from "@/components/shell/Markdown";
 
 export const MessageItem = memo(function MessageItem({ message }: { message: CommMessage }) {
   const t = useT();
@@ -29,33 +31,64 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
   const isMono = message.kind === "tool" || message.kind === "stderr";
   const isDelegation = message.kind === "delegation";
 
-  const [runDetailOpen, setRunDetailOpen] = useState(false);
+  /**
+   * What an agent wrote, rendered the way it meant it.
+   *
+   * Only what is prose. A tool line is a machine's, and markdown would read
+   * `src/lib/__tests__/x.ts` as an instruction to make part of it bold — the same for stderr, and
+   * for what the user typed, which is shown back as it was typed, like the chat does.
+   */
+  const isProse = message.kind === "text"
+    || message.kind === "delegation"
+    || message.kind === "result"
+    || message.kind === "note";
+
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
     <>
       <div 
-        className={cn("flex flex-col gap-1 p-3 text-sm border-b border-border", isDelegation && "border-l-4")}
+        className={cn("flex flex-col gap-1 p-3 text-sm border-b border-border min-w-0", isDelegation && "border-l-4")}
         style={isDelegation ? { borderLeftColor: toColor } : undefined}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fromColor }} />
-          <span className="font-semibold">{fromName}</span>
+        {/*
+          The dock is narrow and two agent names, a time, a badge and a button do not fit in it by
+          right. Everything that must keep its size says so; the names are what gives, because a
+          name cut short still tells you who, and a row that cannot shrink pushes the panel wider
+          than the space it has.
+        */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: fromColor }} />
+          <span className="font-semibold truncate">{fromName}</span>
           {message.toAgentId && (
             <>
-              <span className="text-muted-foreground">→</span>
-              <span className="font-semibold">{toName}</span>
+              <span className="text-muted-foreground shrink-0">→</span>
+              <span className="font-semibold truncate">{toName}</span>
             </>
           )}
-          <span className="text-xs text-muted-foreground ml-auto">{timeStr}</span>
-          <Badge variant="outline">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
-          {message.runId && (
-            <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-muted-foreground" onClick={() => setRunDetailOpen(true)}>
-              <FileText className="h-3.5 w-3.5" />
-            </Button>
-          )}
+          <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeStr}</span>
+          <Badge variant="outline" className="shrink-0">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 ml-1 text-muted-foreground"
+                aria-label={t("messageDetail.viewRaw")}
+                onClick={() => setDetailOpen(true)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("messageDetail.viewRaw")}
+            </TooltipContent>
+          </Tooltip>
         </div>
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
+        ) : isProse ? (
+          <Markdown text={message.text} className="mt-1" />
         ) : (
           <div
             className={cn(
@@ -69,10 +102,10 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
           </div>
         )}
       </div>
-      <RunDetailDialog
-        runId={message.runId || null}
-        open={runDetailOpen}
-        onOpenChange={setRunDetailOpen}
+      <MessageDetailDialog
+        message={message}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
       />
     </>
   );

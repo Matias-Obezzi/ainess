@@ -16,6 +16,7 @@ import { McpSection, McpSectionActions, McpSectionProvider } from "@/components/
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
 import { RemoteSection } from "@/components/settings/RemoteSection";
+import { MessagingSection } from "@/components/settings/MessagingSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { useT } from "@/i18n/useT";
@@ -57,6 +58,7 @@ const SECTION_UI: Record<SettingsSection, SectionUI> = {
   hooks:       { component: HooksSection,     actions: HooksSectionActions,    provider: HooksSectionProvider },
   context:     { component: ContextSection,   actions: ContextSectionActions,  provider: ContextSectionProvider },
   remote:      { component: RemoteSection },
+  messaging:   { component: MessagingSection },
   diagnostics: { component: DiagnosticsSection },
   about:       { component: AboutSection },
 };

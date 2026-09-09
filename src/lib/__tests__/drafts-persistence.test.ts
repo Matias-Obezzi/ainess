@@ -39,7 +39,7 @@ describe("drafts persistence", () => {
 
     // Now localStorage should have been written
     expect(setItemSpy).toHaveBeenCalledTimes(1);
-    expect(setItemSpy).toHaveBeenCalledWith("ais.drafts", JSON.stringify({ "test-key": "hello" }));
+    expect(setItemSpy).toHaveBeenCalledWith("ainess.drafts", JSON.stringify({ "test-key": "hello" }));
   });
 
   it("writes latest value when timer fires without resetting timer", () => {
@@ -58,7 +58,7 @@ describe("drafts persistence", () => {
     vi.advanceTimersByTime(50); // total 400ms
     
     expect(setItemSpy).toHaveBeenCalledTimes(1);
-    expect(setItemSpy).toHaveBeenCalledWith("ais.drafts", JSON.stringify({ "test-key": "hello 3" }));
+    expect(setItemSpy).toHaveBeenCalledWith("ainess.drafts", JSON.stringify({ "test-key": "hello 3" }));
   });
 
   it("writes latest value correctly with 10 fast keystrokes", () => {
@@ -73,7 +73,7 @@ describe("drafts persistence", () => {
     vi.advanceTimersByTime(400);
     
     expect(setItemSpy).toHaveBeenCalledTimes(1);
-    expect(setItemSpy).toHaveBeenCalledWith("ais.drafts", JSON.stringify({ "test-key": "keystroke 10" }));
+    expect(setItemSpy).toHaveBeenCalledWith("ainess.drafts", JSON.stringify({ "test-key": "keystroke 10" }));
   });
 
   it("flushes pending saves on window close (or manually)", () => {
@@ -87,7 +87,7 @@ describe("drafts persistence", () => {
     flushStringMapSaves();
 
     expect(setItemSpy).toHaveBeenCalledTimes(1);
-    expect(setItemSpy).toHaveBeenCalledWith("ais.drafts", JSON.stringify({ "test-key": "pending-save" }));
+    expect(setItemSpy).toHaveBeenCalledWith("ainess.drafts", JSON.stringify({ "test-key": "pending-save" }));
     
     // Timer firing later should not write again or throw
     vi.advanceTimersByTime(400);

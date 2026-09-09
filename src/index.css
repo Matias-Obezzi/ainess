@@ -179,7 +179,7 @@
 
 /* A project with agents working: its dot breathes instead of wearing a count, which read as
    something waiting for you. Slow on purpose — it says "busy", not "come here". */
-@keyframes ais-breathe {
+@keyframes ainess-breathe {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.85); }
 }
@@ -201,7 +201,7 @@
 }
 
 @layer utilities {
-  .animate-breathe { animation: ais-breathe 2.4s ease-in-out infinite; }
+  .animate-breathe { animation: ainess-breathe 2.4s ease-in-out infinite; }
   /* Someone who asked for less movement gets none. */
   @media (prefers-reduced-motion: reduce) {
     .animate-breathe { animation: none; }

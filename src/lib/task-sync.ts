@@ -9,6 +9,8 @@ import { truncate } from "@/lib/format";
 import type { Run, Task } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { parseReviewVerdict } from "@/lib/review";
+import { emitHookEvent } from "@/lib/hooks";
+import type { ParsedTaskOp } from "@/lib/providers";
 
 /** Title of a task: its first meaningful line, without markdown decoration. */
 function titleFrom(text: string): string {
@@ -171,6 +173,21 @@ export function taskOnRunFinished(run: Run): void {
             status: "needs-you", 
             detail: [reviewedTask.detail, translateNow("review.changes", { output: run.output })].filter(Boolean).join("\n\n") 
           });
+          const project = store.config.projects.find(p => p.id === run.projectId);
+          const agent = (project?.agents ?? []).find(a => a.id === run.agentId);
+          const rootRun = store.runs[run.rootRunId];
+          const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
+          const ctx = {
+            project,
+            agent,
+            runId: run.id,
+            round: run.round,
+            prompt: run.prompt,
+            output: run.output,
+            taskPrompt,
+            error: "",
+          };
+          void emitHookEvent("review.changes", { task: reviewedTask.title }, ctx);
         }
       }
       return;
@@ -197,4 +214,71 @@ export function taskOnRootFinished(projectId: string, rootRunId: string, failed:
       detail: failed && error ? [task.detail, `Error: ${error}`].filter(Boolean).join("\n\n") : task.detail,
     });
   });
+}
+
+/**
+ * Applies task operations emitted by an agent while working (e.g. updating its own card status/detail
+ * or creating a new backlog card for out-of-scope work).
+ *
+ * The status written here reflects work in progress — e.g. saying "needs-you" when stuck.
+ * When the run finishes, `taskOnRunFinished` still moves the card to in-review or ready as usual.
+ */
+export function applyTaskOps(run: Run, ops: ParsedTaskOp[]): ParsedTaskOp[] {
+  const applied: ParsedTaskOp[] = [];
+  guard(() => {
+    const store = useAppStore.getState();
+    for (const op of ops) {
+      if (op.kind === "update") {
+        const task = findByRun(run.projectId, run.id);
+        if (!task) continue;
+        const patch: Partial<Task> = {};
+        if (op.status) {
+          patch.status = op.status;
+        }
+        if (op.detail) {
+          patch.detail = [task.detail, op.detail].filter(Boolean).join("\n\n");
+        }
+        if (Object.keys(patch).length > 0) {
+          store.updateTask(task.id, patch);
+          applied.push(op);
+        }
+      } else if (op.kind === "create") {
+        const agentName = selectProjectAgents(useAppStore.getState(), run.projectId).find(a => a.id === run.agentId)?.name ?? run.agentId;
+        const attribution = translateNow("task.proposedBy", { agent: agentName });
+        const detail = [attribution, op.detail].filter(Boolean).join("\n\n");
+        store.addTask(run.projectId, {
+          title: op.title,
+          detail,
+          status: "backlog",
+          priority: op.priority,
+          dependsOn: [],
+        });
+        applied.push(op);
+      }
+    }
+  });
+  return applied;
+}
+
+
+/**
+ * The card the run about to start is going to continue — looked up before that run exists.
+ *
+ * A card points at the run that was working on it, and every continuation (another round, a
+ * question that got answered, a retry on a different model) is a *new* run with a new id. So the
+ * card of the run being started is the one an earlier run of the same lineage is holding: same
+ * agent, same root. A first run has none, which is right — its card is opened once it is under way.
+ *
+ * Two cards of the same agent under the same root, and it answers with nothing: naming the wrong
+ * card in an agent's own prompt is worse than not naming one.
+ */
+export function cardForNextRun(opts: { projectId: string; agentId: string; rootRunId?: string }): Task | undefined {
+  if (!opts.rootRunId) return undefined;
+  const runs = useAppStore.getState().runs;
+  const hits = tasksOf(opts.projectId).filter(task => {
+    if (task.archived || !task.runId) return false;
+    const run = runs[task.runId];
+    return !!run && run.rootRunId === opts.rootRunId && run.agentId === opts.agentId;
+  });
+  return hits.length === 1 ? hits[0] : undefined;
 }

@@ -2,6 +2,149 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.9.0 — 2026-09-08
+
+### Neu
+
+- **Ein Ausgabenlimit pro Projekt, und die Warnung, bevor es aufgebraucht ist.** Die Nutzungsansicht
+  konnte immer sagen, was ein Projekt gekostet hat. Aufhalten konnte sie es nicht. Ein Projekt nimmt
+  jetzt ein Tageslimit, ein Monatslimit oder beides — und du legst fest, was beim Erreichen passiert:
+  warnen, oder keine neuen Läufe mehr starten lassen. Die Warnung kommt bei 80 %, einmal am Tag und
+  nicht einmal pro Lauf, und die Nutzungsansicht zeichnet den Balken gegen das Limit, das dem Bruch am
+  nächsten ist. Die Zahlen sind weiterhin nur das, was die jeweilige CLI tatsächlich gemeldet hat: Ein
+  Anbieter, der nichts meldet, zählt nichts — und die Ansicht sagt das, statt zu schätzen.
+
+- **Ein Hook kann dir über Telegram Bescheid geben, und es gibt drei weitere Momente, von denen es
+  sich zu erfahren lohnt.** Die beiden anderen Chat-Aktionen verlangen einen Webhook, den man erst
+  auf einem Server anlegen muss; diese nutzt den Bot, der in „Nachrichten" schon eingerichtet ist —
+  „wenn eine Aufgabe fertig ist, sag mir Bescheid" ist damit ein Eintrag in einer Liste. Du kannst
+  einen Chat benennen oder das Feld leer lassen für alle Chats der Liste — und nur die der Liste,
+  denn ein Hook darf nicht die Hintertür daran vorbei sein. Mitgekommen sind drei neue Ereignisse:
+  ein Agent hat etwas gefragt und wartet, eine Review hat Änderungen verlangt, und einem Agenten ist
+  das Kontingent ausgegangen.
+
+- **Die Palette durchsucht, was gesagt wurde, nicht nur, wie die Dinge heißen.** Sie fand Projekte,
+  Aufgaben, Chats und Agenten am Namen — was man am selben Tag braucht. Zwei Wochen später erinnert
+  man sich aber an einen Satz, nicht an einen Titel. Drei Zeichen genügen, und die Nachrichten aus
+  dem Projekt-Feed und aus jedem Chat kommen mit zurück, die neuesten zuerst, jede mit den gesuchten
+  Wörtern mitten in der Zeile statt mit dem, womit die Nachricht zufällig anfing. Akzente und
+  Groß- und Kleinschreibung spielen keine Rolle, und der Zeilenumbruch zwischen den zwei Wörtern
+  auch nicht.
+
+- **Das Diff eines Laufs, nicht das des ganzen Projekts.** Das Diff-Panel zeigt den Arbeitsbaum des
+  Projekts — das beantwortet „was ist in diesem Repository los" und nie „was hat diese Aufgabe
+  angefasst". Jeder Lauf merkt sich jetzt, wo er lief (im Projekt-Workspace oder im eigenen Worktree
+  des Agenten) und auf welchem Commit er startete. Die Detailansicht eines Laufs zeigt damit, was
+  sich seit seinem Start bewegt hat. Ältere Läufe wissen beides nicht und sagen das, statt zu
+  raten.
+
+- **Ein Agent kann seine eigene Karte bewegen und eine für das öffnen, was ihm unterwegs
+  auffällt.** Das Board lief nur in eine Richtung: Der Planer las es und verteilte die Arbeit, und
+  wer sie erledigte, sah nicht einmal die eigene Karte — geschweige denn, dass er sagen konnte, er
+  hänge fest. Jetzt kann jeder Agent während der Arbeit einen `task`-Block hinterlassen: der eine
+  bewegt seine Karte und hängt eine Zeile Detail an, der andere legt im Backlog eine nicht
+  zugewiesene Karte für etwas an, das ihm begegnet ist und nicht zu ihm gehört. Es landet auf dem
+  Board, während der Lauf noch läuft, nicht erst am Ende, und die Backlog-Karte nennt den
+  Vorschlagenden. Eine Karte zu schließen bleibt nicht Sache des Agenten.
+
+- **Die App antwortet in einem Chat, den du ohnehin offen hast.** In den Einstellungen gibt es einen
+  Bereich Messaging: du fügst ein Bot-Token von @BotFather auf Telegram ein, schaltest es an und
+  schreibst dem Bot — alles, was du sagst, startet eine Aufgabe, `/status` sagt, wer arbeitet und was
+  auf dich wartet, `/approve` und `/answer` erledigen, was dich braucht, `/stop` stoppt. Dabei wird
+  nichts geöffnet: die App fragt von sich aus nach, also kein Tunnel, kein Port, keine Adresse, die
+  jemand finden könnte. Nur die Chats auf der Liste dürfen Befehle geben, eine leere Liste erlaubt
+  niemandem etwas, und ein Fremder bekommt gar keine Antwort — seine Id taucht in den Einstellungen
+  mit einem Knopf zum Erlauben auf, und so findest du auch deine eigene. Was die Glocke erreicht,
+  erreicht auch den Chat, und was auf dich wartet, sagt dir, was du zurückschreiben sollst.
+
+### Behoben
+
+- **Zwei Chats mit demselben Agenten sind wieder zwei Gespräche.** Ein Agent hatte genau ein Fach
+  für seine Provider-Sitzung, und darin lag jeweils das Gespräch, das zuletzt gesprochen hatte. Du
+  öffnest einen zweiten Chat mit einem Agenten, mit dem du schon sprichst, gehst zurück zum ersten —
+  und er antwortet dir mit dem Kontext des anderen. Zudem überschrieb ein Chat die Sitzung, die
+  seine eigenen Aufgaben benutzten. Jetzt übergibt ein Chat die Sitzung, die ihm gehört, statt in
+  jenes Fach zu greifen, legt das vom Provider Gemeldete zu dem Chat, zu dem es gehört, und ein Chat
+  ohne eigene Sitzung fängt neu an, statt sich eine zu borgen. Eine Frage, die in einem Chat
+  gestellt wurde, wird auch dort beantwortet.
+
+- **Alle Arten im Kommunikationsfilter abzuschalten leert jetzt die Ansicht.** Was du einem Agenten
+  schickst, war ausgenommen: Es wurde gezeigt, ganz gleich was der Filter sagte, und es stand nicht
+  einmal auf der Liste der Arten — es ließ sich also gar nicht abschalten. Die Schaltfläche las sich
+  als „Typen (0/8)", während das Panel weiter Dinge zeigte. Jetzt sind es zehn Arten, deine beiden
+  darunter, und aus heißt aus. Und wenn es der Filter war, der die Ansicht geleert hat, sagt sie
+  das, statt zu behaupten, es habe keine Aktivität gegeben.
+
+- **Der Kommunikationsbereich liest, was ein Agent geschrieben hat, so wie er es meinte.** Seine
+  Zeilen zeigten rohes Markdown — die Sternchen, die Backticks, die Rauten —, während derselbe Text
+  überall sonst in der App richtig dargestellt wurde. Jetzt wird Fließtext gerendert: was ein Agent
+  gesagt hat, was er delegiert hat, womit er zurückkam, und seine Notizen. Werkzeugzeilen und
+  stderr bleiben genau so, wie sie kamen, denn ein Pfad wie `src/lib/__tests__/x.ts` ist keine
+  Anweisung, die Hälfte davon fett zu setzen — und was du getippt hast, wird so gezeigt, wie du es
+  getippt hast, wie im Chat auch.
+
+- **Der Typenfilter bleibt offen, während du ihn benutzt, und sprengt das Panel nicht mehr.** Einen
+  Typ auszuwählen schloss das Menü; den Feed auf zwei Typen einzugrenzen hieß, es fünfmal zu öffnen.
+  Und die Schaltfläche, die es öffnet, heißt „Typen", bis du etwas abwählst, danach „Typen (7/8)" —
+  eine längere Beschriftung, für die in dieser Zeile nichts schrumpfen durfte, sodass das ganze
+  Panel breiter wurde als das Dock, in dem es sitzt. Jetzt gibt die Zeile nach, und die jeder
+  Nachricht ebenso, wo zwei Agentennamen, eine Uhrzeit, ein Etikett und eine Schaltfläche denselben
+  Streit um denselben schmalen Platz führten.
+
+- **Wer eine Nachricht roh sehen will, bekommt diese Nachricht.** Die Schaltfläche in einer Zeile
+  des Kommunikationsbereichs öffnete den ganzen Lauf — jede Zeile stdout, die die Sitzung
+  hervorgebracht hatte. Das fragt niemand, der auf eine einzelne Delegation klickt. Jetzt zeigt sie
+  diese Nachricht: von wem an wen, wann, der vollständige Text und, bei einem Werkzeugaufruf, das
+  Werkzeug, seine Eingabe und der Fehler, an dem es scheiterte — mit einer Schaltfläche, um alles zu
+  kopieren. Der ganze Lauf ist weiterhin da, einen Klick tiefer, wo er hingehört. Die Schaltfläche
+  hat außerdem einen Tooltip und erscheint bei jeder Nachricht, nicht nur bei denen mit einem Lauf
+  dahinter.
+
+- **Das Fenster zu ziehen friert nicht mehr ein und springt nicht mehr.** Ein externes Programm
+  auszuführen — das `git status`, das jede Minute aktualisiert, ein `git diff`, eine
+  `--version`-Abfrage — hielt den Thread fest, der die Fensternachrichten pumpt, bis das Programm
+  fertig war. Windows zieht ein Fenster mit einer modalen Schleife auf genau diesem Thread; ein Zug,
+  der zufällig auf so einen Aufruf traf, blieb stehen und sprang dann dorthin, wo der Zeiger
+  inzwischen war. Diese Befehle laufen jetzt außerhalb dieses Threads, ebenso das Lesen und
+  Schreiben von Konfiguration und Logs. Die Konfiguration wird zudem daneben geschrieben und
+  darübergelegt, damit niemand je eine halbe liest.
+
+- **Die App heißt jetzt überall ainess, die ausführbare Datei eingeschlossen.** Früher hieß sie
+  `ais`, und der alte Name überlebte dort, wo niemand hinsieht: im Rust-Crate und damit in der
+  Binärdatei — die installierte App war `ainess\ais.exe`, und genau das zeigten Task-Manager,
+  Firewall-Abfrage und Autostart-Liste. Die Kommandozeile zog mit: Aus `ais run` und `ais serve`
+  werden `ainess run` und `ainess serve`, und `ais` gibt es nicht mehr. Nichts von dem, was du
+  hattest, geht verloren: Entwürfe, Panel-Breiten und das Token des Telefons liegen unter neuen
+  Namen und lesen weiterhin die alten.
+
+- **Keine Konsolenfenster mehr, die über dem aufblitzen, was du gerade ansiehst.** Einen Lauf
+  stoppen, die App schließen, ein Lauf mit Zeitüberschreitung, den Tunnel beenden und jede Prüfung
+  auf einen alten Prozess griffen zu `taskkill` oder `tasklist` — und Windows gibt einem
+  Konsolenprogramm, das eine Fensteranwendung startet, ein Konsolenfenster, sofern man nichts
+  anderes sagt. Die Aufrufe, die einen Agenten starten, sagten es immer; die Aufräumaufrufe
+  drumherum nicht.
+
+- **Ein Knopf neben der Box, und zwar der, den der Moment verlangt.** Senden, wenn nichts läuft;
+  stoppen, während ein Agent antwortet — die beiden drängeln sich nicht mehr über dem Text, den du
+  schreibst. Darunter hat sich nichts geändert: Enter sendet weiterhin und stellt, während der Agent
+  arbeitet, weiterhin in die Warteschlange für das Ende des Zugs — was jetzt die leere Box sagt
+  statt eines zweiten Knopfes.
+- **Die Frage eines Agenten nimmt den Platz der Box ein.** Sie lebte in der Blase des Laufs: nützlich,
+  solange du hinschaust, nutzlos, sobald du weitergescrollt hast — und schlimmer, was du bei offener
+  Frage in die Box geschrieben hast, startete einen neuen Lauf und ließ den Agenten auf eine Antwort
+  warten, die nie kam. Jetzt steht die Frage dort, wo du schreiben wolltest, mit ihren Optionen als
+  Schaltflächen und Platz für eine eigene Antwort; warten mehrere, sagt sie es, und sie kommen
+  nacheinander. "Etwas anderes schreiben" gibt dir die Box zurück, ohne zu antworten.
+- **Das Benachrichtigungs-Panel schließt sich, wenn du daneben klickst.** Es hängt an der
+  Titelleiste, die die Zone zum Ziehen des Fensters ist: ein Klick dort nimmt das System, um das
+  Fenster zu bewegen, und er erreicht nie die Schicht, die ein Popover schließt.
+- **Terminals gehören zu ihrem Projekt.** Du hast eines in einem Projekt geöffnet, bist zu einem
+  anderen gegangen und hast weiter die Tabs des ersten gesehen — deshalb schien ein Terminal auch im
+  falschen Ordner zu öffnen: es war das eines anderen Projekts, in dessen eigenem Ordner. Jetzt
+  zeigt jedes Projekt seine eigenen und merkt sich, welches vorn war. Ein gelöschtes Projekt lässt
+  seine Shells weiterlaufen, wie bisher — eine davon steckt vielleicht mitten in etwas — und sie
+  tauchen auf der Startseite auf, wo ein Terminal ohne Projekt hingehört.
+
 ## 0.8.0 — 2026-09-08
 
 ### Neu

@@ -37,4 +37,15 @@ describe("mergeConfig", () => {
     const mem = cfg({ projects: [p("a")] });
     expect(mergeConfig(null, mem, null)).toBe(mem);
   });
+
+  it("merges messaging configurations", () => {
+    const base = cfg({});
+    const mem = cfg({ messaging: { telegram: { enabled: true, token: "a", allowedChatIds: [], projectId: null } } });
+    const disk = cfg({ messaging: { discord: { enabled: false, token: "b", allowedChatIds: [], projectId: null } } } as any);
+    const out = mergeConfig(disk, mem, base);
+    expect(out.messaging).toEqual({
+      telegram: { enabled: true, token: "a", allowedChatIds: [], projectId: null },
+      discord: { enabled: false, token: "b", allowedChatIds: [], projectId: null },
+    });
+  });
 });

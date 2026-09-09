@@ -4,6 +4,137 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.9.0 — 2026-09-08
+
+### Added
+
+- **A spending limit per project, and the warning before you burn through it.** The usage screen
+  could always tell you what a project had cost. It could not stop it. A project now takes a daily
+  limit, a monthly one, or both, and says what to do when one is reached: warn, or refuse to start
+  new runs. The warning arrives at 80% — once a day, not once per run — and the usage screen draws
+  the bar against whichever limit is closest to breaking. The figures are still only what each CLI
+  actually reported: a provider that reports nothing adds nothing, and the screen says so rather
+  than estimating.
+
+- **A hook can tell you on Telegram, and there are three more moments worth being told about.** The
+  other two chat actions want a webhook you have to go and create on a server; this one reuses the
+  bot you already set up in Messaging, so "when a task finishes, tell me" is one dropdown. Name a
+  chat or leave it blank for every chat on the list — and only chats on the list, because a hook is
+  not allowed to be the back door around it. Three new events came with it: an agent asked something
+  and is waiting, a review asked for changes, and an agent ran out of quota.
+
+- **The palette searches what was said, not just what things are called.** It found projects,
+  tasks, chats and agents by name, which is what you need on the day — and two weeks later what you
+  remember is a phrase, not a title. Type three characters and the messages of the project's feed
+  and of every chat come back too, newest first, each one shown with the words you searched for in
+  the middle of the line rather than whatever the message happened to start with. Accents and case
+  do not matter, and neither does the line break the writer put between your two words.
+
+- **The diff of one run, not of the whole project.** The diff panel shows the project's working
+  tree, which answers "what is going on in this repo" and never "what did this task touch". Every
+  run now remembers where it ran — the project workspace, or the agent's own worktree — and which
+  commit it opened on, so a run's detail shows what moved in it since it started. Runs from before
+  this remember neither, and say so instead of guessing.
+
+- **An agent can move its own card, and open one for what it found on the way.** The board only
+  went one way: the planner read it and handed work out, and whoever was doing the work could not
+  see their own card, let alone say they were stuck. Now any agent can leave a `task` block while it
+  works — one kind moves its card and adds a line of detail to it, the other opens an unassigned
+  card in the backlog for something it ran into that is not its job. It lands on the board while the
+  run is still going rather than when it ends, and the backlog card says who proposed it. Closing a
+  card is still not the agent's call.
+
+- **The app answers to a chat you already have open.** Settings has a Mensajería section: paste a
+  bot token from Telegram's @BotFather, turn it on, and write to the bot — anything you say starts a
+  task, `/status` says who is working and what is waiting, `/approve` and `/answer` settle what needs
+  you, `/stop` stops. Nothing is exposed by this: the app is the one that goes out and asks, so
+  there is no tunnel, no port and no address for anyone to find. Only the chat ids on the list may
+  give orders, an empty list allows nobody, and a stranger gets no reply at all — their id shows up
+  in the settings with a button to allow it, which is also how you find out your own. Whatever
+  reaches the bell reaches the chat too, and the ones that are waiting for you say what to write
+  back.
+
+### Fixed
+
+- **Two chats with the same agent are two conversations again.** An agent had one slot for its
+  provider session, and that slot held whichever conversation had spoken last. Open a second chat
+  with an agent you are already talking to, go back to the first, and it answered you with the
+  other one's context — and a chat also overwrote the session its own tasks were using. A chat now
+  hands over the session it owns instead of reading that slot, keeps what the provider reports with
+  the chat it belongs to, and a chat that has none of its own starts fresh rather than borrowing.
+  Answering a question asked inside a chat stays inside it too.
+
+- **Turning off every kind in the communication filter now empties the view.** What you send to an
+  agent was exempt: it was shown whatever the filter said, and it was not even on the list of kinds,
+  so there was no way to turn it off. The button read "Kinds (0/8)" while the panel kept showing
+  things. There are ten kinds now, your own two among them, and off means off. When the filter is
+  what emptied the view, it says so instead of claiming there has been no activity.
+
+- **The communication panel reads what an agent wrote the way it meant it.** Its rows showed raw
+  markdown — the asterisks, the backticks, the hashes — while the same text rendered properly
+  everywhere else in the app. Now prose renders: what an agent said, what it delegated, what it came
+  back with, and its notes. Tool lines and stderr stay exactly as they came, because a path like
+  `src/lib/__tests__/x.ts` is not an instruction to embolden half of it, and what you typed is shown
+  back as you typed it, the way the chat already does.
+
+- **The kinds filter stays open while you use it, and no longer breaks the panel.** Picking one
+  kind closed the menu, so narrowing the feed to two of them meant opening it five times. And the
+  button that opens it says "Kinds" until you deselect something and "Kinds (7/8)" after — a longer
+  label that nothing in that row was allowed to shrink for, so the whole panel was pushed wider than
+  the dock it lives in. The row gives now, and so does each message's own row, where two agent
+  names, a time, a badge and a button had the same argument about the same narrow space.
+
+- **Asking to see one message raw shows that message.** The button on a row of the communication
+  panel opened the whole run — every line of stdout the session had produced — which is not what
+  anybody clicking on one delegation is asking for. It now shows that message: who to whom, when,
+  the text in full, and for a tool call the tool, its input and the error it failed with, with a
+  button to copy the lot. The full run is still one click further in, where it belonged. The button
+  also has a tooltip now, and shows up on every message rather than only the ones with a run
+  behind them.
+
+- **Dragging the window no longer freezes and jumps.** Running an external program — the `git
+  status` that refreshes every minute, a `git diff`, a `--version` probe — held the thread that
+  pumps window messages until the program was done. Windows drags a window with a modal loop on
+  that same thread, so a drag that happened to land on one of those stopped dead and then jumped to
+  wherever the pointer had got to. Those commands, and reading and writing config and logs, now run
+  off that thread. Saving the config also writes beside the file and renames over it, so nobody
+  ever reads half of one.
+
+- **The app is called ainess everywhere now, executable included.** It used to be called `ais`, and
+  the old name survived where nobody looks: the Rust crate, and therefore the binary — the installed
+  app was `ainess\ais.exe`, which is what Task Manager, the firewall prompt and the startup list
+  showed you. The command line moved with it: `ais run` and `ais serve` are now `ainess run` and
+  `ainess serve`, and `ais` no longer exists. Nothing you had is lost — drafts, panel widths and the
+  phone's token are stored under new names and still read the old ones.
+
+- **No more console windows blinking over what you were looking at.** Stopping a run, closing the
+  app, a run that timed out, stopping the tunnel and every check for a stale process all reached for
+  `taskkill` or `tasklist`, and Windows hands a console window to a console program started from a
+  GUI app unless it is told not to. The spawns that run an agent always said so; the housekeeping
+  around them did not.
+
+- **One button by the box, and it is whatever the moment calls for.** Send while nothing is running,
+  stop while an agent is answering — the two no longer sit side by side over the text you are
+  writing. Nothing changed underneath: Enter still sends, and while an agent works it still queues
+  what you write for when the turn ends, which is now what the empty box tells you instead of a
+  second button.
+- **A question from an agent takes the place of the box.** It used to sit inside the run's bubble,
+  which is fine while you are looking at it and useless once you have scrolled past — and worse,
+  anything typed into the box while a question was open started a new run and left the agent waiting
+  for an answer that was never coming. The question now stands where you would have written, with
+  its options as buttons and room for an answer of your own; with more than one waiting it says so
+  and they come one at a time. "Escribir otra cosa" gives the box back without answering.
+
+- **The notifications panel closes when you click away from it.** It hangs from the title bar, which
+  is the window's drag region: a click there is taken by the system to move the window and never
+  reaches the layer that dismisses a popover.
+- **Terminals belong to their project.** Open one in a project, walk to another, and you were still
+  looking at the first project's tabs — which is also why a terminal seemed to open in the wrong
+  folder: it was another project's shell, sitting in its own folder. Each project shows its own tabs
+  now, and remembers which one it was on. Deleting a project still leaves its shells running, as it
+  always did — one of them may be in the middle of something — and they turn up on the home screen,
+  which is where a terminal with no project belongs.
+
 ## 0.8.0 — 2026-09-08
 
 ### Added

@@ -162,6 +162,22 @@ fn build_command(opts: &SpawnOptions) -> Command {
     cmd
 }
 
+/// A `taskkill` or a `tasklist` that does not flash a console window on the user's screen.
+///
+/// `Stdio::null()` silences the output but says nothing about the window: a console program
+/// started from a GUI app gets one allocated for it unless `CREATE_NO_WINDOW` says otherwise. The
+/// spawns that run an agent always passed the flag; the housekeeping ones around them did not, so
+/// every stop, every close and every stale-pid check blinked a black rectangle over whatever the
+/// user was looking at.
+#[cfg(windows)]
+fn windowless(program: &str) -> Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut cmd = Command::new(program);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
 fn pump<R: std::io::Read + Send + 'static>(
     app: AppHandle,
     run_id: String,
@@ -304,7 +320,7 @@ pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, S
             {
                 // Kill the whole tree: node-based CLIs spawn helpers.
                 let pid = c.id();
-                let _ = Command::new("taskkill")
+                let _ = windowless("taskkill")
                     .args(["/PID", &pid.to_string(), "/T", "/F"])
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
@@ -328,7 +344,7 @@ pub fn shutdown(app: &tauri::AppHandle) {
         #[cfg(windows)]
         {
             let pid = c.id();
-            let _ = Command::new("taskkill")
+            let _ = windowless("taskkill")
                 .args(["/PID", &pid.to_string(), "/T", "/F"])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -386,7 +402,13 @@ fn should_reap(process_name: &str, process_start_secs: u64, image: &str, started
 /// as likely to be `node.exe` as an agent is. So a process is only killed when its image *and* its
 /// start time still match the run that recorded it. Returns the ids of the runs actually killed.
 #[tauri::command]
-pub fn reap_orphans(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
+pub async fn reap_orphans(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || reap_orphans_blocking(app, orphans))
+        .await
+        .unwrap_or_default()
+}
+
+fn reap_orphans_blocking(app: AppHandle, orphans: Vec<Orphan>) -> Vec<String> {
     if orphans.is_empty() {
         return Vec::new();
     }
@@ -433,8 +455,25 @@ pub struct ExecResult {
     pub stderr: String,
 }
 
+/// This command must remain `async`: a synchronous Tauri command runs on the main thread that
+/// pumps window messages. Because `exec_capture` blocks waiting for child process execution
+/// (up to 60 seconds), running synchronously freezes the message pump. On Windows, window dragging
+/// uses a modal loop on that main thread, so blocking it causes dragging to freeze and jump.
+/// Offloading execution to `spawn_blocking` keeps the main thread responsive.
 #[tauri::command]
-pub fn exec_capture(
+pub async fn exec_capture(
+    app: AppHandle,
+    program: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    timeout_secs: Option<u64>,
+) -> Result<ExecResult, String> {
+    tauri::async_runtime::spawn_blocking(move || exec_capture_blocking(app, program, args, cwd, timeout_secs))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn exec_capture_blocking(
     app: AppHandle,
     program: String,
     args: Vec<String>,
@@ -525,7 +564,7 @@ fn wait_with_timeout(child: Child, timeout: Duration) -> Result<Output, WaitErro
 fn kill_tree(pid: u32) {
     #[cfg(windows)]
     {
-        let _ = Command::new("taskkill")
+        let _ = windowless("taskkill")
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())

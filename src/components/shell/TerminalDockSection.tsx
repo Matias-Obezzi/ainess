@@ -23,8 +23,14 @@ import { useT } from "@/i18n/useT";
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
 export function TerminalDockSection() {
   const t = useT();
-  const terminals = useAppStore(state => state.terminals);
-  const activeTerminalId = useAppStore(state => state.activeTerminalId);
+  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const allTerminals = useAppStore(state => state.terminals);
+  const terminals = allTerminals.filter(t => t.projectId === currentProjectId);
+  const activeTerminalIds = useAppStore(state => state.activeTerminalIds);
+  // What this project was last looking at, when it is still open: a remembered tab can be gone (a
+  // restart drops every shell) and a bar with tabs and nothing in front shows an empty panel.
+  const remembered = activeTerminalIds[currentProjectId ?? "home"] ?? null;
+  const activeTerminalId = terminals.some(t => t.id === remembered) ? remembered : (terminals[0]?.id ?? null);
   const shells = useAppStore(state => state.shells);
   const openTerminal = useAppStore(state => state.openTerminal);
   const closeTerminal = useAppStore(state => state.closeTerminal);
@@ -34,31 +40,36 @@ export function TerminalDockSection() {
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
   /** The tab being carried, and where it would land in the bar. */
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [draft, setDraft] = useState("");
-  const renameInputRef = useRef<HTMLInputElement | null>(null);
+
+  const atLimit = allTerminals.length >= MAX_TERMINALS;
+  const noShells = shells.length === 0;
 
   useEffect(() => {
-    if (renamingId) renameInputRef.current?.select();
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.select();
+    }
   }, [renamingId]);
 
-  // Terminals outlive their view on purpose, so the one thing that must tear them down is the
-  // tab going away: drop every live session that no longer has a tab.
+  // Terminals outlive their view on purpose, so the one thing that must tear them down is the tab
+  // going away: drop every live session that no longer has a tab. It reads the whole list, never
+  // the ones this project is showing — walking into another project would kill the shells of the
+  // one you just left.
   useEffect(() => {
-    const open = new Set(terminals.map(t => t.id));
+    const open = new Set(allTerminals.map(t => t.id));
     for (const id of liveTerminalIds()) {
       if (!open.has(id)) disposeTerminal(id);
     }
-  }, [terminals]);
-
-  const atLimit = terminals.length >= MAX_TERMINALS;
-  const noShells = shells.length === 0;
+  }, [allTerminals]);
 
   const startRename = (id: string, title: string) => {
-    setRenamingId(id);
     setDraft(title);
+    setRenamingId(id);
   };
 
   const commitRename = () => {

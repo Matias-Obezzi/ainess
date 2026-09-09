@@ -2,7 +2,7 @@ import type { AppConfig } from "@/types";
 
 /**
  * Collections in the config whose items carry an `id`. They are merged item by item so two
- * processes (the app, `ais run`, `ais serve`) can each add or remove entries without one wiping
+ * processes (the app, `ainess run`, `ainess serve`) can each add or remove entries without one wiping
  * the other's work when it saves its own copy of the file.
  */
 const ID_COLLECTIONS = ["projects", "formations", "chats", "skills", "mcpServers", "hooks", "presets"] as const;
@@ -32,6 +32,9 @@ export function mergeConfig(disk: AppConfig | null, mem: AppConfig, base: AppCon
     const m = (mem[key] as Item[] | undefined) ?? [];
     const b = (base?.[key] as Item[] | undefined) ?? m;
     (out as Record<IdCollection, Item[]>)[key] = mergeCollection(d, m, b);
+  }
+  if (disk.messaging || mem.messaging) {
+    out.messaging = { ...disk.messaging, ...mem.messaging };
   }
   return out;
 }

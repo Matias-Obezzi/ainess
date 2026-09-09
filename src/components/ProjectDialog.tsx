@@ -12,7 +12,7 @@ import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
-import { AgentConfig, Project } from "@/types";
+import { AgentConfig, Project, Budget } from "@/types";
 import { toast } from "@/components/ui/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -36,6 +36,9 @@ export function ProjectDialog({
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
+  const [dailyUsd, setDailyUsd] = useState("");
+  const [monthlyUsd, setMonthlyUsd] = useState("");
+  const [onReached, setOnReached] = useState<"warn" | "block">("warn");
   const store = useAppStore();
   const formations = useAppStore(state => state.config.formations);
   const defaultFormationId = useAppStore(state => state.config.defaultFormationId);
@@ -47,6 +50,9 @@ export function ProjectDialog({
       setName(editProject.name);
       setWorkspaceDir(editProject.workspaceDir);
       setColor(editProject.color || "#4f8cff");
+      setDailyUsd(editProject.budget?.dailyUsd ? String(editProject.budget.dailyUsd) : "");
+      setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
+      setOnReached(editProject.budget?.onReached ?? "warn");
       // The team of an existing project is managed from its hierarchy, not from here.
       setFormationId(NO_FORMATION);
       setAgents([]);
@@ -55,6 +61,9 @@ export function ProjectDialog({
     setName("");
     setWorkspaceDir("");
     setColor("#4f8cff");
+    setDailyUsd("");
+    setMonthlyUsd("");
+    setOnReached("warn");
     const initial = defaultFormationId && formations.some(f => f.id === defaultFormationId) ? defaultFormationId : NO_FORMATION;
     setFormationId(initial);
     const formation = formations.find(f => f.id === initial);
@@ -104,11 +113,21 @@ export function ProjectDialog({
   const handleSave = () => {
     if (!name || !workspaceDir) return;
 
+    const dUsd = parseFloat(dailyUsd);
+    const mUsd = parseFloat(monthlyUsd);
+    const hasDaily = !Number.isNaN(dUsd) && dUsd > 0;
+    const hasMonthly = !Number.isNaN(mUsd) && mUsd > 0;
+    const budget: Budget | undefined = (hasDaily || hasMonthly) ? {
+      dailyUsd: hasDaily ? dUsd : undefined,
+      monthlyUsd: hasMonthly ? mUsd : undefined,
+      onReached,
+    } : undefined;
+
     if (editProject) {
-      store.updateProject(editProject.id, { name, workspaceDir, color });
+      store.updateProject(editProject.id, { name, workspaceDir, color, budget });
     } else {
       // What the user left in the list is the team, formation or not.
-      store.addProject({ name, workspaceDir, color, agents });
+      store.addProject({ name, workspaceDir, color, agents, budget });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
@@ -141,6 +160,48 @@ export function ProjectDialog({
             <div className="grid gap-2">
               <Label>{t("projectDialog.color")}</Label>
               <Input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-16 h-8 p-1" />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>{t("budget.title")}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
+                  <span className="text-xs text-muted-foreground">{t("budget.daily")}</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={dailyUsd}
+                    onChange={e => setDailyUsd(e.target.value)}
+                    placeholder={t("budget.none")}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-xs text-muted-foreground">{t("budget.monthly")}</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={monthlyUsd}
+                    onChange={e => setMonthlyUsd(e.target.value)}
+                    placeholder={t("budget.none")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>{t("budget.onReached")}</Label>
+              <Select value={onReached} onValueChange={(v: "warn" | "block") => setOnReached(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="warn">{t("budget.onReached.warn")}</SelectItem>
+                  <SelectItem value="block">{t("budget.onReached.block")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("budget.hint")}</p>
             </div>
 
             {/* Only when creating: an existing project's team is managed from its hierarchy. */}

@@ -96,7 +96,13 @@ pub fn logs_dir(app: AppHandle) -> Result<String, String> {
 /// Opens the logs folder in the file manager. Done here (instead of from the front with the
 /// opener plugin) so the plugin's scope does not need to be widened.
 #[tauri::command]
-pub fn open_logs_dir(app: AppHandle) -> Result<(), String> {
+pub async fn open_logs_dir(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || open_logs_dir_blocking(app))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn open_logs_dir_blocking(app: AppHandle) -> Result<(), String> {
     let dir = logs_path(&app)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     tauri_plugin_opener::open_path(dir.to_string_lossy().to_string(), None::<&str>).map_err(|e| e.to_string())
@@ -104,7 +110,13 @@ pub fn open_logs_dir(app: AppHandle) -> Result<(), String> {
 
 /// Last `limit` lines of today's log file (falls back to an empty list).
 #[tauri::command]
-pub fn read_recent_logs(app: AppHandle, limit: usize) -> Vec<String> {
+pub async fn read_recent_logs(app: AppHandle, limit: usize) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || read_recent_logs_blocking(app, limit))
+        .await
+        .unwrap_or_default()
+}
+
+fn read_recent_logs_blocking(app: AppHandle, limit: usize) -> Vec<String> {
     let Ok(dir) = logs_path(&app) else { return Vec::new() };
     let (date, _) = now_strings();
     let path = dir.join(format!("ainess-{date}.log"));

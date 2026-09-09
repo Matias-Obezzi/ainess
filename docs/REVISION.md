@@ -191,7 +191,7 @@ al usuario.
 
 ## D. Comunicación entre la app y los agentes
 
-### `[ ]` D1 · El tablero es de una sola vía para los hijos
+### `[x]` D1 · El tablero es de una sola vía para los hijos — *«An agent can move its own card»*
 
 **Qué pasa.** El planificador ve el tablero y puede mover una tarjeta nombrándola en la delegación;
 el implementador no ve ni la suya. No puede marcar avance, ni pedir revisión, ni dividirla.
@@ -199,7 +199,7 @@ el implementador no ve ni la suya. No puede marcar avance, ni pedir revisión, n
 **Propuesta.** Un bloque `task` para que el agente actualice su propia tarjeta (estado y detalle),
 y que su tarjeta viaje en su prompt.
 
-### `[ ]` D2 · Un agente no puede crear trabajo
+### `[x]` D2 · Un agente no puede crear trabajo — *«An agent can move its own card»*
 
 **Qué pasa.** Si un implementador encuentra algo que hay que hacer y no le corresponde, lo escribe
 en la prosa y se pierde. No hay forma de que abra una tarjeta en el backlog.
@@ -215,7 +215,7 @@ publica `BOARD.md` y `AGENTS.md` y nadie contesta.
 **Propuesta.** Que la app lea un `.ainess/INBOX.md` (o el comando `ais` equivalente) donde un agente
 deja pedidos para la app: crear tarjeta, avisar algo, pedir una revisión.
 
-### `[ ]` D4 · Los hooks no ven la mitad de lo que pasa
+### `[x]` D4 · Los hooks no ven la mitad de lo que pasa — *«A hook can tell you on Telegram»*
 
 **Qué pasa.** Hay eventos para corridas, tareas, delegaciones y aprobaciones, pero no para "un
 agente preguntó", "una revisión pidió cambios" o "un agente se quedó sin cuota".
@@ -226,7 +226,7 @@ agente preguntó", "una revisión pidió cambios" o "un agente se quedó sin cuo
 
 ## E. Features
 
-### `[ ]` E1 · El diff de una tarea, no sólo el del proyecto
+### `[x]` E1 · El diff de una tarea, no sólo el del proyecto — *«The diff of one run»*
 
 El panel nuevo muestra el árbol de trabajo entero. Falta poder ver qué tocó *esta* tarea, o *este*
 agente en su worktree: el diff acotado a lo que hizo una corrida.
@@ -246,7 +246,7 @@ PR o pasarle a alguien.
 Las órdenes guardadas son de a una. Encadenarlas ("planificá → implementá → revisá → PR") las
 convierte en recetas de verdad.
 
-### `[ ]` E5 · Buscar dentro de la conversación
+### `[x]` E5 · Buscar dentro de la conversación — *«The palette searches what was said»*
 
 La paleta busca proyectos, tareas, chats y agentes, pero no lo que se dijo. Lo que buscás a las dos
 semanas es una frase.
@@ -379,3 +379,76 @@ escribir.
 en verde, `npm run build:cli` bien. `cargo check` sigue fallando por una ruta vieja en
 `src-tauri/target` que apunta a `projectsis`: es de antes, no lo tocó nada de esta noche, y se
 arregla con `cargo clean`.
+
+### 8 de septiembre de 2026 — el tablero deja de ser de una sola vía
+
+**D1 y D2**, en un solo bloque: `task`. Un agente puede mover su propia tarjeta y sumarle una línea
+de detalle mientras trabaja, y puede abrir una tarjeta sin asignar en el backlog para algo que se
+cruzó y no le toca, con su nombre como quien la propuso. Se lee del texto mientras va llegando, no
+al final: avisar que te trabaste veinte minutos después de trabarte no sirve de nada.
+
+Lo que quedó deliberadamente fuera: cerrar una tarjeta. `done` y `backlog` se descartan en
+silencio — al final de la corrida el que mueve la tarjeta sigue siendo la app, y un agente que se
+autoaprueba el trabajo es exactamente lo que la columna de revisión existe para evitar.
+
+Sobre la tarjeta que viaja en el prompt: la corrida que arranca todavía no existe para nadie, así
+que la tarjeta se busca por la corrida anterior de la misma línea (mismo agente, misma raíz). Si un
+agente tiene dos tarjetas bajo la misma raíz no se nombra ninguna: decirle que su tarjeta es la
+equivocada es peor que no decirle nada.
+
+### 8 de septiembre de 2026 — el diff de una corrida
+
+**E1**. La corrida se acuerda de dos cosas que antes no guardaba: en qué directorio corrió (el
+workspace del proyecto o el worktree propio del agente) y en qué commit arrancó. Con eso el diff de
+la tarea es una resta, no una reconstrucción: no depende de que el agente haya listado bien sus
+archivos en el bloque `result`, ni de que haya commiteado.
+
+El panel es el mismo, con una prop. Sin `run` se comporta exactamente como antes; con `run` esconde
+el selector de modo, porque acotado a una corrida hay un solo diff posible. Las corridas viejas no
+tienen `baseSha` y lo dicen, en vez de mostrar un diff que no es el suyo.
+
+### 8 de septiembre de 2026 — buscar lo que se dijo
+
+**E5**. La paleta busca ahora en el feed del proyecto y en todos los chats, con un módulo puro
+(`src/lib/message-search.ts`) que no conoce el store ni React. El grupo va último a propósito: los
+otros seis son navegación —dónde ir— y este es memoria; el que escribe dos letras quiere lo primero.
+
+Dos cosas que no son obvias. El extracto se centra en el match, no arranca del principio del
+mensaje: un extracto que no muestra la palabra que buscaste no es un extracto. Y la paleta *lee* el
+feed en vez de suscribirse a él — el feed se reescribe con cada token que llega, y una paleta
+cerrada no tiene por qué volver a renderizarse, mucho menos volver a buscar, ochenta veces por
+segundo mientras un agente habla.
+
+### 8 de septiembre de 2026 — un hook que avisa por Telegram
+
+**D4** y una acción de hook nueva. Las otras dos acciones de chat piden un webhook que hay que ir a
+crear en un servidor; esta reusa el bot que ya está configurado en Mensajería, que es todo lo que
+hacía falta para que «cuando termine una tarea, avisame» sea elegir de una lista.
+
+La lista de chats autorizados sigue siendo la seguridad entera y un hook no la evita: `sendToChat`
+rechaza un chat que no está en la lista antes de mandar nada. El token no aparece en ningún log ni
+en ningún mensaje de error — `sanitizeBridgeError` lo borra, y también borra el `/bot<token>` de
+cualquier URL que se cuele en el texto de un error. Hay un test que lo verifica.
+
+Los tres eventos que faltaban: una pregunta que espera, una revisión que pidió cambios, y una cuota
+agotada. El de cuota se emite en el lugar donde pasa, no adentro de `quotaNote`: algo que dispara un
+hook no puede vivir dentro de una función cuyo trabajo es armar un string.
+
+### 8 de septiembre de 2026 — tope de gasto por proyecto
+
+No estaba en la revisión: salió del uso. `usage.ts` ya sabía cuánto costó cada corrida, así que lo
+que faltaba era el límite y el aviso **antes** de quemarlo. Un tope diario, uno mensual o los dos, y
+qué hacer al llegar: avisar, o no dejar arrancar corridas nuevas.
+
+`budget.ts` es puro y no conoce el store. El corte va en `startRun`, temprano, antes de preparar un
+worktree que puede tardar minutos. El aviso del 80% se manda una vez por día por proyecto, no una
+por corrida: un aviso que aparece cuarenta veces deja de ser un aviso.
+
+Un efecto colateral que era una bomba de tiempo: `startRun` ya podía devolver `undefined`, pero el
+que delegaba contaba igual al hijo como arrancado y se quedaba esperando una corrida que no existía,
+con la tarjeta en «trabajando» para siempre. Con un tope que frena, ese camino pasó de teórico a
+cotidiano. Ahora un hijo que no arrancó no se cuenta, y se dice en el feed.
+
+De paso, cuatro tests del hook de Telegram esperaban con un `setTimeout` de 60 ms a que un hook —que
+se dispara sin await— terminara. Alcanzaba en una máquina ociosa y no con 93 archivos de test
+corriendo a la vez: pasaron a esperar la condición, no el reloj.

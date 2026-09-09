@@ -92,8 +92,11 @@ export default function App() {
         case "terminals": {
           state.toggleTermPanel();
           // Opening an empty dock straight into its empty state helps nobody.
-          if (!state.termPanelOpen && useAppStore.getState().terminals.length === 0) {
-            useAppStore.getState().openTerminal();
+          const store = useAppStore.getState();
+          const currentProjectId = store.currentProjectId;
+          const projectTerminals = store.terminals.filter(t => t.projectId === currentProjectId);
+          if (!state.termPanelOpen && projectTerminals.length === 0) {
+            store.openTerminal();
           }
           break;
         }

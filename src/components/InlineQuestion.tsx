@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 
-export function InlineQuestion({ questionId }: { questionId: string }) {
+export function InlineQuestion({ questionId, size = "sm" }: { questionId: string; size?: "sm" | "md" }) {
   const t = useT();
   const question = useAppStore(state => state.questions[questionId]);
   const answerQuestion = useAppStore(state => state.answerQuestion);
@@ -21,9 +21,11 @@ export function InlineQuestion({ questionId }: { questionId: string }) {
 
   if (!question) return null;
 
+  const isMd = size === "md";
+
   if (question.status === "answered") {
     return (
-      <p className="mt-1.5 text-xs text-muted-foreground">
+      <p className={cn("text-muted-foreground", isMd ? "mt-2 text-sm" : "mt-1.5 text-xs")}>
         {t("questions.answered", { answer: (question.answer ?? []).join(", ") })}
       </p>
     );
@@ -41,24 +43,25 @@ export function InlineQuestion({ questionId }: { questionId: string }) {
   const answer = [...chosen, ...(other.trim() ? [other.trim()] : [])];
 
   return (
-    <div className="mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+    <div className={cn("rounded-md border border-amber-500/40 bg-amber-500/5", isMd ? "mt-2 p-3" : "mt-1.5 p-2")}>
       <div className="flex items-start gap-1.5">
-        <MessageCircleQuestion className="mt-[1px] h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-        <p className="min-w-0 flex-1 text-xs font-medium">{question.question}</p>
+        <MessageCircleQuestion className={cn("shrink-0 text-amber-600 dark:text-amber-400", isMd ? "mt-[2px] h-4 w-4" : "mt-[1px] h-3.5 w-3.5")} />
+        <p className={cn("min-w-0 flex-1 font-medium", isMd ? "text-sm" : "text-xs")}>{question.question}</p>
       </div>
 
-      <div className="mt-2 flex min-w-0 flex-col items-stretch gap-1.5 sm:flex-row sm:flex-wrap sm:items-start">
+      <div className={cn("flex min-w-0 flex-col items-stretch sm:flex-row sm:flex-wrap sm:items-start", isMd ? "mt-3 gap-2" : "mt-2 gap-1.5")}>
         {question.options.map(option => (
           <Button
             key={option}
             type="button"
-            size="sm"
+            size={isMd ? "default" : "sm"}
             variant={chosen.includes(option) ? "default" : "outline"}
             // An option can be a whole sentence ("Actualizar la documentación al estado real"), and
             // a button that does not wrap took it off the side of the phone.
             className={cn(
-              "h-auto min-h-7 max-w-full whitespace-normal break-words py-1 text-left text-xs leading-snug",
-              question.multiple && "min-w-16",
+              "h-auto max-w-full whitespace-normal break-words text-left leading-snug",
+              isMd ? "min-h-9 py-2 text-sm" : "min-h-7 py-1 text-xs",
+              question.multiple && (isMd ? "min-w-20" : "min-w-16"),
             )}
             onClick={() => pick(option)}
           >
@@ -68,10 +71,10 @@ export function InlineQuestion({ questionId }: { questionId: string }) {
       </div>
 
       {(question.allowOther || question.multiple) && (
-        <div className="mt-1.5 flex gap-1.5">
+        <div className={cn("flex", isMd ? "mt-2 gap-2" : "mt-1.5 gap-1.5")}>
           {question.allowOther && (
             <Input
-              className="h-7 flex-1 text-xs"
+              className={cn("flex-1", isMd ? "h-9 text-sm" : "h-7 text-xs")}
               placeholder={t("questions.otherPlaceholder")}
               value={other}
               onChange={e => setOther(e.target.value)}
@@ -82,12 +85,12 @@ export function InlineQuestion({ questionId }: { questionId: string }) {
           )}
           <Button
             type="button"
-            size="sm"
-            className="h-7 text-xs"
+            size={isMd ? "default" : "sm"}
+            className={isMd ? "h-9 text-sm" : "h-7 text-xs"}
             disabled={answer.length === 0}
             onClick={() => answerQuestion(questionId, answer)}
           >
-            <Send className="mr-1 h-3.5 w-3.5" /> {t("questions.send")}
+            <Send className={cn("mr-1", isMd ? "h-4 w-4" : "h-3.5 w-3.5")} /> {t("questions.send")}
           </Button>
         </div>
       )}

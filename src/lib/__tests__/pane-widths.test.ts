@@ -31,7 +31,7 @@ describe("pane widths", () => {
 
     useAppStore.getState().setPaneWidth("dock", 512);
     expect(useAppStore.getState().paneWidths.dock).toBe(512);
-    expect(JSON.parse(store.get("ais.ui") ?? "{}").paneWidths.dock).toBe(512);
+    expect(JSON.parse(store.get("ainess.ui") ?? "{}").paneWidths.dock).toBe(512);
     vi.unstubAllGlobals();
   });
 });

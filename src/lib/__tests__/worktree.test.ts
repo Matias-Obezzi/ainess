@@ -23,18 +23,18 @@ describe("worktreeSlug", () => {
 
 describe("worktreePath", () => {
   it("is a sibling folder of the workspace", () => {
-    expect(worktreePath("C:\\Users\\m\\projects\\ais", "Antigravity")).toBe("C:\\Users\\m\\projects\\ais-wt-antigravity");
-    expect(worktreePath("/home/m/projects/ais", "Antigravity")).toBe("/home/m/projects/ais-wt-antigravity");
+    expect(worktreePath("C:\\Users\\m\\projects\\ainess", "Antigravity")).toBe("C:\\Users\\m\\projects\\ainess-wt-antigravity");
+    expect(worktreePath("/home/m/projects/ainess", "Antigravity")).toBe("/home/m/projects/ainess-wt-antigravity");
   });
 
   it("handles accents and spaces in the agent name", () => {
-    expect(worktreePath("/home/m/ais", "Revisión Final")).toBe("/home/m/ais-wt-revision-final");
-    expect(worktreePath("/home/m/ais", "Ñandú")).toBe("/home/m/ais-wt-nandu");
+    expect(worktreePath("/home/m/ainess", "Revisión Final")).toBe("/home/m/ainess-wt-revision-final");
+    expect(worktreePath("/home/m/ainess", "Ñandú")).toBe("/home/m/ainess-wt-nandu");
   });
 
   it("ignores a trailing separator on the workspace", () => {
-    expect(worktreePath("/home/m/ais/", "Claude")).toBe("/home/m/ais-wt-claude");
-    expect(worktreePath("C:\\Users\\m\\ais\\", "Claude")).toBe("C:\\Users\\m\\ais-wt-claude");
+    expect(worktreePath("/home/m/ainess/", "Claude")).toBe("/home/m/ainess-wt-claude");
+    expect(worktreePath("C:\\Users\\m\\ainess\\", "Claude")).toBe("C:\\Users\\m\\ainess-wt-claude");
   });
 
   it("keeps two agents apart", () => {
@@ -57,24 +57,24 @@ describe("worktreeBranch", () => {
 describe("parseWorktreeList", () => {
   it("reads several worktrees, one of them detached", () => {
     const stdout = [
-      "worktree C:/Users/m/projects/ais",
+      "worktree C:/Users/m/projects/ainess",
       "HEAD 6ab9c2f1111111111111111111111111111111111",
       "branch refs/heads/main",
       "",
-      "worktree C:/Users/m/projects/ais-wt-antigravity",
+      "worktree C:/Users/m/projects/ainess-wt-antigravity",
       "HEAD 7f0513a2222222222222222222222222222222222",
       "branch refs/heads/ainess/antigravity",
       "",
-      "worktree C:/Users/m/projects/ais-wt-suelto",
+      "worktree C:/Users/m/projects/ainess-wt-suelto",
       "HEAD 041523b3333333333333333333333333333333333",
       "detached",
       "",
     ].join("\n");
 
     expect(parseWorktreeList(stdout)).toEqual([
-      { path: "C:/Users/m/projects/ais", branch: "main" },
-      { path: "C:/Users/m/projects/ais-wt-antigravity", branch: "ainess/antigravity" },
-      { path: "C:/Users/m/projects/ais-wt-suelto", branch: null },
+      { path: "C:/Users/m/projects/ainess", branch: "main" },
+      { path: "C:/Users/m/projects/ainess-wt-antigravity", branch: "ainess/antigravity" },
+      { path: "C:/Users/m/projects/ainess-wt-suelto", branch: null },
     ]);
   });
 
@@ -93,8 +93,8 @@ describe("parseWorktreeList", () => {
 
 describe("samePath", () => {
   it("ignores separators, case and a trailing slash", () => {
-    expect(samePath("C:/Users/m/ais-wt-x", "C:\\Users\\m\\ais-wt-x")).toBe(true);
-    expect(samePath("C:/Users/M/AIS-WT-X", "C:/users/m/ais-wt-x/")).toBe(true);
+    expect(samePath("C:/Users/m/ainess-wt-x", "C:\\Users\\m\\ainess-wt-x")).toBe(true);
+    expect(samePath("C:/Users/M/AINESS-WT-X", "C:/users/m/ainess-wt-x/")).toBe(true);
     expect(samePath("/home/m/a", "/home/m/b")).toBe(false);
   });
 });
