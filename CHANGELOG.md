@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **You can write code in the box.** Enter sent, so a code block meant remembering Shift+Enter on
+  every line and hoping you had closed the fence — the box showed markdown as flat text and gave no
+  sign either way. Now the keys know where the caret is: on a line that is only an opening fence,
+  Enter writes the closing one and leaves you between them; inside a fence Enter is a line break
+  that carries your indentation and Tab is two spaces; and the fenced part of what you are writing
+  has a background so you can see where it starts and ends. Ctrl+Enter sends from inside a fence,
+  since plain Enter no longer can.
+
 - **A spending limit per project, and the warning before you burn through it.** The usage screen
   could always tell you what a project had cost. It could not stop it. A project now takes a daily
   limit, a monthly one, or both, and says what to do when one is reached: warn, or refuse to start

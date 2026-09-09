@@ -6,6 +6,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Vous pouvez écrire du code dans la boîte.** Entrée envoyait : un bloc de code voulait dire
+  penser à Maj+Entrée à chaque ligne et espérer avoir fermé la clôture — la boîte affichait le
+  markdown en texte brut et n'en donnait aucun signe. Les touches savent désormais où est le
+  curseur : sur une ligne qui n'est qu'une ouverture de clôture, Entrée écrit la fermeture et vous
+  laisse au milieu ; à l'intérieur, Entrée est un saut de ligne qui reprend votre indentation et
+  Tab fait deux espaces ; et la partie clôturée de ce que vous écrivez reçoit un fond, pour voir où
+  elle commence et où elle finit. Ctrl+Entrée envoie depuis l'intérieur, puisque Entrée seule ne le
+  peut plus.
+
 - **Un plafond de dépense par projet, et l'alerte avant de l'avoir brûlé.** L'écran d'utilisation a
   toujours su dire ce qu'un projet avait coûté. Il ne pouvait pas l'arrêter. Un projet accepte
   désormais un plafond journalier, un mensuel, ou les deux, et vous dites quoi faire quand il est

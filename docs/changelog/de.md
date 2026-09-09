@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Du kannst Code in das Feld schreiben.** Enter hat gesendet, also hieß ein Codeblock: in jeder
+  Zeile an Shift+Enter denken und hoffen, dass der Zaun geschlossen war — das Feld zeigte Markdown
+  als flachen Text und gab keinerlei Hinweis. Jetzt wissen die Tasten, wo der Cursor steht: In einer
+  Zeile, die nur eine öffnende Zaunzeile ist, schreibt Enter die schließende und setzt dich
+  dazwischen; innerhalb eines Zauns ist Enter ein Zeilenumbruch, der deine Einrückung mitnimmt, und
+  Tab sind zwei Leerzeichen; und der eingezäunte Teil dessen, was du schreibst, bekommt einen
+  Hintergrund, damit du siehst, wo er anfängt und aufhört. Ctrl+Enter sendet von innen, da Enter
+  allein es nicht mehr kann.
+
 - **Ein Ausgabenlimit pro Projekt, und die Warnung, bevor es aufgebraucht ist.** Die Nutzungsansicht
   konnte immer sagen, was ein Projekt gekostet hat. Aufhalten konnte sie es nicht. Ein Projekt nimmt
   jetzt ein Tageslimit, ein Monatslimit oder beides — und du legst fest, was beim Erreichen passiert:

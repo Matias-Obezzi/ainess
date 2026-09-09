@@ -6,6 +6,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Você pode escrever código na caixa.** O Enter enviava, então um bloco de código era lembrar do
+  Shift+Enter em cada linha e torcer para ter fechado a cerca — a caixa mostrava o markdown como
+  texto puro e não dava sinal nenhum. Agora as teclas sabem onde está o cursor: numa linha que é só
+  a abertura de uma cerca, o Enter escreve a de fechamento e deixa você no meio; dentro de uma cerca
+  o Enter quebra a linha mantendo a sua indentação e o Tab põe dois espaços; e a parte cercada do
+  que você está escrevendo ganha um fundo, para você ver onde começa e onde termina. O Ctrl+Enter
+  envia de dentro de uma cerca, já que o Enter sozinho não pode mais.
+
 - **Um teto de gasto por projeto, e o aviso antes de queimá-lo.** A tela de uso sempre soube dizer
   quanto um projeto tinha custado. O que ela não podia era freá-lo. Agora um projeto aceita um teto
   diário, um mensal, ou os dois, e você diz o que fazer quando ele é atingido: avisar, ou não deixar
