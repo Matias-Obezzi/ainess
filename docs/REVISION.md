@@ -191,7 +191,7 @@ al usuario.
 
 ## D. Comunicación entre la app y los agentes
 
-### `[ ]` D1 · El tablero es de una sola vía para los hijos
+### `[x]` D1 · El tablero es de una sola vía para los hijos — *«An agent can move its own card»*
 
 **Qué pasa.** El planificador ve el tablero y puede mover una tarjeta nombrándola en la delegación;
 el implementador no ve ni la suya. No puede marcar avance, ni pedir revisión, ni dividirla.
@@ -199,7 +199,7 @@ el implementador no ve ni la suya. No puede marcar avance, ni pedir revisión, n
 **Propuesta.** Un bloque `task` para que el agente actualice su propia tarjeta (estado y detalle),
 y que su tarjeta viaje en su prompt.
 
-### `[ ]` D2 · Un agente no puede crear trabajo
+### `[x]` D2 · Un agente no puede crear trabajo — *«An agent can move its own card»*
 
 **Qué pasa.** Si un implementador encuentra algo que hay que hacer y no le corresponde, lo escribe
 en la prosa y se pierde. No hay forma de que abra una tarjeta en el backlog.
@@ -379,3 +379,19 @@ escribir.
 en verde, `npm run build:cli` bien. `cargo check` sigue fallando por una ruta vieja en
 `src-tauri/target` que apunta a `projectsis`: es de antes, no lo tocó nada de esta noche, y se
 arregla con `cargo clean`.
+
+### 8 de septiembre de 2026 — el tablero deja de ser de una sola vía
+
+**D1 y D2**, en un solo bloque: `task`. Un agente puede mover su propia tarjeta y sumarle una línea
+de detalle mientras trabaja, y puede abrir una tarjeta sin asignar en el backlog para algo que se
+cruzó y no le toca, con su nombre como quien la propuso. Se lee del texto mientras va llegando, no
+al final: avisar que te trabaste veinte minutos después de trabarte no sirve de nada.
+
+Lo que quedó deliberadamente fuera: cerrar una tarjeta. `done` y `backlog` se descartan en
+silencio — al final de la corrida el que mueve la tarjeta sigue siendo la app, y un agente que se
+autoaprueba el trabajo es exactamente lo que la columna de revisión existe para evitar.
+
+Sobre la tarjeta que viaja en el prompt: la corrida que arranca todavía no existe para nadie, así
+que la tarjeta se busca por la corrida anterior de la misma línea (mismo agente, misma raíz). Si un
+agente tiene dos tarjetas bajo la misma raíz no se nombra ninguna: decirle que su tarjeta es la
+equivocada es peor que no decirle nada.

@@ -6,6 +6,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Un agent peut déplacer sa propre carte et en ouvrir une pour ce qu'il a trouvé en chemin.** Le
+  tableau n'allait que dans un sens : le planificateur le lisait et distribuait le travail, et celui
+  qui le faisait ne voyait même pas sa carte, encore moins de quoi dire qu'il était bloqué.
+  Désormais, tout agent peut laisser un bloc `task` pendant qu'il travaille — l'un déplace sa carte
+  et lui ajoute une ligne de détail, l'autre ouvre dans le backlog une carte non assignée pour
+  quelque chose qu'il a croisé et qui ne le concerne pas. Cela arrive sur le tableau pendant que
+  l'exécution continue, pas à la fin, et la carte du backlog dit qui l'a proposée. Fermer une carte
+  n'est toujours pas à l'agent de le décider.
+
 - **L'app te répond dans une conversation que tu as déjà ouverte.** Les réglages ont une section
   Messagerie : tu colles un jeton de bot d'@BotFather sur Telegram, tu l'actives et tu écris au bot —
   tout ce que tu dis lance une tâche, `/status` dit qui travaille et ce qui t'attend, `/approve` et

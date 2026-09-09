@@ -6,6 +6,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Um agente pode mover o próprio cartão e abrir um para o que encontrou pelo caminho.** O quadro
+  ia só num sentido: o planejador lia e distribuía, e quem fazia o trabalho não via nem o próprio
+  cartão, muito menos podia avisar que travou. Agora qualquer agente pode deixar um bloco `task`
+  enquanto trabalha — um move o seu cartão e acrescenta uma linha de detalhe, o outro abre um cartão
+  sem responsável no backlog para algo que apareceu e não é da sua conta. Aparece no quadro enquanto
+  a execução continua, não quando termina, e o cartão do backlog diz quem o propôs. Fechar um cartão
+  continua não sendo decisão do agente.
+
 - **O app responde num chat que você já tem aberto.** Em Configurações há uma seção Mensageria:
   você cola um token de bot do @BotFather no Telegram, liga e escreve para o bot — qualquer coisa
   que você disser começa uma tarefa, `/status` diz quem está trabalhando e o que espera por você,

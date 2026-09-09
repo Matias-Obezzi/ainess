@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **An agent can move its own card, and open one for what it found on the way.** The board only
+  went one way: the planner read it and handed work out, and whoever was doing the work could not
+  see their own card, let alone say they were stuck. Now any agent can leave a `task` block while it
+  works — one kind moves its card and adds a line of detail to it, the other opens an unassigned
+  card in the backlog for something it ran into that is not its job. It lands on the board while the
+  run is still going rather than when it ends, and the backlog card says who proposed it. Closing a
+  card is still not the agent's call.
+
 - **The app answers to a chat you already have open.** Settings has a Mensajería section: paste a
   bot token from Telegram's @BotFather, turn it on, and write to the bot — anything you say starts a
   task, `/status` says who is working and what is waiting, `/approve` and `/answer` settle what needs

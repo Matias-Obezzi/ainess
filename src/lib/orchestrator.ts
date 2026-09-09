@@ -1,7 +1,7 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, finalOutputFromLines } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -181,12 +181,18 @@ export function flushStream() {
     const run = current.runs[runId];
     if (!run) continue;
     const streamed = current.messages.find(m => m.id === `text-${runId}`);
-    if (streamed) emitNewNotes(run, streamed.text);
+    if (streamed) {
+      emitNewNotes(run, streamed.text);
+      applyNewTaskOps(run, streamed.text);
+    }
   }
 }
 
 /** How many `note` blocks of a run already reached the feed, so none is handed over twice. */
 const notesEmitted = new Map<string, number>();
+
+/** How many `task` blocks of a run already took effect on the board, so none is applied twice. */
+const taskOpsApplied = new Map<string, number>();
 
 /**
  * The `note` blocks of a run that have not been passed on yet.
@@ -204,6 +210,34 @@ function emitNewNotes(run: Run, text: string): void {
     addMessage({ projectId: run.projectId, fromAgentId: run.agentId, toAgentId, kind: "note", text: note, runId: run.id });
   }
   notesEmitted.set(run.id, notes.length);
+}
+
+function applyNewTaskOps(run: Run, text: string): void {
+  const ops = parseTaskOps(text);
+  const already = taskOpsApplied.get(run.id) ?? 0;
+  if (ops.length <= already) return;
+  const applied = taskSync.applyTaskOps(run, ops.slice(already));
+  taskOpsApplied.set(run.id, ops.length);
+  if (applied.length === 0) return;
+
+  const agent = selectAgent(useAppStore.getState(), run.agentId)?.name ?? run.agentId;
+  for (const op of applied) {
+    // A card that only gained a line of detail did not change state, and saying it moved to ""
+    // was the sentence that came out of pretending otherwise.
+    const text = op.kind === "create"
+      ? translateNow("task.opCreated", { agent, title: op.title })
+      : op.status
+        ? translateNow("task.opUpdated", { agent, status: translateNow(TASK_STATUS_KEY[op.status]) })
+        : translateNow("task.opNoted", { agent });
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: run.agentId,
+      toAgentId: "user",
+      kind: "system",
+      text,
+      runId: run.id,
+    });
+  }
 }
 
 function scheduleStreamFlush() {
@@ -316,6 +350,11 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     }
   }
 
+  // Not `taskForRun(runId)`: this run has not started, so nothing points at it yet. What the agent
+  // is coming back to is the card its previous run in this same lineage left behind.
+  const cardTask = taskSync.cardForNextRun({ projectId: opts.projectId, agentId: opts.agentId, rootRunId: opts.rootRunId });
+  const card = cardTask ? { id: cardTask.id, title: cardTask.title, status: cardTask.status } : undefined;
+
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
     // implementer told to do something by its planner and by the user reads the same prompt.
@@ -335,6 +374,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
     teammates: teammates.length > 0 ? teammates : undefined,
     canNote: opts.parentRunId !== null,
+    card,
   });
 
   const mcpServers = selectMcpFor(store, agent.id);
@@ -620,6 +660,8 @@ function onRunFinished(runId: string) {
     // whose block closed on the very last delta. What was handed over already is skipped.
     emitNewNotes(run, run.output);
     notesEmitted.delete(run.id);
+    applyNewTaskOps(run, run.output);
+    taskOpsApplied.delete(run.id);
     for (const key of toolFailures.keys()) {
       if (key.startsWith(`${run.id}:`)) toolFailures.delete(key);
     }

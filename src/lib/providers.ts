@@ -609,7 +609,7 @@ export function shortTaskId(id: string): string {
 const BOARD_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "in-review"];
 const BOARD_LIMIT = 30;
 
-const TASK_STATUS_KEY: Record<TaskStatus, string> = {
+export const TASK_STATUS_KEY: Record<TaskStatus, string> = {
   backlog: "task.status.backlog",
   working: "task.status.working",
   "needs-you": "task.status.needsYou",
@@ -727,6 +727,29 @@ function resultSection(): string {
   ].join("\n");
 }
 
+function taskSection(card?: { id: string; title: string; status: TaskStatus }): string {
+  const t = translateNow;
+  const lines = [
+    t("prompt.task.header"),
+    t("prompt.task.intro"),
+    "```task",
+    t("prompt.task.schemaUpdate"),
+    "```",
+    "```task",
+    t("prompt.task.schemaCreate"),
+    "```",
+  ];
+  if (card) {
+    lines.push(t("prompt.task.card", {
+      id: shortTaskId(card.id),
+      status: t(TASK_STATUS_KEY[card.status]),
+      title: card.title,
+    }));
+  }
+  lines.push(t("prompt.task.rules"));
+  return lines.join("\n");
+}
+
 /** The board, for the one agent it is written for: a planner with a team to hand it out to. */
 function boardFor(
   agent: AgentConfig,
@@ -743,7 +766,7 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus } }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -797,6 +820,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       if (extras.canNote) {
         parts.push(noteSection());
         parts.push(resultSection());
+        parts.push(taskSection(extras.card));
       }
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
@@ -892,6 +916,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   if (extras?.canNote) {
     prompt += (prompt ? "\n\n" : "") + noteSection();
     prompt += (prompt ? "\n\n" : "") + resultSection();
+    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card);
   }
 
   if (agent.systemPrompt) {
@@ -1043,3 +1068,64 @@ export function parseResult(text: string): ParsedResult | null {
     return null;
   }
 }
+
+export type ParsedTaskOp =
+  | { kind: "update"; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
+  | { kind: "create"; title: string; detail?: string; priority?: "low" | "normal" | "high" };
+
+const VALID_TASK_UPDATE_STATUSES = new Set(["working", "needs-you", "in-review", "ready"]);
+
+export function parseTaskOps(text: string): ParsedTaskOp[] {
+  const ops: ParsedTaskOp[] = [];
+  const regex = /```task[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      const obj = JSON.parse(match[1]);
+      let items: any[] = [];
+      if (Array.isArray(obj)) {
+        items = obj;
+      } else if (obj && typeof obj === "object") {
+        if (Array.isArray(obj.tasks)) {
+          items = obj.tasks;
+        } else {
+          items = [obj];
+        }
+      }
+
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+
+        if (typeof item.new === "string" && item.new.trim()) {
+          const title = item.new.trim();
+          const detail = typeof item.detail === "string" && item.detail.trim() ? item.detail.trim() : undefined;
+          const priority = item.priority === "low" || item.priority === "normal" || item.priority === "high"
+            ? item.priority
+            : undefined;
+          ops.push({
+            kind: "create",
+            title,
+            ...(detail ? { detail } : {}),
+            ...(priority ? { priority } : {}),
+          });
+        } else {
+          const validStatus = typeof item.status === "string" && VALID_TASK_UPDATE_STATUSES.has(item.status)
+            ? (item.status as "working" | "needs-you" | "in-review" | "ready")
+            : undefined;
+          const detail = typeof item.detail === "string" && item.detail.trim() ? item.detail.trim() : undefined;
+          if (validStatus || detail) {
+            ops.push({
+              kind: "update",
+              ...(validStatus ? { status: validStatus } : {}),
+              ...(detail ? { detail } : {}),
+            });
+          }
+        }
+      }
+    } catch {
+      // tolerant, ignore failures
+    }
+  }
+  return ops;
+}
+

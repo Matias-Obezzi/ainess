@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein Agent kann seine eigene Karte bewegen und eine für das öffnen, was ihm unterwegs
+  auffällt.** Das Board lief nur in eine Richtung: Der Planer las es und verteilte die Arbeit, und
+  wer sie erledigte, sah nicht einmal die eigene Karte — geschweige denn, dass er sagen konnte, er
+  hänge fest. Jetzt kann jeder Agent während der Arbeit einen `task`-Block hinterlassen: der eine
+  bewegt seine Karte und hängt eine Zeile Detail an, der andere legt im Backlog eine nicht
+  zugewiesene Karte für etwas an, das ihm begegnet ist und nicht zu ihm gehört. Es landet auf dem
+  Board, während der Lauf noch läuft, nicht erst am Ende, und die Backlog-Karte nennt den
+  Vorschlagenden. Eine Karte zu schließen bleibt nicht Sache des Agenten.
+
 - **Die App antwortet in einem Chat, den du ohnehin offen hast.** In den Einstellungen gibt es einen
   Bereich Messaging: du fügst ein Bot-Token von @BotFather auf Telegram ein, schaltest es an und
   schreibst dem Bot — alles, was du sagst, startet eine Aufgabe, `/status` sagt, wer arbeitet und was
