@@ -56,6 +56,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Home says each thing once.** It had become the screen for what needs you, but the old grid of
+  project cards was still underneath it, so an agent at work appeared three times: in the working
+  list, inside its project's card, and again in that card's counter. Every card also carried its own
+  Open, Edit and Delete buttons — a red one on each — for actions the card's own click and its
+  right-click menu already covered. Now the whole screen is one kind of row: what needs you, what is
+  working, and the projects, in that order. A project row shows one line of state and, only when
+  there is something, a small count of what is waiting and what is running. When nothing is waiting,
+  it says so in a line rather than leaving you to work it out.
+
 - **The suggested skills are written for the agent, and explained to you in your own language.**
   The catalogue behind "Suggested" was Spanish throughout: the names, the instructions an agent
   actually reads, and the one-line descriptions in the picker. The instructions are code — they go

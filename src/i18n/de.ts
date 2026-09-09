@@ -117,10 +117,7 @@ export const de: Dictionary = {
   "home.workingOnTask": "Arbeitet: {name} — {task}",
   "home.lastTask": "Letzte Aufgabe: {task}",
   "home.noActivity": "Noch keine Aktivität",
-  "home.activeTasks.one": "{n} aktive Aufgabe",
-  "home.activeTasks.other": "{n} aktive Aufgaben",
-  "home.savedRuns.one": "{n} gespeicherter Run",
-  "home.savedRuns.other": "{n} gespeicherte Runs",
+  "home.allClear": "Nichts wartet auf dich",
 
   // ---- Project screen ----
   "projectScreen.noProject.title": "Kein Projekt ausgewählt.",

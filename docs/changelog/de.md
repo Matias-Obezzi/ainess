@@ -59,6 +59,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Der Startbildschirm sagt jede Sache genau einmal.** Er war zum Bildschirm für das geworden, was
+  dich braucht — aber das alte Raster aus Projektkarten lag noch darunter. Ein arbeitender Agent
+  erschien dreimal: in der Liste der laufenden Arbeit, in der Karte seines Projekts und noch einmal
+  im Zähler derselben Karte. Jede Karte trug außerdem eigene Schaltflächen für Öffnen, Bearbeiten
+  und Löschen — eine rote auf jeder — für Aktionen, die der Klick auf die Karte und ihr
+  Kontextmenü längst abdeckten. Jetzt ist der ganze Bildschirm eine einzige Art von Zeile: was dich
+  braucht, was arbeitet, und die Projekte, in dieser Reihenfolge. Eine Projektzeile zeigt eine
+  Zeile Status und, nur wenn es etwas gibt, eine kleine Zahl für Wartendes und Laufendes. Wartet
+  nichts, sagt sie das in einer Zeile, statt es dich herleiten zu lassen.
+
 - **Die vorgeschlagenen Skills sind für den Agenten geschrieben und dir in deiner Sprache
   erklärt.** Der Katalog hinter „Vorschläge" war durchgehend spanisch: die Namen, die Anweisungen,
   die ein Agent tatsächlich liest, und die einzeiligen Beschreibungen in der Liste. Die Anweisungen

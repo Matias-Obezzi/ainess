@@ -55,6 +55,16 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **A tela inicial diz cada coisa uma só vez.** Ela tinha virado a tela do que precisa de você, mas
+  a grade antiga de cartões de projeto continuava embaixo, então um agente trabalhando aparecia três
+  vezes: na lista do que está trabalhando, dentro do cartão do seu projeto e de novo no contador
+  desse mesmo cartão. Cada cartão trazia ainda os seus próprios botões Abrir, Editar e Excluir — um
+  vermelho em cada um — para ações que o clique do cartão e o menu de contexto já cobriam. Agora a
+  tela inteira é um único tipo de linha: o que precisa de você, o que está trabalhando e os
+  projetos, nessa ordem. A linha de um projeto mostra uma única linha de estado e, só quando há
+  algo, uma contagem pequena do que espera e do que está rodando. Quando nada está esperando, ela
+  diz isso numa linha em vez de deixar você deduzir.
+
 - **As skills sugeridas são escritas para o agente e explicadas para você no seu idioma.** O
   catálogo por trás de "Sugeridas" estava todo em espanhol: os nomes, as instruções que o agente de
   fato lê e as descrições de uma linha da lista. As instruções são código — vão para o prompt de um

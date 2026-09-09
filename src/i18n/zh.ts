@@ -117,10 +117,7 @@ export const zh: Dictionary = {
   "home.workingOnTask": "工作中：{name} — {task}",
   "home.lastTask": "上一个任务：{task}",
   "home.noActivity": "还没有任何动态",
-  "home.activeTasks.one": "{n} 个进行中的任务",
-  "home.activeTasks.other": "{n} 个进行中的任务",
-  "home.savedRuns.one": "{n} 条已保存的运行记录",
-  "home.savedRuns.other": "{n} 条已保存的运行记录",
+  "home.allClear": "没有任何事项需要你处理",
 
   // ---- Project screen ----
   "projectScreen.noProject.title": "还没有选中项目。",

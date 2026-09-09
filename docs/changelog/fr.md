@@ -60,6 +60,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'accueil dit chaque chose une seule fois.** Il était devenu l'écran de ce qui vous attend,
+  mais l'ancienne grille de cartes de projet était toujours en dessous : un agent au travail
+  apparaissait trois fois — dans la liste de ce qui travaille, dans la carte de son projet, et
+  encore dans le compteur de cette même carte. Chaque carte portait en plus ses propres boutons
+  Ouvrir, Modifier et Supprimer — un rouge sur chacune — pour des actions que le clic sur la carte
+  et son menu contextuel couvraient déjà. Désormais tout l'écran est un seul type de rangée : ce
+  qui vous attend, ce qui travaille, et les projets, dans cet ordre. La rangée d'un projet montre
+  une seule ligne d'état et, seulement s'il y a quelque chose, un petit compte de ce qui attend et
+  de ce qui tourne. Quand rien ne vous attend, elle le dit en une ligne plutôt que de vous laisser
+  le déduire.
+
 - **Les compétences suggérées sont écrites pour l'agent et expliquées pour vous dans votre
   langue.** Le catalogue derrière « Suggestions » était entièrement en espagnol : les noms, les
   instructions que l'agent lit réellement, et les descriptions d'une ligne de la liste. Les

@@ -118,10 +118,7 @@ export const ja: Dictionary = {
   "home.workingOnTask": "作業中: {name} — {task}",
   "home.lastTask": "直近のタスク: {task}",
   "home.noActivity": "まだ活動がありません",
-  "home.activeTasks.one": "{n} 件の進行中タスク",
-  "home.activeTasks.other": "{n} 件の進行中タスク",
-  "home.savedRuns.one": "保存済みの実行 {n} 件",
-  "home.savedRuns.other": "保存済みの実行 {n} 件",
+  "home.allClear": "対応待ちはありません",
 
   // ---- Project screen ----
   "projectScreen.noProject.title": "プロジェクトが選択されていません。",

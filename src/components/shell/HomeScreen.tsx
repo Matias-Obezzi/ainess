@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { StatusDot } from "@/components/StatusDot";
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { Shimmer } from "@/components/ui/shimmer";
 import {
@@ -17,30 +15,27 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { copyText } from "@/lib/clipboard";
 import { openFolder } from "@/lib/open-external";
 import { confirm } from "@/lib/confirm";
-import { formatTimeAgo, truncate } from "@/lib/format";
-import { runStatusLabelKey } from "@/lib/labels";
+import { formatTimeAgo, shortenPath, truncate } from "@/lib/format";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import type { Project, Run } from "@/types";
-import { Copy, Folder, FolderKanban, FolderOpen, Pencil, PlayCircle, Trash2, Bell } from "lucide-react";
+import { Bell, Copy, FolderKanban, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { attentionItems, workingItems, countsByProject } from "@/lib/attention";
 import { AgentAvatar } from "@/components/ProviderLogo";
 
-function ProjectCardSkeleton() {
+function ProjectRowSkeleton() {
   return (
-    <Card className="flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-2">
-        <Skeleton className="size-3 rounded-full" />
-        <Skeleton className="h-4 w-32" />
+    <div className="flex items-start gap-3 p-2">
+      <Skeleton className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" />
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-64" />
       </div>
-      <Skeleton className="h-3 w-full" />
-      <Skeleton className="h-3 w-2/3" />
-      <Skeleton className="h-8 w-full" />
-    </Card>
+    </div>
   );
 }
 
-/** Landing screen: every project as a card with what it is doing right now. */
+/** Landing screen: every project as a row with what needs attention or what is working. */
 export function HomeScreen() {
   const t = useT();
   const locale = useLocale();
@@ -67,17 +62,15 @@ export function HomeScreen() {
   }, []);
 
   // One pass over runs per change: a selector returning a fresh object would re-render forever.
-  const { savedRuns, lastRootRun } = useMemo(() => {
-    const counts: Record<string, number> = {};
+  const lastRootRun = useMemo(() => {
     const last: Record<string, Run> = {};
     for (const r of Object.values(runs)) {
-      counts[r.projectId] = (counts[r.projectId] ?? 0) + 1;
       if (r.parentRunId === null && r.kind !== "chat") {
         const prev = last[r.projectId];
         if (!prev || r.startedAt > prev.startedAt) last[r.projectId] = r;
       }
     }
-    return { savedRuns: counts, lastRootRun: last };
+    return last;
   }, [runs]);
 
   const busyByProject = useMemo(() => {
@@ -148,17 +141,19 @@ export function HomeScreen() {
   ];
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-6 gap-4">
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-6 gap-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">{t("home.title")}</h2>
+        {/* The screen is Inicio and one of its three sections is Proyectos. Reusing the sidebar's
+            own word for the page keeps the two from both being called the same thing. */}
+        <h2 className="text-xl font-bold">{t("sidebar.home")}</h2>
         <Button onClick={newProject}>{t("sidebar.newProject")}</Button>
       </div>
 
       {!loaded ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <ProjectCardSkeleton />
-          <ProjectCardSkeleton />
-          <ProjectCardSkeleton />
+        <div className="flex flex-col gap-1">
+          <ProjectRowSkeleton />
+          <ProjectRowSkeleton />
+          <ProjectRowSkeleton />
         </div>
       ) : projects.length === 0 ? (
         <EmptyState
@@ -170,8 +165,12 @@ export function HomeScreen() {
         />
       ) : (
         <>
+          {attentionList.length === 0 && workingList.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t("home.allClear")}</p>
+          )}
+
           {attentionList.length > 0 && (
-            <div className="flex flex-col gap-2 mb-4">
+            <div className="flex flex-col gap-2">
               <h3 className="font-semibold flex items-center gap-2">
                 <Bell className="w-4 h-4" /> {t("home.attention.title")}
               </h3>
@@ -179,7 +178,8 @@ export function HomeScreen() {
                 {attentionList.slice(0, 6).map(item => (
                   <button
                     key={item.id}
-                    className="flex items-center gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group"
+                    type="button"
+                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
                     onClick={() => {
                       openProject(item.projectId, null);
                       if (item.kind === "task") {
@@ -190,13 +190,21 @@ export function HomeScreen() {
                       }
                     }}
                   >
-                    <Badge variant="secondary" className="shrink-0">{t(`home.attention.kind.${item.kind}`)}</Badge>
-                    <span className="font-medium shrink-0">{projectName(item.projectId)}</span>
-                    {item.agentId && <span className="text-muted-foreground shrink-0">{agentName(item.agentId)}</span>}
-                    <span className="truncate flex-1">{item.title}</span>
-                    <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                      {formatTimeAgo(item.at, now, locale)}
-                    </span>
+                    <Badge variant="secondary" className="shrink-0 mt-0.5">
+                      {t(`home.attention.kind.${item.kind}`)}
+                    </Badge>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="font-medium truncate">{item.title}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {[
+                          projectName(item.projectId),
+                          item.agentId ? agentName(item.agentId) : null,
+                          formatTimeAgo(item.at, now, locale),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
                   </button>
                 ))}
                 {attentionList.length > 6 && (
@@ -207,7 +215,7 @@ export function HomeScreen() {
           )}
 
           {workingList.length > 0 && (
-            <div className="flex flex-col gap-2 mb-4">
+            <div className="flex flex-col gap-2">
               <h3 className="font-semibold flex items-center gap-2">
                 <Shimmer>{t("home.working.title")}</Shimmer>
               </h3>
@@ -215,23 +223,30 @@ export function HomeScreen() {
                 {workingList.slice(0, 6).map(item => (
                   <button
                     key={`${item.projectId}-${item.agentId}`}
-                    className="flex items-center gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group"
+                    type="button"
+                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
                     onClick={() => {
                       openProject(item.projectId, null);
                       setProjectMode("chat");
                     }}
                   >
-                    <span className="font-medium shrink-0">{projectName(item.projectId)}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="shrink-0 mt-0.5">
                       <AgentAvatar provider={agentProvider(item.agentId)} color={agentColor(item.agentId)} size={20} />
-                      <span className="text-muted-foreground">{agentName(item.agentId)}</span>
                     </div>
-                    <span className="truncate flex-1">{item.task || t("home.working", { name: agentName(item.agentId) })}</span>
-                    {item.since && (
-                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                        {formatTimeAgo(item.since, now, locale)}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="font-medium truncate">
+                        {item.task || t("home.working", { name: agentName(item.agentId) })}
                       </span>
-                    )}
+                      <span className="text-xs text-muted-foreground truncate">
+                        {[
+                          projectName(item.projectId),
+                          agentName(item.agentId),
+                          item.since ? formatTimeAgo(item.since, now, locale) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
                   </button>
                 ))}
                 {workingList.length > 6 && (
@@ -241,89 +256,83 @@ export function HomeScreen() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map(p => {
-              const busy = busyByProject[p.id] ?? [];
-              const last = lastRootRun[p.id];
-              const pCounts = counts[p.id] || { needsYou: 0, working: 0 };
+          <div className="flex flex-col gap-2">
+            <h3 className="font-semibold">{t("home.title")}</h3>
+            <div className="flex flex-col gap-1">
+              {projects.map(p => {
+                const busy = busyByProject[p.id] ?? [];
+                const last = lastRootRun[p.id];
+                const pCounts = counts[p.id] || { needsYou: 0, working: 0 };
 
-              return (
-                <ContextMenu key={p.id}>
-                  <ContextMenuTrigger asChild>
-                    <Card
-                      role="button"
-                      className={`p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-primary/50`}
-                      onClick={() => openProject(p.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color || "#4f8cff" }} />
-                        <h3 className="font-bold truncate">{p.name}</h3>
-                      </div>
+                let statusText: string;
+                if (busy.length > 0) {
+                  const first = busy[0];
+                  statusText = first.task
+                    ? t("home.workingOnTask", { name: agentName(first.agentId), task: truncate(first.task, 80) })
+                    : t("home.working", { name: agentName(first.agentId) });
+                } else if (last) {
+                  const timeAgo = formatTimeAgo(last.endedAt ?? last.startedAt, now, locale);
+                  statusText = `${t("home.lastTask", { task: truncate(last.prompt, 80) })} · ${timeAgo}`;
+                } else {
+                  statusText = t("home.noActivity");
+                }
 
-                      <div className="text-sm text-muted-foreground flex items-center gap-1.5 truncate">
-                        <Folder className="w-4 h-4 shrink-0" />
-                        <span className="truncate" title={p.workspaceDir}>{p.workspaceDir}</span>
-                      </div>
-
-                      <div className="text-xs flex flex-col gap-1 min-h-[2.5rem]">
-                        {busy.length > 0 ? (
-                          busy.slice(0, 2).map(b => (
-                            <div key={b.agentId} className="flex items-center gap-1.5">
-                              <StatusDot status="working" />
-                              <span className="truncate">
-                                {b.task
-                                  ? t("home.workingOnTask", { name: agentName(b.agentId), task: truncate(b.task, 80) })
-                                  : t("home.working", { name: agentName(b.agentId) })}
+                return (
+                  <ContextMenu key={p.id}>
+                    <ContextMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                        onClick={() => openProject(p.id)}
+                      >
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                          style={{ backgroundColor: p.color || "#4f8cff" }}
+                        />
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <div className="flex items-baseline gap-2 min-w-0">
+                            <span className="font-bold truncate shrink-0 max-w-[60%]">{p.name}</span>
+                            {p.workspaceDir && (
+                              <span className="text-xs text-muted-foreground truncate min-w-0" title={p.workspaceDir}>
+                                {shortenPath(p.workspaceDir, 44)}
                               </span>
-                            </div>
-                          ))
-                        ) : last ? (
-                          <>
-                            <span className="truncate text-muted-foreground">{t("home.lastTask", { task: truncate(last.prompt, 80) })}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={last.status === "error" ? "destructive" : "outline"} className="text-[10px]">
-                                {t(runStatusLabelKey[last.status])}
-                              </Badge>
-                              <span className="text-muted-foreground">{formatTimeAgo(last.endedAt ?? last.startedAt, now, locale)}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">{t("home.noActivity")}</span>
-                        )}
-                      </div>
-
-                      <div className="text-sm flex items-center gap-1.5">
-                        <PlayCircle className="w-4 h-4 text-orange-500" />
-                        {plural(busy.length, t("home.activeTasks.one", { n: busy.length }), t("home.activeTasks.other", { n: busy.length }))}
-                        <span className="text-muted-foreground">
-                          {" · "}
-                          {plural(savedRuns[p.id] ?? 0, t("home.savedRuns.one", { n: savedRuns[p.id] ?? 0 }), t("home.savedRuns.other", { n: savedRuns[p.id] ?? 0 }))}
-                        </span>
-                      </div>
-
-                      {(pCounts.working > 0 || pCounts.needsYou > 0) && (
-                        <div className="flex gap-2 flex-wrap items-center text-xs font-medium text-muted-foreground mt-1">
-                          {pCounts.working > 0 && <span>{plural(pCounts.working, t("home.counts.working.one", { n: pCounts.working }), t("home.counts.working.other", { n: pCounts.working }))}</span>}
-                          {pCounts.working > 0 && pCounts.needsYou > 0 && <span>·</span>}
-                          {pCounts.needsYou > 0 && <span>{plural(pCounts.needsYou, t("home.counts.needsYou.one", { n: pCounts.needsYou }), t("home.counts.needsYou.other", { n: pCounts.needsYou }))}</span>}
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {statusText}
+                          </span>
                         </div>
-                      )}
-
-                      <div className="flex gap-2 mt-auto pt-2" onClick={e => e.stopPropagation()}>
-                        <Button size="sm" className="flex-1" onClick={() => openProject(p.id)}>{t("common.open")}</Button>
-                        <Button size="sm" variant="outline" onClick={() => editProject(p)}>
-                          {t("common.edit")}
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => void handleRemove(p)}>{t("common.delete")}</Button>
-                      </div>
-                    </Card>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-48">
-                    <ContextActionItems actions={projectActions(p)} />
-                  </ContextMenuContent>
-                </ContextMenu>
-              );
-            })}
+                        {(pCounts.needsYou > 0 || pCounts.working > 0) && (
+                          <div className="flex items-center gap-1.5 shrink-0 self-center">
+                            {pCounts.needsYou > 0 && (
+                              <Badge variant="secondary">
+                                {plural(
+                                  pCounts.needsYou,
+                                  t("home.counts.needsYou.one", { n: pCounts.needsYou }),
+                                  t("home.counts.needsYou.other", { n: pCounts.needsYou }),
+                                )}
+                              </Badge>
+                            )}
+                            {pCounts.working > 0 && (
+                              <Badge variant="outline">
+                                {plural(
+                                  pCounts.working,
+                                  t("home.counts.working.one", { n: pCounts.working }),
+                                  t("home.counts.working.other", { n: pCounts.working }),
+                                )}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextActionItems actions={projectActions(p)} />
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
+            </div>
           </div>
         </>
       )}
