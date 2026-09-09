@@ -198,6 +198,10 @@ async function startTurn(
     parentRunId: null,
     round: 0,
     resume: !!sessionId,
+    // Handed over rather than looked up: the agent's own slot holds whichever conversation spoke
+    // last, and reading it here is how a message sent in one chat came back answered with another's.
+    sessionId,
+    chatId,
     rootRunId: turnId,
     model: participant.model,
     kind: "chat",
@@ -252,19 +256,9 @@ export function onChatRunFinished(runId: string): void {
   const output = run.status === "error" ? (run.output ? translateNow("chat.runError", { error: run.output }) : translateNow("chat.runFailed")) : (run.output || "");
   const msgStatus = run.status === "error" ? "error" as const : "done" as const;
 
-  // Save session for this chat+agent
-  const agentRuntime = store.runtime[run.projectId]?.[run.agentId];
-  if (agentRuntime?.sessionId) {
-    useAppStore.setState(state => ({
-      chatSessions: {
-        ...state.chatSessions,
-        [chatId!]: {
-          ...(state.chatSessions[chatId!] || {}),
-          [run.agentId]: agentRuntime.sessionId!,
-        }
-      }
-    }));
-  }
+  // The session is written where it belongs the moment the provider reports it (see
+  // `rememberSession`). Copying it out of the agent's shared slot here was the other half of two
+  // chats answering each other: whichever one finished last decided what both of them resumed.
 
   // Update the pending message with the actual response
   useAppStore.setState(state => {

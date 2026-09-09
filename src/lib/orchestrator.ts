@@ -1,4 +1,4 @@
-import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
@@ -249,13 +249,59 @@ function applyNewTaskOps(run: Run, text: string): void {
   }
 }
 
+/**
+ * The provider session a run is picking up, if any.
+ *
+ * An agent has one slot in `runtime` for its session, and that slot holds whichever conversation
+ * spoke last. That is fine for its tasks, which are one line of work. It is wrong for a chat: two
+ * chats with the same agent are two conversations, and reading that slot for one of them is how a
+ * message sent in one came back answered with the other's context.
+ *
+ * So a caller that owns its own session hands it over, and a chat never falls back to the agent's
+ * slot — a chat with no session of its own is a chat that has not started yet, and starting fresh
+ * is the right answer, not borrowing somebody else's.
+ */
+export function resumeSessionId(
+  opts: { resume?: boolean; sessionId?: string; chatId?: string },
+  agentSession: string | undefined,
+): string | undefined {
+  if (opts.sessionId) return opts.sessionId;
+  if (opts.chatId) return undefined;
+  return opts.resume ? agentSession : undefined;
+}
+
+/**
+ * Where the session a run just reported belongs: with its chat, or in the agent's own slot.
+ *
+ * Kept apart on purpose. A chat writing into the agent's slot is the same bug read backwards —
+ * it would hand the agent's next task the conversation you were having with it.
+ */
+function rememberSession(state: AppState, run: Run, sessionId: string | undefined): Partial<AppState> {
+  if (!sessionId) return {};
+  if (run.chatId) {
+    return {
+      chatSessions: {
+        ...state.chatSessions,
+        [run.chatId]: { ...(state.chatSessions[run.chatId] || {}), [run.agentId]: sessionId },
+      },
+    };
+  }
+  const pRuntime = state.runtime[run.projectId] || {};
+  return {
+    runtime: {
+      ...state.runtime,
+      [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId, sessionUpdatedAt: Date.now() } },
+    },
+  };
+}
+
 function scheduleStreamFlush() {
   if (flushTimer === null) {
     flushTimer = setTimeout(flushStream, 80);
   }
 }
 
-export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string } }): string | undefined {
+export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string }): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
@@ -323,6 +369,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     round: opts.round,
     model: opts.model,
     kind: opts.kind,
+    chatId: opts.chatId,
     review: opts.review,
   };
 
@@ -386,7 +433,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
   const sharedContext = store.config.sharedContext;
-  const sessionId = opts.resume ? store.runtime[opts.projectId]?.[opts.agentId]?.sessionId : undefined;
+  const sessionId = resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
     r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
@@ -540,12 +587,7 @@ function handleOutput(e: RunOutputEvent) {
 
   for (const ev of events) {
     if (ev.type === "session") {
-      useAppStore.setState(state => {
-        const pRuntime = state.runtime[run.projectId] || {};
-        return {
-          runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } }
-        };
-      });
+      useAppStore.setState(state => rememberSession(state, run, ev.sessionId));
     } else if (ev.type === "text") {
       streamBuffer.pushText(e.runId, ev.text);
     } else if (ev.type === "tool") {
@@ -587,11 +629,10 @@ function handleOutput(e: RunOutputEvent) {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
         if (!r) return state;
-        const pRuntime = state.runtime[run.projectId] || {};
         return {
           // Copilot's result carries usage but no text: keep whatever answer we already had.
           runs: { ...state.runs, [e.runId]: { ...r, output: ev.text || r.output, ...(ev.usage ? { usage: ev.usage } : {}) } },
-          ...(ev.sessionId ? { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [run.agentId]: { ...pRuntime[run.agentId], sessionId: ev.sessionId, sessionUpdatedAt: Date.now() } } } } : {})
+          ...(ev.sessionId ? rememberSession(state, run, ev.sessionId) : {})
         };
       });
     } else if (ev.type === "error") {
@@ -993,6 +1034,11 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     parentRunId: run?.parentRunId ?? null,
     round: question.round,
     resume: true,
+    // A question asked inside a chat is answered inside that chat. Without this the answer went to
+    // whatever session the agent's own slot was holding, which is the same crossing of wires read
+    // from the other end.
+    chatId: run?.chatId,
+    sessionId: run?.chatId ? store.chatSessions[run.chatId]?.[question.agentId] : undefined,
     rootRunId: question.rootRunId,
   });
 

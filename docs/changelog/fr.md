@@ -60,6 +60,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Deux conversations avec le même agent redeviennent deux conversations.** L'agent n'avait qu'un
+  seul emplacement pour sa session, et cet emplacement contenait la conversation qui avait parlé en
+  dernier. Vous ouvriez une deuxième conversation avec un agent à qui vous parliez déjà, vous
+  reveniez à la première, et il vous répondait avec le contexte de l'autre — et une conversation
+  écrasait en prime la session qu'utilisaient ses propres tâches. Désormais une conversation remet
+  la session qui lui appartient au lieu de lire cet emplacement, range ce que rapporte le
+  fournisseur avec la conversation à laquelle il appartient, et une conversation qui n'en a pas
+  encore démarre à neuf plutôt que d'en emprunter une. Répondre à une question posée dans une
+  conversation y reste aussi.
+
 - **Éteindre tous les types dans le filtre de communication vide désormais la vue.** Ce que vous
   envoyez à un agent en était exempté : il s'affichait quoi qu'en dise le filtre, et ne figurait
   même pas dans la liste des types, donc rien ne permettait de l'éteindre. Le bouton indiquait

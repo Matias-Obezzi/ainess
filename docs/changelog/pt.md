@@ -55,6 +55,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Dois chats com o mesmo agente voltam a ser duas conversas.** O agente tinha um único
+  compartimento para a sua sessão, e esse compartimento guardava a última conversa que tivesse
+  falado. Você abria um segundo chat com um agente com quem já estava falando, voltava ao primeiro,
+  e ele respondia com o contexto do outro — e um chat ainda por cima sobrescrevia a sessão que as
+  suas próprias tarefas usavam. Agora o chat entrega a sessão que é dele em vez de ler aquele
+  compartimento, guarda o que o provedor reporta junto do chat a que pertence, e um chat que ainda
+  não tem a sua começa do zero em vez de pedir emprestada. Responder a uma pergunta feita dentro de
+  um chat também fica lá dentro.
+
 - **Desligar todos os tipos no filtro de comunicação agora deixa a visão vazia.** O que você manda
   a um agente era isento: aparecia dissesse o que dissesse o filtro, e nem constava na lista de
   tipos, então não havia como desligá-lo. O botão dizia "Tipos (0/8)" e o painel continuava

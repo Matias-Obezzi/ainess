@@ -59,6 +59,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Zwei Chats mit demselben Agenten sind wieder zwei Gespräche.** Ein Agent hatte genau ein Fach
+  für seine Provider-Sitzung, und darin lag jeweils das Gespräch, das zuletzt gesprochen hatte. Du
+  öffnest einen zweiten Chat mit einem Agenten, mit dem du schon sprichst, gehst zurück zum ersten —
+  und er antwortet dir mit dem Kontext des anderen. Zudem überschrieb ein Chat die Sitzung, die
+  seine eigenen Aufgaben benutzten. Jetzt übergibt ein Chat die Sitzung, die ihm gehört, statt in
+  jenes Fach zu greifen, legt das vom Provider Gemeldete zu dem Chat, zu dem es gehört, und ein Chat
+  ohne eigene Sitzung fängt neu an, statt sich eine zu borgen. Eine Frage, die in einem Chat
+  gestellt wurde, wird auch dort beantwortet.
+
 - **Alle Arten im Kommunikationsfilter abzuschalten leert jetzt die Ansicht.** Was du einem Agenten
   schickst, war ausgenommen: Es wurde gezeigt, ganz gleich was der Filter sagte, und es stand nicht
   einmal auf der Liste der Arten — es ließ sich also gar nicht abschalten. Die Schaltfläche las sich

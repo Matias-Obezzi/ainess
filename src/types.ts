@@ -404,6 +404,8 @@ export interface Run {
   baseSha?: string;
   /** "task" (default) or "chat" — chat runs skip delegation parsing. */
   kind?: "task" | "chat";
+  /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
+  chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
   /** Set when this run is a review of another agent's finished run. */

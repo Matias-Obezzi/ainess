@@ -56,6 +56,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Two chats with the same agent are two conversations again.** An agent had one slot for its
+  provider session, and that slot held whichever conversation had spoken last. Open a second chat
+  with an agent you are already talking to, go back to the first, and it answered you with the
+  other one's context — and a chat also overwrote the session its own tasks were using. A chat now
+  hands over the session it owns instead of reading that slot, keeps what the provider reports with
+  the chat it belongs to, and a chat that has none of its own starts fresh rather than borrowing.
+  Answering a question asked inside a chat stays inside it too.
+
 - **Turning off every kind in the communication filter now empties the view.** What you send to an
   agent was exempt: it was shown whatever the filter said, and it was not even on the list of kinds,
   so there was no way to turn it off. The button read "Kinds (0/8)" while the panel kept showing
