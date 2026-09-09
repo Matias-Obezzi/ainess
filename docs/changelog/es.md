@@ -6,6 +6,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **El diff de una corrida, no el del proyecto entero.** El panel de diff muestra el árbol de
+  trabajo del proyecto, que contesta «qué está pasando en el repo» y nunca «qué tocó esta tarea».
+  Ahora cada corrida se acuerda de dónde corrió —el workspace del proyecto, o el worktree propio del
+  agente— y de en qué commit arrancó, así que el detalle de una corrida te muestra qué se movió
+  desde que empezó. Las corridas de antes de esto no se acuerdan de ninguna de las dos cosas, y lo
+  dicen en vez de inventar.
+
 - **Un agente puede mover su propia tarjeta, y abrir una para lo que encontró en el camino.** El
   tablero era de una sola vía: el planificador lo leía y repartía, y el que hacía el trabajo no veía
   ni su tarjeta, mucho menos podía avisar que se trabó. Ahora cualquier agente puede dejar un bloque

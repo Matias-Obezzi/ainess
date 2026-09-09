@@ -8,6 +8,12 @@ let one of them fall behind.
 
 ### Added
 
+- **The diff of one run, not of the whole project.** The diff panel shows the project's working
+  tree, which answers "what is going on in this repo" and never "what did this task touch". Every
+  run now remembers where it ran — the project workspace, or the agent's own worktree — and which
+  commit it opened on, so a run's detail shows what moved in it since it started. Runs from before
+  this remember neither, and say so instead of guessing.
+
 - **An agent can move its own card, and open one for what it found on the way.** The board only
   went one way: the planner read it and handed work out, and whoever was doing the work could not
   see their own card, let alone say they were stuck. Now any agent can leave a `task` block while it

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from "@/components/ui/badge";
 import { useT, useLocale } from "@/i18n/useT";
 import { parseResult } from "@/lib/providers";
+import { DiffPanel } from "@/components/DiffPanel";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
@@ -82,6 +83,15 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
             <h4 className="font-semibold text-sm mb-1">{t("runDetail.rawOutput")}</h4>
             <div className="flex-1 border p-2 rounded bg-muted overflow-auto font-mono text-xs whitespace-pre-wrap">
               {run.rawLines?.join("\n") || t("runDetail.noLogs")}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-sm mb-1">{t("diff.taskTitle")}</h4>
+            {/* A real height, not a max: the panel is `h-full` and scrolls its own list under a
+                header that stays put. Against an auto-height box that header scrolls away. */}
+            <div className="h-[50vh] overflow-hidden border rounded bg-background">
+              <DiffPanel run={{ cwd: run.cwd, baseSha: run.baseSha }} />
             </div>
           </div>
         </div>

@@ -226,6 +226,9 @@ export const ja: Dictionary = {
   "diff.notARepo.body": "リポジトリがないため、表示するDiffがありません。",
   "diff.truncated": "Diffが巨大です：最初の一部のみを表示しています。",
   "diff.binary": "バイナリファイル",
+  "diff.scopeTask": "このタスクのみ",
+  "diff.taskTitle": "この実行で変更された内容",
+  "diff.noBase": "比較元のベースコミットがありません：実行はコミットを持つGitリポジトリで開始されませんでした。",
 
   // ---- Notifications ----
   "notifications.title": "通知",

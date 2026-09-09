@@ -381,6 +381,10 @@ export interface Run {
   /** Continuation round, starts at 0. */
   round: number;
   model?: string;
+  /** Where the CLI actually ran: the project workspace, or the agent's own worktree. */
+  cwd?: string;
+  /** The commit the workspace was on when the run started, so its own diff can be taken later. */
+  baseSha?: string;
   /** "task" (default) or "chat" — chat runs skip delegation parsing. */
   kind?: "task" | "chat";
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */

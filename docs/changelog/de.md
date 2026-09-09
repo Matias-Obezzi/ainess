@@ -6,6 +6,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Das Diff eines Laufs, nicht das des ganzen Projekts.** Das Diff-Panel zeigt den Arbeitsbaum des
+  Projekts — das beantwortet „was ist in diesem Repository los" und nie „was hat diese Aufgabe
+  angefasst". Jeder Lauf merkt sich jetzt, wo er lief (im Projekt-Workspace oder im eigenen Worktree
+  des Agenten) und auf welchem Commit er startete. Die Detailansicht eines Laufs zeigt damit, was
+  sich seit seinem Start bewegt hat. Ältere Läufe wissen beides nicht und sagen das, statt zu
+  raten.
+
 - **Ein Agent kann seine eigene Karte bewegen und eine für das öffnen, was ihm unterwegs
   auffällt.** Das Board lief nur in eine Richtung: Der Planer las es und verteilte die Arbeit, und
   wer sie erledigte, sah nicht einmal die eigene Karte — geschweige denn, dass er sagen konnte, er

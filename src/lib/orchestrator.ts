@@ -406,6 +406,21 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // run before it starts (the rejection lands in the catch below).
     const cwd = await resolveCwd(opts.projectId, agent, project, runId);
 
+    let baseSha: string | undefined;
+    try {
+      const rev = await getTransport().exec("git", ["rev-parse", "HEAD"], cwd, 10);
+      if (rev.code === 0 && rev.stdout.trim()) {
+        baseSha = rev.stdout.trim();
+      }
+    } catch {
+      // Not a git repo, repo without commits, or exec failed; leave baseSha undefined.
+    }
+
+    useAppStore.setState(state => {
+      const run = state.runs[runId];
+      return run ? { runs: { ...state.runs, [runId]: { ...run, cwd, baseSha } } } : state;
+    });
+
     // The user pressed stop while the worktree was being prepared. The install itself cannot be
     // taken back, but the agent is not launched on top of it.
     if (stoppedBeforeSpawn.delete(runId)) {

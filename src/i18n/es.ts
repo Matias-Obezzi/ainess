@@ -226,6 +226,9 @@ export const es: Dictionary = {
   "diff.notARepo.body": "Sin repositorio no hay diff que mostrar.",
   "diff.truncated": "El diff es enorme: se muestra sólo el principio.",
   "diff.binary": "Archivo binario",
+  "diff.scopeTask": "Sólo esta tarea",
+  "diff.taskTitle": "Lo que cambió esta corrida",
+  "diff.noBase": "No hay un commit base para comparar: la corrida no arrancó en un repositorio git con commits.",
 
   // ---- Notifications ----
   "notifications.title": "Notificaciones",

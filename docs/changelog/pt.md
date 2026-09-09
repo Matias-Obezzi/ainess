@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **O diff de uma execução, não o do projeto inteiro.** O painel de diff mostra a árvore de
+  trabalho do projeto, o que responde "o que está acontecendo no repositório" e nunca "o que esta
+  tarefa mexeu". Agora cada execução lembra onde rodou — o workspace do projeto ou o worktree do
+  próprio agente — e em que commit começou, então o detalhe de uma execução mostra o que mudou desde
+  então. As execuções anteriores a isto não lembram nenhuma das duas coisas, e dizem isso em vez de
+  inventar.
+
 - **Um agente pode mover o próprio cartão e abrir um para o que encontrou pelo caminho.** O quadro
   ia só num sentido: o planejador lia e distribuía, e quem fazia o trabalho não via nem o próprio
   cartão, muito menos podia avisar que travou. Agora qualquer agente pode deixar um bloco `task`

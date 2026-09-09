@@ -225,6 +225,9 @@ export const fr: Dictionary = {
   "diff.notARepo.body": "Sans dépôt, il n'y a pas de diff à afficher.",
   "diff.truncated": "Le diff est énorme: seul le début est affiché.",
   "diff.binary": "Fichier binaire",
+  "diff.scopeTask": "Cette tâche uniquement",
+  "diff.taskTitle": "Ce que cette exécution a modifié",
+  "diff.noBase": "Aucun commit de base pour comparer : l'exécution n'a pas démarré dans un dépôt git avec des commits.",
 
   // ---- Notifications ----
   "notifications.title": "Notifications",

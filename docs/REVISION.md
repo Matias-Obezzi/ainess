@@ -226,7 +226,7 @@ agente preguntó", "una revisión pidió cambios" o "un agente se quedó sin cuo
 
 ## E. Features
 
-### `[ ]` E1 · El diff de una tarea, no sólo el del proyecto
+### `[x]` E1 · El diff de una tarea, no sólo el del proyecto — *«The diff of one run»*
 
 El panel nuevo muestra el árbol de trabajo entero. Falta poder ver qué tocó *esta* tarea, o *este*
 agente en su worktree: el diff acotado a lo que hizo una corrida.
@@ -395,3 +395,14 @@ Sobre la tarjeta que viaja en el prompt: la corrida que arranca todavía no exis
 que la tarjeta se busca por la corrida anterior de la misma línea (mismo agente, misma raíz). Si un
 agente tiene dos tarjetas bajo la misma raíz no se nombra ninguna: decirle que su tarjeta es la
 equivocada es peor que no decirle nada.
+
+### 8 de septiembre de 2026 — el diff de una corrida
+
+**E1**. La corrida se acuerda de dos cosas que antes no guardaba: en qué directorio corrió (el
+workspace del proyecto o el worktree propio del agente) y en qué commit arrancó. Con eso el diff de
+la tarea es una resta, no una reconstrucción: no depende de que el agente haya listado bien sus
+archivos en el bloque `result`, ni de que haya commiteado.
+
+El panel es el mismo, con una prop. Sin `run` se comporta exactamente como antes; con `run` esconde
+el selector de modo, porque acotado a una corrida hay un solo diff posible. Las corridas viejas no
+tienen `baseSha` y lo dicen, en vez de mostrar un diff que no es el suyo.

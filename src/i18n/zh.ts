@@ -225,6 +225,9 @@ export const zh: Dictionary = {
   "diff.notARepo.body": "没有仓库，因此没有diff可显示。",
   "diff.truncated": "Diff太大：仅显示开头部分。",
   "diff.binary": "二进制文件",
+  "diff.scopeTask": "仅此任务",
+  "diff.taskTitle": "本次运行的更改",
+  "diff.noBase": "没有可用于对比的基础提交：此运行未在包含提交的Git仓库中启动。",
 
   // ---- Notifications ----
   "notifications.title": "通知",

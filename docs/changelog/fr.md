@@ -6,6 +6,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Le diff d'une exécution, pas celui du projet entier.** Le panneau de diff montre l'arbre de
+  travail du projet, ce qui répond à « que se passe-t-il dans ce dépôt » et jamais à « qu'a touché
+  cette tâche ». Chaque exécution se souvient désormais d'où elle a tourné — l'espace de travail du
+  projet, ou le worktree propre à l'agent — et du commit sur lequel elle a démarré : le détail d'une
+  exécution montre donc ce qui a bougé depuis. Les exécutions antérieures ne se souviennent
+  d'aucun des deux, et le disent au lieu de deviner.
+
 - **Un agent peut déplacer sa propre carte et en ouvrir une pour ce qu'il a trouvé en chemin.** Le
   tableau n'allait que dans un sens : le planificateur le lisait et distribuait le travail, et celui
   qui le faisait ne voyait même pas sa carte, encore moins de quoi dire qu'il était bloqué.
