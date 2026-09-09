@@ -60,6 +60,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Fini les fenêtres de console qui clignotent par-dessus ce que vous regardiez.** Arrêter une
+  exécution, fermer l'application, une exécution qui dépasse son délai, couper le tunnel et chaque
+  vérification d'un processus périmé appelaient `taskkill` ou `tasklist`, et Windows attribue une
+  fenêtre de console à un programme console lancé par une application fenêtrée, sauf si on lui dit
+  le contraire. Les appels qui démarrent un agent le disaient toujours ; pas ceux de ménage autour
+  d'eux.
+
 - **Un seul bouton à côté de la boîte, et c'est celui qu'il faut sur le moment.** Envoyer quand rien
   ne tourne, arrêter pendant qu'un agent répond — les deux ne s'entassent plus par-dessus le texte
   que tu écris. Rien n'a changé en dessous : Entrée envoie toujours et, pendant que l'agent

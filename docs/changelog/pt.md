@@ -55,6 +55,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Acabaram as janelas de console piscando por cima do que você estava olhando.** Parar uma
+  execução, fechar o app, uma execução que estourou o tempo, cortar o túnel e cada verificação de um
+  processo velho chamavam `taskkill` ou `tasklist`, e o Windows dá uma janela de console a um
+  programa de console iniciado por um app com janelas, a menos que se diga o contrário. As chamadas
+  que iniciam um agente sempre diziam; as de limpeza ao redor delas, não.
+
 - **Um único botão ao lado da caixa, e é o que faz falta naquele momento.** Enviar quando nada está
   rodando, parar enquanto um agente responde — os dois não se amontoam mais sobre o texto que você
   está escrevendo. Por baixo nada mudou: Enter continua enviando e, enquanto o agente trabalha,

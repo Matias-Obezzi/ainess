@@ -57,6 +57,12 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Se terminaron las ventanas de consola que aparecían encima de lo que estabas mirando.** Frenar
+  una corrida, cerrar la app, una corrida que se pasó de tiempo, cortar el túnel y cada chequeo de
+  un proceso viejo llamaban a `taskkill` o a `tasklist`, y Windows le da una ventana de consola a un
+  programa de consola arrancado desde una app con ventanas, salvo que se le diga que no. Las
+  llamadas que arrancan un agente siempre se lo decían; las de limpieza que las rodean, no.
+
 - **Un solo botón al lado de la caja, y es el que hace falta en ese momento.** Enviar cuando no hay
   nada corriendo, detener mientras un agente contesta — los dos ya no se amontonan encima del texto
   que estás escribiendo. Abajo no cambió nada: Enter sigue enviando, y mientras el agente trabaja

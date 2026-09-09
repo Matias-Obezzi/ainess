@@ -59,6 +59,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Keine Konsolenfenster mehr, die über dem aufblitzen, was du gerade ansiehst.** Einen Lauf
+  stoppen, die App schließen, ein Lauf mit Zeitüberschreitung, den Tunnel beenden und jede Prüfung
+  auf einen alten Prozess griffen zu `taskkill` oder `tasklist` — und Windows gibt einem
+  Konsolenprogramm, das eine Fensteranwendung startet, ein Konsolenfenster, sofern man nichts
+  anderes sagt. Die Aufrufe, die einen Agenten starten, sagten es immer; die Aufräumaufrufe
+  drumherum nicht.
+
 - **Ein Knopf neben der Box, und zwar der, den der Moment verlangt.** Senden, wenn nichts läuft;
   stoppen, während ein Agent antwortet — die beiden drängeln sich nicht mehr über dem Text, den du
   schreibst. Darunter hat sich nichts geändert: Enter sendet weiterhin und stellt, während der Agent

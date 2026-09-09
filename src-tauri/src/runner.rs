@@ -162,6 +162,22 @@ fn build_command(opts: &SpawnOptions) -> Command {
     cmd
 }
 
+/// A `taskkill` or a `tasklist` that does not flash a console window on the user's screen.
+///
+/// `Stdio::null()` silences the output but says nothing about the window: a console program
+/// started from a GUI app gets one allocated for it unless `CREATE_NO_WINDOW` says otherwise. The
+/// spawns that run an agent always passed the flag; the housekeeping ones around them did not, so
+/// every stop, every close and every stale-pid check blinked a black rectangle over whatever the
+/// user was looking at.
+#[cfg(windows)]
+fn windowless(program: &str) -> Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut cmd = Command::new(program);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
 fn pump<R: std::io::Read + Send + 'static>(
     app: AppHandle,
     run_id: String,
@@ -304,7 +320,7 @@ pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, S
             {
                 // Kill the whole tree: node-based CLIs spawn helpers.
                 let pid = c.id();
-                let _ = Command::new("taskkill")
+                let _ = windowless("taskkill")
                     .args(["/PID", &pid.to_string(), "/T", "/F"])
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
@@ -328,7 +344,7 @@ pub fn shutdown(app: &tauri::AppHandle) {
         #[cfg(windows)]
         {
             let pid = c.id();
-            let _ = Command::new("taskkill")
+            let _ = windowless("taskkill")
                 .args(["/PID", &pid.to_string(), "/T", "/F"])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -525,7 +541,7 @@ fn wait_with_timeout(child: Child, timeout: Duration) -> Result<Output, WaitErro
 fn kill_tree(pid: u32) {
     #[cfg(windows)]
     {
-        let _ = Command::new("taskkill")
+        let _ = windowless("taskkill")
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())

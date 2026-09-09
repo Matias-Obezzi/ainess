@@ -56,6 +56,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **No more console windows blinking over what you were looking at.** Stopping a run, closing the
+  app, a run that timed out, stopping the tunnel and every check for a stale process all reached for
+  `taskkill` or `tasklist`, and Windows hands a console window to a console program started from a
+  GUI app unless it is told not to. The spawns that run an agent always said so; the housekeeping
+  around them did not.
+
 - **One button by the box, and it is whatever the moment calls for.** Send while nothing is running,
   stop while an agent is answering — the two no longer sit side by side over the text you are
   writing. Nothing changed underneath: Enter still sends, and while an agent works it still queues
