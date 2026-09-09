@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Demander le brut d'un message montre ce message.** Le bouton d'une ligne du panneau de
+  communication ouvrait l'exécution entière — chaque ligne de stdout que la session avait produite —
+  ce que ne demande personne en cliquant sur une délégation. Il montre désormais ce message : de qui
+  à qui, quand, le texte complet, et pour un appel d'outil l'outil, son entrée et l'erreur sur
+  laquelle il a échoué, avec un bouton pour tout copier. L'exécution entière est toujours là, un
+  clic plus loin, à sa place. Le bouton a aussi une infobulle et apparaît sur tous les messages, pas
+  seulement ceux qui ont une exécution derrière eux.
+
 - **Faire glisser la fenêtre ne fige plus et ne saute plus.** Lancer un programme externe — le `git
   status` qui se rafraîchit chaque minute, un `git diff`, une sonde `--version` — retenait le fil
   qui pompe les messages de la fenêtre jusqu'à la fin du programme. Windows déplace une fenêtre avec

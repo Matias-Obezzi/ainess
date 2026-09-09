@@ -1062,6 +1062,15 @@ export const zh: Dictionary = {
   "runDetail.rawOutput": "原始输出（stdout/stderr）",
   "runDetail.noLogs": "没有日志",
 
+  // ---- Message detail dialog ----
+  "messageDetail.title": "消息详情",
+  "messageDetail.viewRaw": "查看原始数据",
+  "messageDetail.tool": "工具",
+  "messageDetail.toolInput": "输入",
+  "messageDetail.error": "错误",
+  "messageDetail.openRun": "查看完整运行",
+  "messageDetail.copied": "已复制消息",
+
   // ---- Quota ----
   "quota.ofAgent": "{name} 的配额：{detail}",
   "quota.perAgent": "各智能体的配额",

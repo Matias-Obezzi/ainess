@@ -1063,6 +1063,15 @@ export const ja: Dictionary = {
   "runDetail.rawOutput": "生の出力 (stdout/stderr)",
   "runDetail.noLogs": "ログなし",
 
+  // ---- Message detail dialog ----
+  "messageDetail.title": "メッセージの詳細",
+  "messageDetail.viewRaw": "生データを表示",
+  "messageDetail.tool": "ツール",
+  "messageDetail.toolInput": "入力",
+  "messageDetail.error": "エラー",
+  "messageDetail.openRun": "実行全体を表示",
+  "messageDetail.copied": "メッセージをコピーしました",
+
   // ---- Quota ----
   "quota.ofAgent": "{name} のクォータ: {detail}",
   "quota.perAgent": "エージェントごとのクォータ",

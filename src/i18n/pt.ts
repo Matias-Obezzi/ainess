@@ -1062,6 +1062,15 @@ export const pt: Dictionary = {
   "runDetail.rawOutput": "Saída bruta (stdout/stderr)",
   "runDetail.noLogs": "Sem logs",
 
+  // ---- Message detail dialog ----
+  "messageDetail.title": "Detalhe da mensagem",
+  "messageDetail.viewRaw": "Ver bruto",
+  "messageDetail.tool": "Ferramenta",
+  "messageDetail.toolInput": "Entrada",
+  "messageDetail.error": "Erro",
+  "messageDetail.openRun": "Ver o run completo",
+  "messageDetail.copied": "Mensagem copiada",
+
   // ---- Quota ----
   "quota.ofAgent": "Cota de {name}: {detail}",
   "quota.perAgent": "Cota por agente",

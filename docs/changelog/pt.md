@@ -55,6 +55,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Pedir o cru de uma mensagem mostra essa mensagem.** O botão de uma linha do painel de
+  comunicação abria a execução inteira — cada linha de stdout que a sessão tivesse produzido —, que
+  não é o que pede quem clica em cima de uma delegação. Agora mostra aquela mensagem: de quem para
+  quem, quando, o texto completo e, se for uma chamada de ferramenta, a ferramenta, a entrada dela e
+  o erro em que falhou, com um botão para copiar tudo. A execução inteira continua ali, um clique
+  mais adentro, que é onde devia estar. O botão também ganhou uma dica, e aparece em todas as
+  mensagens, não só nas que têm uma execução por trás.
+
 - **Arrastar a janela não congela nem dá saltos.** Rodar um programa externo — o `git status` que
   atualiza a cada minuto, um `git diff`, uma sondagem de `--version` — segurava a thread que bombeia
   as mensagens da janela até o programa terminar. O Windows arrasta uma janela com um laço modal

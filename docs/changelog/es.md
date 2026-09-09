@@ -57,6 +57,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Pedir el crudo de un mensaje muestra ese mensaje.** El botón de una fila del panel de
+  comunicación abría la corrida entera —cada línea de stdout que la sesión hubiera producido—, que
+  no es lo que pide nadie que hace clic sobre una delegación. Ahora muestra ese mensaje: de quién a
+  quién, cuándo, el texto completo, y si es una llamada a herramienta, la herramienta, su entrada y
+  el error con el que falló, con un botón para copiar todo. La corrida entera sigue estando, un
+  clic más adentro, que es donde correspondía. El botón además tiene un tooltip, y aparece en todos
+  los mensajes y no sólo en los que tienen una corrida detrás.
+
 - **Arrastrar la ventana ya no se congela ni da saltos.** Correr un programa externo —el `git
   status` que se refresca cada minuto, un `git diff`, una sonda de `--version`— retenía el hilo que
   bombea los mensajes de la ventana hasta que el programa terminaba. Windows arrastra una ventana

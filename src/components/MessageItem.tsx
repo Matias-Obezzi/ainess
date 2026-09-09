@@ -3,11 +3,12 @@ import { CommMessage } from "@/types";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { kindLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
-import { RunDetailDialog } from "./RunDetailDialog";
+import { MessageDetailDialog } from "./MessageDetailDialog";
 import { ErrorMessage } from "./ErrorMessage";
 
 export const MessageItem = memo(function MessageItem({ message }: { message: CommMessage }) {
@@ -29,7 +30,7 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
   const isMono = message.kind === "tool" || message.kind === "stderr";
   const isDelegation = message.kind === "delegation";
 
-  const [runDetailOpen, setRunDetailOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
     <>
@@ -48,11 +49,22 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
           )}
           <span className="text-xs text-muted-foreground ml-auto">{timeStr}</span>
           <Badge variant="outline">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
-          {message.runId && (
-            <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-muted-foreground" onClick={() => setRunDetailOpen(true)}>
-              <FileText className="h-3.5 w-3.5" />
-            </Button>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 ml-1 text-muted-foreground"
+                aria-label={t("messageDetail.viewRaw")}
+                onClick={() => setDetailOpen(true)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("messageDetail.viewRaw")}
+            </TooltipContent>
+          </Tooltip>
         </div>
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
@@ -69,10 +81,10 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
           </div>
         )}
       </div>
-      <RunDetailDialog
-        runId={message.runId || null}
-        open={runDetailOpen}
-        onOpenChange={setRunDetailOpen}
+      <MessageDetailDialog
+        message={message}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
       />
     </>
   );

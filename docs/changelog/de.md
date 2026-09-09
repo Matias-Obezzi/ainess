@@ -59,6 +59,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Wer eine Nachricht roh sehen will, bekommt diese Nachricht.** Die Schaltfläche in einer Zeile
+  des Kommunikationsbereichs öffnete den ganzen Lauf — jede Zeile stdout, die die Sitzung
+  hervorgebracht hatte. Das fragt niemand, der auf eine einzelne Delegation klickt. Jetzt zeigt sie
+  diese Nachricht: von wem an wen, wann, der vollständige Text und, bei einem Werkzeugaufruf, das
+  Werkzeug, seine Eingabe und der Fehler, an dem es scheiterte — mit einer Schaltfläche, um alles zu
+  kopieren. Der ganze Lauf ist weiterhin da, einen Klick tiefer, wo er hingehört. Die Schaltfläche
+  hat außerdem einen Tooltip und erscheint bei jeder Nachricht, nicht nur bei denen mit einem Lauf
+  dahinter.
+
 - **Das Fenster zu ziehen friert nicht mehr ein und springt nicht mehr.** Ein externes Programm
   auszuführen — das `git status`, das jede Minute aktualisiert, ein `git diff`, eine
   `--version`-Abfrage — hielt den Thread fest, der die Fensternachrichten pumpt, bis das Programm

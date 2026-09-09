@@ -1063,6 +1063,15 @@ export const es: Dictionary = {
   "runDetail.rawOutput": "Salida cruda (stdout/stderr)",
   "runDetail.noLogs": "Sin logs",
 
+  // ---- Message detail dialog ----
+  "messageDetail.title": "Detalle del mensaje",
+  "messageDetail.viewRaw": "Ver crudo",
+  "messageDetail.tool": "Herramienta",
+  "messageDetail.toolInput": "Entrada",
+  "messageDetail.error": "Error",
+  "messageDetail.openRun": "Ver la corrida completa",
+  "messageDetail.copied": "Mensaje copiado",
+
   // ---- Quota ----
   "quota.ofAgent": "Cuota de {name}: {detail}",
   "quota.perAgent": "Cuota por agente",

@@ -56,6 +56,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Asking to see one message raw shows that message.** The button on a row of the communication
+  panel opened the whole run — every line of stdout the session had produced — which is not what
+  anybody clicking on one delegation is asking for. It now shows that message: who to whom, when,
+  the text in full, and for a tool call the tool, its input and the error it failed with, with a
+  button to copy the lot. The full run is still one click further in, where it belonged. The button
+  also has a tooltip now, and shows up on every message rather than only the ones with a run
+  behind them.
+
 - **Dragging the window no longer freezes and jumps.** Running an external program — the `git
   status` that refreshes every minute, a `git diff`, a `--version` probe — held the thread that
   pumps window messages until the program was done. Windows drags a window with a modal loop on
