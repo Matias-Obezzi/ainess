@@ -24,6 +24,8 @@ import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import type { Run } from "@/types";
 import { Coins } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { budgetState } from "@/lib/budget";
 
 /** Days of the bar chart. */
 const CHART_DAYS = 14;
@@ -109,6 +111,9 @@ export function UsageDialog({
   const byAgent = useMemo(() => totalsByAgent(runs), [runs]);
   const days = useMemo(() => totalsByDay(runs, CHART_DAYS, now), [runs, now]);
 
+  const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
+  const bState = useMemo(() => budgetState(runs, project?.budget, now), [runs, project?.budget, now]);
+
   const metric = metricOf(total);
   const labels = { tokens: t("usage.tokens"), premiumRequests: t("usage.premiumRequests") };
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? id;
@@ -131,6 +136,45 @@ export function UsageDialog({
               <TotalsCard label={t("usage.today")} totals={today} locale={locale} labels={labels} t={t} />
               <TotalsCard label={t("usage.month")} totals={month} locale={locale} labels={labels} t={t} />
             </div>
+
+            {bState.limit && (
+              <div className="space-y-1.5 rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">
+                    {bState.limit.kind === "daily" ? t("budget.daily") : t("budget.monthly")}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-medium tabular-nums",
+                      bState.exceeded
+                        ? "text-rose-600 dark:text-rose-400"
+                        : bState.warning
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                    )}
+                  >
+                    {Math.round((bState.ratio ?? 0) * 100)}% ·{" "}
+                    {t("budget.spentOf", {
+                      spent: formatCost(bState.limit.kind === "monthly" ? bState.spentMonth : bState.spentToday, locale),
+                      limit: formatCost(bState.limit.usd, locale),
+                    })}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      bState.exceeded
+                        ? "bg-rose-600 dark:bg-rose-500"
+                        : bState.warning
+                          ? "bg-amber-500"
+                          : "bg-emerald-600 dark:bg-emerald-500"
+                    )}
+                    style={{ width: `${Math.min(100, Math.max(0, Math.round((bState.ratio ?? 0) * 100)))}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             <Separator />
 

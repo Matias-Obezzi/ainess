@@ -433,3 +433,22 @@ cualquier URL que se cuele en el texto de un error. Hay un test que lo verifica.
 Los tres eventos que faltaban: una pregunta que espera, una revisión que pidió cambios, y una cuota
 agotada. El de cuota se emite en el lugar donde pasa, no adentro de `quotaNote`: algo que dispara un
 hook no puede vivir dentro de una función cuyo trabajo es armar un string.
+
+### 8 de septiembre de 2026 — tope de gasto por proyecto
+
+No estaba en la revisión: salió del uso. `usage.ts` ya sabía cuánto costó cada corrida, así que lo
+que faltaba era el límite y el aviso **antes** de quemarlo. Un tope diario, uno mensual o los dos, y
+qué hacer al llegar: avisar, o no dejar arrancar corridas nuevas.
+
+`budget.ts` es puro y no conoce el store. El corte va en `startRun`, temprano, antes de preparar un
+worktree que puede tardar minutos. El aviso del 80% se manda una vez por día por proyecto, no una
+por corrida: un aviso que aparece cuarenta veces deja de ser un aviso.
+
+Un efecto colateral que era una bomba de tiempo: `startRun` ya podía devolver `undefined`, pero el
+que delegaba contaba igual al hijo como arrancado y se quedaba esperando una corrida que no existía,
+con la tarjeta en «trabajando» para siempre. Con un tope que frena, ese camino pasó de teórico a
+cotidiano. Ahora un hijo que no arrancó no se cuenta, y se dice en el feed.
+
+De paso, cuatro tests del hook de Telegram esperaban con un `setTimeout` de 60 ms a que un hook —que
+se dispara sin await— terminara. Alcanzaba en una máquina ociosa y no con 93 archivos de test
+corriendo a la vez: pasaron a esperar la condición, no el reloj.

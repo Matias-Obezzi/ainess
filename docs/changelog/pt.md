@@ -6,6 +6,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Um teto de gasto por projeto, e o aviso antes de queimá-lo.** A tela de uso sempre soube dizer
+  quanto um projeto tinha custado. O que ela não podia era freá-lo. Agora um projeto aceita um teto
+  diário, um mensal, ou os dois, e você diz o que fazer quando ele é atingido: avisar, ou não deixar
+  novas execuções começarem. O aviso chega aos 80% — uma vez por dia, não uma por execução — e a tela
+  de uso desenha a barra contra o teto que está mais perto de estourar. Os números continuam sendo só
+  o que cada CLI realmente reportou: um provedor que não reporta nada não soma, e a tela diz isso em
+  vez de estimar.
+
 - **Um hook pode te avisar pelo Telegram, e há mais três momentos dos quais ficar sabendo.** As
   outras duas ações de chat pedem um webhook que você precisa ir criar num servidor; esta reaproveita
   o bot que você já configurou em Mensageria, então "quando uma tarefa terminar, me avise" é escolher

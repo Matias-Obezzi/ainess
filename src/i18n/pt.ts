@@ -1260,6 +1260,19 @@ export const pt: Dictionary = {
   "usage.empty.title": "Ninguém informou quanto gastou ainda",
   "usage.empty.body": "O Claude Code informa o custo em dólares de cada execução e o Copilot conta os pedidos premium. Assim que um deles trabalhar neste projeto, o gasto aparece aqui.",
   "usage.runUsage": "Consumo",
+
+  // ---- Budget ----
+  "budget.title": "Limite de gastos",
+  "budget.daily": "Limite diário (USD)",
+  "budget.monthly": "Limite mensal (USD)",
+  "budget.hint": "Os valores são baseados no que cada CLI relata. Um provedor que não relata nada não soma ao total.",
+  "budget.onReached": "Ao atingir o limite",
+  "budget.onReached.warn": "Apenas avisar",
+  "budget.onReached.block": "Não permitir iniciar novas execuções",
+  "budget.warning": "Gastos atingiram {percent}% do limite ({limit})",
+  "budget.blocked": "Limite atingido: gasto {spent} de {limit}. Novas execuções não serão iniciadas.",
+  "budget.spentOf": "{spent} de {limit}",
+  "budget.none": "Sem limite",
   // ---- CLI usage ----
   "cli.usage.noData": "Ainda não há dados de uso.",
   "cli.usage.tokens": "tokens",
@@ -1325,6 +1338,7 @@ export const pt: Dictionary = {
   "prompt.board.intro": "Estas são as tarefas abertas. Para assumir uma, delegue-a com o id dela no campo `taskId`: assim o cartão se move em vez de nascer outro igual. Não abra o pedido do usuário como tarefa nova se ele já está nesta lista.",
   "prompt.board.empty": "O quadro não tem tarefas abertas.",
   "delegation.unknownAgent": "Falha na delegação: nenhum agente com o nome «{name}» está sob o comando de {agent}.",
+  "delegation.couldNotStart": "A delegação para “{name}” não chegou a começar, então não há nada a esperar dela.",
   "delegation.retryUnknown": "Nenhuma das suas delegações chegou a um agente real: {names}. Os agentes sob o seu comando são: {valid}. Volte a delegar usando esses nomes exatos.",
   "delegation.noChildren": "nenhum",
   "delegation.gaveUp": "Esgotaram-se as rondas sem conseguir delegar: os agentes {names} não existem nesta equipa.",

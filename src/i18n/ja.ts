@@ -1261,6 +1261,19 @@ export const ja: Dictionary = {
   "usage.empty.title": "まだ誰も使用量を報告していません",
   "usage.empty.body": "Claude Code は実行ごとのドル建てコストを、Copilot はプレミアムリクエスト数を報告します。どちらかがこのプロジェクトで働けば、ここに表示されます。",
   "usage.runUsage": "消費",
+
+  // ---- Budget ----
+  "budget.title": "支出制限",
+  "budget.daily": "日次制限（USD）",
+  "budget.monthly": "月次制限（USD）",
+  "budget.hint": "数値は各CLIの報告に基づきます。何も報告しないプロバイダーは加算されません。",
+  "budget.onReached": "制限に達したとき",
+  "budget.onReached.warn": "警告のみ",
+  "budget.onReached.block": "新規実行の開始をブロック",
+  "budget.warning": "支出が上限（{limit}）の{percent}%に達しました",
+  "budget.blocked": "上限に達しました：{limit}中{spent}使用。新しい実行は開始されません。",
+  "budget.spentOf": "{limit}中{spent}",
+  "budget.none": "制限なし",
   // ---- CLI usage ----
   "cli.usage.noData": "使用データはまだありません。",
   "cli.usage.tokens": "tokens",
@@ -1326,6 +1339,7 @@ export const ja: Dictionary = {
   "prompt.board.intro": "以下が未完了のタスクです。取りかかるときは `taskId` フィールドにその id を入れて委譲してください。そうすればカードは新しく作られず、そのまま移動します。ユーザーの依頼がすでにこの一覧にあるなら、新しいタスクとして起こさないでください。",
   "prompt.board.empty": "ボードに未完了のタスクはありません。",
   "delegation.unknownAgent": "委任失敗: {agent} の指揮下に「{name}」という名前のエージェントが見つかりません。",
+  "delegation.couldNotStart": "「{name}」への委任は始まらなかったので、待つものはありません。",
   "delegation.retryUnknown": "どの委任も実際のエージェントに届きませんでした: {names}。あなたの指揮下にあるのは次のエージェントです: {valid}。正確な名前を使用してもう一度委任してください。",
   "delegation.noChildren": "なし",
   "delegation.gaveUp": "ラウンドの上限に達しましたが委任できませんでした: エージェント {names} はこのチームに存在しません。",

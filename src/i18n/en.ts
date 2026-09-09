@@ -1262,6 +1262,19 @@ export const en: Dictionary = {
   "usage.empty.body": "Claude Code reports the cost in dollars of every run and Copilot counts premium requests. As soon as one of them works on this project, the spending shows up here.",
   "usage.runUsage": "Consumption",
 
+  // ---- Budget ----
+  "budget.title": "Spending limit",
+  "budget.daily": "Daily limit (USD)",
+  "budget.monthly": "Monthly limit (USD)",
+  "budget.hint": "Figures come from what each CLI reports. A provider that reports nothing does not add to the total.",
+  "budget.onReached": "When limit is reached",
+  "budget.onReached.warn": "Only warn",
+  "budget.onReached.block": "Block new runs from starting",
+  "budget.warning": "Spending reached {percent}% of the limit ({limit})",
+  "budget.blocked": "Limit reached: spent {spent} of {limit}. New runs will not start.",
+  "budget.spentOf": "{spent} of {limit}",
+  "budget.none": "No limit",
+
   // ---- CLI usage ----
   "cli.usage.noData": "No usage data yet.",
   "cli.usage.tokens": "tokens",
@@ -1327,6 +1340,7 @@ export const en: Dictionary = {
   "prompt.board.intro": "These are the open tasks. To pick one up, delegate it with its id in the `taskId` field: the card then moves instead of a second one being created. Do not open the user's request as a new task if it is already on this list.",
   "prompt.board.empty": "The board has no open tasks.",
   "delegation.unknownAgent": "Delegation failed: no agent named \"{name}\" answers to {agent}.",
+  "delegation.couldNotStart": "The delegation to “{name}” never started, so there is nothing to wait for from it.",
   "delegation.retryUnknown": "None of your delegations reached a real agent: {names}. The ones under your command are: {valid}. Delegate again using those exact names.",
   "delegation.noChildren": "none",
   "delegation.gaveUp": "Out of rounds without delegating: the agents {names} are not on this team.",

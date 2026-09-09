@@ -6,6 +6,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Un tope de gasto por proyecto, y el aviso antes de quemarlo.** La pantalla de uso siempre supo
+  decirte cuánto había costado un proyecto. Lo que no podía era frenarlo. Ahora un proyecto acepta un
+  tope diario, uno mensual, o los dos, y decís qué hacer cuando se llega: avisar, o no dejar arrancar
+  corridas nuevas. El aviso llega al 80% —una vez por día, no una por corrida— y la pantalla de uso
+  dibuja la barra contra el tope que está más cerca de romperse. Los números siguen siendo sólo lo
+  que cada CLI reportó de verdad: un proveedor que no reporta nada no suma, y la pantalla lo dice en
+  vez de estimar.
+
 - **Un hook puede avisarte por Telegram, y hay tres momentos más de los que enterarte.** Las otras
   dos acciones de chat te piden un webhook que tenés que ir a crear en un servidor; esta reusa el
   bot que ya configuraste en Mensajería, así que «cuando termine una tarea, avisame» es elegir de

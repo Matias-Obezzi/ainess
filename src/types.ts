@@ -88,6 +88,16 @@ export interface McpServer {
   enabledFor: "all" | string[];
 }
 
+/** Spending limits and policy for a project. */
+export interface Budget {
+  /** Dollars per day. 0 or missing means no limit. */
+  dailyUsd?: number;
+  /** Dollars per month. 0 or missing means no limit. */
+  monthlyUsd?: number;
+  /** What to do when the limit is reached. */
+  onReached: "warn" | "block";
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -96,6 +106,8 @@ export interface Project {
   createdAt: number;
   /** The team that works on this project. Empty means the project has no agents yet. */
   agents: AgentConfig[];
+  /** Spending limits for runs in this project. Warns or blocks when reached. */
+  budget?: Budget;
 }
 
 /** A saved team template: what a new project starts with. */

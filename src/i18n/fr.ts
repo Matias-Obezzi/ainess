@@ -1260,6 +1260,19 @@ export const fr: Dictionary = {
   "usage.empty.title": "Personne n'a encore déclaré de dépense",
   "usage.empty.body": "Claude Code indique le coût en dollars de chaque exécution et Copilot compte les requêtes premium. Dès que l'un d'eux travaille sur ce projet, la dépense apparaît ici.",
   "usage.runUsage": "Consommation",
+
+  // ---- Budget ----
+  "budget.title": "Limite de dépenses",
+  "budget.daily": "Limite quotidienne (USD)",
+  "budget.monthly": "Limite mensuelle (USD)",
+  "budget.hint": "Les chiffres proviennent de ce que chaque CLI signale. Un fournisseur qui ne signale rien n'ajoute rien.",
+  "budget.onReached": "Lorsque la limite est atteinte",
+  "budget.onReached.warn": "Seulement avertir",
+  "budget.onReached.block": "Empêcher le démarrage de nouvelles exécutions",
+  "budget.warning": "Dépenses à {percent}% de la limite ({limit})",
+  "budget.blocked": "Limite atteinte : {spent} dépensés sur {limit}. Les nouvelles exécutions ne démarreront pas.",
+  "budget.spentOf": "{spent} sur {limit}",
+  "budget.none": "Aucune limite",
   // ---- CLI usage ----
   "cli.usage.noData": "Aucune donnée d'utilisation pour le moment.",
   "cli.usage.tokens": "tokens",
@@ -1325,6 +1338,7 @@ export const fr: Dictionary = {
   "prompt.board.intro": "Voici les tâches ouvertes. Pour en prendre une, délègue-la avec son id dans le champ `taskId` : la carte se déplace au lieu qu'une seconde soit créée. N'ouvre pas la demande de l'utilisateur comme une tâche neuve si elle est déjà dans cette liste.",
   "prompt.board.empty": "Le tableau n'a aucune tâche ouverte.",
   "delegation.unknownAgent": "Échec de la délégation : aucun agent nommé « {name} » n'est sous les ordres de {agent}.",
+  "delegation.couldNotStart": "La délégation à « {name} » n'a jamais démarré, il n'y a donc rien à en attendre.",
   "delegation.retryUnknown": "Aucune de vos délégations n'a atteint un agent réel : {names}. Ceux sous vos ordres sont : {valid}. Déléguez à nouveau en utilisant ces noms exacts.",
   "delegation.noChildren": "aucun",
   "delegation.gaveUp": "Plus de tours sans déléguer : les agents {names} ne font pas partie de cette équipe.",

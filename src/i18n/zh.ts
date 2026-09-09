@@ -1260,6 +1260,19 @@ export const zh: Dictionary = {
   "usage.empty.title": "还没有人上报花费",
   "usage.empty.body": "Claude Code 会上报每次运行的美元费用，Copilot 会统计高级请求。只要其中之一在本项目里工作，花费就会显示在这里。",
   "usage.runUsage": "消耗",
+
+  // ---- Budget ----
+  "budget.title": "支出限额",
+  "budget.daily": "每日限额 (USD)",
+  "budget.monthly": "每月限额 (USD)",
+  "budget.hint": "数据来自各 CLI 的报告。未报告任何内容的提供商不会计入总额。",
+  "budget.onReached": "达到限额时",
+  "budget.onReached.warn": "仅警告",
+  "budget.onReached.block": "阻止启动新运行",
+  "budget.warning": "支出已达限额（{limit}）的 {percent}%",
+  "budget.blocked": "已达限额：已支出 {spent}（限额 {limit}）。不会启动新运行。",
+  "budget.spentOf": "{spent} / {limit}",
+  "budget.none": "无限制",
   // ---- CLI usage ----
   "cli.usage.noData": "暂无使用数据。",
   "cli.usage.tokens": "tokens",
@@ -1325,6 +1338,7 @@ export const zh: Dictionary = {
   "prompt.board.intro": "以下是未完成的任务。要接手其中一个，就在 `taskId` 字段里带上它的 id 去委派：这样卡片会移动，而不是再新建一张。如果用户的请求已经在这个列表里，就不要再开一个新任务。",
   "prompt.board.empty": "看板上没有未完成的任务。",
   "delegation.unknownAgent": "委派失败：没有名为“{name}”的代理受 {agent} 指挥。",
+  "delegation.couldNotStart": "向「{name}」的委派根本没有开始，所以没有什么可等的。",
   "delegation.retryUnknown": "您的委派没有一个到达真实的代理：{names}。您指挥的代理有：{valid}。请使用这些确切的名称再次委派。",
   "delegation.noChildren": "无",
   "delegation.gaveUp": "回合已用尽且未能委派：此团队中不存在代理 {names}。",

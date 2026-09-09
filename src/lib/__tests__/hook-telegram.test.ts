@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore } from "@/store";
 import { sendToAllowed, sendToChat } from "@/lib/bridge";
 import { emitHookEvent } from "@/lib/hooks";
@@ -128,7 +128,7 @@ describe("telegram hook and bridge dispatch", () => {
 
     const project = useAppStore.getState().config.projects[0];
     await emitHookEvent("task.finished", {}, { project });
-    await new Promise(r => setTimeout(r, 60));
+    await vi.waitFor(() => expect(sent.length).toBe(3));
 
     // hookWithChat should have sent to "123"
     // hookWithoutChat should have sent to both "123" and "456"
@@ -170,9 +170,8 @@ describe("telegram hook and bridge dispatch", () => {
     const longOutput = "x".repeat(5000);
     const project = useAppStore.getState().config.projects[0];
     await emitHookEvent("task.finished", { output: longOutput }, { project });
-    await new Promise(r => setTimeout(r, 60));
+    await vi.waitFor(() => expect(sent.length).toBe(1));
 
-    expect(sent.length).toBe(1);
     expect(sent[0].body.text.length).toBeLessThanOrEqual(4096);
   });
 
@@ -231,7 +230,7 @@ describe("telegram hook and bridge dispatch", () => {
 
     const project = useAppStore.getState().config.projects[0];
     await emitHookEvent("task.finished", {}, { project });
-    await new Promise(r => setTimeout(r, 60));
+    await vi.waitFor(() => expect(useAppStore.getState().messages.some(m => m.kind === "system")).toBe(true));
 
     const messages = useAppStore.getState().messages;
     const systemMsg = messages.find(m => m.kind === "system");
@@ -292,7 +291,7 @@ describe("telegram hook and bridge dispatch", () => {
     // Emit quota.exhausted
     await emitHookEvent("quota.exhausted", { model: "claude-3-5-sonnet" }, { project });
 
-    await new Promise(r => setTimeout(r, 100));
+    await vi.waitFor(() => expect(received.length).toBe(3));
 
     expect(received.some(r => r.body === "Pregunta: ¿Continuar con la refactorización?")).toBe(true);
     expect(received.some(r => r.body === "Cambios en: Implementar feature X")).toBe(true);

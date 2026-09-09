@@ -1262,6 +1262,19 @@ export const es: Dictionary = {
   "usage.empty.body": "Claude Code informa el costo en dólares de cada corrida y Copilot cuenta los pedidos premium. Cuando alguno trabaje en este proyecto, el gasto aparece acá.",
   "usage.runUsage": "Consumo",
 
+  // ---- Budget ----
+  "budget.title": "Tope de gasto",
+  "budget.daily": "Tope diario (USD)",
+  "budget.monthly": "Tope mensual (USD)",
+  "budget.hint": "Los números salen de lo que reporta cada CLI. Un proveedor que no reporta nada no suma.",
+  "budget.onReached": "Al alcanzar el tope",
+  "budget.onReached.warn": "Solo advertir",
+  "budget.onReached.block": "No dejar arrancar corridas nuevas",
+  "budget.warning": "Se alcanzó el {percent}% del tope ({limit})",
+  "budget.blocked": "Tope alcanzado: gastado {spent} de {limit}. No se iniciarán nuevas corridas.",
+  "budget.spentOf": "{spent} de {limit}",
+  "budget.none": "Sin tope",
+
   // ---- CLI usage ----
   "cli.usage.noData": "No hay datos de uso todavía.",
   "cli.usage.tokens": "tokens",
@@ -1327,6 +1340,7 @@ export const es: Dictionary = {
   "prompt.board.intro": "Estas son las tareas abiertas. Para ponerte con una, delegala con su id en el campo `taskId`: así la tarjeta se mueve en lugar de crearse otra igual. No repitas el pedido del usuario como tarea nueva si ya está en esta lista.",
   "prompt.board.empty": "El tablero no tiene tareas abiertas.",
   "delegation.unknownAgent": "Delegación fallida: no se encontró al agente «{name}» bajo el mando de {agent}.",
+  "delegation.couldNotStart": "La delegación a «{name}» no llegó a arrancar, así que no hay nada que esperar de ella.",
   "delegation.retryUnknown": "Ninguna de tus delegaciones llegó a un agente real: {names}. Los que tenés bajo tu mando son: {valid}. Volvé a delegar con esos nombres exactos.",
   "delegation.noChildren": "ninguno",
   "delegation.gaveUp": "Se agotaron las rondas sin poder delegar: los agentes {names} no existen en este equipo.",

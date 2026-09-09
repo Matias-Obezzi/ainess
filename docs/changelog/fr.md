@@ -6,6 +6,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Un plafond de dépense par projet, et l'alerte avant de l'avoir brûlé.** L'écran d'utilisation a
+  toujours su dire ce qu'un projet avait coûté. Il ne pouvait pas l'arrêter. Un projet accepte
+  désormais un plafond journalier, un mensuel, ou les deux, et vous dites quoi faire quand il est
+  atteint : prévenir, ou refuser de démarrer de nouvelles exécutions. L'alerte arrive à 80 % — une
+  fois par jour, pas une fois par exécution — et l'écran d'utilisation trace la barre contre le
+  plafond le plus près de céder. Les chiffres restent uniquement ce que chaque CLI a réellement
+  rapporté : un fournisseur qui ne rapporte rien n'ajoute rien, et l'écran le dit au lieu
+  d'estimer.
+
 - **Un hook peut vous prévenir sur Telegram, et il y a trois moments de plus dont être averti.**
   Les deux autres actions de chat réclament un webhook qu'il faut aller créer sur un serveur ;
   celle-ci réutilise le bot déjà configuré dans Messagerie, si bien que « quand une tâche se

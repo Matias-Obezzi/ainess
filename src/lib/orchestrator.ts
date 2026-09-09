@@ -7,7 +7,7 @@ import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
-import { translateNow } from "@/i18n/useT";
+import { translateNow, activeLocale } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
@@ -16,8 +16,16 @@ import { StreamBuffer } from "@/lib/stream-buffer";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
+import { budgetState, budgetAllowsStart } from "@/lib/budget";
+import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 
 const toolFailures = new Map<string, number>();
+/**
+ * Tracks the last local day a budget warning notification was emitted for each project.
+ * A project can trigger dozens of runs in a single session: without this dedup, any run started
+ * while in the warning zone (80%+) would emit a duplicate notification.
+ */
+const budgetWarningEmitted = new Map<string, string>();
 let listenersAttached = false;
 
 export async function attachListeners(): Promise<void> {
@@ -252,6 +260,52 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
   if (!agent || !project) return undefined;
+  const bState = budgetState(runsOfProject(store.runs, opts.projectId), project.budget);
+  if (!budgetAllowsStart(bState, project.budget)) {
+    const limitUsd = bState.limit?.usd ?? 0;
+    const spentUsd = bState.limit?.kind === "monthly" ? bState.spentMonth : bState.spentToday;
+    const locale = activeLocale();
+    const limit = formatCost(limitUsd, locale);
+    const spent = formatCost(spentUsd, locale);
+    const text = translateNow("budget.blocked", { limit, spent });
+
+    addMessage({
+      projectId: opts.projectId,
+      fromAgentId: "system",
+      toAgentId: opts.agentId,
+      kind: "error",
+      text,
+    });
+
+    store.notify({
+      kind: "info",
+      title: text,
+      projectId: opts.projectId,
+      agentId: opts.agentId,
+    });
+
+    return undefined;
+  }
+
+  if (bState.warning) {
+    const currentDay = dayKey(Date.now());
+    const lastWarnedDay = budgetWarningEmitted.get(opts.projectId);
+    if (lastWarnedDay !== currentDay) {
+      budgetWarningEmitted.set(opts.projectId, currentDay);
+      const limitUsd = bState.limit?.usd ?? 0;
+      const locale = activeLocale();
+      const limit = formatCost(limitUsd, locale);
+      const percent = Math.round((bState.ratio ?? 0) * 100);
+      const title = translateNow("budget.warning", { percent, limit });
+
+      store.notify({
+        kind: "info",
+        title,
+        projectId: opts.projectId,
+        agentId: opts.agentId,
+      });
+    }
+  }
 
   const runId = crypto.randomUUID();
   const run: Run = {
@@ -723,6 +777,13 @@ function onRunFinished(runId: string) {
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
             } else {
               const childRunId = startRun(payload);
+              // A child that never started is not a child to wait for. Counting it anyway left the
+              // planner waiting on a run that does not exist and its card in "working" for good —
+              // which is now reachable for a real reason, because a spent budget refuses to start.
+              if (!childRunId) {
+                addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: translateNow("delegation.couldNotStart", { name: childAgent.name }), runId });
+                continue;
+              }
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
             }
             startedCount++;

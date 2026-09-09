@@ -6,6 +6,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein Ausgabenlimit pro Projekt, und die Warnung, bevor es aufgebraucht ist.** Die Nutzungsansicht
+  konnte immer sagen, was ein Projekt gekostet hat. Aufhalten konnte sie es nicht. Ein Projekt nimmt
+  jetzt ein Tageslimit, ein Monatslimit oder beides — und du legst fest, was beim Erreichen passiert:
+  warnen, oder keine neuen Läufe mehr starten lassen. Die Warnung kommt bei 80 %, einmal am Tag und
+  nicht einmal pro Lauf, und die Nutzungsansicht zeichnet den Balken gegen das Limit, das dem Bruch am
+  nächsten ist. Die Zahlen sind weiterhin nur das, was die jeweilige CLI tatsächlich gemeldet hat: Ein
+  Anbieter, der nichts meldet, zählt nichts — und die Ansicht sagt das, statt zu schätzen.
+
 - **Ein Hook kann dir über Telegram Bescheid geben, und es gibt drei weitere Momente, von denen es
   sich zu erfahren lohnt.** Die beiden anderen Chat-Aktionen verlangen einen Webhook, den man erst
   auf einem Server anlegen muss; diese nutzt den Bot, der in „Nachrichten" schon eingerichtet ist —

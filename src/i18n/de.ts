@@ -1260,6 +1260,19 @@ export const de: Dictionary = {
   "usage.empty.title": "Noch hat niemand Ausgaben gemeldet",
   "usage.empty.body": "Claude Code meldet die Kosten jedes Laufs in Dollar und Copilot zählt die Premium-Anfragen. Sobald eines von beiden in diesem Projekt arbeitet, erscheinen die Ausgaben hier.",
   "usage.runUsage": "Verbrauch",
+
+  // ---- Budget ----
+  "budget.title": "Ausgabenlimit",
+  "budget.daily": "Tageslimit (USD)",
+  "budget.monthly": "Monatslimit (USD)",
+  "budget.hint": "Die Beträge basieren auf den Meldungen der CLIs. Ein Anbieter, der nichts meldet, zählt nicht zum Gesamtwert.",
+  "budget.onReached": "Beim Erreichen des Limits",
+  "budget.onReached.warn": "Nur warnen",
+  "budget.onReached.block": "Start neuer Ausführungen blockieren",
+  "budget.warning": "Ausgaben haben {percent}% des Limits erreicht ({limit})",
+  "budget.blocked": "Limit erreicht: {spent} von {limit} ausgegeben. Neue Ausführungen werden nicht gestartet.",
+  "budget.spentOf": "{spent} von {limit}",
+  "budget.none": "Kein Limit",
   // ---- CLI usage ----
   "cli.usage.noData": "Noch keine Nutzungsdaten.",
   "cli.usage.tokens": "tokens",
@@ -1325,6 +1338,7 @@ export const de: Dictionary = {
   "prompt.board.intro": "Das sind die offenen Aufgaben. Um eine davon zu übernehmen, delegiere sie mit ihrer id im Feld `taskId`: dann wandert die Karte, statt dass eine zweite entsteht. Öffne die Anfrage des Benutzers nicht als neue Aufgabe, wenn sie bereits in dieser Liste steht.",
   "prompt.board.empty": "Auf dem Board gibt es keine offenen Aufgaben.",
   "delegation.unknownAgent": "Delegation fehlgeschlagen: Kein Agent namens „{name}“ ist {agent} unterstellt.",
+  "delegation.couldNotStart": "Die Delegation an „{name}“ ist nie gestartet, es gibt also nichts, worauf man warten müsste.",
   "delegation.retryUnknown": "Keine deiner Delegationen hat einen echten Agenten erreicht: {names}. Die dir unterstellten Agenten sind: {valid}. Delegiere erneut mit genau diesen Namen.",
   "delegation.noChildren": "keine",
   "delegation.gaveUp": "Maximale Anzahl an Runden erreicht, ohne zu delegieren: Die Agenten {names} existieren in diesem Team nicht.",

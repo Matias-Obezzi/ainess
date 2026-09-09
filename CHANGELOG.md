@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **A spending limit per project, and the warning before you burn through it.** The usage screen
+  could always tell you what a project had cost. It could not stop it. A project now takes a daily
+  limit, a monthly one, or both, and says what to do when one is reached: warn, or refuse to start
+  new runs. The warning arrives at 80% — once a day, not once per run — and the usage screen draws
+  the bar against whichever limit is closest to breaking. The figures are still only what each CLI
+  actually reported: a provider that reports nothing adds nothing, and the screen says so rather
+  than estimating.
+
 - **A hook can tell you on Telegram, and there are three more moments worth being told about.** The
   other two chat actions want a webhook you have to go and create on a server; this one reuses the
   bot you already set up in Messaging, so "when a task finishes, tell me" is one dropdown. Name a
