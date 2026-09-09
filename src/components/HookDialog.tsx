@@ -24,6 +24,9 @@ const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "run.failed", label: "run.failed" },
   { value: "agent.stopped", label: "agent.stopped" },
   { value: "result", label: "result" },
+  { value: "question.asked", label: "question.asked" },
+  { value: "review.changes", label: "review.changes" },
+  { value: "quota.exhausted", label: "quota.exhausted" },
   // The machine's own conditions (src/lib/system-hooks.ts).
   { value: "app.started", label: "app.started" },
   { value: "schedule", label: "schedule" },
@@ -54,6 +57,7 @@ const SYSTEM_EVENTS: HookEvent[] = ["app.started", "schedule", "internet.lost", 
 const ACTIONS = [
   { value: "slack", labelKey: "hookDialog.action.slack" },
   { value: "discord", labelKey: "hookDialog.action.discord" },
+  { value: "telegram", labelKey: "hookDialog.action.telegram" },
   { value: "webhook", labelKey: "hookDialog.action.webhook" },
   { value: "command", labelKey: "hookDialog.action.command" },
   { value: "instruct", labelKey: "hookDialog.action.instruct" },
@@ -73,10 +77,14 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const initialActionType = hook?.action.type || "notify";
   const [actionType, setActionType] = useState<string>(initialActionType);
   
+  const config = useAppStore(state => state.config);
+  const hasTelegramToken = Boolean(config.messaging?.telegram?.token?.trim());
+  const [chatId, setChatId] = useState(hook?.action.type === "telegram" ? hook.action.chatId || "" : "");
+
   // Action fields
   const [url, setUrl] = useState(hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "webhook" ? (hook.action as any).webhookUrl || (hook.action as any).url || "" : "");
   const [template, setTemplate] = useState(
-    hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
+    hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "telegram" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
     hook?.action.type === "webhook" ? hook.action.bodyTemplate : PRESET_SLACK
   );
   const [title, setTitle] = useState(hook?.action.type === "notify" ? hook.action.title : t("hookDialog.defaultNotifyTitle"));
@@ -115,6 +123,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
     switch (actionType) {
       case "slack": action = { type: "slack", webhookUrl: url, template }; break;
       case "discord": action = { type: "discord", webhookUrl: url, template }; break;
+      case "telegram": action = { type: "telegram", template, ...(chatId.trim() ? { chatId: chatId.trim() } : {}) }; break;
       case "webhook": action = { type: "webhook", url, method: "POST", headers: { "Content-Type": "application/json" }, bodyTemplate: template }; break;
       case "command": 
         const parsedArgs = argsStr.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(a => a.replace(/(^"|"$)/g, "")) || [];
@@ -267,6 +276,25 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
                 <Label>Webhook URL</Label>
                 <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" />
               </div>
+            )}
+            
+            {actionType === "telegram" && (
+              <>
+                {!hasTelegramToken && (
+                  <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
+                    {t("hooks.telegramNoToken")}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label>{t("hooks.telegramChatId")}</Label>
+                  <Input
+                    value={chatId}
+                    onChange={e => setChatId(e.target.value)}
+                    placeholder="123456789"
+                  />
+                  <p className="text-xs text-muted-foreground">{t("hooks.telegramChatIdHint")}</p>
+                </div>
+              </>
             )}
             
             {actionType === "command" && (

@@ -135,6 +135,22 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
       await transport.httpPost(action.webhookUrl, body, { "Content-Type": "application/json" });
       break;
     }
+    case "telegram": {
+      const store = useAppStore.getState();
+      const token = store.config.messaging?.telegram?.token;
+      if (!token) {
+        throw new Error(translateNow("hooks.telegramNoToken"));
+      }
+      let content = renderTemplate(action.template, vars);
+      if (content.length > 4096) content = content.slice(0, 4096);
+      const { sendToChat, sendToAllowed } = await import("./bridge");
+      if (action.chatId) {
+        await sendToChat(action.chatId, content);
+      } else {
+        await sendToAllowed(content);
+      }
+      break;
+    }
     case "webhook": {
       const body = renderTemplate(action.bodyTemplate, vars);
       await transport.httpPost(action.url, body, action.headers || {});

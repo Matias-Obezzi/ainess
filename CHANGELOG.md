@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Added
 
+- **A hook can tell you on Telegram, and there are three more moments worth being told about.** The
+  other two chat actions want a webhook you have to go and create on a server; this one reuses the
+  bot you already set up in Messaging, so "when a task finishes, tell me" is one dropdown. Name a
+  chat or leave it blank for every chat on the list — and only chats on the list, because a hook is
+  not allowed to be the back door around it. Three new events came with it: an agent asked something
+  and is waiting, a review asked for changes, and an agent ran out of quota.
+
 - **The palette searches what was said, not just what things are called.** It found projects,
   tasks, chats and agents by name, which is what you need on the day — and two weeks later what you
   remember is a phrase, not a title. Type three characters and the messages of the project's feed

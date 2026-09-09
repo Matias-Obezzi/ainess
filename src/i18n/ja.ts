@@ -649,6 +649,11 @@ export const ja: Dictionary = {
   "hooks.empty.title": "まだフックがありません",
   "hooks.empty.body": "フックは、オーケストレーターで何かが起きたときにアクション (Slack、webhook、コマンドなど) を実行します。",
   "hooks.empty.action": "最初のフックを作成",
+  "hooks.action.telegram": "Telegram",
+  "hooks.telegramChatId": "チャットID",
+  "hooks.telegramChatIdHint": "省略可能: 空の場合はすべての承認済みチャットに送信されます。",
+  "hooks.telegramNoToken": "Telegramボットが設定されていません。メッセージングで設定してください。",
+  "hooks.telegramNotAllowed": "チャット {id} は承認済みリストに含まれていません。",
 
   // ---- Suggested MCP and skills ----
   "suggested.button": "おすすめ",
@@ -985,6 +990,7 @@ export const ja: Dictionary = {
   "hookDialog.actionLabel": "アクション",
   "hookDialog.action.slack": "Slack",
   "hookDialog.action.discord": "Discord",
+  "hookDialog.action.telegram": "Telegram",
   "hookDialog.action.webhook": "Webhook",
   "hookDialog.action.command": "ローカルコマンド",
   "hookDialog.action.instruct": "エージェントに指示",

@@ -6,6 +6,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Un hook peut vous prévenir sur Telegram, et il y a trois moments de plus dont être averti.**
+  Les deux autres actions de chat réclament un webhook qu'il faut aller créer sur un serveur ;
+  celle-ci réutilise le bot déjà configuré dans Messagerie, si bien que « quand une tâche se
+  termine, préviens-moi » se choisit dans une liste. Vous pouvez nommer une conversation ou laisser
+  vide pour toutes celles de la liste — et seulement celles de la liste, car un hook n'a pas le
+  droit d'être la porte dérobée qui la contourne. Trois nouveaux événements l'accompagnent : un
+  agent a posé une question et attend, une relecture a demandé des changements, et un agent est
+  arrivé au bout de son quota.
+
 - **La palette cherche ce qui a été dit, pas seulement comment les choses s'appellent.** Elle
   trouvait projets, tâches, conversations et agents par leur nom — ce dont on a besoin le jour même.
   Deux semaines plus tard, ce dont on se souvient est une phrase, pas un titre. Trois caractères

@@ -9,6 +9,7 @@ import { truncate } from "@/lib/format";
 import type { Run, Task } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { parseReviewVerdict } from "@/lib/review";
+import { emitHookEvent } from "@/lib/hooks";
 import type { ParsedTaskOp } from "@/lib/providers";
 
 /** Title of a task: its first meaningful line, without markdown decoration. */
@@ -172,6 +173,21 @@ export function taskOnRunFinished(run: Run): void {
             status: "needs-you", 
             detail: [reviewedTask.detail, translateNow("review.changes", { output: run.output })].filter(Boolean).join("\n\n") 
           });
+          const project = store.config.projects.find(p => p.id === run.projectId);
+          const agent = (project?.agents ?? []).find(a => a.id === run.agentId);
+          const rootRun = store.runs[run.rootRunId];
+          const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
+          const ctx = {
+            project,
+            agent,
+            runId: run.id,
+            round: run.round,
+            prompt: run.prompt,
+            output: run.output,
+            taskPrompt,
+            error: "",
+          };
+          void emitHookEvent("review.changes", { task: reviewedTask.title }, ctx);
         }
       }
       return;

@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Um hook pode te avisar pelo Telegram, e há mais três momentos dos quais ficar sabendo.** As
+  outras duas ações de chat pedem um webhook que você precisa ir criar num servidor; esta reaproveita
+  o bot que você já configurou em Mensageria, então "quando uma tarefa terminar, me avise" é escolher
+  numa lista. Você pode nomear um chat ou deixar em branco para todos os da lista — e só os da lista,
+  porque um hook não pode ser a porta dos fundos que a contorna. Vieram junto três eventos novos: um
+  agente perguntou algo e está esperando, uma revisão pediu mudanças, e um agente ficou sem cota.
+
 - **A paleta busca o que foi dito, não só como as coisas se chamam.** Ela encontrava projetos,
   tarefas, chats e agentes pelo nome, que é o que você precisa no dia — e duas semanas depois o que
   você lembra é uma frase, não um título. Digite três letras e voltam também as mensagens do feed do

@@ -239,6 +239,82 @@ export async function sendTest(chatId: string): Promise<void> {
   await new TelegramProvider(token).send(chatId, translateNow("bridge.test.message"));
 }
 
+function getDispatchProviders(): BridgeProvider[] {
+  if (providers.size > 0) {
+    return Array.from(providers.values());
+  }
+  const token = useAppStore.getState().config.messaging?.telegram?.token;
+  if (token) {
+    return [new TelegramProvider(token)];
+  }
+  return [];
+}
+
+function sanitizeBridgeError(e: unknown, token?: string): string {
+  let msg = e instanceof Error ? e.message : String(e);
+  if (token && token.trim()) {
+    msg = msg.split(token).join("[REDACTED]");
+  }
+  msg = msg.replace(/\/bot[^/\s]+/g, "/bot[REDACTED]");
+  return msg;
+}
+
+/**
+ * A message to the chats this app is allowed to talk to, for whatever wants to say something
+ * without knowing which channel is on.
+ */
+export async function sendToAllowed(text: string): Promise<number> {
+  const chats = allowedChats();
+  if (chats.length === 0) return 0;
+  const targets = getDispatchProviders();
+  if (targets.length === 0) return 0;
+
+  const token = useAppStore.getState().config.messaging?.telegram?.token;
+  let sentCount = 0;
+  for (const chatId of chats) {
+    let sent = false;
+    for (const provider of targets) {
+      try {
+        await provider.send(chatId, text);
+        sent = true;
+      } catch (e) {
+        log.warn("bridge", `no se pudo avisar a ${chatId}: ${sanitizeBridgeError(e, token)}`);
+      }
+    }
+    if (sent) sentCount++;
+  }
+  return sentCount;
+}
+
+/**
+ * One chat, by id, for a hook that names its destination.
+ *
+ * A chat that is not on the list is refused here too. The list is the whole of the security, and a
+ * hook is not allowed to be the back door around it.
+ *
+ * Unlike the broadcast, this one throws when nothing got through: somebody named one destination,
+ * and a hook that silently did not reach it is worse than one that says it failed.
+ */
+export async function sendToChat(chatId: string, text: string): Promise<void> {
+  if (!isAllowed(chatId, allowedChats())) {
+    throw new Error(translateNow("hooks.telegramNotAllowed", { id: chatId }));
+  }
+  const targets = getDispatchProviders();
+  const token = useAppStore.getState().config.messaging?.telegram?.token;
+  let sent = false;
+  let lastError = "";
+  for (const provider of targets) {
+    try {
+      await provider.send(chatId, text);
+      sent = true;
+    } catch (e) {
+      lastError = sanitizeBridgeError(e, token);
+      log.warn("bridge", `no se pudo avisar a ${chatId}: ${lastError}`);
+    }
+  }
+  if (!sent) throw new Error(lastError || translateNow("hooks.telegramNoToken"));
+}
+
 let notificationsAttached = false;
 let seenNotification: string | null = null;
 

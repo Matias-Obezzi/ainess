@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein Hook kann dir über Telegram Bescheid geben, und es gibt drei weitere Momente, von denen es
+  sich zu erfahren lohnt.** Die beiden anderen Chat-Aktionen verlangen einen Webhook, den man erst
+  auf einem Server anlegen muss; diese nutzt den Bot, der in „Nachrichten" schon eingerichtet ist —
+  „wenn eine Aufgabe fertig ist, sag mir Bescheid" ist damit ein Eintrag in einer Liste. Du kannst
+  einen Chat benennen oder das Feld leer lassen für alle Chats der Liste — und nur die der Liste,
+  denn ein Hook darf nicht die Hintertür daran vorbei sein. Mitgekommen sind drei neue Ereignisse:
+  ein Agent hat etwas gefragt und wartet, eine Review hat Änderungen verlangt, und einem Agenten ist
+  das Kontingent ausgegangen.
+
 - **Die Palette durchsucht, was gesagt wurde, nicht nur, wie die Dinge heißen.** Sie fand Projekte,
   Aufgaben, Chats und Agenten am Namen — was man am selben Tag braucht. Zwei Wochen später erinnert
   man sich aber an einen Satz, nicht an einen Titel. Drei Zeichen genügen, und die Nachrichten aus

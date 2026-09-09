@@ -15,6 +15,7 @@ import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
+import { emitHookEvent } from "@/lib/hooks";
 
 const toolFailures = new Map<string, number>();
 let listenersAttached = false;
@@ -849,6 +850,21 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
   const parsed = parseQuestions(run.output);
   if (parsed.length === 0) return false;
 
+  const store = useAppStore.getState();
+  const project = store.config.projects.find(p => p.id === run.projectId);
+  const rootRun = store.runs[run.rootRunId];
+  const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
+  const ctx = {
+    project,
+    agent,
+    runId: run.id,
+    round: run.round,
+    prompt: run.prompt,
+    output: run.output,
+    taskPrompt,
+    error: "",
+  };
+
   const questions: Record<string, AgentQuestion> = {};
   for (const q of parsed) {
     const id = crypto.randomUUID();
@@ -874,6 +890,7 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       text: q.question,
       runId: run.id,
     });
+    void emitHookEvent("question.asked", { question: q.question }, ctx);
   }
   useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
 
@@ -980,10 +997,22 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
  * what happened, which models are left, and that it may name one — the `model` field is not in the
  * delegate schema unless "choose the model" is on, and it is honoured either way.
  */
+/**
+ * The model a child ran out of, or `null` when quota is not what stopped it.
+ *
+ * Separate from the note it produces because running out of quota is an event and the note is a
+ * paragraph: something that fires a hook cannot live inside a function whose job is to build a
+ * string, or it fires again the day somebody builds that string twice.
+ */
+function spentModel(childRun: Run, childAgent: AgentConfig | undefined): string | undefined | null {
+  if (childRun.status !== "error" || !childAgent) return null;
+  if (!outOfQuota(childRun.output)) return null;
+  return childRun.model ?? childAgent.model;
+}
+
 function quotaNote(childRun: Run, childAgent: AgentConfig | undefined): string {
-  if (childRun.status !== "error" || !childAgent) return "";
-  if (!outOfQuota(childRun.output)) return "";
-  const spent = childRun.model ?? childAgent.model;
+  const spent = spentModel(childRun, childAgent);
+  if (spent === null || !childAgent) return "";
   const others = alternativeModels(childAgent.provider, spent);
   if (others.length === 0) return `\n${translateNow("prompt.quota.spentNoOthers", { name: childAgent.name })}\n`;
   return `\n${translateNow("prompt.quota.spent", { name: childAgent.name, models: others.join(", ") })}\n`;
@@ -1017,6 +1046,21 @@ function maybeContinueParent(parentRunId: string) {
         if (result.verified.length) lines.push(`**${translateNow("result.verified")}:** ${result.verified.join(", ")}`);
         if (result.blocked.length) lines.push(`**${translateNow("result.blocked")}:** ${result.blocked.join(", ")}`);
         if (lines.length) outputText += "\n" + lines.join("\n") + "\n";
+      }
+
+      const spent = spentModel(childRun, childAgent);
+      if (spent !== null) {
+        const childRoot = store.runs[childRun.rootRunId];
+        void emitHookEvent("quota.exhausted", { model: spent ?? "" }, {
+          project: store.config.projects.find(p => p.id === childRun.projectId),
+          agent: childAgent,
+          runId: childRun.id,
+          round: childRun.round,
+          prompt: childRun.prompt,
+          output: childRun.output,
+          taskPrompt: childRoot ? childRoot.prompt : childRun.prompt,
+          error: childRun.output,
+        });
       }
 
       outputText += quotaNote(childRun, childAgent);
@@ -1133,7 +1177,6 @@ function processQueuedInstructions(agentId: string, projectId: string) {
   }
 }
 
-import { emitHookEvent } from "@/lib/hooks";
 import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 

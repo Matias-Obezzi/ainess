@@ -648,6 +648,11 @@ export const zh: Dictionary = {
   "hooks.empty.title": "还没有钩子",
   "hooks.empty.body": "编排器里发生某件事时，钩子会触发一个动作（Slack、webhook、命令…）。",
   "hooks.empty.action": "创建你的第一个钩子",
+  "hooks.action.telegram": "Telegram",
+  "hooks.telegramChatId": "聊天 ID",
+  "hooks.telegramChatIdHint": "可选：留空则发送至所有已授权的聊天。",
+  "hooks.telegramNoToken": "未配置 Telegram 机器人。请在消息设置中进行配置。",
+  "hooks.telegramNotAllowed": "聊天 {id} 不在已授权列表中。",
 
   // ---- Suggested MCP and skills ----
   "suggested.button": "推荐",
@@ -984,6 +989,7 @@ export const zh: Dictionary = {
   "hookDialog.actionLabel": "动作",
   "hookDialog.action.slack": "Slack",
   "hookDialog.action.discord": "Discord",
+  "hookDialog.action.telegram": "Telegram",
   "hookDialog.action.webhook": "Webhook",
   "hookDialog.action.command": "本地命令",
   "hookDialog.action.instruct": "指示智能体",

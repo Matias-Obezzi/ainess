@@ -125,6 +125,9 @@ export type HookEvent =
   | "run.failed"
   | "agent.stopped"
   | "result"
+  | "question.asked"
+  | "review.changes"
+  | "quota.exhausted"
   // Something that happened to the machine, with no agent behind it (see src/lib/system-hooks.ts).
   /** The app was opened. */
   | "app.started"
@@ -139,6 +142,8 @@ export type HookEvent =
 export type HookAction =
   | { type: "slack"; webhookUrl: string; template: string }
   | { type: "discord"; webhookUrl: string; template: string }
+  /** Reuses the bot and token already configured in Messaging; without chatId sends to all authorized chats. */
+  | { type: "telegram"; template: string; chatId?: string }
   | { type: "webhook"; url: string; method?: "POST"; headers?: Record<string, string>; bodyTemplate: string }
   | { type: "command"; program: string; args: string[]; cwd?: "workspace" | string }
   | { type: "instruct"; agentId: string; template: string }

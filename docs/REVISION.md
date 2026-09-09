@@ -215,7 +215,7 @@ publica `BOARD.md` y `AGENTS.md` y nadie contesta.
 **Propuesta.** Que la app lea un `.ainess/INBOX.md` (o el comando `ais` equivalente) donde un agente
 deja pedidos para la app: crear tarjeta, avisar algo, pedir una revisión.
 
-### `[ ]` D4 · Los hooks no ven la mitad de lo que pasa
+### `[x]` D4 · Los hooks no ven la mitad de lo que pasa — *«A hook can tell you on Telegram»*
 
 **Qué pasa.** Hay eventos para corridas, tareas, delegaciones y aprobaciones, pero no para "un
 agente preguntó", "una revisión pidió cambios" o "un agente se quedó sin cuota".
@@ -418,3 +418,18 @@ mensaje: un extracto que no muestra la palabra que buscaste no es un extracto. Y
 feed en vez de suscribirse a él — el feed se reescribe con cada token que llega, y una paleta
 cerrada no tiene por qué volver a renderizarse, mucho menos volver a buscar, ochenta veces por
 segundo mientras un agente habla.
+
+### 8 de septiembre de 2026 — un hook que avisa por Telegram
+
+**D4** y una acción de hook nueva. Las otras dos acciones de chat piden un webhook que hay que ir a
+crear en un servidor; esta reusa el bot que ya está configurado en Mensajería, que es todo lo que
+hacía falta para que «cuando termine una tarea, avisame» sea elegir de una lista.
+
+La lista de chats autorizados sigue siendo la seguridad entera y un hook no la evita: `sendToChat`
+rechaza un chat que no está en la lista antes de mandar nada. El token no aparece en ningún log ni
+en ningún mensaje de error — `sanitizeBridgeError` lo borra, y también borra el `/bot<token>` de
+cualquier URL que se cuele en el texto de un error. Hay un test que lo verifica.
+
+Los tres eventos que faltaban: una pregunta que espera, una revisión que pidió cambios, y una cuota
+agotada. El de cuota se emite en el lugar donde pasa, no adentro de `quotaNote`: algo que dispara un
+hook no puede vivir dentro de una función cuyo trabajo es armar un string.

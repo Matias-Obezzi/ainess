@@ -649,6 +649,11 @@ export const es: Dictionary = {
   "hooks.empty.title": "Todavía no hay hooks",
   "hooks.empty.body": "Un hook dispara una acción (Slack, webhook, comando…) cuando pasa algo en el orquestador.",
   "hooks.empty.action": "Creá tu primer hook",
+  "hooks.action.telegram": "Telegram",
+  "hooks.telegramChatId": "ID de chat",
+  "hooks.telegramChatIdHint": "Opcional: si se deja vacío, se envía a todos los chats autorizados.",
+  "hooks.telegramNoToken": "No hay un bot de Telegram configurado. Configuralo en Mensajería.",
+  "hooks.telegramNotAllowed": "El chat {id} no está en la lista de chats autorizados.",
 
   // ---- Suggested MCP and skills ----
   "suggested.button": "Sugeridos",
@@ -985,6 +990,7 @@ export const es: Dictionary = {
   "hookDialog.actionLabel": "Acción",
   "hookDialog.action.slack": "Slack",
   "hookDialog.action.discord": "Discord",
+  "hookDialog.action.telegram": "Telegram",
   "hookDialog.action.webhook": "Webhook",
   "hookDialog.action.command": "Comando local",
   "hookDialog.action.instruct": "Instruir agente",
