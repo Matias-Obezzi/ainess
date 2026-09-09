@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le panneau de communication lit ce qu'un agent a écrit comme il l'entendait.** Ses lignes
+  affichaient le markdown brut — les astérisques, les accents graves, les dièses — alors que le même
+  texte s'affichait correctement partout ailleurs dans l'application. La prose est désormais rendue :
+  ce qu'un agent a dit, ce qu'il a délégué, ce avec quoi il est revenu, et ses notes. Les lignes
+  d'outil et stderr restent exactement telles qu'elles sont arrivées, car un chemin comme
+  `src/lib/__tests__/x.ts` n'est pas une consigne d'en mettre la moitié en gras ; et ce que vous
+  avez tapé est montré tel que vous l'avez tapé, comme le fait déjà la conversation.
+
 - **Le filtre de types reste ouvert pendant que vous vous en servez, et ne casse plus le panneau.**
   Choisir un type fermait le menu : réduire le fil à deux types demandait de l'ouvrir cinq fois. Et
   le bouton qui l'ouvre affiche « Types » jusqu'à ce que vous décochiez quelque chose, puis

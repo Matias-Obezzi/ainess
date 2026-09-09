@@ -57,6 +57,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El panel de comunicación lee lo que escribió un agente como lo escribió.** Sus filas mostraban
+  el markdown crudo —los asteriscos, las comillas invertidas, los numerales— mientras el mismo texto
+  se veía bien en todo el resto de la app. Ahora se renderiza la prosa: lo que dijo un agente, lo
+  que delegó, con qué volvió y sus notas. Las líneas de herramienta y stderr quedan tal cual
+  vinieron, porque una ruta como `src/lib/__tests__/x.ts` no es una instrucción para poner la mitad
+  en negrita, y lo que escribiste vos se muestra como lo escribiste, igual que ya hace el chat.
+
 - **El filtro de tipos se queda abierto mientras lo usás, y ya no rompe el panel.** Elegir un tipo
   cerraba el menú, así que dejar el feed en dos tipos era abrirlo cinco veces. Y el botón que lo
   abre dice «Tipos» hasta que destildás algo y «Tipos (7/8)» después — una etiqueta más larga por la

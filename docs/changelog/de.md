@@ -59,6 +59,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Der Kommunikationsbereich liest, was ein Agent geschrieben hat, so wie er es meinte.** Seine
+  Zeilen zeigten rohes Markdown — die Sternchen, die Backticks, die Rauten —, während derselbe Text
+  überall sonst in der App richtig dargestellt wurde. Jetzt wird Fließtext gerendert: was ein Agent
+  gesagt hat, was er delegiert hat, womit er zurückkam, und seine Notizen. Werkzeugzeilen und
+  stderr bleiben genau so, wie sie kamen, denn ein Pfad wie `src/lib/__tests__/x.ts` ist keine
+  Anweisung, die Hälfte davon fett zu setzen — und was du getippt hast, wird so gezeigt, wie du es
+  getippt hast, wie im Chat auch.
+
 - **Der Typenfilter bleibt offen, während du ihn benutzt, und sprengt das Panel nicht mehr.** Einen
   Typ auszuwählen schloss das Menü; den Feed auf zwei Typen einzugrenzen hieß, es fünfmal zu öffnen.
   Und die Schaltfläche, die es öffnet, heißt „Typen", bis du etwas abwählst, danach „Typen (7/8)" —

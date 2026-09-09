@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 import { MessageDetailDialog } from "./MessageDetailDialog";
 import { ErrorMessage } from "./ErrorMessage";
+import { Markdown } from "@/components/shell/Markdown";
 
 export const MessageItem = memo(function MessageItem({ message }: { message: CommMessage }) {
   const t = useT();
@@ -29,6 +30,18 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
 
   const isMono = message.kind === "tool" || message.kind === "stderr";
   const isDelegation = message.kind === "delegation";
+
+  /**
+   * What an agent wrote, rendered the way it meant it.
+   *
+   * Only what is prose. A tool line is a machine's, and markdown would read
+   * `src/lib/__tests__/x.ts` as an instruction to make part of it bold — the same for stderr, and
+   * for what the user typed, which is shown back as it was typed, like the chat does.
+   */
+  const isProse = message.kind === "text"
+    || message.kind === "delegation"
+    || message.kind === "result"
+    || message.kind === "note";
 
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -74,6 +87,8 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
         </div>
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
+        ) : isProse ? (
+          <Markdown text={message.text} className="mt-1" />
         ) : (
           <div
             className={cn(

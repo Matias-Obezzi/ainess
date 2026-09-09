@@ -56,6 +56,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The communication panel reads what an agent wrote the way it meant it.** Its rows showed raw
+  markdown — the asterisks, the backticks, the hashes — while the same text rendered properly
+  everywhere else in the app. Now prose renders: what an agent said, what it delegated, what it came
+  back with, and its notes. Tool lines and stderr stay exactly as they came, because a path like
+  `src/lib/__tests__/x.ts` is not an instruction to embolden half of it, and what you typed is shown
+  back as you typed it, the way the chat already does.
+
 - **The kinds filter stays open while you use it, and no longer breaks the panel.** Picking one
   kind closed the menu, so narrowing the feed to two of them meant opening it five times. And the
   button that opens it says "Kinds" until you deselect something and "Kinds (7/8)" after — a longer
