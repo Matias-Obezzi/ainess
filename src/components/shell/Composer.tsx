@@ -15,7 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
-import { activeCommandQuery, compactProject, matchCommands, parseCommand, type ChatCommand } from "@/lib/commands";
+import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
+import { activeCompletion, applyCompletion } from "@/lib/completion";
+import { TEMPLATE_VARS } from "@/lib/template-vars";
+import { fenceRegions, insideFence, lineIndent } from "@/lib/fences";
+import { getTransport } from "@/lib/transport";
+import { confirm } from "@/lib/confirm";
+import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { InlineQuestion } from "@/components/InlineQuestion";
@@ -34,12 +40,44 @@ import {
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
 const sentHistory: string[] = [];
 
+/** One row of the completion menu, whatever it is completing. */
+interface MenuOption {
+  id: string;
+  label: string;
+  hint: string;
+  /** What `applyCompletion` inserts. Unused by a preset or a command, which act instead. */
+  value: string;
+  preset?: Preset;
+  command?: ChatCommand;
+}
+
 /**
  * The two dropdowns of the bottom bar, dressed like the paperclip beside them: no border, no fill,
  * and the same grey under the pointer. They sit next to the box all day and pick something you
  * rarely change — a framed control for that is a frame around nothing.
  */
 const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
+
+/** The text of the box with each ``` region wrapped for a background — the fence highlight layer's content. */
+function renderFenceHighlight(text: string, regions: Array<{ start: number; end: number }>) {
+  if (regions.length === 0) return null;
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  regions.forEach((region, i) => {
+    if (region.start > cursor) nodes.push(text.slice(cursor, region.start));
+    nodes.push(
+      // No `font-mono` here, tempting as it is: this layer only works while every character sits
+      // exactly where the textarea puts it, and a different font would wrap at a different column
+      // and slide every line after it out of place. The background is the whole of the signal.
+      <span key={i} className="rounded bg-muted/50">
+        {text.slice(region.start, region.end)}
+      </span>
+    );
+    cursor = region.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes;
+}
 
 /** One attached file before it is sent: images show themselves, the rest show their name. */
 function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
@@ -97,6 +135,9 @@ export function Composer() {
   const stopChat = useAppStore(state => state.stopChat);
   const queueChatMessage = useAppStore(state => state.queueChatMessage);
   const stopAll = useAppStore(state => state.stopAll);
+  const setProjectMode = useAppStore(state => state.setProjectMode);
+  const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
+  const clearMessages = useAppStore(state => state.clearMessages);
 
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
 
@@ -105,8 +146,10 @@ export function Composer() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const questions = useAppStore(state => state.questions);
+  const answerQuestion = useAppStore(state => state.answerQuestion);
   const runs = useAppStore(state => state.runs);
 
   const chatMode = !!currentChatId;
@@ -165,6 +208,8 @@ export function Composer() {
     setDraft(draftKey, next);
   };
   const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
+  // Where the ``` regions are, for the highlight layer behind the box and for Enter/Tab above.
+  const fenceHighlightRegions = useMemo(() => fenceRegions(text), [text]);
 
   // Unlike what is typed, an attachment does not follow you to another conversation: it was picked
   // for the one you were in.
@@ -201,10 +246,17 @@ export function Composer() {
   // An order bound to another agent would run somewhere else than what the composer says, so only
   // the ones for this target (and the ones bound to nobody) are offered.
   const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
+  // The `/` completion menu offers a preset regardless of who is currently selected: picking one is
+  // what sets the agent, so a preset bound to a real agent of this project belongs there too.
+  const presetsForMenu = (config.presets ?? []).filter(p => !p.agentId || agents.some(a => a.id === p.agentId));
 
-  /** Loads an order into the box, and follows the agent and model it was saved with. */
-  const applyPreset = (preset: Preset) => {
-    setText(prev => prev + (prev && preset.prompt ? "\n" : "") + preset.prompt);
+  /**
+   * Loads an order into the box, and follows the agent and model it was saved with. The strip
+   * below the box appends it to whatever is already written; picked from the `/` completion menu
+   * it replaces the box outright, since there the whole point was starting a new order.
+   */
+  const applyPreset = (preset: Preset, opts?: { replace?: boolean }) => {
+    setText(prev => (opts?.replace ? preset.prompt : prev + (prev && preset.prompt ? "\n" : "") + preset.prompt));
     if (preset.agentId) setTargetId(preset.agentId);
     // One value now, so one call: the old pair set the model and then blanked it.
     if (preset.model) setComposerModel(draftKey, preset.model);
@@ -238,16 +290,99 @@ export function Composer() {
     addFiles(files);
   };
 
-  // ---- commands ----
-  // `/` on an otherwise empty box opens the list; anything else in it is a message.
+  // ---- completion menu ----
   const [usageOpen, setUsageOpen] = useState(false);
-  // Only on the project's own thread: a chat keeps its sessions somewhere else, and compacting
-  // one would be plain forgetting — there is no history file behind it to read back.
-  const commandQuery = currentProjectId && !chatMode ? activeCommandQuery(text) : null;
-  const commandMatches = commandQuery === null ? [] : matchCommands(commandQuery);
-  const [commandIndex, setCommandIndex] = useState(0);
-  const menuOpen = commandMatches.length > 0;
-  useEffect(() => { setCommandIndex(0); }, [commandQuery]);
+  // Tracked by hand (click/keyup/change all update it) because the menu has to know where the
+  // trigger is relative to the caret, not just whether one exists anywhere in the text. Its own
+  // name (not `caret`) avoids shadowing the local of the same name used below, in the Enter/Tab
+  // handling that predates the completion menu.
+  const [menuCaret, setMenuCaret] = useState(0);
+  const [menuIndex, setMenuIndex] = useState(0);
+  // Escape closes the menu for the trigger under the caret without touching what was typed; typing
+  // a new trigger (a different `start`/`kind`) is what brings a menu back.
+  const [menuDismissed, setMenuDismissed] = useState(false);
+
+  // `/` only opens the command list on the project's own thread: a chat keeps its sessions
+  // somewhere else, and compacting one would be plain forgetting — there is no history file behind
+  // it to read back. `{{`, `@` and `#` are not tied to that restriction.
+  const completionReq = useMemo(() => {
+    const req = activeCompletion(text, menuCaret);
+    if (!req) return null;
+    if (req.kind === "command" && (chatMode || !currentProjectId)) return null;
+    return req;
+  }, [text, menuCaret, chatMode, currentProjectId]);
+
+  useEffect(() => { setMenuIndex(0); }, [completionReq?.kind, completionReq?.query, completionReq?.start]);
+  useEffect(() => { setMenuDismissed(false); }, [completionReq?.kind, completionReq?.start]);
+
+  // The project's files for `#`, asked for once and kept in a ref: they do not change while you
+  // are typing, and a workspace with no git (or no git binary) just offers nothing — not an error.
+  const workspaceFilesRef = useRef<string[] | null>(null);
+  const [filesTick, bumpFilesTick] = useState(0);
+  useEffect(() => { workspaceFilesRef.current = null; }, [workspaceDir]);
+  useEffect(() => {
+    if (completionReq?.kind !== "file" || workspaceFilesRef.current !== null || !workspaceDir) return;
+    let cancelled = false;
+    void getTransport().exec("git", ["ls-files"], workspaceDir, 10).then(res => {
+      if (cancelled) return;
+      workspaceFilesRef.current = res.code === 0 ? res.stdout.split(/\r?\n/).filter(Boolean) : [];
+      bumpFilesTick(v => v + 1);
+    });
+    return () => { cancelled = true; };
+  }, [completionReq?.kind, workspaceDir]);
+
+  const menuOptions = useMemo<MenuOption[]>(() => {
+    if (!completionReq) return [];
+    const q = completionReq.query.toLowerCase();
+    if (completionReq.kind === "command") {
+      const cmds = COMMANDS.filter(c => c.name.startsWith(q))
+        .map(c => ({ id: `cmd:${c.id}`, label: `/${c.name}`, hint: t(c.descriptionKey), value: c.name, command: c }));
+      const presets = presetsForMenu.filter(p => p.name.toLowerCase().startsWith(q))
+        .map(p => ({ id: `preset:${p.id}`, label: p.name, hint: p.prompt, value: "", preset: p }));
+      return [...cmds, ...presets];
+    }
+    if (completionReq.kind === "agent") {
+      return agents.filter(a => a.name.toLowerCase().startsWith(q))
+        .map(a => ({ id: a.id, label: a.name, hint: t(roleLabelKey[a.role]), value: a.name }));
+    }
+    if (completionReq.kind === "file") {
+      return (workspaceFilesRef.current ?? [])
+        .filter(f => f.toLowerCase().includes(q))
+        .slice(0, 20)
+        .map(f => {
+          const slash = f.lastIndexOf("/");
+          return { id: f, label: slash === -1 ? f : f.slice(slash + 1), hint: slash === -1 ? "" : f.slice(0, slash), value: f };
+        });
+    }
+    return TEMPLATE_VARS.filter(v => v.toLowerCase().startsWith(q))
+      .map(v => ({ id: v, label: v, hint: t(`templateVar.${v}`), value: v }));
+    // `filesTick` is read for its change, not its value: it is what tells this memo the ref content moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completionReq, agents, presetsForMenu, filesTick, t]);
+
+  const menuOpen = !menuDismissed && menuOptions.length > 0;
+
+  /** Inserts the picked value in place of the trigger — or, for the two that act, acts. */
+  const pickOption = (option: MenuOption) => {
+    if (!completionReq) return;
+    // Picking a command has always been the whole gesture: choose it and it runs. Which also
+    // settles the one case that could loop — a completed `/compact` still starts with "compact",
+    // so it would match its own trigger forever — because running it empties the box.
+    if (option.command) {
+      runCommand(option.command);
+      return;
+    }
+    if (option.preset) {
+      applyPreset(option.preset, { replace: true });
+      return;
+    }
+    // A finished `@mention`, `#file` or `{{var}}` no longer matches its own trigger: the trailing
+    // space, or the closing `}}`, breaks it. So the menu closes on its own next render.
+    const { text: newText, caret: newCaret } = applyCompletion(text, completionReq, option.value);
+    setText(newText);
+    setMenuCaret(newCaret);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
+  };
 
   /** Runs one and empties the box. Commands never reach an agent, so nothing is queued or sent. */
   const runCommand = (command: ChatCommand) => {
@@ -259,13 +394,21 @@ export function Composer() {
       toast.success(t("command.compact.done", { count }));
     } else if (command.id === "cost") {
       setUsageOpen(true);
+    } else if (command.id === "tasks") {
+      setProjectMode("tasks");
+    } else if (command.id === "chat") {
+      setProjectMode("chat");
+    } else if (command.id === "diff") {
+      toggleDiffPanel(true);
+    } else if (command.id === "stop") {
+      handleStop();
+    } else if (command.id === "clear") {
+      // Same guard as the trash can in the communication panel: clearing it is not undoable.
+      void (async () => {
+        const ok = await confirm({ title: t("comm.clear.title"), description: t("comm.clear.body"), destructive: true, confirmText: t("common.delete") });
+        if (ok) clearMessages(currentProjectId);
+      })();
     }
-  };
-
-  /** Completes the highlighted name and runs it: picking from the list is the whole gesture. */
-  const pickCommand = () => {
-    const command = commandMatches[commandIndex];
-    if (command) runCommand(command);
   };
 
   const busy = chatMode ? chatBusy : targetWorking;
@@ -308,6 +451,17 @@ export function Composer() {
 
   /** Hands the message over, now or when whoever it is for is free. */
   const send = (value: string, queue: boolean) => {
+    // An agent that asked something is stopped waiting for you, so whatever you type next is the
+    // answer — whether you typed it in the question's own box or came out here to write it with the
+    // model picker and the attachments. Starting a fresh run instead left that agent waiting for an
+    // answer that never arrived, and left the question pending for good: back in the composer every
+    // time you returned, and still in the bell, on Home and in `/status`.
+    //
+    // Queueing does not apply here. The agent is not busy, it is blocked on you.
+    if (pendingQuestionData) {
+      answerQuestion(pendingQuestionData.question.id, [value]);
+      return;
+    }
     if (chatMode && currentChatId) {
       // Mid-turn the chat takes it and sends it when the turn ends (see `flushQueue` in lib/chat).
       if (queue && busy) queueChatMessage(currentChatId, value);
@@ -353,25 +507,77 @@ export function Composer() {
     if (menuOpen) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        const step = e.key === "ArrowDown" ? 1 : commandMatches.length - 1;
-        setCommandIndex(i => (i + step) % commandMatches.length);
+        const step = e.key === "ArrowDown" ? 1 : menuOptions.length - 1;
+        setMenuIndex(i => (i + step) % menuOptions.length);
         return;
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        pickCommand();
+        pickOption(menuOptions[menuIndex]);
         return;
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        setText("");
+        // Only the menu closes: clearing the box here was fine back when the menu itself took up
+        // the whole box (a bare `/command`), but now it would erase whatever else was typed around
+        // the trigger.
+        setMenuDismissed(true);
         return;
       }
     }
-    // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free.
+    // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free —
+    // unless the caret sits in a ``` fence, where Enter has to stay a line break (see below).
     if (e.key === "Enter" && !e.shiftKey) {
+      const caret = e.currentTarget.selectionStart;
+      if (!e.ctrlKey && !e.metaKey) {
+        // A line that is only a fence opener (```lang) with the fence still unclosed: Enter closes
+        // it for you instead of sending, so you never have to remember the trailing ```.
+        const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+        const nextBreak = text.indexOf("\n", caret);
+        const lineEnd = nextBreak === -1 ? text.length : nextBreak;
+        const line = text.slice(lineStart, lineEnd);
+        if (/^\s*```[^`]*$/.test(line)) {
+          const stillOpen = fenceRegions(text).some(r => r.start === lineStart && r.end === text.length);
+          if (stillOpen) {
+            e.preventDefault();
+            const indent = lineIndent(text, caret);
+            const before = text.slice(0, caret);
+            const after = text.slice(e.currentTarget.selectionEnd);
+            setText(before + "\n" + indent + "\n" + indent + "```" + after);
+            const newCaret = caret + 1 + indent.length;
+            requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
+            return;
+          }
+        }
+      }
+      if (insideFence(text, caret)) {
+        e.preventDefault();
+        // Ctrl/Cmd+Enter is the only way left to send from the keyboard here, since plain Enter is
+        // a line break inside a fence — it sends immediately (or queues if busy) like the button.
+        if (e.ctrlKey || e.metaKey) {
+          handleSend();
+          return;
+        }
+        const indent = lineIndent(text, caret);
+        const before = text.slice(0, caret);
+        const after = text.slice(e.currentTarget.selectionEnd);
+        setText(before + "\n" + indent + after);
+        const newCaret = caret + 1 + indent.length;
+        requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
+        return;
+      }
       e.preventDefault();
       handleSend({ queue: e.ctrlKey || e.metaKey });
+      return;
+    }
+    if (e.key === "Tab" && insideFence(text, e.currentTarget.selectionStart)) {
+      e.preventDefault();
+      const caret = e.currentTarget.selectionStart;
+      const before = text.slice(0, caret);
+      const after = text.slice(e.currentTarget.selectionEnd);
+      setText(before + "  " + after);
+      const newCaret = caret + 2;
+      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
       return;
     }
     if (e.key === "Escape" && busy) {
@@ -505,32 +711,47 @@ export function Composer() {
           <div className="relative">
             {menuOpen && (
               <div className="absolute bottom-full left-0 z-20 mb-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
-                {commandMatches.map((command, i) => (
+                {menuOptions.map((option, i) => (
                   <button
-                    key={command.id}
+                    key={option.id}
                     type="button"
                     // The box keeps the focus: losing it would close the list before the click lands.
-                    onMouseDown={e => { e.preventDefault(); runCommand(command); }}
-                    onMouseEnter={() => setCommandIndex(i)}
-                    className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs ${i === commandIndex ? "bg-accent text-accent-foreground" : ""}`}
+                    onMouseDown={e => { e.preventDefault(); pickOption(option); }}
+                    onMouseEnter={() => setMenuIndex(i)}
+                    className={`flex w-full min-w-0 items-baseline gap-2 px-3 py-1.5 text-left text-xs ${i === menuIndex ? "bg-accent text-accent-foreground" : ""}`}
                   >
-                    <span className="font-mono">/{command.name}</span>
-                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{t(command.descriptionKey)}</span>
+                    <span className="shrink-0 font-mono">{option.label}</span>
+                    {option.hint && <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{option.hint}</span>}
                   </button>
                 ))}
               </div>
             )}
+            {/* The background behind ``` regions: same font metrics and padding as the textarea on
+                top of it, so its text lines up exactly. Its own text is invisible (`text-transparent`)
+                — only the span backgrounds show through — the textarea's text is what gets read. Kept
+                mounted even with nothing to highlight, so there is no flash of misaligned layout. */}
+            <div
+              ref={highlightRef}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-transparent md:text-sm pr-12"
+            >
+              {renderFenceHighlight(text, fenceHighlightRegions)}
+              {"\n"}
+            </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
               ref={textareaRef}
               value={text}
-              onChange={e => { setText(e.target.value); setHistoryIndex(null); }}
+              onChange={e => { setText(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
               onKeyDown={handleKeyDown}
+              onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
+              onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
+              onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating ? "" : hint}
               aria-label={placeholder}
               rows={2}
-              className="resize-none min-h-[60px] max-h-[200px] overflow-y-auto pr-12"
+              className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}

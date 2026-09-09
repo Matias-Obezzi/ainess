@@ -226,9 +226,12 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const steps = useActivityCount(run.id);
 
+  // A pending question is answered from the composer, which takes over the input box for it;
+  // showing it here too would let it be answered twice. An answered question stays, since the
+  // read-only line it renders is the only record in the thread that it was ever asked.
   const questionIdsStr = useAppStore(state =>
     Object.values(state.questions)
-      .filter(q => q.runId === run.id)
+      .filter(q => q.runId === run.id && q.status !== "pending")
       .sort((a, b) => a.createdAt - b.createdAt)
       .map(q => q.id)
       .join(',')

@@ -2,6 +2,60 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.10.0 — 2026-09-09
+
+### Neu
+
+- **Das Eingabefeld vervollständigt, was du gerade tippst.** `@` nennt einen Agenten des Projekts,
+  `#` eine Datei des Arbeitsverzeichnisses, `{{` eine der Vorlagenvariablen, und `/` deine Befehle
+  und deine gespeicherten Aufträge zusammen — beides ist etwas, das man starten kann. Pfeile zum
+  Wandern, Enter oder Tab zum Auswählen, Escape zum Schließen der Liste, ohne das Getippte
+  anzurühren. Zu den zwei vorhandenen Befehlen kamen fünf: `/tasks`, `/chat`, `/diff`, `/stop` und
+  `/clear`, das vorher fragt. Innerhalb eines Codeblocks wird nichts vervollständigt — dort ist ein
+  `#` ein Kommentar und ein `/` ein Pfad.
+
+- **Du kannst Code in das Feld schreiben.** Enter hat gesendet, also hieß ein Codeblock: in jeder
+  Zeile an Shift+Enter denken und hoffen, dass der Zaun geschlossen war — das Feld zeigte Markdown
+  als flachen Text und gab keinerlei Hinweis. Jetzt wissen die Tasten, wo der Cursor steht: In einer
+  Zeile, die nur eine öffnende Zaunzeile ist, schreibt Enter die schließende und setzt dich
+  dazwischen; innerhalb eines Zauns ist Enter ein Zeilenumbruch, der deine Einrückung mitnimmt, und
+  Tab sind zwei Leerzeichen; und der eingezäunte Teil dessen, was du schreibst, bekommt einen
+  Hintergrund, damit du siehst, wo er anfängt und aufhört. Ctrl+Enter sendet von innen, da Enter
+  allein es nicht mehr kann.
+
+### Behoben
+
+- **Eine Frage wird an einer Stelle gestellt.** Sie erschien als Blase im Verlauf und übernahm
+  gleichzeitig das Eingabefeld — beide lebendig, beide dieselbe Frage. Das Feld behält sie, denn
+  dort kannst du mit dem ganzen Composer antworten. Beantwortet kehrt sie als schreibgeschützte
+  Zeile in den Verlauf zurück, die dort das Einzige ist, was festhält, dass sie je gestellt wurde.
+
+- **Aus dem Eingabefeld zu antworten beantwortet die Frage jetzt wirklich.** Ein Agent fragt etwas,
+  du schreibst die Antwort lieber im Eingabefeld als im Feld der Frage, du sendest — und die Frage
+  blieb offen. Sie legte sich bei jeder Rückkehr in das Gespräch wieder über das Feld, blieb in der
+  Glocke, auf dem Startbildschirm und in `/status`, und der fragende Lauf wartete weiter auf eine
+  Antwort, die er längst hatte, während deine Nachricht einen eigenen Lauf startete. Ein Agent, der
+  etwas gefragt hat, steht und wartet auf dich — was du als Nächstes schreibst, ist die Antwort,
+  ganz gleich wo du sie geschrieben hast.
+
+- **Der Startbildschirm sagt jede Sache genau einmal.** Er war zum Bildschirm für das geworden, was
+  dich braucht — aber das alte Raster aus Projektkarten lag noch darunter. Ein arbeitender Agent
+  erschien dreimal: in der Liste der laufenden Arbeit, in der Karte seines Projekts und noch einmal
+  im Zähler derselben Karte. Jede Karte trug außerdem eigene Schaltflächen für Öffnen, Bearbeiten
+  und Löschen — eine rote auf jeder — für Aktionen, die der Klick auf die Karte und ihr
+  Kontextmenü längst abdeckten. Jetzt ist der ganze Bildschirm eine einzige Art von Zeile: was dich
+  braucht, was arbeitet, und die Projekte, in dieser Reihenfolge. Eine Projektzeile zeigt eine
+  Zeile Status und, nur wenn es etwas gibt, eine kleine Zahl für Wartendes und Laufendes. Wartet
+  nichts, sagt sie das in einer Zeile, statt es dich herleiten zu lassen.
+
+- **Die vorgeschlagenen Skills sind für den Agenten geschrieben und dir in deiner Sprache
+  erklärt.** Der Katalog hinter „Vorschläge" war durchgehend spanisch: die Namen, die Anweisungen,
+  die ein Agent tatsächlich liest, und die einzeiligen Beschreibungen in der Liste. Die Anweisungen
+  sind Code — sie gehen in den Prompt eines Agenten und in eine Datei im Projektordner —, also sind
+  sie jetzt englisch wie der Rest des Repositorys. Was für dich geschrieben ist, wird stattdessen
+  übersetzt, in allen sieben Sprachen, und ein Test lässt keinen neuen Vorschlag durch, bevor ihn
+  jede Sprache hat.
+
 ## 0.9.0 — 2026-09-08
 
 ### Neu
@@ -129,15 +183,18 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   schreibst. Darunter hat sich nichts geändert: Enter sendet weiterhin und stellt, während der Agent
   arbeitet, weiterhin in die Warteschlange für das Ende des Zugs — was jetzt die leere Box sagt
   statt eines zweiten Knopfes.
+
 - **Die Frage eines Agenten nimmt den Platz der Box ein.** Sie lebte in der Blase des Laufs: nützlich,
   solange du hinschaust, nutzlos, sobald du weitergescrollt hast — und schlimmer, was du bei offener
   Frage in die Box geschrieben hast, startete einen neuen Lauf und ließ den Agenten auf eine Antwort
   warten, die nie kam. Jetzt steht die Frage dort, wo du schreiben wolltest, mit ihren Optionen als
   Schaltflächen und Platz für eine eigene Antwort; warten mehrere, sagt sie es, und sie kommen
   nacheinander. "Etwas anderes schreiben" gibt dir die Box zurück, ohne zu antworten.
+
 - **Das Benachrichtigungs-Panel schließt sich, wenn du daneben klickst.** Es hängt an der
   Titelleiste, die die Zone zum Ziehen des Fensters ist: ein Klick dort nimmt das System, um das
   Fenster zu bewegen, und er erreicht nie die Schicht, die ein Popover schließt.
+
 - **Terminals gehören zu ihrem Projekt.** Du hast eines in einem Projekt geöffnet, bist zu einem
   anderen gegangen und hast weiter die Tabs des ersten gesehen — deshalb schien ein Terminal auch im
   falschen Ordner zu öffnen: es war das eines anderen Projekts, in dessen eigenem Ordner. Jetzt

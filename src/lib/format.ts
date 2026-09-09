@@ -22,6 +22,19 @@ export function formatElapsed(secs: number): string {
 }
 
 /** Cuts `text` to `n` chars, adding an ellipsis when it was longer. */
+/**
+ * A path cut from the front, keeping the end.
+ *
+ * Projects tend to live side by side under one folder, so cutting a path the usual way leaves
+ * every one of them reading `C:\Users\me\Desktop\projects\…` — identical, and with the only part
+ * that told them apart thrown away. The tail is the answer to "which one is this".
+ */
+export function shortenPath(path: string, n: number): string {
+  const clean = path.trim();
+  if (n <= 0) return "";
+  return clean.length <= n ? clean : "…" + clean.slice(clean.length - n);
+}
+
 export function truncate(text: string, n: number): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (clean.length <= n) return clean;

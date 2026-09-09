@@ -24,8 +24,8 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const items: Array<{ name: string; description: string; requires?: string; command?: string; args?: string[] }> = kind === "mcp"
-    ? SUGGESTED_MCP.map(m => ({ name: m.name, description: m.description, requires: m.requires, command: m.command, args: m.args }))
-    : SUGGESTED_SKILLS.map(s => ({ name: s.name, description: s.description || "" }));
+    ? SUGGESTED_MCP.map(m => ({ name: m.name, description: t(m.descriptionKey), requires: m.requiresKey ? t(m.requiresKey) : undefined, command: m.command, args: m.args }))
+    : SUGGESTED_SKILLS.map(s => ({ name: s.name, description: t(s.descriptionKey) }));
 
   const existingNames = new Set((kind === "mcp" ? config.mcpServers : config.skills).map(i => i.name));
 
@@ -43,15 +43,16 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
     if (kind === "mcp") {
       for (const item of SUGGESTED_MCP) {
         if (!selected.has(item.name)) continue;
-        const { description, requires, ...server } = item;
-        void description; void requires;
+        const { descriptionKey, requiresKey, ...server } = item;
+        void descriptionKey; void requiresKey;
         upsertMcpServer({ ...server, id: crypto.randomUUID(), enabledFor: "all" });
         count++;
       }
     } else {
       for (const item of SUGGESTED_SKILLS) {
         if (!selected.has(item.name)) continue;
-        upsertSkill({ ...item, id: crypto.randomUUID(), enabledFor: "all" });
+        const { descriptionKey, ...skill } = item;
+        upsertSkill({ ...skill, description: t(descriptionKey), id: crypto.randomUUID(), enabledFor: "all" });
         count++;
       }
     }
