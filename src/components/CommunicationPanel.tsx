@@ -13,7 +13,14 @@ import { confirm } from "@/lib/confirm";
 import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
 
-const allKinds: MessageKind[] = ["text", "tool", "delegation", "result", "error", "system", "note", "stderr"];
+/**
+ * Every kind the filter can turn off, the user's own first.
+ *
+ * These two used to be exempt: they were the spine of the feed, so they were shown whatever the
+ * filter said. Which left a filter that could not empty its own view — it read "Tipos (0/8)" and
+ * kept showing things. Now off means off, and anyone who wants the prompts back checks two boxes.
+ */
+const allKinds: MessageKind[] = ["user", "instruction", "text", "tool", "delegation", "result", "error", "system", "note", "stderr"];
 
 export function CommunicationPanel() {
   const t = useT();
@@ -95,7 +102,7 @@ export function CommunicationPanel() {
     if (filterAgent !== "all" && m.fromAgentId !== filterAgent && m.toAgentId !== filterAgent) {
       return false;
     }
-    if (m.kind !== "user" && m.kind !== "instruction" && !filterKinds.has(m.kind)) {
+    if (!filterKinds.has(m.kind)) {
       return false;
     }
     return true;
@@ -175,10 +182,11 @@ export function CommunicationPanel() {
         className="flex-1 overflow-y-auto"
       >
         {filteredMessages.length === 0 ? (
+          // "No activity yet" is a lie when there is plenty and the filter is hiding all of it.
           <EmptyState
             icon={Radio}
-            title={t("comm.empty.title")}
-            description={t("comm.empty.body")}
+            title={messages.length > 0 ? t("comm.emptyFiltered.title") : t("comm.empty.title")}
+            description={messages.length > 0 ? t("comm.emptyFiltered.body") : t("comm.empty.body")}
             className="h-full"
           />
         ) : (

@@ -60,6 +60,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Éteindre tous les types dans le filtre de communication vide désormais la vue.** Ce que vous
+  envoyez à un agent en était exempté : il s'affichait quoi qu'en dise le filtre, et ne figurait
+  même pas dans la liste des types, donc rien ne permettait de l'éteindre. Le bouton indiquait
+  « Types (0/8) » pendant que le panneau continuait d'afficher des choses. Il y a dix types
+  maintenant, les deux vôtres compris, et éteint veut dire éteint. Et quand c'est le filtre qui a
+  vidé la vue, elle le dit, au lieu d'affirmer qu'il n'y a eu aucune activité.
+
 - **Le panneau de communication lit ce qu'un agent a écrit comme il l'entendait.** Ses lignes
   affichaient le markdown brut — les astérisques, les accents graves, les dièses — alors que le même
   texte s'affichait correctement partout ailleurs dans l'application. La prose est désormais rendue :

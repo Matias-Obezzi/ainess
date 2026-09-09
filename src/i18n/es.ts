@@ -877,6 +877,8 @@ export const es: Dictionary = {
   "thread.showOlder": "Ver {n} tareas anteriores",
   "comm.empty.title": "Todavía no hay actividad",
   "comm.empty.body": "Acá vas a ver lo que se dicen los agentes entre sí a medida que trabajan.",
+  "comm.emptyFiltered.title": "Nada que mostrar con este filtro",
+  "comm.emptyFiltered.body": "Hay actividad, pero ningún tipo de los que dejaste encendidos aparece acá.",
 
   // ---- Git status ----
   "git.checks.passing": "CI en verde",

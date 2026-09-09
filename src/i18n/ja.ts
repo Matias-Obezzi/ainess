@@ -877,6 +877,8 @@ export const ja: Dictionary = {
   "thread.showOlder": "前のタスクを {n} 件表示",
   "comm.empty.title": "まだ活動がありません",
   "comm.empty.body": "エージェント同士のやり取りが、作業が進むにつれてここに表示されます。",
+  "comm.emptyFiltered.title": "このフィルタでは表示するものがありません",
+  "comm.emptyFiltered.body": "やり取りはありますが、有効にした種類はここにはひとつもありません。",
 
   // ---- Git status ----
   "git.checks.passing": "CI成功",

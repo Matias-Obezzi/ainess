@@ -876,6 +876,8 @@ export const de: Dictionary = {
   "thread.showOlder": "{n} ältere Aufgaben anzeigen",
   "comm.empty.title": "Noch keine Aktivität",
   "comm.empty.body": "Hier siehst du, was die Agenten während der Arbeit untereinander besprechen.",
+  "comm.emptyFiltered.title": "Mit diesem Filter gibt es nichts zu zeigen",
+  "comm.emptyFiltered.body": "Es gibt Aktivität, aber keine der Arten, die du angelassen hast, kommt hier vor.",
 
   // ---- Git status ----
   "git.checks.passing": "CI grün",

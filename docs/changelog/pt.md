@@ -55,6 +55,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Desligar todos os tipos no filtro de comunicação agora deixa a visão vazia.** O que você manda
+  a um agente era isento: aparecia dissesse o que dissesse o filtro, e nem constava na lista de
+  tipos, então não havia como desligá-lo. O botão dizia "Tipos (0/8)" e o painel continuava
+  mostrando coisas. Agora são dez tipos, os seus dois entre eles, e desligado é desligado. E quando
+  foi o filtro que esvaziou a visão, ele diz isso, em vez de garantir que não houve atividade.
+
 - **O painel de comunicação lê o que um agente escreveu do jeito que ele quis dizer.** Suas linhas
   mostravam o markdown cru — os asteriscos, as crases, as cerquilhas — enquanto o mesmo texto
   aparecia certo em todo o resto do app. Agora a prosa é renderizada: o que um agente disse, o que

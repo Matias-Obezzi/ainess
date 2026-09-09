@@ -59,6 +59,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Alle Arten im Kommunikationsfilter abzuschalten leert jetzt die Ansicht.** Was du einem Agenten
+  schickst, war ausgenommen: Es wurde gezeigt, ganz gleich was der Filter sagte, und es stand nicht
+  einmal auf der Liste der Arten — es ließ sich also gar nicht abschalten. Die Schaltfläche las sich
+  als „Typen (0/8)", während das Panel weiter Dinge zeigte. Jetzt sind es zehn Arten, deine beiden
+  darunter, und aus heißt aus. Und wenn es der Filter war, der die Ansicht geleert hat, sagt sie
+  das, statt zu behaupten, es habe keine Aktivität gegeben.
+
 - **Der Kommunikationsbereich liest, was ein Agent geschrieben hat, so wie er es meinte.** Seine
   Zeilen zeigten rohes Markdown — die Sternchen, die Backticks, die Rauten —, während derselbe Text
   überall sonst in der App richtig dargestellt wurde. Jetzt wird Fließtext gerendert: was ein Agent

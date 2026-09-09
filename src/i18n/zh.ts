@@ -876,6 +876,8 @@ export const zh: Dictionary = {
   "thread.showOlder": "显示 {n} 个更早的任务",
   "comm.empty.title": "还没有任何动态",
   "comm.empty.body": "智能体一边工作一边相互说的话会显示在这里。",
+  "comm.emptyFiltered.title": "在这个筛选下没有可显示的内容",
+  "comm.emptyFiltered.body": "是有活动的，只是你留着的那些类型在这里一个都没有出现。",
 
   // ---- Git status ----
   "git.checks.passing": "CI 通过",

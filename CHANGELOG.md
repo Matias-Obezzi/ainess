@@ -56,6 +56,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Turning off every kind in the communication filter now empties the view.** What you send to an
+  agent was exempt: it was shown whatever the filter said, and it was not even on the list of kinds,
+  so there was no way to turn it off. The button read "Kinds (0/8)" while the panel kept showing
+  things. There are ten kinds now, your own two among them, and off means off. When the filter is
+  what emptied the view, it says so instead of claiming there has been no activity.
+
 - **The communication panel reads what an agent wrote the way it meant it.** Its rows showed raw
   markdown — the asterisks, the backticks, the hashes — while the same text rendered properly
   everywhere else in the app. Now prose renders: what an agent said, what it delegated, what it came

@@ -57,6 +57,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Apagar todos los tipos en el filtro de comunicación ahora deja la vista vacía.** Lo que le
+  mandás a un agente estaba exento: se mostraba dijera lo que dijera el filtro, y ni siquiera
+  figuraba en la lista de tipos, así que no había forma de apagarlo. El botón decía «Tipos (0/8)» y
+  el panel seguía mostrando cosas. Ahora son diez tipos, los tuyos dos entre ellos, y apagado es
+  apagado. Y cuando lo que vació la vista fue el filtro, lo dice, en vez de asegurar que no hubo
+  actividad.
+
 - **El panel de comunicación lee lo que escribió un agente como lo escribió.** Sus filas mostraban
   el markdown crudo —los asteriscos, las comillas invertidas, los numerales— mientras el mismo texto
   se veía bien en todo el resto de la app. Ahora se renderiza la prosa: lo que dijo un agente, lo
