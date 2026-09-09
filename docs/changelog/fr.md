@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **La boîte complète ce que vous êtes en train d'écrire.** `@` nomme un agent du projet, `#` un
+  fichier de l'espace de travail, `{{` une des variables de gabarit, et `/` vos commandes et vos
+  ordres enregistrés ensemble — ce sont deux choses que l'on lance. Les flèches pour se déplacer,
+  Entrée ou Tab pour choisir, Échap pour fermer la liste sans toucher à ce que vous avez écrit. Aux
+  deux commandes existantes s'en ajoutent cinq : `/tasks`, `/chat`, `/diff`, `/stop` et `/clear`,
+  qui demande d'abord. Rien ne se complète à l'intérieur d'un bloc de code, où un `#` est un
+  commentaire et un `/` un chemin.
+
 - **Vous pouvez écrire du code dans la boîte.** Entrée envoyait : un bloc de code voulait dire
   penser à Maj+Entrée à chaque ligne et espérer avoir fermé la clôture — la boîte affichait le
   markdown en texte brut et n'en donnait aucun signe. Les touches savent désormais où est le
@@ -68,6 +76,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   t'attend te dit quoi répondre.
 
 ### Corrigé
+
+- **Une question se pose à un seul endroit.** Elle apparaissait en bulle dans le fil et prenait la
+  boîte en même temps, les deux vivantes, les deux la même question. C'est la boîte qui la garde,
+  puisque c'est là que vous pouvez répondre avec tout le composer. Une fois répondue, elle revient
+  dans le fil en ligne non modifiable — la seule trace qu'elle y ait jamais été posée.
 
 - **Répondre depuis la boîte répond vraiment.** Un agent pose une question, vous choisissez
   d'écrire la réponse dans la boîte plutôt que dans le champ de la question, vous envoyez — et la

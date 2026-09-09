@@ -5,7 +5,7 @@
 // with a space, a second line or a word before the slash goes to the agent untouched.
 import { useAppStore, selectProjectAgents } from "@/store";
 
-export type CommandId = "compact" | "cost";
+export type CommandId = "compact" | "cost" | "tasks" | "chat" | "diff" | "stop" | "clear";
 
 export interface ChatCommand {
   id: CommandId;
@@ -18,6 +18,11 @@ export interface ChatCommand {
 export const COMMANDS: ChatCommand[] = [
   { id: "compact", name: "compact", descriptionKey: "command.compact" },
   { id: "cost", name: "cost", descriptionKey: "command.cost" },
+  { id: "tasks", name: "tasks", descriptionKey: "command.tasks" },
+  { id: "chat", name: "chat", descriptionKey: "command.chat" },
+  { id: "diff", name: "diff", descriptionKey: "command.diff" },
+  { id: "stop", name: "stop", descriptionKey: "command.stop" },
+  { id: "clear", name: "clear", descriptionKey: "command.clear" },
 ];
 
 /**

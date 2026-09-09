@@ -6,6 +6,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **La caja completa lo que estás por escribir.** `@` nombra a un agente del proyecto, `#` un
+  archivo del workspace, `{{` una de las variables de plantilla, y `/` tus comandos y tus órdenes
+  guardadas juntos — porque las dos son cosas que podés lanzar. Flechas para moverte, Enter o Tab
+  para elegir, Escape para cerrar la lista sin tocar lo que escribiste. A los dos comandos que
+  había se sumaron cinco: `/tasks`, `/chat`, `/diff`, `/stop` y `/clear`, que pregunta antes. Nada
+  se completa adentro de un bloque de código, donde un `#` es un comentario y un `/` es una ruta.
+
 - **Podés escribir código en la caja.** Enter enviaba, así que un bloque de código era acordarse de
   Shift+Enter en cada línea y confiar en que habías cerrado la cerca — la caja mostraba el markdown
   como texto plano y no daba ninguna señal. Ahora las teclas saben dónde está el cursor: en una
@@ -64,6 +71,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   al chat, y lo que está esperándote te dice qué contestar.
 
 ### Arreglado
+
+- **Una pregunta se hace en un solo lugar.** Aparecía como burbuja en el hilo y tomaba la caja al
+  mismo tiempo, las dos vivas, las dos la misma pregunta. Se la queda la caja, que es donde podés
+  contestar con el composer entero. Una vez respondida vuelve al hilo como una línea de sólo
+  lectura — que es lo único que registra ahí que alguna vez se preguntó.
 
 - **Responder desde la caja ahora responde de verdad.** Un agente te pregunta algo, elegís escribir
   la respuesta en la caja en vez de en el campo de la pregunta, mandás — y la pregunta quedaba

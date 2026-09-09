@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Added
 
+- **The box completes what you are about to type.** `@` names an agent of the project, `#` a file
+  of the workspace, `{{` one of the template variables, and `/` your commands and your saved orders
+  together — because both are things you can launch. Arrows to move, Enter or Tab to pick, Escape to
+  close the list without touching what you wrote. Five commands joined the two that were there:
+  `/tasks`, `/chat`, `/diff`, `/stop` and `/clear`, which asks first. Nothing completes inside a
+  code fence, where a `#` is a comment and a `/` is a path.
+
 - **You can write code in the box.** Enter sent, so a code block meant remembering Shift+Enter on
   every line and hoping you had closed the fence — the box showed markdown as flat text and gave no
   sign either way. Now the keys know where the caret is: on a line that is only an opening fence,
@@ -63,6 +70,11 @@ let one of them fall behind.
   back.
 
 ### Fixed
+
+- **A question is asked in one place.** It appeared as a bubble in the thread and took over the box
+  at the same time, both of them live, both of them the same question. The box keeps it, since that
+  is where you can answer with the whole composer. Once answered it goes back to the thread as a
+  read-only line — which is the only record there that it was ever asked.
 
 - **Answering a question from the box actually answers it.** An agent asks something, you choose to
   write your reply in the composer rather than in the question's own field, you send — and the

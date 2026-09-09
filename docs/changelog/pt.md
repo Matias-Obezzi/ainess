@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **A caixa completa o que você está prestes a escrever.** `@` nomeia um agente do projeto, `#` um
+  arquivo do workspace, `{{` uma das variáveis de template, e `/` os seus comandos e as suas ordens
+  salvas juntos — porque as duas coisas são coisas que você pode disparar. Setas para andar, Enter
+  ou Tab para escolher, Esc para fechar a lista sem mexer no que você escreveu. Aos dois comandos
+  que existiam somaram-se cinco: `/tasks`, `/chat`, `/diff`, `/stop` e `/clear`, que pergunta antes.
+  Nada completa dentro de um bloco de código, onde um `#` é um comentário e uma `/` é um caminho.
+
 - **Você pode escrever código na caixa.** O Enter enviava, então um bloco de código era lembrar do
   Shift+Enter em cada linha e torcer para ter fechado a cerca — a caixa mostrava o markdown como
   texto puro e não dava sinal nenhum. Agora as teclas sabem onde está o cursor: numa linha que é só
@@ -62,6 +69,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   o que responder.
 
 ### Corrigido
+
+- **Uma pergunta é feita num lugar só.** Ela aparecia como balão no fio e tomava a caixa ao mesmo
+  tempo, as duas vivas, as duas a mesma pergunta. A caixa fica com ela, que é onde você pode
+  responder com o composer inteiro. Depois de respondida, ela volta ao fio como uma linha somente
+  de leitura — que é o único registro ali de que um dia foi feita.
 
 - **Responder pela caixa agora responde de verdade.** Um agente pergunta algo, você escolhe
   escrever a resposta na caixa em vez do campo da pergunta, envia — e a pergunta continuava aberta.

@@ -6,6 +6,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Das Eingabefeld vervollständigt, was du gerade tippst.** `@` nennt einen Agenten des Projekts,
+  `#` eine Datei des Arbeitsverzeichnisses, `{{` eine der Vorlagenvariablen, und `/` deine Befehle
+  und deine gespeicherten Aufträge zusammen — beides ist etwas, das man starten kann. Pfeile zum
+  Wandern, Enter oder Tab zum Auswählen, Escape zum Schließen der Liste, ohne das Getippte
+  anzurühren. Zu den zwei vorhandenen Befehlen kamen fünf: `/tasks`, `/chat`, `/diff`, `/stop` und
+  `/clear`, das vorher fragt. Innerhalb eines Codeblocks wird nichts vervollständigt — dort ist ein
+  `#` ein Kommentar und ein `/` ein Pfad.
+
 - **Du kannst Code in das Feld schreiben.** Enter hat gesendet, also hieß ein Codeblock: in jeder
   Zeile an Shift+Enter denken und hoffen, dass der Zaun geschlossen war — das Feld zeigte Markdown
   als flachen Text und gab keinerlei Hinweis. Jetzt wissen die Tasten, wo der Cursor steht: In einer
@@ -67,6 +75,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   erreicht auch den Chat, und was auf dich wartet, sagt dir, was du zurückschreiben sollst.
 
 ### Behoben
+
+- **Eine Frage wird an einer Stelle gestellt.** Sie erschien als Blase im Verlauf und übernahm
+  gleichzeitig das Eingabefeld — beide lebendig, beide dieselbe Frage. Das Feld behält sie, denn
+  dort kannst du mit dem ganzen Composer antworten. Beantwortet kehrt sie als schreibgeschützte
+  Zeile in den Verlauf zurück, die dort das Einzige ist, was festhält, dass sie je gestellt wurde.
 
 - **Aus dem Eingabefeld zu antworten beantwortet die Frage jetzt wirklich.** Ein Agent fragt etwas,
   du schreibst die Antwort lieber im Eingabefeld als im Feld der Frage, du sendest — und die Frage
