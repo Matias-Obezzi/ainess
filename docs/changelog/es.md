@@ -57,6 +57,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El filtro de tipos se queda abierto mientras lo usás, y ya no rompe el panel.** Elegir un tipo
+  cerraba el menú, así que dejar el feed en dos tipos era abrirlo cinco veces. Y el botón que lo
+  abre dice «Tipos» hasta que destildás algo y «Tipos (7/8)» después — una etiqueta más larga por la
+  que nada en esa fila tenía permitido encoger, así que el panel entero terminaba más ancho que el
+  dock donde vive. Ahora la fila cede, y también la de cada mensaje, donde dos nombres de agente,
+  una hora, una etiqueta y un botón se peleaban por el mismo espacio angosto.
+
 - **Pedir el crudo de un mensaje muestra ese mensaje.** El botón de una fila del panel de
   comunicación abría la corrida entera —cada línea de stdout que la sesión hubiera producido—, que
   no es lo que pide nadie que hace clic sobre una delegación. Ahora muestra ese mensaje: de quién a

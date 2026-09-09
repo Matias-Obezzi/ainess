@@ -56,6 +56,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The kinds filter stays open while you use it, and no longer breaks the panel.** Picking one
+  kind closed the menu, so narrowing the feed to two of them meant opening it five times. And the
+  button that opens it says "Kinds" until you deselect something and "Kinds (7/8)" after — a longer
+  label that nothing in that row was allowed to shrink for, so the whole panel was pushed wider than
+  the dock it lives in. The row gives now, and so does each message's own row, where two agent
+  names, a time, a badge and a button had the same argument about the same narrow space.
+
 - **Asking to see one message raw shows that message.** The button on a row of the communication
   panel opened the whole run — every line of stdout the session had produced — which is not what
   anybody clicking on one delegation is asking for. It now shows that message: who to whom, when,

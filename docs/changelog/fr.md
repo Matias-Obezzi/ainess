@@ -60,6 +60,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le filtre de types reste ouvert pendant que vous vous en servez, et ne casse plus le panneau.**
+  Choisir un type fermait le menu : réduire le fil à deux types demandait de l'ouvrir cinq fois. Et
+  le bouton qui l'ouvre affiche « Types » jusqu'à ce que vous décochiez quelque chose, puis
+  « Types (7/8) » — une étiquette plus longue pour laquelle rien dans cette rangée n'avait le droit
+  de rétrécir, si bien que le panneau entier devenait plus large que le dock qui l'accueille. La
+  rangée cède maintenant, et celle de chaque message aussi, où deux noms d'agent, une heure, une
+  étiquette et un bouton se disputaient le même espace étroit.
+
 - **Demander le brut d'un message montre ce message.** Le bouton d'une ligne du panneau de
   communication ouvrait l'exécution entière — chaque ligne de stdout que la session avait produite —
   ce que ne demande personne en cliquant sur une délégation. Il montre désormais ce message : de qui

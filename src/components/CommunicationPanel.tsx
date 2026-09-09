@@ -120,9 +120,15 @@ export function CommunicationPanel() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div className="p-2 border-b border-border flex items-center gap-2">
+      {/*
+        `min-w-0` on the row and on the agent select, `shrink-0` on what must keep its size. The
+        kinds button is "Tipos" until you deselect one and then "Tipos (7/8)", and a flex item that
+        cannot shrink below its content pushed the whole row out of a narrow dock the moment it
+        grew.
+      */}
+      <div className="p-2 border-b border-border flex shrink-0 items-center gap-2 min-w-0">
         <Select value={filterAgent} onValueChange={setFilterAgent}>
-          <SelectTrigger className="flex-1 h-8 text-xs">
+          <SelectTrigger className="flex-1 min-w-0 h-8 text-xs">
             <SelectValue placeholder={t("common.all")} />
           </SelectTrigger>
           <SelectContent>
@@ -135,7 +141,7 @@ export function CommunicationPanel() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
+            <Button variant="outline" size="sm" className="h-8 shrink-0 whitespace-nowrap text-xs">
               {filterKinds.size === allKinds.length ? t("comm.kinds") : t("comm.kindsSome", { n: filterKinds.size, total: allKinds.length })}
             </Button>
           </DropdownMenuTrigger>
@@ -145,6 +151,9 @@ export function CommunicationPanel() {
                 key={kind}
                 checked={filterKinds.has(kind)}
                 onCheckedChange={() => toggleKind(kind)}
+                // Picking one kind is not finishing with the menu: closing after every click made
+                // narrowing the feed to two kinds a matter of opening this five times.
+                onSelect={e => e.preventDefault()}
               >
                 {t(kindLabelKey[kind])}
               </DropdownMenuCheckboxItem>
@@ -152,7 +161,7 @@ export function CommunicationPanel() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => {
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={async () => {
           const ok = await confirm({ title: t("comm.clear.title"), description: t("comm.clear.body"), destructive: true, confirmText: t("common.delete") });
           if (ok) clearMessages(currentProjectId || undefined);
         }} title={t("comm.clear")}>

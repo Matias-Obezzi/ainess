@@ -59,6 +59,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Der Typenfilter bleibt offen, während du ihn benutzt, und sprengt das Panel nicht mehr.** Einen
+  Typ auszuwählen schloss das Menü; den Feed auf zwei Typen einzugrenzen hieß, es fünfmal zu öffnen.
+  Und die Schaltfläche, die es öffnet, heißt „Typen", bis du etwas abwählst, danach „Typen (7/8)" —
+  eine längere Beschriftung, für die in dieser Zeile nichts schrumpfen durfte, sodass das ganze
+  Panel breiter wurde als das Dock, in dem es sitzt. Jetzt gibt die Zeile nach, und die jeder
+  Nachricht ebenso, wo zwei Agentennamen, eine Uhrzeit, ein Etikett und eine Schaltfläche denselben
+  Streit um denselben schmalen Platz führten.
+
 - **Wer eine Nachricht roh sehen will, bekommt diese Nachricht.** Die Schaltfläche in einer Zeile
   des Kommunikationsbereichs öffnete den ganzen Lauf — jede Zeile stdout, die die Sitzung
   hervorgebracht hatte. Das fragt niemand, der auf eine einzelne Delegation klickt. Jetzt zeigt sie

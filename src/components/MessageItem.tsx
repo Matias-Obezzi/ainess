@@ -35,20 +35,26 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
   return (
     <>
       <div 
-        className={cn("flex flex-col gap-1 p-3 text-sm border-b border-border", isDelegation && "border-l-4")}
+        className={cn("flex flex-col gap-1 p-3 text-sm border-b border-border min-w-0", isDelegation && "border-l-4")}
         style={isDelegation ? { borderLeftColor: toColor } : undefined}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fromColor }} />
-          <span className="font-semibold">{fromName}</span>
+        {/*
+          The dock is narrow and two agent names, a time, a badge and a button do not fit in it by
+          right. Everything that must keep its size says so; the names are what gives, because a
+          name cut short still tells you who, and a row that cannot shrink pushes the panel wider
+          than the space it has.
+        */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: fromColor }} />
+          <span className="font-semibold truncate">{fromName}</span>
           {message.toAgentId && (
             <>
-              <span className="text-muted-foreground">→</span>
-              <span className="font-semibold">{toName}</span>
+              <span className="text-muted-foreground shrink-0">→</span>
+              <span className="font-semibold truncate">{toName}</span>
             </>
           )}
-          <span className="text-xs text-muted-foreground ml-auto">{timeStr}</span>
-          <Badge variant="outline">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
+          <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeStr}</span>
+          <Badge variant="outline" className="shrink-0">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
