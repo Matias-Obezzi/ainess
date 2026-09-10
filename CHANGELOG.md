@@ -8,6 +8,21 @@ let one of them fall behind.
 
 ### Added
 
+- **The home screen starts the work instead of listing it.** It had the projects, what was waiting
+  on you and what was running; the way to do anything was still to open a dialog, name a project,
+  pick a folder, assemble a team, save it, open it and find the box. The box is the first thing on
+  the screen now: type what you want done, pick the folder and pick one of your teams, and the
+  project is made and the prompt is on its way. Pick a folder that is already a project and it
+  simply goes there, team and all — two projects on one workspace would be two sets of agents
+  editing the same files, neither knowing the other exists, and one folder written three ways is
+  still one folder. It will not invent a team: with none saved it points at where teams are made,
+  and a team with no root agent is said out loud rather than given the prompt to whichever agent
+  came first. Below it, two things the screen never had: what was done lately — finished tasks and
+  conversations across every project, newest first, each one a click from where it happened — and
+  what the last fortnight cost, in tasks, tokens and dollars, across all of them rather than one.
+  Nothing there is estimated: a CLI that reports no usage is counted as a run and no tokens, and a
+  fortnight where none of them reported says so instead of drawing a flat line.
+
 - **Messages queued while an agent works go over together, as one.** They used to go in single
   file: the first one when the turn ended, the second waiting for *that* turn to end. Three lines
   typed in one sitting became three turns — three runs, three cards on the board, and an agent

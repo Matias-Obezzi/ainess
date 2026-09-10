@@ -6,6 +6,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Der Startbildschirm beginnt die Arbeit, statt sie aufzuzählen.** Er hatte die Projekte, das
+  Wartende und das Laufende; um irgendetwas zu tun, musste man trotzdem einen Dialog öffnen, ein
+  Projekt benennen, einen Ordner wählen, ein Team zusammenstellen, speichern, öffnen und das
+  Eingabefeld suchen. Jetzt ist das Feld das Erste auf dem Bildschirm: schreib, was zu tun ist,
+  wähl den Ordner und eines deiner Teams — das Projekt entsteht und der Prompt geht raus. Ist der
+  Ordner schon ein Projekt, geht es einfach dorthin, samt Team: zwei Projekte auf einem Workspace
+  wären zwei Teams, die dieselben Dateien bearbeiten, ohne voneinander zu wissen, und ein Ordner
+  bleibt derselbe Ordner, wie auch immer er geschrieben wird. Ein Team erfindet er nicht: ist
+  keines gespeichert, zeigt er dorthin, wo Teams entstehen, und ein Team ohne Wurzel-Agenten wird
+  gesagt, statt den Prompt dem erstbesten Agenten zu geben. Darunter zwei Dinge, die es dort nie
+  gab: was zuletzt erledigt wurde — fertige Aufgaben und Unterhaltungen aus allen Projekten, das
+  Neueste zuerst, jedes einen Klick von seinem Ort entfernt — und was die letzten zwei Wochen
+  gekostet haben, in Aufgaben, Tokens und Dollar, über alle Projekte statt über eines. Nichts
+  davon wird geschätzt: ein CLI ohne Verbrauchsmeldung zählt als Lauf und null Tokens, und zwei
+  Wochen, in denen keines gemeldet hat, sagen das, statt eine flache Linie zu zeichnen.
+
 - **Nachrichten, die während der Arbeit eines Agenten in die Warteschlange gehen, gehen zusammen
   hinaus, als eine.** Vorher gingen sie im Gänsemarsch: die erste, wenn der Zug endete, die zweite
   wartete auf das Ende *dieses* Zuges. Drei in einem Zug getippte Zeilen wurden zu drei Zügen —

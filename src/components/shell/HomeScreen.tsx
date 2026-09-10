@@ -3,7 +3,6 @@ import { useAppStore, selectAllAgents } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectDialog } from "@/components/ProjectDialog";
 import { Shimmer } from "@/components/ui/shimmer";
 import {
@@ -19,9 +18,17 @@ import { formatTimeAgo, shortenPath, truncate } from "@/lib/format";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import type { Project, Run } from "@/types";
-import { Bell, Copy, FolderKanban, FolderOpen, Pencil, Trash2 } from "lucide-react";
+import { Bell, Copy, FolderKanban, FolderOpen, History, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { attentionItems, workingItems, countsByProject } from "@/lib/attention";
+import { recentWork } from "@/lib/recent-work";
+import { HomeComposer } from "@/components/shell/HomeComposer";
+import { HomeUsage } from "@/components/shell/HomeUsage";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { runDotStatus } from "@/lib/labels";
+import { StatusDot } from "@/components/StatusDot";
+
+/** Rows of finished work. Enough to see the last day or two without becoming the page. */
+const RECENT_ROWS = 6;
 
 function ProjectRowSkeleton() {
   return (
@@ -35,7 +42,13 @@ function ProjectRowSkeleton() {
   );
 }
 
-/** Landing screen: every project as a row with what needs attention or what is working. */
+/**
+ * Landing screen.
+ *
+ * Reads top to bottom as a day does: what you can start right now, what is waiting on you, what is
+ * running, what has already been done, what it cost, and the projects themselves. The start box is
+ * first because it is the only thing here that does not require having been somewhere already.
+ */
 export function HomeScreen() {
   const t = useT();
   const locale = useLocale();
@@ -87,6 +100,7 @@ export function HomeScreen() {
   const attentionList = useMemo(() => attentionItems({ approvals, questions, tasks, projects }), [approvals, questions, tasks, projects]);
   const workingList = useMemo(() => workingItems({ runtime, runs, projects }), [runtime, runs, projects]);
   const counts = useMemo(() => countsByProject(attentionList, workingList), [attentionList, workingList]);
+  const recent = useMemo(() => recentWork(runs, projects, RECENT_ROWS), [runs, projects]);
 
   const newProject = () => {
     setEditingProject(undefined);
@@ -145,9 +159,13 @@ export function HomeScreen() {
       <div className="flex justify-between items-center">
         {/* The screen is Inicio and one of its three sections is Proyectos. Reusing the sidebar's
             own word for the page keeps the two from both being called the same thing. */}
-        <h2 className="text-xl font-bold">{t("sidebar.home")}</h2>
-        <Button onClick={newProject}>{t("sidebar.newProject")}</Button>
+        <h2 className="text-xl font-bold">{t("home.greeting")}</h2>
+        <Button variant="outline" onClick={newProject}>{t("sidebar.newProject")}</Button>
       </div>
+
+      {/* First, and before anything is loaded: it is the one thing here that works on an install
+          with nothing in it. */}
+      <HomeComposer />
 
       {!loaded ? (
         <div className="flex flex-col gap-1">
@@ -156,13 +174,9 @@ export function HomeScreen() {
           <ProjectRowSkeleton />
         </div>
       ) : projects.length === 0 ? (
-        <EmptyState
-          icon={FolderKanban}
-          title={t("home.empty.title")}
-          description={t("home.empty.body")}
-          action={{ label: t("home.empty.action"), onClick: newProject }}
-          className="flex-1"
-        />
+        // Not the full empty state any more: the box above is the call to action, and a second one
+        // under it would be two things to do first.
+        <p className="text-sm text-muted-foreground">{t("home.empty.body")}</p>
       ) : (
         <>
           {attentionList.length === 0 && workingList.length === 0 && (
@@ -255,6 +269,51 @@ export function HomeScreen() {
               </div>
             </div>
           )}
+
+          {/* What has already happened. The lists above are the present tense; without this one the
+              app forgot an afternoon of work the moment it stopped running. */}
+          {recent.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <h3 className="font-semibold flex items-center gap-2">
+                <History className="w-4 h-4" /> {t("home.recent.title")}
+              </h3>
+              <div className="flex flex-col gap-1">
+                {recent.map(item => (
+                  <button
+                    key={item.runId}
+                    type="button"
+                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                    onClick={() => {
+                      // A chat run belongs to its conversation; a task run to the orchestrator
+                      // thread, which is where its answer is.
+                      openProject(item.projectId, item.chatId ?? null, "chat");
+                    }}
+                  >
+                    <div className="shrink-0 mt-1.5">
+                      <StatusDot status={runDotStatus[item.status]} />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="font-medium truncate">{truncate(item.prompt, 90)}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {[
+                          projectName(item.projectId),
+                          agentName(item.agentId),
+                          formatTimeAgo(item.at, now, locale),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
+                    {item.kind === "chat" && (
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <HomeUsage />
 
           <div className="flex flex-col gap-2">
             <h3 className="font-semibold">{t("home.title")}</h3>

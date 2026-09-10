@@ -6,6 +6,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **A tela inicial agora começa o trabalho em vez de listá-lo.** Ela tinha os projetos, o que
+  esperava por você e o que estava rodando; para fazer qualquer coisa ainda era preciso abrir um
+  diálogo, dar nome a um projeto, escolher a pasta, montar uma equipe, salvar, abrir e procurar a
+  caixa. Agora a caixa é a primeira coisa da tela: você escreve o que quer, escolhe a pasta e
+  escolhe uma das suas equipes, e o projeto é criado e o prompt sai. Se a pasta já for um projeto,
+  vai direto para lá, com a equipe dele — dois projetos no mesmo workspace seriam duas equipes
+  editando os mesmos arquivos sem saber uma da outra, e uma mesma pasta escrita de três formas
+  continua sendo uma só. Ela não inventa equipe: sem nenhuma salva, aponta para onde se criam, e
+  uma equipe sem agente raiz é dita em voz alta em vez de o prompt ir para o primeiro agente que
+  aparecer. Abaixo, duas coisas que a tela nunca teve: o que foi feito recentemente — tarefas e
+  conversas terminadas de todos os projetos, as mais novas primeiro, cada uma a um clique de onde
+  aconteceu — e quanto custou a última quinzena em tarefas, tokens e dólares, somando todos os
+  projetos. Nada disso é estimado: um CLI que não reporta consumo conta como execução e zero
+  tokens, e uma quinzena em que nenhum reportou diz isso em vez de desenhar uma linha plana.
+
 - **As mensagens enfileiradas enquanto um agente trabalha vão todas juntas, como uma só.** Antes
   saíam em fila: a primeira quando o turno terminava, e a segunda esperando *aquele* turno
   terminar. Três linhas escritas de uma vez viravam três turnos — três execuções, três cartões no

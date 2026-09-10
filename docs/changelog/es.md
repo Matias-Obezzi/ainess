@@ -6,6 +6,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **El inicio ahora arranca el trabajo en vez de listarlo.** Tenía los proyectos, lo que te
+  esperaba y lo que estaba corriendo; para hacer algo había que abrir un diálogo igual, ponerle
+  nombre a un proyecto, elegir carpeta, armar un equipo, guardarlo, abrirlo y buscar la caja. Ahora
+  la caja es lo primero de la pantalla: escribís qué querés, elegís la carpeta y elegís uno de tus
+  equipos, y el proyecto se crea y el prompt sale. Si elegís una carpeta que ya es un proyecto va
+  ahí, con su equipo — dos proyectos sobre un mismo workspace serían dos equipos editando los
+  mismos archivos sin saber uno del otro, y una misma carpeta escrita de tres formas sigue siendo
+  una sola. No inventa equipos: si no tenés ninguno guardado te manda a donde se crean, y un equipo
+  sin agente raíz te lo dice en vez de mandarle el prompt al primero que aparezca. Abajo, dos cosas
+  que la pantalla nunca tuvo: lo último que se hizo — tareas y conversaciones terminadas de todos
+  los proyectos, lo más nuevo primero, cada una a un clic de donde pasó — y cuánto salió la
+  última quincena en tareas, tokens y dólares, sumando todos los proyectos y no uno. Nada de eso
+  se estima: un CLI que no reporta consumo cuenta como corrida y cero tokens, y una quincena donde
+  ninguno reportó lo dice en vez de dibujar una línea plana.
+
 - **Los mensajes encolados mientras un agente trabaja se mandan todos juntos, como uno solo.**
   Antes salían en fila: el primero cuando terminaba el turno, y el segundo esperando a que
   terminara *ese* turno. Tres renglones escritos de una sentada se volvían tres turnos — tres

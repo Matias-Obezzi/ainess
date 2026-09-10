@@ -6,6 +6,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **L'écran d'accueil lance le travail au lieu de le lister.** Il avait les projets, ce qui vous
+  attendait et ce qui tournait ; pour faire quoi que ce soit, il fallait quand même ouvrir une
+  boîte de dialogue, nommer un projet, choisir un dossier, monter une équipe, enregistrer, ouvrir
+  et trouver le champ. Le champ est maintenant la première chose à l'écran : écrivez ce que vous
+  voulez, choisissez le dossier et une de vos équipes, le projet est créé et le prompt part. Si le
+  dossier est déjà un projet, ça y va, avec son équipe — deux projets sur un même espace de
+  travail seraient deux équipes modifiant les mêmes fichiers sans se connaître, et un dossier
+  reste le même dossier quelle que soit la façon de l'écrire. Il n'invente pas d'équipe : sans
+  aucune enregistrée, il indique où on les crée, et une équipe sans agent racine est annoncée
+  plutôt que le prompt confié au premier agent venu. En dessous, deux choses que cet écran n'avait
+  jamais eues : ce qui a été fait dernièrement — tâches et conversations terminées de tous les
+  projets, les plus récentes d'abord, chacune à un clic de là où elle s'est passée — et ce qu'ont
+  coûté les quinze derniers jours, en tâches, tokens et dollars, tous projets confondus. Rien n'y
+  est estimé : un CLI qui ne rapporte aucune consommation compte comme une exécution et zéro
+  token, et une quinzaine où aucun n'a rapporté le dit plutôt que de tracer une ligne plate.
+
 - **Les messages mis en file pendant qu'un agent travaille partent tous ensemble, en un seul.**
   Avant, ils partaient à la queue leu leu : le premier à la fin du tour, le second attendant la fin
   de *ce* tour-là. Trois lignes écrites d'une traite devenaient trois tours — trois exécutions,
