@@ -1,8 +1,8 @@
 // Driving the app from a chat you already have open, without opening a door into your machine.
 //
 // The trick is that nothing has to reach you: the providers connect outwards (Telegram is polled
-// over HTTPS, Discord and Slack will hold a socket open), so there is no tunnel, no port and no
-// public address. What arrives is text; what it turns into is `handleRemoteCommand`, the same API
+// over HTTPS, Discord holds a Gateway socket open, Slack will too), so there is no tunnel, no port
+// and no public address. What arrives is text; what it turns into is `handleRemoteCommand`, the same API
 // the phone talks to — this file translates and decides who is allowed to speak, and that is all.
 import { useAppStore, selectProjectAgents } from "@/store";
 import { handleRemoteCommand } from "@/lib/remote";
@@ -14,7 +14,26 @@ import { log } from "@/lib/logger";
 import { notificationText } from "./notify";
 import { parseBridgeCommand, type BridgeCommand } from "./commands";
 import { TelegramProvider } from "./telegram";
+import { DiscordProvider } from "./discord";
 import type { BridgeProvider, BridgeProviderId, IncomingMessage } from "./types";
+import type { MessagingChannelConfig } from "@/types";
+
+/** The channels this bridge knows how to speak, in the order the settings screen shows them. */
+const CHANNEL_IDS: BridgeProviderId[] = ["telegram", "discord"];
+
+/** This channel's own configuration — never another channel's, that is the whole point of having one per channel. */
+function messagingConfig(id: BridgeProviderId): MessagingChannelConfig | undefined {
+  const messaging = useAppStore.getState().config.messaging;
+  if (id === "telegram") return messaging?.telegram;
+  if (id === "discord") return messaging?.discord;
+  return undefined;
+}
+
+function newProvider(id: BridgeProviderId, token: string): BridgeProvider | null {
+  if (id === "telegram") return new TelegramProvider(token);
+  if (id === "discord") return new DiscordProvider(token);
+  return null;
+}
 
 /** Whether this chat may give orders. An empty list authorises nobody, never everybody. */
 export function isAllowed(chatId: string, allowed: string[]): boolean {
@@ -38,11 +57,17 @@ export function resolveId(prefix: string, ids: string[]): { id?: string; ambiguo
 const providers = new Map<BridgeProviderId, BridgeProvider>();
 /** The project each chat is talking about, until it says otherwise. Lives with the session. */
 const chatProject = new Map<string, string>();
-let lastUnknown: string | null = null;
+/**
+ * Which channel each chat arrived on, so the per-channel default project can be found without
+ * `runCommand` itself having to know channels exist — it only ever gets a chat id.
+ */
+const chatChannel = new Map<string, BridgeProviderId>();
+/** The last chat that wrote without being on the list, per channel — a Discord id and a Telegram id are never the same waiting room. */
+const lastUnknown = new Map<BridgeProviderId, string>();
 
 /** The last chat id that wrote without being on the list, so the settings screen can offer it. */
-export function lastUnknownChatId(): string | null {
-  return lastUnknown;
+export function lastUnknownChatId(id: BridgeProviderId = "telegram"): string | null {
+  return lastUnknown.get(id) ?? null;
 }
 
 function short(id: string): string {
@@ -54,7 +79,7 @@ function projectFor(chatId: string): string | undefined {
   const s = useAppStore.getState();
   const picked = chatProject.get(chatId);
   if (picked && s.config.projects.some(p => p.id === picked)) return picked;
-  const configured = s.config.messaging?.telegram?.projectId;
+  const configured = messagingConfig(chatChannel.get(chatId) ?? "telegram")?.projectId;
   if (configured && s.config.projects.some(p => p.id === configured)) return configured;
   return s.currentProjectId ?? s.config.lastProjectId ?? s.config.projects[0]?.id;
 }
@@ -172,12 +197,13 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
 }
 
 async function onMessage(provider: BridgeProvider, message: IncomingMessage): Promise<void> {
-  if (!isAllowed(message.chatId, allowedChats())) {
+  if (!isAllowed(message.chatId, allowedChats(provider.id))) {
     // Not a word back: confirming the bot exists is the one thing a stranger learns for free.
-    lastUnknown = message.chatId;
+    lastUnknown.set(provider.id, message.chatId);
     log.warn("bridge", `mensaje de un chat no autorizado (${message.chatId})`);
     return;
   }
+  chatChannel.set(message.chatId, provider.id);
   try {
     const reply = await runCommand(parseBridgeCommand(message.text), message.chatId);
     await provider.send(message.chatId, reply);
@@ -195,21 +221,27 @@ async function onMessage(provider: BridgeProvider, message: IncomingMessage): Pr
  * `provider.start` only returns when the provider is stopped, so it is deliberately not awaited.
  */
 export async function startBridge(): Promise<void> {
-  const telegram = useAppStore.getState().config.messaging?.telegram;
-  if (telegram?.enabled && telegram.token && !providers.has("telegram")) {
-    const provider = new TelegramProvider(telegram.token);
-    providers.set("telegram", provider);
-    void provider.start(m => onMessage(provider, m));
-    log.info("bridge", "telegram conectado");
+  for (const id of CHANNEL_IDS) {
+    const channel = messagingConfig(id);
+    if (channel?.enabled && channel.token && !providers.has(id)) {
+      const provider = newProvider(id, channel.token);
+      if (!provider) continue;
+      providers.set(id, provider);
+      void provider.start(m => onMessage(provider, m));
+      log.info("bridge", `${id} conectado`);
+    }
   }
 }
 
-export async function stopBridge(): Promise<void> {
-  for (const [id, provider] of providers) {
+/** Stops one channel, or every channel when none is named. */
+export async function stopBridge(id?: BridgeProviderId): Promise<void> {
+  const targets = id ? ([[id, providers.get(id)]] as const) : Array.from(providers.entries());
+  for (const [channelId, provider] of targets) {
+    if (!provider) continue;
     await provider.stop().catch(() => {});
-    log.info("bridge", `${id} desconectado`);
+    providers.delete(channelId);
+    log.info("bridge", `${channelId} desconectado`);
   }
-  providers.clear();
 }
 
 /** Whether a channel is connected right now, for the settings screen. */
@@ -217,9 +249,18 @@ export function bridgeRunning(id: BridgeProviderId = "telegram"): boolean {
   return providers.has(id);
 }
 
-/** Everyone this app is allowed to talk to right now. */
-function allowedChats(): string[] {
-  return useAppStore.getState().config.messaging?.telegram?.allowedChatIds ?? [];
+/** Everyone this channel is allowed to talk to right now. */
+function allowedChats(id: BridgeProviderId): string[] {
+  return messagingConfig(id)?.allowedChatIds ?? [];
+}
+
+function getDispatchProviders(id: BridgeProviderId): BridgeProvider[] {
+  const existing = providers.get(id);
+  if (existing) return [existing];
+  const token = messagingConfig(id)?.token;
+  if (!token) return [];
+  const provider = newProvider(id, token);
+  return provider ? [provider] : [];
 }
 
 /**
@@ -228,26 +269,10 @@ function allowedChats(): string[] {
  * It works with the bridge off too: nobody should have to turn something on to find out whether the
  * token they just pasted is the right one.
  */
-export async function sendTest(chatId: string): Promise<void> {
-  const existing = providers.get("telegram");
-  if (existing) {
-    await existing.send(chatId, translateNow("bridge.test.message"));
-    return;
-  }
-  const token = useAppStore.getState().config.messaging?.telegram?.token;
-  if (!token) throw new Error(translateNow("messaging.testNoToken"));
-  await new TelegramProvider(token).send(chatId, translateNow("bridge.test.message"));
-}
-
-function getDispatchProviders(): BridgeProvider[] {
-  if (providers.size > 0) {
-    return Array.from(providers.values());
-  }
-  const token = useAppStore.getState().config.messaging?.telegram?.token;
-  if (token) {
-    return [new TelegramProvider(token)];
-  }
-  return [];
+export async function sendTest(chatId: string, id: BridgeProviderId = "telegram"): Promise<void> {
+  const targets = getDispatchProviders(id);
+  if (targets.length === 0) throw new Error(translateNow("messaging.testNoToken"));
+  await targets[0].send(chatId, translateNow("bridge.test.message"));
 }
 
 function sanitizeBridgeError(e: unknown, token?: string): string {
@@ -260,28 +285,34 @@ function sanitizeBridgeError(e: unknown, token?: string): string {
 }
 
 /**
- * A message to the chats this app is allowed to talk to, for whatever wants to say something
- * without knowing which channel is on.
+ * A message to the chats one channel is allowed to talk to.
+ *
+ * One channel, not all of them. The only caller is the hook whose action type is literally
+ * `telegram`, and quietly widening it the day somebody connects Discord would change what a hook
+ * they set up months ago does, without their asking. A channel reaches its own list and no other:
+ * a Discord channel id never earns a message by being on Telegram's.
  */
-export async function sendToAllowed(text: string): Promise<number> {
-  const chats = allowedChats();
-  if (chats.length === 0) return 0;
-  const targets = getDispatchProviders();
-  if (targets.length === 0) return 0;
-
-  const token = useAppStore.getState().config.messaging?.telegram?.token;
+export async function sendToAllowed(text: string, id: BridgeProviderId = "telegram"): Promise<number> {
   let sentCount = 0;
-  for (const chatId of chats) {
-    let sent = false;
-    for (const provider of targets) {
-      try {
-        await provider.send(chatId, text);
-        sent = true;
-      } catch (e) {
-        log.warn("bridge", `no se pudo avisar a ${chatId}: ${sanitizeBridgeError(e, token)}`);
+  {
+    const chats = allowedChats(id);
+    if (chats.length === 0) return 0;
+    const targets = getDispatchProviders(id);
+    if (targets.length === 0) return 0;
+
+    const token = messagingConfig(id)?.token;
+    for (const chatId of chats) {
+      let sent = false;
+      for (const provider of targets) {
+        try {
+          await provider.send(chatId, text);
+          sent = true;
+        } catch (e) {
+          log.warn("bridge", `no se pudo avisar a ${chatId}: ${sanitizeBridgeError(e, token)}`);
+        }
       }
+      if (sent) sentCount++;
     }
-    if (sent) sentCount++;
   }
   return sentCount;
 }
@@ -295,12 +326,12 @@ export async function sendToAllowed(text: string): Promise<number> {
  * Unlike the broadcast, this one throws when nothing got through: somebody named one destination,
  * and a hook that silently did not reach it is worse than one that says it failed.
  */
-export async function sendToChat(chatId: string, text: string): Promise<void> {
-  if (!isAllowed(chatId, allowedChats())) {
+export async function sendToChat(chatId: string, text: string, id: BridgeProviderId = "telegram"): Promise<void> {
+  if (!isAllowed(chatId, allowedChats(id))) {
     throw new Error(translateNow("hooks.telegramNotAllowed", { id: chatId }));
   }
-  const targets = getDispatchProviders();
-  const token = useAppStore.getState().config.messaging?.telegram?.token;
+  const targets = getDispatchProviders(id);
+  const token = messagingConfig(id)?.token;
   let sent = false;
   let lastError = "";
   for (const provider of targets) {
@@ -343,7 +374,7 @@ export function attachBridgeNotifications(): void {
       : undefined;
     const text = notificationText(newest, project);
     for (const provider of providers.values()) {
-      for (const chatId of allowedChats()) {
+      for (const chatId of allowedChats(provider.id)) {
         void provider.send(chatId, text).catch(e => log.warn("bridge", `no se pudo avisar: ${e}`));
       }
     }

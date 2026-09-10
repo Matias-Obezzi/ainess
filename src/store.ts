@@ -22,6 +22,10 @@ import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
+import type { BridgeProviderId } from "@/lib/bridge/types";
+
+/** The channels the messaging config actually has a slot for today. */
+type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord">;
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -304,10 +308,10 @@ export interface AppState {
   /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
   toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
-  /** Turns the messaging bridge on or off, keeping the config in sync. */
-  toggleBridge(enabled: boolean): Promise<void>;
-  /** Picks up a changed token or list of chats: stop, then start again. */
-  restartBridge(): Promise<void>;
+  /** Turns one messaging channel on or off, keeping the config in sync. */
+  toggleBridge(id: MessagingChannelId, enabled: boolean): Promise<void>;
+  /** Picks up a changed token or list of chats for one channel: stop it, then start again. */
+  restartBridge(id: MessagingChannelId): Promise<void>;
   stopRemote(): Promise<void>;
   refreshRemoteStatus(): Promise<void>;
   regenerateRemoteToken(): Promise<void>;
@@ -937,20 +941,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
-  toggleBridge: async (enabled) => {
+  toggleBridge: async (id, enabled) => {
     const bridge = await import("@/lib/bridge");
     const messaging = get().config.messaging ?? {};
     // The defaults first, then whatever was configured, and the switch last: it is the one thing
     // this call is about.
-    const telegram = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging.telegram, enabled };
-    get().updateConfig({ messaging: { ...messaging, telegram } });
-    if (enabled) await bridge.startBridge(); else await bridge.stopBridge();
+    const channel = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging[id], enabled };
+    get().updateConfig({ messaging: { ...messaging, [id]: channel } });
+    if (enabled) await bridge.startBridge(); else await bridge.stopBridge(id);
   },
 
-  restartBridge: async () => {
+  restartBridge: async (id) => {
     const bridge = await import("@/lib/bridge");
-    await bridge.stopBridge();
-    if (get().config.messaging?.telegram?.enabled) await bridge.startBridge();
+    await bridge.stopBridge(id);
+    if (get().config.messaging?.[id]?.enabled) await bridge.startBridge();
   },
 
   toggleRemote: async (enabled) => {
@@ -2228,7 +2232,9 @@ async function runInit(): Promise<void> {
     if (isTauri()) {
       const bridge = await import("@/lib/bridge");
       bridge.attachBridgeNotifications();
-      if (config.messaging?.telegram?.enabled) await bridge.startBridge().catch(() => {});
+      if (config.messaging?.telegram?.enabled || config.messaging?.discord?.enabled) {
+        await bridge.startBridge().catch(() => {});
+      }
     }
 
     // Remote access is opt-in; a failure (port busy) must not break startup. A reload of the

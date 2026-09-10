@@ -6,6 +6,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Discord, à côté de Telegram.** Les mêmes commandes dans celui des deux que vous avez déjà
+  ouvert : ce que vous écrivez lance une tâche, `/status` dit qui travaille, `/approve` et
+  `/answer` règlent ce qui vous attend. Les réglages ont désormais une carte par canal. Ni l'un ni
+  l'autre n'expose quoi que ce soit — c'est l'application qui sort, il n'y a toujours ni tunnel, ni
+  port, ni adresse à trouver. Chaque canal autorise ses propres conversations et seulement les
+  siennes : un identifiant de salon Discord n'est pas autorisé parce qu'il figure sur la liste de
+  Telegram. Votre bot a besoin de l'intent de contenu des messages activé dans le portail
+  développeur de Discord, et l'écran le dit : sans lui les messages arrivent vides et rien ici ne
+  pourrait vous expliquer pourquoi.
+
 - **Ouvrir la pull request depuis ici.** Un agent termine sur sa branche et la dernière étape était
   à vous, à la main. Il y a désormais un bouton à côté de pull et push, et sur la carte terminée. Il
   n'en ouvre jamais une d'un seul clic : une boîte de dialogue montre quelle branche va contre

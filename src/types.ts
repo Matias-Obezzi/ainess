@@ -307,7 +307,7 @@ export interface AppConfig {
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
-  messaging?: { telegram?: MessagingChannelConfig };
+  messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];

@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parseBridgeCommand } from "@/lib/bridge/commands";
-import { isAllowed, resolveId } from "@/lib/bridge";
+import { isAllowed, resolveId, sendToChat } from "@/lib/bridge";
+import { useAppStore } from "@/store";
+import { getTransport, setTransport } from "@/lib/transport";
 
 describe("parseBridgeCommand", () => {
   it("reads plain text as something to do", () => {
@@ -72,5 +74,41 @@ describe("resolveId", () => {
     expect(resolveId("x", ids)).toEqual({});
     expect(resolveId("3f2a1b0c-1111-4222-8333-444455556666", ids).id).toBe(ids[0]);
     expect(resolveId("1", ["1abc", "1def"])).toEqual({ ambiguous: true });
+  });
+});
+
+describe("channels do not share their authorised chats", () => {
+  const originalTransport = getTransport();
+
+  beforeEach(() => {
+    setTransport(originalTransport);
+    useAppStore.setState({
+      config: {
+        ...useAppStore.getState().config,
+        messaging: {
+          telegram: { enabled: true, token: "tg-token", allowedChatIds: ["shared-id"], projectId: null },
+          discord: { enabled: true, token: "dc-token", allowedChatIds: [], projectId: null },
+        },
+        projects: [{ id: "p1", name: "Proyecto 1", workspaceDir: "C:/p1", createdAt: 1, agents: [] }],
+      },
+      messages: [],
+    });
+  });
+
+  it("a chat id authorised on Telegram is not authorised on Discord", async () => {
+    const sent: string[] = [];
+    setTransport({
+      ...getTransport(),
+      httpPost: async (url) => {
+        sent.push(url);
+        return { status: 200, body: JSON.stringify({ ok: true }) };
+      },
+    });
+
+    await sendToChat("shared-id", "hola", "telegram");
+    expect(sent.length).toBe(1);
+
+    await expect(sendToChat("shared-id", "hola", "discord")).rejects.toThrow();
+    expect(sent.length).toBe(1);
   });
 });

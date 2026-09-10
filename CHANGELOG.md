@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **Discord, beside Telegram.** The same commands in whichever of the two you already have open:
+  anything you write starts a task, `/status` says who is working, `/approve` and `/answer` settle
+  what needs you. Settings has a card per channel now. Nothing is exposed by either — the app is
+  the one that goes out, so there is still no tunnel, no port and no address to find. Each channel
+  authorises its own chats and only its own: a Discord channel id is not allowed anywhere by being
+  on Telegram's list. Your bot needs the message-content intent turned on in Discord's developer
+  portal, and the screen says so, because without it the messages arrive empty and nothing here
+  could tell you why.
+
 - **Open the pull request from here.** An agent finishes on its branch and the last step was yours
   to do by hand. There is a button now beside pull and push, and on a finished card. It never opens
   one on a single click: a dialog shows which branch goes into which, with the title and body

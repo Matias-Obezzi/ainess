@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Discord, neben Telegram.** Dieselben Befehle in dem der beiden, den du ohnehin offen hast: Was
+  du schreibst, startet eine Aufgabe, `/status` sagt, wer arbeitet, `/approve` und `/answer`
+  erledigen, was auf dich wartet. Die Einstellungen haben jetzt eine Karte pro Kanal. Keiner von
+  beiden legt etwas offen — die App geht hinaus, es gibt weiterhin keinen Tunnel, keinen Port und
+  keine Adresse zu finden. Jeder Kanal autorisiert seine eigenen Chats und nur seine: Eine
+  Discord-Kanal-ID ist nicht autorisiert, weil sie auf Telegrams Liste steht. Dein Bot braucht im
+  Discord-Entwicklerportal die Berechtigung für Nachrichteninhalte, und der Bildschirm sagt das —
+  ohne sie kommen die Nachrichten leer an, und von hier aus wäre nicht zu erkennen, warum.
+
 - **Den Pull Request von hier aus öffnen.** Ein Agent wird auf seinem Branch fertig, und der letzte
   Schritt war deiner, von Hand. Jetzt gibt es eine Schaltfläche neben Pull und Push und auf der
   fertigen Karte. Sie öffnet nie einen mit einem einzigen Klick: Ein Dialog zeigt, welcher Branch
