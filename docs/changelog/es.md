@@ -2,6 +2,17 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **El tablero se desplaza solo cuando llevás una tarjeta al borde.** Un tablero más ancho que la
+  ventana no se podía cruzar: la columna que querías estaba fuera de vista, y soltar para scrollear
+  dejaba la tarjeta donde no era. Ahora sostener una tarjeta cerca de cualquiera de los dos bordes
+  arrastra el tablero, despacio al entrar en la zona y más rápido cuanto más te acercás — y sigue
+  moviéndose aunque dejes el mouse quieto, cosa que los eventos de arrastre por sí solos no le
+  avisan a nadie.
+
 ## 0.10.0 — 2026-09-09
 
 ### Nuevo

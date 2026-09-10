@@ -2,6 +2,17 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Le tableau défile de lui-même quand vous amenez une carte au bord.** Un tableau plus large que
+  la fenêtre ne pouvait pas être traversé : la colonne voulue était hors champ, et lâcher pour
+  faire défiler déposait la carte là où vous ne vouliez pas. Tenir une carte près de l'un des deux
+  bords entraîne désormais le tableau, doucement à l'entrée de la zone et plus vite à mesure que
+  vous approchez — et il continue tant que vous restez immobile, ce dont les événements de
+  glisser-déposer ne préviennent personne d'eux-mêmes.
+
 ## 0.10.0 — 2026-09-09
 
 ### Nouveau

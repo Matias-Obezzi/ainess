@@ -4,6 +4,16 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **The board scrolls itself when you drag a card to its edge.** A board wider than the window could
+  not be crossed: the column you wanted was off screen, and letting go to scroll dropped the card
+  where you did not mean it. Holding a card near either edge now pulls the board along, gently at
+  the edge of the zone and faster the closer you get — and it keeps pulling while you hold still,
+  which the drag events on their own do not tell anybody about.
+
 ## 0.10.0 — 2026-09-09
 
 ### Added

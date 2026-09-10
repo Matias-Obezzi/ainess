@@ -2,6 +2,17 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Das Board scrollt selbst, wenn du eine Karte an seinen Rand ziehst.** Ein Board, das breiter
+  ist als das Fenster, ließ sich nicht überqueren: Die gewünschte Spalte lag außerhalb, und
+  loszulassen, um zu scrollen, legte die Karte dorthin, wo du sie nicht haben wolltest. Eine Karte
+  nahe einem der beiden Ränder zu halten zieht jetzt das Board mit — sanft am Rand der Zone und
+  schneller, je näher du kommst. Und es zieht weiter, während du stillhältst, wovon die
+  Drag-Ereignisse von sich aus niemandem erzählen.
+
 ## 0.10.0 — 2026-09-09
 
 ### Neu

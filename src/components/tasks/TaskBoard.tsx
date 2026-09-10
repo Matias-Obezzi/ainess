@@ -1,8 +1,9 @@
 // The kanban board: one column per status, cards dragged with the native HTML5 events, and the
 // archived tasks folded away at the bottom. Every derived list is memoized, so a board with a
 // couple of hundred cards does not recompute anything while the user drags one around.
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
+import { edgeScrollStep } from "@/lib/edge-scroll";
 import { useAppStore, selectTasks } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,41 @@ export function TaskBoard({
     return map;
   }, [tasks]);
 
+  /**
+   * Holding a card near an edge scrolls the board towards the columns you cannot see.
+   *
+   * Two things make this less obvious than it sounds. The card handlers call `stopPropagation`, so
+   * a listener on the container hears nothing while the pointer is over a card — hence the capture
+   * phase, which runs on the way down. And `dragover` only fires while the pointer moves, so
+   * holding still at the edge would deliver one event and then silence: the pointer's last position
+   * is remembered and a frame loop does the scrolling, until the drag ends.
+   */
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const pointerXRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!dragId || !scroller) return;
+
+    const track = (e: globalThis.DragEvent) => { pointerXRef.current = e.clientX; };
+    scroller.addEventListener("dragover", track, true);
+
+    let frame = requestAnimationFrame(function step() {
+      const x = pointerXRef.current;
+      if (x !== null) {
+        const move = edgeScrollStep(x, scroller.getBoundingClientRect());
+        if (move !== 0) scroller.scrollLeft += move;
+      }
+      frame = requestAnimationFrame(step);
+    });
+
+    return () => {
+      scroller.removeEventListener("dragover", track, true);
+      cancelAnimationFrame(frame);
+      pointerXRef.current = null;
+    };
+  }, [dragId]);
+
   const onDragStart = useCallback((e: DragEvent<HTMLElement>, task: Task) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", task.id);
@@ -130,7 +166,7 @@ export function TaskBoard({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-3">
+      <div ref={scrollerRef} className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-3">
         {columns.map(({ status, items, total }) => {
           const meta = taskStatusMeta[status];
           return (

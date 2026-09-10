@@ -2,6 +2,17 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **O quadro rola sozinho quando você leva um cartão até a borda.** Um quadro mais largo que a
+  janela não dava para atravessar: a coluna que você queria estava fora de vista, e soltar para
+  rolar deixava o cartão onde não era. Agora segurar um cartão perto de qualquer uma das bordas
+  puxa o quadro junto, devagar ao entrar na zona e mais rápido quanto mais perto — e continua
+  puxando mesmo com o mouse parado, coisa que os eventos de arraste sozinhos não avisam a
+  ninguém.
+
 ## 0.10.0 — 2026-09-09
 
 ### Novo
