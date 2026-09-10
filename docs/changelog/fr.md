@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Ouvrir la pull request depuis ici.** Un agent termine sur sa branche et la dernière étape était
+  à vous, à la main. Il y a désormais un bouton à côté de pull et push, et sur la carte terminée. Il
+  n'en ouvre jamais une d'un seul clic : une boîte de dialogue montre quelle branche va contre
+  laquelle, avec le titre et le corps déjà rédigés depuis la tâche et depuis ce que l'agent a
+  rapporté — les fichiers touchés, ce qu'il a vérifié, et ce qu'il n'a pas pu faire, qui apparaît
+  sous son propre titre au lieu d'être omis. Sur la branche par défaut elle refuse, et sur une
+  branche non poussée elle propose de pousser d'abord plutôt que de le faire dans votre dos.
+
 - **Relancer une tâche avec un autre modèle, ou un autre agent.** Une exécution ratée, ou dont
   l'agent s'est retrouvé à court de quota à mi-chemin, vous laissait tout retaper. Le menu de
   l'exécution — et le bouton sur sa carte — proposent désormais de la relancer avec le même prompt

@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Den Pull Request von hier aus öffnen.** Ein Agent wird auf seinem Branch fertig, und der letzte
+  Schritt war deiner, von Hand. Jetzt gibt es eine Schaltfläche neben Pull und Push und auf der
+  fertigen Karte. Sie öffnet nie einen mit einem einzigen Klick: Ein Dialog zeigt, welcher Branch
+  gegen welchen geht, mit Titel und Text schon geschrieben — aus der Aufgabe und aus dem, was der
+  Agent gemeldet hat: die angefassten Dateien, was er geprüft hat, und was er nicht schaffen
+  konnte, das eine eigene Überschrift bekommt statt wegzufallen. Auf dem Standard-Branch verweigert
+  sie, und auf einem ungepushten bietet sie an, vorher zu pushen, statt es hinter deinem Rücken zu
+  tun.
+
 - **Eine Aufgabe mit einem anderen Modell oder einem anderen Agenten wiederholen.** Ein Lauf, der
   schiefging — oder dessen Agent auf halbem Weg das Kontingent aufbrauchte — ließ dich alles neu
   tippen. Jetzt bieten das Menü des Laufs und die Schaltfläche auf seiner Karte an, ihn mit

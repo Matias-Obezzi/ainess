@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **Open the pull request from here.** An agent finishes on its branch and the last step was yours
+  to do by hand. There is a button now beside pull and push, and on a finished card. It never opens
+  one on a single click: a dialog shows which branch goes into which, with the title and body
+  already written from the task and from what the agent reported — the files it touched, what it
+  verified, and what it could not do, which goes in under its own heading rather than being left
+  out. On the default branch it refuses, and on a branch you have not pushed it offers to push
+  first instead of doing it behind your back.
+
 - **Retry a task with another model, or another agent.** A run that failed, or one whose agent ran
   out of quota halfway, left you retyping the whole thing. Now the run's own menu — and the button
   on its card — offer to run it again from the same prompt with whoever you pick. It starts from

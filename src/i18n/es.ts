@@ -970,6 +970,18 @@ export const es: Dictionary = {
   "git.openPullRequests": "Pull requests abiertos",
   "git.noOpenPullRequests": "No hay pull requests abiertos.",
 
+  // ---- Pull requests (open one) ----
+  "pr.open": "Abrir PR",
+  "pr.title": "Abrir pull request",
+  "pr.fieldTitle": "Título",
+  "pr.fieldBody": "Descripción",
+  "pr.branchInto": "{from} → {into}",
+  "pr.onDefaultBranch": "Esta es la rama principal: creá una rama propia antes de abrir un pull request.",
+  "pr.needsPush": "Esta rama todavía no se subió al remoto.",
+  "pr.pushFirst": "Subir primero",
+  "pr.created": "Pull request creado",
+  "pr.failed": "No se pudo crear el pull request: {error}",
+
   // ---- Worktrees ----
   "worktrees.title": "Worktrees",
   "worktrees.description": "Cada agente con worktree trabaja en su propia rama, en una carpeta hermana del proyecto. Vos decidís qué pasa con esa rama cuando termina.",

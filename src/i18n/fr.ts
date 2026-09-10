@@ -969,6 +969,18 @@ export const fr: Dictionary = {
   "git.openPullRequests": "Pull requests ouvertes",
   "git.noOpenPullRequests": "Aucune pull request ouverte.",
 
+  // ---- Pull requests (open one) ----
+  "pr.open": "Ouvrir la PR",
+  "pr.title": "Ouvrir une pull request",
+  "pr.fieldTitle": "Titre",
+  "pr.fieldBody": "Description",
+  "pr.branchInto": "{from} → {into}",
+  "pr.onDefaultBranch": "C'est la branche principale : créez d'abord votre propre branche avant d'ouvrir une pull request.",
+  "pr.needsPush": "Cette branche n'a pas encore été poussée vers le dépôt distant.",
+  "pr.pushFirst": "Pousser d'abord",
+  "pr.created": "Pull request créée",
+  "pr.failed": "Impossible de créer la pull request : {error}",
+
   // ---- Worktrees ----
   "worktrees.title": "Worktrees",
   "worktrees.description": "Chaque agent avec un worktree travaille sur sa propre branche, dans un dossier voisin du projet. C'est toi qui décides du sort de cette branche à la fin.",

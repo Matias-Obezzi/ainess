@@ -970,6 +970,18 @@ export const ja: Dictionary = {
   "git.openPullRequests": "オープンなプルリクエスト",
   "git.noOpenPullRequests": "オープンなプルリクエストはありません。",
 
+  // ---- Pull requests (open one) ----
+  "pr.open": "PRを開く",
+  "pr.title": "プルリクエストを開く",
+  "pr.fieldTitle": "タイトル",
+  "pr.fieldBody": "説明",
+  "pr.branchInto": "{from} → {into}",
+  "pr.onDefaultBranch": "これはメインブランチです。プルリクエストを開く前に、専用のブランチを作成してください。",
+  "pr.needsPush": "このブランチはまだリモートにプッシュされていません。",
+  "pr.pushFirst": "先にプッシュ",
+  "pr.created": "プルリクエストを作成しました",
+  "pr.failed": "プルリクエストを作成できませんでした: {error}",
+
   // ---- Worktrees ----
   "worktrees.title": "Worktrees",
   "worktrees.description": "worktree を持つエージェントは、プロジェクトと同階層のフォルダーで、それぞれ自分のブランチで作業します。そのブランチを最後にどうするかはあなたが決めます。",

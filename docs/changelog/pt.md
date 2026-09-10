@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Abrir o pull request daqui.** Um agente termina na sua branch e o último passo era seu, na mão.
+  Agora há um botão ao lado de pull e push, e no cartão concluído. Ele nunca abre um com um clique
+  só: um diálogo mostra qual branch vai contra qual, com o título e o corpo já escritos a partir da
+  tarefa e do que o agente reportou — os arquivos que tocou, o que verificou, e o que não conseguiu
+  fazer, que entra com um cabeçalho próprio em vez de ficar de fora. Na branch padrão ele recusa, e
+  numa branch sem push ele oferece dar push antes, em vez de fazer isso pelas suas costas.
+
 - **Tentar de novo uma tarefa com outro modelo, ou com outro agente.** Uma execução que deu errado,
   ou cujo agente ficou sem cota no meio do caminho, deixava você redigitando tudo. Agora o menu da
   execução — e o botão no cartão dela — oferecem relançá-la com o mesmo prompt e com quem você

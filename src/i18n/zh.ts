@@ -969,6 +969,18 @@ export const zh: Dictionary = {
   "git.openPullRequests": "开放的 pull request",
   "git.noOpenPullRequests": "没有开放的 pull request。",
 
+  // ---- Pull requests (open one) ----
+  "pr.open": "打开 PR",
+  "pr.title": "打开 Pull Request",
+  "pr.fieldTitle": "标题",
+  "pr.fieldBody": "描述",
+  "pr.branchInto": "{from} → {into}",
+  "pr.onDefaultBranch": "这是主分支：打开 pull request 前请先创建自己的分支。",
+  "pr.needsPush": "此分支尚未推送到远程。",
+  "pr.pushFirst": "先推送",
+  "pr.created": "已创建 Pull Request",
+  "pr.failed": "无法创建 pull request：{error}",
+
   // ---- Worktrees ----
   "worktrees.title": "Worktrees",
   "worktrees.description": "每个带 worktree 的智能体都在自己的分支上工作，目录和项目并列。分支收工之后怎么处理由你决定。",

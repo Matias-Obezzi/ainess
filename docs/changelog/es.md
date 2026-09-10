@@ -6,6 +6,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Abrir el pull request desde acá.** Un agente termina en su rama y el último paso lo hacías a
+  mano. Ahora hay un botón al lado de pull y push, y en la tarjeta terminada. Nunca abre uno de un
+  solo click: un diálogo te muestra qué rama va contra cuál, con el título y el cuerpo ya escritos
+  desde la tarea y desde lo que reportó el agente — los archivos que tocó, lo que verificó, y lo que
+  no pudo hacer, que va con su propio encabezado en vez de quedar afuera. En la rama por defecto no
+  te deja, y en una rama sin pushear te ofrece pushear primero en lugar de hacerlo por atrás.
+
 - **Reintentar una tarea con otro modelo, o con otro agente.** Una corrida que salió mal, o cuyo
   agente se quedó sin cuota a mitad de camino, te dejaba reescribiendo todo. Ahora el menú de la
   corrida —y el botón en su tarjeta— te ofrecen relanzarla con el mismo prompt y con quien elijas.
