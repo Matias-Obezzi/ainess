@@ -5,8 +5,10 @@ import { baseDictionary, dictionaries, resolveLanguage, translate } from "@/i18n
 
 // The card's header comes from the dictionary. Rendered on the server, the store hands back its
 // initial state (language null), so the label is the one the host's own language resolves to.
+// `<Markdown>` reads it through `useT()`, which falls back to Spanish the same way this does when
+// that language is not loaded yet, so the two stay in step regardless of what the host resolves to.
 const label = (key: string) =>
-  translate(dictionaries[resolveLanguage(null)], baseDictionary, key);
+  translate(dictionaries[resolveLanguage(null)] ?? baseDictionary, baseDictionary, key);
 
 const html = (text: string) => renderToStaticMarkup(<Markdown text={text} />);
 

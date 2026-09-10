@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
 import { useAppStore } from "@/store";
-import { en, es, de } from "@/i18n";
+import { es, loadLanguage } from "@/i18n";
+import { en } from "@/i18n/en";
+import { de } from "@/i18n/de";
 import type { AgentConfig } from "@/types";
 
 /** The prompt is built outside React, so it reads the language off the store. */
-function inLanguage<T>(language: "es" | "en" | "de", body: () => T): T {
+async function inLanguage<T>(language: "es" | "en" | "de", body: () => T): Promise<T> {
+  await loadLanguage(language);
   const before = useAppStore.getState().config.language;
   useAppStore.setState(state => ({ config: { ...state.config, language } }));
   try {
@@ -132,19 +135,19 @@ describe("plain-text providers and system prompt", () => {
 
   // The interface was translated and the instructions the agent runs on were not, so an English
   // window got a team that answered in Spanish.
-  it("writes the prompt in the language the app is in", () => {
+  it("writes the prompt in the language the app is in", async () => {
     const planner = agent({ id: "p", role: "planner" });
     const child = agent({ id: "c", parentId: "p" });
     const opts = { skills: [], sharedContext: "" };
 
-    expect(inLanguage("en", () => buildSystemPrompt(planner, [child], opts))).toContain(en["prompt.planner.intro"]);
-    expect(inLanguage("es", () => buildSystemPrompt(planner, [child], opts))).toContain(es["prompt.planner.intro"]);
-    expect(inLanguage("de", () => buildSystemPrompt(agent({ role: "implementer" }), [], opts))).toContain(de["prompt.implementer"]);
+    expect(await inLanguage("en", () => buildSystemPrompt(planner, [child], opts))).toContain(en["prompt.planner.intro"]);
+    expect(await inLanguage("es", () => buildSystemPrompt(planner, [child], opts))).toContain(es["prompt.planner.intro"]);
+    expect(await inLanguage("de", () => buildSystemPrompt(agent({ role: "implementer" }), [], opts))).toContain(de["prompt.implementer"]);
   });
 
-  it("keeps both protocol blocks in every language", () => {
+  it("keeps both protocol blocks in every language", async () => {
     for (const language of ["es", "en", "de"] as const) {
-      const prompt = inLanguage(language, () =>
+      const prompt = await inLanguage(language, () =>
         buildSystemPrompt(agent({ id: "p", role: "planner" }), [agent({ id: "c", parentId: "p" })], { skills: [], sharedContext: "" }),
       );
       expect(prompt, language).toContain("```delegate");

@@ -31,6 +31,12 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'application cesse de transporter six langues qu'elle ne vous montre pas.** Les sept
+  dictionnaires étaient dans le même bundle : chaque démarrage payait pour les six que personne ne
+  lisait — 575 ko, 179 compressés. Désormais seul l'espagnol est intégré (c'est la base vers
+  laquelle toutes les autres retombent) et la vôtre est chargée avant le premier affichage puis
+  conservée. Ce morceau est passé de 575 ko à 83 ko, et de 179 compressés à 27.
+
 - **Un agent qui répond à une question dans une conversation ne peut plus distribuer du travail.**
   Le tour qui porte votre réponse démarrait sans qu'on lui dise qu'il appartenait à une
   conversation : il était donc lu comme une tâche et ses blocs `delegate` étaient exécutés. Un agent

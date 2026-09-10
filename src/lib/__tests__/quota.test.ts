@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { parseAgyModels, parseResetDuration, poolOf, copilotQuotaFromJson, claudeQuotaFromJson } from "@/lib/quota";
 import { useAppStore } from "@/store";
-import { en, es } from "@/i18n";
+import { es, loadLanguage } from "@/i18n";
+import { en } from "@/i18n/en";
 
 /** What a window is called is a dictionary entry now, not a string built into the parser. */
-function withLanguage<T>(language: "es" | "en", body: () => T): T {
+async function withLanguage<T>(language: "es" | "en", body: () => T): Promise<T> {
+  await loadLanguage(language);
   const before = useAppStore.getState().config.language;
   useAppStore.setState(state => ({ config: { ...state.config, language } }));
   try {
@@ -82,31 +84,31 @@ describe("copilotQuotaFromJson", () => {
 });
 
 describe("claudeQuotaFromJson", () => {
-  it("maps five_hour/seven_day windows", () => {
+  it("maps five_hour/seven_day windows", async () => {
     const obj = {
       five_hour: { utilization: 9.0, resets_at: "2026-09-05T21:50:00Z" },
       seven_day: { utilization: 42.0, resets_at: "2026-09-08T00:00:00Z" },
     };
-    const items = withLanguage("es", () => claudeQuotaFromJson(obj));
+    const items = await withLanguage("es", () => claudeQuotaFromJson(obj));
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({ label: es["quota.claude.window5h"], usedPercent: 9.0 });
     expect(items[1]).toMatchObject({ label: es["quota.claude.week"], usedPercent: 42.0 });
   });
 
-  it("names the windows in the language the app is in", () => {
+  it("names the windows in the language the app is in", async () => {
     const obj = { five_hour: { utilization: 9.0, resets_at: "2026-09-05T21:50:00Z" } };
-    expect(withLanguage("en", () => claudeQuotaFromJson(obj))[0].label).toBe(en["quota.claude.window5h"]);
-    expect(withLanguage("es", () => claudeQuotaFromJson(obj))[0].label).toBe(es["quota.claude.window5h"]);
+    expect((await withLanguage("en", () => claudeQuotaFromJson(obj)))[0].label).toBe(en["quota.claude.window5h"]);
+    expect((await withLanguage("es", () => claudeQuotaFromJson(obj)))[0].label).toBe(es["quota.claude.window5h"]);
   });
 
-  it("adds per-model items when seven_day_opus/seven_day_sonnet are present", () => {
+  it("adds per-model items when seven_day_opus/seven_day_sonnet are present", async () => {
     const obj = {
       five_hour: { utilization: 9.0, resets_at: "2026-09-05T21:50:00Z" },
       seven_day: { utilization: 42.0, resets_at: "2026-09-08T00:00:00Z" },
       seven_day_opus: { utilization: 10.0, resets_at: "2026-09-08T00:00:00Z" },
       seven_day_sonnet: null,
     };
-    const items = withLanguage("es", () => claudeQuotaFromJson(obj));
+    const items = await withLanguage("es", () => claudeQuotaFromJson(obj));
     expect(items.find(i => i.model === "opus")).toMatchObject({ label: "Semana (Opus)", usedPercent: 10.0 });
     expect(items.find(i => i.model === "sonnet")).toBeUndefined();
   });

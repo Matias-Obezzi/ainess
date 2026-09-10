@@ -28,6 +28,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O app deixa de carregar seis idiomas que não está mostrando para você.** Os sete dicionários
+  vinham no mesmo bundle, então cada início pagava pelos seis que ninguém estava lendo: 575 kB, 179
+  comprimidos. Agora só o espanhol vem embutido — é a base para a qual todos os outros caem — e o
+  seu é buscado antes da primeira pintura e fica carregado. Esse pedaço passou de 575 kB para 83 kB,
+  e de 179 comprimidos para 27.
+
 - **Um agente que responde a uma pergunta num chat já não pode distribuir trabalho.** O turno que
   leva a sua resposta começava sem que lhe dissessem que era de um chat, então era lido como uma
   tarefa: os seus blocos `delegate` eram interpretados e executados. Um agente podia pôr outros a

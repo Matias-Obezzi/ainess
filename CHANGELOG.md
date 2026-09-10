@@ -31,6 +31,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The app stops carrying six languages it is not showing you.** All seven dictionaries were built
+  into the same bundle, so every start paid for the six nobody was reading: 575 kB of them, 179
+  gzipped. Now only Spanish is built in — it is the base every other language falls back to — and
+  yours is fetched before the first paint and remembered. That chunk went from 575 kB to 83 kB,
+  and 179 gzipped to 27.
+
 - **An agent answering a question in a chat can no longer hand out work.** The turn that carries
   your answer was started without being told it belonged to a chat, so it was read as a task: its
   `delegate` blocks were parsed and acted on. An agent could put other agents to work from inside a

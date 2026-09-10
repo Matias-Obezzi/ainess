@@ -1,12 +1,9 @@
 // A tiny i18n layer: flat dictionaries, dot-separated keys, Spanish as the base.
 // No dependencies: the whole thing is a lookup plus `{name}` interpolation.
+//
+// Spanish loads eagerly (it is the base and the fallback); the other six load on demand via
+// `loadLanguage`, so a build only ships the one dictionary a given session actually uses.
 import { es } from "./es";
-import { en } from "./en";
-import { pt } from "./pt";
-import { zh } from "./zh";
-import { ja } from "./ja";
-import { fr } from "./fr";
-import { de } from "./de";
 
 export type Language = "es" | "en" | "pt" | "zh" | "ja" | "fr" | "de";
 
@@ -38,7 +35,37 @@ export const languageLocales: Record<Language, string> = {
   de: "de",
 };
 
-export const dictionaries: Record<Language, Dictionary> = { es, en, pt, zh, ja, fr, de };
+/** Registry of loaded dictionaries. Starts with just Spanish; the rest arrive via `loadLanguage`. */
+export const dictionaries: Partial<Record<Language, Dictionary>> = { es };
+
+const loaders: Record<Exclude<Language, "es">, () => Promise<Dictionary>> = {
+  en: () => import("./en").then(m => m.en),
+  pt: () => import("./pt").then(m => m.pt),
+  zh: () => import("./zh").then(m => m.zh),
+  ja: () => import("./ja").then(m => m.ja),
+  fr: () => import("./fr").then(m => m.fr),
+  de: () => import("./de").then(m => m.de),
+};
+
+/** In-flight loads, so a language requested twice while its import is still in the air is only fetched once. */
+const loading = new Map<Language, Promise<void>>();
+
+/** Loads a language's dictionary into the registry. Resolves immediately if it is already there. */
+export async function loadLanguage(lang: Language): Promise<void> {
+  if (dictionaries[lang]) return;
+  let promise = loading.get(lang);
+  if (!promise) {
+    promise = loaders[lang as Exclude<Language, "es">]().then(dict => {
+      dictionaries[lang] = dict;
+    });
+    loading.set(lang, promise);
+  }
+  try {
+    await promise;
+  } finally {
+    loading.delete(lang);
+  }
+}
 
 /** The dictionary every language falls back to. */
 export const baseDictionary: Dictionary = es;
@@ -114,4 +141,4 @@ export function resolveLanguage(configured: Language | null | undefined): Langua
   return configured ?? systemLanguage();
 }
 
-export { es, en, pt, zh, ja, fr, de };
+export { es };

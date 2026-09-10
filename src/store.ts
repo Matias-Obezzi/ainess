@@ -16,6 +16,7 @@ import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { translateNow } from "@/i18n/useT";
+import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
@@ -2140,6 +2141,15 @@ async function runInit(): Promise<void> {
       ? prefs.projectChats[config.lastProjectId] ?? null
       : null;
     const finalChatId = startChatId && config.chats.some(c => c.id === startChatId) ? startChatId : null;
+
+    // Load the language before anything paints or translates: every `translateNow` call the rest
+    // of startup makes (crash-recovery notifications, log lines) has to land in the right one, not
+    // in the Spanish fallback that would show while the real dictionary was still in flight.
+    //
+    // Swallowed on purpose. A chunk that will not load is a reason to read the app in Spanish, not
+    // a reason for it never to open — and an unhandled rejection here would stop the boot dead.
+    await loadLanguage(resolveLanguage(config.language)).catch(() => {});
+
     lastSavedConfig = config;
     set({
       config,

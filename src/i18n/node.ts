@@ -1,4 +1,18 @@
-import { type Language, LANGUAGES, dictionaries, baseDictionary, pickLanguage, localeOf, translate } from "./index";
+import { type Language, type Dictionary, LANGUAGES, dictionaries, baseDictionary, pickLanguage, localeOf, translate } from "./index";
+import { en } from "./en";
+import { pt } from "./pt";
+import { zh } from "./zh";
+import { ja } from "./ja";
+import { fr } from "./fr";
+import { de } from "./de";
+
+// The CLI bundles separately (`npm run build:cli`), where the lazy-loading registry in `index.ts`
+// buys nothing — there is no browser chunk to shrink, and `nodeI18n` has to stay synchronous. So
+// this is the one place that imports all six non-Spanish dictionaries eagerly and registers them.
+const nodeDictionaries: Partial<Record<Language, Dictionary>> = { en, pt, zh, ja, fr, de };
+for (const [lang, dict] of Object.entries(nodeDictionaries)) {
+  dictionaries[lang as Language] = dict;
+}
 
 /** The language a CLI process runs in: what the user configured, else what the environment says. */
 export function nodeLanguage(configured: Language | null | undefined, env: NodeJS.ProcessEnv): Language {

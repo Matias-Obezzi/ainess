@@ -32,6 +32,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die App schleppt keine sechs Sprachen mehr mit, die sie dir nicht zeigt.** Alle sieben
+  Wörterbücher steckten im selben Bundle, also zahlte jeder Start für die sechs, die niemand las:
+  575 kB, 179 gepackt. Jetzt ist nur Spanisch fest eingebaut — es ist die Basis, auf die alle
+  anderen zurückfallen — und deine wird vor dem ersten Zeichnen geholt und behalten. Dieser Chunk
+  ging von 575 kB auf 83 kB und von 179 gepackt auf 27.
+
 - **Ein Agent, der in einem Chat eine Frage beantwortet, kann keine Arbeit mehr verteilen.** Der
   Zug, der deine Antwort trägt, wurde gestartet, ohne dass ihm gesagt wurde, dass er zu einem Chat
   gehört — also wurde er als Aufgabe gelesen und seine `delegate`-Blöcke ausgeführt. Ein Agent
