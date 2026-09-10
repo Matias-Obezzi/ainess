@@ -1481,6 +1481,7 @@ export const ja: Dictionary = {
   "autonomous.answerPrompt": "今は答える人がいません。プロジェクトは自律モードで動いています。最も慎重な方針を選び、何を前提としたかを `note` ブロックに書き残してください。",
   "autonomous.quotaParked": "{name} はクォータが尽きました。プロバイダーに余裕ができ次第、自動的に再試行します。",
   "autonomous.quotaGaveUp": "クォータは戻りましたが、{name} の自動再試行はすでにオフになっています。実行は再開されませんでした。",
+  "autonomous.quotaGaveUpRetrying": "{name} は {n} 回試しても、またクォータ切れになりました。これ以上は自動で再開しません。クォータが本当に戻ってから、ご自身で再試行してください。",
   "autonomous.report.title": "自律モード: {name}",
   "autonomous.report.tasks": "{finished} 件完了、{failed} 件失敗",
   "autonomous.report.approved": "自動で承認: {summary}",

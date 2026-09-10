@@ -20,6 +20,17 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Uma execução esperando cota para de se relançar para sempre.** As execuções em espera são
+  retomadas quando a cota volta, e um dos momentos em que isso é checado é «acabou de terminar a
+  última execução» — então um relançamento que ficava sem cota de novo voltava para a espera, era
+  checado de novo e lançado de novo, tão rápido quanto o CLI conseguisse falhar, escrevendo uma
+  mensagem no fio a cada volta. Duas coisas estavam erradas. A contagem de quantas tentativas aquele
+  trabalho já tinha ficava na entrada em espera, e a entrada era justamente apagada para relançá-lo,
+  então toda tentativa se lia como a primeira. E um provedor que informa estar esgotado sem dizer
+  quanto havia — o Antigravity, cujos pools só dizem «agotado» e uma hora de reset — saía do resumo
+  como «sei lá», o que qualquer um perguntando «a cota voltou?» lê como um sim. Agora são três
+  tentativas, e depois ele avisa e espera por você.
+
 - **O app para de ficar lento enquanto um agente trabalha.** Cada linha que um CLI imprimia era
   anexada à sua execução no store, doze vezes por segundo durante toda a execução. Oito telas se
   inscrevem no mapa de execuções — a caixa onde você escreve entre elas — então todas se redesenhavam

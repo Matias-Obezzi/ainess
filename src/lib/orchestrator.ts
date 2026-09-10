@@ -776,6 +776,9 @@ function onRunFinished(runId: string) {
   // of the task, just a wait. See `parkQuotaRetry` and `useQuotaSync`, which relaunches it.
   const parkForRetry = !run.parentRunId && spentModel(run, agent) !== null && shouldRetryOnQuota(agent, project);
   if (parkForRetry) agentStatus = "waiting";
+  // Ended any other way — it finished, it failed for its own reasons, it was stopped. Whatever was
+  // parked for this same work is settled, and leaving it would have it relaunched later for nothing.
+  else store.clearQuotaWaitingFor(run.projectId, agent.id, run.prompt);
 
   if (run.status === "done") void emitHookEvent("run.finished", {}, ctx);
   else if (run.status === "error") void emitHookEvent("run.failed", {}, ctx);
@@ -1214,19 +1217,33 @@ function shouldRetryOnQuota(agent: AgentConfig, project: Project | undefined): b
  * hand does.
  */
 function parkQuotaRetry(run: Run, agent: AgentConfig): void {
-  useAppStore.setState(state => ({
-    quotaWaiting: {
-      ...state.quotaWaiting,
-      [run.id]: {
-        agentId: agent.id,
-        projectId: run.projectId,
-        provider: agent.provider,
-        prompt: run.prompt,
-        model: run.model,
-        createdAt: Date.now(),
+  useAppStore.setState(state => {
+    // This run may itself be a relaunch of one that was parked before. Same project, same agent,
+    // same prompt is the same piece of work coming back for another go, and the count has to follow
+    // it — without that, each attempt looked like the first and there was nothing to give up after.
+    const waiting = { ...state.quotaWaiting };
+    let attempts = 0;
+    for (const [id, entry] of Object.entries(waiting)) {
+      if (entry.projectId === run.projectId && entry.agentId === agent.id && entry.prompt === run.prompt) {
+        attempts = Math.max(attempts, entry.attempts);
+        delete waiting[id];
+      }
+    }
+    return {
+      quotaWaiting: {
+        ...waiting,
+        [run.id]: {
+          agentId: agent.id,
+          projectId: run.projectId,
+          provider: agent.provider,
+          prompt: run.prompt,
+          model: run.model,
+          createdAt: Date.now(),
+          attempts,
+        },
       },
-    },
-  }));
+    };
+  });
   addMessage({
     projectId: run.projectId,
     fromAgentId: "system",

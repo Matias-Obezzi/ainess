@@ -21,6 +21,18 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un run qui attend du quota cesse de se relancer indéfiniment.** Les runs en attente sont repris
+  quand le quota revient, et l'un des moments où cela est vérifié est « le dernier run vient de se
+  terminer » — donc une relance qui se retrouvait de nouveau sans quota était de nouveau mise en
+  attente, revérifiée et relancée, aussi vite que le CLI pouvait échouer, en écrivant un message
+  dans le fil à chaque tour. Deux choses n'allaient pas. Le compte des tentatives déjà faites pour ce
+  travail vivait sur l'entrée en attente, et cette entrée était justement supprimée pour le relancer :
+  chaque tentative se lisait donc comme la première. Et un fournisseur qui signale être épuisé sans
+  dire de combien il disposait — Antigravity, dont les pools ne disent que « agotado » et une heure
+  de remise à zéro — ressortait du résumé comme « aucune idée », ce que tout ce qui demande « le
+  quota est-il revenu ? » lit comme un oui. Trois tentatives maintenant, puis il le dit et vous
+  attend.
+
 - **L'application ne devient plus poussive pendant qu'un agent travaille.** Chaque ligne imprimée
   par un CLI était ajoutée à son run dans le store, douze fois par seconde pendant toute sa durée.
   Huit écrans sont abonnés à la table des runs — dont la zone où vous écrivez —, ils se redessinaient

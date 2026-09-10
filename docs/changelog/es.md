@@ -21,6 +21,17 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Una corrida esperando cuota deja de relanzarse para siempre.** Las corridas en espera se retoman
+  cuando vuelve la cuota, y uno de los momentos en que eso se chequea es «recién terminó la última
+  corrida» — así que un relanzamiento que se quedaba sin cuota otra vez volvía a quedar en espera, se
+  volvía a chequear y se volvía a lanzar, tan rápido como el CLI pudiera fallar, escribiendo un
+  mensaje en el hilo en cada vuelta. Había dos cosas mal. La cuenta de cuántos intentos llevaba ese
+  trabajo vivía en la entrada en espera, y la entrada se borraba justamente para relanzarlo, así que
+  cada intento se leía como el primero. Y un proveedor que informa estar agotado sin decir cuánto
+  había —Antigravity, cuyos pools solo dicen «agotado» y una hora de reset— salía del resumen como
+  «ni idea», que cualquiera que pregunte «¿volvió la cuota?» lee como un sí. Ahora son tres intentos,
+  y después lo dice y te espera.
+
 - **La app deja de ponerse lenta mientras un agente trabaja.** Cada línea que imprimía un CLI se
   agregaba a su corrida en el store, doce veces por segundo durante toda la corrida. Ocho pantallas
   se suscriben al mapa de corridas —la caja donde escribís, entre ellas— así que todas se volvían a

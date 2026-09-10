@@ -1482,6 +1482,7 @@ export const es: Dictionary = {
   "autonomous.answerPrompt": "No hay nadie para responder ahora mismo: el proyecto está corriendo en modo autónomo. Elegí el camino más conservador y dejá anotado qué asumiste en un bloque `note`.",
   "autonomous.quotaParked": "{name} se quedó sin cuota. Se va a reintentar solo apenas el proveedor tenga lugar de nuevo.",
   "autonomous.quotaGaveUp": "La cuota volvió, pero {name} ya no tiene el reintento automático activado: la corrida quedó sin relanzar.",
+  "autonomous.quotaGaveUpRetrying": "{name} se quedó sin cuota otra vez después de {n} intentos. No lo vuelvo a lanzar solo: reintentá vos cuando la cuota haya vuelto de verdad.",
   "autonomous.report.title": "Modo autónomo: {name}",
   "autonomous.report.tasks": "{finished} tareas terminadas, {failed} fallidas",
   "autonomous.report.approved": "Aprobado sin preguntar: {summary}",

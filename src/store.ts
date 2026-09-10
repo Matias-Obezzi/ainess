@@ -85,8 +85,12 @@ export interface AppState {
    * `RetryRunDialog`/`lib/orchestrator.ts#parkQuotaRetry`). Not persisted: a run still parked when
    * the app restarts is simply left failed, same as if nobody had asked for a retry.
    */
-  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number }>;
+  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number; attempts: number; retrying?: boolean }>;
   dropQuotaWaiting(id: string): void;
+  /** Marks a parked run as relaunched: one more attempt spent, and not to be picked up again. */
+  markQuotaRetrying(id: string): void;
+  /** Forgets whatever was parked for this exact piece of work: it has been settled. */
+  clearQuotaWaitingFor(projectId: string, agentId: string, prompt: string): void;
   /** Turns a project's autonomous mode on until `until`, or off (and reports) when `until` is null. */
   setAutonomous(projectId: string, until: number | null): void;
   /** Turns autonomous mode off and, if anything happened while it ran, tells the user about it. */
@@ -1472,6 +1476,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const next = { ...state.quotaWaiting };
       delete next[id];
       return { quotaWaiting: next };
+    });
+  },
+
+  markQuotaRetrying: (id) => {
+    set(state => {
+      const entry = state.quotaWaiting[id];
+      if (!entry) return state;
+      // Kept rather than dropped: the count has to be here when the relaunch comes back parked, and
+      // `retrying` is what stops the next refresh from launching the same work a second time.
+      return {
+        quotaWaiting: { ...state.quotaWaiting, [id]: { ...entry, attempts: entry.attempts + 1, retrying: true } },
+      };
+    });
+  },
+
+  clearQuotaWaitingFor: (projectId, agentId, prompt) => {
+    set(state => {
+      const next = { ...state.quotaWaiting };
+      let changed = false;
+      for (const [id, entry] of Object.entries(next)) {
+        if (entry.projectId === projectId && entry.agentId === agentId && entry.prompt === prompt) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? { quotaWaiting: next } : state;
     });
   },
 

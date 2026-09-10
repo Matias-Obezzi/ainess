@@ -1482,6 +1482,7 @@ export const en: Dictionary = {
   "autonomous.answerPrompt": "There is no one to answer right now: the project is running in autonomous mode. Pick the most conservative path and note what you assumed in a `note` block.",
   "autonomous.quotaParked": "{name} ran out of quota. It will retry on its own as soon as the provider has room again.",
   "autonomous.quotaGaveUp": "Quota is back, but {name} no longer has the automatic retry on: the run was left unlaunched.",
+  "autonomous.quotaGaveUpRetrying": "{name} ran out of quota again after {n} tries. It will not be relaunched on its own: retry it yourself once the quota is really back.",
   "autonomous.report.title": "Autonomous mode: {name}",
   "autonomous.report.tasks": "{finished} tasks finished, {failed} failed",
   "autonomous.report.approved": "Approved on its own: {summary}",

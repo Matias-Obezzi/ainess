@@ -22,6 +22,16 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A run waiting for quota stops relaunching itself forever.** Parked runs are picked up again when
+  the quota comes back, and one of the moments that gets checked is "the last run just ended" — so a
+  relaunch that ran out of quota again was parked again, checked again, and relaunched again, as
+  fast as the CLI could fail, writing a message into the thread every time round. Two things were
+  wrong. The count of how many goes a piece of work had already had lived on the parked entry, and
+  the entry was thrown away in order to relaunch it, so every attempt read as the first. And a
+  provider that reports being used up without saying how much there was — Antigravity, whose pools
+  only ever say "agotado" and a reset time — came out of the summary as "no idea", which anything
+  asking "is the quota back?" reads as a yes. Three goes now, and then it says so and waits for you.
+
 - **The app stops going sluggish while an agent works.** Every line a CLI printed was appended to
   its run in the store, twelve times a second for the whole length of a run. Eight screens subscribe
   to the map of runs — the box you type into among them — so all of them re-rendered at that rate,

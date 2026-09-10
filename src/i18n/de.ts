@@ -1480,6 +1480,7 @@ export const de: Dictionary = {
   "autonomous.answerPrompt": "Gerade ist niemand da, der antworten kann: das Projekt läuft im autonomen Modus. Wähle den vorsichtigsten Weg und halte in einem `note`-Block fest, was du angenommen hast.",
   "autonomous.quotaParked": "{name} hat kein Kontingent mehr. Es versucht es von selbst erneut, sobald der Anbieter wieder Platz hat.",
   "autonomous.quotaGaveUp": "Das Kontingent ist zurück, aber {name} hat den automatischen Neustart nicht mehr aktiviert: der Lauf wurde nicht neu gestartet.",
+  "autonomous.quotaGaveUpRetrying": "{name} hatte nach {n} Versuchen erneut kein Kontingent. Es wird nicht mehr von selbst gestartet: versuch es erneut, wenn das Kontingent wirklich zurück ist.",
   "autonomous.report.title": "Autonomer Modus: {name}",
   "autonomous.report.tasks": "{finished} Aufgaben erledigt, {failed} fehlgeschlagen",
   "autonomous.report.approved": "Selbst genehmigt: {summary}",

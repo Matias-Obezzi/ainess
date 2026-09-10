@@ -21,6 +21,18 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Lauf, der auf Kontingent wartet, startet sich nicht mehr endlos neu.** Geparkte Läufe werden
+  wieder aufgenommen, wenn das Kontingent zurück ist, und einer der Momente, in denen das geprüft
+  wird, ist „der letzte Lauf ist gerade zu Ende" — ein Neustart, dem erneut das Kontingent ausging,
+  wurde also erneut geparkt, erneut geprüft und erneut gestartet, so schnell das CLI scheitern
+  konnte, mit einer Nachricht im Verlauf bei jeder Runde. Zwei Dinge waren falsch. Der Zähler, wie
+  viele Versuche diese Arbeit schon hatte, lag auf dem geparkten Eintrag, und der Eintrag wurde
+  gerade zum Neustarten weggeworfen — also las sich jeder Versuch wie der erste. Und ein Anbieter,
+  der meldet, aufgebraucht zu sein, ohne zu sagen, wie viel es war — Antigravity, dessen Pools nur
+  „agotado" und eine Reset-Zeit sagen —, kam aus der Zusammenfassung als „keine Ahnung", was alles,
+  was fragt „ist das Kontingent zurück?", als Ja liest. Jetzt drei Versuche, dann sagt es Bescheid
+  und wartet auf dich.
+
 - **Die App wird nicht mehr träge, während ein Agent arbeitet.** Jede Zeile, die ein CLI ausgab,
   wurde an seinen Lauf im Store angehängt, zwölfmal pro Sekunde, den ganzen Lauf lang. Acht Ansichten
   hängen an der Map der Läufe — das Eingabefeld darunter —, also zeichneten sie sich alle in diesem

@@ -1480,6 +1480,7 @@ export const zh: Dictionary = {
   "autonomous.answerPrompt": "现在没有人能回答：项目正在自主模式下运行。请选择最保守的做法，并在 `note` 区块里记下你做了什么假设。",
   "autonomous.quotaParked": "{name} 的配额用完了，会在服务商恢复配额后自动重试。",
   "autonomous.quotaGaveUp": "配额已恢复，但 {name} 已不再开启自动重试：该次运行未被重新启动。",
+  "autonomous.quotaGaveUpRetrying": "{name} 试了 {n} 次之后配额还是用尽。不会再自动重启了：等配额真的回来以后，请你自己重试。",
   "autonomous.report.title": "自主模式：{name}",
   "autonomous.report.tasks": "{finished} 个任务完成，{failed} 个失败",
   "autonomous.report.approved": "自动批准了：{summary}",
