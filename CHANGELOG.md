@@ -4,6 +4,227 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.11.0 — 2026-09-10
+
+### Added
+
+- **A project's three views are rows in the sidebar.** Orquestador, Tareas and Jerarquía were a
+  segmented control in the top bar — the one strip that also has to hold the project name, the
+  branch, the spend, the autonomous switch and every panel toggle. They are navigation, and the rail
+  down the left is where navigation lives. Each row opens the view it names rather than leaving you
+  wherever the project was last left.
+
+- **Quick commands can be your own.** Beside the detected scripts there is now a place to add the
+  ones no file declares: the docker compose line, the tunnel, the migration only this project needs.
+  They live on the project and sit at the top of the menu.
+
+- **The window bar says when a chat channel is connected.** Next to the phone, a light for Telegram,
+  Discord or Slack once one is actually up — the question you would otherwise open Configuración to
+  answer. It is not a switch: turning a channel on takes a token and a list of who may speak.
+
+- **The terminals panel offers the project's own scripts as buttons.** Starting the dev server meant
+  opening a terminal and typing what the project already has written down. The panel now reads that:
+  the `scripts` of a package.json, the targets of a Makefile, and cargo's usual four. One button
+  each, the ones people reach for first — dev, start, build, test — at the front. Each opens its own
+  tab, named after the script rather than "PowerShell 3", so the tab holding the server is the one
+  you can find again. Press a script that is already running and it takes you to it instead of
+  starting a second one to lose the race for the port; a green dot marks the ones that are up. The
+  package manager comes from the lockfile, because `npm run` in a pnpm workspace resolves a
+  different tree. A script whose name is not a plain name is not offered at all: these strings are
+  typed into a real shell, where `predev && curl x | sh` would run as written.
+
+- **The dependency graph is asked for from a task, and shows only that task's family.** It used to
+  be a second view of the whole board, drawing every chain in the project side by side: it grew
+  wider than the window, and the answer to "what is this one tangled up with?" was somewhere in the
+  middle of it. Now it opens from the task itself, and what is on screen is what that task waits
+  for and what waits for it, transitively — nothing else. A task that merely shares a prerequisite
+  is a sibling, not family, and stays out; siblings are what made the old one unreadable. Clicking
+  a card moves the graph onto it, so a chain can be followed one step at a time. Archived tasks
+  come along here: an archived prerequisite is still the reason something below it cannot start.
+
+- **Take a conversation back, or rewrite what you asked.** Right-click any message in a chat and
+  the conversation can end there; on your own messages you can also edit one and ask again from
+  that point. What came after goes, and so does the agent's session — the visible thread is only
+  half of a conversation, the agent's own memory is the other half, and leaving it holding what you
+  just took back would make the thread a lie about what the next answer is built on. The dialog
+  says that before the button rather than after it. Reverting to the last message is greyed out,
+  since it would take nothing with it.
+
+- **Autonomous mode, with a time it turns itself off.** A button in the project bar turns it on for
+  1, 2, 4, 8 or 12 hours. While it is on the project stops waiting for you: delegations that would
+  need your approval are approved, questions are answered on the most conservative reading, and the
+  round cap stops closing the task. There is no "forever" — it turns itself off at the hour you
+  set, and stopping by hand still stops. The project's spending cap applies exactly as before; that
+  is the brake. And a task that does nothing but ask cannot eat the whole night: after ten answers
+  of its own, the questions go back to waiting for you. When it ends, the report stays in the
+  thread — what finished, what failed, what it approved and what it answered without you.
+
+- **Retry when quota comes back.** A run that died because its model ran dry left the work half done
+  until you came back and hit retry by hand. Each agent has its own checkbox now: out of quota, the
+  run waits instead of failing, and relaunches on its own with the same prompt as soon as the
+  provider has room again. In autonomous mode it happens with or without the checkbox. If by the
+  time quota is back the checkbox is off, or the autonomous stretch has ended, nothing is
+  relaunched — and it says so rather than going quiet.
+
+- **Slack too, and that is all three.** Telegram, Discord and Slack, the same commands in whichever
+  one you already have open, each with its own card in Settings and its own list of chats — a chat
+  authorised on one is authorised on that one only. Slack asks for two tokens rather than one: an app-level
+  one to open the connection and a bot one to write, which is Slack's design, not ours, and the
+  screen says which is which. Socket Mode has to be on in your Slack app and the bot has to be
+  invited to the channel; the screen says that too, because otherwise nothing arrives and there is
+  no way from here to tell you why.
+
+- **Discord, beside Telegram.** The same commands in whichever of the two you already have open:
+  anything you write starts a task, `/status` says who is working, `/approve` and `/answer` settle
+  what needs you. Settings has a card per channel now. Nothing is exposed by either — the app is
+  the one that goes out, so there is still no tunnel, no port and no address to find. Each channel
+  authorises its own chats and only its own: a Discord channel id is not allowed anywhere by being
+  on Telegram's list. Your bot needs the message-content intent turned on in Discord's developer
+  portal, and the screen says so, because without it the messages arrive empty and nothing here
+  could tell you why.
+
+- **Open the pull request from here.** An agent finishes on its branch and the last step was yours
+  to do by hand. There is a button now beside pull and push, and on a finished card. It never opens
+  one on a single click: a dialog shows which branch goes into which, with the title and body
+  already written from the task and from what the agent reported — the files it touched, what it
+  verified, and what it could not do, which goes in under its own heading rather than being left
+  out. On the default branch it refuses, and on a branch you have not pushed it offers to push
+  first instead of doing it behind your back.
+
+- **Retry a task with another model, or another agent.** A run that failed, or one whose agent ran
+  out of quota halfway, left you retyping the whole thing. Now the run's own menu — and the button
+  on its card — offer to run it again from the same prompt with whoever you pick. It starts from
+  zero rather than continuing the run that went wrong, since its context is usually the problem.
+  Changing agent clears the model: the models of one provider are not the models of another, and
+  carrying one over is how you send a run to a model that does not exist.
+
+- **Drop files on the box.** The paperclip and Ctrl+V were the two ways in; dragging a file from
+  the folder you were already looking at is the third, and the one that needs no detour. The box
+  outlines itself when a drag carrying files comes over it, and what you had already written goes
+  along with them. A task card crossing on its way between columns is left alone — it carries text,
+  not files, and catching it would move it nowhere.
+
+### Fixed
+
+- **A long task detail no longer pushes everything else off the dialog.** An agent writes as much as
+  it feels like, and the detail sits between the status fields and the dependencies and the run.
+  It is folded to a few lines now, with a "Ver más" that opens it. Whether the button is needed is
+  measured rather than guessed from the length: how many lines a paragraph takes depends on the
+  width it is given.
+
+- **The project's scripts are a menu instead of a scrolling row.** A row of buttons in a panel that
+  is already narrow meant a horizontal scrollbar, and a project with twenty scripts hid nineteen of
+  them behind it. They are a menu beside the "+" now, in the same shape as the shell picker.
+
+- **The top bar stops saying how many agents are working.** The dot beside the project in the
+  sidebar already breathes while they are, in the place you look to see what is happening.
+
+- **The autonomous-mode button is shaped like the buttons around it.** It carried its own amber fill
+  to be impossible to miss. It did not need to: the strip under the bar is the loud one, it runs the
+  full width, and it only exists while the mode is on.
+
+- **The communications panel is a speech bubble.** Its icon described where the panel opens, which
+  is the least interesting thing about it. What it holds is what the agents said to each other.
+
+- **The board's toolbar lines up.** A Button, an Input and a SelectTrigger do not agree on their
+  corner radius by default, so a row built out of all three came out with two radii side by side.
+  All of it is one height and one radius now, said on each control rather than left to the defaults.
+
+- **Answering a question is a list you tick and a button you press.** The options were inline
+  buttons, each as wide as its own text, so a set of them came out ragged and a one-word option was
+  a target the size of the word. They are a list now, one per row, the full width of the box. A
+  question that takes several answers says so instead of leaving you to find out by clicking twice.
+  And a one-answer question no longer goes off the moment you touch an option: both kinds wait for
+  "Responder", so what is about to be said to the agent is on screen before it is said — and a
+  misclick is one more click to undo rather than something already sent. On a one-answer question
+  the option and the box for writing your own take each other's place, because one answer cannot
+  also be a different sentence.
+
+- **The buttons at the foot of a task line up by what they do.** Three loose buttons under a
+  "space them out" rule meant "archive" was marooned in the middle, equidistant from a link that
+  takes you elsewhere and a delete that is not coming back. Going somewhere else is on the left now,
+  and what changes the task is on the right, together.
+
+- **The board lost its view switcher and got its "New task" back where it belongs.** With the graph
+  no longer a second view of the board there was nothing to switch between, so the two toolbars are
+  one: the search, the filter, the count, and then "Review", "Copy as markdown" and "New task"
+  side by side at the end.
+
+- **Antigravity's quota says why it is a guess.** Its ring shows a dash where every other provider
+  shows a number, and a dash with no reason next to it reads as something broken. It is not:
+  Antigravity does not report how much is left. The exact figure does exist — its CLI asks Google
+  for it — but it is behind a paid Code Assist license, and an account without one is refused. So
+  the app says that, next to the dash, in the composer's popover, in the agent's screen and in
+  settings, instead of leaving you to wonder. What is shown is still inferred from the "quota
+  reached, resets in 1h45m" the runs come back with, which is the only thing there is to read.
+
+- **The quota ring and bar fill up as the quota goes.** They filled as it was *left*, so a fresh
+  quota was a full ring and one you had spent was nearly empty — backwards for a meter of something
+  being consumed, and the reason nobody could read them at a glance. They now start empty and fill
+  as you spend, and every number beside them counts the same way: "83%" is what has gone, not what
+  is left. The colour still follows what remains, so a ring that is nearly full is also red — both
+  halves say "running out" at the same moment instead of one of them saying it late.
+
+- **A step says what it did without waiting for the browser.** Every row of an agent's activity is
+  cut short — a tool shows its summary, a delegation ninety characters of the task — and the only
+  way to read the rest was the `title` the browser draws: a second of waiting, a bare box wherever
+  the pointer happened to be, and line breaks folded into spaces, which is exactly what you did not
+  want for a command or a stack trace. They have the app's own tooltip now, anchored to the row,
+  monospace, with the line breaks kept. The step a run is on right now has one too, and it never
+  had anything at all.
+
+- **An agent no longer knows about a project it was never told about.** The shared context was one
+  string on the settings screen, and it was appended to the prompt of every agent of every project.
+  Say something in it about one repo and every agent everywhere had read it — which is how a
+  message meant for one project got understood, acted on, and carried into another. It belongs to a
+  project now: the settings screen picks which one, and `ainess context` takes `-p`/`-w` like the
+  rest of the CLI. What you had written is copied into every project you already have, so nothing
+  is lost; if that text was only ever about one of them, the others are now the places to clear it.
+
+- **A hook opens with a message about the event you picked.** One preset sat behind all seventeen
+  of them, written for "an agent finished" and hardcoded in Spanish. A hook on "internet lost"
+  opened by announcing that an agent had finished, to everyone, in a language most of the app's
+  readers had not chosen. Each event starts with its own line now, in your language, using the
+  variables that event really carries — the question for a question asked, the model for a spent
+  quota, both agents for a delegation. Change the event before you touch the message and it
+  follows; touch it and it stops following, because from then on it is yours. The test button
+  fills the variables in your language too, so the preview is the message you will actually get.
+
+- **The app stops carrying six languages it is not showing you.** All seven dictionaries were built
+  into the same bundle, so every start paid for the six nobody was reading: 575 kB of them, 179
+  gzipped. Now only Spanish is built in — it is the base every other language falls back to — and
+  yours is fetched before the first paint and remembered. That chunk went from 575 kB to 83 kB,
+  and 179 gzipped to 27.
+
+- **An agent answering a question in a chat can no longer hand out work.** The turn that carries
+  your answer was started without being told it belonged to a chat, so it was read as a task: its
+  `delegate` blocks were parsed and acted on. An agent could put other agents to work from inside a
+  conversation where nobody had asked for it.
+
+- **The board scrolls down as well as across while you drag.** A column taller than the screen had
+  the same problem the board had sideways: the card you wanted to drop below was out of view. The
+  column under the pointer now pulls too, with the same ramp.
+
+- **The console windows an agent opened while it worked are gone for good.** The last attempt at
+  this fixed the wrong half. Asking for a process with no console works for that process — and then
+  every console program *it* runs asks Windows for one, is given a new one, and that one is
+  visible. The windows were never ours: they belonged to the programs our agents were running. The
+  app now takes a single console for itself at startup and hides it, and everything below inherits
+  that one instead of asking for its own, however deep it goes.
+
+- **A file link in an answer does something.** An agent writing
+  `[the file](file:///C:/Users/you/notes.txt)` drew a dead grey span: `file:` sat in the same
+  refused list as `javascript:` and `data:`, which run in the page, and it had been put there by
+  association — it runs nothing at all. Clicking one now reveals the file in your file manager and
+  stops there. It never becomes a real link and it is never handed to the system to open, because
+  `[look at this](file:///C:/x.exe)` is a line any agent can write.
+
+- **The board scrolls itself when you drag a card to its edge.** A board wider than the window could
+  not be crossed: the column you wanted was off screen, and letting go to scroll dropped the card
+  where you did not mean it. Holding a card near either edge now pulls the board along, gently at
+  the edge of the zone and faster the closer you get — and it keeps pulling while you hold still,
+  which the drag events on their own do not tell anybody about.
+
 ## 0.10.0 — 2026-09-09
 
 ### Added

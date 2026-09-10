@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useAppStore, selectAgentsByProject } from "@/store";
 import { AgentOptions } from "@/components/AgentOptions";
 import { BOSS_TARGET } from "@/lib/team";
-import { useT } from "@/i18n/useT";
+import { useT, type TFunction } from "@/i18n/useT";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.started", label: "task.started" },
@@ -64,7 +64,17 @@ const ACTIONS = [
   { value: "notify", labelKey: "hookDialog.action.notify" }
 ];
 
-const PRESET_SLACK = "✅ {{agent}} terminó en {{project}}: {{output|300}}";
+/**
+ * The message a hook starts with, per event and in the user's language.
+ *
+ * There used to be one preset for all seventeen, hardcoded in Spanish and written for
+ * `run.finished`: a hook on `internet.lost` opened saying an agent had finished, which is not what
+ * happened, and said it in Spanish to everyone. Every event now starts with its own line, using the
+ * variables that event actually carries.
+ */
+function presetFor(t: TFunction, event: HookEvent): string {
+  return t(`hookPreset.${event}`);
+}
 
 export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onClose: () => void, hook?: Hook, onSave: (h: Hook) => void }) {
   const t = useT();
@@ -85,8 +95,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const [url, setUrl] = useState(hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "webhook" ? (hook.action as any).webhookUrl || (hook.action as any).url || "" : "");
   const [template, setTemplate] = useState(
     hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "telegram" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
-    hook?.action.type === "webhook" ? hook.action.bodyTemplate : PRESET_SLACK
+    hook?.action.type === "webhook" ? hook.action.bodyTemplate : presetFor(t, hook?.event ?? "task.finished")
   );
+  // Once the message is yours, changing the event stops rewriting it. A hook being edited counts as
+  // yours from the start: whatever is in there was written on purpose, even if it matches a preset.
+  const [templateEdited, setTemplateEdited] = useState(isEditing);
   const [title, setTitle] = useState(hook?.action.type === "notify" ? hook.action.title : t("hookDialog.defaultNotifyTitle"));
   const [program, setProgram] = useState(hook?.action.type === "command" ? hook.action.program : "");
   const [argsStr, setArgsStr] = useState(hook?.action.type === "command" ? hook.action.args.join(" ") : "");
@@ -109,6 +122,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
    */
   const chooseEvent = (next: HookEvent) => {
     setEvent(next);
+    if (!templateEdited) setTemplate(presetFor(t, next));
     if (!SYSTEM_EVENTS.includes(next) || !scope.startsWith("agent:")) return;
     const agentId = scope.slice("agent:".length);
     const owner = byProject.find(g => g.agents.some(a => a.id === agentId));
@@ -339,7 +353,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             {actionType !== "command" && (
               <div className="space-y-2">
                 <Label>{t("hookDialog.template")}</Label>
-                <TemplateInput value={template} onChange={setTemplate} required />
+                <TemplateInput
+                  value={template}
+                  onChange={next => { setTemplateEdited(true); setTemplate(next); }}
+                  required
+                />
                 <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                   {t("hookDialog.variables")}
                   {TEMPLATE_VARS.map(v => (

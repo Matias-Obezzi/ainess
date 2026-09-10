@@ -1056,15 +1056,23 @@ async function main() {
 
   if (first === "context") {
     const sub = args[1] || "show";
+    // The context belongs to one project now, so this needs to know which — same -p/-w as the rest
+    // of the CLI, defaulting to the project of the directory you are standing in.
+    const ctxProject = valueOf(args, "--project", "-p");
+    const ctxWorkspace = valueOf(args, "--workspace", "-w");
     if (sub === "show") {
-      print({ context: store.config.sharedContext }, store.config.sharedContext);
+      const project = projectById(resolveProjectId(ctxProject, ctxWorkspace));
+      const text = project?.sharedContext ?? "";
+      print({ project: project?.name, context: text }, text);
       process.exit(0);
     } else if (sub === "clear") {
-      store.setSharedContext("");
+      const projectId = resolveProjectId(ctxProject, ctxWorkspace);
+      store.setSharedContext(projectId, "");
       await store.saveConfig();
-      print({ ok: true }, "Context cleared");
+      print({ ok: true, project: projectById(projectId)?.name }, "Context cleared");
       process.exit(0);
     } else if (sub === "set") {
+      const projectId = resolveProjectId(ctxProject, ctxWorkspace);
       let text = "";
       const fileIdx = args.indexOf("--file");
       if (fileIdx >= 0 && args[fileIdx+1]) {
@@ -1072,11 +1080,21 @@ async function main() {
       } else {
         text = fs.readFileSync(0, "utf-8"); // stdin
       }
-      store.setSharedContext(text);
+      store.setSharedContext(projectId, text);
       await store.saveConfig();
-      print({ ok: true }, "Context set");
+      print({ ok: true, project: projectById(projectId)?.name }, "Context set");
       process.exit(0);
     }
+  }
+
+  /** `--flag value` / `-f value`, for the commands that read their arguments by hand. */
+  function valueOf(argv: string[], long: string, short: string): string | undefined {
+    const at = argv.findIndex(a => a === long || a === short);
+    return at >= 0 ? argv[at + 1] : undefined;
+  }
+
+  function projectById(id: string) {
+    return useAppStore.getState().config.projects.find(p => p.id === id);
   }
 
   // Resolves (or creates) the project for -p/-w, mirroring the run command.

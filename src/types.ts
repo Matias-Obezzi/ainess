@@ -54,6 +54,13 @@ export interface AgentConfig {
   requireApproval?: boolean;
   /** Run this agent in its own git worktree (own branch, sibling folder). See src/lib/worktree.ts. */
   worktree?: boolean;
+  /**
+   * Relaunch a run of this agent from scratch (same prompt, no resume) once its provider's quota
+   * is back, instead of leaving it failed. Per-agent because quota is spent per provider/model, and
+   * one agent in a team can be pinned to a model that runs dry far more often than the rest.
+   * Independent of `autonomous` on the project: a supervised project can still want this.
+   */
+  retryOnQuota?: boolean;
 }
 
 /** A git worktree an agent works in, one per agent and project. */
@@ -108,6 +115,28 @@ export interface Project {
   agents: AgentConfig[];
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
+  /**
+   * Commands the user added by hand, alongside the ones read from the project's manifests. Free
+   * text on purpose: this is the user typing into their own shell, one step removed. The whitelist
+   * in `lib/project-commands.ts` guards names the app builds from a file it did not write.
+   */
+  commands?: { id: string; label: string; command: string }[];
+  /**
+   * Notes handed to every agent of this project, and to no one else.
+   *
+   * It used to be one string on the config, appended to every agent's prompt in every project: an
+   * agent of one project was told about another's stack, conventions and goals, and answered about
+   * them as if it had been asked. Version 13 copies that string into each project and it lives here
+   * from then on.
+   */
+  sharedContext?: string;
+  /**
+   * While this is set and `until` has not passed, the project runs without waiting for the user:
+   * delegations that would need approval are approved, questions are answered on the agent's own
+   * most conservative guess, and the round cap does not close the task. It turns itself off at
+   * `until` on its own — there is no indefinite mode. See src/lib/autonomous.ts.
+   */
+  autonomous?: { until: number };
 }
 
 /** A saved team template: what a new project starts with. */
@@ -193,6 +222,8 @@ export interface Approval {
   status: "pending" | "approved" | "rejected";
   note?: string;
   decidedAt?: number;
+  /** Approved by autonomous mode, without asking — see src/lib/autonomous.ts. */
+  auto?: boolean;
 }
 
 /**
@@ -221,6 +252,8 @@ export interface AgentQuestion {
   /** What was chosen (or written), once it was. */
   answer?: string[];
   answeredAt?: number;
+  /** Answered by autonomous mode, without the user — see src/lib/autonomous.ts. */
+  auto?: boolean;
 }
 
 /** Public tunnel provider used on top of the LAN server. */
@@ -294,20 +327,23 @@ export interface Preset {
 
 export interface MessagingChannelConfig {
   enabled: boolean;
+  /** The token that sends messages: the bot token, in every channel including Slack. */
   token: string;
+  /** Slack-only: the app-level token (`xapp-…`) that opens the Socket Mode connection. */
+  appToken?: string;
   allowedChatIds: string[];
   projectId: string | null;
 }
 
 export interface AppConfig {
-  version: 12;
+  version: 13;
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
-  messaging?: { telegram?: MessagingChannelConfig };
+  messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig; slack?: MessagingChannelConfig };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];
@@ -318,6 +354,11 @@ export interface AppConfig {
   maxRounds: number;
   skills: Skill[];
   mcpServers: McpServer[];
+  /**
+   * @deprecated Pre-version-13 global. Migration 13 copied it into every project's own
+   * `sharedContext` and left it empty; nothing builds a prompt from it any more. Kept on the type
+   * so a config written by an older build still parses.
+   */
   sharedContext: string;
   binaryOverrides: Partial<Record<ProviderId, string>>;
   profile: { name: string; about: string; preferences: string };
@@ -570,6 +611,11 @@ export interface TerminalTab {
   shellPath: string;
   cwd: string;
   projectId: string | null;
+  /**
+   * Typed into the shell as soon as it comes up, for a tab opened from one of the project's own
+   * scripts (see `lib/project-commands.ts`). Only ever a name this app built, never free text.
+   */
+  command?: string;
   /** Exit code once the shell died, null while it is alive. */
   exited?: number | null;
 }

@@ -20,6 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { openExternal } from "@/lib/open-external";
+import { OpenPrDialog } from "@/components/OpenPrDialog";
 import { cn } from "@/lib/utils";
 import type { GitStatus, PullRequest, PullRequestChecks, PullRequestReview } from "@/lib/git";
 import {
@@ -225,11 +226,13 @@ const REMOTE_PREFIX = " remote:";
  * Pull, push and switch branch. All of it is off while an agent is working: moving the repo under
  * a run is how one ends up half applied to the wrong branch.
  */
-function RepoActions({ projectId, workspaceDir, status, onCreateBranch }: {
+function RepoActions({ projectId, workspaceDir, status, onCreateBranch, canOpenPr, onOpenPr }: {
   projectId: string;
   workspaceDir: string;
   status: GitStatus | null;
   onCreateBranch(): void;
+  canOpenPr: boolean;
+  onOpenPr(): void;
 }) {
   const t = useT();
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
@@ -319,6 +322,19 @@ function RepoActions({ projectId, workspaceDir, status, onCreateBranch }: {
       >
         <ArrowUpFromLine className={cn("h-3.5 w-3.5", running === "push" && "animate-pulse")} /> {t("git.push")}
       </Button>
+      {canOpenPr && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={FIELD_BUTTON}
+          disabled={busy}
+          title={t("pr.open")}
+          onClick={onOpenPr}
+        >
+          <GitPullRequest className="h-3.5 w-3.5" /> {t("pr.open")}
+        </Button>
+      )}
     </div>
     {/* A row of controls that is off for no visible reason is worse than one that is not there. */}
     {agentsWorking && <p className="mt-1 text-[10px] text-muted-foreground">{t("git.agentsWorking")}</p>}
@@ -397,11 +413,13 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
   // rendered inside with it.
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [newBranchOpen, setNewBranchOpen] = useState(false);
+  const [openPrOpen, setOpenPrOpen] = useState(false);
 
   if (!repo?.isRepo || !repo.status) return null;
   const status = repo.status;
   const prs = repo.pullRequests;
   const unavailable = unavailableText(t, repo.prsUnavailable);
+  const canOpenPr = repo.prsUnavailable !== "no-remote";
 
   const refresh = async () => {
     setRefreshing(true);
@@ -452,6 +470,11 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
           onCreateBranch={() => {
             setPopoverOpen(false);
             setNewBranchOpen(true);
+          }}
+          canOpenPr={canOpenPr}
+          onOpenPr={() => {
+            setPopoverOpen(false);
+            setOpenPrOpen(true);
           }}
         />
 
@@ -504,6 +527,11 @@ export function GitBranchButton({ projectId }: { projectId: string }) {
       workspaceDir={workspaceDir}
       open={newBranchOpen}
       onOpenChange={setNewBranchOpen}
+    />
+    <OpenPrDialog
+      projectId={projectId}
+      open={openPrOpen}
+      onOpenChange={setOpenPrOpen}
     />
     </>
   );

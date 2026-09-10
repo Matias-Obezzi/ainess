@@ -18,8 +18,20 @@ import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
 import { budgetState, budgetAllowsStart } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
+import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 
 const toolFailures = new Map<string, number>();
+/** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
+const autoAnswersUsed = new Map<string, number>();
+
+/**
+ * The end of a whole user request. Everything the orchestrator keyed by `rootRunId` and kept
+ * outside the store is dropped here, so the next task starts from zero rather than inheriting it.
+ */
+function taskFinished(projectId: string, rootRunId: string, failed: boolean, error?: string): void {
+  autoAnswersUsed.delete(rootRunId);
+  taskSync.taskOnRootFinished(projectId, rootRunId, failed, error);
+}
 /**
  * Tracks the last local day a budget warning notification was emitted for each project.
  * A project can trigger dozens of runs in a single session: without this dedup, any run started
@@ -432,7 +444,9 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
 
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
-  const sharedContext = store.config.sharedContext;
+  // This project's notes, and only this project's: the global one is what sent an agent off to
+  // work on somebody else's repo because it had been told about it (see migration 13).
+  const sharedContext = project.sharedContext ?? "";
   const sessionId = resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
@@ -752,7 +766,14 @@ function onRunFinished(runId: string) {
   const rootRun = store.runs[run.rootRunId];
   const taskPrompt = rootRun ? rootRun.prompt : run.prompt;
   const ctx = { project, agent, runId, round: run.round, prompt: run.prompt, output: run.output, taskPrompt, error: run.status === "error" ? run.output : "" };
-  
+
+  // A whole task (not a nested delegation — the retry below relaunches it from scratch, with
+  // nothing to reattach it to) that died only because its model ran dry: with the agent's own
+  // "reintentar cuando vuelva la cuota" on, or the project running unattended, this is not the end
+  // of the task, just a wait. See `parkQuotaRetry` and `useQuotaSync`, which relaunches it.
+  const parkForRetry = !run.parentRunId && spentModel(run, agent) !== null && shouldRetryOnQuota(agent, project);
+  if (parkForRetry) agentStatus = "waiting";
+
   if (run.status === "done") void emitHookEvent("run.finished", {}, ctx);
   else if (run.status === "error") void emitHookEvent("run.failed", {}, ctx);
   else if (run.status === "killed") void emitHookEvent("agent.stopped", {}, ctx);
@@ -812,11 +833,16 @@ function onRunFinished(runId: string) {
             addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
             void emitHookEvent("delegation", {}, { ...ctx, toAgent: childAgent.name, task: task.task, model: modelToUse || "" });
             const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse };
-            if (delegationNeedsApproval(childAgent, store.config.approveDelegations)) {
+            const summary = `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`;
+            const needsApproval = delegationNeedsApproval(childAgent, store.config.approveDelegations);
+            if (needsApproval && !isAutonomous(project)) {
               // Gate: the child only runs once the user approves (app, CLI or phone).
-              const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary: `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`, payload });
+              const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary, payload });
               taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
             } else {
+              // Autonomous mode skips the wait, but the decision still gets written down — see
+              // `autonomousReport`, which is how the user finds out in the morning what ran without them.
+              if (needsApproval) recordAutoApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary, payload });
               const childRunId = startRun(payload);
               // A child that never started is not a child to wait for. Counting it anyway left the
               // planner waiting on a run that does not exist and its card in "working" for good —
@@ -866,6 +892,18 @@ function onRunFinished(runId: string) {
     };
   });
 
+  if (parkForRetry) {
+    parkQuotaRetry(run, agent);
+    // The board card moves to "needs-you" (the closest existing bucket to "paused, not failed")
+    // instead of sitting in "working" forever with nothing left to move it — the retry, once it
+    // runs, opens its own fresh card the same way `RetryRunDialog` does. Neither the "task failed"
+    // hook nor its notification fire: this is not a failure, `autonomousReport`/the parked-run
+    // message already say what happened, and firing both would read as contradicting itself.
+    useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+    taskFinished(run.projectId, run.rootRunId, true, translateNow("autonomous.quotaParked", { name: agent.name }));
+    return;
+  }
+
   if (retryUnknownPayload) {
     if (retryUnknownPayload.prompt) {
       startRun({ agentId: agent.id, projectId: run.projectId, prompt: retryUnknownPayload.prompt, parentRunId: run.parentRunId, round: run.round + 1, rootRunId: run.rootRunId, resume: true });
@@ -873,7 +911,7 @@ function onRunFinished(runId: string) {
       addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: retryUnknownPayload.gaveUpText!, runId });
       if (!run.parentRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
-        taskSync.taskOnRootFinished(run.projectId, run.rootRunId, true, retryUnknownPayload.gaveUpText!);
+        taskFinished(run.projectId, run.rootRunId, true, retryUnknownPayload.gaveUpText!);
         void emitHookEvent("task.failed", {}, ctx);
         notifyTaskOutcome(run, true);
       } else {
@@ -894,7 +932,7 @@ function onRunFinished(runId: string) {
       // Only runs belonging to the current task clear it; direct instructions don't.
       if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
-        taskSync.taskOnRootFinished(run.projectId, run.rootRunId, run.status === "error", run.output);
+        taskFinished(run.projectId, run.rootRunId, run.status === "error", run.output);
         if (run.status === "error") {
           void emitHookEvent("task.failed", {}, ctx);
           notifyTaskOutcome(run, true);
@@ -967,6 +1005,18 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     error: "",
   };
 
+  // No one is here to answer while the project runs unattended: the question is still written down
+  // (it belongs in the history and in the autonomous report), but nobody has to click anything —
+  // `autoAnswer`, once set, resolves every question this run asked with the same conservative note.
+  const now = Date.now();
+  // An agent that answers every answer with another question would run all night on one task, and
+  // the round cap that would normally catch that is the very thing autonomous mode turns off. Past
+  // the ceiling the questions go back to waiting for the user: a task that ends up needing them is
+  // a better morning than a quota spent going in circles.
+  const autoAnswered = autoAnswersUsed.get(run.rootRunId) ?? 0;
+  const autonomous = canAutoAnswer(project, autoAnswered);
+  const autoAnswer = autonomous ? [translateNow("autonomous.answerPrompt")] : undefined;
+
   const questions: Record<string, AgentQuestion> = {};
   for (const q of parsed) {
     const id = crypto.randomUUID();
@@ -981,8 +1031,10 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       options: q.options,
       multiple: q.multiple,
       allowOther: q.allowOther,
-      createdAt: Date.now(),
-      status: "pending",
+      createdAt: now,
+      ...(autoAnswer
+        ? { status: "answered" as const, answer: autoAnswer, answeredAt: now, auto: true }
+        : { status: "pending" as const }),
     };
     addMessage({
       projectId: run.projectId,
@@ -995,6 +1047,21 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     void emitHookEvent("question.asked", { question: q.question }, ctx);
   }
   useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
+
+  if (autoAnswer) {
+    autoAnswersUsed.set(run.rootRunId, autoAnswered + Object.keys(questions).length);
+    // Deferred: the caller (`onRunFinished`) still has its own `runtime` update to make for this
+    // very run once this function returns, and starting the resumed run synchronously here would
+    // have that update stomp on the new run's `currentRunId` a moment after `resumeWithAnswer` sets it.
+    const asked = Object.values(questions);
+    // One resume carrying every question, not one resume per question. The run is a single run:
+    // resuming it once per question forks the lineage, and each fork can ask again — which doubles
+    // every turn, with nothing but the expiry hour underneath it. The prompt joins the questions so
+    // the agent sees all of them answered rather than only the first.
+    const joined: AgentQuestion = { ...asked[0], question: asked.map(q => q.question).join("\n") };
+    setTimeout(() => resumeWithAnswer(joined, autoAnswer), 0);
+    return true;
+  }
 
   const first = Object.values(questions)[0];
   useAppStore.getState().notify({
@@ -1034,6 +1101,10 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     parentRunId: run?.parentRunId ?? null,
     round: question.round,
     resume: true,
+    // A chat turn that answers a question is still a chat turn. Without carrying the kind over, the
+    // resumed run was read as a task: its `delegate` blocks were parsed and acted on, so an agent
+    // could hand work out from inside a conversation where nobody had asked it to.
+    kind: run?.kind,
     // A question asked inside a chat is answered inside that chat. Without this the answer went to
     // whatever session the agent's own slot was holding, which is the same crossing of wires read
     // from the other end.
@@ -1125,6 +1196,44 @@ function quotaNote(childRun: Run, childAgent: AgentConfig | undefined): string {
   return `\n${translateNow("prompt.quota.spent", { name: childAgent.name, models: others.join(", ") })}\n`;
 }
 
+/** Whether a run of `agent` that dies out of quota should be parked and relaunched later instead
+ * of ending the task: either the agent has its own "reintentar cuando vuelva la cuota" on, or the
+ * project is running unattended and nobody is there to hit retry by hand. */
+function shouldRetryOnQuota(agent: AgentConfig, project: Project | undefined): boolean {
+  return agent.retryOnQuota === true || isAutonomous(project);
+}
+
+/**
+ * Parks a run that only died from a spent quota, so `useQuotaSync` can relaunch it — same prompt,
+ * from scratch, no `resume` and no `rootRunId`, exactly what `RetryRunDialog` does by hand — once
+ * the provider has room again. The card does not stay in "working" with nothing left to move it:
+ * the caller settles it into "needs-you" and the retry opens a fresh one, the same way a retry by
+ * hand does.
+ */
+function parkQuotaRetry(run: Run, agent: AgentConfig): void {
+  useAppStore.setState(state => ({
+    quotaWaiting: {
+      ...state.quotaWaiting,
+      [run.id]: {
+        agentId: agent.id,
+        projectId: run.projectId,
+        provider: agent.provider,
+        prompt: run.prompt,
+        model: run.model,
+        createdAt: Date.now(),
+      },
+    },
+  }));
+  addMessage({
+    projectId: run.projectId,
+    fromAgentId: "system",
+    toAgentId: agent.id,
+    kind: "system",
+    text: translateNow("autonomous.quotaParked", { name: agent.name }),
+    runId: run.id,
+  });
+}
+
 function maybeContinueParent(parentRunId: string) {
   const store = useAppStore.getState();
   const parentRun = store.runs[parentRunId];
@@ -1138,6 +1247,7 @@ function maybeContinueParent(parentRunId: string) {
   if (allChildrenDone) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
+    const project = store.config.projects.find(p => p.id === parentRun.projectId);
 
     let outputText = translateNow("prompt.results.header") + "\n\n";
     for (const childRun of children) {
@@ -1159,7 +1269,7 @@ function maybeContinueParent(parentRunId: string) {
       if (spent !== null) {
         const childRoot = store.runs[childRun.rootRunId];
         void emitHookEvent("quota.exhausted", { model: spent ?? "" }, {
-          project: store.config.projects.find(p => p.id === childRun.projectId),
+          project,
           agent: childAgent,
           runId: childRun.id,
           round: childRun.round,
@@ -1175,8 +1285,12 @@ function maybeContinueParent(parentRunId: string) {
     }
 
     const cancelled = cancelledRuns.delete(parentRunId);
-    if (cancelled || parentRun.round >= store.config.maxRounds) {
-      const isMaxRounds = !cancelled && parentRun.round >= store.config.maxRounds;
+    // The round cap is a human-shaped stop, not a safety one (the budget is that): autonomous mode
+    // skips it so the task keeps going past it, same as it does with approvals and questions. A
+    // manual stop (`cancelled`) is not skipped — parar a mano tiene que seguir parando.
+    const roundsCapped = !cancelled && parentRun.round >= store.config.maxRounds && !isAutonomous(project);
+    if (cancelled || roundsCapped) {
+      const isMaxRounds = roundsCapped;
       addMessage({
         projectId: parentRun.projectId,
         fromAgentId: "system",
@@ -1205,12 +1319,11 @@ function maybeContinueParent(parentRunId: string) {
         useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [parentRun.projectId]: null } }));
         
         if (isMaxRounds) {
-          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, true, translateNow("rounds.maxReachedDetail", { n: store.config.maxRounds }));
+          taskFinished(parentRun.projectId, parentRun.rootRunId, true, translateNow("rounds.maxReachedDetail", { n: store.config.maxRounds }));
         } else {
-          taskSync.taskOnRootFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+          taskFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
         }
 
-        const project = store.config.projects.find(p => p.id === parentRun.projectId);
         const rootRun = store.runs[parentRun.rootRunId];
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
         if (cancelled || parentRun.status === "error" || isMaxRounds) {
@@ -1385,6 +1498,27 @@ function requestApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" 
     agentId: approval.agentId,
     approvalId: approval.id,
   });
+  return approval;
+}
+
+/**
+ * Records a delegation that autonomous mode approved without asking — same `Approval` shape as a
+ * normal one, already settled, so `pendingApprovals` never sees it and the thread stays quiet. What
+ * makes it different from one the user approved is `auto: true`, which is all `autonomousReport`
+ * needs to say what ran on its own overnight.
+ */
+function recordAutoApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" | "summary" | "payload">): Approval {
+  const now = Date.now();
+  const approval: Approval = {
+    id: crypto.randomUUID(),
+    projectId: input.payload.projectId,
+    createdAt: now,
+    status: "approved",
+    decidedAt: now,
+    auto: true,
+    ...input,
+  };
+  useAppStore.setState(state => ({ approvals: { ...state.approvals, [approval.id]: approval } }));
   return approval;
 }
 

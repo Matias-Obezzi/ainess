@@ -1,3 +1,7 @@
+// `fraction` and `label` point opposite ways on purpose, and these tests are where that is held:
+// `fraction` is what is LEFT (it decides whether an agent can run), `label` is what was SPENT (it
+// sits beside a ring and a bar that fill as the quota goes). Every case below checks both, so one
+// of them drifting from the other cannot pass quietly.
 import { describe, it, expect } from "vitest";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
 import type { ProviderQuota, QuotaItem } from "@/types";
@@ -16,7 +20,8 @@ describe("summarizeAgentQuota", () => {
       {},
     );
     expect(summary.fraction).toBeCloseTo(0.25);
-    expect(summary.label).toBe("50/200");
+    // 50 of 200 left is 150 of 200 spent.
+    expect(summary.label).toBe("150/200");
     expect(summary.status).toBe("ok");
   });
 
@@ -29,13 +34,13 @@ describe("summarizeAgentQuota", () => {
       {},
     );
     expect(summary.fraction).toBeCloseTo(0.6);
-    expect(summary.label).toBe("60%");
+    expect(summary.label).toBe("40%");
   });
 
-  it("turns usedPercent into what is left", () => {
+  it("turns usedPercent into what is left, and shows what was used", () => {
     const summary = summarizeAgentQuota(quota([{ label: "Ventana de 5 h", usedPercent: 80 }]), {});
     expect(summary.fraction).toBeCloseTo(0.2);
-    expect(summary.label).toBe("20%");
+    expect(summary.label).toBe("80%");
     expect(summary.detail).toContain("Ventana de 5 h");
   });
 
@@ -94,7 +99,7 @@ describe("summarizeAgentQuota", () => {
     const summary = summarizeAgentQuota(quota(items, { provider: "claude" }), {
       allModels: ["opus", "sonnet"],
     });
-    expect(summary.label).toBe("50/200");
+    expect(summary.label).toBe("150/200");
     expect(summary.fraction).toBeCloseTo(0.25);
   });
 
@@ -113,7 +118,7 @@ describe("summarizeAgentQuota", () => {
       quota([{ label: "Premium requests", remaining: 7, entitlement: 300 }]),
       { model: "gpt-5" },
     );
-    expect(summary.label).toBe("7/300");
+    expect(summary.label).toBe("293/300");
   });
 });
 
@@ -154,5 +159,40 @@ describe("summarizeAgentQuota with amounts spent and no limits", () => {
     const summary = summarizeAgentQuota(quota, {});
     expect(summary.fraction).toBeCloseTo(0.1);
     expect(summary.details).toHaveLength(1);
+  });
+});
+
+// A provider that answers honestly that it cannot say how much is left.
+//
+// Antigravity is the case: its pools only report used-up or not. The ring goes off and a dash
+// stands where a number should be, which reads as something broken unless the reason travels with
+// it — so whatever the provider said about itself becomes the note the UI shows under the dash.
+describe("a provider with no numbers to give", () => {
+  const pools = (message: string) => ({
+    provider: "antigravity" as const,
+    status: "ok" as const,
+    fetchedAt: 0,
+    message,
+    items: [{ label: "Pool Gemini", model: "gemini", note: "Disponible" }],
+  });
+
+  it("carries the provider's explanation as the note", () => {
+    const summary = summarizeAgentQuota(pools("no hay número exacto sin licencia paga"), {});
+    expect(summary.fraction).toBeNull();
+    expect(summary.label).toBe("—");
+    expect(summary.note).toBe("no hay número exacto sin licencia paga");
+  });
+
+  it("leaves the note alone when the provider said nothing", () => {
+    const summary = summarizeAgentQuota(pools(""), {});
+    expect(summary.note).toBeFalsy();
+  });
+
+  it("does not put a note on a provider that did give numbers", () => {
+    const summary = summarizeAgentQuota(
+      { provider: "copilot", status: "ok", fetchedAt: 0, message: "algo", items: [{ label: "A", remaining: 10, entitlement: 100 }] },
+      {},
+    );
+    expect(summary.note).toBeUndefined();
   });
 });

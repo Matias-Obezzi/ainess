@@ -1,6 +1,6 @@
 [package]
 name = "ainess"
-version = "0.10.0"
+version = "0.11.0"
 description = "Orquestador local de agentes de IA"
 authors = ["you"]
 edition = "2021"
@@ -43,6 +43,11 @@ base64 = "0.22"
 tauri-plugin-single-instance = "2.4.4"
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
 
+
+# Just enough of the Win32 API to take one console for the app and hide it, so that nothing an
+# agent starts underneath us ever asks Windows for a visible one of its own (see src/console.rs).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_WindowsAndMessaging"] }
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

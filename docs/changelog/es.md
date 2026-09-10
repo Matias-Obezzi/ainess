@@ -2,6 +2,235 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.11.0 — 2026-09-10
+
+### Nuevo
+
+- **Las tres vistas de un proyecto son filas del sidebar.** Orquestador, Tareas y Jerarquía eran un
+  control segmentado en la barra superior — la única franja que además tiene que sostener el nombre
+  del proyecto, la rama, el gasto, el interruptor autónomo y todos los toggles de paneles. Son
+  navegación, y la navegación vive en la columna de la izquierda. Cada fila abre la vista que
+  nombra, en vez de dejarte donde el proyecto quedó la última vez.
+
+- **Los comandos rápidos pueden ser tuyos.** Al lado de los scripts detectados hay ahora un lugar
+  para agregar los que ningún archivo declara: la línea de docker compose, el túnel, la migración
+  que solo este proyecto necesita. Viven en el proyecto y quedan arriba de todo en el menú.
+
+- **La barra de la ventana avisa cuando un canal de chat está conectado.** Al lado del teléfono, una
+  luz para Telegram, Discord o Slack cuando alguno está realmente levantado — la pregunta que si no
+  tenías que abrir Configuración para responder. No es un interruptor: prender un canal pide un
+  token y una lista de quién puede hablar.
+
+- **El panel de terminales ofrece los scripts del proyecto como botones.** Levantar el server de
+  desarrollo era abrir una terminal y tipear lo que el proyecto ya tiene escrito. Ahora el panel lo
+  lee: los `scripts` de un package.json, los targets de un Makefile, y los cuatro de siempre de
+  cargo. Un botón por cada uno, con los que más se usan adelante — dev, start, build, test. Cada uno
+  abre su propia pestaña, nombrada como el script y no «PowerShell 3», así la pestaña donde está el
+  server es una que podés volver a encontrar. Si apretás un script que ya está corriendo te lleva a
+  él en lugar de arrancar un segundo que pierde la pelea por el puerto; un punto verde marca los que
+  están levantados. El gestor de paquetes sale del lockfile, porque `npm run` en un workspace de
+  pnpm resuelve otro árbol. Un script cuyo nombre no sea un nombre simple no se ofrece: estos textos
+  se tipean en una shell de verdad, donde `predev && curl x | sh` correría tal cual está escrito.
+
+- **El grafo de dependencias se pide desde una tarea, y muestra solo su familia.** Antes era una
+  segunda vista del tablero entero y dibujaba todas las cadenas del proyecto una al lado de la
+  otra: crecía más ancho que la ventana, y la respuesta a «¿con qué está enredada esta?» quedaba
+  perdida en el medio. Ahora se abre desde la tarea, y en pantalla está lo que esa tarea espera y
+  lo que la espera a ella, transitivamente — nada más. Una tarea que apenas comparte un requisito
+  es una hermana, no familia, y se queda afuera; las hermanas son lo que volvía ilegible al
+  anterior. Al hacer clic en una tarjeta el grafo se muda a ella, así se sigue una cadena de a un
+  paso. Las archivadas vienen: un requisito archivado sigue siendo el motivo por el que algo debajo
+  no puede arrancar.
+
+- **Volver la conversación atrás, o reescribir lo que preguntaste.** Botón derecho en cualquier
+  mensaje de un chat y la conversación puede terminar ahí; en los tuyos, además, podés editarlo y
+  volver a preguntar desde ese punto. Lo que vino después se va, y la sesión del agente también: el
+  hilo que ves es la mitad de una conversación, la memoria del agente es la otra mitad, y dejarlo
+  con lo que acabás de sacar haría que el hilo mienta sobre qué está construida la próxima
+  respuesta. El diálogo lo dice antes del botón, no después. Volver al último mensaje queda en
+  gris, porque no se llevaría nada.
+
+- **Modo autónomo, con hora de apagado.** Un botón en la barra del proyecto lo enciende por 1, 2,
+  4, 8 o 12 horas. Mientras está activo el proyecto no te espera: las delegaciones que pedirían tu
+  aprobación se aprueban, las preguntas se contestan solas por el camino más conservador, y el tope
+  de rondas deja de cerrar la tarea. No existe el modo «para siempre»: se apaga solo a la hora que
+  fijaste, y parar a mano sigue parando. El tope de gasto del proyecto vale igual que antes; ese es
+  el freno. Y una tarea que no hace más que preguntar no se come la noche entera: después de diez
+  respuestas automáticas, las preguntas vuelven a esperarte. Cuando termina, el informe queda en el
+  hilo: qué terminó, qué falló, qué aprobó y qué contestó sin vos.
+
+- **Reintentar cuando vuelve la cuota.** Una corrida que se moría porque el modelo se quedó sin
+  cuota te dejaba el trabajo a medias hasta que volvieras a apretar reintentar a mano. Cada agente
+  tiene ahora su propia casilla: si se queda sin cuota, la corrida espera en vez de fallar y se
+  vuelve a lanzar sola con el mismo prompt apenas el proveedor tiene lugar de nuevo. En modo
+  autónomo pasa con casilla o sin ella. Si para cuando vuelve la cuota la casilla está apagada, o
+  el modo autónomo ya se terminó, no relanza nada, y te lo dice en vez de quedarse callado.
+
+- **También Slack, y con eso están los tres.** Telegram, Discord y Slack, los mismos comandos en el
+  que ya tengas abierto, cada uno con su tarjeta en Configuración y su propia lista de chats — un
+  chat autorizado en uno está autorizado solo en ese. Slack pide dos tokens en vez de uno: el de
+  aplicación abre la conexión y el de bot escribe, que es cómo lo diseñó Slack y no nosotros, y la
+  pantalla te dice cuál es cuál. Socket Mode tiene que estar activado en tu app de Slack y el bot
+  tiene que estar invitado al canal; eso también te lo dice, porque si no no llega nada y desde acá
+  no habría forma de explicarte por qué.
+
+- **Discord, al lado de Telegram.** Los mismos comandos en el que ya tengas abierto de los dos:
+  cualquier cosa que escribas arranca una tarea, `/status` te dice quién trabaja, `/approve` y
+  `/answer` resuelven lo que te necesita. Configuración ahora tiene una tarjeta por canal. Ninguno
+  de los dos expone nada — la app es la que sale, así que sigue sin haber túnel, ni puerto, ni
+  dirección que encontrar. Cada canal autoriza sus propios chats y sólo los suyos: un id de canal de
+  Discord no queda autorizado por estar en la lista de Telegram. Tu bot necesita el intent de
+  contenido de mensajes activado en el portal de desarrolladores de Discord, y la pantalla te lo
+  dice, porque sin eso los mensajes llegan vacíos y desde acá no habría forma de saber por qué.
+
+- **Abrir el pull request desde acá.** Un agente termina en su rama y el último paso lo hacías a
+  mano. Ahora hay un botón al lado de pull y push, y en la tarjeta terminada. Nunca abre uno de un
+  solo click: un diálogo te muestra qué rama va contra cuál, con el título y el cuerpo ya escritos
+  desde la tarea y desde lo que reportó el agente — los archivos que tocó, lo que verificó, y lo que
+  no pudo hacer, que va con su propio encabezado en vez de quedar afuera. En la rama por defecto no
+  te deja, y en una rama sin pushear te ofrece pushear primero en lugar de hacerlo por atrás.
+
+- **Reintentar una tarea con otro modelo, o con otro agente.** Una corrida que salió mal, o cuyo
+  agente se quedó sin cuota a mitad de camino, te dejaba reescribiendo todo. Ahora el menú de la
+  corrida —y el botón en su tarjeta— te ofrecen relanzarla con el mismo prompt y con quien elijas.
+  Arranca de cero en vez de continuar la corrida que falló, porque el contexto de esa suele ser el
+  problema. Cambiar de agente limpia el modelo: los modelos de un proveedor no son los de otro, y
+  arrastrar uno es cómo se manda una corrida a un modelo que no existe.
+
+- **Soltá archivos sobre la caja.** El clip y Ctrl+V eran las dos formas de adjuntar; arrastrar un
+  archivo desde la carpeta que ya tenías abierta es la tercera, y la que no te hace dar ninguna
+  vuelta. La caja se marca con un contorno cuando le pasa por encima un arrastre que trae archivos,
+  y lo que ya habías escrito va con ellos. Una tarjeta del tablero que cruce de camino a otra
+  columna no se toca — lleva texto, no archivos, y agarrarla no la movería a ningún lado.
+
+### Arreglado
+
+- **Un detalle largo ya no empuja todo lo demás fuera del modal.** Un agente escribe lo que se le
+  ocurre, y el detalle está entre los campos de estado y las dependencias y la corrida. Ahora viene
+  plegado a unas pocas líneas, con un «Ver más» que lo abre. Si hace falta el botón se mide, no se
+  adivina por el largo del texto: cuántas líneas ocupa un párrafo depende del ancho que le den.
+
+- **Los scripts del proyecto son un menú y no una fila con scroll.** Una fila de botones en un panel
+  ya angosto significaba una barra de scroll horizontal, y un proyecto con veinte scripts escondía
+  diecinueve detrás de ella. Ahora son un menú al lado del «+», con la misma forma que el selector
+  de consola.
+
+- **La barra superior deja de decir cuántos agentes están trabajando.** El punto al lado del
+  proyecto en el sidebar ya respira mientras lo están, en el lugar donde mirás para ver qué pasa.
+
+- **El botón de modo autónomo tiene la forma de los botones que lo rodean.** Llevaba su propio
+  relleno ámbar para ser imposible de no ver. No le hacía falta: la franja debajo de la barra es la
+  ruidosa, ocupa todo el ancho, y solo existe mientras el modo está activo.
+
+- **El panel de comunicación es una burbuja de texto.** Su ícono describía dónde se abre el panel,
+  que es lo menos interesante que se puede decir de él. Lo que contiene es lo que los agentes se
+  dijeron entre ellos.
+
+- **La barra del tablero queda pareja.** Un Button, un Input y un SelectTrigger no coinciden por
+  defecto en el redondeo, así que una fila hecha de los tres salía con dos radios distintos uno al
+  lado del otro. Ahora todo tiene una sola altura y un solo redondeo, dicho en cada control en lugar
+  de dejarlo a los valores por defecto.
+
+- **Responder una pregunta es una lista que marcás y un botón que apretás.** Las opciones eran
+  botones en línea, cada uno del ancho de su propio texto, así que un conjunto quedaba desparejo y
+  una opción de una palabra era un blanco del tamaño de la palabra. Ahora son una lista, una por
+  fila, del ancho de la caja. Una pregunta que acepta varias respuestas lo dice, en vez de que lo
+  descubras haciendo dos clics. Y una pregunta de una sola respuesta ya no se va apenas tocás una
+  opción: las dos esperan a «Responder», así lo que está por decirse queda en pantalla antes de
+  decirse, y un clic errado es un clic más para deshacerlo en lugar de algo ya enviado. En las de
+  una sola respuesta, la opción y la caja para escribir la tuya se reemplazan entre sí, porque una
+  respuesta no puede ser además otra frase distinta.
+
+- **Los botones del pie de una tarea se ordenan por lo que hacen.** Tres botones sueltos bajo una
+  regla de «separalos» dejaban «archivar» varado en el medio, a igual distancia de un link que te
+  lleva a otro lado y de un borrar que no vuelve. Ahora irse a otro lado está a la izquierda, y lo
+  que cambia la tarea está a la derecha, junto.
+
+- **El tablero perdió el switcher de vista y recuperó «Nueva tarea» donde corresponde.** Como el
+  grafo ya no es una segunda vista del tablero, no quedaba nada entre qué cambiar, así que las dos
+  barras son una: la búsqueda, el filtro, la cuenta, y al final «Revisar», «Copiar como markdown» y
+  «Nueva tarea» uno al lado del otro.
+
+- **La cuota de Antigravity dice por qué es una estimación.** Su anillo muestra un guión donde los
+  demás proveedores muestran un número, y un guión sin explicación al lado parece algo roto. No lo
+  está: Antigravity no informa cuánto queda. El número exacto existe —su CLI se lo pide a Google—
+  pero está detrás de una licencia paga de Code Assist, y a una cuenta sin ella se lo niegan.
+  Así que ahora la app lo dice, al lado del guión, en el popover del composer, en la pantalla del
+  agente y en ajustes, en vez de dejarte adivinando. Lo que se muestra sigue infiriéndose del
+  «quota reached, resets in 1h45m» con el que vuelven las corridas, que es lo único que hay para
+  leer.
+
+- **El anillo y la barra de cuota se llenan a medida que la gastás.** Se llenaban con lo que
+  *quedaba*, así que una cuota intacta era un anillo lleno y una casi agotada estaba casi vacía: al
+  revés de cualquier medidor de algo que se consume, y por eso no se leían de un vistazo. Ahora
+  arrancan vacíos y se llenan con lo gastado, y todos los números al lado cuentan lo mismo: «83%» es
+  lo que se fue, no lo que queda. El color sigue mirando lo que sobra, así que un anillo casi lleno
+  además está en rojo: las dos mitades dicen «se está acabando» en el mismo momento, en lugar de que
+  una lo diga tarde.
+
+- **Un step dice lo que hizo sin esperar al navegador.** Cada fila de la actividad de un agente está
+  recortada —una herramienta muestra su resumen, una delegación noventa caracteres de la tarea— y la
+  única forma de leer el resto era el `title` que dibuja el navegador: un segundo de espera, una
+  cajita pelada donde cayó el puntero, y los saltos de línea aplastados en espacios, que es
+  justamente lo que no querés para un comando o un stack trace. Ahora tienen el tooltip de la app,
+  pegado a la fila, en monoespaciada y con los saltos de línea intactos. El step en el que va la
+  corrida también tiene uno, y antes no tenía nada.
+
+- **Un agente ya no sabe de un proyecto del que nadie le habló.** El contexto compartido era un
+  solo texto en la pantalla de ajustes, y se pegaba al prompt de todos los agentes de todos los
+  proyectos. Escribías algo sobre un repo y todos los agentes, en todos lados, lo habían leído: así
+  fue como un mensaje dirigido a un proyecto se entendió, se actuó y se llevó a otro. Ahora es de
+  cada proyecto: la pantalla de ajustes elige cuál, y `ainess context` acepta `-p`/`-w` como el
+  resto del CLI. Lo que tenías escrito se copia en cada proyecto que ya tenías, así no se pierde
+  nada; si ese texto era de uno solo, los demás son ahora el lugar donde borrarlo.
+
+- **Un hook arranca con un mensaje del evento que elegiste.** Había un solo texto por defecto
+  atrás de los diecisiete, escrito para «un agente terminó» y en español a la fuerza. Un hook de
+  «se cayó internet» arrancaba anunciando que un agente había terminado, a todo el mundo, en un
+  idioma que la mayoría no eligió. Ahora cada evento arranca con su propia línea, en tu idioma, con
+  las variables que ese evento realmente trae: la pregunta cuando alguien pregunta, el modelo
+  cuando se acaba la cuota, los dos agentes cuando hay una delegación. Si cambiás el evento antes
+  de tocar el mensaje, el mensaje te sigue; si lo tocás, deja de seguirte, porque de ahí en más es
+  tuyo. El botón de probar también completa las variables en tu idioma, así la vista previa es el
+  mensaje que vas a recibir.
+
+- **La app deja de cargar seis idiomas que no te está mostrando.** Los siete diccionarios venían en
+  el mismo bundle, así que cada arranque pagaba por los seis que nadie estaba leyendo: 575 kB, 179
+  comprimidos. Ahora sólo el español viene adentro —es la base a la que caen todos los demás— y el
+  tuyo se trae antes de la primera pintura y queda cargado. Ese chunk pasó de 575 kB a 83 kB, y de
+  179 comprimidos a 27.
+
+- **Un agente que responde una pregunta en un chat ya no puede repartir trabajo.** El turno que
+  lleva tu respuesta arrancaba sin que se le dijera que era de un chat, así que se leía como una
+  tarea: se le parseaban los bloques `delegate` y se actuaba sobre ellos. Un agente podía poner a
+  trabajar a otros desde adentro de una conversación donde nadie se lo había pedido.
+
+- **El tablero también scrollea hacia abajo mientras arrastrás.** Una columna más alta que la
+  pantalla tenía el mismo problema que el tablero a lo ancho: la tarjeta debajo de la cual querías
+  soltar estaba fuera de vista. Ahora la columna bajo el puntero también tira, con la misma rampa.
+
+- **Se terminaron las ventanas de consola que abría un agente mientras trabajaba.** El intento
+  anterior arregló la mitad equivocada. Pedir un proceso sin consola funciona para ese proceso — y
+  después cada programa de consola que *él* corre le pide una a Windows, recibe una nueva, y esa sí
+  se ve. Las ventanas nunca fueron nuestras: eran de los programas que corrían nuestros agentes.
+  Ahora la app toma una sola consola para sí al arrancar y la esconde, y todo lo que cuelga de ella
+  hereda esa en vez de pedir la propia, por hondo que vaya.
+
+- **Un link a un archivo en una respuesta ahora hace algo.** Un agente que escribía
+  `[el archivo](file:///C:/Users/vos/notas.txt)` dibujaba un texto gris muerto: `file:` estaba en la
+  misma lista de rechazados que `javascript:` y `data:`, que sí se ejecutan en la página, y había
+  quedado ahí por asociación — no ejecuta absolutamente nada. Ahora hacerle clic te muestra el
+  archivo en el explorador y se detiene ahí. Nunca se convierte en un link de verdad ni se le pasa
+  al sistema para que lo abra, porque `[mirá esto](file:///C:/x.exe)` es una línea que cualquier
+  agente puede escribir.
+
+- **El tablero se desplaza solo cuando llevás una tarjeta al borde.** Un tablero más ancho que la
+  ventana no se podía cruzar: la columna que querías estaba fuera de vista, y soltar para scrollear
+  dejaba la tarjeta donde no era. Ahora sostener una tarjeta cerca de cualquiera de los dos bordes
+  arrastra el tablero, despacio al entrar en la zona y más rápido cuanto más te acercás — y sigue
+  moviéndose aunque dejes el mouse quieto, cosa que los eventos de arrastre por sí solos no le
+  avisan a nadie.
+
 ## 0.10.0 — 2026-09-09
 
 ### Nuevo

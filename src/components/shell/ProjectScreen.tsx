@@ -1,41 +1,29 @@
-import { useMemo } from "react";
 import { useAppStore, selectProject } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { GitBranchButton } from "@/components/GitStatus";
 import { UsageButton } from "@/components/UsageDialog";
+import { AutonomousToggleButton, AutonomousBanner } from "@/components/AutonomousControl";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
 import { useT } from "@/i18n/useT";
-import { GitBranch, ListTodo, MessageSquare, PanelRight, TerminalSquare, FileDiff } from "lucide-react";
+import { MessagesSquare, TerminalSquare, FileDiff } from "lucide-react";
 
 /** The working screen for one project: top bar, task board / thread / hierarchy, and the composer. */
 export function ProjectScreen() {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
   const projectMode = useAppStore(state => state.projectMode);
-  const setProjectMode = useAppStore(state => state.setProjectMode);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
   const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
-  const runtime = useAppStore(state => state.runtime);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
-
-  // Counting in a selector would build a new object each call and re-render forever.
-  const running = useMemo(() => {
-    if (!currentProjectId) return 0;
-    const projectRuntime = runtime[currentProjectId];
-    if (!projectRuntime) return 0;
-    return Object.values(projectRuntime).filter(r => r.status === "working" || r.status === "waiting").length;
-  }, [runtime, currentProjectId]);
 
   if (!project) {
     return (
@@ -73,39 +61,7 @@ export function ProjectScreen() {
           </div>
         </div>
 
-        <Badge variant={running > 0 ? "default" : "outline"} className="hidden shrink-0 text-[10px] @3xl:inline-flex">
-          {t("projectScreen.working", { n: running })}
-        </Badge>
-
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-          <Button
-            variant={projectMode === "tasks" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7"
-            title={t("projectScreen.tasks")}
-            onClick={() => setProjectMode("tasks")}
-          >
-            <ListTodo className="h-3.5 w-3.5" /> <span className="hidden @4xl:inline">{t("projectScreen.tasks")}</span>
-          </Button>
-          <Button
-            variant={projectMode === "chat" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7"
-            title={t("projectScreen.chat")}
-            onClick={() => setProjectMode("chat")}
-          >
-            <MessageSquare className="h-3.5 w-3.5" /> <span className="hidden @4xl:inline">{t("projectScreen.chat")}</span>
-          </Button>
-          <Button
-            variant={projectMode === "graph" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7"
-            title={t("projectScreen.hierarchy")}
-            onClick={() => setProjectMode("graph")}
-          >
-            <GitBranch className="h-3.5 w-3.5" /> <span className="hidden @4xl:inline">{t("projectScreen.hierarchy")}</span>
-          </Button>
-        </div>
+        <AutonomousToggleButton projectId={project.id} />
 
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -115,7 +71,9 @@ export function ProjectScreen() {
             title={t("projectScreen.toggleComm")}
             onClick={() => toggleCommPanel()}
           >
-            <PanelRight className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.comm")}</span>
+            {/* What this panel holds is what the agents said to each other. A panel icon described
+                where it opens, which is the least interesting thing about it. */}
+            <MessagesSquare className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.comm")}</span>
           </Button>
           <Button
             variant={diffPanelOpen ? "secondary" : "ghost"}
@@ -146,6 +104,8 @@ export function ProjectScreen() {
           </Button>
         </div>
       </div>
+
+      <AutonomousBanner projectId={project.id} />
 
       <div className="flex-1 min-h-0">
         {projectMode === "tasks"

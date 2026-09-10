@@ -6,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -15,9 +17,12 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { TerminalView } from "./TerminalView";
+import { useProjectCommands } from "@/hooks/useProjectCommands";
+import { QuickCommandsDialog } from "@/components/QuickCommandsDialog";
+import { selectProject } from "@/store";
 import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Pencil, Plus, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, Pencil, Play, Plus, Settings2, TerminalSquare, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
@@ -38,6 +43,33 @@ export function TerminalDockSection() {
   const renameTerminal = useAppStore(state => state.renameTerminal);
   const moveTerminal = useAppStore(state => state.moveTerminal);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
+
+  // What this project's own files say it can run: the `scripts` of a package.json, the targets of a
+  // Makefile, cargo's four. Read when the panel opens — the section only mounts then.
+  const project = useAppStore(state => selectProject(state, state.currentProjectId));
+  const detected = useProjectCommands(project?.workspaceDir);
+  const [commandsOpen, setCommandsOpen] = useState(false);
+
+  // The user's own first: they were added on purpose, and there are few of them. What a manifest
+  // declares follows, already ordered by `sortCommands`.
+  const own = (project?.commands ?? []).map(entry => ({ ...entry, source: "custom" as const }));
+  const commands = [...own, ...detected];
+
+  /**
+   * Runs a script, or goes to it if it is already running.
+   *
+   * Pressing "dev" twice should not start a second dev server: the second one loses the race for
+   * the port and dies with an error that looks like the app's fault. A tab whose shell already
+   * exited does not count — that one is finished, and pressing the button again means run it again.
+   */
+  const runCommand = (command: string, label: string) => {
+    const running = terminals.find(tab => tab.command === command && tab.exited == null);
+    if (running) {
+      setActiveTerminal(running.id);
+      return;
+    }
+    openTerminal({ command, title: label });
+  };
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -141,6 +173,57 @@ export function TerminalDockSection() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* A row of buttons meant a horizontal scrollbar in a panel that is already narrow, and a
+              project with twenty scripts hid nineteen of them behind it. A menu holds them all at
+              full width, in the same shape as the shell picker beside it. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs"
+                title={t("terminals.scripts")}
+                disabled={noShells}
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span className="hidden @sm:inline">{t("terminals.scripts")}</span>
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-80 w-64 overflow-y-auto">
+              {commands.length === 0 && (
+                <DropdownMenuLabel className="font-normal text-muted-foreground">
+                  {t("terminals.scripts.none")}
+                </DropdownMenuLabel>
+              )}
+              {commands.map(command => {
+                const running = terminals.some(tab => tab.command === command.command && tab.exited == null);
+                return (
+                  <DropdownMenuItem
+                    key={command.id}
+                    // Full terminals stop new ones, never the jump to one that is already open.
+                    disabled={atLimit && !running}
+                    onSelect={() => runCommand(command.command, command.label)}
+                  >
+                    {running
+                      ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                      : <Play className="h-3.5 w-3.5 shrink-0 opacity-60" />}
+                    <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{command.source}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+              {project && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setCommandsOpen(true)}>
+                    <Settings2 className="h-3.5 w-3.5" /> {t("terminals.commands.manage")}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="icon"
@@ -256,6 +339,10 @@ export function TerminalDockSection() {
             </ContextMenu>
           ))}
         </div>
+      )}
+
+      {project && (
+        <QuickCommandsDialog projectId={project.id} open={commandsOpen} onOpenChange={setCommandsOpen} />
       )}
 
       <div className="relative min-h-0 flex-1">

@@ -21,7 +21,7 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
         <div className="flex items-center gap-1.5">
           <span className="truncate text-xs font-medium">{agent.name}</span>
           <span className="ml-auto flex shrink-0 items-center gap-1">
-            <QuotaRing fraction={quota.fraction} label={quota.label} size={14} />
+            <QuotaRing remaining={quota.fraction} label={quota.label} size={14} />
             {quota.fraction !== null && (
               <span className="text-[10px] text-muted-foreground tabular-nums">{quota.label}</span>
             )}
@@ -32,6 +32,10 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
         {(quota.fraction === null ? quota.details : [quota.detail]).map((line, i) => (
           <p key={i} className="text-[10px] leading-snug text-muted-foreground">{line}</p>
         ))}
+        {/* Right under the dash that stands where a number should be. */}
+        {quota.note && (
+          <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/80 italic">{quota.note}</p>
+        )}
       </div>
     </div>
   );
@@ -67,7 +71,7 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
           aria-label={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
           title={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
         >
-          <QuotaRing fraction={quota.fraction} label={quota.label} size={16} />
+          <QuotaRing remaining={quota.fraction} label={quota.label} size={16} />
           {quota.fraction !== null && (
             <span className="text-muted-foreground tabular-nums">{quota.label}</span>
           )}

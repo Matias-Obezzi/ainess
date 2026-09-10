@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { SUGGESTED_MCP, SUGGESTED_SKILLS } from "@/lib/suggested";
-import { dictionaries, LANGUAGES, translate, baseDictionary } from "@/i18n";
+import { LANGUAGES, translate, baseDictionary, es, type Dictionary, type Language } from "@/i18n";
+import { en } from "@/i18n/en";
+import { pt } from "@/i18n/pt";
+import { zh } from "@/i18n/zh";
+import { ja } from "@/i18n/ja";
+import { fr } from "@/i18n/fr";
+import { de } from "@/i18n/de";
+
+// Imported directly rather than through the lazy registry: this suite needs all seven at once.
+const dictionaries: Record<Language, Dictionary> = { es, en, pt, zh, ja, fr, de };
 
 describe("suggested catalog", () => {
   it("defines every description and requires key in all 7 languages", () => {

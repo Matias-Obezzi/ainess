@@ -2,6 +2,245 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.11.0 — 2026-09-10
+
+### Neu
+
+- **Die drei Ansichten eines Projekts sind Zeilen in der Seitenleiste.** Orchestrator, Aufgaben und
+  Hierarchie waren ein Umschalter in der oberen Leiste — der einzige Streifen, der auch den
+  Projektnamen, den Branch, die Ausgaben, den autonomen Schalter und jeden Panel-Knopf tragen muss.
+  Sie sind Navigation, und Navigation gehört in die linke Spalte. Jede Zeile öffnet die Ansicht, die
+  sie benennt, statt dich dort zu lassen, wo das Projekt zuletzt stand.
+
+- **Schnellbefehle dürfen deine eigenen sein.** Neben den erkannten Skripten gibt es jetzt einen
+  Platz für die, die keine Datei deklariert: die docker-compose-Zeile, den Tunnel, die Migration,
+  die nur dieses Projekt braucht. Sie gehören zum Projekt und stehen im Menü ganz oben.
+
+- **Die Fensterleiste sagt, wenn ein Chatkanal verbunden ist.** Neben dem Telefon ein Licht für
+  Telegram, Discord oder Slack, sobald einer wirklich läuft — die Frage, für die du sonst die
+  Einstellungen öffnen müsstest. Es ist kein Schalter: einen Kanal anzuschalten verlangt ein Token
+  und eine Liste, wer sprechen darf.
+
+- **Das Terminal-Panel bietet die Skripte des Projekts als Knöpfe an.** Den Dev-Server zu starten
+  hieß, ein Terminal zu öffnen und einzutippen, was im Projekt längst steht. Das Panel liest es
+  jetzt: die `scripts` einer package.json, die Targets eines Makefiles und cargos übliche vier. Je
+  ein Knopf, die häufigsten zuerst — dev, start, build, test. Jeder öffnet einen eigenen Tab, benannt
+  nach dem Skript statt „PowerShell 3", damit der Tab mit dem Server wiederzufinden ist. Drückst du
+  ein Skript, das schon läuft, bringt es dich dorthin, statt ein zweites zu starten, das den Kampf
+  um den Port verliert; ein grüner Punkt markiert die laufenden. Der Paketmanager kommt aus der
+  Lockdatei, denn `npm run` löst in einem pnpm-Workspace einen anderen Baum auf. Ein Skript, dessen
+  Name kein einfacher Name ist, wird gar nicht angeboten: diese Zeichenketten landen in einer echten
+  Shell, wo `predev && curl x | sh` genau so liefe, wie es dasteht.
+
+- **Der Abhängigkeitsgraph wird von einer Aufgabe aus geöffnet und zeigt nur deren Familie.** Früher
+  war er eine zweite Ansicht des ganzen Boards und zeichnete jede Kette des Projekts nebeneinander:
+  er wurde breiter als das Fenster, und die Antwort auf „womit hängt diese hier zusammen?" lag
+  irgendwo mittendrin. Jetzt öffnet er sich von der Aufgabe selbst, und auf dem Bildschirm steht,
+  worauf diese Aufgabe wartet und was auf sie wartet, transitiv — sonst nichts. Eine Aufgabe, die
+  bloß eine Voraussetzung teilt, ist ein Geschwister, keine Familie, und bleibt draußen; die
+  Geschwister waren es, die den alten unlesbar machten. Ein Klick auf eine Karte rückt den Graphen
+  auf sie, so lässt sich eine Kette Schritt für Schritt verfolgen. Archivierte kommen mit: eine
+  archivierte Voraussetzung ist weiterhin der Grund, warum etwas darunter nicht starten kann.
+
+- **Ein Gespräch zurücknehmen oder umschreiben, was du gefragt hast.** Rechtsklick auf eine
+  Nachricht in einem Chat, und das Gespräch kann dort enden; bei deinen eigenen kannst du sie
+  außerdem bearbeiten und von dort aus neu fragen. Was danach kam, geht — und die Sitzung des
+  Agenten ebenfalls. Der sichtbare Verlauf ist nur die eine Hälfte eines Gesprächs, das Gedächtnis
+  des Agenten ist die andere, und ließe man es mit dem zurück, was du gerade zurückgenommen hast,
+  würde der Verlauf darüber lügen, worauf die nächste Antwort aufbaut. Der Dialog sagt das vor dem
+  Knopf, nicht danach. Bis zur letzten Nachricht zurückzugehen ist ausgegraut, denn es nähme nichts
+  mit.
+
+- **Autonomer Modus, mit einer Uhrzeit, zu der er sich abschaltet.** Ein Knopf in der Projektleiste
+  schaltet ihn für 1, 2, 4, 8 oder 12 Stunden ein. Solange er läuft, wartet das Projekt nicht auf
+  dich: Delegationen, die deine Freigabe bräuchten, werden freigegeben, Fragen beantworten sich
+  selbst auf dem vorsichtigsten Weg, und die Rundengrenze beendet die Aufgabe nicht mehr. Ein „für
+  immer“ gibt es nicht — er schaltet sich zur eingestellten Uhrzeit selbst ab, und ein Stopp von
+  Hand stoppt weiterhin. Das Ausgabenlimit des Projekts gilt unverändert; das ist die Bremse. Und
+  eine Aufgabe, die nichts als fragt, frisst nicht die ganze Nacht: nach zehn eigenen Antworten
+  warten die Fragen wieder auf dich. Am Ende bleibt der Bericht im Verlauf: was fertig wurde, was
+  scheiterte, was freigegeben und was ohne dich beantwortet wurde.
+
+- **Neuer Versuch, wenn das Kontingent zurück ist.** Ein Lauf, der starb, weil sein Modell leer war,
+  ließ die Arbeit liegen, bis du von Hand neu gestartet hast. Jeder Agent hat jetzt sein eigenes
+  Kästchen: ohne Kontingent wartet der Lauf, statt zu scheitern, und startet mit demselben Prompt
+  von selbst neu, sobald der Anbieter wieder Platz hat. Im autonomen Modus geschieht das mit oder
+  ohne Kästchen. Ist das Kästchen aus oder der autonome Zeitraum vorbei, wenn das Kontingent
+  zurückkommt, wird nichts neu gestartet — und das steht da, statt still zu bleiben.
+
+- **Slack auch, und damit sind es alle drei.** Telegram, Discord und Slack, dieselben Befehle in
+  dem, den du ohnehin offen hast, jeder mit eigener Karte in den Einstellungen und eigener
+  Chatliste — ein Chat, der auf einem autorisiert ist, ist nur auf diesem autorisiert. Slack verlangt
+  zwei Tokens statt einem: eines auf App-Ebene, das die Verbindung öffnet, und eines für den Bot,
+  das schreibt. Das ist Slacks Entwurf, nicht unserer, und der Bildschirm sagt, welches welches
+  ist. Socket Mode muss in deiner Slack-App eingeschaltet und der Bot in den Kanal eingeladen sein;
+  auch das steht dort, denn sonst kommt nichts an und von hier ließe sich nicht sagen, warum.
+
+- **Discord, neben Telegram.** Dieselben Befehle in dem der beiden, den du ohnehin offen hast: Was
+  du schreibst, startet eine Aufgabe, `/status` sagt, wer arbeitet, `/approve` und `/answer`
+  erledigen, was auf dich wartet. Die Einstellungen haben jetzt eine Karte pro Kanal. Keiner von
+  beiden legt etwas offen — die App geht hinaus, es gibt weiterhin keinen Tunnel, keinen Port und
+  keine Adresse zu finden. Jeder Kanal autorisiert seine eigenen Chats und nur seine: Eine
+  Discord-Kanal-ID ist nicht autorisiert, weil sie auf Telegrams Liste steht. Dein Bot braucht im
+  Discord-Entwicklerportal die Berechtigung für Nachrichteninhalte, und der Bildschirm sagt das —
+  ohne sie kommen die Nachrichten leer an, und von hier aus wäre nicht zu erkennen, warum.
+
+- **Den Pull Request von hier aus öffnen.** Ein Agent wird auf seinem Branch fertig, und der letzte
+  Schritt war deiner, von Hand. Jetzt gibt es eine Schaltfläche neben Pull und Push und auf der
+  fertigen Karte. Sie öffnet nie einen mit einem einzigen Klick: Ein Dialog zeigt, welcher Branch
+  gegen welchen geht, mit Titel und Text schon geschrieben — aus der Aufgabe und aus dem, was der
+  Agent gemeldet hat: die angefassten Dateien, was er geprüft hat, und was er nicht schaffen
+  konnte, das eine eigene Überschrift bekommt statt wegzufallen. Auf dem Standard-Branch verweigert
+  sie, und auf einem ungepushten bietet sie an, vorher zu pushen, statt es hinter deinem Rücken zu
+  tun.
+
+- **Eine Aufgabe mit einem anderen Modell oder einem anderen Agenten wiederholen.** Ein Lauf, der
+  schiefging — oder dessen Agent auf halbem Weg das Kontingent aufbrauchte — ließ dich alles neu
+  tippen. Jetzt bieten das Menü des Laufs und die Schaltfläche auf seiner Karte an, ihn mit
+  demselben Prompt und dem, den du wählst, noch einmal zu starten. Er beginnt bei null, statt den
+  gescheiterten Lauf fortzusetzen, denn dessen Kontext ist meist das Problem. Ein Agentenwechsel
+  setzt das Modell zurück: Die Modelle eines Anbieters sind nicht die eines anderen, und eines
+  mitzunehmen ist der Weg, einen Lauf an ein Modell zu schicken, das es nicht gibt.
+
+- **Dateien aufs Eingabefeld ziehen.** Die Büroklammer und Strg+V waren die beiden Wege hinein;
+  eine Datei aus dem Ordner zu ziehen, den du ohnehin offen hast, ist der dritte — und der ohne
+  Umweg. Das Feld umrandet sich, wenn ein Zug mit Dateien darüberkommt, und was du schon
+  geschrieben hattest, geht mit. Eine Board-Karte, die auf dem Weg in eine andere Spalte
+  vorbeikommt, bleibt unberührt: Sie trägt Text, keine Dateien, und sie abzufangen würde sie
+  nirgendwohin bewegen.
+
+### Behoben
+
+- **Ein langes Aufgabendetail schiebt nicht mehr alles andere aus dem Dialog.** Ein Agent schreibt
+  so viel, wie ihm danach ist, und das Detail steht zwischen den Statusfeldern und den Abhängigkeiten
+  und dem Lauf. Es ist jetzt auf wenige Zeilen gefaltet, mit einem „Mehr anzeigen", das es öffnet. Ob
+  der Knopf gebraucht wird, wird gemessen und nicht aus der Textlänge geraten: wie viele Zeilen ein
+  Absatz braucht, hängt von der Breite ab, die er bekommt.
+
+- **Die Skripte des Projekts sind ein Menü statt einer scrollenden Zeile.** Eine Knopfreihe in einem
+  ohnehin schmalen Panel hieß eine waagerechte Scrollleiste, und ein Projekt mit zwanzig Skripten
+  versteckte neunzehn dahinter. Jetzt sind sie ein Menü neben dem „+", in derselben Form wie die
+  Shell-Auswahl daneben.
+
+- **Die obere Leiste sagt nicht mehr, wie viele Agenten arbeiten.** Der Punkt neben dem Projekt in
+  der Seitenleiste atmet ohnehin, solange sie es tun — dort, wo man hinsieht, um zu sehen, was los
+  ist.
+
+- **Der Knopf für den autonomen Modus hat die Form der Knöpfe um ihn herum.** Er trug seine eigene
+  bernsteinfarbene Füllung, um unübersehbar zu sein. Nötig war das nicht: der Streifen unter der
+  Leiste ist der laute, er läuft über die volle Breite, und es gibt ihn nur, solange der Modus an
+  ist.
+
+- **Das Kommunikationspanel ist eine Sprechblase.** Sein Symbol beschrieb, wo sich das Panel öffnet,
+  das Uninteressanteste daran. Was drinsteht, ist, was die Agenten einander gesagt haben.
+
+- **Die Leiste des Boards steht auf einer Linie.** Ein Button, ein Input und ein SelectTrigger sind
+  sich beim Eckenradius von Haus aus nicht einig, also kam eine Reihe aus allen dreien mit zwei
+  Radien nebeneinander heraus. Jetzt hat alles eine Höhe und einen Radius, an jedem Steuerelement
+  gesagt statt den Standardwerten überlassen.
+
+- **Eine Frage zu beantworten ist eine Liste zum Ankreuzen und ein Knopf zum Drücken.** Die
+  Optionen waren Knöpfe in einer Zeile, jeder so breit wie sein eigener Text, also wirkte eine Reihe
+  davon ausgefranst und eine Ein-Wort-Option war ein Ziel von der Größe des Wortes. Jetzt sind sie
+  eine Liste, eine pro Zeile, so breit wie der Kasten. Eine Frage, die mehrere Antworten annimmt,
+  sagt das, statt es dich mit zwei Klicks herausfinden zu lassen. Und eine Frage mit einer Antwort
+  geht nicht mehr los, sobald du eine Option berührst: beide warten auf „Antworten", damit das, was
+  gleich gesagt wird, vorher auf dem Bildschirm steht — und ein Fehlklick ist ein Klick zum
+  Rückgängigmachen statt etwas bereits Gesendetes. Bei einer Antwort ersetzen sich Option und
+  Freitextfeld gegenseitig, denn eine Antwort kann nicht zugleich ein anderer Satz sein.
+
+- **Die Knöpfe am Fuß einer Aufgabe ordnen sich danach, was sie tun.** Drei lose Knöpfe unter einer
+  „verteil sie"-Regel ließen „archivieren" in der Mitte stranden, gleich weit entfernt von einem
+  Link, der woandershin führt, und einem Löschen, das nicht zurückkommt. Woandershin gehen steht
+  jetzt links, und was die Aufgabe verändert, steht rechts, beisammen.
+
+- **Das Board hat seinen Ansichtsumschalter verloren und „Neue Aufgabe" dorthin zurückbekommen, wo
+  sie hingehört.** Da der Graph keine zweite Ansicht des Boards mehr ist, gab es nichts mehr zu
+  wechseln, also sind aus den zwei Leisten eine geworden: die Suche, der Filter, die Zählung, und am
+  Ende „Prüfen", „Als Markdown kopieren" und „Neue Aufgabe" nebeneinander.
+
+- **Antigravitys Kontingent sagt, warum es eine Schätzung ist.** Sein Ring zeigt einen Strich, wo
+  jeder andere Anbieter eine Zahl zeigt, und ein Strich ohne Begründung daneben wirkt wie ein
+  Fehler. Es ist keiner: Antigravity meldet nicht, wie viel übrig ist. Die genaue Zahl gibt es —
+  sein CLI fragt Google danach — aber sie steckt hinter einer kostenpflichtigen Code-Assist-Lizenz,
+  und einem Konto ohne sie wird sie verweigert. Also sagt die App das jetzt, neben dem Strich, im
+  Popover des Eingabefelds, im Bildschirm des Agenten und in den Einstellungen, statt dich raten zu
+  lassen. Was zu sehen ist, wird weiterhin aus dem „quota reached, resets in 1h45m" abgeleitet, mit
+  dem die Läufe zurückkommen — mehr gibt es nicht zu lesen.
+
+- **Ring und Balken des Kontingents füllen sich, während es verbraucht wird.** Sie füllten sich mit
+  dem, was *übrig* war: ein unangetastetes Kontingent war ein voller Ring, ein fast aufgebrauchtes
+  fast leer — verkehrt herum für die Anzeige von etwas, das verbraucht wird, und der Grund, warum
+  sie auf einen Blick nicht zu lesen waren. Jetzt beginnen sie leer und füllen sich mit dem
+  Verbrauchten, und jede Zahl daneben zählt dasselbe: „83 %" ist, was weg ist, nicht was bleibt. Die
+  Farbe richtet sich weiter nach dem Rest, ein fast voller Ring ist also auch rot — beide Hälften
+  sagen im selben Moment „es geht zur Neige", statt dass eine es zu spät sagt.
+
+- **Ein Schritt sagt, was er getan hat, ohne auf den Browser zu warten.** Jede Zeile der Aktivität
+  eines Agenten ist gekürzt — ein Werkzeug zeigt seine Zusammenfassung, eine Delegation neunzig
+  Zeichen der Aufgabe — und der Rest war nur über das `title` des Browsers zu lesen: eine Sekunde
+  Warten, ein nacktes Kästchen irgendwo beim Zeiger, und Zeilenumbrüche zu Leerzeichen plattgedrückt,
+  genau das, was man bei einem Befehl oder einem Stacktrace nicht will. Jetzt haben sie den Tooltip
+  der App, an ihrer Zeile verankert, in Monospace und mit erhaltenen Umbrüchen. Der Schritt, bei dem
+  ein Lauf gerade ist, hat auch einen — er hatte vorher gar nichts.
+
+- **Ein Agent weiß nicht mehr von einem Projekt, von dem ihm niemand erzählt hat.** Der gemeinsame
+  Kontext war ein einziger Text in den Einstellungen und wurde an den Prompt jedes Agenten in jedem
+  Projekt gehängt. Schriebst du etwas über ein Repo, hatten alle Agenten überall es gelesen — so kam
+  es, dass eine Nachricht für ein Projekt in einem anderen verstanden, befolgt und weitergetragen
+  wurde. Jetzt gehört er zu je einem Projekt: die Einstellungen wählen welches, und `ainess context`
+  nimmt `-p`/`-w` wie der Rest des CLI. Was du geschrieben hattest, wird in jedes vorhandene Projekt
+  kopiert, damit nichts verloren geht; galt der Text nur einem, sind die anderen jetzt der Ort, wo
+  du ihn löschst.
+
+- **Ein Hook beginnt mit einer Nachricht zu dem Ereignis, das du gewählt hast.** Hinter allen
+  siebzehn stand ein einziger Vorschlag, geschrieben für „ein Agent ist fertig" und fest auf
+  Spanisch. Ein Hook auf „Internet weg" begann damit, zu verkünden, ein Agent sei fertig — für
+  alle, in einer Sprache, die die meisten nicht gewählt hatten. Jedes Ereignis beginnt jetzt mit
+  seiner eigenen Zeile, in deiner Sprache, mit den Variablen, die es wirklich mitbringt: die Frage,
+  wenn gefragt wird, das Modell, wenn das Kontingent leer ist, beide Agenten bei einer Delegation.
+  Änderst du das Ereignis, bevor du die Nachricht anfasst, folgt sie; fasst du sie an, folgt sie
+  nicht mehr, denn ab da gehört sie dir. Auch der Testknopf füllt die Variablen in deiner Sprache,
+  damit die Vorschau die Nachricht ist, die du wirklich bekommst.
+
+- **Die App schleppt keine sechs Sprachen mehr mit, die sie dir nicht zeigt.** Alle sieben
+  Wörterbücher steckten im selben Bundle, also zahlte jeder Start für die sechs, die niemand las:
+  575 kB, 179 gepackt. Jetzt ist nur Spanisch fest eingebaut — es ist die Basis, auf die alle
+  anderen zurückfallen — und deine wird vor dem ersten Zeichnen geholt und behalten. Dieser Chunk
+  ging von 575 kB auf 83 kB und von 179 gepackt auf 27.
+
+- **Ein Agent, der in einem Chat eine Frage beantwortet, kann keine Arbeit mehr verteilen.** Der
+  Zug, der deine Antwort trägt, wurde gestartet, ohne dass ihm gesagt wurde, dass er zu einem Chat
+  gehört — also wurde er als Aufgabe gelesen und seine `delegate`-Blöcke ausgeführt. Ein Agent
+  konnte andere aus einem Gespräch heraus an die Arbeit schicken, in dem niemand darum gebeten
+  hatte.
+
+- **Das Board scrollt beim Ziehen auch nach unten.** Eine Spalte, die höher ist als der
+  Bildschirm, hatte dasselbe Problem wie das Board in der Breite: Die Karte, unter der du ablegen
+  wolltest, lag außerhalb. Jetzt zieht auch die Spalte unter dem Zeiger, mit derselben Rampe.
+
+- **Die Konsolenfenster, die ein Agent bei der Arbeit öffnete, sind endgültig weg.** Der letzte
+  Versuch behob die falsche Hälfte. Einen Prozess ohne Konsole anzufordern wirkt für diesen Prozess
+  — und dann fragt jedes Konsolenprogramm, das *er* startet, Windows nach einer, bekommt eine neue,
+  und die ist sichtbar. Die Fenster waren nie unsere: Sie gehörten den Programmen, die unsere
+  Agenten ausführten. Die App nimmt sich beim Start jetzt eine einzige Konsole und versteckt sie,
+  und alles darunter erbt diese, statt nach einer eigenen zu fragen — wie tief es auch geht.
+
+- **Ein Dateilink in einer Antwort tut jetzt etwas.** Schrieb ein Agent
+  `[die Datei](file:///C:/Users/du/notizen.txt)`, wurde daraus ein toter grauer Text: `file:` stand
+  auf derselben Verbotsliste wie `javascript:` und `data:`, die tatsächlich in der Seite ausgeführt
+  werden — dorthin geraten war es nur durch Assoziation, denn es führt gar nichts aus. Ein Klick
+  zeigt die Datei jetzt im Dateimanager und hört dort auf. Ein echter Link wird daraus nie, und dem
+  System zum Öffnen übergeben wird sie auch nicht: `[schau dir das an](file:///C:/x.exe)` ist eine
+  Zeile, die jeder Agent schreiben kann.
+
+- **Das Board scrollt selbst, wenn du eine Karte an seinen Rand ziehst.** Ein Board, das breiter
+  ist als das Fenster, ließ sich nicht überqueren: Die gewünschte Spalte lag außerhalb, und
+  loszulassen, um zu scrollen, legte die Karte dorthin, wo du sie nicht haben wolltest. Eine Karte
+  nahe einem der beiden Ränder zu halten zieht jetzt das Board mit — sanft am Rand der Zone und
+  schneller, je näher du kommst. Und es zieht weiter, während du stillhältst, wovon die
+  Drag-Ereignisse von sich aus niemandem erzählen.
+
 ## 0.10.0 — 2026-09-09
 
 ### Neu

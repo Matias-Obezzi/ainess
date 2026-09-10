@@ -1,6 +1,11 @@
-// The dependency graph: the same tasks as the board, laid out in layers, with an arrow from every
-// prerequisite to the task that waits for it. Same look as the hierarchy board (HierarchyGraph.tsx):
-// dotted background, no attribution, no minimap.
+// The dependency graph: tasks laid out in layers, with an arrow from every prerequisite to the task
+// that waits for it. Same look as the hierarchy board (HierarchyGraph.tsx): dotted background, no
+// attribution, no minimap.
+//
+// It is opened for one task at a time (`focusTaskId`), showing that task's family and nothing else.
+// It used to be a second mode of the whole board, and a board's worth of unrelated chains laid out
+// side by side grew wider than any screen — the answer to "what is this task tangled up with?" was
+// somewhere in there, and finding it meant panning.
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
@@ -22,14 +27,13 @@ import "@xyflow/react/dist/style.css";
 import { useAppStore, selectTasks, selectAgent } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
-import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, layoutTaskGraph, TASK_NODE_HEIGHT, TASK_NODE_WIDTH, type TaskFilter } from "@/lib/tasks";
+import { blockedBy, layoutTaskGraph, taskFamily, TASK_NODE_HEIGHT, TASK_NODE_WIDTH } from "@/lib/tasks";
 import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
-import { Ban, ListTodo, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Ban, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 const FIT_VIEW_OPTIONS = { padding: 0.2 } as const;
@@ -39,17 +43,24 @@ const HANDLE_STYLE = { width: 8, height: 8, border: "none", background: "var(--m
 interface TaskNodeData extends Record<string, unknown> {
   task: Task;
   blocked: number;
+  /** The task the graph was opened for. Everything else on screen is here because of it. */
+  focused: boolean;
 }
 
 function TaskGraphNode({ data }: NodeProps<Node<TaskNodeData>>) {
   const t = useT();
-  const { task, blocked } = data;
+  const { task, blocked, focused } = data;
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
   const meta = taskStatusMeta[task.status];
 
   return (
     <div
-      className="flex flex-col gap-1.5 rounded-xl border-2 bg-card p-2.5 text-card-foreground shadow-sm"
+      className={cn(
+        "flex flex-col gap-1.5 rounded-xl border-2 bg-card p-2.5 text-card-foreground shadow-sm",
+        // Without this you lose track of which one you asked about the moment there are more than
+        // three or four, and every card is drawn the same way.
+        focused && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+      )}
       style={{ width: TASK_NODE_WIDTH, height: TASK_NODE_HEIGHT, borderColor: meta.color }}
     >
       <Handle type="target" position={Position.Top} style={HANDLE_STYLE} />
@@ -80,10 +91,10 @@ const nodeTypes = { task: TaskGraphNode };
 
 interface TaskGraphProps {
   projectId: string;
-  /** Same view filter as the board, so both views count the same work. */
-  filter?: TaskFilter;
+  /** The task this graph is about. Everything drawn is here because of it (see `taskFamily`). */
+  focusTaskId: string;
+  /** Clicking a node. The family dialog re-roots on it rather than opening its detail. */
   onOpenTask(id: string): void;
-  onNewTask(): void;
 }
 
 export function TaskGraph(props: TaskGraphProps) {
@@ -94,15 +105,17 @@ export function TaskGraph(props: TaskGraphProps) {
   );
 }
 
-function TaskGraphBoard({ projectId, filter = EMPTY_TASK_FILTER, onOpenTask, onNewTask }: TaskGraphProps) {
+function TaskGraphBoard({ projectId, focusTaskId, onOpenTask }: TaskGraphProps) {
   const t = useT();
   const all = useAppStore(state => selectTasks(state, projectId));
   const linkTaskDependency = useAppStore(state => state.linkTaskDependency);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
-  // The archive belongs to the board; the graph only shows live work, and only what passes the filter.
-  const tasks = useMemo(() => filterTasks(all.filter(task => !task.archived), filter), [all, filter]);
+  // The archive comes along: an archived prerequisite is still the reason something below it cannot
+  // start, and dropping it would leave an arrow pointing at nothing. The board's search filter does
+  // not apply here either — a family is the answer to a question, not a search.
+  const tasks = useMemo(() => taskFamily(all, focusTaskId), [all, focusTaskId]);
   const positions = useMemo(() => layoutTaskGraph(tasks), [tasks]);
   const blocked = useMemo(() => {
     const map = new Map<string, number>();
@@ -121,10 +134,10 @@ function TaskGraphBoard({ projectId, filter = EMPTY_TASK_FILTER, onOpenTask, onN
         id: task.id,
         type: "task",
         position: positions[task.id] ?? { x: 0, y: 0 },
-        data: { task, blocked: blocked.get(task.id) ?? 0 },
+        data: { task, blocked: blocked.get(task.id) ?? 0, focused: task.id === focusTaskId },
       }))
     );
-  }, [tasks, positions, blocked, setNodes]);
+  }, [tasks, positions, blocked, focusTaskId, setNodes]);
 
   useEffect(() => {
     const known = new Set(tasks.map(t => t.id));
@@ -176,18 +189,9 @@ function TaskGraphBoard({ projectId, filter = EMPTY_TASK_FILTER, onOpenTask, onN
     return () => observer.disconnect();
   }, [fitView]);
 
-  if (tasks.length === 0) {
-    return isFiltering(filter) ? (
-      <EmptyState icon={ListTodo} title={t("tasks.noMatches")} description={t("tasks.noMatchesBody")} />
-    ) : (
-      <EmptyState
-        icon={ListTodo}
-        title={t("tasks.empty.title")}
-        description={t("tasks.graphEmpty.body")}
-        action={{ label: t("tasks.new"), onClick: onNewTask }}
-      />
-    );
-  }
+  // A family always holds at least the task it was opened for, so this only happens when that task
+  // is deleted while the graph is on screen. Nothing to draw and nothing worth saying about it.
+  if (tasks.length === 0) return null;
 
   return (
     <div ref={containerRef} className="relative h-full w-full">

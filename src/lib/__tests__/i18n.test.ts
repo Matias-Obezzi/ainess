@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   LANGUAGES,
-  dictionaries,
   es,
   languageLocales,
   languageNames,
@@ -9,7 +8,18 @@ import {
   plural,
   translate,
   type Dictionary,
+  type Language,
 } from "@/i18n";
+import { en } from "@/i18n/en";
+import { pt } from "@/i18n/pt";
+import { zh } from "@/i18n/zh";
+import { ja } from "@/i18n/ja";
+import { fr } from "@/i18n/fr";
+import { de } from "@/i18n/de";
+
+// Every language, imported directly rather than through the lazy registry: tests do not bundle,
+// so pulling all seven in here costs nothing, and this suite needs all seven at once anyway.
+const dictionaries: Record<Language, Dictionary> = { es, en, pt, zh, ja, fr, de };
 
 const base: Dictionary = {
   "a.hello": "Hola",

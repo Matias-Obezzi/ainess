@@ -160,3 +160,60 @@ export function switchBranch(workspaceDir: string, branch: string, remote: boole
 export function createBranch(workspaceDir: string, branch: string): Promise<GitCommandResult> {
   return write(["switch", "--create", branch], workspaceDir, TIMEOUT_SECS);
 }
+
+export interface OpenedPullRequest {
+  url: string;
+}
+
+/** The last few lines of whatever `gh` said, which is where the reason for a failure sits. */
+function lastLines(result: ExecResult): string {
+  const text = (result.stderr.trim() || result.stdout.trim()).split("\n").filter(Boolean);
+  return text.slice(-3).join("\n");
+}
+
+/**
+ * Opens a pull request for the branch checked out in `workspaceDir`. Title and body travel as
+ * separate arguments, never interpolated into a shell string: the body is agent-written text that
+ * routinely carries newlines, quotes and backticks.
+ */
+export async function openPullRequest(
+  workspaceDir: string,
+  input: { title: string; body: string },
+): Promise<{ ok: true; pr: OpenedPullRequest } | { ok: false; reason: PrsUnavailable | "failed"; message: string }> {
+  const result = await run(
+    "gh",
+    ["pr", "create", "--title", input.title, "--body", input.body],
+    workspaceDir,
+    NETWORK_TIMEOUT_SECS,
+  );
+  if (!result) return { ok: false, reason: "no-gh", message: translateNow("git.noGit") };
+  if (result.code !== 0) {
+    const reason = prFailureReason(result);
+    const message = lastLines(result);
+    // "no-remote" is `prFailureReason`'s catch-all: right for an empty PR list, but too vague a
+    // reason to show for a create that just failed for some other reason — the actual git/gh
+    // message is more useful there.
+    return reason === "no-remote" ? { ok: false, reason: "failed", message } : { ok: false, reason, message };
+  }
+  const url = result.stdout
+    .split("\n")
+    .map(line => line.trim())
+    .find(line => line.startsWith("http")) ?? "";
+  return { ok: true, pr: { url } };
+}
+
+/**
+ * The branch a pull request would target: the repository's own default, as the remote reports it.
+ *
+ * Asked rather than guessed. `gh pr create` targets that same default, so the dialog that asks you
+ * to confirm shows the branch the command will actually use — a guessed "main" would be a promise
+ * the command never made, on a screen whose whole job is telling you what is about to happen.
+ * Empty when the remote has no head recorded, and then the dialog says nothing rather than a guess.
+ */
+export async function defaultBranch(workspaceDir: string): Promise<string> {
+  const result = await run("git", ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], workspaceDir);
+  if (!result || result.code !== 0) return "";
+  // `origin/main` — the remote's name is not part of the answer.
+  const name = result.stdout.trim();
+  return name.slice(name.indexOf("/") + 1);
+}

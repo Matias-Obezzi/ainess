@@ -10,17 +10,23 @@ import * as taskLogic from "@/lib/tasks";
 import { reconcileProject } from "@/lib/task-reconcile";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
+import { autonomousReport } from "@/lib/autonomous";
 import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { translateNow } from "@/i18n/useT";
+import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
+import type { BridgeProviderId } from "@/lib/bridge/types";
+
+/** The channels the messaging config actually has a slot for today. */
+type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -39,7 +45,6 @@ export type Screen = "home" | "project";
 /** Project screen body: task board, conversation or agent graph. */
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
-export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
 export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
@@ -67,6 +72,25 @@ export interface AppState {
   repoState: Record<string, RepoState>;
   /** Git worktrees per project, one per agent that works in its own branch (see src/lib/worktree.ts). */
   worktrees: Record<string, AgentWorktree[]>;
+  /**
+   * When each project's current stretch of autonomous mode began, in memory only. Not part of
+   * `Project` (which only carries `until`, per the design): this is what lets the report shown when
+   * the mode ends cover just that stretch instead of the project's whole history. Lost on restart,
+   * same as `runtime` — a mode still on after a restart starts counting its report from then.
+   */
+  autonomousStarted: Record<string, number>;
+  /**
+   * Runs parked because their agent ran out of quota, waiting for `useQuotaSync` to see the
+   * provider has room again and relaunch them (same prompt, from scratch — see
+   * `RetryRunDialog`/`lib/orchestrator.ts#parkQuotaRetry`). Not persisted: a run still parked when
+   * the app restarts is simply left failed, same as if nobody had asked for a retry.
+   */
+  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number }>;
+  dropQuotaWaiting(id: string): void;
+  /** Turns a project's autonomous mode on until `until`, or off (and reports) when `until` is null. */
+  setAutonomous(projectId: string, until: number | null): void;
+  /** Turns autonomous mode off and, if anything happened while it ran, tells the user about it. */
+  endAutonomous(projectId: string): void;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
   /** Whether a chat's messages are being loaded from disk for the first time (for a skeleton). */
@@ -128,8 +152,6 @@ export interface AppState {
   projectModes: Record<string, ProjectMode>;
   /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
   projectChats: Record<string, string | null>;
-  /** Board or dependency graph, inside the Tareas mode (persisted). */
-  taskView: TaskView;
   commPanelOpen: boolean;
   /** Whether the diff section of the right dock is open (persisted). */
   diffPanelOpen: boolean;
@@ -157,11 +179,14 @@ export interface AppState {
   focusedTaskId: string | null;
   openHome(): void;
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
-  openProject(projectId: string, chatId?: string | null): void;
+  /**
+   * Opens a project. `mode` is what the sidebar's three rows pass — without it the project opens
+   * the way it was left, which is what clicking the project's own name means.
+   */
+  openProject(projectId: string, chatId?: string | null, mode?: ProjectMode): void;
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
-  setTaskView(view: TaskView): void;
   toggleCommPanel(open?: boolean): void;
   toggleDiffPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
@@ -187,7 +212,7 @@ export interface AppState {
   activeTerminalIds: Record<string, string | null>;
   /** Shells detected on this machine, loaded once at startup (desktop app only). */
   shells: ShellInfo[];
-  openTerminal(opts?: { shellId?: string; cwd?: string }): void;
+  openTerminal(opts?: { shellId?: string; cwd?: string; command?: string; title?: string }): void;
   closeTerminal(id: string): void;
   setActiveTerminal(id: string): void;
   renameTerminal(id: string, title: string): void;
@@ -227,7 +252,11 @@ export interface AppState {
   removeHook(id: string): void;
   toggleHook(id: string, enabled: boolean): void;
   testHook(id: string): Promise<void>;
-  setSharedContext(text: string): void;
+  setSharedContext(projectId: string, text: string): void;
+  /** Adds a quick command of the user's own to a project. */
+  addProjectCommand(projectId: string, command: { label: string; command: string }): void;
+  /** Removes one of the user's own quick commands. */
+  removeProjectCommand(projectId: string, id: string): void;
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
@@ -300,13 +329,19 @@ export interface AppState {
   remoteStatus: { running: boolean; url?: string; ip?: string; clients: number; error?: string };
   /** True while the remote server is starting or stopping, so every UI can disable its toggle. */
   remoteBusy: boolean;
+  /**
+   * Channels connected right now (see lib/bridge). Mirrored into the store because the bridge keeps
+   * its providers in a module Map, which nothing can subscribe to — and a light that says a channel
+   * is up has to go out by itself when it goes down.
+   */
+  bridgeConnected: import("@/lib/bridge/types").BridgeProviderId[];
   /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
   toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
-  /** Turns the messaging bridge on or off, keeping the config in sync. */
-  toggleBridge(enabled: boolean): Promise<void>;
-  /** Picks up a changed token or list of chats: stop, then start again. */
-  restartBridge(): Promise<void>;
+  /** Turns one messaging channel on or off, keeping the config in sync. */
+  toggleBridge(id: MessagingChannelId, enabled: boolean): Promise<void>;
+  /** Picks up a changed token or list of chats for one channel: stop it, then start again. */
+  restartBridge(id: MessagingChannelId): Promise<void>;
   stopRemote(): Promise<void>;
   refreshRemoteStatus(): Promise<void>;
   regenerateRemoteToken(): Promise<void>;
@@ -323,6 +358,10 @@ export interface AppState {
   removeChat(id: string): void;
   setCurrentChat(id: string | null): void;
   sendChatMessage(chatId: string, text: string): Promise<void>;
+  /** Cuts a conversation back to one of its messages; see `lib/chat-rewind.ts`. */
+  rewindChat(chatId: string, messageId: string, inclusive: boolean): Promise<void>;
+  /** Rewrites one of the user's messages and asks again from there. */
+  editChatMessage(chatId: string, messageId: string, text: string): Promise<void>;
   stopChat(chatId: string): Promise<void>;
   loadChatMessages(chatId: string): Promise<void>;
 }
@@ -337,7 +376,7 @@ export interface AppState {
  */
 function generateSeedConfig(): AppConfig {
   return {
-    version: 12,
+    version: 13,
     language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
@@ -427,7 +466,6 @@ interface UiPrefs {
   projectMode: ProjectMode;
   projectModes: Record<string, ProjectMode>;
   projectChats: Record<string, string | null>;
-  taskView: TaskView;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
@@ -534,7 +572,6 @@ const defaultUiPrefs: UiPrefs = {
   projectMode: "tasks",
   projectModes: {},
   projectChats: {},
-  taskView: "board",
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
@@ -614,7 +651,6 @@ function loadUiPrefs(): UiPrefs {
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       projectModes: sanitizeProjectModes(parsed.projectModes),
       projectChats: sanitizeProjectChats(parsed.projectChats),
-      taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
@@ -638,7 +674,6 @@ function saveUiPrefs(): void {
       projectMode: s.projectMode,
       projectModes: s.projectModes,
       projectChats: s.projectChats,
-      taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
@@ -724,12 +759,14 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 12, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
+  config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
   repoState: {},
   worktrees: {},
+  autonomousStarted: {},
+  quotaWaiting: {},
   runtime: {},
   runs: {},
   messages: [],
@@ -771,7 +808,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   /**
    * `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project, or the last remembered one.
    */
-  openProject: (projectId, chatId) => {
+  openProject: (projectId, chatId, mode) => {
     const state = get();
     const sameProject = state.currentProjectId === projectId;
     let nextChatId: string | null;
@@ -795,7 +832,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // Asking for a chat lands on the chat; anything else lands where this project was left. Not
     // where the *last* project was left: that is what made opening B in the hierarchy and coming
     // back to A show A's hierarchy too, when A had been a conversation all along.
-    const nextMode: ProjectMode = nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks");
+    const nextMode: ProjectMode = mode ?? (nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks"));
     if (!sameProject) state.setCurrentProject(projectId);
     set({
       currentChatId: nextChatId,
@@ -826,11 +863,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
       projectModes: s.currentProjectId ? { ...s.projectModes, [s.currentProjectId]: mode } : s.projectModes,
     }));
     pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
-    saveUiPrefs();
-  },
-
-  setTaskView: (view) => {
-    set({ taskView: view });
     saveUiPrefs();
   },
 
@@ -936,20 +968,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
-  toggleBridge: async (enabled) => {
+  bridgeConnected: [],
+  toggleBridge: async (id, enabled) => {
     const bridge = await import("@/lib/bridge");
     const messaging = get().config.messaging ?? {};
     // The defaults first, then whatever was configured, and the switch last: it is the one thing
     // this call is about.
-    const telegram = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging.telegram, enabled };
-    get().updateConfig({ messaging: { ...messaging, telegram } });
-    if (enabled) await bridge.startBridge(); else await bridge.stopBridge();
+    const channel = { token: "", allowedChatIds: [] as string[], projectId: null, ...messaging[id], enabled };
+    get().updateConfig({ messaging: { ...messaging, [id]: channel } });
+    if (enabled) await bridge.startBridge(); else await bridge.stopBridge(id);
   },
 
-  restartBridge: async () => {
+  restartBridge: async (id) => {
     const bridge = await import("@/lib/bridge");
-    await bridge.stopBridge();
-    if (get().config.messaging?.telegram?.enabled) await bridge.startBridge();
+    await bridge.stopBridge(id);
+    if (get().config.messaging?.[id]?.enabled) await bridge.startBridge();
   },
 
   toggleRemote: async (enabled) => {
@@ -1045,15 +1078,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const shell = (opts?.shellId && shells.find(sh => sh.id === opts.shellId)) || shells[0];
     const project = selectProject(state, state.currentProjectId);
     const cwd = opts?.cwd ?? project?.workspaceDir ?? "";
-    // Titles are numbered per shell so two PowerShells are still telling apart.
+    // Titles are numbered per shell so two PowerShells are still telling apart. A tab opened to run
+    // something is named after it instead: "PowerShell 3" says nothing about which one is the dev
+    // server, and that is the tab you come back to.
     const used = state.terminals.filter(t => t.shellId === shell.id).length + 1;
     const terminal: TerminalTab = {
       id: `term-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-      title: `${shell.label} ${used}`,
+      title: opts?.title ?? `${shell.label} ${used}`,
       shellId: shell.id,
       shellPath: shell.path,
       cwd,
       projectId: state.currentProjectId,
+      ...(opts?.command ? { command: opts.command } : {}),
       exited: null,
     };
     set(s => ({
@@ -1194,6 +1230,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // `git worktree remove` behind the user's back.
       const newWorktrees = { ...state.worktrees };
       delete newWorktrees[id];
+      const newAutonomousStarted = { ...state.autonomousStarted };
+      delete newAutonomousStarted[id];
+      const newQuotaWaiting = Object.fromEntries(
+        Object.entries(state.quotaWaiting).filter(([, w]) => w.projectId !== id),
+      );
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const goneRuns = new Set(Object.values(state.runs).filter(r => r.projectId === id).map(r => r.id));
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== id));
@@ -1251,6 +1292,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         activeTaskRunId: newActiveTask,
         repoState: newRepoState,
         worktrees: newWorktrees,
+        autonomousStarted: newAutonomousStarted,
+        quotaWaiting: newQuotaWaiting,
         messages: newMessages,
         runs: newRuns,
         tasks: newTasks,
@@ -1299,6 +1342,66 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setMaxRounds: (n) => {
     set((state) => ({ config: { ...state.config, maxRounds: n } }));
     debouncedSave();
+  },
+
+  setAutonomous: (projectId, until) => {
+    if (until === null) {
+      get().endAutonomous(projectId);
+      return;
+    }
+    set(state => ({ autonomousStarted: { ...state.autonomousStarted, [projectId]: Date.now() } }));
+    get().updateProject(projectId, { autonomous: { until } });
+  },
+
+  endAutonomous: (projectId) => {
+    const state = get();
+    const project = selectProject(state, projectId);
+    if (!project?.autonomous) return;
+    // No recorded start (e.g. the app restarted mid-stretch): the report only covers what it can
+    // still see, which is nothing before right now.
+    const since = state.autonomousStarted[projectId] ?? Date.now();
+
+    const runs = Object.values(state.runs).filter(
+      r => r.projectId === projectId && r.startedAt >= since && (r.status === "done" || r.status === "error"),
+    );
+    const autoApprovals = Object.values(state.approvals).filter(a => a.projectId === projectId && a.createdAt >= since);
+    const autoAnswers = Object.values(state.questions).filter(q => q.projectId === projectId && q.createdAt >= since);
+    const quotaWaits = Object.values(state.quotaWaiting).filter(w => w.projectId === projectId).length;
+    const report = autonomousReport({ runs, autoApprovals, autoAnswers, quotaWaits });
+
+    set(s => {
+      const nextStarted = { ...s.autonomousStarted };
+      delete nextStarted[projectId];
+      return { autonomousStarted: nextStarted };
+    });
+    get().updateProject(projectId, { autonomous: undefined });
+
+    if (report.lines.length > 0) {
+      // The notification is the glance; this is the record. The whole point of the mode is that
+      // nobody was watching, so the report has to survive in the thread the user actually reads in
+      // the morning, not only in a toast that came and went while they slept.
+      orchestrator.addMessage({
+        projectId,
+        fromAgentId: "system",
+        kind: "system",
+        text: [translateNow("autonomous.report.title", { name: project.name }), ...report.lines.map(l => "- " + l)].join("\n"),
+      });
+      get().notify({
+        kind: "info",
+        title: translateNow("autonomous.report.title", { name: project.name }),
+        body: report.lines.join(" · "),
+        projectId,
+      });
+    }
+  },
+
+  dropQuotaWaiting: (id) => {
+    set(state => {
+      if (!(id in state.quotaWaiting)) return state;
+      const next = { ...state.quotaWaiting };
+      delete next[id];
+      return { quotaWaiting: next };
+    });
   },
 
   addAgent: (projectId, agent) => {
@@ -1543,8 +1646,37 @@ export const useAppStore = create<AppState>()((set, get) => ({
     await testHookAction(hook);
   },
 
-  setSharedContext: (text) => {
-    set((state) => ({ config: { ...state.config, sharedContext: text } }));
+  addProjectCommand: (projectId, command) => {
+    const entry = { id: crypto.randomUUID(), label: command.label.trim(), command: command.command.trim() };
+    if (!entry.label || !entry.command) return;
+    set(state => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p =>
+          p.id === projectId ? { ...p, commands: [...(p.commands ?? []), entry] } : p),
+      },
+    }));
+    debouncedSave();
+  },
+
+  removeProjectCommand: (projectId, id) => {
+    set(state => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p =>
+          p.id === projectId ? { ...p, commands: (p.commands ?? []).filter(c => c.id !== id) } : p),
+      },
+    }));
+    debouncedSave();
+  },
+
+  setSharedContext: (projectId, text) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p => (p.id === projectId ? { ...p, sharedContext: text } : p)),
+      },
+    }));
     debouncedSave();
   },
 
@@ -1946,6 +2078,16 @@ ${text}`);
     await sendChatMessage(chatId, text);
   },
 
+  rewindChat: async (chatId, messageId, inclusive) => {
+    const { rewindChat } = await import("@/lib/chat");
+    await rewindChat(chatId, messageId, inclusive);
+  },
+
+  editChatMessage: async (chatId, messageId, text) => {
+    const { editChatMessage } = await import("@/lib/chat");
+    await editChatMessage(chatId, messageId, text);
+  },
+
   stopChat: async (chatId) => {
     const { stopChat } = await import("@/lib/chat");
     await stopChat(chatId);
@@ -2116,6 +2258,22 @@ async function runInit(): Promise<void> {
         ...config,
         version: 12,
         autoArchiveDoneDays: config.autoArchiveDoneDays ?? null,
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 13: the shared context belongs to a project, not to the whole app.
+    // One global string was appended to every agent's prompt in every project, which is how an
+    // agent of one project came to know about another's — and to act on it. Each project keeps a
+    // copy of what the global one said, so nothing written is lost; the global is emptied because
+    // from here on nothing reads it.
+    if ((config.version as number) < 13) {
+      const global = (config as { sharedContext?: string }).sharedContext ?? "";
+      config = {
+        ...config,
+        version: 13,
+        sharedContext: "",
+        projects: (config.projects ?? []).map(p => ({ ...p, sharedContext: p.sharedContext ?? global })),
       } as AppConfig;
       isSeed = true;
     }
@@ -2140,6 +2298,15 @@ async function runInit(): Promise<void> {
       ? prefs.projectChats[config.lastProjectId] ?? null
       : null;
     const finalChatId = startChatId && config.chats.some(c => c.id === startChatId) ? startChatId : null;
+
+    // Load the language before anything paints or translates: every `translateNow` call the rest
+    // of startup makes (crash-recovery notifications, log lines) has to land in the right one, not
+    // in the Spanish fallback that would show while the real dictionary was still in flight.
+    //
+    // Swallowed on purpose. A chunk that will not load is a reason to read the app in Spanish, not
+    // a reason for it never to open — and an unhandled rejection here would stop the boot dead.
+    await loadLanguage(resolveLanguage(config.language)).catch(() => {});
+
     lastSavedConfig = config;
     set({
       config,
@@ -2150,7 +2317,6 @@ async function runInit(): Promise<void> {
       projectMode: startMode,
       projectModes: prefs.projectModes,
       projectChats: prefs.projectChats,
-      taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,
@@ -2218,7 +2384,9 @@ async function runInit(): Promise<void> {
     if (isTauri()) {
       const bridge = await import("@/lib/bridge");
       bridge.attachBridgeNotifications();
-      if (config.messaging?.telegram?.enabled) await bridge.startBridge().catch(() => {});
+      if (config.messaging?.telegram?.enabled || config.messaging?.discord?.enabled || config.messaging?.slack?.enabled) {
+        await bridge.startBridge().catch(() => {});
+      }
     }
 
     // Remote access is opt-in; a failure (port busy) must not break startup. A reload of the

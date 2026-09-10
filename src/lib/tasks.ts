@@ -94,6 +94,50 @@ export function blockedBy(task: Task, tasks: Task[]): Task[] {
   return out;
 }
 
+/**
+ * Everything `id` is tied to by a chain of dependencies: what it waits for, what waits for it, and
+ * so on in both directions, plus the task itself. Returned in the order `tasks` came in.
+ *
+ * Note what is NOT here: a task that merely shares a prerequisite. That is a sibling, not family —
+ * its work neither blocks this one nor waits on it, and knowing about it tells you nothing about
+ * this task. Pulling those in is what made the whole-board graph grow sideways until it could not
+ * be read, which is the entire reason this function exists.
+ *
+ * The two directions are walked separately and never mixed: stepping down from an ancestor is
+ * exactly how the siblings would get back in.
+ */
+export function taskFamily(tasks: Task[], id: string): Task[] {
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  if (!byId.has(id)) return [];
+
+  const family = new Set<string>([id]);
+
+  // Upwards: what it depends on, and what those depend on.
+  const up = [id];
+  while (up.length > 0) {
+    const current = byId.get(up.pop()!);
+    if (!current) continue;
+    for (const depId of current.dependsOn) {
+      if (!byId.has(depId) || family.has(depId)) continue;
+      family.add(depId);
+      up.push(depId);
+    }
+  }
+
+  // Downwards: what depends on it, and what depends on those.
+  const down = [id];
+  while (down.length > 0) {
+    const currentId = down.pop()!;
+    for (const task of tasks) {
+      if (family.has(task.id) || !task.dependsOn.includes(currentId)) continue;
+      family.add(task.id);
+      down.push(task.id);
+    }
+  }
+
+  return tasks.filter(task => family.has(task.id));
+}
+
 /** True when every dependency of `task` is already ready or done. */
 export function canStart(task: Task, tasks: Task[]): boolean {
   return blockedBy(task, tasks).length === 0;

@@ -1,10 +1,13 @@
 // Everything about one task that does not fit on its card: the long detail, who is on it, what it
 // waits for and the run that carried it out. The board and the graph both open this one dialog.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
+import { OpenPrDialog } from "@/components/OpenPrDialog";
+import { TaskFamilyDialog } from "./TaskFamilyDialog";
 import { runUsageText } from "@/components/UsageDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { blockedBy, hasCycle, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { blockedBy, hasCycle, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
 import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/types";
-import { Archive, ArchiveRestore, Link2, MessagesSquare, Terminal, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, GitPullRequest, Link2, MessagesSquare, Network, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -52,6 +55,13 @@ export function TaskDetailDialog({
   const [detail, setDetail] = useState("");
   const [editingDetail, setEditingDetail] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
+  const [retryOpen, setRetryOpen] = useState(false);
+  const [prOpen, setPrOpen] = useState(false);
+  const [familyOpen, setFamilyOpen] = useState(false);
+
+  // What this task is tied to in both directions. Only its size is needed here — to decide whether
+  // offering the graph makes sense at all — but it is the same set the graph will draw.
+  const family = useMemo(() => (taskId ? taskFamily(tasks, taskId) : []), [tasks, taskId]);
 
   // Reset the draft fields whenever another task is opened.
   useEffect(() => {
@@ -61,8 +71,9 @@ export function TaskDetailDialog({
   }, [task?.id, task?.title, task?.detail]);
 
   const agent = task?.agentId ? agents.find(a => a.id === task.agentId) : undefined;
+  const taskRun = task?.runId ? runs[task.runId] : undefined;
   // What the run of this task consumed, when its CLI said anything at all.
-  const usage = runUsageText(task?.runId ? runs[task.runId] : undefined, locale, t);
+  const usage = runUsageText(taskRun, locale, t);
   const missing = useMemo(() => (task ? blockedBy(task, tasks) : []), [task, tasks]);
   const dependencies = useMemo(
     () => (task ? task.dependsOn.map(id => tasks.find(t => t.id === id)).filter(t => t !== undefined) : []),
@@ -223,9 +234,7 @@ export function TaskDetailDialog({
                       onBlur={commitDetail}
                     />
                   ) : task.detail ? (
-                    <div className="rounded-lg border border-border p-3">
-                      <Markdown text={task.detail} />
-                    </div>
+                    <CollapsibleDetail text={task.detail} />
                   ) : (
                     <p className="text-sm text-muted-foreground">{t("tasks.noDetail")}</p>
                   )}
@@ -234,7 +243,16 @@ export function TaskDetailDialog({
                 <Separator />
 
                 <div className="space-y-2">
-                  <Label>{t("tasks.dependsOn")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("tasks.dependsOn")}</Label>
+                    {/* On the heading of the section it is about, and only when there is a chain to
+                        follow: a graph of one lone card answers nothing. */}
+                    {family.length > 1 && (
+                      <Button variant="ghost" size="sm" className="h-7" onClick={() => setFamilyOpen(true)}>
+                        <Network className="h-3.5 w-3.5" /> {t("tasks.family.open")}
+                      </Button>
+                    )}
+                  </div>
                   {dependencies.length === 0 && <p className="text-sm text-muted-foreground">{t("tasks.noDependencies")}</p>}
                   {dependencies.map(dep => (
                     <div key={dep.id} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5">
@@ -289,16 +307,31 @@ export function TaskDetailDialog({
                         <p className="truncate font-mono text-[11px] text-muted-foreground">{task.runId}</p>
                         {usage && <p className="text-[11px] text-muted-foreground">{t("usage.runUsage")}: {usage}</p>}
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
-                        <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {(task.status === "ready" || task.status === "done") && (
+                          <Button variant="outline" size="sm" onClick={() => setPrOpen(true)}>
+                            <GitPullRequest className="h-3.5 w-3.5" /> {t("pr.open")}
+                          </Button>
+                        )}
+                        {taskRun && taskRun.status !== "running" && (
+                          <Button variant="outline" size="sm" onClick={() => setRetryOpen(true)}>
+                            <Sparkles className="h-3.5 w-3.5" /> {t("retry.action")}
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
+                          <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}
+                        </Button>
+                      </div>
                     </div>
                   </>
                 )}
               </div>
 
+              {/* Going somewhere else on the left, changing this task on the right. They were three
+                  loose children under `justify-between`, so the three spread out evenly and
+                  "archive" ended up marooned in the middle between a link and a delete. */}
               <DialogFooter className="sm:justify-between">
-                {hasOrigin(task) && (
+                {hasOrigin(task) ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -310,19 +343,25 @@ export function TaskDetailDialog({
                     <MessagesSquare className="h-3.5 w-3.5" />
                     {t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat")}
                   </Button>
+                ) : (
+                  // Holds the left side open so the pair stays right. Only from `sm` up, where the
+                  // footer is a row: stacked, it would be an empty slot with a gap around it.
+                  <span className="hidden sm:block" />
                 )}
-                <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
-                  {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                  {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => void remove()}
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
+                    {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                    {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => void remove()}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -330,6 +369,62 @@ export function TaskDetailDialog({
       </Dialog>
 
       {task?.runId && <RunDetailDialog runId={task.runId} open={runOpen} onOpenChange={setRunOpen} />}
+      {task?.runId && <RetryRunDialog runId={task.runId} open={retryOpen} onOpenChange={setRetryOpen} />}
+      {task && <OpenPrDialog projectId={projectId} taskId={task.id} open={prOpen} onOpenChange={setPrOpen} />}
+      <TaskFamilyDialog projectId={projectId} taskId={taskId} open={familyOpen} onOpenChange={setFamilyOpen} />
     </>
+  );
+}
+
+/**
+ * The task's detail, cut down to a few lines until asked to open.
+ *
+ * A detail written by an agent runs to whatever length the agent felt like, and it sits between the
+ * status fields above it and the dependencies and the run below it. At full height it pushed all of
+ * that off the bottom of a dialog already capped at 80vh, so the sections you came to look at were
+ * behind a scroll whose existence you had to guess at.
+ *
+ * Whether the button is needed is measured, not guessed from the length of the text: how many lines
+ * a paragraph takes depends on the width it is given, and a character count knows nothing about it.
+ */
+function CollapsibleDetail({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = bodyRef.current;
+    if (!element) return;
+    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 4);
+    measure();
+    // Measured again on resize: the dialog is a share of the window, so the same text needs the
+    // button at one width and not at another.
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text, open]);
+
+  return (
+    <div className="rounded-lg border border-border">
+      <div ref={bodyRef} className={cn("relative overflow-hidden p-3", !open && "max-h-44")}>
+        <Markdown text={text} />
+        {/* Something under the fold, so the cut reads as "there is more" rather than as text that
+            happens to stop there. */}
+        {!open && overflows && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent" />
+        )}
+      </div>
+      {(overflows || open) && (
+        <button
+          type="button"
+          className="w-full rounded-b-lg border-t border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          onClick={() => setOpen(v => !v)}
+        >
+          {open ? t("tasks.detailLess") : t("tasks.detailMore")}
+        </button>
+      )}
+    </div>
   );
 }

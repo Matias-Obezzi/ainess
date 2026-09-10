@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
@@ -23,7 +24,7 @@ import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
 import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
-import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
 
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
@@ -224,6 +225,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const agents = useAppStore(selectAllAgents);
   const [activityOpen, setActivityOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [retryOpen, setRetryOpen] = useState(false);
   const steps = useActivityCount(run.id);
 
   // A pending question is answered from the composer, which takes over the input box for it;
@@ -276,6 +278,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
     { key: "detail", label: t("message.viewDetail"), icon: FileText, onSelect: () => setDetailOpen(true) },
     // Retrying only means something on a run the app cut short.
     ...(interrupted ? [{ key: "retry", label: t("common.retry"), icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
+    // A fresh run with the same prompt, on an agent and model picked in the dialog — unlike the
+    // one above, which resumes the run that was cut short, this always starts from zero.
+    ...(!isRunning ? [{ key: "retry-with", label: t("retry.action"), icon: Sparkles, onSelect: () => setRetryOpen(true) } satisfies MenuAction] : []),
   ];
 
   return (
@@ -377,6 +382,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
       </ContextMenu>
 
       <RunDetailDialog runId={run.id} open={detailOpen} onOpenChange={setDetailOpen} />
+      <RetryRunDialog runId={run.id} open={retryOpen} onOpenChange={setRetryOpen} />
     </div>
   );
 });

@@ -10,17 +10,56 @@ import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
 import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
-import { formatElapsed, truncate } from "@/lib/format";
+import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
 import { CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ReactElement } from "react";
 
 /** Kinds that belong in the activity stream (a `result` would just repeat the final answer). */
 const ACTIVITY_KINDS = new Set(["text", "tool", "delegation", "error", "stderr", "system"]);
 
 const FULL_ROWS = 30;
 const COMPACT_ROWS = 6;
+
+/**
+ * How much of a step the tooltip will show.
+ *
+ * Generous, because the whole point is reading the call the row had to cut short — but not
+ * unbounded: a tooltip is not scrollable, so past a screenful it stops being something you can read
+ * and starts being something covering the screen. What does not fit lives in the raw view.
+ */
+const STEP_TOOLTIP_MAX = 1600;
+
+/**
+ * The full text of a step, on hover.
+ *
+ * These rows are cut short in every direction — a tool line shows its summary, a delegation shows
+ * ninety characters of the task — and the way to read the rest was the browser's own `title`: a
+ * second of waiting, a bare box wherever the pointer happened to be, whitespace collapsed and no
+ * way to style what came out. This is the app's tooltip instead: monospace, line breaks kept,
+ * anchored to the row it belongs to.
+ */
+function StepTooltip({ text, children }: { text: string; children: ReactElement }) {
+  // Nothing to add is not a tooltip: an empty black box following the pointer around is worse than
+  // no affordance at all.
+  if (!text.trim()) return children;
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        collisionPadding={8}
+        className="max-w-[min(38rem,80vw)] whitespace-pre-wrap break-words text-left font-mono text-[11px] leading-relaxed"
+      >
+        {clip(text, STEP_TOOLTIP_MAX)}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const NO_MESSAGES: CommMessage[] = [];
 
@@ -111,14 +150,16 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
   if (msg.kind === "tool") {
     const Icon = toolIcon(msg.meta?.tool ?? msg.text);
     const isFailed = msg.meta?.failed;
-    const title = isFailed && msg.meta?.error ? `${msg.text}\n\n${msg.meta.error}` : msg.text;
+    const full = isFailed && msg.meta?.error ? `${msg.text}\n\n${msg.meta.error}` : msg.text;
     const colorClass = isFailed ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
     return (
-      <div className={cn("flex items-start gap-1.5 font-mono text-xs", colorClass)} title={title}>
-        <Icon className="h-3.5 w-3.5 shrink-0 mt-[1px]" />
-        {/* A failed call says so: its summary describes the call, not what became of it. */}
-        <span className="break-all">{isFailed ? msg.text : (msg.meta?.summary ?? msg.text)}</span>
-      </div>
+      <StepTooltip text={full}>
+        <div className={cn("flex items-start gap-1.5 font-mono text-xs", colorClass)}>
+          <Icon className="h-3.5 w-3.5 shrink-0 mt-[1px]" />
+          {/* A failed call says so: its summary describes the call, not what became of it. */}
+          <span className="break-all">{isFailed ? msg.text : (msg.meta?.summary ?? msg.text)}</span>
+        </div>
+      </StepTooltip>
     );
   }
 
@@ -162,7 +203,9 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
         {childRun && <StatusDot status={runDotStatus[childRun.status]} />}
         {agent && <ProviderLogo provider={agent.provider} size={14} />}
         <span className="font-medium shrink-0">{name}</span>
-        <span className="text-muted-foreground truncate" title={msg.text}>{truncate(msg.text, 90)}</span>
+        <StepTooltip text={msg.text}>
+          <span className="text-muted-foreground truncate">{truncate(msg.text, 90)}</span>
+        </StepTooltip>
         {childRun && childRun.status !== "running" && (
           <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{t(runStatusLabelKey[childRun.status])}</span>
         )}
@@ -195,9 +238,11 @@ function ActivityFooter({ startedAt, label }: { startedAt: number; label?: strin
 
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Shimmer className="truncate">
-        {label ? truncate(label, 70) : t("activity.thinking")}
-      </Shimmer>
+      <StepTooltip text={label ?? ""}>
+        <Shimmer className="truncate">
+          {label ? truncate(label, 70) : t("activity.thinking")}
+        </Shimmer>
+      </StepTooltip>
       <span className="ml-auto shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>
     </div>
   );

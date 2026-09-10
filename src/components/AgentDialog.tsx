@@ -40,12 +40,19 @@ const OTHER_MODEL_OPTION = "__other__";
 
 function quotaLine(item: QuotaItem, t: TFunction): { text: string; percent?: number } {
   if (item.unlimited) return { text: t("agentDialog.quotaUnlimited") };
-  if (item.entitlement !== undefined && item.remaining !== undefined) {
-    const percent = item.percentRemaining ?? Math.round((item.remaining / item.entitlement) * 100);
-    return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
+  // Both the line and the bar count what has been spent. The bar fills as the quota goes, so the
+  // number beside it has to be the one that grows with it: a line reading "17% left" over a bar
+  // filled to 83% asks you to do the subtraction yourself and to notice the two are not the same
+  // number.
+  // An entitlement of zero divides into a NaN that reaches the bar's `value` and out the other
+  // side; there is nothing to show a share of anyway, so it falls through to the plain note.
+  if (item.entitlement !== undefined && item.remaining !== undefined && item.entitlement > 0) {
+    const remainingPercent = item.percentRemaining ?? (item.remaining / item.entitlement) * 100;
+    const used = item.entitlement - item.remaining;
+    return { text: `${used} / ${item.entitlement} (${Math.round(100 - remainingPercent)}%)`, percent: 100 - remainingPercent };
   }
   if (item.usedPercent !== undefined) {
-    return { text: t("quota.usedPercent", { percent: item.usedPercent }), percent: 100 - item.usedPercent };
+    return { text: t("quota.usedPercent", { percent: item.usedPercent }), percent: item.usedPercent };
   }
   return { text: item.note || "" };
 }
@@ -103,8 +110,9 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
               </span>
             </div>
           ))}
+          {/* The same sentence the composer's popover shows: two keys saying it drifted apart. */}
           <div className="text-xs text-muted-foreground pt-1">
-            {t("agentDialog.quotaAntigravityHint")}
+            {t("quota.antigravity.inferred")}
           </div>
         </div>
       )}
@@ -167,6 +175,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [autoApprove, setAutoApprove] = useState(false);
   const [approvalMode, setApprovalMode] = useState<"inherit" | "always" | "never">("inherit");
   const [worktree, setWorktree] = useState(false);
+  const [retryOnQuota, setRetryOnQuota] = useState(false);
   const [description, setDescription] = useState("");
   /** Once the user writes their own, the default stops following the role and the provider. */
   const [descriptionEdited, setDescriptionEdited] = useState(false);
@@ -204,6 +213,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setAutoApprove(agent.autoApprove);
         setApprovalMode(agent.requireApproval === undefined ? "inherit" : agent.requireApproval ? "always" : "never");
         setWorktree(agent.worktree ?? false);
+        setRetryOnQuota(agent.retryOnQuota ?? false);
         setDescription(agent.description || "");
         setDescriptionEdited(true);
         setSystemPrompt(agent.systemPrompt || "");
@@ -227,6 +237,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setAutoApprove(false);
         setApprovalMode("inherit");
         setWorktree(false);
+        setRetryOnQuota(false);
         setDescription("");
         setDescriptionEdited(false);
         setSystemPrompt("");
@@ -310,6 +321,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       autoApprove,
       requireApproval: approvalMode === "inherit" ? undefined : approvalMode === "always",
       worktree: worktree || undefined,
+      retryOnQuota: retryOnQuota || undefined,
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
       color
@@ -538,6 +550,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                   ? t("agentDialog.worktreeHint", { branch: worktreeBranch(name || "agente") })
                   : t("agentDialog.notARepo")}
               </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={retryOnQuota} onCheckedChange={setRetryOnQuota} id="retry-on-quota" />
+                <Label htmlFor="retry-on-quota">{t("agentDialog.retryOnQuota")}</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("agentDialog.retryOnQuotaHint")}</p>
             </div>
 
             {/* The description is what the parent reads to pick who to delegate to: no parent, no field. */}

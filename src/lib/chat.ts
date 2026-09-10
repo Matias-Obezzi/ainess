@@ -5,6 +5,7 @@ import { getTransport } from "@/lib/transport";
 import { recordTurn } from "@/lib/agent-history";
 import { buildSystemPrompt } from "@/lib/providers";
 import { translateNow } from "@/i18n/useT";
+import { rewound } from "@/lib/chat-rewind";
 import type { ChatMessage } from "@/types";
 
 /** Tracks the current turn: chatId → { pending participant indices, turnId, responses so far } */
@@ -78,7 +79,7 @@ function buildChatSystemPrompt(chatId: string, agentId: string): string {
 
   return buildSystemPrompt(agent, [], {
     skills: selectSkillsFor(store, agentId) || [],
-    sharedContext: store.config.sharedContext,
+    sharedContext: store.config.projects.find(p => p.id === chat.projectId)?.sharedContext ?? "",
     profile: store.config.profile,
     chat: { role, others }
   });
@@ -141,7 +142,7 @@ async function startTurn(
       chatId,
       ts: Date.now(),
       from: participant.agentId,
-      text: `[Error: agente no encontrado]`,
+      text: translateNow("chat.agentGone"),
       status: "error",
     };
     useAppStore.setState(state => ({
@@ -324,6 +325,46 @@ export function onChatRunFinished(runId: string): void {
   }
 }
 
+/**
+ * Cuts the conversation back to `messageId` and throws away what came after it.
+ *
+ * The visible thread is only half of a conversation: the other half is the provider's own session,
+ * which is what the agent actually remembers. Deleting bubbles without touching it would leave an
+ * agent that still knows everything the user just took back, and answers accordingly — the thread
+ * would be a lie about what the next turn is built on. So the sessions go too, and the next message
+ * starts a fresh one. That is the cost of rewinding, and it is why this asks first.
+ *
+ * A turn in flight is stopped before anything is cut: it is writing into the very list being
+ * rewritten, and letting it land afterwards would put back part of what was just removed.
+ */
+export async function rewindChat(chatId: string, messageId: string, inclusive: boolean): Promise<void> {
+  if (isChatActive(chatId)) await stopChat(chatId);
+
+  useAppStore.setState(state => {
+    const msgs = state.chatMessages[chatId];
+    if (!msgs) return state;
+    const sessions = { ...state.chatSessions };
+    delete sessions[chatId];
+    return {
+      chatMessages: { ...state.chatMessages, [chatId]: rewound(msgs, messageId, inclusive) },
+      chatSessions: sessions,
+    };
+  });
+
+  await persistMessages(chatId);
+}
+
+/**
+ * Replaces one of the user's own messages with `text` and asks again from there.
+ *
+ * The old message and everything it caused are dropped — an answer to a question that is no longer
+ * the question is worse than no answer — and the new text goes out as a fresh turn.
+ */
+export async function editChatMessage(chatId: string, messageId: string, text: string): Promise<void> {
+  await rewindChat(chatId, messageId, false);
+  await sendChatMessage(chatId, text);
+}
+
 // ---- Stop a chat ----
 
 export async function stopChat(chatId: string): Promise<void> {
@@ -338,7 +379,7 @@ export async function stopChat(chatId: string): Promise<void> {
     const idx = msgs.findIndex(m => m.status === "pending");
     if (idx < 0) return state;
     const newMsgs = [...msgs];
-    newMsgs[idx] = { ...newMsgs[idx], text: newMsgs[idx].text || "[detenido por el usuario]", status: "done" };
+    newMsgs[idx] = { ...newMsgs[idx], text: newMsgs[idx].text || translateNow("chat.stoppedByUser"), status: "done" };
     return { chatMessages: { ...state.chatMessages, [chatId]: newMsgs } };
   });
   void persistMessages(chatId);

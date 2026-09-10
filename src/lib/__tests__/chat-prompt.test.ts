@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { buildSystemPrompt } from "@/lib/providers";
+import { loadLanguage, resolveLanguage } from "@/i18n";
 import type { AgentConfig, Task } from "@/types";
+
+// `translateNow` (which `buildSystemPrompt` uses) falls back to Spanish for a language that is
+// not loaded yet. Nothing here sets `config.language`, so it resolves to whatever the test
+// environment's system language is (Node reports "en-US"); load it before relying on its text.
+beforeAll(() => loadLanguage(resolveLanguage(null)));
 
 const planner: AgentConfig = { id: "p", name: "Orquestador", provider: "claude", role: "planner", parentId: null, autoApprove: false, systemPrompt: "Sos groso." };
 const worker: AgentConfig = { id: "w", name: "Obrero", provider: "antigravity", role: "implementer", parentId: "p", autoApprove: true };

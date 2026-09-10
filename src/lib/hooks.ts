@@ -225,27 +225,31 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
 }
 
 export async function testHookAction(hook: Hook): Promise<void> {
+  // Sample values in the user's language: the point of the button is seeing the message you will
+  // actually get, and half of it arriving in Spanish is not that.
   const vars = {
     event: hook.event,
     time: new Date().toISOString(),
-    project: "Proyecto Test",
+    project: translateNow("hookTest.project"),
     workspace: "/test/workspace",
-    agent: "Agente Test",
+    agent: translateNow("hookTest.agent"),
     agentRole: "implementer",
     runId: "run-test-123",
     round: "1",
-    prompt: "Prompt de prueba",
-    output: "Resultado exitoso de prueba",
-    error: "",
-    taskPrompt: "Tarea original",
-    toAgent: "Otro Agente",
-    task: "Subtarea",
+    prompt: translateNow("hookTest.prompt"),
+    output: translateNow("hookTest.output"),
+    error: translateNow("hookTest.error"),
+    taskPrompt: translateNow("hookTest.taskPrompt"),
+    toAgent: translateNow("hookTest.toAgent"),
+    task: translateNow("hookTest.task"),
+    question: translateNow("hookTest.question"),
+    summary: translateNow("hookTest.summary"),
     model: "test-model"
   };
   const ctx: HookContext = {
     project: {
       id: "test",
-      name: "Proyecto Test",
+      name: translateNow("hookTest.project"),
       workspaceDir: "/test/workspace",
       createdAt: Date.now(),
       agents: []

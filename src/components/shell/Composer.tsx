@@ -290,6 +290,49 @@ export function Composer() {
     addFiles(files);
   };
 
+  /**
+   * Files dropped on the box, the third way in beside the paperclip and Ctrl+V.
+   *
+   * Only for drags that carry files. A task card crosses this on its way between columns and must
+   * not be caught: what it carries is `text/plain`, and taking its drop would move it nowhere and
+   * attach nothing.
+   *
+   * `dragleave` fires every time the pointer crosses into a child, so counting entries and exits is
+   * what keeps the box from flickering out from under a drag that never left it.
+   */
+  const [dropping, setDropping] = useState(false);
+  const dragDepth = useRef(0);
+
+  const carriesFiles = (e: React.DragEvent<HTMLElement>) => e.dataTransfer?.types?.includes("Files") ?? false;
+
+  const onDragEnter = (e: React.DragEvent<HTMLElement>) => {
+    if (!carriesFiles(e)) return;
+    dragDepth.current += 1;
+    setDropping(true);
+  };
+
+  const onDragOver = (e: React.DragEvent<HTMLElement>) => {
+    if (!carriesFiles(e)) return;
+    // Without this the drop never happens: the default is to refuse it.
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const onDragLeave = (e: React.DragEvent<HTMLElement>) => {
+    if (!carriesFiles(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDropping(false);
+  };
+
+  const onDropFiles = (e: React.DragEvent<HTMLElement>) => {
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDropping(false);
+    const files = [...(e.dataTransfer.files ?? [])];
+    if (files.length > 0) addFiles(files);
+  };
+
   // ---- completion menu ----
   const [usageOpen, setUsageOpen] = useState(false);
   // Tracked by hand (click/keyup/change all update it) because the menu has to know where the
@@ -640,8 +683,19 @@ export function Composer() {
   ], [t]);
 
   return (
-    <div className="border-t border-border p-3 shrink-0 bg-background">
-      <div className="max-w-3xl mx-auto flex flex-col gap-2">
+    <div
+      className="border-t border-border p-3 shrink-0 bg-background"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDropFiles}
+    >
+      <div className={cn(
+        "max-w-3xl mx-auto flex flex-col gap-2 rounded-lg transition-colors",
+        // A dashed outline rather than a filled overlay: the box has to stay readable underneath,
+        // since what you already wrote is going with the files.
+        dropping && "outline-dashed outline-2 outline-offset-4 outline-primary/60",
+      )}>
         {noTeam && (
           <Alert className="text-xs py-2">
             {/* `Alert` is a two-column grid whose first column is zero wide: a bare string lands
@@ -697,7 +751,7 @@ export function Composer() {
                 {t("questions.pending", { n: pendingQuestionData.pending })}
               </p>
             )}
-            <InlineQuestion questionId={pendingQuestionData.question.id} size="md" />
+            <InlineQuestion key={pendingQuestionData.question.id} questionId={pendingQuestionData.question.id} size="md" />
             <Button
               variant="ghost"
               size="sm"

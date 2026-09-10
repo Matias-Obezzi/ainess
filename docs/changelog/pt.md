@@ -2,6 +2,229 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.11.0 — 2026-09-10
+
+### Novo
+
+- **As três visões de um projeto são linhas da barra lateral.** Orquestrador, Tarefas e Hierarquia
+  eram um seletor na barra de cima — a única faixa que também precisa segurar o nome do projeto, o
+  branch, o gasto, a chave do modo autônomo e todos os botões de painel. São navegação, e navegação
+  mora na coluna da esquerda. Cada linha abre a visão que nomeia, em vez de deixar você onde o
+  projeto tinha ficado.
+
+- **Os comandos rápidos podem ser seus.** Ao lado dos scripts detectados há agora um lugar para
+  adicionar os que nenhum arquivo declara: a linha do docker compose, o túnel, a migração que só
+  este projeto precisa. Ficam no projeto e aparecem no topo do menu.
+
+- **A barra da janela avisa quando um canal de conversa está conectado.** Ao lado do telefone, uma
+  luz para Telegram, Discord ou Slack assim que um estiver de fato no ar — a pergunta para a qual
+  você teria que abrir as Configurações. Não é um interruptor: ligar um canal pede um token e uma
+  lista de quem pode falar.
+
+- **O painel de terminais oferece os scripts do projeto como botões.** Subir o servidor de
+  desenvolvimento era abrir um terminal e digitar o que o projeto já tem escrito. Agora o painel lê
+  isso: os `scripts` de um package.json, os alvos de um Makefile e os quatro de sempre do cargo. Um
+  botão para cada, com os mais usados na frente — dev, start, build, test. Cada um abre a sua própria
+  aba, com o nome do script em vez de «PowerShell 3», então a aba do servidor é uma que dá para achar
+  de novo. Se você apertar um script que já está rodando, ele te leva até lá em vez de iniciar um
+  segundo que perde a disputa pela porta; um ponto verde marca os que estão no ar. O gerenciador de
+  pacotes vem do lockfile, porque `npm run` num workspace pnpm resolve outra árvore. Um script cujo
+  nome não seja um nome simples não é oferecido: estes textos são digitados num shell de verdade,
+  onde `predev && curl x | sh` rodaria exatamente como está escrito.
+
+- **O grafo de dependências se pede a partir de uma tarefa, e mostra só a família dela.** Antes era
+  uma segunda visão do quadro inteiro e desenhava todas as cadeias do projeto lado a lado: ficava
+  mais largo que a janela, e a resposta para «com o que esta aqui está enrolada?» se perdia no meio.
+  Agora abre a partir da própria tarefa, e na tela está o que essa tarefa espera e o que a espera,
+  transitivamente — nada mais. Uma tarefa que apenas compartilha um pré-requisito é irmã, não
+  família, e fica de fora; as irmãs são o que tornava o antigo ilegível. Clicar num cartão muda o
+  grafo para ele, dá para seguir uma cadeia um passo de cada vez. As arquivadas vêm junto: um
+  pré-requisito arquivado continua sendo o motivo pelo qual algo abaixo não pode começar.
+
+- **Voltar a conversa atrás, ou reescrever o que você perguntou.** Botão direito em qualquer
+  mensagem de um chat e a conversa pode terminar ali; nas suas, dá também para editar e perguntar de
+  novo a partir dali. O que veio depois vai embora, e a sessão do agente também: o fio que você vê é
+  metade de uma conversa, a memória do agente é a outra metade, e deixá-la com o que você acabou de
+  tirar faria o fio mentir sobre em cima do que a próxima resposta é construída. A janela diz isso
+  antes do botão, não depois. Voltar até a última mensagem fica cinza, porque não levaria nada.
+
+- **Modo autônomo, com hora para se desligar.** Um botão na barra do projeto liga por 1, 2, 4, 8 ou
+  12 horas. Enquanto está ligado o projeto não espera por você: as delegações que pediriam a sua
+  aprovação são aprovadas, as perguntas se respondem sozinhas pelo caminho mais conservador, e o
+  limite de rodadas deixa de encerrar a tarefa. Não existe o modo «para sempre»: ele se desliga
+  sozinho na hora que você marcou, e parar na mão continua parando. O teto de gasto do projeto vale
+  igual a antes; esse é o freio. E uma tarefa que só faz perguntar não come a noite inteira: depois
+  de dez respostas automáticas, as perguntas voltam a esperar por você. Quando termina, o relatório
+  fica no fio: o que terminou, o que falhou, o que aprovou e o que respondeu sem você.
+
+- **Retentar quando a cota volta.** Uma execução que morria porque o modelo ficou sem cota deixava o
+  trabalho pela metade até você voltar e apertar retentar na mão. Cada agente tem agora a sua
+  caixinha: sem cota, a execução espera em vez de falhar e se relança sozinha com o mesmo prompt
+  assim que o provedor tem lugar de novo. No modo autônomo acontece com ou sem a caixinha. Se quando
+  a cota voltar a caixinha estiver desligada, ou o modo autônomo já tiver acabado, nada é relançado
+  — e isso fica dito, em vez de ficar calado.
+
+- **Slack também, e com isso são os três.** Telegram, Discord e Slack, os mesmos comandos naquele
+  que você já tiver aberto, cada um com o seu cartão nas Configurações e a sua própria lista de
+  chats — um chat autorizado num está autorizado só nesse. O Slack pede dois tokens em vez de um: o de
+  aplicação abre a conexão e o de bot escreve, que é como o Slack projetou e não nós, e a tela diz
+  qual é qual. O Socket Mode precisa estar ligado no seu app do Slack e o bot precisa estar
+  convidado para o canal; a tela também avisa, porque senão não chega nada e daqui não haveria como
+  explicar por quê.
+
+- **Discord, ao lado do Telegram.** Os mesmos comandos naquele dos dois que você já tiver aberto:
+  qualquer coisa que escrever começa uma tarefa, `/status` diz quem está trabalhando, `/approve` e
+  `/answer` resolvem o que precisa de você. As Configurações agora têm um cartão por canal. Nenhum
+  dos dois expõe nada — o app é quem sai, então continua sem túnel, sem porta e sem endereço para
+  achar. Cada canal autoriza os seus próprios chats e só os seus: um id de canal do Discord não fica
+  autorizado por estar na lista do Telegram. O seu bot precisa da intent de conteúdo de mensagens
+  ligada no portal de desenvolvedores do Discord, e a tela avisa, porque sem isso as mensagens
+  chegam vazias e daqui não haveria como saber por quê.
+
+- **Abrir o pull request daqui.** Um agente termina na sua branch e o último passo era seu, na mão.
+  Agora há um botão ao lado de pull e push, e no cartão concluído. Ele nunca abre um com um clique
+  só: um diálogo mostra qual branch vai contra qual, com o título e o corpo já escritos a partir da
+  tarefa e do que o agente reportou — os arquivos que tocou, o que verificou, e o que não conseguiu
+  fazer, que entra com um cabeçalho próprio em vez de ficar de fora. Na branch padrão ele recusa, e
+  numa branch sem push ele oferece dar push antes, em vez de fazer isso pelas suas costas.
+
+- **Tentar de novo uma tarefa com outro modelo, ou com outro agente.** Uma execução que deu errado,
+  ou cujo agente ficou sem cota no meio do caminho, deixava você redigitando tudo. Agora o menu da
+  execução — e o botão no cartão dela — oferecem relançá-la com o mesmo prompt e com quem você
+  escolher. Ela começa do zero em vez de continuar a execução que falhou, porque o contexto dessa
+  costuma ser o problema. Trocar de agente limpa o modelo: os modelos de um provedor não são os de
+  outro, e arrastar um é como se manda uma execução para um modelo que não existe.
+
+- **Solte arquivos na caixa.** O clipe e o Ctrl+V eram as duas formas de anexar; arrastar um
+  arquivo da pasta que você já tinha aberta é a terceira, e a que não faz você dar volta nenhuma. A
+  caixa se marca com um contorno quando passa por cima dela um arraste trazendo arquivos, e o que
+  você já tinha escrito vai junto. Um cartão do quadro que cruze a caminho de outra coluna fica
+  intocado — ele leva texto, não arquivos, e pegá-lo não o moveria para lugar nenhum.
+
+### Corrigido
+
+- **Um detalhe longo já não empurra todo o resto para fora do modal.** Um agente escreve o quanto
+  quiser, e o detalhe fica entre os campos de estado e as dependências e a execução. Agora vem
+  dobrado em poucas linhas, com um «Ver mais» que o abre. Se o botão é necessário se mede, não se
+  adivinha pelo tamanho do texto: quantas linhas um parágrafo ocupa depende da largura que recebe.
+
+- **Os scripts do projeto são um menu e não uma fila com rolagem.** Uma fila de botões num painel já
+  estreito significava uma barra de rolagem horizontal, e um projeto com vinte scripts escondia
+  dezenove atrás dela. Agora são um menu ao lado do «+», com a mesma forma do seletor de console.
+
+- **A barra de cima deixa de dizer quantos agentes estão trabalhando.** O ponto ao lado do projeto na
+  barra lateral já respira enquanto eles estão, no lugar para onde você olha para ver o que acontece.
+
+- **O botão do modo autônomo tem a forma dos botões ao redor.** Ele carregava o próprio preenchimento
+  âmbar para ser impossível de não ver. Não precisava: a faixa embaixo da barra é a barulhenta, ocupa
+  toda a largura, e só existe enquanto o modo está ligado.
+
+- **O painel de comunicação é um balão de fala.** O ícone dele descrevia onde o painel abre, que é a
+  coisa menos interessante a seu respeito. O que ele guarda é o que os agentes disseram uns aos
+  outros.
+
+- **A barra do quadro fica alinhada.** Um Button, um Input e um SelectTrigger não concordam por
+  padrão no arredondamento, então uma fila feita dos três saía com dois raios lado a lado. Agora tudo
+  tem uma altura só e um arredondamento só, dito em cada controle em vez de deixado aos padrões.
+
+- **Responder uma pergunta é uma lista que você marca e um botão que você aperta.** As opções eram
+  botões em linha, cada um da largura do próprio texto, então um conjunto ficava desalinhado e uma
+  opção de uma palavra era um alvo do tamanho da palavra. Agora são uma lista, uma por linha, na
+  largura da caixa. Uma pergunta que aceita várias respostas avisa, em vez de você descobrir
+  clicando duas vezes. E uma pergunta de resposta única não vai mais embora assim que você toca numa
+  opção: as duas esperam «Responder», então o que está para ser dito fica na tela antes de ser dito
+  — e um clique errado é um clique a mais para desfazer, não algo já enviado. Nas de resposta única,
+  a opção e o campo para escrever a sua se substituem, porque uma resposta não pode ser também uma
+  frase diferente.
+
+- **Os botões no pé de uma tarefa se organizam pelo que fazem.** Três botões soltos sob uma regra de
+  «espalhe-os» deixavam «arquivar» encalhado no meio, à mesma distância de um link que leva embora e
+  de um apagar que não volta. Ir para outro lugar agora fica à esquerda, e o que muda a tarefa fica à
+  direita, junto.
+
+- **O quadro perdeu o alternador de visão e recuperou «Nova tarefa» onde ela pertence.** Como o grafo
+  já não é uma segunda visão do quadro, não sobrou nada entre o que alternar, então as duas barras
+  viraram uma: a busca, o filtro, a contagem, e no fim «Revisar», «Copiar como markdown» e «Nova
+  tarefa» lado a lado.
+
+- **A cota do Antigravity diz por que é uma estimativa.** O anel dele mostra um traço onde todos os
+  outros provedores mostram um número, e um traço sem explicação ao lado parece coisa quebrada. Não
+  está: o Antigravity não informa quanto resta. O número exato existe — o CLI dele pede ao Google —
+  mas está atrás de uma licença paga do Code Assist, e a uma conta sem ela é negado. Então agora o
+  app diz isso, ao lado do traço, no popover do campo de escrita, na tela do agente e nas
+  configurações, em vez de deixar você adivinhando. O que aparece continua sendo inferido do «quota
+  reached, resets in 1h45m» com que as execuções voltam, que é a única coisa que há para ler.
+
+- **O anel e a barra de cota se enchem conforme ela é gasta.** Eles se enchiam com o que *sobrava*:
+  uma cota intacta era um anel cheio e uma quase esgotada estava quase vazia — o contrário de
+  qualquer medidor de algo que se consome, e o motivo de ninguém conseguir lê-los de relance. Agora
+  começam vazios e se enchem com o que foi gasto, e todos os números ao lado contam a mesma coisa:
+  «83%» é o que se foi, não o que resta. A cor continua olhando o que sobra, então um anel quase
+  cheio também está vermelho: as duas metades dizem «está acabando» no mesmo momento, em vez de uma
+  delas dizer tarde.
+
+- **Um passo diz o que fez sem esperar pelo navegador.** Cada linha da atividade de um agente está
+  cortada — uma ferramenta mostra o seu resumo, uma delegação noventa caracteres da tarefa — e a
+  única forma de ler o resto era o `title` que o navegador desenha: um segundo de espera, uma
+  caixinha pelada onde o ponteiro calhou de estar, e as quebras de linha achatadas em espaços, que é
+  justamente o que você não quer num comando ou num stack trace. Agora têm o tooltip do app,
+  ancorado na sua linha, em monoespaçada e com as quebras de linha intactas. O passo em que a
+  execução está também tem um, e antes não tinha nada.
+
+- **Um agente já não sabe de um projeto sobre o qual ninguém lhe falou.** O contexto compartilhado
+  era um único texto na tela de ajustes, e era colado no prompt de todos os agentes de todos os
+  projetos. Você escrevia algo sobre um repositório e todos os agentes, em todo lugar, tinham lido:
+  foi assim que uma mensagem dirigida a um projeto foi entendida, seguida e levada para outro. Agora
+  ele é de cada projeto: a tela de ajustes escolhe qual, e `ainess context` aceita `-p`/`-w` como o
+  resto do CLI. O que você tinha escrito é copiado para cada projeto que já existia, então nada se
+  perde; se aquele texto era de um só, os outros são agora o lugar onde apagá-lo.
+
+- **Um hook começa com uma mensagem sobre o evento que você escolheu.** Havia um único texto padrão
+  atrás dos dezessete, escrito para «um agente terminou» e preso ao espanhol. Um hook de «caiu a
+  internet» começava anunciando que um agente tinha terminado, para todo mundo, num idioma que a
+  maioria não escolheu. Agora cada evento começa com a sua própria linha, no seu idioma, com as
+  variáveis que aquele evento realmente traz: a pergunta quando alguém pergunta, o modelo quando a
+  cota acaba, os dois agentes quando há uma delegação. Se você trocar o evento antes de mexer na
+  mensagem, ela acompanha; se mexer, ela para de acompanhar, porque dali em diante é sua. O botão
+  de testar também preenche as variáveis no seu idioma, então a prévia é a mensagem que vai chegar.
+
+- **O app deixa de carregar seis idiomas que não está mostrando para você.** Os sete dicionários
+  vinham no mesmo bundle, então cada início pagava pelos seis que ninguém estava lendo: 575 kB, 179
+  comprimidos. Agora só o espanhol vem embutido — é a base para a qual todos os outros caem — e o
+  seu é buscado antes da primeira pintura e fica carregado. Esse pedaço passou de 575 kB para 83 kB,
+  e de 179 comprimidos para 27.
+
+- **Um agente que responde a uma pergunta num chat já não pode distribuir trabalho.** O turno que
+  leva a sua resposta começava sem que lhe dissessem que era de um chat, então era lido como uma
+  tarefa: os seus blocos `delegate` eram interpretados e executados. Um agente podia pôr outros a
+  trabalhar de dentro de uma conversa onde ninguém tinha pedido.
+
+- **O quadro também rola para baixo enquanto você arrasta.** Uma coluna mais alta que a tela tinha
+  o mesmo problema que o quadro tinha na horizontal: o cartão sob o qual você queria soltar estava
+  fora de vista. Agora a coluna sob o ponteiro também puxa, com a mesma rampa.
+
+- **Acabaram as janelas de console que um agente abria enquanto trabalhava.** A tentativa anterior
+  consertou a metade errada. Pedir um processo sem console funciona para aquele processo — e depois
+  cada programa de console que *ele* roda pede uma ao Windows, recebe uma nova, e essa aparece. As
+  janelas nunca foram nossas: eram dos programas que os nossos agentes estavam rodando. Agora o app
+  toma um único console para si ao iniciar e o esconde, e tudo abaixo herda esse em vez de pedir o
+  seu próprio, por mais fundo que vá.
+
+- **Um link para um arquivo numa resposta agora faz alguma coisa.** Um agente que escrevia
+  `[o arquivo](file:///C:/Users/voce/notas.txt)` desenhava um texto cinza morto: `file:` estava na
+  mesma lista de recusados que `javascript:` e `data:`, que de fato executam na página, e tinha
+  ficado ali por associação — ele não executa nada. Agora clicar nele mostra o arquivo no
+  gerenciador de arquivos e para por aí. Nunca vira um link de verdade nem é entregue ao sistema
+  para abrir, porque `[olha isso](file:///C:/x.exe)` é uma linha que qualquer agente pode
+  escrever.
+
+- **O quadro rola sozinho quando você leva um cartão até a borda.** Um quadro mais largo que a
+  janela não dava para atravessar: a coluna que você queria estava fora de vista, e soltar para
+  rolar deixava o cartão onde não era. Agora segurar um cartão perto de qualquer uma das bordas
+  puxa o quadro junto, devagar ao entrar na zona e mais rápido quanto mais perto — e continua
+  puxando mesmo com o mouse parado, coisa que os eventos de arraste sozinhos não avisam a
+  ninguém.
+
 ## 0.10.0 — 2026-09-09
 
 ### Novo

@@ -180,8 +180,9 @@ export async function handleRemoteCommand(action: string, payload: Record<string
       }
       case "diagnostics": {
         const { collectDiagnostics } = await import("@/lib/diagnostics");
-        const { dictionaries, baseDictionary, translate } = await import("@/i18n");
+        const { dictionaries, baseDictionary, translate, loadLanguage } = await import("@/i18n");
         const lang = resolveLanguage(s.config.language);
+        await loadLanguage(lang);
         const dict = dictionaries[lang] ?? baseDictionary;
         const t = (key: string, vars?: Record<string, string | number>) => translate(dict, baseDictionary, key, vars);
         const refreshQuota = payload.refreshQuota === true;

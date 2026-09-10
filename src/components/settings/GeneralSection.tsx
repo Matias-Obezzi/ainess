@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LANGUAGES, languageNames, type Language } from "@/i18n";
+import { LANGUAGES, languageNames, loadLanguage, resolveLanguage, type Language } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { Button } from "@/components/ui/button";
 import { SoundDialog } from "@/components/SoundDialog";
@@ -49,7 +49,14 @@ export function GeneralSection() {
           <label className="text-sm font-semibold">{t("settings.option.general.language")}</label>
           <Select
             value={config.language ?? "system"}
-            onValueChange={value => updateConfig({ language: value === "system" ? null : (value as Language) })}
+            onValueChange={value => {
+              const language = value === "system" ? null : (value as Language);
+              // Load the dictionary before it is picked, so the UI never repaints in a language
+              // that is not actually loaded yet and falls back to Spanish for an instant.
+              loadLanguage(resolveLanguage(language))
+                .catch(() => {})
+                .finally(() => updateConfig({ language }));
+            }}
           >
             <SelectTrigger className="w-[220px]">
               <SelectValue />

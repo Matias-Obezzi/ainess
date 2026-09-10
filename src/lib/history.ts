@@ -9,7 +9,7 @@ import { useAppStore, selectAgent } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
-import { dictionaries } from "@/i18n";
+import { interruptedStrings } from "@/i18n/interrupted";
 
 interface HistoryFile {
   version: 1;
@@ -42,7 +42,7 @@ export function interruptedOutput(): string { return translateNow("system.interr
  * run this same app interrupted yesterday.
  */
 export function isInterruptedOutput(text: string): boolean {
-  return Object.values(dictionaries).some(d => d["system.interrupted"] === text);
+  return Object.values(interruptedStrings).some(s => s === text);
 }
 
 const MAX_RUNS = 300;

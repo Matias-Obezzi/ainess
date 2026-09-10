@@ -46,6 +46,14 @@ export const tauriTransport: Transport = {
     }
   },
 
+  filesExistAbs: async (paths) => {
+    try {
+      return await invoke<string[]>("files_exist_abs", { paths });
+    } catch {
+      return [];
+    }
+  },
+
   storageStat: async (scope, relativePath) => {
     try {
       return await invoke<StorageStat>("storage_stat", { scope, relativePath: relativePath ?? null });
