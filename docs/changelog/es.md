@@ -69,6 +69,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La cuota de Antigravity dice por qué es una estimación.** Su anillo muestra un guión donde los
+  demás proveedores muestran un número, y un guión sin explicación al lado parece algo roto. No lo
+  está: Antigravity no informa cuánto queda. El número exacto existe —su CLI se lo pide a Google—
+  pero está detrás de una licencia paga de Code Assist, y a una cuenta sin ella se lo niegan.
+  Así que ahora la app lo dice, al lado del guión, en el popover del composer, en la pantalla del
+  agente y en ajustes, en vez de dejarte adivinando. Lo que se muestra sigue infiriéndose del
+  «quota reached, resets in 1h45m» con el que vuelven las corridas, que es lo único que hay para
+  leer.
+
 - **El anillo y la barra de cuota se llenan a medida que la gastás.** Se llenaban con lo que
   *quedaba*, así que una cuota intacta era un anillo lleno y una casi agotada estaba casi vacía: al
   revés de cualquier medidor de algo que se consume, y por eso no se leían de un vistazo. Ahora

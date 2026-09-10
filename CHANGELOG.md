@@ -72,6 +72,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Antigravity's quota says why it is a guess.** Its ring shows a dash where every other provider
+  shows a number, and a dash with no reason next to it reads as something broken. It is not:
+  Antigravity does not report how much is left. The exact figure does exist — its CLI asks Google
+  for it — but it is behind a paid Code Assist license, and an account without one is refused. So
+  the app says that, next to the dash, in the composer's popover, in the agent's screen and in
+  settings, instead of leaving you to wonder. What is shown is still inferred from the "quota
+  reached, resets in 1h45m" the runs come back with, which is the only thing there is to read.
+
 - **The quota ring and bar fill up as the quota goes.** They filled as it was *left*, so a fresh
   quota was a full ring and one you had spent was nearly empty — backwards for a meter of something
   being consumed, and the reason nobody could read them at a glance. They now start empty and fill

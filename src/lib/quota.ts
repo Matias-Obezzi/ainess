@@ -342,7 +342,16 @@ async function fetchClaudeQuota(): Promise<ProviderQuota> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Antigravity quota: no endpoint, inferred from run outcomes.
+// Antigravity quota: inferred from run outcomes, because the exact number is not ours to read.
+//
+// There IS a precise source — the CLI itself calls
+// `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary`, which
+// returns a remaining fraction or amount and a reset time per bucket. It answers, and an OAuth
+// token taken from the Antigravity login is accepted by it. It then refuses with 403
+// SUBSCRIPTION_REQUIRED: that summary is behind a paid Code Assist license, and `loadCodeAssist`
+// confirms a consumer account is on no tier at all. So there is nothing to fetch for the accounts
+// this runs on, and what is left is the "quota reached, resets in 1h45m" the CLI prints when it
+// hits the wall — which is what `recordAntigravityOutcome` below reads.
 // ---------------------------------------------------------------------------------------------
 
 /** How each pool is written; the word "pool" around it comes from the dictionary. */

@@ -68,6 +68,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **A cota do Antigravity diz por que é uma estimativa.** O anel dele mostra um traço onde todos os
+  outros provedores mostram um número, e um traço sem explicação ao lado parece coisa quebrada. Não
+  está: o Antigravity não informa quanto resta. O número exato existe — o CLI dele pede ao Google —
+  mas está atrás de uma licença paga do Code Assist, e a uma conta sem ela é negado. Então agora o
+  app diz isso, ao lado do traço, no popover do campo de escrita, na tela do agente e nas
+  configurações, em vez de deixar você adivinhando. O que aparece continua sendo inferido do «quota
+  reached, resets in 1h45m» com que as execuções voltam, que é a única coisa que há para ler.
+
 - **O anel e a barra de cota se enchem conforme ela é gasta.** Eles se enchiam com o que *sobrava*:
   uma cota intacta era um anel cheio e uma quase esgotada estava quase vazia — o contrário de
   qualquer medidor de algo que se consome, e o motivo de ninguém conseguir lê-los de relance. Agora

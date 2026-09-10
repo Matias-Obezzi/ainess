@@ -75,6 +75,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Antigravitys Kontingent sagt, warum es eine Schätzung ist.** Sein Ring zeigt einen Strich, wo
+  jeder andere Anbieter eine Zahl zeigt, und ein Strich ohne Begründung daneben wirkt wie ein
+  Fehler. Es ist keiner: Antigravity meldet nicht, wie viel übrig ist. Die genaue Zahl gibt es —
+  sein CLI fragt Google danach — aber sie steckt hinter einer kostenpflichtigen Code-Assist-Lizenz,
+  und einem Konto ohne sie wird sie verweigert. Also sagt die App das jetzt, neben dem Strich, im
+  Popover des Eingabefelds, im Bildschirm des Agenten und in den Einstellungen, statt dich raten zu
+  lassen. Was zu sehen ist, wird weiterhin aus dem „quota reached, resets in 1h45m" abgeleitet, mit
+  dem die Läufe zurückkommen — mehr gibt es nicht zu lesen.
+
 - **Ring und Balken des Kontingents füllen sich, während es verbraucht wird.** Sie füllten sich mit
   dem, was *übrig* war: ein unangetastetes Kontingent war ein voller Ring, ein fast aufgebrauchtes
   fast leer — verkehrt herum für die Anzeige von etwas, das verbraucht wird, und der Grund, warum

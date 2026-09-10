@@ -161,3 +161,38 @@ describe("summarizeAgentQuota with amounts spent and no limits", () => {
     expect(summary.details).toHaveLength(1);
   });
 });
+
+// A provider that answers honestly that it cannot say how much is left.
+//
+// Antigravity is the case: its pools only report used-up or not. The ring goes off and a dash
+// stands where a number should be, which reads as something broken unless the reason travels with
+// it — so whatever the provider said about itself becomes the note the UI shows under the dash.
+describe("a provider with no numbers to give", () => {
+  const pools = (message: string) => ({
+    provider: "antigravity" as const,
+    status: "ok" as const,
+    fetchedAt: 0,
+    message,
+    items: [{ label: "Pool Gemini", model: "gemini", note: "Disponible" }],
+  });
+
+  it("carries the provider's explanation as the note", () => {
+    const summary = summarizeAgentQuota(pools("no hay número exacto sin licencia paga"), {});
+    expect(summary.fraction).toBeNull();
+    expect(summary.label).toBe("—");
+    expect(summary.note).toBe("no hay número exacto sin licencia paga");
+  });
+
+  it("leaves the note alone when the provider said nothing", () => {
+    const summary = summarizeAgentQuota(pools(""), {});
+    expect(summary.note).toBeFalsy();
+  });
+
+  it("does not put a note on a provider that did give numbers", () => {
+    const summary = summarizeAgentQuota(
+      { provider: "copilot", status: "ok", fetchedAt: 0, message: "algo", items: [{ label: "A", remaining: 10, entitlement: 100 }] },
+      {},
+    );
+    expect(summary.note).toBeUndefined();
+  });
+});

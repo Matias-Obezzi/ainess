@@ -74,6 +74,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le quota d'Antigravity dit pourquoi c'est une estimation.** Son anneau affiche un tiret là où
+  tous les autres fournisseurs affichent un nombre, et un tiret sans explication à côté ressemble à
+  une panne. Ce n'en est pas une : Antigravity n'indique pas ce qu'il reste. Le chiffre exact existe
+  — son CLI le demande à Google — mais il est derrière une licence Code Assist payante, et un compte
+  qui n'en a pas se le voit refuser. L'application le dit donc maintenant, à côté du tiret, dans la
+  popover de la zone de saisie, dans l'écran de l'agent et dans les réglages, au lieu de vous
+  laisser deviner. Ce qui s'affiche reste déduit du « quota reached, resets in 1h45m » que
+  renvoient les runs, la seule chose qu'il y ait à lire.
+
 - **L'anneau et la barre de quota se remplissent à mesure qu'il se consomme.** Ils se remplissaient
   avec ce qui *restait* : un quota intact était un anneau plein, un quota presque épuisé était
   presque vide — l'inverse de n'importe quelle jauge de quelque chose qui se consomme, et la raison

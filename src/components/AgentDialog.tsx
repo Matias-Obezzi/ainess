@@ -110,8 +110,9 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
               </span>
             </div>
           ))}
+          {/* The same sentence the composer's popover shows: two keys saying it drifted apart. */}
           <div className="text-xs text-muted-foreground pt-1">
-            {t("agentDialog.quotaAntigravityHint")}
+            {t("quota.antigravity.inferred")}
           </div>
         </div>
       )}

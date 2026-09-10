@@ -152,7 +152,10 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
           {binary?.path
             ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{t("agents.found")}</Badge>
             : <Badge variant="outline" className="border-destructive/40 text-destructive">{t("agents.notFound")}</Badge>}
-          <span className="flex items-center gap-1 text-xs text-muted-foreground" title={summary.detail}>
+          <span
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title={[summary.detail, summary.note].filter(Boolean).join(" · ")}
+          >
             <QuotaRing remaining={summary.fraction} label={summary.label} size={14} />
             {summary.label}
           </span>

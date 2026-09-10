@@ -29,6 +29,14 @@ export interface QuotaSummary {
    * only the first one hid the other accounts.
    */
   details: string[];
+  /**
+   * Why there is no number, when the provider itself explained it.
+   *
+   * An empty ring with a dash next to it reads as something broken. It is not: some providers
+   * answer honestly that they cannot say how much is left. That answer belongs on screen next to
+   * the missing number, not only in the code.
+   */
+  note?: string;
   status: "ok" | "unavailable" | "error" | "exhausted";
 }
 
@@ -125,8 +133,9 @@ export function summarizeAgentQuota(
   }
 
   // Items with no numbers at all (Antigravity pools, which only say whether they are used up): the
-  // ring stays off, but the detail still tells the story.
-  return { fraction: null, label: "—", detail: detailOf(items[0]), details, status: "ok" };
+  // ring stays off, the detail still tells the story, and whatever the provider said about why it
+  // has no numbers comes along as the note.
+  return { fraction: null, label: "—", detail: detailOf(items[0]), details, note: quota.message, status: "ok" };
 }
 
 /** The item that binds: the one with the least left over, falling back to the first. */

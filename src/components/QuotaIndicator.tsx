@@ -32,6 +32,10 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
         {(quota.fraction === null ? quota.details : [quota.detail]).map((line, i) => (
           <p key={i} className="text-[10px] leading-snug text-muted-foreground">{line}</p>
         ))}
+        {/* Right under the dash that stands where a number should be. */}
+        {quota.note && (
+          <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/80 italic">{quota.note}</p>
+        )}
       </div>
     </div>
   );
