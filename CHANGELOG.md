@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ### Added
 
+- **Retry a task with another model, or another agent.** A run that failed, or one whose agent ran
+  out of quota halfway, left you retyping the whole thing. Now the run's own menu — and the button
+  on its card — offer to run it again from the same prompt with whoever you pick. It starts from
+  zero rather than continuing the run that went wrong, since its context is usually the problem.
+  Changing agent clears the model: the models of one provider are not the models of another, and
+  carrying one over is how you send a run to a model that does not exist.
+
 - **Drop files on the box.** The paperclip and Ctrl+V were the two ways in; dragging a file from
   the folder you were already looking at is the third, and the one that needs no detour. The box
   outlines itself when a drag carrying files comes over it, and what you had already written goes

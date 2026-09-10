@@ -6,6 +6,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Eine Aufgabe mit einem anderen Modell oder einem anderen Agenten wiederholen.** Ein Lauf, der
+  schiefging — oder dessen Agent auf halbem Weg das Kontingent aufbrauchte — ließ dich alles neu
+  tippen. Jetzt bieten das Menü des Laufs und die Schaltfläche auf seiner Karte an, ihn mit
+  demselben Prompt und dem, den du wählst, noch einmal zu starten. Er beginnt bei null, statt den
+  gescheiterten Lauf fortzusetzen, denn dessen Kontext ist meist das Problem. Ein Agentenwechsel
+  setzt das Modell zurück: Die Modelle eines Anbieters sind nicht die eines anderen, und eines
+  mitzunehmen ist der Weg, einen Lauf an ein Modell zu schicken, das es nicht gibt.
+
 - **Dateien aufs Eingabefeld ziehen.** Die Büroklammer und Strg+V waren die beiden Wege hinein;
   eine Datei aus dem Ordner zu ziehen, den du ohnehin offen hast, ist der dritte — und der ohne
   Umweg. Das Feld umrandet sich, wenn ein Zug mit Dateien darüberkommt, und was du schon

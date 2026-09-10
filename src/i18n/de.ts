@@ -1097,6 +1097,14 @@ export const de: Dictionary = {
   "runDetail.rawOutput": "Rohausgabe (stdout/stderr)",
   "runDetail.noLogs": "Keine Logs",
 
+  // ---- Retry run dialog ----
+  "retry.action": "Erneut versuchen mit…",
+  "retry.title": "Run erneut versuchen",
+  "retry.prompt": "Zu wiederholender Prompt",
+  "retry.agent": "Agent",
+  "retry.model": "Modell",
+  "retry.confirm": "Erneut versuchen",
+
   // ---- Message detail dialog ----
   "messageDetail.title": "Nachrichtendetails",
   "messageDetail.viewRaw": "Rohdaten ansehen",

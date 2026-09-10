@@ -1098,6 +1098,14 @@ export const es: Dictionary = {
   "runDetail.rawOutput": "Salida cruda (stdout/stderr)",
   "runDetail.noLogs": "Sin logs",
 
+  // ---- Retry run dialog ----
+  "retry.action": "Reintentar con…",
+  "retry.title": "Reintentar corrida",
+  "retry.prompt": "Prompt a reintentar",
+  "retry.agent": "Agente",
+  "retry.model": "Modelo",
+  "retry.confirm": "Reintentar",
+
   // ---- Message detail dialog ----
   "messageDetail.title": "Detalle del mensaje",
   "messageDetail.viewRaw": "Ver crudo",

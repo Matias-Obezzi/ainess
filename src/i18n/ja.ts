@@ -1098,6 +1098,14 @@ export const ja: Dictionary = {
   "runDetail.rawOutput": "生の出力 (stdout/stderr)",
   "runDetail.noLogs": "ログなし",
 
+  // ---- Retry run dialog ----
+  "retry.action": "別で再試行…",
+  "retry.title": "実行を再試行",
+  "retry.prompt": "再試行するプロンプト",
+  "retry.agent": "エージェント",
+  "retry.model": "モデル",
+  "retry.confirm": "再試行",
+
   // ---- Message detail dialog ----
   "messageDetail.title": "メッセージの詳細",
   "messageDetail.viewRaw": "生データを表示",

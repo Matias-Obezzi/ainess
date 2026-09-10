@@ -6,6 +6,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Reintentar una tarea con otro modelo, o con otro agente.** Una corrida que salió mal, o cuyo
+  agente se quedó sin cuota a mitad de camino, te dejaba reescribiendo todo. Ahora el menú de la
+  corrida —y el botón en su tarjeta— te ofrecen relanzarla con el mismo prompt y con quien elijas.
+  Arranca de cero en vez de continuar la corrida que falló, porque el contexto de esa suele ser el
+  problema. Cambiar de agente limpia el modelo: los modelos de un proveedor no son los de otro, y
+  arrastrar uno es cómo se manda una corrida a un modelo que no existe.
+
 - **Soltá archivos sobre la caja.** El clip y Ctrl+V eran las dos formas de adjuntar; arrastrar un
   archivo desde la carpeta que ya tenías abierta es la tercera, y la que no te hace dar ninguna
   vuelta. La caja se marca con un contorno cuando le pasa por encima un arrastre que trae archivos,

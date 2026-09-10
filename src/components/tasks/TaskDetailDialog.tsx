@@ -5,6 +5,7 @@ import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { runUsageText } from "@/components/UsageDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from 
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/types";
-import { Archive, ArchiveRestore, Link2, MessagesSquare, Terminal, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, MessagesSquare, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -52,6 +53,7 @@ export function TaskDetailDialog({
   const [detail, setDetail] = useState("");
   const [editingDetail, setEditingDetail] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
+  const [retryOpen, setRetryOpen] = useState(false);
 
   // Reset the draft fields whenever another task is opened.
   useEffect(() => {
@@ -61,8 +63,9 @@ export function TaskDetailDialog({
   }, [task?.id, task?.title, task?.detail]);
 
   const agent = task?.agentId ? agents.find(a => a.id === task.agentId) : undefined;
+  const taskRun = task?.runId ? runs[task.runId] : undefined;
   // What the run of this task consumed, when its CLI said anything at all.
-  const usage = runUsageText(task?.runId ? runs[task.runId] : undefined, locale, t);
+  const usage = runUsageText(taskRun, locale, t);
   const missing = useMemo(() => (task ? blockedBy(task, tasks) : []), [task, tasks]);
   const dependencies = useMemo(
     () => (task ? task.dependsOn.map(id => tasks.find(t => t.id === id)).filter(t => t !== undefined) : []),
@@ -289,9 +292,16 @@ export function TaskDetailDialog({
                         <p className="truncate font-mono text-[11px] text-muted-foreground">{task.runId}</p>
                         {usage && <p className="text-[11px] text-muted-foreground">{t("usage.runUsage")}: {usage}</p>}
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
-                        <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {taskRun && taskRun.status !== "running" && (
+                          <Button variant="outline" size="sm" onClick={() => setRetryOpen(true)}>
+                            <Sparkles className="h-3.5 w-3.5" /> {t("retry.action")}
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => setRunOpen(true)}>
+                          <Terminal className="h-3.5 w-3.5" /> {t("tasks.viewRun")}
+                        </Button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -330,6 +340,7 @@ export function TaskDetailDialog({
       </Dialog>
 
       {task?.runId && <RunDetailDialog runId={task.runId} open={runOpen} onOpenChange={setRunOpen} />}
+      {task?.runId && <RetryRunDialog runId={task.runId} open={retryOpen} onOpenChange={setRetryOpen} />}
     </>
   );
 }

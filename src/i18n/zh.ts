@@ -1097,6 +1097,14 @@ export const zh: Dictionary = {
   "runDetail.rawOutput": "原始输出（stdout/stderr）",
   "runDetail.noLogs": "没有日志",
 
+  // ---- Retry run dialog ----
+  "retry.action": "用…重试",
+  "retry.title": "重试这次运行",
+  "retry.prompt": "要重试的提示词",
+  "retry.agent": "智能体",
+  "retry.model": "模型",
+  "retry.confirm": "重试",
+
   // ---- Message detail dialog ----
   "messageDetail.title": "消息详情",
   "messageDetail.viewRaw": "查看原始数据",

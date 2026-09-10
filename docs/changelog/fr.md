@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Relancer une tâche avec un autre modèle, ou un autre agent.** Une exécution ratée, ou dont
+  l'agent s'est retrouvé à court de quota à mi-chemin, vous laissait tout retaper. Le menu de
+  l'exécution — et le bouton sur sa carte — proposent désormais de la relancer avec le même prompt
+  et celui que vous choisissez. Elle repart de zéro plutôt que de poursuivre l'exécution qui a
+  échoué, car son contexte est le plus souvent le problème. Changer d'agent remet le modèle à zéro :
+  les modèles d'un fournisseur ne sont pas ceux d'un autre, et en emporter un est le moyen d'envoyer
+  une exécution vers un modèle qui n'existe pas.
+
 - **Déposez des fichiers sur la boîte.** Le trombone et Ctrl+V étaient les deux entrées ; faire
   glisser un fichier depuis le dossier que vous aviez déjà ouvert est la troisième, et celle qui ne
   demande aucun détour. La boîte se souligne quand un glisser transportant des fichiers passe

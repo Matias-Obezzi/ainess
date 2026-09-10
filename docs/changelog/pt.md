@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Tentar de novo uma tarefa com outro modelo, ou com outro agente.** Uma execução que deu errado,
+  ou cujo agente ficou sem cota no meio do caminho, deixava você redigitando tudo. Agora o menu da
+  execução — e o botão no cartão dela — oferecem relançá-la com o mesmo prompt e com quem você
+  escolher. Ela começa do zero em vez de continuar a execução que falhou, porque o contexto dessa
+  costuma ser o problema. Trocar de agente limpa o modelo: os modelos de um provedor não são os de
+  outro, e arrastar um é como se manda uma execução para um modelo que não existe.
+
 - **Solte arquivos na caixa.** O clipe e o Ctrl+V eram as duas formas de anexar; arrastar um
   arquivo da pasta que você já tinha aberta é a terceira, e a que não faz você dar volta nenhuma. A
   caixa se marca com um contorno quando passa por cima dela um arraste trazendo arquivos, e o que
