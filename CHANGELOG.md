@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **The dependency graph is asked for from a task, and shows only that task's family.** It used to
+  be a second view of the whole board, drawing every chain in the project side by side: it grew
+  wider than the window, and the answer to "what is this one tangled up with?" was somewhere in the
+  middle of it. Now it opens from the task itself, and what is on screen is what that task waits
+  for and what waits for it, transitively — nothing else. A task that merely shares a prerequisite
+  is a sibling, not family, and stays out; siblings are what made the old one unreadable. Clicking
+  a card moves the graph onto it, so a chain can be followed one step at a time. Archived tasks
+  come along here: an archived prerequisite is still the reason something below it cannot start.
+
 - **Take a conversation back, or rewrite what you asked.** Right-click any message in a chat and
   the conversation can end there; on your own messages you can also edit one and ask again from
   that point. What came after goes, and so does the agent's session — the visible thread is only
@@ -71,6 +80,16 @@ let one of them fall behind.
   not files, and catching it would move it nowhere.
 
 ### Fixed
+
+- **The buttons at the foot of a task line up by what they do.** Three loose buttons under a
+  "space them out" rule meant "archive" was marooned in the middle, equidistant from a link that
+  takes you elsewhere and a delete that is not coming back. Going somewhere else is on the left now,
+  and what changes the task is on the right, together.
+
+- **The board lost its view switcher and got its "New task" back where it belongs.** With the graph
+  no longer a second view of the board there was nothing to switch between, so the two toolbars are
+  one: the search, the filter, the count, and then "Review", "Copy as markdown" and "New task"
+  side by side at the end.
 
 - **Antigravity's quota says why it is a guess.** Its ring shows a dash where every other provider
   shows a number, and a dash with no reason next to it reads as something broken. It is not:

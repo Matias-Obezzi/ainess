@@ -6,6 +6,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **O grafo de dependências se pede a partir de uma tarefa, e mostra só a família dela.** Antes era
+  uma segunda visão do quadro inteiro e desenhava todas as cadeias do projeto lado a lado: ficava
+  mais largo que a janela, e a resposta para «com o que esta aqui está enrolada?» se perdia no meio.
+  Agora abre a partir da própria tarefa, e na tela está o que essa tarefa espera e o que a espera,
+  transitivamente — nada mais. Uma tarefa que apenas compartilha um pré-requisito é irmã, não
+  família, e fica de fora; as irmãs são o que tornava o antigo ilegível. Clicar num cartão muda o
+  grafo para ele, dá para seguir uma cadeia um passo de cada vez. As arquivadas vêm junto: um
+  pré-requisito arquivado continua sendo o motivo pelo qual algo abaixo não pode começar.
+
 - **Voltar a conversa atrás, ou reescrever o que você perguntou.** Botão direito em qualquer
   mensagem de um chat e a conversa pode terminar ali; nas suas, dá também para editar e perguntar de
   novo a partir dali. O que veio depois vai embora, e a sessão do agente também: o fio que você vê é
@@ -67,6 +76,16 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   intocado — ele leva texto, não arquivos, e pegá-lo não o moveria para lugar nenhum.
 
 ### Corrigido
+
+- **Os botões no pé de uma tarefa se organizam pelo que fazem.** Três botões soltos sob uma regra de
+  «espalhe-os» deixavam «arquivar» encalhado no meio, à mesma distância de um link que leva embora e
+  de um apagar que não volta. Ir para outro lugar agora fica à esquerda, e o que muda a tarefa fica à
+  direita, junto.
+
+- **O quadro perdeu o alternador de visão e recuperou «Nova tarefa» onde ela pertence.** Como o grafo
+  já não é uma segunda visão do quadro, não sobrou nada entre o que alternar, então as duas barras
+  viraram uma: a busca, o filtro, a contagem, e no fim «Revisar», «Copiar como markdown» e «Nova
+  tarefa» lado a lado.
 
 - **A cota do Antigravity diz por que é uma estimativa.** O anel dele mostra um traço onde todos os
   outros provedores mostram um número, e um traço sem explicação ao lado parece coisa quebrada. Não

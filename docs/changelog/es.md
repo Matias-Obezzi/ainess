@@ -6,6 +6,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **El grafo de dependencias se pide desde una tarea, y muestra solo su familia.** Antes era una
+  segunda vista del tablero entero y dibujaba todas las cadenas del proyecto una al lado de la
+  otra: crecía más ancho que la ventana, y la respuesta a «¿con qué está enredada esta?» quedaba
+  perdida en el medio. Ahora se abre desde la tarea, y en pantalla está lo que esa tarea espera y
+  lo que la espera a ella, transitivamente — nada más. Una tarea que apenas comparte un requisito
+  es una hermana, no familia, y se queda afuera; las hermanas son lo que volvía ilegible al
+  anterior. Al hacer clic en una tarjeta el grafo se muda a ella, así se sigue una cadena de a un
+  paso. Las archivadas vienen: un requisito archivado sigue siendo el motivo por el que algo debajo
+  no puede arrancar.
+
 - **Volver la conversación atrás, o reescribir lo que preguntaste.** Botón derecho en cualquier
   mensaje de un chat y la conversación puede terminar ahí; en los tuyos, además, podés editarlo y
   volver a preguntar desde ese punto. Lo que vino después se va, y la sesión del agente también: el
@@ -68,6 +78,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   columna no se toca — lleva texto, no archivos, y agarrarla no la movería a ningún lado.
 
 ### Arreglado
+
+- **Los botones del pie de una tarea se ordenan por lo que hacen.** Tres botones sueltos bajo una
+  regla de «separalos» dejaban «archivar» varado en el medio, a igual distancia de un link que te
+  lleva a otro lado y de un borrar que no vuelve. Ahora irse a otro lado está a la izquierda, y lo
+  que cambia la tarea está a la derecha, junto.
+
+- **El tablero perdió el switcher de vista y recuperó «Nueva tarea» donde corresponde.** Como el
+  grafo ya no es una segunda vista del tablero, no quedaba nada entre qué cambiar, así que las dos
+  barras son una: la búsqueda, el filtro, la cuenta, y al final «Revisar», «Copiar como markdown» y
+  «Nueva tarea» uno al lado del otro.
 
 - **La cuota de Antigravity dice por qué es una estimación.** Su anillo muestra un guión donde los
   demás proveedores muestran un número, y un guión sin explicación al lado parece algo roto. No lo

@@ -6,6 +6,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Der Abhängigkeitsgraph wird von einer Aufgabe aus geöffnet und zeigt nur deren Familie.** Früher
+  war er eine zweite Ansicht des ganzen Boards und zeichnete jede Kette des Projekts nebeneinander:
+  er wurde breiter als das Fenster, und die Antwort auf „womit hängt diese hier zusammen?" lag
+  irgendwo mittendrin. Jetzt öffnet er sich von der Aufgabe selbst, und auf dem Bildschirm steht,
+  worauf diese Aufgabe wartet und was auf sie wartet, transitiv — sonst nichts. Eine Aufgabe, die
+  bloß eine Voraussetzung teilt, ist ein Geschwister, keine Familie, und bleibt draußen; die
+  Geschwister waren es, die den alten unlesbar machten. Ein Klick auf eine Karte rückt den Graphen
+  auf sie, so lässt sich eine Kette Schritt für Schritt verfolgen. Archivierte kommen mit: eine
+  archivierte Voraussetzung ist weiterhin der Grund, warum etwas darunter nicht starten kann.
+
 - **Ein Gespräch zurücknehmen oder umschreiben, was du gefragt hast.** Rechtsklick auf eine
   Nachricht in einem Chat, und das Gespräch kann dort enden; bei deinen eigenen kannst du sie
   außerdem bearbeiten und von dort aus neu fragen. Was danach kam, geht — und die Sitzung des
@@ -74,6 +84,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   nirgendwohin bewegen.
 
 ### Behoben
+
+- **Die Knöpfe am Fuß einer Aufgabe ordnen sich danach, was sie tun.** Drei lose Knöpfe unter einer
+  „verteil sie"-Regel ließen „archivieren" in der Mitte stranden, gleich weit entfernt von einem
+  Link, der woandershin führt, und einem Löschen, das nicht zurückkommt. Woandershin gehen steht
+  jetzt links, und was die Aufgabe verändert, steht rechts, beisammen.
+
+- **Das Board hat seinen Ansichtsumschalter verloren und „Neue Aufgabe" dorthin zurückbekommen, wo
+  sie hingehört.** Da der Graph keine zweite Ansicht des Boards mehr ist, gab es nichts mehr zu
+  wechseln, also sind aus den zwei Leisten eine geworden: die Suche, der Filter, die Zählung, und am
+  Ende „Prüfen", „Als Markdown kopieren" und „Neue Aufgabe" nebeneinander.
 
 - **Antigravitys Kontingent sagt, warum es eine Schätzung ist.** Sein Ring zeigt einen Strich, wo
   jeder andere Anbieter eine Zahl zeigt, und ein Strich ohne Begründung daneben wirkt wie ein

@@ -6,6 +6,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Le graphe de dépendances se demande depuis une tâche, et n'affiche que sa famille.** C'était
+  auparavant une seconde vue du tableau entier, dessinant côte à côte toutes les chaînes du projet :
+  il devenait plus large que la fenêtre, et la réponse à « avec quoi celle-ci est-elle emmêlée ? »
+  se perdait au milieu. Il s'ouvre maintenant depuis la tâche elle-même, et à l'écran il y a ce que
+  cette tâche attend et ce qui l'attend, de façon transitive — rien d'autre. Une tâche qui partage
+  seulement un prérequis est une sœur, pas de la famille, et reste dehors ; ce sont les sœurs qui
+  rendaient l'ancien illisible. Cliquer sur une carte y déplace le graphe, pour suivre une chaîne
+  pas à pas. Les archivées viennent aussi : un prérequis archivé reste la raison pour laquelle ce
+  qui est en dessous ne peut pas démarrer.
+
 - **Revenir en arrière dans une conversation, ou réécrire ce que vous avez demandé.** Clic droit
   sur n'importe quel message d'une discussion et la conversation peut s'arrêter là ; sur les vôtres,
   vous pouvez aussi le modifier et redemander à partir de ce point. Ce qui suivait s'en va, et la
@@ -73,6 +83,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   l'attraper ne la déplacerait nulle part.
 
 ### Corrigé
+
+- **Les boutons au pied d'une tâche s'alignent selon ce qu'ils font.** Trois boutons libres sous une
+  règle « espacez-les » laissaient « archiver » échoué au milieu, à égale distance d'un lien qui vous
+  emmène ailleurs et d'une suppression sans retour. Partir ailleurs est maintenant à gauche, et ce
+  qui modifie la tâche est à droite, ensemble.
+
+- **Le tableau a perdu son sélecteur de vue et retrouvé « Nouvelle tâche » à sa place.** Le graphe
+  n'étant plus une seconde vue du tableau, il n'y avait plus rien entre quoi basculer : les deux
+  barres n'en font qu'une, la recherche, le filtre, le compte, puis « Revoir », « Copier en
+  markdown » et « Nouvelle tâche » côte à côte.
 
 - **Le quota d'Antigravity dit pourquoi c'est une estimation.** Son anneau affiche un tiret là où
   tous les autres fournisseurs affichent un nombre, et un tiret sans explication à côté ressemble à

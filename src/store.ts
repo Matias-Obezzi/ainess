@@ -45,7 +45,6 @@ export type Screen = "home" | "project";
 /** Project screen body: task board, conversation or agent graph. */
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
-export type TaskView = "board" | "graph";
 /** Which section of the settings dialog's sidebar is open. */
 export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
@@ -153,8 +152,6 @@ export interface AppState {
   projectModes: Record<string, ProjectMode>;
   /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
   projectChats: Record<string, string | null>;
-  /** Board or dependency graph, inside the Tareas mode (persisted). */
-  taskView: TaskView;
   commPanelOpen: boolean;
   /** Whether the diff section of the right dock is open (persisted). */
   diffPanelOpen: boolean;
@@ -186,7 +183,6 @@ export interface AppState {
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
-  setTaskView(view: TaskView): void;
   toggleCommPanel(open?: boolean): void;
   toggleDiffPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
@@ -456,7 +452,6 @@ interface UiPrefs {
   projectMode: ProjectMode;
   projectModes: Record<string, ProjectMode>;
   projectChats: Record<string, string | null>;
-  taskView: TaskView;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
@@ -563,7 +558,6 @@ const defaultUiPrefs: UiPrefs = {
   projectMode: "tasks",
   projectModes: {},
   projectChats: {},
-  taskView: "board",
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
@@ -643,7 +637,6 @@ function loadUiPrefs(): UiPrefs {
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       projectModes: sanitizeProjectModes(parsed.projectModes),
       projectChats: sanitizeProjectChats(parsed.projectChats),
-      taskView: parsed.taskView === "graph" ? "graph" : "board",
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
@@ -667,7 +660,6 @@ function saveUiPrefs(): void {
       projectMode: s.projectMode,
       projectModes: s.projectModes,
       projectChats: s.projectChats,
-      taskView: s.taskView,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
@@ -857,11 +849,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
       projectModes: s.currentProjectId ? { ...s.projectModes, [s.currentProjectId]: mode } : s.projectModes,
     }));
     pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
-    saveUiPrefs();
-  },
-
-  setTaskView: (view) => {
-    set({ taskView: view });
     saveUiPrefs();
   },
 
@@ -2288,7 +2275,6 @@ async function runInit(): Promise<void> {
       projectMode: startMode,
       projectModes: prefs.projectModes,
       projectChats: prefs.projectChats,
-      taskView: prefs.taskView,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,

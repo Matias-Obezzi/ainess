@@ -7,6 +7,7 @@ import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { OpenPrDialog } from "@/components/OpenPrDialog";
+import { TaskFamilyDialog } from "./TaskFamilyDialog";
 import { runUsageText } from "@/components/UsageDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { blockedBy, hasCycle, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { blockedBy, hasCycle, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
 import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/types";
-import { Archive, ArchiveRestore, GitPullRequest, Link2, MessagesSquare, Sparkles, Terminal, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, GitPullRequest, Link2, MessagesSquare, Network, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -56,6 +57,11 @@ export function TaskDetailDialog({
   const [runOpen, setRunOpen] = useState(false);
   const [retryOpen, setRetryOpen] = useState(false);
   const [prOpen, setPrOpen] = useState(false);
+  const [familyOpen, setFamilyOpen] = useState(false);
+
+  // What this task is tied to in both directions. Only its size is needed here — to decide whether
+  // offering the graph makes sense at all — but it is the same set the graph will draw.
+  const family = useMemo(() => (taskId ? taskFamily(tasks, taskId) : []), [tasks, taskId]);
 
   // Reset the draft fields whenever another task is opened.
   useEffect(() => {
@@ -239,7 +245,16 @@ export function TaskDetailDialog({
                 <Separator />
 
                 <div className="space-y-2">
-                  <Label>{t("tasks.dependsOn")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("tasks.dependsOn")}</Label>
+                    {/* On the heading of the section it is about, and only when there is a chain to
+                        follow: a graph of one lone card answers nothing. */}
+                    {family.length > 1 && (
+                      <Button variant="ghost" size="sm" className="h-7" onClick={() => setFamilyOpen(true)}>
+                        <Network className="h-3.5 w-3.5" /> {t("tasks.family.open")}
+                      </Button>
+                    )}
+                  </div>
                   {dependencies.length === 0 && <p className="text-sm text-muted-foreground">{t("tasks.noDependencies")}</p>}
                   {dependencies.map(dep => (
                     <div key={dep.id} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5">
@@ -314,8 +329,11 @@ export function TaskDetailDialog({
                 )}
               </div>
 
+              {/* Going somewhere else on the left, changing this task on the right. They were three
+                  loose children under `justify-between`, so the three spread out evenly and
+                  "archive" ended up marooned in the middle between a link and a delete. */}
               <DialogFooter className="sm:justify-between">
-                {hasOrigin(task) && (
+                {hasOrigin(task) ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -327,19 +345,25 @@ export function TaskDetailDialog({
                     <MessagesSquare className="h-3.5 w-3.5" />
                     {t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat")}
                   </Button>
+                ) : (
+                  // Holds the left side open so the pair stays right. Only from `sm` up, where the
+                  // footer is a row: stacked, it would be an empty slot with a gap around it.
+                  <span className="hidden sm:block" />
                 )}
-                <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
-                  {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                  {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => void remove()}
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => archiveTask(task.id, !task.archived)}>
+                    {task.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                    {task.archived ? t("tasks.unarchive") : t("tasks.archiveVerb")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => void remove()}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -349,6 +373,7 @@ export function TaskDetailDialog({
       {task?.runId && <RunDetailDialog runId={task.runId} open={runOpen} onOpenChange={setRunOpen} />}
       {task?.runId && <RetryRunDialog runId={task.runId} open={retryOpen} onOpenChange={setRetryOpen} />}
       {task && <OpenPrDialog projectId={projectId} taskId={task.id} open={prOpen} onOpenChange={setPrOpen} />}
+      <TaskFamilyDialog projectId={projectId} taskId={taskId} open={familyOpen} onOpenChange={setFamilyOpen} />
     </>
   );
 }
