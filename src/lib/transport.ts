@@ -57,6 +57,12 @@ export interface Transport {
   /** Toggles closing the window to the system tray instead of quitting. No-op outside Tauri. */
   setTrayEnabled(enabled: boolean): Promise<void>;
 
+  /**
+   * Flashes the window's taskbar button. A no-op while the window is focused — that check lives on
+   * the other side, where it cannot race with the user clicking back in. No-op outside Tauri.
+   */
+  requestAttention(): Promise<void>;
+
   /** Appends one line to today's log file (see src/lib/logger.ts). Never throws. */
   logAppend(level: string, source: string, message: string): Promise<void>;
   /** Absolute path of the logs folder. */

@@ -152,6 +152,16 @@ export interface AppState {
   projectModes: Record<string, ProjectMode>;
   /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
   projectChats: Record<string, string | null>;
+  /**
+   * Which of the three dock panels each project had open, so walking into another project does not
+   * bring this one's dock along. The terminal panel made that plain: it stayed open over a project
+   * with no terminals in it, showing an empty panel above an empty tab bar.
+   *
+   * The three flags below stay as "what is showing right now" — every reader wants that, not a map
+   * lookup — and this is where they are put away and taken out again, the shape `projectModes`
+   * already has for the view.
+   */
+  projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
   /** Whether the diff section of the right dock is open (persisted). */
   diffPanelOpen: boolean;
@@ -466,6 +476,7 @@ interface UiPrefs {
   projectMode: ProjectMode;
   projectModes: Record<string, ProjectMode>;
   projectChats: Record<string, string | null>;
+  projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
@@ -572,6 +583,7 @@ const defaultUiPrefs: UiPrefs = {
   projectMode: "tasks",
   projectModes: {},
   projectChats: {},
+  projectPanels: {},
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
@@ -651,6 +663,7 @@ function loadUiPrefs(): UiPrefs {
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       projectModes: sanitizeProjectModes(parsed.projectModes),
       projectChats: sanitizeProjectChats(parsed.projectChats),
+      projectPanels: sanitizeProjectPanels(parsed.projectPanels),
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
@@ -674,6 +687,7 @@ function saveUiPrefs(): void {
       projectMode: s.projectMode,
       projectModes: s.projectModes,
       projectChats: s.projectChats,
+      projectPanels: s.projectPanels,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
@@ -755,6 +769,44 @@ function debouncedSave() {
   saveTimeout = setTimeout(() => {
     useAppStore.getState().saveConfig();
   }, 300);
+}
+
+/** Only real booleans, keyed by project: what comes off disk was written by an older build. */
+function sanitizeProjectPanels(raw: unknown): Record<string, { comm: boolean; diff: boolean; term: boolean }> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, { comm: boolean; diff: boolean; term: boolean }> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== "object") continue;
+    const v = value as Record<string, unknown>;
+    out[id] = { comm: v.comm === true, diff: v.diff === true, term: v.term === true };
+  }
+  return out;
+}
+
+/** The open project's three flags with `patch` applied. Untouched when no project is open. */
+function panelsWith(
+  state: Pick<AppState, "currentProjectId" | "projectPanels" | "commPanelOpen" | "diffPanelOpen" | "termPanelOpen">,
+  patch: { comm?: boolean; diff?: boolean; term?: boolean },
+): AppState["projectPanels"] {
+  if (!state.currentProjectId) return state.projectPanels;
+  return {
+    ...state.projectPanels,
+    [state.currentProjectId]: {
+      comm: patch.comm ?? state.commPanelOpen,
+      diff: patch.diff ?? state.diffPanelOpen,
+      term: patch.term ?? state.termPanelOpen,
+    },
+  };
+}
+
+/** Toggling a panel: what shows now, and what this project should show when you come back to it. */
+function rememberPanels(state: AppState, patch: { comm?: boolean; diff?: boolean; term?: boolean }): Partial<AppState> {
+  return {
+    ...(patch.comm !== undefined ? { commPanelOpen: patch.comm } : {}),
+    ...(patch.diff !== undefined ? { diffPanelOpen: patch.diff } : {}),
+    ...(patch.term !== undefined ? { termPanelOpen: patch.term } : {}),
+    projectPanels: panelsWith(state, patch),
+  };
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
@@ -867,17 +919,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   toggleCommPanel: (open) => {
-    set(s => ({ commPanelOpen: open ?? !s.commPanelOpen }));
+    set(s => rememberPanels(s, { comm: open ?? !s.commPanelOpen }));
     saveUiPrefs();
   },
 
   toggleDiffPanel: (open) => {
-    set(s => ({ diffPanelOpen: open ?? !s.diffPanelOpen }));
+    set(s => rememberPanels(s, { diff: open ?? !s.diffPanelOpen }));
     saveUiPrefs();
   },
 
   toggleTermPanel: (open) => {
-    set(s => ({ termPanelOpen: open ?? !s.termPanelOpen }));
+    set(s => rememberPanels(s, { term: open ?? !s.termPanelOpen }));
     saveUiPrefs();
   },
 
@@ -946,6 +998,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // when the window is hidden, which is what lets a sound reach you at all from there.
     const sound = get().config.notificationSound;
     if (soundEnabled(sound)) playChime(chimeFor(n.kind), sound);
+
+    // Only the two that are waiting on you. A task that finished is news; a question is a stopped
+    // agent, and it stays stopped until you come back — which is what a flashing taskbar button
+    // means. Whether the window is in front is decided on the Rust side.
+    if (n.kind === "approval" || n.kind === "question") {
+      void getTransport().requestAttention().catch(() => {});
+    }
   },
   markNotificationsRead: () => {
     set(state => ({ notifications: notifications.markAllRead(state.notifications) }));
@@ -1096,6 +1155,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       terminals: [...s.terminals, terminal],
       activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
       termPanelOpen: true,
+      projectPanels: panelsWith(s, { term: true }),
     }));
     saveUiPrefs();
     log.info("terminal", `nueva terminal ${terminal.title} (${shell.path}) en ${cwd || "home"}`);
@@ -1328,7 +1388,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   setCurrentProject: (id) => {
-    set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
+    set((state) => {
+      // The dock belongs to the project you were in. Carried over, the terminal panel sat open
+      // above another project's empty tab bar, which is what gave this away.
+      const saved = id ? state.projectPanels[id] : undefined;
+      return {
+        currentProjectId: id,
+        config: { ...state.config, lastProjectId: id },
+        commPanelOpen: saved?.comm ?? false,
+        diffPanelOpen: saved?.diff ?? false,
+        termPanelOpen: saved?.term ?? false,
+      };
+    });
     if (id) {
       // Both, then the board: a card whose run ended while the app was closed is still sitting in
       // "en curso" and only the history says so (see lib/task-reconcile.ts).
@@ -2317,6 +2388,7 @@ async function runInit(): Promise<void> {
       projectMode: startMode,
       projectModes: prefs.projectModes,
       projectChats: prefs.projectChats,
+      projectPanels: prefs.projectPanels,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,

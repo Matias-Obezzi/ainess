@@ -2,6 +2,32 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Nouveau
+
+- **Le bouton de la barre des tâches clignote quand quelque chose attend votre réponse.** Une
+  approbation ou une question arrête un agent jusqu'à votre retour, et jusqu'ici le seul moyen de
+  l'apprendre était de regarder. Il ne clignote que tant que la fenêtre n'est pas au premier plan,
+  et cette vérification se fait là où vit la fenêtre plutôt que d'être demandée puis suivie
+  d'action : entre les deux, l'utilisateur peut revenir cliquer, et une barre qui clignote pour
+  quelqu'un qui regarde déjà la fenêtre est pire que rien. Ces deux-là seulement : une tâche
+  terminée est une nouvelle, pas un agent à l'arrêt.
+
+- **La barre latérale marque un projet qui tourne sans surveillance.** Une lune à côté de son nom
+  tant que le mode autonome est actif. C'était déjà propre à chaque projet — l'interrupteur ne
+  l'active que sur celui-là — mais le seul endroit qui le disait se trouvait à l'intérieur du
+  projet, ce qui ne sert à rien pour celui qu'on ne regarde pas.
+
+### Corrigé
+
+- **Le dock de droite appartient au projet où vous êtes.** Vous ouvriez le panneau des terminaux
+  dans un projet, vous passiez à un autre, et il restait ouvert là aussi — au-dessus d'une barre
+  d'onglets vide, puisque les terminaux étaient ceux du premier. Les trois panneaux sont désormais
+  retenus par projet : rangés quand vous partez, ressortis quand vous revenez, et fermés pour un
+  projet qui ne les a jamais ouverts.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Nouveau

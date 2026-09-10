@@ -23,6 +23,25 @@ pub fn set_tray_enabled(state: State<TrayState>, enabled: bool) {
     state.enabled.store(enabled, Ordering::Relaxed);
 }
 
+/// Flashes the window's taskbar button, and only while the window is not the one in front.
+///
+/// The focus check is here rather than in the caller so there is nothing to race: asking the
+/// webview whether it has focus and then asking to flash are two trips, and the user can click on
+/// the window in between — which would flash the window they are already looking at.
+///
+/// `Critical` rather than `Informational` because it keeps flashing until the window is focused,
+/// and the thing being announced is a question that stays unanswered until somebody comes back.
+#[tauri::command]
+pub fn request_attention(app: AppHandle) {
+    let Some(window) = app.get_webview_window("main") else { return };
+    // Unreadable focus is treated as focused: a taskbar button flashing at somebody already looking
+    // at the window is worse than one that stays still.
+    if window.is_focused().unwrap_or(true) {
+        return;
+    }
+    let _ = window.request_user_attention(Some(tauri::UserAttentionType::Critical));
+}
+
 fn show_main_window(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();

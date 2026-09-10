@@ -4,6 +4,30 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Added
+
+- **The taskbar button flashes when something is waiting on your answer.** An approval or a question
+  stops an agent until you come back, and until now the only way to find out was to be looking. It
+  flashes only while the window is not the one in front, and the check for that is made where the
+  window lives rather than asked for and then acted on — in between those two the user can click
+  back in, and a taskbar flashing at somebody already looking at the window is worse than none.
+  Only those two: a task that finished is news, not a stopped agent.
+
+- **The sidebar marks a project that is running unattended.** A moon beside its name while
+  autonomous mode is on. It was already a per-project thing — the switch sets it on that project
+  alone — but the only place that said so was inside the project, which is no use for the one you
+  are not looking at.
+
+### Fixed
+
+- **The right dock belongs to the project you are in.** Open the terminals panel in one project and
+  walk into another, and it stayed open there too — above an empty tab bar, since the terminals are
+  the first project's. All three panels are remembered per project now: put away when you leave,
+  taken out again when you come back, and closed for a project that never opened them.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Added

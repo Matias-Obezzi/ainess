@@ -2,6 +2,32 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Nuevo
+
+- **El botón de la barra de tareas titila cuando algo espera tu respuesta.** Una aprobación o una
+  pregunta dejan a un agente parado hasta que volvés, y hasta ahora la única forma de enterarte era
+  estar mirando. Titila solo mientras la ventana no es la que está adelante, y esa comprobación se
+  hace del lado de la ventana en vez de preguntarla y después actuar: entre esas dos cosas el
+  usuario puede volver a hacer clic, y una barra que titila para alguien que ya está mirando la
+  ventana es peor que ninguna. Solo esas dos: una tarea que terminó es una noticia, no un agente
+  detenido.
+
+- **El sidebar marca un proyecto que está corriendo solo.** Una luna al lado del nombre mientras el
+  modo autónomo está activo. Ya era algo por proyecto —el interruptor lo prende solo en ese— pero el
+  único lugar que lo decía estaba adentro del proyecto, que no sirve justamente para el que no
+  estás mirando.
+
+### Arreglado
+
+- **El dock de la derecha es del proyecto en el que estás.** Abrías el panel de terminales en un
+  proyecto y te ibas a otro, y seguía abierto ahí también — arriba de una barra de pestañas vacía,
+  porque las terminales eran del primero. Ahora los tres paneles se recuerdan por proyecto: se
+  guardan cuando te vas, vuelven cuando volvés, y quedan cerrados para un proyecto que nunca los
+  abrió.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Nuevo

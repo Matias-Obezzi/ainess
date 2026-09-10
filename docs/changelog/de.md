@@ -2,6 +2,32 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Neu
+
+- **Die Taskleistenschaltfläche blinkt, wenn etwas auf deine Antwort wartet.** Eine Freigabe oder
+  eine Frage hält einen Agenten an, bis du zurückkommst, und bisher war Hinsehen die einzige Art,
+  davon zu erfahren. Es blinkt nur, solange das Fenster nicht im Vordergrund ist, und diese Prüfung
+  geschieht dort, wo das Fenster lebt, statt sie zu erfragen und dann zu handeln: dazwischen kann
+  der Benutzer zurückklicken, und eine Taskleiste, die jemanden anblinkt, der ohnehin auf das
+  Fenster schaut, ist schlimmer als gar keine. Nur diese zwei: eine fertige Aufgabe ist eine
+  Nachricht, kein angehaltener Agent.
+
+- **Die Seitenleiste markiert ein Projekt, das unbeaufsichtigt läuft.** Ein Mond neben seinem Namen,
+  solange der autonome Modus an ist. Das war schon immer projektweise — der Schalter setzt ihn nur
+  auf jenem Projekt — aber die einzige Stelle, die es sagte, lag im Projekt selbst, was für das
+  Projekt, auf das man gerade nicht schaut, nichts nützt.
+
+### Behoben
+
+- **Das rechte Dock gehört zu dem Projekt, in dem du bist.** Öffnetest du das Terminal-Panel in
+  einem Projekt und gingst in ein anderes, blieb es auch dort offen — über einer leeren Tableiste,
+  denn die Terminals gehörten dem ersten. Alle drei Panels werden jetzt pro Projekt gemerkt: beim
+  Verlassen weggeräumt, beim Zurückkommen wieder hervorgeholt, und zu für ein Projekt, das sie nie
+  geöffnet hat.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Neu

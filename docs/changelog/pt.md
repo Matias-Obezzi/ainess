@@ -2,6 +2,30 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Novo
+
+- **O botão da barra de tarefas pisca quando algo espera a sua resposta.** Uma aprovação ou uma
+  pergunta deixam um agente parado até você voltar, e até agora a única forma de saber era estar
+  olhando. Pisca só enquanto a janela não é a que está na frente, e essa verificação é feita do lado
+  da janela em vez de ser perguntada e depois agida: entre uma coisa e outra o usuário pode clicar
+  de volta, e uma barra piscando para alguém que já está olhando a janela é pior que nenhuma. Só
+  essas duas: uma tarefa que terminou é notícia, não um agente parado.
+
+- **A barra lateral marca um projeto que está rodando sozinho.** Uma lua ao lado do nome enquanto o
+  modo autônomo está ligado. Já era coisa de cada projeto — a chave liga só naquele — mas o único
+  lugar que dizia isso ficava dentro do projeto, o que não serve justamente para aquele que você não
+  está olhando.
+
+### Corrigido
+
+- **O dock da direita é do projeto em que você está.** Você abria o painel de terminais num projeto
+  e ia para outro, e ele continuava aberto lá também — em cima de uma barra de abas vazia, porque os
+  terminais eram do primeiro. Agora os três painéis são lembrados por projeto: guardados quando você
+  sai, trazidos de volta quando você volta, e fechados para um projeto que nunca os abriu.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Novo
