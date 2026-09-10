@@ -45,7 +45,11 @@ function quotaLine(item: QuotaItem, t: TFunction): { text: string; percent?: num
     return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
   }
   if (item.usedPercent !== undefined) {
-    return { text: t("quota.usedPercent", { percent: item.usedPercent }), percent: 100 - item.usedPercent };
+    // Said as what is left, because that is what the bar under it fills, and what the ring in the
+    // composer draws. A line reading "83% used" over a bar filled to 17% asks you to do the
+    // subtraction yourself and to notice that the two are not the same number.
+    const remaining = 100 - item.usedPercent;
+    return { text: t("quota.remainingPercent", { percent: remaining }), percent: remaining };
   }
   return { text: item.note || "" };
 }

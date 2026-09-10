@@ -870,6 +870,7 @@ export const ja: Dictionary = {
   "queued.waitingFor": "{name} の手が空いたら送ります",
   "queued.cancel": "送らない",
   "quota.usedPercent": "{percent}% 使用済み",
+  "quota.remainingPercent": "残り {percent}%",
   "agentDialog.quotaNoInfo": "情報がありません。",
   "agentDialog.quotaExhaustedUntil": "使い切りました。{time} に回復します",
   "agentDialog.quotaAvailable": "利用可能",

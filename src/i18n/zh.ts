@@ -869,6 +869,7 @@ export const zh: Dictionary = {
   "queued.waitingFor": "{name} 空闲后发送",
   "queued.cancel": "不要发送",
   "quota.usedPercent": "已用 {percent}%",
+  "quota.remainingPercent": "还剩 {percent}%",
   "agentDialog.quotaNoInfo": "没有信息。",
   "agentDialog.quotaExhaustedUntil": "已用完，{time} 恢复",
   "agentDialog.quotaAvailable": "可用",

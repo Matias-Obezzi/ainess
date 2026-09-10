@@ -870,6 +870,7 @@ export const es: Dictionary = {
   "queued.waitingFor": "Se le envía a {name} cuando termine",
   "queued.cancel": "No enviarlo",
   "quota.usedPercent": "{percent}% usado",
+  "quota.remainingPercent": "{percent}% disponible",
   "agentDialog.quotaNoInfo": "Sin información.",
   "agentDialog.quotaExhaustedUntil": "Agotado, se libera a las {time}",
   "agentDialog.quotaAvailable": "Disponible",
