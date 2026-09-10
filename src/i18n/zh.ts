@@ -176,6 +176,15 @@ export const zh: Dictionary = {
 
   // ---- Chats and threads ----
   "chat.gone": "该聊天已不存在。",
+  "message.editAndResend": "改写并重新发送",
+  "message.rewind": "把对话退回到这里",
+  "chat.rewind.title": "把对话退回到这里？",
+  "chat.rewind.body": "这条之后的 {n} 条消息会被删除，智能体也会开一个新会话：你收回的内容不再留在它的记忆里。",
+  "chat.edit.title": "改写这条消息",
+  "chat.edit.body": "你的消息会被替换，并从那里重新提问。后面的内容会被删除，智能体会开一个新会话。",
+  "chat.edit.send": "重新发送",
+  "chat.agentGone": "[错误：没找到这个智能体]",
+  "chat.stoppedByUser": "[你停下了]",
   "chat.shared": "共享",
   "chat.individual": "单独",
   "chat.edit": "编辑聊天",

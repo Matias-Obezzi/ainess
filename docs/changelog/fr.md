@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Revenir en arrière dans une conversation, ou réécrire ce que vous avez demandé.** Clic droit
+  sur n'importe quel message d'une discussion et la conversation peut s'arrêter là ; sur les vôtres,
+  vous pouvez aussi le modifier et redemander à partir de ce point. Ce qui suivait s'en va, et la
+  session de l'agent aussi : le fil visible n'est que la moitié d'une conversation, la mémoire de
+  l'agent est l'autre, et la lui laisser avec ce que vous venez de retirer ferait mentir le fil sur
+  ce qui fonde la réponse suivante. La boîte de dialogue le dit avant le bouton, pas après. Revenir
+  au dernier message est grisé, puisque cela n'emporterait rien.
+
 - **Mode autonome, avec une heure d'extinction.** Un bouton dans la barre du projet l'active pour 1,
   2, 4, 8 ou 12 heures. Tant qu'il tourne, le projet ne vous attend plus : les délégations qui
   demanderaient votre accord sont approuvées, les questions reçoivent d'elles-mêmes la réponse la

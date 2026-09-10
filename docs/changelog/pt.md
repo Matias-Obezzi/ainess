@@ -6,6 +6,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Voltar a conversa atrás, ou reescrever o que você perguntou.** Botão direito em qualquer
+  mensagem de um chat e a conversa pode terminar ali; nas suas, dá também para editar e perguntar de
+  novo a partir dali. O que veio depois vai embora, e a sessão do agente também: o fio que você vê é
+  metade de uma conversa, a memória do agente é a outra metade, e deixá-la com o que você acabou de
+  tirar faria o fio mentir sobre em cima do que a próxima resposta é construída. A janela diz isso
+  antes do botão, não depois. Voltar até a última mensagem fica cinza, porque não levaria nada.
+
 - **Modo autônomo, com hora para se desligar.** Um botão na barra do projeto liga por 1, 2, 4, 8 ou
   12 horas. Enquanto está ligado o projeto não espera por você: as delegações que pediriam a sua
   aprovação são aprovadas, as perguntas se respondem sozinhas pelo caminho mais conservador, e o

@@ -177,6 +177,15 @@ export const ja: Dictionary = {
 
   // ---- Chats and threads ----
   "chat.gone": "このチャットはもう存在しません。",
+  "message.editAndResend": "書き直して送り直す",
+  "message.rewind": "ここまで会話を戻す",
+  "chat.rewind.title": "ここまで会話を戻しますか？",
+  "chat.rewind.body": "これより後の {n} 件のメッセージは削除され、エージェントは新しいセッションを始めます。取り消した内容はもう記憶に残りません。",
+  "chat.edit.title": "メッセージを書き直す",
+  "chat.edit.body": "あなたのメッセージを差し替えて、そこから聞き直します。後に続いていたものは削除され、エージェントは新しいセッションを始めます。",
+  "chat.edit.send": "送り直す",
+  "chat.agentGone": "[エラー：エージェントが見つかりません]",
+  "chat.stoppedByUser": "[あなたが止めました]",
   "chat.shared": "共有",
   "chat.individual": "個別",
   "chat.edit": "チャットを編集",

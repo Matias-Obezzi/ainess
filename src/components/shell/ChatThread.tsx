@@ -21,8 +21,10 @@ import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
 import { createTaskFromMessage } from "@/lib/task-from-message";
+import { rewindRemoves } from "@/lib/chat-rewind";
+import { EditMessageDialog } from "@/components/EditMessageDialog";
 import type { ChatMessage } from "@/types";
-import { ArrowDown, Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, PencilLine, RotateCcw, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
@@ -213,6 +215,21 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
   // A pending bubble left behind by a closed app has no run to stream from.
   const hasRun = useAppStore(state => (message.runId ? !!state.runs[message.runId] : false));
   const [detailOpen, setDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const rewindChat = useAppStore(state => state.rewindChat);
+  // How much a rewind would take with it. Reverting to the last message removes nothing, and a menu
+  // item that does nothing has no business asking for confirmation.
+  const afterThis = useAppStore(state => rewindRemoves(state.chatMessages[message.chatId] ?? [], message.id, true));
+  const doRewind = async () => {
+    const confirmed = await confirm({
+      title: t("chat.rewind.title"),
+      description: t("chat.rewind.body", { n: afterThis }),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await rewindChat(message.chatId, message.id, true);
+  };
 
   const messageActions: MenuAction[] = [
     {
@@ -260,6 +277,29 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             onSelect: () => setDetailOpen(true),
           } satisfies MenuAction,
         ]),
+    // Rewriting only makes sense for what you wrote: an agent's answer is a record of what it said,
+    // and editing that would be putting words in its mouth in its own transcript.
+    ...(isUser
+      ? [
+          {
+            key: "edit",
+            label: t("message.editAndResend"),
+            icon: PencilLine,
+            separatorBefore: true,
+            disabled: isPending,
+            onSelect: () => setEditOpen(true),
+          } satisfies MenuAction,
+        ]
+      : []),
+    {
+      key: "rewind",
+      label: t("message.rewind"),
+      icon: RotateCcw,
+      separatorBefore: !isUser,
+      destructive: true,
+      disabled: afterThis === 0,
+      onSelect: () => void doRewind(),
+    },
   ];
 
   return (
@@ -296,6 +336,7 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             )}
           </div>
           <RunDetailDialog runId={message.runId || null} open={detailOpen} onOpenChange={setDetailOpen} />
+          {isUser && <EditMessageDialog message={message} open={editOpen} onOpenChange={setEditOpen} />}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">

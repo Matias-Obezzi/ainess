@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein Gespräch zurücknehmen oder umschreiben, was du gefragt hast.** Rechtsklick auf eine
+  Nachricht in einem Chat, und das Gespräch kann dort enden; bei deinen eigenen kannst du sie
+  außerdem bearbeiten und von dort aus neu fragen. Was danach kam, geht — und die Sitzung des
+  Agenten ebenfalls. Der sichtbare Verlauf ist nur die eine Hälfte eines Gesprächs, das Gedächtnis
+  des Agenten ist die andere, und ließe man es mit dem zurück, was du gerade zurückgenommen hast,
+  würde der Verlauf darüber lügen, worauf die nächste Antwort aufbaut. Der Dialog sagt das vor dem
+  Knopf, nicht danach. Bis zur letzten Nachricht zurückzugehen ist ausgegraut, denn es nähme nichts
+  mit.
+
 - **Autonomer Modus, mit einer Uhrzeit, zu der er sich abschaltet.** Ein Knopf in der Projektleiste
   schaltet ihn für 1, 2, 4, 8 oder 12 Stunden ein. Solange er läuft, wartet das Projekt nicht auf
   dich: Delegationen, die deine Freigabe bräuchten, werden freigegeben, Fragen beantworten sich

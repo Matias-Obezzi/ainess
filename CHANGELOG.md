@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **Take a conversation back, or rewrite what you asked.** Right-click any message in a chat and
+  the conversation can end there; on your own messages you can also edit one and ask again from
+  that point. What came after goes, and so does the agent's session — the visible thread is only
+  half of a conversation, the agent's own memory is the other half, and leaving it holding what you
+  just took back would make the thread a lie about what the next answer is built on. The dialog
+  says that before the button rather than after it. Reverting to the last message is greyed out,
+  since it would take nothing with it.
+
 - **Autonomous mode, with a time it turns itself off.** A button in the project bar turns it on for
   1, 2, 4, 8 or 12 hours. While it is on the project stops waiting for you: delegations that would
   need your approval are approved, questions are answered on the most conservative reading, and the

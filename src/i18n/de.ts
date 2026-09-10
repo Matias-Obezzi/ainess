@@ -176,6 +176,15 @@ export const de: Dictionary = {
 
   // ---- Chats and threads ----
   "chat.gone": "Diesen Chat gibt es nicht mehr.",
+  "message.editAndResend": "Bearbeiten und neu senden",
+  "message.rewind": "Gespräch bis hierher zurücknehmen",
+  "chat.rewind.title": "Gespräch bis hierher zurücknehmen?",
+  "chat.rewind.body": "Die {n} Nachrichten danach werden gelöscht, und der Agent beginnt eine neue Sitzung: was du herausgenommen hast, ist nicht mehr in seinem Gedächtnis.",
+  "chat.edit.title": "Nachricht bearbeiten",
+  "chat.edit.body": "Deine Nachricht wird ersetzt und von dort aus neu gefragt. Was danach kam, wird gelöscht, und der Agent beginnt eine neue Sitzung.",
+  "chat.edit.send": "Neu senden",
+  "chat.agentGone": "[Fehler: Agent nicht gefunden]",
+  "chat.stoppedByUser": "[von dir gestoppt]",
   "chat.shared": "Gemeinsam",
   "chat.individual": "Einzeln",
   "chat.edit": "Chat bearbeiten",

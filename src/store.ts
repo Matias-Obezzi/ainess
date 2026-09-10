@@ -348,6 +348,10 @@ export interface AppState {
   removeChat(id: string): void;
   setCurrentChat(id: string | null): void;
   sendChatMessage(chatId: string, text: string): Promise<void>;
+  /** Cuts a conversation back to one of its messages; see `lib/chat-rewind.ts`. */
+  rewindChat(chatId: string, messageId: string, inclusive: boolean): Promise<void>;
+  /** Rewrites one of the user's messages and asks again from there. */
+  editChatMessage(chatId: string, messageId: string, text: string): Promise<void>;
   stopChat(chatId: string): Promise<void>;
   loadChatMessages(chatId: string): Promise<void>;
 }
@@ -2038,6 +2042,16 @@ ${text}`);
   sendChatMessage: async (chatId, text) => {
     const { sendChatMessage } = await import("@/lib/chat");
     await sendChatMessage(chatId, text);
+  },
+
+  rewindChat: async (chatId, messageId, inclusive) => {
+    const { rewindChat } = await import("@/lib/chat");
+    await rewindChat(chatId, messageId, inclusive);
+  },
+
+  editChatMessage: async (chatId, messageId, text) => {
+    const { editChatMessage } = await import("@/lib/chat");
+    await editChatMessage(chatId, messageId, text);
   },
 
   stopChat: async (chatId) => {

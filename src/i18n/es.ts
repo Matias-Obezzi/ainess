@@ -177,6 +177,15 @@ export const es: Dictionary = {
 
   // ---- Chats and threads ----
   "chat.gone": "El chat ya no existe.",
+  "message.editAndResend": "Editar y volver a enviar",
+  "message.rewind": "Volver la conversación acá",
+  "chat.rewind.title": "¿Volver la conversación acá?",
+  "chat.rewind.body": "Se borran los {n} mensajes que vienen después, y el agente empieza una sesión nueva: lo que sacaste deja de estar en su memoria.",
+  "chat.edit.title": "Editar el mensaje",
+  "chat.edit.body": "Tu mensaje se reemplaza y se vuelve a preguntar desde ahí. Lo que vino después se borra y el agente empieza una sesión nueva.",
+  "chat.edit.send": "Enviar de nuevo",
+  "chat.agentGone": "[Error: no encontré al agente]",
+  "chat.stoppedByUser": "[lo paraste vos]",
   "chat.shared": "Compartido",
   "chat.individual": "Individual",
   "chat.edit": "Editar chat",

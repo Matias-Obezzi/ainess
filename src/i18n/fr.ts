@@ -176,6 +176,15 @@ export const fr: Dictionary = {
 
   // ---- Chats and threads ----
   "chat.gone": "Ce chat n'existe plus.",
+  "message.editAndResend": "Modifier et renvoyer",
+  "message.rewind": "Revenir ici dans la conversation",
+  "chat.rewind.title": "Revenir ici dans la conversation ?",
+  "chat.rewind.body": "Les {n} messages qui suivent sont supprimés, et l'agent démarre une nouvelle session : ce que vous avez retiré n'est plus dans sa mémoire.",
+  "chat.edit.title": "Modifier le message",
+  "chat.edit.body": "Votre message est remplacé et reposé à partir de là. Ce qui suivait est supprimé et l'agent démarre une nouvelle session.",
+  "chat.edit.send": "Renvoyer",
+  "chat.agentGone": "[Erreur : agent introuvable]",
+  "chat.stoppedByUser": "[arrêté par vous]",
   "chat.shared": "Partagé",
   "chat.individual": "Individuel",
   "chat.edit": "Modifier le chat",
