@@ -66,6 +66,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un hook démarre avec un message qui parle de l'événement choisi.** Un seul texte par défaut se
+  tenait derrière les dix-sept, écrit pour « un agent a terminé » et figé en espagnol. Un hook sur
+  « internet coupé » commençait en annonçant qu'un agent avait terminé, à tout le monde, dans une
+  langue que la plupart n'avaient pas choisie. Chaque événement démarre maintenant avec sa propre
+  ligne, dans votre langue, avec les variables qu'il porte vraiment : la question quand on
+  questionne, le modèle quand le quota est à sec, les deux agents pour une délégation. Changez
+  l'événement avant de toucher au message et il suit ; touchez-y et il cesse de suivre, car il est
+  à vous désormais. Le bouton de test remplit lui aussi les variables dans votre langue, pour que
+  l'aperçu soit le message que vous recevrez.
+
 - **L'application cesse de transporter six langues qu'elle ne vous montre pas.** Les sept
   dictionnaires étaient dans le même bundle : chaque démarrage payait pour les six que personne ne
   lisait — 575 ko, 179 compressés. Désormais seul l'espagnol est intégré (c'est la base vers

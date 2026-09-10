@@ -66,6 +66,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Hook beginnt mit einer Nachricht zu dem Ereignis, das du gewählt hast.** Hinter allen
+  siebzehn stand ein einziger Vorschlag, geschrieben für „ein Agent ist fertig" und fest auf
+  Spanisch. Ein Hook auf „Internet weg" begann damit, zu verkünden, ein Agent sei fertig — für
+  alle, in einer Sprache, die die meisten nicht gewählt hatten. Jedes Ereignis beginnt jetzt mit
+  seiner eigenen Zeile, in deiner Sprache, mit den Variablen, die es wirklich mitbringt: die Frage,
+  wenn gefragt wird, das Modell, wenn das Kontingent leer ist, beide Agenten bei einer Delegation.
+  Änderst du das Ereignis, bevor du die Nachricht anfasst, folgt sie; fasst du sie an, folgt sie
+  nicht mehr, denn ab da gehört sie dir. Auch der Testknopf füllt die Variablen in deiner Sprache,
+  damit die Vorschau die Nachricht ist, die du wirklich bekommst.
+
 - **Die App schleppt keine sechs Sprachen mehr mit, die sie dir nicht zeigt.** Alle sieben
   Wörterbücher steckten im selben Bundle, also zahlte jeder Start für die sechs, die niemand las:
   575 kB, 179 gepackt. Jetzt ist nur Spanisch fest eingebaut — es ist die Basis, auf die alle

@@ -1,6 +1,7 @@
 export const TEMPLATE_VARS: string[] = [
   "event", "time", "project", "workspace", "agent", "agentRole", "runId", "round",
-  "prompt", "output", "error", "taskPrompt", "toAgent", "task", "model", "summary", "approvalId"
+  "prompt", "output", "error", "taskPrompt", "toAgent", "task", "model", "summary", "question",
+  "approvalId"
 ];
 
 /**

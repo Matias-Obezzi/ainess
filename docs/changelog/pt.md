@@ -61,6 +61,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um hook começa com uma mensagem sobre o evento que você escolheu.** Havia um único texto padrão
+  atrás dos dezessete, escrito para «um agente terminou» e preso ao espanhol. Um hook de «caiu a
+  internet» começava anunciando que um agente tinha terminado, para todo mundo, num idioma que a
+  maioria não escolheu. Agora cada evento começa com a sua própria linha, no seu idioma, com as
+  variáveis que aquele evento realmente traz: a pergunta quando alguém pergunta, o modelo quando a
+  cota acaba, os dois agentes quando há uma delegação. Se você trocar o evento antes de mexer na
+  mensagem, ela acompanha; se mexer, ela para de acompanhar, porque dali em diante é sua. O botão
+  de testar também preenche as variáveis no seu idioma, então a prévia é a mensagem que vai chegar.
+
 - **O app deixa de carregar seis idiomas que não está mostrando para você.** Os sete dicionários
   vinham no mesmo bundle, então cada início pagava pelos seis que ninguém estava lendo: 575 kB, 179
   comprimidos. Agora só o espanhol vem embutido — é a base para a qual todos os outros caem — e o

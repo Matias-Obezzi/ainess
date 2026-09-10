@@ -64,6 +64,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A hook opens with a message about the event you picked.** One preset sat behind all seventeen
+  of them, written for "an agent finished" and hardcoded in Spanish. A hook on "internet lost"
+  opened by announcing that an agent had finished, to everyone, in a language most of the app's
+  readers had not chosen. Each event starts with its own line now, in your language, using the
+  variables that event really carries — the question for a question asked, the model for a spent
+  quota, both agents for a delegation. Change the event before you touch the message and it
+  follows; touch it and it stops following, because from then on it is yours. The test button
+  fills the variables in your language too, so the preview is the message you will actually get.
+
 - **The app stops carrying six languages it is not showing you.** All seven dictionaries were built
   into the same bundle, so every start paid for the six nobody was reading: 575 kB of them, 179
   gzipped. Now only Spanish is built in — it is the base every other language falls back to — and
