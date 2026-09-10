@@ -6,6 +6,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Nachrichten, die während der Arbeit eines Agenten in die Warteschlange gehen, gehen zusammen
+  hinaus, als eine.** Vorher gingen sie im Gänsemarsch: die erste, wenn der Zug endete, die zweite
+  wartete auf das Ende *dieses* Zuges. Drei in einem Zug getippte Zeilen wurden zu drei Zügen —
+  drei Läufe, drei Karten auf dem Board, und ein Agent, der die erste ausführte, bevor er die
+  Korrektur in der dritten gelesen hatte. Sie werden jetzt als ein einziger Prompt übergeben, in
+  der Reihenfolge, in der sie geschrieben wurden, und ohne Zusatz: eine Leerzeile dazwischen, so
+  wie man es selbst getippt hätte. "Jetzt senden" macht dasselbe, also ist das Abbrechen eines
+  Zuges, um eine von dreien zu übergeben, nicht mehr drei Züge; es ist ein Knopf für den Block
+  statt einer pro Zeile, und jede Zeile lässt sich weiterhin einzeln zurücknehmen, bevor sie geht.
+
 - **Nur das, was der Agent gerade tut, in einer Zeile.** Ein arbeitender Agent schreibt eine Zeile
   pro Werkzeug, das er benutzt, und ein langer Lauf schreibt Hunderte: der Verlauf füllte sich mit
   dem, was er schon erledigt hatte, und die eine lesenswerte Zeile — was er *gerade jetzt* tut —

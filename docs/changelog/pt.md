@@ -6,6 +6,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **As mensagens enfileiradas enquanto um agente trabalha vão todas juntas, como uma só.** Antes
+  saíam em fila: a primeira quando o turno terminava, e a segunda esperando *aquele* turno
+  terminar. Três linhas escritas de uma vez viravam três turnos — três execuções, três cartões no
+  quadro, e um agente agindo sobre a primeira antes de ter lido a correção da terceira. Agora são
+  entregues como um único prompt, na ordem em que você escreveu e sem nada acrescentado: uma linha
+  em branco entre elas, como se você tivesse digitado assim. "Enviar agora" faz o mesmo, então
+  cortar um turno para entregar uma de três já não são três turnos; é um botão para o bloco em vez
+  de um por linha, e cada linha ainda pode ser retirada sozinha antes de sair.
+
 - **Só o que o agente está fazendo agora, em uma linha.** Um agente trabalhando escreve uma linha
   para cada ferramenta que usa, e uma execução longa escreve centenas: o chat enchia com o que ele
   já tinha terminado e a única linha que valia a pena ler — o que está fazendo *agora* — ficava

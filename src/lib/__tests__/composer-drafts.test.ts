@@ -56,7 +56,8 @@ describe("messages written mid-turn", () => {
     expect(useAppStore.getState().chatQueues["c1"]).toEqual(["primero", "segundo"]);
   });
 
-  it("goes out when the turn ends, oldest first", async () => {
+  // One message, not one per turn — the rest of that contract is in `chat-queue.test.ts`.
+  it("goes out when the turn ends, all of it at once and in order", async () => {
     const sent: Array<[string, string]> = [];
     useAppStore.setState({
       chatQueues: { c1: ["lo que escribí mientras pensaba", "y esto también"] },
@@ -65,8 +66,8 @@ describe("messages written mid-turn", () => {
 
     await useAppStore.getState().flushChatQueue("c1");
 
-    expect(sent).toEqual([["c1", "lo que escribí mientras pensaba"]]);
-    expect(useAppStore.getState().chatQueues["c1"]).toEqual(["y esto también"]);
+    expect(sent).toEqual([["c1", "lo que escribí mientras pensaba\n\ny esto también"]]);
+    expect(useAppStore.getState().chatQueues["c1"]).toEqual([]);
   });
 
   it("does nothing when nothing was written", async () => {

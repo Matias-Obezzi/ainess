@@ -6,6 +6,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Les messages mis en file pendant qu'un agent travaille partent tous ensemble, en un seul.**
+  Avant, ils partaient à la queue leu leu : le premier à la fin du tour, le second attendant la fin
+  de *ce* tour-là. Trois lignes écrites d'une traite devenaient trois tours — trois exécutions,
+  trois cartes sur le tableau, et un agent agissant sur la première avant d'avoir lu la correction
+  de la troisième. Ils sont désormais remis en un seul prompt, dans l'ordre où ils ont été écrits
+  et sans rien y ajouter : une ligne vide entre eux, comme si vous l'aviez tapé ainsi. « Envoyer
+  maintenant » fait de même, donc interrompre un tour pour livrer un message sur trois n'est plus
+  trois tours ; c'est un bouton pour le bloc plutôt qu'un par ligne, et chaque ligne peut toujours
+  être retirée seule avant de partir.
+
 - **Seulement ce que l'agent fait maintenant, sur une ligne.** Un agent au travail écrit une ligne
   par outil qu'il utilise, et une longue exécution en écrit des centaines : le fil se remplissait de
   ce qu'il avait déjà terminé, et la seule ligne qui valait la peine d'être lue — ce qu'il fait

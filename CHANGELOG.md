@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **Messages queued while an agent works go over together, as one.** They used to go in single
+  file: the first one when the turn ended, the second waiting for *that* turn to end. Three lines
+  typed in one sitting became three turns — three runs, three cards on the board, and an agent
+  acting on the first before it had read the correction in the third. They are handed over as a
+  single prompt now, in the order they were written, with nothing added: a blank line between them,
+  the way you would have typed it yourself. "Send now" does the same, so cutting a turn short to
+  deliver one of three is no longer three turns; it is one button for the block rather than one per
+  line, and each line can still be taken back on its own before it goes.
+
 - **Only what the agent is doing now, on one line.** A working agent writes a line for every tool
   it uses, and a long run writes hundreds: the thread filled up with what it had already finished,
   and the one line worth reading — what it is doing *right now* — was buried somewhere above. The

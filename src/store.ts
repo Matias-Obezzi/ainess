@@ -16,6 +16,7 @@ import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
+import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
@@ -132,10 +133,15 @@ export interface AppState {
   unqueueChatMessage(chatId: string, index: number): void;
   /** The same, for an instruction waiting on a working agent. */
   unqueueInstruction(projectId: string, agentId: string, index: number): void;
-  /** Cuts the turn that is running short and sends the queued message now. */
-  sendChatNow(chatId: string, index: number): Promise<void>;
-  sendInstructionNow(projectId: string, agentId: string, index: number): Promise<void>;
-  /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
+  /**
+   * Cuts the turn that is running short and hands the queue over now.
+   *
+   * The whole queue, not one of it: the messages go as a single prompt either way (see
+   * `lib/queued-prompt`), and interrupting to deliver one of three would still be three turns.
+   */
+  sendChatNow(chatId: string): Promise<void>;
+  sendInstructionNow(projectId: string, agentId: string): Promise<void>;
+  /** Sends everything waiting on a chat as one message, if there is any. Called when a turn ends. */
   flushChatQueue(chatId: string): Promise<void>;
   /**
    * Chats with a turn in flight, as reported by the snapshot. Only the phone build fills this:
@@ -2159,32 +2165,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
     });
   },
 
-  sendChatNow: async (chatId, index) => {
+  sendChatNow: async (chatId) => {
+    // Read and cleared without awaiting in between: the flush that follows every turn end reads the
+    // same queue, and a gap here is the same message going out twice.
     const queued = get().chatQueues[chatId] ?? [];
-    const text = queued[index];
-    if (text === undefined) return;
+    const text = interruptedPrompt(translateNow("queued.interruptedNote"), queued);
+    if (!text) return;
+    // Only what was read is dropped: a message typed while this was in flight still waits its turn.
     set(state => ({
-      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index) },
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
-    // Stopping is awaited so the turn is closed before the next one opens.
+    // Stopping is awaited so the turn is closed before the next one opens. The flush that follows a
+    // stop finds the queue already empty, so this does not go out twice.
     await get().stopChat(chatId);
-    const { translateNow } = await import("@/i18n/useT");
-    await get().sendChatMessage(chatId, `${translateNow("queued.interruptedNote")}
-
-${text}`);
+    await get().sendChatMessage(chatId, text);
   },
 
-  sendInstructionNow: async (projectId, agentId, index) => {
-    await orchestrator.sendNowInterrupting(agentId, projectId, index);
+  sendInstructionNow: async (projectId, agentId) => {
+    await orchestrator.sendNowInterrupting(agentId, projectId);
   },
 
   flushChatQueue: async (chatId) => {
     const queued = get().chatQueues[chatId] ?? [];
     if (queued.length === 0) return;
+    const text = joinQueued(queued);
     set(state => ({
-      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(1) },
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
-    await get().sendChatMessage(chatId, queued[0]);
+    if (!text) return;
+    await get().sendChatMessage(chatId, text);
   },
 
   sendChatMessage: async (chatId, text) => {

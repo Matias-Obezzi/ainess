@@ -6,6 +6,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Los mensajes encolados mientras un agente trabaja se mandan todos juntos, como uno solo.**
+  Antes salían en fila: el primero cuando terminaba el turno, y el segundo esperando a que
+  terminara *ese* turno. Tres renglones escritos de una sentada se volvían tres turnos — tres
+  corridas, tres tarjetas en el tablero, y un agente actuando sobre el primero antes de haber leído
+  la corrección del tercero. Ahora se entregan como un solo prompt, en el orden en que los
+  escribiste y sin agregarles nada: una línea en blanco entre uno y otro, igual que si lo hubieras
+  tipeado vos. «Enviar ahora» hace lo mismo, así que cortar un turno para entregar uno de tres ya
+  no son tres turnos; es un botón para el bloque en vez de uno por renglón, y cada renglón se sigue
+  pudiendo sacar por su cuenta antes de que salga.
+
 - **Solo lo que el agente está haciendo ahora, en una línea.** Un agente trabajando escribe una
   línea por cada herramienta que usa, y una corrida larga escribe cientos: el chat se llenaba de lo
   que ya había terminado y la única línea que valía la pena leer —lo que está haciendo *ahora*—

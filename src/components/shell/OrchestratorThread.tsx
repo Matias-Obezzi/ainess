@@ -54,17 +54,19 @@ export function OrchestratorThread() {
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
+  // A block per agent: what is waiting for one of them goes over as a single message, and what is
+  // waiting for another is a different message on a different turn.
   const queued = useMemo(() => {
     if (!runtime || !currentProjectId) return [];
-    return agents.flatMap(agent =>
-      (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
+    return agents.map(agent => ({
+      // Only worth naming when the project has more than one agent to send to.
+      to: agents.length > 1 ? agent.name : undefined,
+      lines: (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
         text,
-        // Only worth naming when the project has more than one agent to send to.
-        to: agents.length > 1 ? agent.name : undefined,
         onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
-        onSendNow: () => void sendInstructionNow(currentProjectId, agent.id, index),
       })),
-    );
+      onSendNow: () => void sendInstructionNow(currentProjectId, agent.id),
+    }));
   }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
   const rootRuns = useMemo(
@@ -193,7 +195,7 @@ export function OrchestratorThread() {
               </div>
             )}
             {shownRuns.map(run => <RunBubble key={run.id} run={run} />)}
-            <QueuedMessages messages={queued} />
+            <QueuedMessages groups={queued} />
             <div ref={bottomRef} />
           </div>
         )}

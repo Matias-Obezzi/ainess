@@ -1414,29 +1414,40 @@ export function noneLand(delegations: Delegation[], children: AgentConfig[]): bo
   return resolveDelegations(delegations, children).resolved.length === 0;
 }
 
-function processQueuedInstructions(agentId: string, projectId: string) {
+/**
+ * Hands over everything written while this agent was busy, as one prompt.
+ *
+ * Exported for its own test: it is the end of the queue's life and the only place the merge that
+ * `lib/queued-prompt` describes actually happens, and reaching it through a real run end would be
+ * testing the process spawner instead.
+ */
+export function processQueuedInstructions(agentId: string, projectId: string) {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   // Every run end calls this, and the end of the run that delegated is not the end of the work:
   // handing the message over there would have it run beside its own children.
   if (!runtime || isBusy(runtime.status)) return;
 
+  // Everything waiting goes over as one prompt, not one turn each: see `lib/queued-prompt`. Only
+  // what was read is dropped from the queue, so a message that arrived while this ran still waits.
   const queued = runtime.queuedInstructions ?? [];
-  if (queued.length > 0) {
-    const text = queued[0];
-    useAppStore.setState(state => {
-      const pRuntime = state.runtime[projectId] || {};
-      return {
-        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: (pRuntime[agentId]?.queuedInstructions ?? []).slice(1) } } }
-      };
-    });
-    
-    // User instructions are always direct: no parent, so they never re-trigger
-    // a continuation of a planner that already received its results.
-    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true });
-  }
+  if (queued.length === 0) return;
+
+  const prompt = joinQueued(queued);
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[projectId] || {};
+    return {
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: (pRuntime[agentId]?.queuedInstructions ?? []).slice(queued.length) } } }
+    };
+  });
+  if (!prompt) return;
+
+  // User instructions are always direct: no parent, so they never re-trigger
+  // a continuation of a planner that already received its results.
+  startRun({ agentId, projectId, prompt, parentRunId: null, round: 0, resume: true });
 }
 
+import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
@@ -1464,21 +1475,19 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
  * session, which the run that follows resumes. It is put at the head of the queue and the agent is
  * stopped; the drain that every stop ends in is what starts it.
  */
-export async function sendNowInterrupting(agentId: string, projectId: string, index: number): Promise<void> {
+export async function sendNowInterrupting(agentId: string, projectId: string): Promise<void> {
   const store = useAppStore.getState();
   const queue = store.runtime[projectId]?.[agentId]?.queuedInstructions ?? [];
-  const text = queue[index];
-  if (text === undefined) return;
+  // The whole queue, in the order it was written. Holding the rest back for a turn of its own is
+  // the thing the queue stopped doing: interrupting to deliver one of three is still three turns.
+  const prompt = interruptedPrompt(translateNow("queued.interruptedNote"), queue);
+  if (!prompt) return;
 
-  const rest = queue.filter((_, i) => i !== index);
-  // The agent has to know its last turn was cut, or it reads the transcript as a turn it finished.
-  rest.unshift(`${translateNow("queued.interruptedNote")}
-
-${text}`);
   useAppStore.setState(state => {
     const pRuntime = state.runtime[projectId] || {};
+    const current = pRuntime[agentId]?.queuedInstructions ?? [];
     return {
-      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: rest } } },
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: [prompt, ...current.slice(queue.length)] } } },
     };
   });
 
