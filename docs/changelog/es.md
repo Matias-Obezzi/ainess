@@ -14,6 +14,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Se terminaron las ventanas de consola que abría un agente mientras trabajaba.** El intento
+  anterior arregló la mitad equivocada. Pedir un proceso sin consola funciona para ese proceso — y
+  después cada programa de consola que *él* corre le pide una a Windows, recibe una nueva, y esa sí
+  se ve. Las ventanas nunca fueron nuestras: eran de los programas que corrían nuestros agentes.
+  Ahora la app toma una sola consola para sí al arrancar y la esconde, y todo lo que cuelga de ella
+  hereda esa en vez de pedir la propia, por hondo que vaya.
+
 - **Un link a un archivo en una respuesta ahora hace algo.** Un agente que escribía
   `[el archivo](file:///C:/Users/vos/notas.txt)` dibujaba un texto gris muerto: `file:` estaba en la
   misma lista de rechazados que `javascript:` y `data:`, que sí se ejecutan en la página, y había

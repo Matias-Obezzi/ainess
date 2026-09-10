@@ -15,6 +15,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die Konsolenfenster, die ein Agent bei der Arbeit öffnete, sind endgültig weg.** Der letzte
+  Versuch behob die falsche Hälfte. Einen Prozess ohne Konsole anzufordern wirkt für diesen Prozess
+  — und dann fragt jedes Konsolenprogramm, das *er* startet, Windows nach einer, bekommt eine neue,
+  und die ist sichtbar. Die Fenster waren nie unsere: Sie gehörten den Programmen, die unsere
+  Agenten ausführten. Die App nimmt sich beim Start jetzt eine einzige Konsole und versteckt sie,
+  und alles darunter erbt diese, statt nach einer eigenen zu fragen — wie tief es auch geht.
+
 - **Ein Dateilink in einer Antwort tut jetzt etwas.** Schrieb ein Agent
   `[die Datei](file:///C:/Users/du/notizen.txt)`, wurde daraus ein toter grauer Text: `file:` stand
   auf derselben Verbotsliste wie `javascript:` und `data:`, die tatsächlich in der Seite ausgeführt

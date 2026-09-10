@@ -157,7 +157,13 @@ fn build_command(opts: &SpawnOptions) -> Command {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        // `CREATE_NO_WINDOW` leaves the agent with no console — and then every console program the
+        // agent itself runs asks Windows for one, gets a new one, and that one is visible. With a
+        // console of our own to hand down (`console::share_console`), inheriting it is what keeps
+        // the whole tree quiet. The flag is the fallback for when there was none to share.
+        if !crate::console::is_shared() {
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
     }
     cmd
 }
@@ -493,14 +499,17 @@ fn exec_capture_blocking(
         }
     }
     
-    // Use CREATE_NO_WINDOW on Windows to prevent flashing console windows
+    // Same reasoning as `build_command`: inherit the app's hidden console when there is one, so a
+    // program this one runs in turn has no reason to open a window either.
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        if !crate::console::is_shared() {
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
     }
-    
+
     let child = cmd.spawn().map_err(|e| {
         let msg = format!("No se pudo ejecutar {}: {}", program, e);
         logging::append(&app, "error", "exec", &msg);

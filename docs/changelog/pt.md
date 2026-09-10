@@ -14,6 +14,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Acabaram as janelas de console que um agente abria enquanto trabalhava.** A tentativa anterior
+  consertou a metade errada. Pedir um processo sem console funciona para aquele processo — e depois
+  cada programa de console que *ele* roda pede uma ao Windows, recebe uma nova, e essa aparece. As
+  janelas nunca foram nossas: eram dos programas que os nossos agentes estavam rodando. Agora o app
+  toma um único console para si ao iniciar e o esconde, e tudo abaixo herda esse em vez de pedir o
+  seu próprio, por mais fundo que vá.
+
 - **Um link para um arquivo numa resposta agora faz alguma coisa.** Um agente que escrevia
   `[o arquivo](file:///C:/Users/voce/notas.txt)` desenhava um texto cinza morto: `file:` estava na
   mesma lista de recusados que `javascript:` e `data:`, que de fato executam na página, e tinha

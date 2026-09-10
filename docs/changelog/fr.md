@@ -15,6 +15,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Les fenêtres de console qu'un agent ouvrait en travaillant ont disparu pour de bon.** La
+  tentative précédente réparait la mauvaise moitié. Demander un processus sans console fonctionne
+  pour ce processus — et ensuite chaque programme console que *lui* lance en demande une à Windows,
+  en reçoit une neuve, et celle-là est visible. Les fenêtres n'ont jamais été les nôtres : elles
+  appartenaient aux programmes que nos agents exécutaient. L'application prend désormais une seule
+  console pour elle au démarrage et la masque, et tout ce qui se trouve en dessous hérite de
+  celle-là au lieu d'en demander une, aussi profond que cela descende.
+
 - **Un lien vers un fichier dans une réponse fait enfin quelque chose.** Un agent écrivant
   `[le fichier](file:///C:/Users/vous/notes.txt)` produisait un texte gris mort : `file:` figurait
   sur la même liste de refus que `javascript:` et `data:`, qui s'exécutent réellement dans la page,

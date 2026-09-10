@@ -1,4 +1,5 @@
 mod config;
+mod console;
 mod detect;
 mod diagnostics;
 mod http;
@@ -12,6 +13,10 @@ mod tunnel;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Before the builder, and well before anything is spawned: every process started from here on
+    // inherits this console instead of asking Windows for one of its own (see src/console.rs).
+    console::share_console();
+
     let app = tauri::Builder::default()
         // First of all the plugins, as the plugin itself asks: a second launch has to be turned
         // back before anything else starts. Closing the window only hides it in the tray, so what

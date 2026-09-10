@@ -16,6 +16,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The console windows an agent opened while it worked are gone for good.** The last attempt at
+  this fixed the wrong half. Asking for a process with no console works for that process — and then
+  every console program *it* runs asks Windows for one, is given a new one, and that one is
+  visible. The windows were never ours: they belonged to the programs our agents were running. The
+  app now takes a single console for itself at startup and hides it, and everything below inherits
+  that one instead of asking for its own, however deep it goes.
+
 - **A file link in an answer does something.** An agent writing
   `[the file](file:///C:/Users/you/notes.txt)` drew a dead grey span: `file:` sat in the same
   refused list as `javascript:` and `data:`, which run in the page, and it had been put there by
