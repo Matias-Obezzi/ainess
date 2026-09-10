@@ -11,31 +11,34 @@ export const EDGE_ZONE_PX = 72;
 export const EDGE_MAX_SPEED = 18;
 
 /**
- * How far to scroll this frame for a pointer at `x`, negative towards the start.
+ * How far to scroll this frame for a pointer at `pos`, negative towards the start.
+ *
+ * Told in start/end rather than left/right because the two axes want the same answer: a column too
+ * tall to see the end of has the same problem as a board too wide, and the same ramp solves it.
  *
  * Zero anywhere outside the two zones, and ramped inside them rather than constant: a step that
  * begins the moment you enter the zone yanks the board out from under the card, and one that does
  * not grow makes the far end of a wide board a long wait.
  */
 export function edgeScrollStep(
-  x: number,
-  rect: { left: number; right: number },
+  pos: number,
+  span: { start: number; end: number },
   opts?: { zone?: number; max?: number },
 ): number {
   const zone = opts?.zone ?? EDGE_ZONE_PX;
   const max = opts?.max ?? EDGE_MAX_SPEED;
-  if (zone <= 0 || rect.right <= rect.left) return 0;
+  if (zone <= 0 || span.end <= span.start) return 0;
 
   // A container narrower than two zones would have them overlap, and a pointer in the middle would
   // be pulled both ways. Splitting it in half lets each edge keep its own side.
-  const half = (rect.right - rect.left) / 2;
+  const half = (span.end - span.start) / 2;
   const reach = Math.min(zone, half);
 
-  const fromLeft = x - rect.left;
-  if (fromLeft < reach) return -ramp(reach - fromLeft, reach, max);
+  const fromStart = pos - span.start;
+  if (fromStart < reach) return -ramp(reach - fromStart, reach, max);
 
-  const fromRight = rect.right - x;
-  if (fromRight < reach) return ramp(reach - fromRight, reach, max);
+  const fromEnd = span.end - pos;
+  if (fromEnd < reach) return ramp(reach - fromEnd, reach, max);
 
   return 0;
 }

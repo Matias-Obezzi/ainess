@@ -14,6 +14,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un agente que responde una pregunta en un chat ya no puede repartir trabajo.** El turno que
+  lleva tu respuesta arrancaba sin que se le dijera que era de un chat, así que se leía como una
+  tarea: se le parseaban los bloques `delegate` y se actuaba sobre ellos. Un agente podía poner a
+  trabajar a otros desde adentro de una conversación donde nadie se lo había pedido.
+
+- **El tablero también scrollea hacia abajo mientras arrastrás.** Una columna más alta que la
+  pantalla tenía el mismo problema que el tablero a lo ancho: la tarjeta debajo de la cual querías
+  soltar estaba fuera de vista. Ahora la columna bajo el puntero también tira, con la misma rampa.
+
 - **Se terminaron las ventanas de consola que abría un agente mientras trabajaba.** El intento
   anterior arregló la mitad equivocada. Pedir un proceso sin consola funciona para ese proceso — y
   después cada programa de consola que *él* corre le pide una a Windows, recibe una nueva, y esa sí

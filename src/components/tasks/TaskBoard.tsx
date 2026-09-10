@@ -72,7 +72,8 @@ export function TaskBoard({
   }, [tasks]);
 
   /**
-   * Holding a card near an edge scrolls the board towards the columns you cannot see.
+   * Holding a card near an edge scrolls: sideways for the columns off screen, and down the column
+   * under the pointer for the cards below its fold. Same ramp for both — see `edgeScrollStep`.
    *
    * Two things make this less obvious than it sounds. The card handlers call `stopPropagation`, so
    * a listener on the container hears nothing while the pointer is over a card — hence the capture
@@ -81,20 +82,30 @@ export function TaskBoard({
    * is remembered and a frame loop does the scrolling, until the drag ends.
    */
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const pointerXRef = useRef<number | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!dragId || !scroller) return;
 
-    const track = (e: globalThis.DragEvent) => { pointerXRef.current = e.clientX; };
+    const track = (e: globalThis.DragEvent) => { pointerRef.current = { x: e.clientX, y: e.clientY }; };
     scroller.addEventListener("dragover", track, true);
 
     let frame = requestAnimationFrame(function step() {
-      const x = pointerXRef.current;
-      if (x !== null) {
-        const move = edgeScrollStep(x, scroller.getBoundingClientRect());
-        if (move !== 0) scroller.scrollLeft += move;
+      const at = pointerRef.current;
+      if (at) {
+        const board = scroller.getBoundingClientRect();
+        const across = edgeScrollStep(at.x, { start: board.left, end: board.right });
+        if (across !== 0) scroller.scrollLeft += across;
+
+        // The column under the pointer, found rather than held: each one is drawn inside a `map`,
+        // so there is no single ref to keep, and which one matters changes as you cross the board.
+        const under = document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>("[data-column-scroll]");
+        if (under) {
+          const column = under.getBoundingClientRect();
+          const down = edgeScrollStep(at.y, { start: column.top, end: column.bottom });
+          if (down !== 0) under.scrollTop += down;
+        }
       }
       frame = requestAnimationFrame(step);
     });
@@ -102,7 +113,7 @@ export function TaskBoard({
     return () => {
       scroller.removeEventListener("dragover", track, true);
       cancelAnimationFrame(frame);
-      pointerXRef.current = null;
+      pointerRef.current = null;
     };
   }, [dragId]);
 
@@ -184,7 +195,7 @@ export function TaskBoard({
                 </Badge>
               </header>
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-3">
+              <div data-column-scroll className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-3">
                 {items.map((task, i) => (
                   <div key={task.id}>
                     {over?.status === status && over.index === i && <DropLine />}

@@ -16,6 +16,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **An agent answering a question in a chat can no longer hand out work.** The turn that carries
+  your answer was started without being told it belonged to a chat, so it was read as a task: its
+  `delegate` blocks were parsed and acted on. An agent could put other agents to work from inside a
+  conversation where nobody had asked for it.
+
+- **The board scrolls down as well as across while you drag.** A column taller than the screen had
+  the same problem the board had sideways: the card you wanted to drop below was out of view. The
+  column under the pointer now pulls too, with the same ramp.
+
 - **The console windows an agent opened while it worked are gone for good.** The last attempt at
   this fixed the wrong half. Asking for a process with no console works for that process — and then
   every console program *it* runs asks Windows for one, is given a new one, and that one is

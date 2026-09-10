@@ -14,6 +14,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um agente que responde a uma pergunta num chat já não pode distribuir trabalho.** O turno que
+  leva a sua resposta começava sem que lhe dissessem que era de um chat, então era lido como uma
+  tarefa: os seus blocos `delegate` eram interpretados e executados. Um agente podia pôr outros a
+  trabalhar de dentro de uma conversa onde ninguém tinha pedido.
+
+- **O quadro também rola para baixo enquanto você arrasta.** Uma coluna mais alta que a tela tinha
+  o mesmo problema que o quadro tinha na horizontal: o cartão sob o qual você queria soltar estava
+  fora de vista. Agora a coluna sob o ponteiro também puxa, com a mesma rampa.
+
 - **Acabaram as janelas de console que um agente abria enquanto trabalhava.** A tentativa anterior
   consertou a metade errada. Pedir um processo sem console funciona para aquele processo — e depois
   cada programa de console que *ele* roda pede uma ao Windows, recebe uma nova, e essa aparece. As

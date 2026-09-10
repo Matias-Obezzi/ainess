@@ -1034,6 +1034,10 @@ export function resumeWithAnswer(question: AgentQuestion, answer: string[]): voi
     parentRunId: run?.parentRunId ?? null,
     round: question.round,
     resume: true,
+    // A chat turn that answers a question is still a chat turn. Without carrying the kind over, the
+    // resumed run was read as a task: its `delegate` blocks were parsed and acted on, so an agent
+    // could hand work out from inside a conversation where nobody had asked it to.
+    kind: run?.kind,
     // A question asked inside a chat is answered inside that chat. Without this the answer went to
     // whatever session the agent's own slot was holding, which is the same crossing of wires read
     // from the other end.

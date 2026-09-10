@@ -15,6 +15,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Agent, der in einem Chat eine Frage beantwortet, kann keine Arbeit mehr verteilen.** Der
+  Zug, der deine Antwort trägt, wurde gestartet, ohne dass ihm gesagt wurde, dass er zu einem Chat
+  gehört — also wurde er als Aufgabe gelesen und seine `delegate`-Blöcke ausgeführt. Ein Agent
+  konnte andere aus einem Gespräch heraus an die Arbeit schicken, in dem niemand darum gebeten
+  hatte.
+
+- **Das Board scrollt beim Ziehen auch nach unten.** Eine Spalte, die höher ist als der
+  Bildschirm, hatte dasselbe Problem wie das Board in der Breite: Die Karte, unter der du ablegen
+  wolltest, lag außerhalb. Jetzt zieht auch die Spalte unter dem Zeiger, mit derselben Rampe.
+
 - **Die Konsolenfenster, die ein Agent bei der Arbeit öffnete, sind endgültig weg.** Der letzte
   Versuch behob die falsche Hälfte. Einen Prozess ohne Konsole anzufordern wirkt für diesen Prozess
   — und dann fragt jedes Konsolenprogramm, das *er* startet, Windows nach einer, bekommt eine neue,

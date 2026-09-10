@@ -15,6 +15,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un agent qui répond à une question dans une conversation ne peut plus distribuer du travail.**
+  Le tour qui porte votre réponse démarrait sans qu'on lui dise qu'il appartenait à une
+  conversation : il était donc lu comme une tâche et ses blocs `delegate` étaient exécutés. Un agent
+  pouvait mettre d'autres agents au travail depuis une conversation où personne ne l'avait
+  demandé.
+
+- **Le tableau défile aussi vers le bas pendant que vous glissez.** Une colonne plus haute que
+  l'écran avait le même problème que le tableau en largeur : la carte sous laquelle vous vouliez
+  déposer était hors champ. La colonne sous le pointeur entraîne désormais elle aussi, avec la même
+  rampe.
+
 - **Les fenêtres de console qu'un agent ouvrait en travaillant ont disparu pour de bon.** La
   tentative précédente réparait la mauvaise moitié. Demander un processus sans console fonctionne
   pour ce processus — et ensuite chaque programme console que *lui* lance en demande une à Windows,
