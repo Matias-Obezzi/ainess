@@ -52,12 +52,15 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);
   const unqueueChatMessage = useAppStore(state => state.unqueueChatMessage);
   const sendChatNow = useAppStore(state => state.sendChatNow);
+  // One block: they go over as a single message, so there is one "send now" for the lot.
   const queued = useMemo(
-    () => (chatQueue ?? []).map((text, index) => ({
-      text,
-      onCancel: () => unqueueChatMessage(chatId, index),
-      onSendNow: () => void sendChatNow(chatId, index),
-    })),
+    () => [{
+      lines: (chatQueue ?? []).map((text, index) => ({
+        text,
+        onCancel: () => unqueueChatMessage(chatId, index),
+      })),
+      onSendNow: () => void sendChatNow(chatId),
+    }],
     [chatQueue, chatId, unqueueChatMessage, sendChatNow],
   );
 
@@ -176,7 +179,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
             messages.map(msg => <ChatBubble key={msg.id} message={msg} projectId={chat?.projectId} />)
           )}
           {/* Written while the chat was answering: it goes when this turn ends. */}
-          <QueuedMessages messages={queued} />
+          <QueuedMessages groups={queued} />
           <div ref={endRef} />
         </div>
       </div>

@@ -13,6 +13,7 @@ import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
+import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
@@ -128,39 +129,38 @@ export function flushStream() {
   const deltas = streamBuffer.take();
   if (deltas.size === 0) return;
 
-  useAppStore.setState(state => {
-    let runsChanged = false;
-    const runs = { ...state.runs };
-    let messagesChanged = false;
-    let messages = [...state.messages];
-    let addedMessages = 0;
+  // The lines go to a module of their own, not into the store. They used to be appended to
+  // `runs[id].rawLines` here, which gave `runs` a new identity twelve times a second and re-rendered
+  // every component watching it — the composer included — for a buffer only one dialog ever reads.
+  for (const [runId, delta] of deltas.entries()) appendRawLines(runId, delta.lines);
 
+  useAppStore.setState(state => {
+    const runs = state.runs;
     const runIdsWithText = new Set<string>();
     for (const [runId, delta] of deltas.entries()) {
       if (delta.text) runIdsWithText.add(runId);
     }
+    // Nothing but lines this time, and those no longer live here: leave the store alone rather than
+    // copy the whole feed to put it back unchanged.
+    if (runIdsWithText.size === 0) return state;
 
+    let messagesChanged = false;
+    let messages = [...state.messages];
+    let addedMessages = 0;
+
+    // From the end: a run being streamed into has its `text-` message at the tail, and stopping as
+    // soon as they are all found turns a walk over the whole feed into a walk over the last few.
     const msgIndices = new Map<string, number>();
-    if (runIdsWithText.size > 0) {
-      for (let i = 0; i < messages.length; i++) {
-        const m = messages[i];
-        if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId)) {
-          msgIndices.set(m.runId, i);
-        }
+    for (let i = messages.length - 1; i >= 0 && msgIndices.size < runIdsWithText.size; i--) {
+      const m = messages[i];
+      if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId) && !msgIndices.has(m.runId)) {
+        msgIndices.set(m.runId, i);
       }
     }
 
     for (const [runId, delta] of deltas.entries()) {
       const r = runs[runId];
       if (!r) continue;
-
-      if (delta.lines.length > 0) {
-        runs[runId] = {
-          ...r,
-          rawLines: [...r.rawLines, ...delta.lines].slice(-2000)
-        };
-        runsChanged = true;
-      }
 
       if (delta.text) {
         const idx = msgIndices.get(runId);
@@ -187,11 +187,8 @@ export function flushStream() {
       messages = trimMessagesInMemory(messages);
     }
 
-    if (!runsChanged && !messagesChanged) return state;
-    return {
-      ...(runsChanged ? { runs } : {}),
-      ...(messagesChanged ? { messages } : {})
-    };
+    if (!messagesChanged) return state;
+    return { messages };
   });
 
   // A note is worth having while the agent is still working, which is the whole point of it, so it
@@ -663,11 +660,16 @@ function handleExit(e: RunExitEvent) {
   const run = store.runs[e.runId];
   if (!run) return;
 
+  // Everything the run printed, taken out of the live buffer now that there is no more coming. From
+  // here on it belongs to the run: what gets saved, what the raw view of a finished run shows.
+  const rawLines = rawLinesOf(e.runId) ?? run.rawLines;
+  forgetRawLines(e.runId);
+
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
-  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(run.rawLines) : finalOutputFromLines(run.rawLines));
+  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(rawLines) : finalOutputFromLines(rawLines));
   // Providers that only report what each step spent (opencode) are added up here, once.
-  const finalUsage = spec?.finalUsage ? spec.finalUsage(run.rawLines) : undefined;
+  const finalUsage = spec?.finalUsage ? spec.finalUsage(rawLines) : undefined;
   const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
   const output = e.killed ? translateNow("system.stoppedByUser") : collected;
@@ -680,6 +682,7 @@ function handleExit(e: RunExitEvent) {
         ...state.runs,
         [e.runId]: {
           ...state.runs[e.runId],
+          rawLines,
           status,
           output,
           endedAt: Date.now(),
@@ -698,7 +701,7 @@ function handleExit(e: RunExitEvent) {
   }
 
   if (agentForRun?.provider === "antigravity" && !e.killed) {
-    const text = `${output}\n${run.rawLines.slice(-20).join("\n")}`;
+    const text = `${output}\n${rawLines.slice(-20).join("\n")}`;
     void recordAntigravityOutcome(run.model ?? agentForRun.model, text, status === "done");
   }
 
@@ -773,6 +776,9 @@ function onRunFinished(runId: string) {
   // of the task, just a wait. See `parkQuotaRetry` and `useQuotaSync`, which relaunches it.
   const parkForRetry = !run.parentRunId && spentModel(run, agent) !== null && shouldRetryOnQuota(agent, project);
   if (parkForRetry) agentStatus = "waiting";
+  // Ended any other way — it finished, it failed for its own reasons, it was stopped. Whatever was
+  // parked for this same work is settled, and leaving it would have it relaunched later for nothing.
+  else store.clearQuotaWaitingFor(run.projectId, agent.id, run.prompt);
 
   if (run.status === "done") void emitHookEvent("run.finished", {}, ctx);
   else if (run.status === "error") void emitHookEvent("run.failed", {}, ctx);
@@ -1053,13 +1059,11 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     // Deferred: the caller (`onRunFinished`) still has its own `runtime` update to make for this
     // very run once this function returns, and starting the resumed run synchronously here would
     // have that update stomp on the new run's `currentRunId` a moment after `resumeWithAnswer` sets it.
-    const asked = Object.values(questions);
-    // One resume carrying every question, not one resume per question. The run is a single run:
-    // resuming it once per question forks the lineage, and each fork can ask again — which doubles
-    // every turn, with nothing but the expiry hour underneath it. The prompt joins the questions so
-    // the agent sees all of them answered rather than only the first.
-    const joined: AgentQuestion = { ...asked[0], question: asked.map(q => q.question).join("\n") };
-    setTimeout(() => resumeWithAnswer(joined, autoAnswer), 0);
+    // One resume carrying every question, the same way a person answering them gets one — see
+    // `resumeWithAnswers`. Resuming once per question forks the lineage, and each fork can ask
+    // again, which doubles every turn with nothing but the expiry hour underneath it.
+    const asked = Object.values(questions).map(question => ({ question, answer: autoAnswer }));
+    setTimeout(() => resumeWithAnswers(asked), 0);
     return true;
   }
 
@@ -1080,17 +1084,39 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
  * same way an instruction does. Nothing else of the round moved while it waited.
  */
 export function resumeWithAnswer(question: AgentQuestion, answer: string[]): void {
+  resumeWithAnswers([{ question, answer }]);
+}
+
+/**
+ * Hands back every answer at once and lets the agent carry on — one message, one run.
+ *
+ * A run that asks three things used to be resumed three times, once per answer: three runs off one
+ * turn, three tasks on the board, three agents editing the same workspace over a question the user
+ * answered once. The agent asked in a single turn and it gets a single reply, which is also the only
+ * shape that makes sense to it — the second answer is no use without the first.
+ *
+ * Every question here belongs to the same run; the caller groups them (see `pending-question.ts`).
+ */
+export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer: string[] }>): void {
+  if (items.length === 0) return;
   const store = useAppStore.getState();
+  const question = items[0].question;
   const run = store.runs[question.runId];
-  const chosen = answer.filter(a => a.trim()).join(", ");
-  const text = translateNow("questions.answerPrompt", { question: question.question, answer: chosen });
+
+  const lines = items.map(item => {
+    const chosen = item.answer.filter(a => a.trim()).join(", ");
+    return translateNow("questions.answerPrompt", { question: item.question.question, answer: chosen });
+  });
+  const text = lines.join("\n");
 
   addMessage({
     projectId: question.projectId,
     fromAgentId: "user",
     toAgentId: question.agentId,
     kind: "instruction",
-    text: chosen,
+    // The feed shows what was answered, and with several questions the answers alone ("sí, la B")
+    // say nothing without the questions they belong to.
+    text: items.length === 1 ? items[0].answer.filter(a => a.trim()).join(", ") : text,
     runId: question.runId,
   });
 
@@ -1211,19 +1237,33 @@ function shouldRetryOnQuota(agent: AgentConfig, project: Project | undefined): b
  * hand does.
  */
 function parkQuotaRetry(run: Run, agent: AgentConfig): void {
-  useAppStore.setState(state => ({
-    quotaWaiting: {
-      ...state.quotaWaiting,
-      [run.id]: {
-        agentId: agent.id,
-        projectId: run.projectId,
-        provider: agent.provider,
-        prompt: run.prompt,
-        model: run.model,
-        createdAt: Date.now(),
+  useAppStore.setState(state => {
+    // This run may itself be a relaunch of one that was parked before. Same project, same agent,
+    // same prompt is the same piece of work coming back for another go, and the count has to follow
+    // it — without that, each attempt looked like the first and there was nothing to give up after.
+    const waiting = { ...state.quotaWaiting };
+    let attempts = 0;
+    for (const [id, entry] of Object.entries(waiting)) {
+      if (entry.projectId === run.projectId && entry.agentId === agent.id && entry.prompt === run.prompt) {
+        attempts = Math.max(attempts, entry.attempts);
+        delete waiting[id];
+      }
+    }
+    return {
+      quotaWaiting: {
+        ...waiting,
+        [run.id]: {
+          agentId: agent.id,
+          projectId: run.projectId,
+          provider: agent.provider,
+          prompt: run.prompt,
+          model: run.model,
+          createdAt: Date.now(),
+          attempts,
+        },
       },
-    },
-  }));
+    };
+  });
   addMessage({
     projectId: run.projectId,
     fromAgentId: "system",
@@ -1374,29 +1414,40 @@ export function noneLand(delegations: Delegation[], children: AgentConfig[]): bo
   return resolveDelegations(delegations, children).resolved.length === 0;
 }
 
-function processQueuedInstructions(agentId: string, projectId: string) {
+/**
+ * Hands over everything written while this agent was busy, as one prompt.
+ *
+ * Exported for its own test: it is the end of the queue's life and the only place the merge that
+ * `lib/queued-prompt` describes actually happens, and reaching it through a real run end would be
+ * testing the process spawner instead.
+ */
+export function processQueuedInstructions(agentId: string, projectId: string) {
   const store = useAppStore.getState();
   const runtime = store.runtime[projectId]?.[agentId];
   // Every run end calls this, and the end of the run that delegated is not the end of the work:
   // handing the message over there would have it run beside its own children.
   if (!runtime || isBusy(runtime.status)) return;
 
+  // Everything waiting goes over as one prompt, not one turn each: see `lib/queued-prompt`. Only
+  // what was read is dropped from the queue, so a message that arrived while this ran still waits.
   const queued = runtime.queuedInstructions ?? [];
-  if (queued.length > 0) {
-    const text = queued[0];
-    useAppStore.setState(state => {
-      const pRuntime = state.runtime[projectId] || {};
-      return {
-        runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: (pRuntime[agentId]?.queuedInstructions ?? []).slice(1) } } }
-      };
-    });
-    
-    // User instructions are always direct: no parent, so they never re-trigger
-    // a continuation of a planner that already received its results.
-    startRun({ agentId, projectId, prompt: text, parentRunId: null, round: 0, resume: true });
-  }
+  if (queued.length === 0) return;
+
+  const prompt = joinQueued(queued);
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[projectId] || {};
+    return {
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: (pRuntime[agentId]?.queuedInstructions ?? []).slice(queued.length) } } }
+    };
+  });
+  if (!prompt) return;
+
+  // User instructions are always direct: no parent, so they never re-trigger
+  // a continuation of a planner that already received its results.
+  startRun({ agentId, projectId, prompt, parentRunId: null, round: 0, resume: true });
 }
 
+import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
@@ -1424,21 +1475,19 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
  * session, which the run that follows resumes. It is put at the head of the queue and the agent is
  * stopped; the drain that every stop ends in is what starts it.
  */
-export async function sendNowInterrupting(agentId: string, projectId: string, index: number): Promise<void> {
+export async function sendNowInterrupting(agentId: string, projectId: string): Promise<void> {
   const store = useAppStore.getState();
   const queue = store.runtime[projectId]?.[agentId]?.queuedInstructions ?? [];
-  const text = queue[index];
-  if (text === undefined) return;
+  // The whole queue, in the order it was written. Holding the rest back for a turn of its own is
+  // the thing the queue stopped doing: interrupting to deliver one of three is still three turns.
+  const prompt = interruptedPrompt(translateNow("queued.interruptedNote"), queue);
+  if (!prompt) return;
 
-  const rest = queue.filter((_, i) => i !== index);
-  // The agent has to know its last turn was cut, or it reads the transcript as a turn it finished.
-  rest.unshift(`${translateNow("queued.interruptedNote")}
-
-${text}`);
   useAppStore.setState(state => {
     const pRuntime = state.runtime[projectId] || {};
+    const current = pRuntime[agentId]?.queuedInstructions ?? [];
     return {
-      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: rest } } },
+      runtime: { ...state.runtime, [projectId]: { ...pRuntime, [agentId]: { ...pRuntime[agentId], queuedInstructions: [prompt, ...current.slice(queue.length)] } } },
     };
   });
 

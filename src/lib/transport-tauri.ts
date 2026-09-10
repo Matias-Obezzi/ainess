@@ -87,6 +87,7 @@ export const tauriTransport: Transport = {
     }),
 
   setTrayEnabled: async (enabled) => invoke<void>("set_tray_enabled", { enabled }),
+  requestAttention: async () => invoke<void>("request_attention"),
 
   logAppend: async (level, source, message) => {
     try {

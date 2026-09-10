@@ -375,6 +375,7 @@ async function fetchAntigravityQuota(): Promise<ProviderQuota> {
       model: pool,
       // Not "unlimited": the pool has a cap, we just don't know its size until it runs out.
       resetsAt: exhausted ? mark.exhaustedUntil : undefined,
+      exhausted: !!exhausted,
       note: translateNow(exhausted ? "quota.antigravity.exhausted" : "quota.antigravity.available"),
     });
   }

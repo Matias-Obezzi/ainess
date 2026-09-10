@@ -27,6 +27,7 @@ import { isChatActive } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { pendingApprovals } from "@/lib/approvals";
+import { isAutonomous } from "@/lib/autonomous";
 import type { Chat, Project } from "@/types";
 import { FolderOpen,
   Bot,
@@ -37,6 +38,7 @@ import { FolderOpen,
   GitBranch,
   Home,
   ListTodo,
+  Moon,
   MessageCircle,
   MoreHorizontal,
   Pencil,
@@ -279,6 +281,16 @@ export function Sidebar() {
                         title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
                       />
                       <span className="truncate flex-1 font-medium">{p.name}</span>
+                      {/* A project left running unattended is the one thing about it you want to
+                          know without opening it — the button that turns it on is inside. */}
+                      {isAutonomous(p) && (
+                        <Moon
+                          className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                          aria-label={t("autonomous.mode")}
+                        >
+                          <title>{t("autonomous.mode")}</title>
+                        </Moon>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button

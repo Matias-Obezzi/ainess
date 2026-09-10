@@ -549,6 +549,14 @@ export interface QuotaItem {
   unlimited?: boolean;
   /** Epoch ms. */
   resetsAt?: number;
+  /**
+   * Used up right now, for a provider that says so without saying how much there was.
+   *
+   * Antigravity is the case: its pools report "agotado" and a reset time and no numbers at all, so
+   * the summary fell through to "no idea" — which reads as "not exhausted" to anything asking
+   * whether the quota is back, and that is how a parked run got relaunched into the same wall.
+   */
+  exhausted?: boolean;
   note?: string;
 }
 

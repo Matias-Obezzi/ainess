@@ -94,6 +94,7 @@ pub fn run() {
             remote::remote_push_state,
             remote::remote_reply,
             tray::set_tray_enabled,
+            tray::request_attention,
             tunnel::tunnel_start,
             tunnel::tunnel_stop,
             tunnel::tunnel_status,

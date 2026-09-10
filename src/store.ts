@@ -16,6 +16,7 @@ import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
+import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
@@ -85,8 +86,12 @@ export interface AppState {
    * `RetryRunDialog`/`lib/orchestrator.ts#parkQuotaRetry`). Not persisted: a run still parked when
    * the app restarts is simply left failed, same as if nobody had asked for a retry.
    */
-  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number }>;
+  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number; attempts: number; retrying?: boolean }>;
   dropQuotaWaiting(id: string): void;
+  /** Marks a parked run as relaunched: one more attempt spent, and not to be picked up again. */
+  markQuotaRetrying(id: string): void;
+  /** Forgets whatever was parked for this exact piece of work: it has been settled. */
+  clearQuotaWaitingFor(projectId: string, agentId: string, prompt: string): void;
   /** Turns a project's autonomous mode on until `until`, or off (and reports) when `until` is null. */
   setAutonomous(projectId: string, until: number | null): void;
   /** Turns autonomous mode off and, if anything happened while it ran, tells the user about it. */
@@ -128,10 +133,15 @@ export interface AppState {
   unqueueChatMessage(chatId: string, index: number): void;
   /** The same, for an instruction waiting on a working agent. */
   unqueueInstruction(projectId: string, agentId: string, index: number): void;
-  /** Cuts the turn that is running short and sends the queued message now. */
-  sendChatNow(chatId: string, index: number): Promise<void>;
-  sendInstructionNow(projectId: string, agentId: string, index: number): Promise<void>;
-  /** Sends the oldest message waiting on a chat, if any. Called when a turn ends. */
+  /**
+   * Cuts the turn that is running short and hands the queue over now.
+   *
+   * The whole queue, not one of it: the messages go as a single prompt either way (see
+   * `lib/queued-prompt`), and interrupting to deliver one of three would still be three turns.
+   */
+  sendChatNow(chatId: string): Promise<void>;
+  sendInstructionNow(projectId: string, agentId: string): Promise<void>;
+  /** Sends everything waiting on a chat as one message, if there is any. Called when a turn ends. */
   flushChatQueue(chatId: string): Promise<void>;
   /**
    * Chats with a turn in flight, as reported by the snapshot. Only the phone build fills this:
@@ -152,6 +162,16 @@ export interface AppState {
   projectModes: Record<string, ProjectMode>;
   /** The last open chat ID for each project, or null for the orchestrator thread (persisted). */
   projectChats: Record<string, string | null>;
+  /**
+   * Which of the three dock panels each project had open, so walking into another project does not
+   * bring this one's dock along. The terminal panel made that plain: it stayed open over a project
+   * with no terminals in it, showing an empty panel above an empty tab bar.
+   *
+   * The three flags below stay as "what is showing right now" — every reader wants that, not a map
+   * lookup — and this is where they are put away and taken out again, the shape `projectModes`
+   * already has for the view.
+   */
+  projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
   /** Whether the diff section of the right dock is open (persisted). */
   diffPanelOpen: boolean;
@@ -305,6 +325,8 @@ export interface AppState {
   questions: Record<string, AgentQuestion>;
   /** Answers one and lets the agent carry on with what was chosen. */
   answerQuestion(questionId: string, answer: string[]): void;
+  /** Settles every question of one turn at once: one message to the agent, one run. */
+  answerQuestions(items: Array<{ questionId: string; answer: string[] }>): void;
 
   // Approvals (delegations waiting for the user's go-ahead)
   approvals: Record<string, Approval>;
@@ -466,6 +488,7 @@ interface UiPrefs {
   projectMode: ProjectMode;
   projectModes: Record<string, ProjectMode>;
   projectChats: Record<string, string | null>;
+  projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
@@ -572,6 +595,7 @@ const defaultUiPrefs: UiPrefs = {
   projectMode: "tasks",
   projectModes: {},
   projectChats: {},
+  projectPanels: {},
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
@@ -651,6 +675,7 @@ function loadUiPrefs(): UiPrefs {
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
       projectModes: sanitizeProjectModes(parsed.projectModes),
       projectChats: sanitizeProjectChats(parsed.projectChats),
+      projectPanels: sanitizeProjectPanels(parsed.projectPanels),
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
@@ -674,6 +699,7 @@ function saveUiPrefs(): void {
       projectMode: s.projectMode,
       projectModes: s.projectModes,
       projectChats: s.projectChats,
+      projectPanels: s.projectPanels,
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
@@ -755,6 +781,44 @@ function debouncedSave() {
   saveTimeout = setTimeout(() => {
     useAppStore.getState().saveConfig();
   }, 300);
+}
+
+/** Only real booleans, keyed by project: what comes off disk was written by an older build. */
+function sanitizeProjectPanels(raw: unknown): Record<string, { comm: boolean; diff: boolean; term: boolean }> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, { comm: boolean; diff: boolean; term: boolean }> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== "object") continue;
+    const v = value as Record<string, unknown>;
+    out[id] = { comm: v.comm === true, diff: v.diff === true, term: v.term === true };
+  }
+  return out;
+}
+
+/** The open project's three flags with `patch` applied. Untouched when no project is open. */
+function panelsWith(
+  state: Pick<AppState, "currentProjectId" | "projectPanels" | "commPanelOpen" | "diffPanelOpen" | "termPanelOpen">,
+  patch: { comm?: boolean; diff?: boolean; term?: boolean },
+): AppState["projectPanels"] {
+  if (!state.currentProjectId) return state.projectPanels;
+  return {
+    ...state.projectPanels,
+    [state.currentProjectId]: {
+      comm: patch.comm ?? state.commPanelOpen,
+      diff: patch.diff ?? state.diffPanelOpen,
+      term: patch.term ?? state.termPanelOpen,
+    },
+  };
+}
+
+/** Toggling a panel: what shows now, and what this project should show when you come back to it. */
+function rememberPanels(state: AppState, patch: { comm?: boolean; diff?: boolean; term?: boolean }): Partial<AppState> {
+  return {
+    ...(patch.comm !== undefined ? { commPanelOpen: patch.comm } : {}),
+    ...(patch.diff !== undefined ? { diffPanelOpen: patch.diff } : {}),
+    ...(patch.term !== undefined ? { termPanelOpen: patch.term } : {}),
+    projectPanels: panelsWith(state, patch),
+  };
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
@@ -867,17 +931,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   toggleCommPanel: (open) => {
-    set(s => ({ commPanelOpen: open ?? !s.commPanelOpen }));
+    set(s => rememberPanels(s, { comm: open ?? !s.commPanelOpen }));
     saveUiPrefs();
   },
 
   toggleDiffPanel: (open) => {
-    set(s => ({ diffPanelOpen: open ?? !s.diffPanelOpen }));
+    set(s => rememberPanels(s, { diff: open ?? !s.diffPanelOpen }));
     saveUiPrefs();
   },
 
   toggleTermPanel: (open) => {
-    set(s => ({ termPanelOpen: open ?? !s.termPanelOpen }));
+    set(s => rememberPanels(s, { term: open ?? !s.termPanelOpen }));
     saveUiPrefs();
   },
 
@@ -946,6 +1010,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // when the window is hidden, which is what lets a sound reach you at all from there.
     const sound = get().config.notificationSound;
     if (soundEnabled(sound)) playChime(chimeFor(n.kind), sound);
+
+    // Only the two that are waiting on you. A task that finished is news; a question is a stopped
+    // agent, and it stays stopped until you come back — which is what a flashing taskbar button
+    // means. Whether the window is in front is decided on the Rust side.
+    if (n.kind === "approval" || n.kind === "question") {
+      void getTransport().requestAttention().catch(() => {});
+    }
   },
   markNotificationsRead: () => {
     set(state => ({ notifications: notifications.markAllRead(state.notifications) }));
@@ -1096,6 +1167,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       terminals: [...s.terminals, terminal],
       activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
       termPanelOpen: true,
+      projectPanels: panelsWith(s, { term: true }),
     }));
     saveUiPrefs();
     log.info("terminal", `nueva terminal ${terminal.title} (${shell.path}) en ${cwd || "home"}`);
@@ -1328,7 +1400,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   setCurrentProject: (id) => {
-    set((state) => ({ currentProjectId: id, config: { ...state.config, lastProjectId: id } }));
+    set((state) => {
+      // The dock belongs to the project you were in. Carried over, the terminal panel sat open
+      // above another project's empty tab bar, which is what gave this away.
+      const saved = id ? state.projectPanels[id] : undefined;
+      return {
+        currentProjectId: id,
+        config: { ...state.config, lastProjectId: id },
+        commPanelOpen: saved?.comm ?? false,
+        diffPanelOpen: saved?.diff ?? false,
+        termPanelOpen: saved?.term ?? false,
+      };
+    });
     if (id) {
       // Both, then the board: a card whose run ended while the app was closed is still sitting in
       // "en curso" and only the history says so (see lib/task-reconcile.ts).
@@ -1401,6 +1484,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const next = { ...state.quotaWaiting };
       delete next[id];
       return { quotaWaiting: next };
+    });
+  },
+
+  markQuotaRetrying: (id) => {
+    set(state => {
+      const entry = state.quotaWaiting[id];
+      if (!entry) return state;
+      // Kept rather than dropped: the count has to be here when the relaunch comes back parked, and
+      // `retrying` is what stops the next refresh from launching the same work a second time.
+      return {
+        quotaWaiting: { ...state.quotaWaiting, [id]: { ...entry, attempts: entry.attempts + 1, retrying: true } },
+      };
+    });
+  },
+
+  clearQuotaWaitingFor: (projectId, agentId, prompt) => {
+    set(state => {
+      const next = { ...state.quotaWaiting };
+      let changed = false;
+      for (const [id, entry] of Object.entries(next)) {
+        if (entry.projectId === projectId && entry.agentId === agentId && entry.prompt === prompt) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? { quotaWaiting: next } : state;
     });
   },
 
@@ -1775,15 +1884,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   answerQuestion: (questionId, answer) => {
-    const question = get().questions[questionId];
-    if (!question || question.status !== "pending") return;
-    set(state => ({
-      questions: {
-        ...state.questions,
-        [questionId]: { ...question, status: "answered", answer, answeredAt: Date.now() },
-      },
-    }));
-    orchestrator.resumeWithAnswer(question, answer);
+    get().answerQuestions([{ questionId, answer }]);
+  },
+
+  answerQuestions: (items) => {
+    const all = get().questions;
+    const pending = items
+      .map(item => ({ question: all[item.questionId], answer: item.answer }))
+      .filter(entry => entry.question && entry.question.status === "pending");
+    if (pending.length === 0) return;
+
+    const answeredAt = Date.now();
+    set(state => {
+      const questions = { ...state.questions };
+      for (const { question, answer } of pending) {
+        questions[question.id] = { ...question, status: "answered", answer, answeredAt };
+      }
+      return { questions };
+    });
+    // One resume for the lot: see `resumeWithAnswers`.
+    orchestrator.resumeWithAnswers(pending);
   },
 
   setWorktree: (projectId, worktree) => {
@@ -2045,32 +2165,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
     });
   },
 
-  sendChatNow: async (chatId, index) => {
+  sendChatNow: async (chatId) => {
+    // Read and cleared without awaiting in between: the flush that follows every turn end reads the
+    // same queue, and a gap here is the same message going out twice.
     const queued = get().chatQueues[chatId] ?? [];
-    const text = queued[index];
-    if (text === undefined) return;
+    const text = interruptedPrompt(translateNow("queued.interruptedNote"), queued);
+    if (!text) return;
+    // Only what was read is dropped: a message typed while this was in flight still waits its turn.
     set(state => ({
-      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index) },
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
-    // Stopping is awaited so the turn is closed before the next one opens.
+    // Stopping is awaited so the turn is closed before the next one opens. The flush that follows a
+    // stop finds the queue already empty, so this does not go out twice.
     await get().stopChat(chatId);
-    const { translateNow } = await import("@/i18n/useT");
-    await get().sendChatMessage(chatId, `${translateNow("queued.interruptedNote")}
-
-${text}`);
+    await get().sendChatMessage(chatId, text);
   },
 
-  sendInstructionNow: async (projectId, agentId, index) => {
-    await orchestrator.sendNowInterrupting(agentId, projectId, index);
+  sendInstructionNow: async (projectId, agentId) => {
+    await orchestrator.sendNowInterrupting(agentId, projectId);
   },
 
   flushChatQueue: async (chatId) => {
     const queued = get().chatQueues[chatId] ?? [];
     if (queued.length === 0) return;
+    const text = joinQueued(queued);
     set(state => ({
-      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(1) },
+      chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
-    await get().sendChatMessage(chatId, queued[0]);
+    if (!text) return;
+    await get().sendChatMessage(chatId, text);
   },
 
   sendChatMessage: async (chatId, text) => {
@@ -2317,6 +2440,7 @@ async function runInit(): Promise<void> {
       projectMode: startMode,
       projectModes: prefs.projectModes,
       projectChats: prefs.projectChats,
+      projectPanels: prefs.projectPanels,
       commPanelOpen: prefs.commPanelOpen,
       diffPanelOpen: prefs.diffPanelOpen,
       termPanelOpen: prefs.termPanelOpen,

@@ -10,6 +10,16 @@ import type { ProviderId, ProviderQuota } from "@/types";
 const REFRESH_MS = 10 * 60 * 1000;
 
 /**
+ * How many times one piece of work may be relaunched before this gives up on it.
+ *
+ * There has to be a ceiling. A relaunch that dies of quota again is parked again, and the last run
+ * ending is one of the things that triggers a refresh — so without a count, a provider that is
+ * still out of quota (or one that cannot say whether it is) puts the app in a loop that relaunches
+ * the same prompt as fast as the CLI can fail, writing a message into the thread every time round.
+ */
+const MAX_QUOTA_RETRIES = 3;
+
+/**
  * Relaunches every run parked on `provider` (see `parkQuotaRetry` in lib/orchestrator.ts) whose
  * quota is no longer exhausted — same prompt, from scratch, exactly what `RetryRunDialog` does by
  * hand. A run only gets parked there because its agent's own "reintentar cuando vuelva la cuota" is
@@ -20,6 +30,8 @@ function retryParkedRuns(provider: ProviderId, quota: ProviderQuota): void {
   const state = useAppStore.getState();
   for (const [id, entry] of Object.entries(state.quotaWaiting)) {
     if (entry.provider !== provider) continue;
+    // Already relaunched and not yet back: launching it again would be two runs on one prompt.
+    if (entry.retrying) continue;
 
     // Quota can come back hours later, and the reason the run was parked has to still hold then.
     // An agent whose checkbox was turned off since, a project whose autonomous stretch has already
@@ -43,7 +55,21 @@ function retryParkedRuns(provider: ProviderId, quota: ProviderQuota): void {
 
     const summary = summarizeAgentQuota(quota, { model: entry.model });
     if (summary.status === "exhausted") continue;
-    state.dropQuotaWaiting(id);
+
+    // Tried enough. Giving up out loud, because the park promised it would come back to this.
+    if (entry.attempts >= MAX_QUOTA_RETRIES) {
+      state.dropQuotaWaiting(id);
+      addMessage({
+        projectId: entry.projectId,
+        fromAgentId: "system",
+        toAgentId: entry.agentId,
+        kind: "system",
+        text: translateNow("autonomous.quotaGaveUpRetrying", { name: agent.name, n: MAX_QUOTA_RETRIES }),
+      });
+      continue;
+    }
+
+    state.markQuotaRetrying(id);
     void state.submitPrompt(entry.prompt, entry.agentId, entry.projectId, { model: entry.model });
   }
 }

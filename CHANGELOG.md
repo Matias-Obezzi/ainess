@@ -4,6 +4,98 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.12.0 — 2026-09-10
+
+### Added
+
+- **Messages queued while an agent works go over together, as one.** They used to go in single
+  file: the first one when the turn ended, the second waiting for *that* turn to end. Three lines
+  typed in one sitting became three turns — three runs, three cards on the board, and an agent
+  acting on the first before it had read the correction in the third. They are handed over as a
+  single prompt now, in the order they were written, with nothing added: a blank line between them,
+  the way you would have typed it yourself. "Send now" does the same, so cutting a turn short to
+  deliver one of three is no longer three turns; it is one button for the block rather than one per
+  line, and each line can still be taken back on its own before it goes.
+
+- **Only what the agent is doing now, on one line.** A working agent writes a line for every tool
+  it uses, and a long run writes hundreds: the thread filled up with what it had already finished,
+  and the one line worth reading — what it is doing *right now* — was buried somewhere above. The
+  steps run through a ticker instead. It is one line tall with its overflow hidden, so the step
+  that just finished leaves through the top while the new one arrives from below. The movement is
+  the point: a line that swaps its text in place looks the same whether it changed once or forty
+  times, and "is this thing still going" was the question people were asking of a wall of static
+  text. Click the line and the history opens above it; click the same line again and it closes.
+  Three things never fold — the agent's own text, an error, and the card of an agent it delegated
+  to. That card carries the approval prompt somebody has to answer, and a tidy thread is not worth
+  hiding it for.
+
+- **The box finishes your sentence, and Tab takes it.** Two things, both worked out on your machine
+  and neither of them sent anywhere. With the box empty and the agent's last message ending in a
+  yes/no question, the answer appears in grey: press Tab to take it, Enter to send. With something
+  typed, it completes from what you have written before in that same conversation — the last way you
+  phrased it, offered again from its first few characters. A question that asks for a choice rather
+  than a yes gets nothing, because a "yes" is the wrong answer to "which one?"; the word list that
+  decides this errs towards saying nothing. Nothing from another project ever appears here, the same
+  rule the shared context follows. Tab only acts once the `@`/`#`/`/` menu and a ``` fence have had
+  their say, and Enter is left alone: accepting and sending stay two decisions.
+
+- **The taskbar button flashes when something is waiting on your answer.** An approval or a question
+  stops an agent until you come back, and until now the only way to find out was to be looking. It
+  flashes only while the window is not the one in front, and the check for that is made where the
+  window lives rather than asked for and then acted on — in between those two the user can click
+  back in, and a taskbar flashing at somebody already looking at the window is worse than none.
+  Only those two: a task that finished is news, not a stopped agent.
+
+- **The sidebar marks a project that is running unattended.** A moon beside its name while
+  autonomous mode is on. It was already a per-project thing — the switch sets it on that project
+  alone — but the only place that said so was inside the project, which is no use for the one you
+  are not looking at.
+
+### Fixed
+
+- **A turn that asks three things is answered once.** An agent can ask several questions in one go,
+  and each answer resumed its run on its own: three runs off a single turn, three cards on the
+  board, three agents in the same workspace, over questions you answered in one sitting. They come
+  as a group now — a tab each, a tick on the ones you have settled, and one button that stays
+  disabled until none are missing. What goes back is a single message carrying every question with
+  its answer, because the second answer is no use to the agent without the question it belongs to.
+  Questions from a different run wait their turn rather than joining the group.
+
+- **A run waiting for quota stops relaunching itself forever.** Parked runs are picked up again when
+  the quota comes back, and one of the moments that gets checked is "the last run just ended" — so a
+  relaunch that ran out of quota again was parked again, checked again, and relaunched again, as
+  fast as the CLI could fail, writing a message into the thread every time round. Two things were
+  wrong. The count of how many goes a piece of work had already had lived on the parked entry, and
+  the entry was thrown away in order to relaunch it, so every attempt read as the first. And a
+  provider that reports being used up without saying how much there was — Antigravity, whose pools
+  only ever say "agotado" and a reset time — came out of the summary as "no idea", which anything
+  asking "is the quota back?" reads as a yes. Three goes now, and then it says so and waits for you.
+
+- **The app stops going sluggish while an agent works.** Every line a CLI printed was appended to
+  its run in the store, twelve times a second for the whole length of a run. Eight screens subscribe
+  to the map of runs — the box you type into among them — so all of them re-rendered at that rate,
+  for a buffer nothing on screen was reading: those raw lines are only ever shown in one dialog, and
+  only when you open it. They are kept aside now and written into the run once, when it ends, so the
+  runs stop moving while one is going. The dialog still follows them live, and a crash mid-run still
+  leaves the log on disk. Two more along the way: a flush that carried no text stopped rewriting the
+  feed to put it back unchanged, and the hierarchy's nodes stopped redrawing on every delta — each
+  one now watches the last tool call of its own agent, which does not move between tool calls.
+
+- **A project that was working when the app restarted says so.** Update the app mid-delegation,
+  reopen it, go to the hierarchy, and it looked like a project where nothing had ever happened —
+  every agent idle, with nothing to say. The runs were coming back from disk all along and the
+  thread showed them; what the hierarchy reads is the per-agent runtime, and a restart builds that
+  from the team alone. Each agent now comes back on the task it was cut off in the middle of,
+  marked stopped — nothing failed, the app went away. An agent this process has already put to work
+  is left alone: the restore is async, and a dead run's task on top of a live one would describe
+  the wrong thing entirely.
+
+- **The right dock belongs to the project you are in.** Open the terminals panel in one project and
+  walk into another, and it stayed open there too — above an empty tab bar, since the terminals are
+  the first project's. All three panels are remembered per project now: put away when you leave,
+  taken out again when you come back, and closed for a project that never opened them.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Added

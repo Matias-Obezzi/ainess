@@ -135,7 +135,19 @@ export function summarizeAgentQuota(
   // Items with no numbers at all (Antigravity pools, which only say whether they are used up): the
   // ring stays off, the detail still tells the story, and whatever the provider said about why it
   // has no numbers comes along as the note.
-  return { fraction: null, label: "—", detail: detailOf(items[0]), details, note: quota.message, status: "ok" };
+  //
+  // "No numbers" is not "no answer", though. A provider that reports being used up without saying
+  // how much there was is still reporting being used up, and anything asking whether the quota is
+  // back has to hear that — otherwise it reads the silence as a yes.
+  const exhausted = items.every(i => i.unlimited || i.exhausted);
+  return {
+    fraction: exhausted ? 0 : null,
+    label: exhausted ? "0%" : "—",
+    detail: detailOf(items[0]),
+    details,
+    note: quota.message,
+    status: exhausted ? "exhausted" : "ok",
+  };
 }
 
 /** The item that binds: the one with the least left over, falling back to the first. */

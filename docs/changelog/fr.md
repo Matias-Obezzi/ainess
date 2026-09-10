@@ -2,6 +2,108 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.12.0 — 2026-09-10
+
+### Nouveau
+
+- **Les messages mis en file pendant qu'un agent travaille partent tous ensemble, en un seul.**
+  Avant, ils partaient à la queue leu leu : le premier à la fin du tour, le second attendant la fin
+  de *ce* tour-là. Trois lignes écrites d'une traite devenaient trois tours — trois exécutions,
+  trois cartes sur le tableau, et un agent agissant sur la première avant d'avoir lu la correction
+  de la troisième. Ils sont désormais remis en un seul prompt, dans l'ordre où ils ont été écrits
+  et sans rien y ajouter : une ligne vide entre eux, comme si vous l'aviez tapé ainsi. « Envoyer
+  maintenant » fait de même, donc interrompre un tour pour livrer un message sur trois n'est plus
+  trois tours ; c'est un bouton pour le bloc plutôt qu'un par ligne, et chaque ligne peut toujours
+  être retirée seule avant de partir.
+
+- **Seulement ce que l'agent fait maintenant, sur une ligne.** Un agent au travail écrit une ligne
+  par outil qu'il utilise, et une longue exécution en écrit des centaines : le fil se remplissait de
+  ce qu'il avait déjà terminé, et la seule ligne qui valait la peine d'être lue — ce qu'il fait
+  *à cet instant* — se retrouvait enterrée plus haut. Les étapes défilent maintenant dans un
+  bandeau. Il fait une ligne de haut et son débordement est masqué : l'étape qui vient de finir
+  sort par le haut pendant que la nouvelle arrive par le bas. Le mouvement est l'essentiel : une
+  ligne qui change son texte sur place a la même allure qu'elle ait changé une fois ou quarante, et
+  « est-ce que ça tourne encore ? » était exactement la question que posait un mur de texte immobile.
+  Un clic sur la ligne ouvre l'historique au-dessus ; un nouveau clic sur la même ligne le referme.
+  Trois choses ne se replient jamais : le texte de l'agent lui-même, une erreur, et la carte d'un
+  agent à qui il a délégué. Cette carte porte l'approbation que quelqu'un doit donner, et un fil
+  bien rangé ne vaut pas de la cacher.
+
+- **La zone de saisie finit votre phrase, et Tab l'accepte.** Deux choses, toutes deux calculées sur
+  votre machine et aucune envoyée où que ce soit. La zone vide et le dernier message de l'agent se
+  terminant par une question fermée, la réponse apparaît en gris : Tab la prend, Entrée l'envoie.
+  Avec quelque chose d'écrit, elle complète à partir de ce que vous avez déjà écrit dans cette même
+  conversation — la dernière façon dont vous l'aviez formulé, reproposée dès les premiers caractères.
+  Une question qui demande un choix plutôt qu'un oui n'obtient rien, car « oui » est la mauvaise
+  réponse à « laquelle ? » ; la liste de mots qui en décide penche vers le silence. Rien d'un autre
+  projet n'apparaît ici, la même règle que le contexte partagé. Tab n'agit qu'une fois que le menu
+  `@`/`#`/`/` et un bloc ``` ont eu leur mot à dire, et Entrée reste intacte : accepter et envoyer
+  restent deux décisions.
+
+- **Le bouton de la barre des tâches clignote quand quelque chose attend votre réponse.** Une
+  approbation ou une question arrête un agent jusqu'à votre retour, et jusqu'ici le seul moyen de
+  l'apprendre était de regarder. Il ne clignote que tant que la fenêtre n'est pas au premier plan,
+  et cette vérification se fait là où vit la fenêtre plutôt que d'être demandée puis suivie
+  d'action : entre les deux, l'utilisateur peut revenir cliquer, et une barre qui clignote pour
+  quelqu'un qui regarde déjà la fenêtre est pire que rien. Ces deux-là seulement : une tâche
+  terminée est une nouvelle, pas un agent à l'arrêt.
+
+- **La barre latérale marque un projet qui tourne sans surveillance.** Une lune à côté de son nom
+  tant que le mode autonome est actif. C'était déjà propre à chaque projet — l'interrupteur ne
+  l'active que sur celui-là — mais le seul endroit qui le disait se trouvait à l'intérieur du
+  projet, ce qui ne sert à rien pour celui qu'on ne regarde pas.
+
+### Corrigé
+
+- **Un tour qui pose trois questions reçoit une seule réponse.** Un agent peut poser plusieurs
+  questions d'un coup, et chaque réponse relançait son run de son côté : trois runs pour un seul
+  tour, trois cartes sur le tableau, trois agents dans le même espace de travail, pour des questions
+  auxquelles vous aviez répondu d'une traite. Elles arrivent en groupe désormais — un onglet par
+  question, une coche sur celles que vous avez réglées, et un seul bouton qui reste désactivé tant
+  qu'il en manque une. Ce qui repart est un unique message portant chaque question et sa réponse,
+  car la deuxième réponse ne sert à rien à l'agent sans la question à laquelle elle appartient. Les
+  questions d'un autre run attendent leur tour au lieu de rejoindre le groupe.
+
+- **Un run qui attend du quota cesse de se relancer indéfiniment.** Les runs en attente sont repris
+  quand le quota revient, et l'un des moments où cela est vérifié est « le dernier run vient de se
+  terminer » — donc une relance qui se retrouvait de nouveau sans quota était de nouveau mise en
+  attente, revérifiée et relancée, aussi vite que le CLI pouvait échouer, en écrivant un message
+  dans le fil à chaque tour. Deux choses n'allaient pas. Le compte des tentatives déjà faites pour ce
+  travail vivait sur l'entrée en attente, et cette entrée était justement supprimée pour le relancer :
+  chaque tentative se lisait donc comme la première. Et un fournisseur qui signale être épuisé sans
+  dire de combien il disposait — Antigravity, dont les pools ne disent que « agotado » et une heure
+  de remise à zéro — ressortait du résumé comme « aucune idée », ce que tout ce qui demande « le
+  quota est-il revenu ? » lit comme un oui. Trois tentatives maintenant, puis il le dit et vous
+  attend.
+
+- **L'application ne devient plus poussive pendant qu'un agent travaille.** Chaque ligne imprimée
+  par un CLI était ajoutée à son run dans le store, douze fois par seconde pendant toute sa durée.
+  Huit écrans sont abonnés à la table des runs — dont la zone où vous écrivez —, ils se redessinaient
+  donc tous à ce rythme, pour un tampon que rien à l'écran ne lisait : ces lignes brutes ne
+  s'affichent que dans une boîte de dialogue, et seulement si vous l'ouvrez. Elles sont désormais
+  gardées à part et écrites dans le run une seule fois, à sa fin, si bien que les runs cessent de
+  bouger pendant qu'il y en a un. La boîte de dialogue les suit toujours en direct, et un plantage en
+  cours de run laisse malgré tout le journal sur le disque. Deux autres au passage : un vidage sans
+  texte ne réécrit plus le fil pour le rendre identique, et les nœuds de la hiérarchie ne se
+  redessinent plus à chaque delta — chacun surveille maintenant le dernier outil de son propre agent,
+  qui ne bouge pas entre deux appels.
+
+- **Un projet qui travaillait au redémarrage de l'application le dit.** Mettre l'application à jour
+  au milieu d'une délégation, la rouvrir, aller à la hiérarchie : on aurait dit un projet où il ne
+  s'était jamais rien passé — tous les agents inactifs, sans rien à dire. Les runs revenaient du
+  disque depuis toujours et le fil les montrait ; ce que lit la hiérarchie, c'est l'état par agent,
+  et un redémarrage le construit à partir de la seule équipe. Chaque agent revient maintenant avec
+  la tâche au milieu de laquelle il a été coupé, marqué arrêté — rien n'a échoué, l'application est
+  partie. Un agent que ce processus a déjà mis au travail est laissé tranquille : la restauration
+  est asynchrone, et la tâche d'un run mort par-dessus un run vivant décrirait tout autre chose.
+
+- **Le dock de droite appartient au projet où vous êtes.** Vous ouvriez le panneau des terminaux
+  dans un projet, vous passiez à un autre, et il restait ouvert là aussi — au-dessus d'une barre
+  d'onglets vide, puisque les terminaux étaient ceux du premier. Les trois panneaux sont désormais
+  retenus par projet : rangés quand vous partez, ressortis quand vous revenez, et fermés pour un
+  projet qui ne les a jamais ouverts.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Nouveau

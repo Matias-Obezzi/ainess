@@ -200,10 +200,29 @@
   to { transform: rotate(360deg); }
 }
 
+/* The activity ticker (components/shell/RunActivity.tsx): one line tall with the overflow hidden,
+   so the step that just finished leaves through the top while the new one arrives from below. The
+   movement is what says the agent got somewhere — a line that swaps its text in place looks the
+   same whether it changed once or forty times. */
+@keyframes step-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes step-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-100%); opacity: 0; }
+}
+
 @layer utilities {
   .animate-breathe { animation: ainess-breathe 2.4s ease-in-out infinite; }
-  /* Someone who asked for less movement gets none. */
+  .animate-step-in { animation: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .animate-step-out { animation: step-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  /* Someone who asked for less movement gets none. The step still changes; it just changes
+     without sliding, and the one on its way out is gone rather than fading. */
   @media (prefers-reduced-motion: reduce) {
     .animate-breathe { animation: none; }
+    .animate-step-in { animation: none; }
+    .animate-step-out { animation: none; opacity: 0; }
   }
 }

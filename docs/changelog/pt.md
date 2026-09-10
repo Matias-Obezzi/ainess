@@ -2,6 +2,101 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.12.0 — 2026-09-10
+
+### Novo
+
+- **As mensagens enfileiradas enquanto um agente trabalha vão todas juntas, como uma só.** Antes
+  saíam em fila: a primeira quando o turno terminava, e a segunda esperando *aquele* turno
+  terminar. Três linhas escritas de uma vez viravam três turnos — três execuções, três cartões no
+  quadro, e um agente agindo sobre a primeira antes de ter lido a correção da terceira. Agora são
+  entregues como um único prompt, na ordem em que você escreveu e sem nada acrescentado: uma linha
+  em branco entre elas, como se você tivesse digitado assim. "Enviar agora" faz o mesmo, então
+  cortar um turno para entregar uma de três já não são três turnos; é um botão para o bloco em vez
+  de um por linha, e cada linha ainda pode ser retirada sozinha antes de sair.
+
+- **Só o que o agente está fazendo agora, em uma linha.** Um agente trabalhando escreve uma linha
+  para cada ferramenta que usa, e uma execução longa escreve centenas: o chat enchia com o que ele
+  já tinha terminado e a única linha que valia a pena ler — o que está fazendo *agora* — ficava
+  enterrada mais acima. Agora os passos passam por uma faixa. Ela tem uma linha de altura e o
+  overflow oculto, então o passo que terminou sai por cima enquanto o novo entra por baixo. O
+  movimento é o ponto: uma linha que troca o texto no lugar parece igual tenha mudado uma vez ou
+  quarenta, e "isso ainda está rodando?" era exatamente a pergunta que uma parede de texto parado
+  provocava. Ao clicar nela o histórico abre acima; clique de novo na mesma linha e ele fecha. Três
+  coisas nunca são dobradas: o texto do próprio agente, um erro, e o cartão de um agente para quem
+  ele delegou. Esse cartão carrega a aprovação que alguém precisa responder, e um chat arrumado não
+  vale escondê-la.
+
+- **A caixa termina a sua frase, e o Tab aceita.** Duas coisas, ambas resolvidas na sua máquina e
+  nenhuma delas enviada a lugar nenhum. Com a caixa vazia e a última mensagem do agente terminando
+  numa pergunta fechada, a resposta aparece em cinza: o Tab pega, o Enter manda. Com algo escrito,
+  completa com o que você já escreveu antes nessa mesma conversa — a última forma como você disse,
+  oferecida de novo desde as primeiras letras. Uma pergunta que pede uma escolha em vez de um sim não
+  recebe nada, porque «sim» é a resposta errada para «qual?»; a lista de palavras que decide isso foi
+  feita para errar para o lado do silêncio. Nada de outro projeto aparece aqui, a mesma regra do
+  contexto compartilhado. O Tab só age depois que o menu de `@`/`#`/`/` e um bloco ``` disseram o que
+  tinham a dizer, e o Enter fica intacto: aceitar e enviar continuam sendo duas decisões.
+
+- **O botão da barra de tarefas pisca quando algo espera a sua resposta.** Uma aprovação ou uma
+  pergunta deixam um agente parado até você voltar, e até agora a única forma de saber era estar
+  olhando. Pisca só enquanto a janela não é a que está na frente, e essa verificação é feita do lado
+  da janela em vez de ser perguntada e depois agida: entre uma coisa e outra o usuário pode clicar
+  de volta, e uma barra piscando para alguém que já está olhando a janela é pior que nenhuma. Só
+  essas duas: uma tarefa que terminou é notícia, não um agente parado.
+
+- **A barra lateral marca um projeto que está rodando sozinho.** Uma lua ao lado do nome enquanto o
+  modo autônomo está ligado. Já era coisa de cada projeto — a chave liga só naquele — mas o único
+  lugar que dizia isso ficava dentro do projeto, o que não serve justamente para aquele que você não
+  está olhando.
+
+### Corrigido
+
+- **Um turno que pergunta três coisas é respondido uma vez só.** Um agente pode fazer várias
+  perguntas de uma vez, e cada resposta retomava a execução dele por conta própria: três execuções
+  de um único turno, três cartões no quadro, três agentes no mesmo workspace, por perguntas que você
+  respondeu de uma sentada. Agora elas vêm como grupo — uma aba por pergunta, um tique nas que você
+  já resolveu, e um único botão que fica desabilitado enquanto faltar alguma. O que volta é uma
+  única mensagem com cada pergunta e a sua resposta, porque a segunda resposta não serve de nada ao
+  agente sem a pergunta a que pertence. Perguntas de outra execução esperam a sua vez em vez de
+  entrar no grupo.
+
+- **Uma execução esperando cota para de se relançar para sempre.** As execuções em espera são
+  retomadas quando a cota volta, e um dos momentos em que isso é checado é «acabou de terminar a
+  última execução» — então um relançamento que ficava sem cota de novo voltava para a espera, era
+  checado de novo e lançado de novo, tão rápido quanto o CLI conseguisse falhar, escrevendo uma
+  mensagem no fio a cada volta. Duas coisas estavam erradas. A contagem de quantas tentativas aquele
+  trabalho já tinha ficava na entrada em espera, e a entrada era justamente apagada para relançá-lo,
+  então toda tentativa se lia como a primeira. E um provedor que informa estar esgotado sem dizer
+  quanto havia — o Antigravity, cujos pools só dizem «agotado» e uma hora de reset — saía do resumo
+  como «sei lá», o que qualquer um perguntando «a cota voltou?» lê como um sim. Agora são três
+  tentativas, e depois ele avisa e espera por você.
+
+- **O app para de ficar lento enquanto um agente trabalha.** Cada linha que um CLI imprimia era
+  anexada à sua execução no store, doze vezes por segundo durante toda a execução. Oito telas se
+  inscrevem no mapa de execuções — a caixa onde você escreve entre elas — então todas se redesenhavam
+  nesse ritmo, por um buffer que nada na tela estava lendo: essas linhas cruas só aparecem numa
+  janela, e só se você abri-la. Agora ficam guardadas à parte e são escritas na execução uma vez só,
+  quando ela termina, então as execuções param de se mexer enquanto uma está em curso. A janela
+  continua acompanhando ao vivo, e um travamento no meio de uma execução ainda deixa o log em disco.
+  Mais duas de quebra: um flush sem texto parou de reescrever o fio para devolvê-lo igual, e os nós
+  da hierarquia pararam de se redesenhar a cada delta — agora cada um observa a última ferramenta do
+  seu próprio agente, que não muda entre uma chamada e outra.
+
+- **Um projeto que estava trabalhando quando o app reiniciou avisa.** Você atualizava o app no meio
+  de uma delegação, abria de novo, ia para a hierarquia e parecia um projeto onde nunca tinha
+  acontecido nada: todos os agentes ociosos, sem nada a dizer. As execuções voltavam do disco desde
+  sempre e o fio as mostrava; o que a hierarquia lê é o runtime por agente, e um reinício monta isso
+  só com a equipe. Agora cada agente volta com a tarefa em que foi cortado, marcado como parado —
+  nada falhou, o app é que foi embora. Um agente que este processo já colocou para trabalhar fica
+  intocado: a restauração é assíncrona, e a tarefa de uma execução morta em cima de uma viva
+  descreveria outra coisa.
+
+- **O dock da direita é do projeto em que você está.** Você abria o painel de terminais num projeto
+  e ia para outro, e ele continuava aberto lá também — em cima de uma barra de abas vazia, porque os
+  terminais eram do primeiro. Agora os três painéis são lembrados por projeto: guardados quando você
+  sai, trazidos de volta quando você volta, e fechados para um projeto que nunca os abriu.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Novo

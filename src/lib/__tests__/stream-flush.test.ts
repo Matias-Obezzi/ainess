@@ -8,6 +8,7 @@ import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { attachListeners, flushStream } from "@/lib/orchestrator";
+import { forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import type { RunOutputEvent, Run } from "@/types";
 
 let emitOutput: ((e: RunOutputEvent) => void) | undefined;
@@ -21,6 +22,10 @@ const run = (over: Partial<Run> = {}): Run => ({
 describe("streamed output", () => {
   beforeEach(async () => {
     vi.useFakeTimers();
+    // The raw-line buffers are module state and outlive a test: without this the counts below
+    // include what the test before them streamed.
+    forgetRawLines("r1");
+    forgetRawLines("r2");
     setTransport({
       ...nullTransport,
       onRunOutput: async (h: (e: RunOutputEvent) => void) => { emitOutput = h; return () => {}; },
@@ -58,7 +63,31 @@ describe("streamed output", () => {
     flushStream();
     const text = useAppStore.getState().messages.find(m => m.id === "text-r1");
     expect(text?.text).toBe("uno dos tres");
-    expect(useAppStore.getState().runs.r1.rawLines).toHaveLength(3);
+  });
+
+  it("keeps the raw lines out of the store while the run is alive", () => {
+    // They used to be appended to `runs[id].rawLines` on every flush, which handed `runs` a new
+    // identity twelve times a second and re-rendered every component watching it — the composer
+    // among them — for a buffer only the run-detail dialog ever reads. They live in
+    // `lib/raw-lines` now and are written into the run once, when it ends.
+    const before = useAppStore.getState().runs.r1;
+    for (const t of ["uno", "dos"]) {
+      emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: t }] } }), stream: "stdout" } as never);
+    }
+    flushStream();
+
+    expect(rawLinesOf("r1")).toHaveLength(2);
+    expect(useAppStore.getState().runs.r1.rawLines).toHaveLength(0);
+    // The run object itself never moved: that is the whole point.
+    expect(useAppStore.getState().runs.r1).toBe(before);
+  });
+
+  it("leaves the store alone entirely when a flush carries no text", () => {
+    // A line the provider parses into nothing at all still used to rewrite `runs`.
+    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "system", subtype: "init" }), stream: "stdout" } as never);
+    const before = useAppStore.getState();
+    flushStream();
+    expect(useAppStore.getState()).toBe(before);
   });
 
   it("drops what belonged to a run that is gone instead of throwing", () => {

@@ -13,7 +13,7 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
-import { InlineQuestion } from "@/components/InlineQuestion";
+import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
@@ -54,17 +54,19 @@ export function OrchestratorThread() {
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
+  // A block per agent: what is waiting for one of them goes over as a single message, and what is
+  // waiting for another is a different message on a different turn.
   const queued = useMemo(() => {
     if (!runtime || !currentProjectId) return [];
-    return agents.flatMap(agent =>
-      (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
+    return agents.map(agent => ({
+      // Only worth naming when the project has more than one agent to send to.
+      to: agents.length > 1 ? agent.name : undefined,
+      lines: (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
         text,
-        // Only worth naming when the project has more than one agent to send to.
-        to: agents.length > 1 ? agent.name : undefined,
         onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
-        onSendNow: () => void sendInstructionNow(currentProjectId, agent.id, index),
       })),
-    );
+      onSendNow: () => void sendInstructionNow(currentProjectId, agent.id),
+    }));
   }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
   const rootRuns = useMemo(
@@ -193,7 +195,7 @@ export function OrchestratorThread() {
               </div>
             )}
             {shownRuns.map(run => <RunBubble key={run.id} run={run} />)}
-            <QueuedMessages messages={queued} />
+            <QueuedMessages groups={queued} />
             <div ref={bottomRef} />
           </div>
         )}
@@ -345,7 +347,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                       </div>
                       {activityOpen && steps > 0 && (
                         <div className="rounded-md border border-border bg-muted/40 p-2">
-                          <RunActivity runId={run.id} showFooter={false} />
+                          <RunActivity runId={run.id} mode="full" />
                         </div>
                       )}
                     </div>
@@ -369,8 +371,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                     <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}
 
-                  {/* A run that ended asking something ends here, with the options it offered. */}
-                  {questionIds.map(id => <InlineQuestion key={id} questionId={id} />)}
+                  {/* A run that ended asking something ends here, with the options it offered. All
+                      of them together: they came from one turn and go back as one answer. */}
+                  {questionIds.length > 0 && <RunQuestions ids={questionIds} />}
                 </>
               )}
             </div>
@@ -386,3 +389,12 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
     </div>
   );
 });
+
+/** The questions of one run, in the order they were asked, answered in one go. */
+function RunQuestions({ ids }: { ids: string[] }) {
+  const questions = useAppStore(state => state.questions);
+  const answerQuestions = useAppStore(state => state.answerQuestions);
+  const group = ids.map(id => questions[id]).filter(Boolean);
+  if (group.length === 0) return null;
+  return <QuestionGroup questions={group} onAnswer={answerQuestions} />;
+}

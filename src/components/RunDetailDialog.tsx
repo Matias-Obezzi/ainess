@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useT, useLocale } from "@/i18n/useT";
 import { parseResult } from "@/lib/providers";
 import { DiffPanel } from "@/components/DiffPanel";
+import { rawLinesOf, rawLinesVersion, subscribeRawLines } from "@/lib/raw-lines";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
@@ -82,7 +83,7 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
           <div className="flex-1 min-h-[200px] flex flex-col">
             <h4 className="font-semibold text-sm mb-1">{t("runDetail.rawOutput")}</h4>
             <div className="flex-1 border p-2 rounded bg-muted overflow-auto font-mono text-xs whitespace-pre-wrap">
-              {run.rawLines?.join("\n") || t("runDetail.noLogs")}
+              <RawOutput runId={run.id} finished={run.rawLines} empty={t("runDetail.noLogs")} />
             </div>
           </div>
 
@@ -98,4 +99,22 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * The run's raw output: live while it runs, and off the run once it has ended.
+ *
+ * While a run is alive its lines are in `lib/raw-lines` rather than in the store — keeping them in
+ * the store re-rendered every component watching `runs` twelve times a second, for a buffer only
+ * this box ever reads. So this box is the one thing that subscribes to them, while it is open.
+ */
+function RawOutput({ runId, finished, empty }: { runId: string; finished: string[] | undefined; empty: string }) {
+  // The version, not the array: the buffer is appended to in place, so its identity never moves.
+  useSyncExternalStore(
+    onChange => subscribeRawLines(runId, onChange),
+    () => rawLinesVersion(runId),
+    () => 0,
+  );
+  const lines = rawLinesOf(runId) ?? finished;
+  return <>{lines?.length ? lines.join("\n") : empty}</>;
 }

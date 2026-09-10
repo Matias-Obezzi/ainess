@@ -1,7 +1,13 @@
 // What an agent is doing right now (and what it did): streamed text, every tool call and the
 // nested activity of the agents it delegated to. Fed by the `messages` feed, filtered by runId.
+//
+// Only the current step is on screen. A working agent writes a line per tool call and a long run
+// writes hundreds, so the list of everything it had already finished pushed the conversation off
+// the top of the screen and buried the one line worth reading. The steps run through a ticker
+// instead — one line tall, the finished step leaving through the top as the new one arrives from
+// below — and clicking it opens the history above. See `lib/activity-view` for what folds and why.
 import { ProviderLogo } from "@/components/ProviderLogo";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
 import { Markdown } from "@/components/shell/Markdown";
@@ -9,10 +15,12 @@ import { ErrorMessage } from "@/components/ErrorMessage";
 import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
 import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
+import { activityView } from "@/lib/activity-view";
 import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
-import { CornerDownRight } from "lucide-react";
+import { ChevronDown, ChevronUp, CornerDownRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,6 +31,18 @@ const ACTIVITY_KINDS = new Set(["text", "tool", "delegation", "error", "stderr",
 
 const FULL_ROWS = 30;
 const COMPACT_ROWS = 6;
+
+/**
+ * How the activity is drawn.
+ *
+ * `live` is the thread: the ticker, with the history one click behind it. `full` is the panel a
+ * finished run's "Actividad (23 pasos)" header already opens — that click *was* the request to see
+ * everything, so folding it again behind a second one would be asking twice.
+ */
+export type ActivityMode = "live" | "full";
+
+/** How long the leaving step stays mounted. Matches `step-out` in index.css. */
+const STEP_EXIT_MS = 260;
 
 /**
  * How much of a step the tooltip will show.
@@ -70,7 +90,7 @@ const NO_MESSAGES: CommMessage[] = [];
  */
 let indexCache: { messages: CommMessage[]; byRun: Map<string, CommMessage[]> } | null = null;
 
-function activityByRun(messages: CommMessage[]): Map<string, CommMessage[]> {
+export function activityByRun(messages: CommMessage[]): Map<string, CommMessage[]> {
   if (indexCache && indexCache.messages === messages) return indexCache.byRun;
   const byRun = new Map<string, CommMessage[]>();
   for (const m of messages) {
@@ -110,18 +130,26 @@ export function visibleActivityRows<T extends { kind: string }>(rows: T[], limit
   return rows.filter((m, i) => i >= rows.length - limit || m.kind === "text");
 }
 
-export function RunActivity({ runId, compact = false, showFooter = true }: { runId: string; compact?: boolean; showFooter?: boolean }) {
+export function RunActivity({ runId, compact = false, mode = "live" }: { runId: string; compact?: boolean; mode?: ActivityMode }) {
   const t = useT();
   const rows = useRunMessages(runId);
   const run = useAppStore(state => state.runs[runId]);
-  const [expanded, setExpanded] = useState(false);
+  /** Whether the ticker's history is open. */
+  const [open, setOpen] = useState(false);
+  /** Second step: even opened, a run with hundreds of steps only draws its last `limit`. */
+  const [showAll, setShowAll] = useState(false);
+
+  const live = mode === "live";
+  const view = useMemo(
+    () => (live ? activityView(rows, open) : { rows, current: null, hidden: 0 }),
+    [rows, live, open],
+  );
 
   const limit = compact ? COMPACT_ROWS : FULL_ROWS;
-  const shown = visibleActivityRows(rows, limit, expanded);
-  const hiddenCount = rows.length - shown.length;
+  const shown = visibleActivityRows(view.rows, limit, showAll);
+  const hiddenCount = view.rows.length - shown.length;
 
   const isRunning = run?.status === "running";
-  const lastTool = [...rows].reverse().find(m => m.kind === "tool");
 
   if (rows.length === 0 && !isRunning) return null;
 
@@ -131,20 +159,32 @@ export function RunActivity({ runId, compact = false, showFooter = true }: { run
         <button
           type="button"
           className="self-start text-[11px] text-muted-foreground hover:text-foreground hover:underline"
-          onClick={() => setExpanded(true)}
+          onClick={() => setShowAll(true)}
         >
           {compact ? t("activity.showAll", { n: hiddenCount }) : t("activity.moreSteps", { n: hiddenCount })}
         </button>
       )}
 
-      {shown.map(msg => <ActivityRow key={msg.id} msg={msg} parentRunId={runId} />)}
+      {shown.map(msg => <ActivityRow key={msg.id} msg={msg} parentRunId={runId} mode={mode} />)}
 
-      {showFooter && isRunning && run && <ActivityFooter startedAt={run.startedAt} label={lastTool?.meta?.summary ?? lastTool?.text} />}
+      {/* Last, always: the ticker is the floor of the run, and the history opens above it so the
+          line you were reading does not move out from under the pointer when you click it. */}
+      {live && run && (view.current || isRunning) && (
+        <ActivityTicker
+          step={view.current}
+          running={!!isRunning}
+          startedAt={run.startedAt}
+          open={open}
+          hidden={view.hidden}
+          onToggle={() => setOpen(o => !o)}
+          label={open ? t("activity.collapse") : t("activity.expand")}
+        />
+      )}
     </div>
   );
 }
 
-function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: string }) {
+function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId: string; mode: ActivityMode }) {
   if (msg.kind === "text") return <Markdown text={msg.text} />;
 
   if (msg.kind === "tool") {
@@ -163,7 +203,7 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
     );
   }
 
-  if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} />;
+  if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} mode={mode} />;
 
   if (msg.kind === "error" || msg.kind === "stderr") {
     return <ErrorMessage text={msg.text} className="my-1" />;
@@ -173,7 +213,7 @@ function ActivityRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: stri
 }
 
 /** A delegation: who got the task, plus that agent's own activity nested underneath. */
-function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: string }) {
+function DelegationRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId: string; mode: ActivityMode }) {
   const t = useT();
   const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
@@ -214,7 +254,7 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
           asks about were squeezed into half a phone screen each. */}
       {pending && <InlineApproval approvalId={pending.id} />}
       {childRun ? (
-        <RunActivity runId={childRun.id} compact />
+        <RunActivity runId={childRun.id} compact mode={mode} />
       ) : (
         <div className="text-[11px] text-muted-foreground italic">{t("activity.waitingToStart")}</div>
       )}
@@ -222,28 +262,111 @@ function DelegationRow({ msg, parentRunId }: { msg: CommMessage; parentRunId: st
   );
 }
 
-/**
- * The foot of a run that is still going: the step it is on, and how long it has been at it.
- *
- * The light sweeping across the line is the "alive" of it — a run that ended has no footer at
- * all, so nothing moves once there is nothing happening.
- */
-function ActivityFooter({ startedAt, label }: { startedAt: number; label?: string }) {
+/** Icon and text of one step, drawn on a single line. */
+function TickerLine({ step, running }: { step: CommMessage | null; running: boolean }) {
   const t = useT();
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
+
+  if (!step) {
+    return <Shimmer className="truncate">{t("activity.thinking")}</Shimmer>;
+  }
+
+  const failed = step.kind === "tool" && step.meta?.failed;
+  const Icon = step.kind === "tool" ? toolIcon(step.meta?.tool ?? step.text) : Info;
+  // A failed call says so: its summary describes the call, not what became of it.
+  const label = truncate(failed ? step.text : (step.meta?.summary ?? step.text), 90);
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <StepTooltip text={label ?? ""}>
-        <Shimmer className="truncate">
-          {label ? truncate(label, 70) : t("activity.thinking")}
-        </Shimmer>
+    <>
+      <Icon className={cn("h-3.5 w-3.5 shrink-0", failed && "text-amber-600 dark:text-amber-400")} />
+      {running
+        ? <Shimmer className="truncate">{label}</Shimmer>
+        : <span className={cn("truncate", failed && "text-amber-600 dark:text-amber-400")}>{label}</span>}
+    </>
+  );
+}
+
+/**
+ * The one line that stands for everything the agent is doing, and the handle for the rest.
+ *
+ * The window is a single row tall with its overflow hidden, so a new step arriving pushes the last
+ * one out through the top. The movement is the point: a line that swaps its text in place looks
+ * the same whether it changed once or forty times, and "is this thing still going" was the
+ * question people were asking of a wall of static text. The step on its way out stays mounted for
+ * as long as it takes to leave and not a frame longer.
+ */
+function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, label }: {
+  step: CommMessage | null;
+  running: boolean;
+  startedAt: number;
+  open: boolean;
+  hidden: number;
+  onToggle: () => void;
+  label: string;
+}) {
+  const t = useT();
+  const [leaving, setLeaving] = useState<CommMessage | null>(null);
+  const previous = useRef<CommMessage | null>(step);
+
+  // Layout, not effect: the outgoing step has to be in the same paint as the incoming one, or it
+  // flashes back into the row it already left before starting to animate away.
+  useLayoutEffect(() => {
+    const before = previous.current;
+    previous.current = step;
+    if (!before || !step || before.id === step.id) return;
+    setLeaving(before);
+    const timer = setTimeout(() => setLeaving(null), STEP_EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [step?.id]);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    // A run that ended is not counting: no timer, and nothing re-rendering once a second.
+    if (!running) return;
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [running]);
+
+  const Chevron = open ? ChevronDown : ChevronUp;
+  const full = step ? (step.meta?.failed && step.meta?.error ? `${step.text}\n\n${step.meta.error}` : step.text) : "";
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="group flex w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground"
+    >
+      <StepTooltip text={full}>
+        <span className="relative block h-4 min-w-0 flex-1 overflow-hidden">
+          {leaving && (
+            <span
+              key={`out-${leaving.id}`}
+              className="animate-step-out absolute inset-x-0 top-0 flex h-4 items-center gap-1.5 font-mono leading-4"
+            >
+              <TickerLine step={leaving} running={false} />
+            </span>
+          )}
+          <span
+            key={`in-${step?.id ?? "idle"}`}
+            className="animate-step-in absolute inset-x-0 top-0 flex h-4 items-center gap-1.5 font-mono leading-4"
+          >
+            <TickerLine step={step} running={running} />
+          </span>
+        </span>
       </StepTooltip>
-      <span className="ml-auto shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>
-    </div>
+
+      {/* What is behind the line, so a collapsed ticker still says there is something to open. */}
+      {!open && hidden > 0 && (
+        <span className="shrink-0 text-[10px] tabular-nums">
+          {plural(hidden, t("activity.stepsHidden.one", { n: hidden }), t("activity.stepsHidden.other", { n: hidden }))}
+        </span>
+      )}
+      {running && <span className="shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>}
+      <Chevron className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
+      {/* Last, so the button reads "<what it is doing>, show previous steps". An aria-label would
+          have named it that and nothing else, losing the step it is showing. */}
+      <span className="sr-only">{label}</span>
+    </button>
   );
 }

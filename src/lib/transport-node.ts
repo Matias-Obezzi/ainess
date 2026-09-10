@@ -525,6 +525,7 @@ export const nodeTransport: Transport = {
   ...nodeTunnel,
 
   setTrayEnabled: async () => {},
+  requestAttention: async () => {},
 
   logAppend: async (level: string, source: string, message: string) => appendLog(level, source, message),
   logsDir: async () => getLogsDir(),

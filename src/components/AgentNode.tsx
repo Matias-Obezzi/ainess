@@ -4,12 +4,13 @@ import { AgentAvatar } from "@/components/ProviderLogo";
 import { QuotaRing, useAgentQuota } from "@/components/QuotaRing";
 import { useEffect, useMemo, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
-import type { AgentConfig, CommMessage } from "@/types";
+import type { AgentConfig } from "@/types";
 import { useAppStore, selectWorktree } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
 import { statusLabelKey, roleLabelKey } from "@/lib/labels";
+import { activityByRun } from "@/components/shell/RunActivity";
 import { useT, type TFunction } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 import { formatElapsed, truncate } from "@/lib/format";
@@ -56,18 +57,32 @@ function useNow(active: boolean): number {
   return now;
 }
 
-/** Last tool call of a run, for the one-line "what it is doing" hint. */
+/**
+ * Last tool call of a run, for the one-line "what it is doing" hint.
+ *
+ * Selects the message itself rather than the feed it lives in. Subscribing to `state.messages` and
+ * searching it re-rendered every node in the hierarchy twelve times a second while any agent
+ * streamed — the array is new on every flush, so the subscription always fired, whether or not this
+ * agent had done anything. A tool message is never rewritten, so the same object comes back until
+ * there really is a new tool call, and the node stays still until then.
+ *
+ * The lookup goes through the index `RunActivity` already builds and caches per feed identity, so
+ * the search is over this run's own messages instead of every message in the session.
+ */
 function useLastTool(runId: string | undefined): { tool: string; summary: string } | null {
-  const messages = useAppStore(state => state.messages);
-  return useMemo(() => {
+  const last = useAppStore(state => {
     if (!runId) return null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m: CommMessage = messages[i];
-      if (m.runId !== runId || m.kind !== "tool") continue;
-      return { tool: m.meta?.tool ?? m.text, summary: m.meta?.summary ?? m.text };
+    const rows = activityByRun(state.messages).get(runId);
+    if (!rows) return null;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].kind === "tool") return rows[i];
     }
     return null;
-  }, [messages, runId]);
+  });
+  return useMemo(
+    () => (last ? { tool: last.meta?.tool ?? last.text, summary: last.meta?.summary ?? last.text } : null),
+    [last],
+  );
 }
 
 /** Projects other than the current one where this agent is busy right now. */

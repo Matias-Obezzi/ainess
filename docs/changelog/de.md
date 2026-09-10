@@ -2,6 +2,109 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.12.0 — 2026-09-10
+
+### Neu
+
+- **Nachrichten, die während der Arbeit eines Agenten in die Warteschlange gehen, gehen zusammen
+  hinaus, als eine.** Vorher gingen sie im Gänsemarsch: die erste, wenn der Zug endete, die zweite
+  wartete auf das Ende *dieses* Zuges. Drei in einem Zug getippte Zeilen wurden zu drei Zügen —
+  drei Läufe, drei Karten auf dem Board, und ein Agent, der die erste ausführte, bevor er die
+  Korrektur in der dritten gelesen hatte. Sie werden jetzt als ein einziger Prompt übergeben, in
+  der Reihenfolge, in der sie geschrieben wurden, und ohne Zusatz: eine Leerzeile dazwischen, so
+  wie man es selbst getippt hätte. "Jetzt senden" macht dasselbe, also ist das Abbrechen eines
+  Zuges, um eine von dreien zu übergeben, nicht mehr drei Züge; es ist ein Knopf für den Block
+  statt einer pro Zeile, und jede Zeile lässt sich weiterhin einzeln zurücknehmen, bevor sie geht.
+
+- **Nur das, was der Agent gerade tut, in einer Zeile.** Ein arbeitender Agent schreibt eine Zeile
+  pro Werkzeug, das er benutzt, und ein langer Lauf schreibt Hunderte: der Verlauf füllte sich mit
+  dem, was er schon erledigt hatte, und die eine lesenswerte Zeile — was er *gerade jetzt* tut —
+  lag irgendwo weiter oben begraben. Die Schritte laufen jetzt durch eine Laufzeile. Sie ist eine
+  Zeile hoch und ihr Überlauf ist verborgen, also verlässt der eben beendete Schritt sie nach oben,
+  während der neue von unten hereinkommt. Die Bewegung ist der Punkt: eine Zeile, die ihren Text an
+  Ort und Stelle austauscht, sieht gleich aus, ob sie sich einmal oder vierzigmal geändert hat, und
+  "läuft das noch?" war genau die Frage, die eine Wand aus stillem Text aufwarf. Ein Klick auf die
+  Zeile öffnet die Historie darüber, ein weiterer Klick auf dieselbe Zeile schließt sie wieder.
+  Drei Dinge falten sich nie ein: der Text des Agenten selbst, ein Fehler, und die Karte eines
+  Agenten, an den er delegiert hat. Auf dieser Karte sitzt die Freigabe, die jemand beantworten
+  muss, und dafür ist ein aufgeräumter Verlauf nicht genug.
+
+- **Der Kasten schreibt deinen Satz zu Ende, und Tab nimmt ihn an.** Zwei Dinge, beide auf deinem
+  Rechner ausgerechnet und keines davon irgendwohin geschickt. Ist der Kasten leer und endet die
+  letzte Nachricht des Agenten mit einer Ja/Nein-Frage, erscheint die Antwort in Grau: Tab nimmt sie,
+  Enter schickt sie. Steht schon etwas darin, wird aus dem ergänzt, was du in genau diesem Gespräch
+  vorher geschrieben hast — die letzte Formulierung, ab den ersten Zeichen wieder angeboten. Eine
+  Frage, die eine Wahl statt eines Ja will, bekommt nichts, denn „ja" ist die falsche Antwort auf
+  „welches?"; die Wortliste, die das entscheidet, ist auf Schweigen hin gebaut. Nichts aus einem
+  anderen Projekt taucht hier auf, dieselbe Regel wie beim gemeinsamen Kontext. Tab greift erst,
+  wenn das `@`/`#`/`/`-Menü und ein ```-Block ihr Recht hatten, und Enter bleibt unangetastet:
+  Annehmen und Senden bleiben zwei Entscheidungen.
+
+- **Die Taskleistenschaltfläche blinkt, wenn etwas auf deine Antwort wartet.** Eine Freigabe oder
+  eine Frage hält einen Agenten an, bis du zurückkommst, und bisher war Hinsehen die einzige Art,
+  davon zu erfahren. Es blinkt nur, solange das Fenster nicht im Vordergrund ist, und diese Prüfung
+  geschieht dort, wo das Fenster lebt, statt sie zu erfragen und dann zu handeln: dazwischen kann
+  der Benutzer zurückklicken, und eine Taskleiste, die jemanden anblinkt, der ohnehin auf das
+  Fenster schaut, ist schlimmer als gar keine. Nur diese zwei: eine fertige Aufgabe ist eine
+  Nachricht, kein angehaltener Agent.
+
+- **Die Seitenleiste markiert ein Projekt, das unbeaufsichtigt läuft.** Ein Mond neben seinem Namen,
+  solange der autonome Modus an ist. Das war schon immer projektweise — der Schalter setzt ihn nur
+  auf jenem Projekt — aber die einzige Stelle, die es sagte, lag im Projekt selbst, was für das
+  Projekt, auf das man gerade nicht schaut, nichts nützt.
+
+### Behoben
+
+- **Ein Zug, der drei Dinge fragt, wird einmal beantwortet.** Ein Agent kann mehrere Fragen auf
+  einmal stellen, und jede Antwort setzte seinen Lauf für sich fort: drei Läufe aus einem einzigen
+  Zug, drei Karten auf dem Board, drei Agenten im selben Arbeitsverzeichnis, wegen Fragen, die du in
+  einem Rutsch beantwortet hast. Jetzt kommen sie als Gruppe — ein Reiter je Frage, ein Haken auf
+  den erledigten, und ein einziger Knopf, der deaktiviert bleibt, solange eine fehlt. Zurück geht
+  eine einzige Nachricht mit jeder Frage und ihrer Antwort, denn die zweite Antwort nützt dem
+  Agenten nichts ohne die Frage, zu der sie gehört. Fragen aus einem anderen Lauf warten auf ihren
+  Zug, statt sich der Gruppe anzuschließen.
+
+- **Ein Lauf, der auf Kontingent wartet, startet sich nicht mehr endlos neu.** Geparkte Läufe werden
+  wieder aufgenommen, wenn das Kontingent zurück ist, und einer der Momente, in denen das geprüft
+  wird, ist „der letzte Lauf ist gerade zu Ende" — ein Neustart, dem erneut das Kontingent ausging,
+  wurde also erneut geparkt, erneut geprüft und erneut gestartet, so schnell das CLI scheitern
+  konnte, mit einer Nachricht im Verlauf bei jeder Runde. Zwei Dinge waren falsch. Der Zähler, wie
+  viele Versuche diese Arbeit schon hatte, lag auf dem geparkten Eintrag, und der Eintrag wurde
+  gerade zum Neustarten weggeworfen — also las sich jeder Versuch wie der erste. Und ein Anbieter,
+  der meldet, aufgebraucht zu sein, ohne zu sagen, wie viel es war — Antigravity, dessen Pools nur
+  „agotado" und eine Reset-Zeit sagen —, kam aus der Zusammenfassung als „keine Ahnung", was alles,
+  was fragt „ist das Kontingent zurück?", als Ja liest. Jetzt drei Versuche, dann sagt es Bescheid
+  und wartet auf dich.
+
+- **Die App wird nicht mehr träge, während ein Agent arbeitet.** Jede Zeile, die ein CLI ausgab,
+  wurde an seinen Lauf im Store angehängt, zwölfmal pro Sekunde, den ganzen Lauf lang. Acht Ansichten
+  hängen an der Map der Läufe — das Eingabefeld darunter —, also zeichneten sie sich alle in diesem
+  Takt neu, für einen Puffer, den nichts auf dem Bildschirm las: diese Rohzeilen stehen nur in einem
+  Dialog, und nur wenn man ihn öffnet. Sie liegen jetzt beiseite und werden einmal in den Lauf
+  geschrieben, wenn er endet, sodass die Läufe stillstehen, solange einer läuft. Der Dialog folgt
+  ihnen weiterhin live, und ein Absturz mitten im Lauf hinterlässt das Log trotzdem auf der Platte.
+  Zwei weitere nebenbei: ein Flush ohne Text schreibt den Verlauf nicht mehr um, nur um ihn
+  unverändert zurückzugeben, und die Knoten der Hierarchie zeichnen sich nicht mehr bei jedem Delta
+  neu — jeder beobachtet jetzt den letzten Werkzeugaufruf seines eigenen Agenten, der sich zwischen
+  zwei Aufrufen nicht bewegt.
+
+- **Ein Projekt, das beim Neustart der App gearbeitet hat, sagt das auch.** Die App mitten in einer
+  Delegation aktualisieren, wieder öffnen, zur Hierarchie gehen — und es sah aus wie ein Projekt, in
+  dem nie etwas passiert war: alle Agenten untätig, ohne etwas zu sagen. Die Läufe kamen die ganze
+  Zeit von der Platte zurück und der Verlauf zeigte sie; was die Hierarchie liest, ist die Laufzeit
+  je Agent, und ein Neustart baut die allein aus dem Team. Jeder Agent kommt jetzt mit der Aufgabe
+  zurück, in deren Mitte er abgeschnitten wurde, als gestoppt markiert — nichts ist gescheitert, die
+  App ist weggegangen. Einen Agenten, den dieser Prozess bereits an die Arbeit gesetzt hat, lässt es
+  in Ruhe: das Wiederherstellen ist asynchron, und die Aufgabe eines toten Laufs über einem lebenden
+  würde etwas völlig anderes beschreiben.
+
+- **Das rechte Dock gehört zu dem Projekt, in dem du bist.** Öffnetest du das Terminal-Panel in
+  einem Projekt und gingst in ein anderes, blieb es auch dort offen — über einer leeren Tableiste,
+  denn die Terminals gehörten dem ersten. Alle drei Panels werden jetzt pro Projekt gemerkt: beim
+  Verlassen weggeräumt, beim Zurückkommen wieder hervorgeholt, und zu für ein Projekt, das sie nie
+  geöffnet hat.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Neu

@@ -2,6 +2,104 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.12.0 — 2026-09-10
+
+### Nuevo
+
+- **Los mensajes encolados mientras un agente trabaja se mandan todos juntos, como uno solo.**
+  Antes salían en fila: el primero cuando terminaba el turno, y el segundo esperando a que
+  terminara *ese* turno. Tres renglones escritos de una sentada se volvían tres turnos — tres
+  corridas, tres tarjetas en el tablero, y un agente actuando sobre el primero antes de haber leído
+  la corrección del tercero. Ahora se entregan como un solo prompt, en el orden en que los
+  escribiste y sin agregarles nada: una línea en blanco entre uno y otro, igual que si lo hubieras
+  tipeado vos. «Enviar ahora» hace lo mismo, así que cortar un turno para entregar uno de tres ya
+  no son tres turnos; es un botón para el bloque en vez de uno por renglón, y cada renglón se sigue
+  pudiendo sacar por su cuenta antes de que salga.
+
+- **Solo lo que el agente está haciendo ahora, en una línea.** Un agente trabajando escribe una
+  línea por cada herramienta que usa, y una corrida larga escribe cientos: el chat se llenaba de lo
+  que ya había terminado y la única línea que valía la pena leer —lo que está haciendo *ahora*—
+  quedaba enterrada más arriba. Ahora los pasos pasan por un renglón. Mide una línea de alto y
+  tiene el overflow oculto, así que el paso que terminó se va por arriba mientras el nuevo entra
+  desde abajo. El movimiento es el punto: una línea que cambia el texto en el lugar se ve igual
+  haya cambiado una vez o cuarenta, y «¿esto sigue andando?» era justo la pregunta que daba una
+  pared de texto quieto. Al hacerle clic se abre la historia arriba; clic de nuevo en la misma
+  línea y se cierra. Tres cosas no se pliegan nunca: el texto del propio agente, un error, y la
+  tarjeta de un agente al que delegó. Esa tarjeta lleva la aprobación que alguien tiene que
+  contestar, y un chat prolijo no vale esconderla.
+
+- **La caja te termina la frase, y Tab la acepta.** Dos cosas, las dos resueltas en tu máquina y
+  ninguna sale de ahí. Con la caja vacía y el último mensaje del agente terminando en una pregunta
+  cerrada, la respuesta aparece en gris: Tab la toma, Enter la manda. Con algo escrito, completa con
+  lo que ya escribiste antes en esa misma conversación — la última forma en que lo dijiste, ofrecida
+  de nuevo desde las primeras letras. Una pregunta que pide elegir en vez de un sí no ofrece nada,
+  porque «sí» es la respuesta equivocada a «¿cuál?»; la lista de palabras que decide eso está hecha
+  para errar hacia el silencio. Nada de otro proyecto aparece acá, la misma regla que sigue el
+  contexto compartido. Tab actúa recién después de que el menú de `@`/`#`/`/` y los bloques ``` dijeron
+  lo suyo, y Enter queda intacto: aceptar y mandar siguen siendo dos decisiones.
+
+- **El botón de la barra de tareas titila cuando algo espera tu respuesta.** Una aprobación o una
+  pregunta dejan a un agente parado hasta que volvés, y hasta ahora la única forma de enterarte era
+  estar mirando. Titila solo mientras la ventana no es la que está adelante, y esa comprobación se
+  hace del lado de la ventana en vez de preguntarla y después actuar: entre esas dos cosas el
+  usuario puede volver a hacer clic, y una barra que titila para alguien que ya está mirando la
+  ventana es peor que ninguna. Solo esas dos: una tarea que terminó es una noticia, no un agente
+  detenido.
+
+- **El sidebar marca un proyecto que está corriendo solo.** Una luna al lado del nombre mientras el
+  modo autónomo está activo. Ya era algo por proyecto —el interruptor lo prende solo en ese— pero el
+  único lugar que lo decía estaba adentro del proyecto, que no sirve justamente para el que no
+  estás mirando.
+
+### Arreglado
+
+- **Un turno que pregunta tres cosas se responde una sola vez.** Un agente puede hacer varias
+  preguntas de una, y cada respuesta reanudaba su corrida por su cuenta: tres corridas de un solo
+  turno, tres tarjetas en el tablero, tres agentes en el mismo workspace, por preguntas que
+  contestaste de una sentada. Ahora vienen como grupo: una pestaña por pregunta, un tilde en las que
+  ya resolviste, y un solo botón que queda deshabilitado hasta que no falte ninguna. Lo que vuelve es
+  un único mensaje con cada pregunta y su respuesta, porque la segunda respuesta no le sirve de nada
+  al agente sin la pregunta a la que pertenece. Las preguntas de otra corrida esperan su turno en vez
+  de sumarse al grupo.
+
+- **Una corrida esperando cuota deja de relanzarse para siempre.** Las corridas en espera se retoman
+  cuando vuelve la cuota, y uno de los momentos en que eso se chequea es «recién terminó la última
+  corrida» — así que un relanzamiento que se quedaba sin cuota otra vez volvía a quedar en espera, se
+  volvía a chequear y se volvía a lanzar, tan rápido como el CLI pudiera fallar, escribiendo un
+  mensaje en el hilo en cada vuelta. Había dos cosas mal. La cuenta de cuántos intentos llevaba ese
+  trabajo vivía en la entrada en espera, y la entrada se borraba justamente para relanzarlo, así que
+  cada intento se leía como el primero. Y un proveedor que informa estar agotado sin decir cuánto
+  había —Antigravity, cuyos pools solo dicen «agotado» y una hora de reset— salía del resumen como
+  «ni idea», que cualquiera que pregunte «¿volvió la cuota?» lee como un sí. Ahora son tres intentos,
+  y después lo dice y te espera.
+
+- **La app deja de ponerse lenta mientras un agente trabaja.** Cada línea que imprimía un CLI se
+  agregaba a su corrida en el store, doce veces por segundo durante toda la corrida. Ocho pantallas
+  se suscriben al mapa de corridas —la caja donde escribís, entre ellas— así que todas se volvían a
+  dibujar a ese ritmo, por un buffer que nada en pantalla estaba leyendo: esas líneas crudas solo se
+  muestran en un diálogo, y solo si lo abrís. Ahora se guardan aparte y se escriben en la corrida una
+  sola vez, cuando termina, así las corridas dejan de moverse mientras una está en curso. El diálogo
+  las sigue viendo en vivo, y si la app se cae en medio de una corrida el log igual queda en disco.
+  Dos más de paso: un flush sin texto dejó de reescribir el feed para devolverlo igual, y los nodos
+  de la jerarquía dejaron de redibujarse con cada delta — ahora cada uno mira la última herramienta
+  de su propio agente, que no cambia entre llamada y llamada.
+
+- **Un proyecto que estaba trabajando cuando se reinició la app lo dice.** Actualizabas la app en
+  medio de una delegación, la volvías a abrir, ibas a jerarquía y parecía un proyecto donde nunca
+  había pasado nada: todos los agentes inactivos, sin nada que decir. Las corridas volvían del disco
+  desde siempre y el hilo las mostraba; lo que lee la jerarquía es el runtime por agente, y un
+  reinicio lo arma solo con el equipo. Ahora cada agente vuelve con la tarea en la que quedó
+  cortado, marcado como detenido — no falló nada, se fue la app. A un agente que este proceso ya
+  puso a trabajar no lo toca: el restore es asincrónico, y la tarea de una corrida muerta encima de
+  una viva describiría algo que no está pasando.
+
+- **El dock de la derecha es del proyecto en el que estás.** Abrías el panel de terminales en un
+  proyecto y te ibas a otro, y seguía abierto ahí también — arriba de una barra de pestañas vacía,
+  porque las terminales eran del primero. Ahora los tres paneles se recuerdan por proyecto: se
+  guardan cuando te vas, vuelven cuando volvés, y quedan cerrados para un proyecto que nunca los
+  abrió.
+
+
 ## 0.11.0 — 2026-09-10
 
 ### Nuevo

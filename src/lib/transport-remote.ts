@@ -41,6 +41,7 @@ export const remoteTransport: Transport = {
   remotePushState: async () => {},
   onRemoteCommand: async () => () => {},
   setTrayEnabled: async () => {},
+  requestAttention: async () => {},
   logAppend: async () => {},
   logsDir: async () => "",
   openLogsDir: async () => { throw new Error(NOT_AVAILABLE); },

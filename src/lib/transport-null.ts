@@ -30,6 +30,7 @@ export const nullTransport: Transport = {
   remotePushState: async () => {},
   onRemoteCommand: async () => () => {},
   setTrayEnabled: async () => {},
+  requestAttention: async () => {},
   logAppend: async () => {},
   logsDir: async () => "",
   openLogsDir: async () => { throw new Error("No disponible en el navegador"); },
