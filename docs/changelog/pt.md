@@ -20,6 +20,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um projeto que estava trabalhando quando o app reiniciou avisa.** Você atualizava o app no meio
+  de uma delegação, abria de novo, ia para a hierarquia e parecia um projeto onde nunca tinha
+  acontecido nada: todos os agentes ociosos, sem nada a dizer. As execuções voltavam do disco desde
+  sempre e o fio as mostrava; o que a hierarquia lê é o runtime por agente, e um reinício monta isso
+  só com a equipe. Agora cada agente volta com a tarefa em que foi cortado, marcado como parado —
+  nada falhou, o app é que foi embora. Um agente que este processo já colocou para trabalhar fica
+  intocado: a restauração é assíncrona, e a tarefa de uma execução morta em cima de uma viva
+  descreveria outra coisa.
+
 - **O dock da direita é do projeto em que você está.** Você abria o painel de terminais num projeto
   e ia para outro, e ele continuava aberto lá também — em cima de uma barra de abas vazia, porque os
   terminais eram do primeiro. Agora os três painéis são lembrados por projeto: guardados quando você

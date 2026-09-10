@@ -21,6 +21,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Projekt, das beim Neustart der App gearbeitet hat, sagt das auch.** Die App mitten in einer
+  Delegation aktualisieren, wieder öffnen, zur Hierarchie gehen — und es sah aus wie ein Projekt, in
+  dem nie etwas passiert war: alle Agenten untätig, ohne etwas zu sagen. Die Läufe kamen die ganze
+  Zeit von der Platte zurück und der Verlauf zeigte sie; was die Hierarchie liest, ist die Laufzeit
+  je Agent, und ein Neustart baut die allein aus dem Team. Jeder Agent kommt jetzt mit der Aufgabe
+  zurück, in deren Mitte er abgeschnitten wurde, als gestoppt markiert — nichts ist gescheitert, die
+  App ist weggegangen. Einen Agenten, den dieser Prozess bereits an die Arbeit gesetzt hat, lässt es
+  in Ruhe: das Wiederherstellen ist asynchron, und die Aufgabe eines toten Laufs über einem lebenden
+  würde etwas völlig anderes beschreiben.
+
 - **Das rechte Dock gehört zu dem Projekt, in dem du bist.** Öffnetest du das Terminal-Panel in
   einem Projekt und gingst in ein anderes, blieb es auch dort offen — über einer leeren Tableiste,
   denn die Terminals gehörten dem ersten. Alle drei Panels werden jetzt pro Projekt gemerkt: beim

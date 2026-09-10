@@ -22,6 +22,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A project that was working when the app restarted says so.** Update the app mid-delegation,
+  reopen it, go to the hierarchy, and it looked like a project where nothing had ever happened —
+  every agent idle, with nothing to say. The runs were coming back from disk all along and the
+  thread showed them; what the hierarchy reads is the per-agent runtime, and a restart builds that
+  from the team alone. Each agent now comes back on the task it was cut off in the middle of,
+  marked stopped — nothing failed, the app went away. An agent this process has already put to work
+  is left alone: the restore is async, and a dead run's task on top of a live one would describe
+  the wrong thing entirely.
+
 - **The right dock belongs to the project you are in.** Open the terminals panel in one project and
   walk into another, and it stayed open there too — above an empty tab bar, since the terminals are
   the first project's. All three panels are remembered per project now: put away when you leave,

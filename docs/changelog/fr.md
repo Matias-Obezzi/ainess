@@ -21,6 +21,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un projet qui travaillait au redémarrage de l'application le dit.** Mettre l'application à jour
+  au milieu d'une délégation, la rouvrir, aller à la hiérarchie : on aurait dit un projet où il ne
+  s'était jamais rien passé — tous les agents inactifs, sans rien à dire. Les runs revenaient du
+  disque depuis toujours et le fil les montrait ; ce que lit la hiérarchie, c'est l'état par agent,
+  et un redémarrage le construit à partir de la seule équipe. Chaque agent revient maintenant avec
+  la tâche au milieu de laquelle il a été coupé, marqué arrêté — rien n'a échoué, l'application est
+  partie. Un agent que ce processus a déjà mis au travail est laissé tranquille : la restauration
+  est asynchrone, et la tâche d'un run mort par-dessus un run vivant décrirait tout autre chose.
+
 - **Le dock de droite appartient au projet où vous êtes.** Vous ouvriez le panneau des terminaux
   dans un projet, vous passiez à un autre, et il restait ouvert là aussi — au-dessus d'une barre
   d'onglets vide, puisque les terminaux étaient ceux du premier. Les trois panneaux sont désormais

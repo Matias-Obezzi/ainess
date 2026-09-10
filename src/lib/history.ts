@@ -10,6 +10,7 @@ import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { interruptedStrings } from "@/i18n/interrupted";
+import { runtimeAfterInterruption } from "@/lib/interrupted-runtime";
 
 interface HistoryFile {
   version: 1;
@@ -221,6 +222,16 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         changed = true;
       }
     }
+    // And what each agent was in the middle of when the app went away. The runs above are enough
+    // for the thread; the hierarchy reads `runtime`, which a restart builds from the team alone.
+    if (interrupted.length > 0 && runtime[projectId]) {
+      const restored = runtimeAfterInterruption(runtime[projectId], interrupted);
+      if (restored !== runtime[projectId]) {
+        runtime = { ...runtime, [projectId]: restored };
+        changed = true;
+      }
+    }
+
     // Worktrees: the file only seeds the list, the first time this project is read.
     let worktrees = state.worktrees;
     if (!worktreesLoaded.has(projectId)) {

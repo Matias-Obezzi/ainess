@@ -21,6 +21,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un proyecto que estaba trabajando cuando se reinició la app lo dice.** Actualizabas la app en
+  medio de una delegación, la volvías a abrir, ibas a jerarquía y parecía un proyecto donde nunca
+  había pasado nada: todos los agentes inactivos, sin nada que decir. Las corridas volvían del disco
+  desde siempre y el hilo las mostraba; lo que lee la jerarquía es el runtime por agente, y un
+  reinicio lo arma solo con el equipo. Ahora cada agente vuelve con la tarea en la que quedó
+  cortado, marcado como detenido — no falló nada, se fue la app. A un agente que este proceso ya
+  puso a trabajar no lo toca: el restore es asincrónico, y la tarea de una corrida muerta encima de
+  una viva describiría algo que no está pasando.
+
 - **El dock de la derecha es del proyecto en el que estás.** Abrías el panel de terminales en un
   proyecto y te ibas a otro, y seguía abierto ahí también — arriba de una barra de pestañas vacía,
   porque las terminales eran del primero. Ahora los tres paneles se recuerdan por proyecto: se
