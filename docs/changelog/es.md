@@ -4,6 +4,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
+### Nuevo
+
+- **Soltá archivos sobre la caja.** El clip y Ctrl+V eran las dos formas de adjuntar; arrastrar un
+  archivo desde la carpeta que ya tenías abierta es la tercera, y la que no te hace dar ninguna
+  vuelta. La caja se marca con un contorno cuando le pasa por encima un arrastre que trae archivos,
+  y lo que ya habías escrito va con ellos. Una tarjeta del tablero que cruce de camino a otra
+  columna no se toca — lleva texto, no archivos, y agarrarla no la movería a ningún lado.
+
 ### Arreglado
 
 - **El tablero se desplaza solo cuando llevás una tarjeta al borde.** Un tablero más ancho que la

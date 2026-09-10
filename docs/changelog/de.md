@@ -4,6 +4,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Dateien aufs Eingabefeld ziehen.** Die Büroklammer und Strg+V waren die beiden Wege hinein;
+  eine Datei aus dem Ordner zu ziehen, den du ohnehin offen hast, ist der dritte — und der ohne
+  Umweg. Das Feld umrandet sich, wenn ein Zug mit Dateien darüberkommt, und was du schon
+  geschrieben hattest, geht mit. Eine Board-Karte, die auf dem Weg in eine andere Spalte
+  vorbeikommt, bleibt unberührt: Sie trägt Text, keine Dateien, und sie abzufangen würde sie
+  nirgendwohin bewegen.
+
 ### Behoben
 
 - **Das Board scrollt selbst, wenn du eine Karte an seinen Rand ziehst.** Ein Board, das breiter

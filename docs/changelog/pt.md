@@ -4,6 +4,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **Solte arquivos na caixa.** O clipe e o Ctrl+V eram as duas formas de anexar; arrastar um
+  arquivo da pasta que você já tinha aberta é a terceira, e a que não faz você dar volta nenhuma. A
+  caixa se marca com um contorno quando passa por cima dela um arraste trazendo arquivos, e o que
+  você já tinha escrito vai junto. Um cartão do quadro que cruze a caminho de outra coluna fica
+  intocado — ele leva texto, não arquivos, e pegá-lo não o moveria para lugar nenhum.
+
 ### Corrigido
 
 - **O quadro rola sozinho quando você leva um cartão até a borda.** Um quadro mais largo que a

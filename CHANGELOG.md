@@ -6,6 +6,14 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **Drop files on the box.** The paperclip and Ctrl+V were the two ways in; dragging a file from
+  the folder you were already looking at is the third, and the one that needs no detour. The box
+  outlines itself when a drag carrying files comes over it, and what you had already written goes
+  along with them. A task card crossing on its way between columns is left alone — it carries text,
+  not files, and catching it would move it nowhere.
+
 ### Fixed
 
 - **The board scrolls itself when you drag a card to its edge.** A board wider than the window could

@@ -4,6 +4,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **Déposez des fichiers sur la boîte.** Le trombone et Ctrl+V étaient les deux entrées ; faire
+  glisser un fichier depuis le dossier que vous aviez déjà ouvert est la troisième, et celle qui ne
+  demande aucun détour. La boîte se souligne quand un glisser transportant des fichiers passe
+  au-dessus, et ce que vous aviez déjà écrit part avec eux. Une carte du tableau qui traverse en
+  chemin vers une autre colonne n'est pas touchée : elle transporte du texte, pas des fichiers, et
+  l'attraper ne la déplacerait nulle part.
+
 ### Corrigé
 
 - **Le tableau défile de lui-même quand vous amenez une carte au bord.** Un tableau plus large que
