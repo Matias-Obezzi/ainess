@@ -290,6 +290,7 @@ export const pt: Dictionary = {
 
   // ---- Terminals ----
   "terminals.title": "Terminais",
+  "terminals.scripts": "Scripts do projeto",
   "terminals.new": "Novo terminal",
   "terminals.close": "Fechar terminal",
   "terminals.pickShell": "Escolher shell",

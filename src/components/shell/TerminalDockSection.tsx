@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { TerminalView } from "./TerminalView";
+import { useProjectCommands } from "@/hooks/useProjectCommands";
+import { selectProject } from "@/store";
 import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Pencil, Plus, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, Pencil, Play, Plus, TerminalSquare, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
@@ -38,6 +40,27 @@ export function TerminalDockSection() {
   const renameTerminal = useAppStore(state => state.renameTerminal);
   const moveTerminal = useAppStore(state => state.moveTerminal);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
+
+  // What this project's own files say it can run: the `scripts` of a package.json, the targets of a
+  // Makefile, cargo's four. Read when the panel opens — the section only mounts then.
+  const workspaceDir = useAppStore(state => selectProject(state, state.currentProjectId)?.workspaceDir);
+  const commands = useProjectCommands(workspaceDir);
+
+  /**
+   * Runs a script, or goes to it if it is already running.
+   *
+   * Pressing "dev" twice should not start a second dev server: the second one loses the race for
+   * the port and dies with an error that looks like the app's fault. A tab whose shell already
+   * exited does not count — that one is finished, and pressing the button again means run it again.
+   */
+  const runCommand = (command: string, label: string) => {
+    const running = terminals.find(tab => tab.command === command && tab.exited == null);
+    if (running) {
+      setActiveTerminal(running.id);
+      return;
+    }
+    openTerminal({ command, title: label });
+  };
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -152,6 +175,37 @@ export function TerminalDockSection() {
           </Button>
         </div>
       </div>
+
+      {/* Starting the dev server meant opening a terminal and typing what the project already has
+          written down. One button per script, the well-known ones first (see `sortCommands`), each
+          opening its own tab named after it — "PowerShell 3" tells you nothing about which tab the
+          server is in, and that is the one you come back to. */}
+      {commands.length > 0 && !noShells && (
+        <div
+          aria-label={t("terminals.scripts")}
+          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1"
+        >
+          <Play className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+          {commands.map(command => {
+            const running = terminals.some(tab => tab.command === command.command && tab.exited == null);
+            return (
+              <Button
+                key={command.id}
+                variant={running ? "secondary" : "outline"}
+                size="sm"
+                className="h-6 shrink-0 gap-1 px-2 font-mono text-[11px]"
+                // Full terminals stop new ones, never the jump to one that is already open.
+                disabled={atLimit && !running}
+                title={atLimit && !running ? t("terminals.atLimit", { n: MAX_TERMINALS }) : command.command}
+                onClick={() => runCommand(command.command, command.label)}
+              >
+                {running && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />}
+                {command.label}
+              </Button>
+            );
+          })}
+        </div>
+      )}
 
       {terminals.length > 0 && (
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1">

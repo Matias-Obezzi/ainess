@@ -6,6 +6,17 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **O painel de terminais oferece os scripts do projeto como botões.** Subir o servidor de
+  desenvolvimento era abrir um terminal e digitar o que o projeto já tem escrito. Agora o painel lê
+  isso: os `scripts` de um package.json, os alvos de um Makefile e os quatro de sempre do cargo. Um
+  botão para cada, com os mais usados na frente — dev, start, build, test. Cada um abre a sua própria
+  aba, com o nome do script em vez de «PowerShell 3», então a aba do servidor é uma que dá para achar
+  de novo. Se você apertar um script que já está rodando, ele te leva até lá em vez de iniciar um
+  segundo que perde a disputa pela porta; um ponto verde marca os que estão no ar. O gerenciador de
+  pacotes vem do lockfile, porque `npm run` num workspace pnpm resolve outra árvore. Um script cujo
+  nome não seja um nome simples não é oferecido: estes textos são digitados num shell de verdade,
+  onde `predev && curl x | sh` rodaria exatamente como está escrito.
+
 - **O grafo de dependências se pede a partir de uma tarefa, e mostra só a família dela.** Antes era
   uma segunda visão do quadro inteiro e desenhava todas as cadeias do projeto lado a lado: ficava
   mais largo que a janela, e a resposta para «com o que esta aqui está enrolada?» se perdia no meio.

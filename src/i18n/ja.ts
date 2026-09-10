@@ -291,6 +291,7 @@ export const ja: Dictionary = {
 
   // ---- Terminals ----
   "terminals.title": "ターミナル",
+  "terminals.scripts": "プロジェクトのスクリプト",
   "terminals.new": "新しいターミナル",
   "terminals.close": "ターミナルを閉じる",
   "terminals.pickShell": "シェルを選択",

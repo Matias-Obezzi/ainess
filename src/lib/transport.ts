@@ -23,6 +23,12 @@ export interface Transport {
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
 
+  /**
+   * Which of `paths` are files that exist. Read-only, and it reads none of them — asking
+   * `readFileAbs` instead would drag a multi-megabyte lockfile across just to learn its name.
+   */
+  filesExistAbs(paths: string[]): Promise<string[]>;
+
   /** Writes a file by absolute path, creating its folder. For the `.ainess/` folder of a project. */
   writeFileAbs(path: string, content: string): Promise<void>;
 

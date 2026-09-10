@@ -32,6 +32,7 @@ export const remoteTransport: Transport = {
   writeFileAbs: async () => {},
   writeFileBytes: async () => {},
   readFileAbs: async () => null,
+  filesExistAbs: async () => [],
   storageStat: async () => null,
   portAvailable: async () => null,
   remoteStart: async () => { throw new Error(NOT_AVAILABLE); },

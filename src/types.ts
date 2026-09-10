@@ -605,6 +605,11 @@ export interface TerminalTab {
   shellPath: string;
   cwd: string;
   projectId: string | null;
+  /**
+   * Typed into the shell as soon as it comes up, for a tab opened from one of the project's own
+   * scripts (see `lib/project-commands.ts`). Only ever a name this app built, never free text.
+   */
+  command?: string;
   /** Exit code once the shell died, null while it is alive. */
   exited?: number | null;
 }

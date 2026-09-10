@@ -214,6 +214,23 @@ fn read_file_abs_blocking(path: String) -> Result<Option<String>, String> {
     }
 }
 
+/// Which of `paths` exist. Read-only, and it never reads a byte of them.
+///
+/// The caller wants to know which lockfile a project has, and a `pnpm-lock.yaml` can be several
+/// megabytes: `read_file_abs` would answer the question by pulling all of it across the bridge and
+/// throwing it away. Only files count, so a directory named `Makefile` is not a Makefile.
+#[tauri::command]
+pub async fn files_exist_abs(paths: Vec<String>) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        paths
+            .into_iter()
+            .filter(|p| std::path::Path::new(p).is_file())
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     /// The `.ainess/` folder of a project does not exist until the app writes into it.

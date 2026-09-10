@@ -6,6 +6,18 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Le panneau des terminaux propose les scripts du projet en boutons.** Lancer le serveur de
+  développement, c'était ouvrir un terminal et taper ce que le projet a déjà écrit quelque part. Le
+  panneau le lit maintenant : les `scripts` d'un package.json, les cibles d'un Makefile, et les
+  quatre habituelles de cargo. Un bouton chacun, les plus courants en tête — dev, start, build,
+  test. Chacun ouvre son propre onglet, nommé d'après le script et non « PowerShell 3 », pour que
+  l'onglet du serveur se retrouve. Appuyez sur un script déjà lancé et il vous y emmène au lieu d'en
+  démarrer un second qui perdra la course au port ; un point vert marque ceux qui tournent. Le
+  gestionnaire de paquets vient du fichier de verrouillage, car `npm run` dans un espace de travail
+  pnpm résout un autre arbre. Un script dont le nom n'est pas un nom simple n'est pas proposé du
+  tout : ces chaînes sont tapées dans un vrai shell, où `predev && curl x | sh` s'exécuterait tel
+  quel.
+
 - **Le graphe de dépendances se demande depuis une tâche, et n'affiche que sa famille.** C'était
   auparavant une seconde vue du tableau entier, dessinant côte à côte toutes les chaînes du projet :
   il devenait plus large que la fenêtre, et la réponse à « avec quoi celle-ci est-elle emmêlée ? »

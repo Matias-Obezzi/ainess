@@ -208,7 +208,7 @@ export interface AppState {
   activeTerminalIds: Record<string, string | null>;
   /** Shells detected on this machine, loaded once at startup (desktop app only). */
   shells: ShellInfo[];
-  openTerminal(opts?: { shellId?: string; cwd?: string }): void;
+  openTerminal(opts?: { shellId?: string; cwd?: string; command?: string; title?: string }): void;
   closeTerminal(id: string): void;
   setActiveTerminal(id: string): void;
   renameTerminal(id: string, title: string): void;
@@ -1063,15 +1063,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const shell = (opts?.shellId && shells.find(sh => sh.id === opts.shellId)) || shells[0];
     const project = selectProject(state, state.currentProjectId);
     const cwd = opts?.cwd ?? project?.workspaceDir ?? "";
-    // Titles are numbered per shell so two PowerShells are still telling apart.
+    // Titles are numbered per shell so two PowerShells are still telling apart. A tab opened to run
+    // something is named after it instead: "PowerShell 3" says nothing about which one is the dev
+    // server, and that is the tab you come back to.
     const used = state.terminals.filter(t => t.shellId === shell.id).length + 1;
     const terminal: TerminalTab = {
       id: `term-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-      title: `${shell.label} ${used}`,
+      title: opts?.title ?? `${shell.label} ${used}`,
       shellId: shell.id,
       shellPath: shell.path,
       cwd,
       projectId: state.currentProjectId,
+      ...(opts?.command ? { command: opts.command } : {}),
       exited: null,
     };
     set(s => ({

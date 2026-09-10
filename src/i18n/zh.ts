@@ -290,6 +290,7 @@ export const zh: Dictionary = {
 
   // ---- Terminals ----
   "terminals.title": "终端",
+  "terminals.scripts": "项目的脚本",
   "terminals.new": "新建终端",
   "terminals.close": "关闭终端",
   "terminals.pickShell": "选择 shell",

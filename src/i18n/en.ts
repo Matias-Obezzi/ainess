@@ -291,6 +291,7 @@ export const en: Dictionary = {
 
   // ---- Terminals ----
   "terminals.title": "Terminals",
+  "terminals.scripts": "The project's scripts",
   "terminals.new": "New terminal",
   "terminals.close": "Close terminal",
   "terminals.pickShell": "Pick a shell",

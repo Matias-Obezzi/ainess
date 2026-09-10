@@ -486,6 +486,14 @@ export const nodeTransport: Transport = {
     }
   },
 
+  filesExistAbs: async (paths: string[]) => paths.filter(p => {
+    try {
+      return fs.statSync(p).isFile();
+    } catch {
+      return false;
+    }
+  }),
+
   storageStat: async (scope: "logs" | "config", relativePath?: string): Promise<StorageStat | null> => {
     if (relativePath?.includes("..")) return null;
     const base = scope === "logs" ? getLogsDir() : path.dirname(getConfigPath());

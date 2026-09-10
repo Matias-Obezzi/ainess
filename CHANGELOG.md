@@ -8,6 +8,17 @@ let one of them fall behind.
 
 ### Added
 
+- **The terminals panel offers the project's own scripts as buttons.** Starting the dev server meant
+  opening a terminal and typing what the project already has written down. The panel now reads that:
+  the `scripts` of a package.json, the targets of a Makefile, and cargo's usual four. One button
+  each, the ones people reach for first — dev, start, build, test — at the front. Each opens its own
+  tab, named after the script rather than "PowerShell 3", so the tab holding the server is the one
+  you can find again. Press a script that is already running and it takes you to it instead of
+  starting a second one to lose the race for the port; a green dot marks the ones that are up. The
+  package manager comes from the lockfile, because `npm run` in a pnpm workspace resolves a
+  different tree. A script whose name is not a plain name is not offered at all: these strings are
+  typed into a real shell, where `predev && curl x | sh` would run as written.
+
 - **The dependency graph is asked for from a task, and shows only that task's family.** It used to
   be a second view of the whole board, drawing every chain in the project side by side: it grew
   wider than the window, and the answer to "what is this one tangled up with?" was somewhere in the

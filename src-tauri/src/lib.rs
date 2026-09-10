@@ -71,6 +71,7 @@ pub fn run() {
             config::delete_config_file,
             config::read_home_file,
             config::read_file_abs,
+            config::files_exist_abs,
             config::write_file_abs,
             config::write_file_bytes,
             detect::detect_binaries,
