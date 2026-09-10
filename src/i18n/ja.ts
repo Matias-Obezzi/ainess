@@ -207,6 +207,7 @@ export const ja: Dictionary = {
   "activity.waitingToStart": "開始を待っています…",
   "activity.thinking": "考え中…",
   "markdown.invalidDelegation": "形式が無効な委任です",
+  "markdown.revealFailed": "ファイルマネージャーでファイルを表示できませんでした",
 
   // ---- Right dock ----
   "dock.dragToResize": "ドラッグして幅を調整",

@@ -1,15 +1,16 @@
 // Markdown renderer for agent answers and live text. Styles come from Tailwind classes here
 // (no @tailwindcss/typography), so the output matches the shell's own type scale.
 import { isValidElement, useState, type ReactNode } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { parseDelegations } from "@/lib/providers";
-import { openExternal, webUrl } from "@/lib/open-external";
+import { filePath, openExternal, revealPath, webUrl } from "@/lib/open-external";
 import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
-import { ChevronDown, ChevronRight, Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Share2 } from "lucide-react";
 import { truncate } from "@/lib/format";
 import { useT } from "@/i18n/useT";
+import { toast } from "@/components/ui/toast";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -71,6 +72,31 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
   );
 }
 
+/**
+ * A `file:` link an agent wrote, pointing at something on this machine. A button and not an
+ * `<a href>` for the same reason as the paths below: the window follows the href itself. Clicking
+ * it shows the file in the file manager and stops there — opening it with its own program would
+ * put whatever an agent chose to link one click away from running.
+ */
+function FileLink({ path, children }: { path: string; children: ReactNode }) {
+  const t = useT();
+  return (
+    <button
+      type="button"
+      title={path}
+      className="inline text-left text-primary underline underline-offset-2 break-all"
+      onClick={() => {
+        void revealPath(path).then(ok => {
+          if (!ok) toast.error(t("markdown.revealFailed"));
+        });
+      }}
+    >
+      <FileText className="mr-1 inline h-3 w-3 shrink-0 -translate-y-px" />
+      {children}
+    </button>
+  );
+}
+
 /** A ```delegate block whose JSON did not parse: the raw text, never passed off as an answer. */
 function InvalidDelegation({ text }: { text: string }) {
   const t = useT();
@@ -96,13 +122,18 @@ const components: Components = {
   ),
   hr: () => <hr className="my-3 border-border" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-  // An agent writes two kinds of link: web addresses, and paths inside the repo it is working on.
-  // Only the first is something to open. The second never gets an `href`, because an `<a>` with a
-  // relative one is followed by the window itself — inside the desktop app that means leaving for
-  // `tauri.localhost/<path>`, with the whole app gone from under you.
+  // An agent writes three kinds of link: web addresses, `file:` URLs, and paths inside the repo it
+  // is working on. Only the first is something to open. Neither of the other two ever gets an
+  // `href`, because an `<a>` the window can follow is followed by the window itself — inside the
+  // desktop app that means leaving for `tauri.localhost/<path>`, with the whole app gone.
   a: ({ href, children }) => {
     const url = webUrl(href);
-    if (!url) return <span className="break-all underline decoration-dotted underline-offset-2">{children}</span>;
+    if (!url) {
+      // A `file:` link is neither: not an address, but a real place, so it gets revealed instead.
+      const path = filePath(href);
+      if (path) return <FileLink path={path}>{children}</FileLink>;
+      return <span className="break-all underline decoration-dotted underline-offset-2">{children}</span>;
+    }
     return (
       <a
         href={url}
@@ -152,6 +183,14 @@ const components: Components = {
   img: ({ src, alt }) => <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} className="max-w-full rounded" />,
 };
 
+/**
+ * react-markdown blanks out any URL whose scheme is not in its own allowlist, `file:` among them,
+ * so a file link would never reach the `a` renderer to be judged. That judgement belongs there —
+ * `webUrl` and `filePath` between them are stricter than an allowlist — but only for links: an
+ * `img src` still goes through the default, because nothing downstream looks at it.
+ */
+const urlTransform: UrlTransform = (url, key) => (key === "href" ? url : defaultUrlTransform(url));
+
 const plugins = [remarkGfm];
 
 /** Renders `text` as markdown (GFM). Empty text renders nothing. */
@@ -160,7 +199,7 @@ export function Markdown({ text, className }: { text: string; className?: string
   if (!content.trim()) return null;
   return (
     <div className={cn("text-sm leading-relaxed break-words", className)}>
-      <ReactMarkdown remarkPlugins={plugins} components={components}>
+      <ReactMarkdown remarkPlugins={plugins} components={components} urlTransform={urlTransform}>
         {content}
       </ReactMarkdown>
     </div>

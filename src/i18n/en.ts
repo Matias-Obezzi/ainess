@@ -207,6 +207,7 @@ export const en: Dictionary = {
   "activity.waitingToStart": "Waiting to start…",
   "activity.thinking": "Thinking…",
   "markdown.invalidDelegation": "Delegation with invalid format",
+  "markdown.revealFailed": "The file could not be shown in the file manager",
 
   // ---- Right dock ----
   "dock.dragToResize": "Drag to resize",

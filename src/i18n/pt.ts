@@ -206,6 +206,7 @@ export const pt: Dictionary = {
   "activity.waitingToStart": "Esperando para começar…",
   "activity.thinking": "Pensando…",
   "markdown.invalidDelegation": "Delegação com formato inválido",
+  "markdown.revealFailed": "Não foi possível mostrar o arquivo no gerenciador de arquivos",
 
   // ---- Right dock ----
   "dock.dragToResize": "Arraste para mudar a largura",

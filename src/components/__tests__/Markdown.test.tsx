@@ -43,6 +43,21 @@ describe("Markdown", () => {
     expect(out).not.toContain("<pre");
   });
 
+  // react-markdown blanks out a `file:` href on its own, so without `urlTransform` the link comes
+  // back empty and this renders as the plain span again — silently, which is how the bug looked.
+  it("draws a file: link as a button, never as an href the window can follow", () => {
+    const out = html("[ARCHIVO](file:///C:/Users/matia/archivo.txt)");
+    expect(out).toContain("<button");
+    expect(out).toContain("ARCHIVO");
+    expect(out).not.toContain('href="file:');
+  });
+
+  it("still refuses a scheme that runs in the page", () => {
+    const out = html("[x](javascript:alert%281%29)");
+    expect(out).not.toContain("javascript:");
+    expect(out).not.toContain("<a ");
+  });
+
   it("renders nothing for empty text", () => {
     expect(html("   ")).toBe("");
   });

@@ -206,6 +206,7 @@ export const zh: Dictionary = {
   "activity.waitingToStart": "等待启动…",
   "activity.thinking": "思考中…",
   "markdown.invalidDelegation": "委派格式无效",
+  "markdown.revealFailed": "无法在文件管理器中显示该文件",
 
   // ---- Right dock ----
   "dock.dragToResize": "拖动以调整宽度",
