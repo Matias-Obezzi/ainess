@@ -6,9 +6,25 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Modo autónomo, con hora de apagado.** Un botón en la barra del proyecto lo enciende por 1, 2,
+  4, 8 o 12 horas. Mientras está activo el proyecto no te espera: las delegaciones que pedirían tu
+  aprobación se aprueban, las preguntas se contestan solas por el camino más conservador, y el tope
+  de rondas deja de cerrar la tarea. No existe el modo «para siempre»: se apaga solo a la hora que
+  fijaste, y parar a mano sigue parando. El tope de gasto del proyecto vale igual que antes; ese es
+  el freno. Y una tarea que no hace más que preguntar no se come la noche entera: después de diez
+  respuestas automáticas, las preguntas vuelven a esperarte. Cuando termina, el informe queda en el
+  hilo: qué terminó, qué falló, qué aprobó y qué contestó sin vos.
+
+- **Reintentar cuando vuelve la cuota.** Una corrida que se moría porque el modelo se quedó sin
+  cuota te dejaba el trabajo a medias hasta que volvieras a apretar reintentar a mano. Cada agente
+  tiene ahora su propia casilla: si se queda sin cuota, la corrida espera en vez de fallar y se
+  vuelve a lanzar sola con el mismo prompt apenas el proveedor tiene lugar de nuevo. En modo
+  autónomo pasa con casilla o sin ella. Si para cuando vuelve la cuota la casilla está apagada, o
+  el modo autónomo ya se terminó, no relanza nada, y te lo dice en vez de quedarse callado.
+
 - **También Slack, y con eso están los tres.** Telegram, Discord y Slack, los mismos comandos en el
   que ya tengas abierto, cada uno con su tarjeta en Configuración y su propia lista de chats — un
-  chat autorizado en uno está autorizado en uno. Slack pide dos tokens en vez de uno: el de
+  chat autorizado en uno está autorizado solo en ese. Slack pide dos tokens en vez de uno: el de
   aplicación abre la conexión y el de bot escribe, que es cómo lo diseñó Slack y no nosotros, y la
   pantalla te dice cuál es cuál. Socket Mode tiene que estar activado en tu app de Slack y el bot
   tiene que estar invitado al canal; eso también te lo dice, porque si no no llega nada y desde acá

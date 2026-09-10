@@ -6,9 +6,25 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Modo autônomo, com hora para se desligar.** Um botão na barra do projeto liga por 1, 2, 4, 8 ou
+  12 horas. Enquanto está ligado o projeto não espera por você: as delegações que pediriam a sua
+  aprovação são aprovadas, as perguntas se respondem sozinhas pelo caminho mais conservador, e o
+  limite de rodadas deixa de encerrar a tarefa. Não existe o modo «para sempre»: ele se desliga
+  sozinho na hora que você marcou, e parar na mão continua parando. O teto de gasto do projeto vale
+  igual a antes; esse é o freio. E uma tarefa que só faz perguntar não come a noite inteira: depois
+  de dez respostas automáticas, as perguntas voltam a esperar por você. Quando termina, o relatório
+  fica no fio: o que terminou, o que falhou, o que aprovou e o que respondeu sem você.
+
+- **Retentar quando a cota volta.** Uma execução que morria porque o modelo ficou sem cota deixava o
+  trabalho pela metade até você voltar e apertar retentar na mão. Cada agente tem agora a sua
+  caixinha: sem cota, a execução espera em vez de falhar e se relança sozinha com o mesmo prompt
+  assim que o provedor tem lugar de novo. No modo autônomo acontece com ou sem a caixinha. Se quando
+  a cota voltar a caixinha estiver desligada, ou o modo autônomo já tiver acabado, nada é relançado
+  — e isso fica dito, em vez de ficar calado.
+
 - **Slack também, e com isso são os três.** Telegram, Discord e Slack, os mesmos comandos naquele
   que você já tiver aberto, cada um com o seu cartão nas Configurações e a sua própria lista de
-  chats — um chat autorizado num está autorizado num. O Slack pede dois tokens em vez de um: o de
+  chats — um chat autorizado num está autorizado só nesse. O Slack pede dois tokens em vez de um: o de
   aplicação abre a conexão e o de bot escreve, que é como o Slack projetou e não nós, e a tela diz
   qual é qual. O Socket Mode precisa estar ligado no seu app do Slack e o bot precisa estar
   convidado para o canal; a tela também avisa, porque senão não chega nada e daqui não haveria como

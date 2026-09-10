@@ -6,9 +6,26 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Autonomer Modus, mit einer Uhrzeit, zu der er sich abschaltet.** Ein Knopf in der Projektleiste
+  schaltet ihn für 1, 2, 4, 8 oder 12 Stunden ein. Solange er läuft, wartet das Projekt nicht auf
+  dich: Delegationen, die deine Freigabe bräuchten, werden freigegeben, Fragen beantworten sich
+  selbst auf dem vorsichtigsten Weg, und die Rundengrenze beendet die Aufgabe nicht mehr. Ein „für
+  immer“ gibt es nicht — er schaltet sich zur eingestellten Uhrzeit selbst ab, und ein Stopp von
+  Hand stoppt weiterhin. Das Ausgabenlimit des Projekts gilt unverändert; das ist die Bremse. Und
+  eine Aufgabe, die nichts als fragt, frisst nicht die ganze Nacht: nach zehn eigenen Antworten
+  warten die Fragen wieder auf dich. Am Ende bleibt der Bericht im Verlauf: was fertig wurde, was
+  scheiterte, was freigegeben und was ohne dich beantwortet wurde.
+
+- **Neuer Versuch, wenn das Kontingent zurück ist.** Ein Lauf, der starb, weil sein Modell leer war,
+  ließ die Arbeit liegen, bis du von Hand neu gestartet hast. Jeder Agent hat jetzt sein eigenes
+  Kästchen: ohne Kontingent wartet der Lauf, statt zu scheitern, und startet mit demselben Prompt
+  von selbst neu, sobald der Anbieter wieder Platz hat. Im autonomen Modus geschieht das mit oder
+  ohne Kästchen. Ist das Kästchen aus oder der autonome Zeitraum vorbei, wenn das Kontingent
+  zurückkommt, wird nichts neu gestartet — und das steht da, statt still zu bleiben.
+
 - **Slack auch, und damit sind es alle drei.** Telegram, Discord und Slack, dieselben Befehle in
   dem, den du ohnehin offen hast, jeder mit eigener Karte in den Einstellungen und eigener
-  Chatliste — ein Chat, der auf einem autorisiert ist, ist auf einem autorisiert. Slack verlangt
+  Chatliste — ein Chat, der auf einem autorisiert ist, ist nur auf diesem autorisiert. Slack verlangt
   zwei Tokens statt einem: eines auf App-Ebene, das die Verbindung öffnet, und eines für den Bot,
   das schreibt. Das ist Slacks Entwurf, nicht unserer, und der Bildschirm sagt, welches welches
   ist. Socket Mode muss in deiner Slack-App eingeschaltet und der Bot in den Kanal eingeladen sein;

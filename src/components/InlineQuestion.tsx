@@ -24,9 +24,10 @@ export function InlineQuestion({ questionId, size = "sm" }: { questionId: string
   const isMd = size === "md";
 
   if (question.status === "answered") {
+    const answer = (question.answer ?? []).join(", ");
     return (
       <p className={cn("text-muted-foreground", isMd ? "mt-2 text-sm" : "mt-1.5 text-xs")}>
-        {t("questions.answered", { answer: (question.answer ?? []).join(", ") })}
+        {t(question.auto ? "questions.answeredAuto" : "questions.answered", { answer })}
       </p>
     );
   }

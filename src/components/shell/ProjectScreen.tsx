@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Badge } from "@/components/ui/badge";
 import { GitBranchButton } from "@/components/GitStatus";
 import { UsageButton } from "@/components/UsageDialog";
+import { AutonomousToggleButton, AutonomousBanner } from "@/components/AutonomousControl";
 import { HierarchyGraph } from "@/components/HierarchyGraph";
 import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
@@ -77,6 +78,8 @@ export function ProjectScreen() {
           {t("projectScreen.working", { n: running })}
         </Badge>
 
+        <AutonomousToggleButton projectId={project.id} />
+
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
           <Button
             variant={projectMode === "tasks" ? "secondary" : "ghost"}
@@ -146,6 +149,8 @@ export function ProjectScreen() {
           </Button>
         </div>
       </div>
+
+      <AutonomousBanner projectId={project.id} />
 
       <div className="flex-1 min-h-0">
         {projectMode === "tasks"

@@ -6,9 +6,26 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Mode autonome, avec une heure d'extinction.** Un bouton dans la barre du projet l'active pour 1,
+  2, 4, 8 ou 12 heures. Tant qu'il tourne, le projet ne vous attend plus : les délégations qui
+  demanderaient votre accord sont approuvées, les questions reçoivent d'elles-mêmes la réponse la
+  plus prudente, et le plafond de tours ne referme plus la tâche. Il n'y a pas de « pour toujours »
+  : il s'éteint tout seul à l'heure fixée, et un arrêt à la main arrête toujours. Le plafond de
+  dépense du projet vaut comme avant ; c'est lui, le frein. Et une tâche qui ne fait que poser des
+  questions ne mange pas la nuit entière : après dix réponses automatiques, les questions vous
+  attendent de nouveau. À la fin, le rapport reste dans le fil : ce qui s'est terminé, ce qui a
+  échoué, ce qui a été approuvé et répondu sans vous.
+
+- **Relancer quand le quota revient.** Un run qui mourait parce que son modèle était à sec laissait
+  le travail en plan jusqu'à ce que vous reveniez cliquer sur relancer. Chaque agent a maintenant sa
+  case : à court de quota, le run attend au lieu d'échouer, et repart tout seul avec le même prompt
+  dès que le fournisseur a de la place. En mode autonome, cela arrive avec ou sans la case. Si la
+  case est décochée ou le mode autonome terminé quand le quota revient, rien n'est relancé — et
+  c'est écrit, plutôt que passé sous silence.
+
 - **Slack aussi, et cela fait les trois.** Telegram, Discord et Slack, les mêmes commandes dans
   celui que vous avez déjà ouvert, chacun avec sa carte dans les réglages et sa propre liste de
-  conversations — une conversation autorisée sur l'un est autorisée sur un seul. Slack demande deux
+  conversations — une conversation autorisée sur l'un ne l'est que sur celui-là. Slack demande deux
   jetons plutôt qu'un : celui au niveau de l'application ouvre la connexion, celui du bot écrit.
   C'est la conception de Slack, pas la nôtre, et l'écran dit lequel est lequel. Le Socket Mode doit
   être activé dans votre application Slack et le bot invité dans le salon ; l'écran le dit aussi,

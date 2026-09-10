@@ -8,9 +8,25 @@ let one of them fall behind.
 
 ### Added
 
+- **Autonomous mode, with a time it turns itself off.** A button in the project bar turns it on for
+  1, 2, 4, 8 or 12 hours. While it is on the project stops waiting for you: delegations that would
+  need your approval are approved, questions are answered on the most conservative reading, and the
+  round cap stops closing the task. There is no "forever" — it turns itself off at the hour you
+  set, and stopping by hand still stops. The project's spending cap applies exactly as before; that
+  is the brake. And a task that does nothing but ask cannot eat the whole night: after ten answers
+  of its own, the questions go back to waiting for you. When it ends, the report stays in the
+  thread — what finished, what failed, what it approved and what it answered without you.
+
+- **Retry when quota comes back.** A run that died because its model ran dry left the work half done
+  until you came back and hit retry by hand. Each agent has its own checkbox now: out of quota, the
+  run waits instead of failing, and relaunches on its own with the same prompt as soon as the
+  provider has room again. In autonomous mode it happens with or without the checkbox. If by the
+  time quota is back the checkbox is off, or the autonomous stretch has ended, nothing is
+  relaunched — and it says so rather than going quiet.
+
 - **Slack too, and that is all three.** Telegram, Discord and Slack, the same commands in whichever
   one you already have open, each with its own card in Settings and its own list of chats — a chat
-  authorised on one is authorised on one. Slack asks for two tokens rather than one: an app-level
+  authorised on one is authorised on that one only. Slack asks for two tokens rather than one: an app-level
   one to open the connection and a bot one to write, which is Slack's design, not ours, and the
   screen says which is which. Socket Mode has to be on in your Slack app and the bot has to be
   invited to the channel; the screen says that too, because otherwise nothing arrives and there is

@@ -54,6 +54,13 @@ export interface AgentConfig {
   requireApproval?: boolean;
   /** Run this agent in its own git worktree (own branch, sibling folder). See src/lib/worktree.ts. */
   worktree?: boolean;
+  /**
+   * Relaunch a run of this agent from scratch (same prompt, no resume) once its provider's quota
+   * is back, instead of leaving it failed. Per-agent because quota is spent per provider/model, and
+   * one agent in a team can be pinned to a model that runs dry far more often than the rest.
+   * Independent of `autonomous` on the project: a supervised project can still want this.
+   */
+  retryOnQuota?: boolean;
 }
 
 /** A git worktree an agent works in, one per agent and project. */
@@ -108,6 +115,13 @@ export interface Project {
   agents: AgentConfig[];
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
+  /**
+   * While this is set and `until` has not passed, the project runs without waiting for the user:
+   * delegations that would need approval are approved, questions are answered on the agent's own
+   * most conservative guess, and the round cap does not close the task. It turns itself off at
+   * `until` on its own — there is no indefinite mode. See src/lib/autonomous.ts.
+   */
+  autonomous?: { until: number };
 }
 
 /** A saved team template: what a new project starts with. */
@@ -193,6 +207,8 @@ export interface Approval {
   status: "pending" | "approved" | "rejected";
   note?: string;
   decidedAt?: number;
+  /** Approved by autonomous mode, without asking — see src/lib/autonomous.ts. */
+  auto?: boolean;
 }
 
 /**
@@ -221,6 +237,8 @@ export interface AgentQuestion {
   /** What was chosen (or written), once it was. */
   answer?: string[];
   answeredAt?: number;
+  /** Answered by autonomous mode, without the user — see src/lib/autonomous.ts. */
+  auto?: boolean;
 }
 
 /** Public tunnel provider used on top of the LAN server. */

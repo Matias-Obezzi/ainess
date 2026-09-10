@@ -171,6 +171,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [autoApprove, setAutoApprove] = useState(false);
   const [approvalMode, setApprovalMode] = useState<"inherit" | "always" | "never">("inherit");
   const [worktree, setWorktree] = useState(false);
+  const [retryOnQuota, setRetryOnQuota] = useState(false);
   const [description, setDescription] = useState("");
   /** Once the user writes their own, the default stops following the role and the provider. */
   const [descriptionEdited, setDescriptionEdited] = useState(false);
@@ -208,6 +209,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setAutoApprove(agent.autoApprove);
         setApprovalMode(agent.requireApproval === undefined ? "inherit" : agent.requireApproval ? "always" : "never");
         setWorktree(agent.worktree ?? false);
+        setRetryOnQuota(agent.retryOnQuota ?? false);
         setDescription(agent.description || "");
         setDescriptionEdited(true);
         setSystemPrompt(agent.systemPrompt || "");
@@ -231,6 +233,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setAutoApprove(false);
         setApprovalMode("inherit");
         setWorktree(false);
+        setRetryOnQuota(false);
         setDescription("");
         setDescriptionEdited(false);
         setSystemPrompt("");
@@ -314,6 +317,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       autoApprove,
       requireApproval: approvalMode === "inherit" ? undefined : approvalMode === "always",
       worktree: worktree || undefined,
+      retryOnQuota: retryOnQuota || undefined,
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
       color
@@ -542,6 +546,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                   ? t("agentDialog.worktreeHint", { branch: worktreeBranch(name || "agente") })
                   : t("agentDialog.notARepo")}
               </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={retryOnQuota} onCheckedChange={setRetryOnQuota} id="retry-on-quota" />
+                <Label htmlFor="retry-on-quota">{t("agentDialog.retryOnQuota")}</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("agentDialog.retryOnQuotaHint")}</p>
             </div>
 
             {/* The description is what the parent reads to pick who to delegate to: no parent, no field. */}

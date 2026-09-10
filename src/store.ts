@@ -10,6 +10,7 @@ import * as taskLogic from "@/lib/tasks";
 import { reconcileProject } from "@/lib/task-reconcile";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
+import { autonomousReport } from "@/lib/autonomous";
 import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { forgetPty } from "@/lib/pty-bus";
@@ -72,6 +73,25 @@ export interface AppState {
   repoState: Record<string, RepoState>;
   /** Git worktrees per project, one per agent that works in its own branch (see src/lib/worktree.ts). */
   worktrees: Record<string, AgentWorktree[]>;
+  /**
+   * When each project's current stretch of autonomous mode began, in memory only. Not part of
+   * `Project` (which only carries `until`, per the design): this is what lets the report shown when
+   * the mode ends cover just that stretch instead of the project's whole history. Lost on restart,
+   * same as `runtime` — a mode still on after a restart starts counting its report from then.
+   */
+  autonomousStarted: Record<string, number>;
+  /**
+   * Runs parked because their agent ran out of quota, waiting for `useQuotaSync` to see the
+   * provider has room again and relaunch them (same prompt, from scratch — see
+   * `RetryRunDialog`/`lib/orchestrator.ts#parkQuotaRetry`). Not persisted: a run still parked when
+   * the app restarts is simply left failed, same as if nobody had asked for a retry.
+   */
+  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number }>;
+  dropQuotaWaiting(id: string): void;
+  /** Turns a project's autonomous mode on until `until`, or off (and reports) when `until` is null. */
+  setAutonomous(projectId: string, until: number | null): void;
+  /** Turns autonomous mode off and, if anything happened while it ran, tells the user about it. */
+  endAutonomous(projectId: string): void;
   /** Chat messages in memory, keyed by chatId. */
   chatMessages: Record<string, ChatMessage[]>;
   /** Whether a chat's messages are being loaded from disk for the first time (for a skeleton). */
@@ -735,6 +755,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   quota: {},
   repoState: {},
   worktrees: {},
+  autonomousStarted: {},
+  quotaWaiting: {},
   runtime: {},
   runs: {},
   messages: [],
@@ -1199,6 +1221,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // `git worktree remove` behind the user's back.
       const newWorktrees = { ...state.worktrees };
       delete newWorktrees[id];
+      const newAutonomousStarted = { ...state.autonomousStarted };
+      delete newAutonomousStarted[id];
+      const newQuotaWaiting = Object.fromEntries(
+        Object.entries(state.quotaWaiting).filter(([, w]) => w.projectId !== id),
+      );
       const newMessages = state.messages.filter(m => m.projectId !== id);
       const goneRuns = new Set(Object.values(state.runs).filter(r => r.projectId === id).map(r => r.id));
       const newRuns = Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== id));
@@ -1256,6 +1283,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         activeTaskRunId: newActiveTask,
         repoState: newRepoState,
         worktrees: newWorktrees,
+        autonomousStarted: newAutonomousStarted,
+        quotaWaiting: newQuotaWaiting,
         messages: newMessages,
         runs: newRuns,
         tasks: newTasks,
@@ -1304,6 +1333,66 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setMaxRounds: (n) => {
     set((state) => ({ config: { ...state.config, maxRounds: n } }));
     debouncedSave();
+  },
+
+  setAutonomous: (projectId, until) => {
+    if (until === null) {
+      get().endAutonomous(projectId);
+      return;
+    }
+    set(state => ({ autonomousStarted: { ...state.autonomousStarted, [projectId]: Date.now() } }));
+    get().updateProject(projectId, { autonomous: { until } });
+  },
+
+  endAutonomous: (projectId) => {
+    const state = get();
+    const project = selectProject(state, projectId);
+    if (!project?.autonomous) return;
+    // No recorded start (e.g. the app restarted mid-stretch): the report only covers what it can
+    // still see, which is nothing before right now.
+    const since = state.autonomousStarted[projectId] ?? Date.now();
+
+    const runs = Object.values(state.runs).filter(
+      r => r.projectId === projectId && r.startedAt >= since && (r.status === "done" || r.status === "error"),
+    );
+    const autoApprovals = Object.values(state.approvals).filter(a => a.projectId === projectId && a.createdAt >= since);
+    const autoAnswers = Object.values(state.questions).filter(q => q.projectId === projectId && q.createdAt >= since);
+    const quotaWaits = Object.values(state.quotaWaiting).filter(w => w.projectId === projectId).length;
+    const report = autonomousReport({ runs, autoApprovals, autoAnswers, quotaWaits });
+
+    set(s => {
+      const nextStarted = { ...s.autonomousStarted };
+      delete nextStarted[projectId];
+      return { autonomousStarted: nextStarted };
+    });
+    get().updateProject(projectId, { autonomous: undefined });
+
+    if (report.lines.length > 0) {
+      // The notification is the glance; this is the record. The whole point of the mode is that
+      // nobody was watching, so the report has to survive in the thread the user actually reads in
+      // the morning, not only in a toast that came and went while they slept.
+      orchestrator.addMessage({
+        projectId,
+        fromAgentId: "system",
+        kind: "system",
+        text: [translateNow("autonomous.report.title", { name: project.name }), ...report.lines.map(l => "- " + l)].join("\n"),
+      });
+      get().notify({
+        kind: "info",
+        title: translateNow("autonomous.report.title", { name: project.name }),
+        body: report.lines.join(" · "),
+        projectId,
+      });
+    }
+  },
+
+  dropQuotaWaiting: (id) => {
+    set(state => {
+      if (!(id in state.quotaWaiting)) return state;
+      const next = { ...state.quotaWaiting };
+      delete next[id];
+      return { quotaWaiting: next };
+    });
   },
 
   addAgent: (projectId, agent) => {
