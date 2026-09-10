@@ -624,6 +624,9 @@ export const ja: Dictionary = {
   // ---- Settings: shared context ----
   "context.saved": "コンテキストを保存しました",
   "context.intro": "すべてのエージェントのシステムプロンプトに追加されます。",
+  "context.project": "プロジェクト",
+  "context.noProjects.title": "まだプロジェクトがありません",
+  "context.noProjects.body": "コンテキストはプロジェクトごとのものです。ひとつ作れば、このメモはそのエージェントたちにだけ渡されます。",
 
   // ---- Settings: presets ----
   "presets.new": "新しいオーダー",

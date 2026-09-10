@@ -79,7 +79,7 @@ function buildChatSystemPrompt(chatId: string, agentId: string): string {
 
   return buildSystemPrompt(agent, [], {
     skills: selectSkillsFor(store, agentId) || [],
-    sharedContext: store.config.sharedContext,
+    sharedContext: store.config.projects.find(p => p.id === chat.projectId)?.sharedContext ?? "",
     profile: store.config.profile,
     chat: { role, others }
   });

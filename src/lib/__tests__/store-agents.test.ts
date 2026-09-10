@@ -61,7 +61,7 @@ describe("migration 9 -> 10", () => {
     const { store } = await boot(legacyConfig());
     const config = store.useAppStore.getState().config;
 
-    expect(config.version).toBe(12);
+    expect(config.version).toBe(13);
     expect((config as unknown as { agents?: unknown }).agents).toBeUndefined();
     // Version 12 only adds a setting, and it starts off.
     expect(config.autoArchiveDoneDays).toBeNull();
@@ -101,7 +101,7 @@ describe("migration 9 -> 10", () => {
     const p2 = state.config.projects.find(p => p.id === "p2")!;
     for (const agent of p2.agents) expect(state.runtime.p2[agent.id]).toBeDefined();
     expect(saved.length).toBeGreaterThan(0);
-    expect(saved[saved.length - 1].version).toBe(12);
+    expect(saved[saved.length - 1].version).toBe(13);
   });
 
   it("leaves the per-agent skill assignments of the first project alone", async () => {
@@ -247,5 +247,38 @@ describe("a fresh install", () => {
     const { saved } = await boot(null);
     expect(saved.length).toBeGreaterThan(0);
     expect(saved[saved.length - 1].remote.token).toBeTruthy();
+  });
+});
+
+// The shared context was one string on the config, appended to every agent's prompt in every
+// project. That is how an agent of one project came to know about another's work — and to go and
+// act on it. Migration 13 gives each project its own copy.
+describe("migration 12 -> 13", () => {
+  it("copies the global context into every project and leaves the global empty", async () => {
+    const legacy = { ...legacyConfig(), version: 12, sharedContext: "El repo usa pnpm." };
+    const { store } = await boot(legacy);
+    const config = store.useAppStore.getState().config;
+
+    expect(config.version).toBe(13);
+    expect(config.projects.length).toBeGreaterThan(1);
+    for (const project of config.projects) {
+      expect(project.sharedContext).toBe("El repo usa pnpm.");
+    }
+    // Nothing reads it any more, and leaving it full would have it come back on the next migration
+    // someone writes against this shape.
+    expect(config.sharedContext).toBe("");
+  });
+
+  it("leaves a project that already wrote its own alone", async () => {
+    const legacy = legacyConfig() as unknown as { version: number; sharedContext: string; projects: { id: string; sharedContext?: string }[] };
+    legacy.version = 12;
+    legacy.sharedContext = "global";
+    legacy.projects[0].sharedContext = "mine";
+
+    const { store } = await boot(legacy as unknown as Record<string, unknown>);
+    const config = store.useAppStore.getState().config;
+
+    expect(config.projects.find(p => p.id === "p1")!.sharedContext).toBe("mine");
+    expect(config.projects.find(p => p.id === "p2")!.sharedContext).toBe("global");
   });
 });

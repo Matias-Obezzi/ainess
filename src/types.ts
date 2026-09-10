@@ -116,6 +116,15 @@ export interface Project {
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
   /**
+   * Notes handed to every agent of this project, and to no one else.
+   *
+   * It used to be one string on the config, appended to every agent's prompt in every project: an
+   * agent of one project was told about another's stack, conventions and goals, and answered about
+   * them as if it had been asked. Version 13 copies that string into each project and it lives here
+   * from then on.
+   */
+  sharedContext?: string;
+  /**
    * While this is set and `until` has not passed, the project runs without waiting for the user:
    * delegations that would need approval are approved, questions are answered on the agent's own
    * most conservative guess, and the round cap does not close the task. It turns itself off at
@@ -321,7 +330,7 @@ export interface MessagingChannelConfig {
 }
 
 export interface AppConfig {
-  version: 12;
+  version: 13;
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -339,6 +348,11 @@ export interface AppConfig {
   maxRounds: number;
   skills: Skill[];
   mcpServers: McpServer[];
+  /**
+   * @deprecated Pre-version-13 global. Migration 13 copied it into every project's own
+   * `sharedContext` and left it empty; nothing builds a prompt from it any more. Kept on the type
+   * so a config written by an older build still parses.
+   */
   sharedContext: string;
   binaryOverrides: Partial<Record<ProviderId, string>>;
   profile: { name: string; about: string; preferences: string };

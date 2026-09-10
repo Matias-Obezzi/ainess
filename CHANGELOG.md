@@ -72,6 +72,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **An agent no longer knows about a project it was never told about.** The shared context was one
+  string on the settings screen, and it was appended to the prompt of every agent of every project.
+  Say something in it about one repo and every agent everywhere had read it — which is how a
+  message meant for one project got understood, acted on, and carried into another. It belongs to a
+  project now: the settings screen picks which one, and `ainess context` takes `-p`/`-w` like the
+  rest of the CLI. What you had written is copied into every project you already have, so nothing
+  is lost; if that text was only ever about one of them, the others are now the places to clear it.
+
 - **A hook opens with a message about the event you picked.** One preset sat behind all seventeen
   of them, written for "an agent finished" and hardcoded in Spanish. A hook on "internet lost"
   opened by announcing that an agent had finished, to everyone, in a language most of the app's

@@ -624,6 +624,9 @@ export const en: Dictionary = {
   // ---- Settings: shared context ----
   "context.saved": "Context saved",
   "context.intro": "Gets added to every agent's system prompt.",
+  "context.project": "Project",
+  "context.noProjects.title": "No projects yet",
+  "context.noProjects.body": "The context belongs to each project. Create one and these notes go to its agents, and to no one else.",
 
   // ---- Settings: presets ----
   "presets.new": "New order",

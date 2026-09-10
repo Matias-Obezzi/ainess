@@ -444,7 +444,9 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
 
   const children = selectChildren(store, opts.projectId, agent.id);
   const skills = selectSkillsFor(store, agent.id);
-  const sharedContext = store.config.sharedContext;
+  // This project's notes, and only this project's: the global one is what sent an agent off to
+  // work on somebody else's repo because it had been told about it (see migration 13).
+  const sharedContext = project.sharedContext ?? "";
   const sessionId = resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>

@@ -74,6 +74,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un agent ne sait plus rien d'un projet dont personne ne lui a parlé.** Le contexte partagé était
+  un seul texte dans les réglages, ajouté au prompt de chaque agent de chaque projet. Écrivez-y
+  quelque chose sur un dépôt et tous les agents, partout, l'avaient lu : c'est ainsi qu'un message
+  destiné à un projet a été compris, suivi et emporté dans un autre. Il appartient désormais à un
+  projet : les réglages choisissent lequel, et `ainess context` accepte `-p`/`-w` comme le reste du
+  CLI. Ce que vous aviez écrit est copié dans chacun de vos projets, pour ne rien perdre ; si ce
+  texte ne concernait qu'un seul, les autres sont maintenant l'endroit où l'effacer.
+
 - **Un hook démarre avec un message qui parle de l'événement choisi.** Un seul texte par défaut se
   tenait derrière les dix-sept, écrit pour « un agent a terminé » et figé en espagnol. Un hook sur
   « internet coupé » commençait en annonçant qu'un agent avait terminé, à tout le monde, dans une

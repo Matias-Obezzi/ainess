@@ -69,6 +69,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un agente ya no sabe de un proyecto del que nadie le habló.** El contexto compartido era un
+  solo texto en la pantalla de ajustes, y se pegaba al prompt de todos los agentes de todos los
+  proyectos. Escribías algo sobre un repo y todos los agentes, en todos lados, lo habían leído: así
+  fue como un mensaje dirigido a un proyecto se entendió, se actuó y se llevó a otro. Ahora es de
+  cada proyecto: la pantalla de ajustes elige cuál, y `ainess context` acepta `-p`/`-w` como el
+  resto del CLI. Lo que tenías escrito se copia en cada proyecto que ya tenías, así no se pierde
+  nada; si ese texto era de uno solo, los demás son ahora el lugar donde borrarlo.
+
 - **Un hook arranca con un mensaje del evento que elegiste.** Había un solo texto por defecto
   atrás de los diecisiete, escrito para «un agente terminó» y en español a la fuerza. Un hook de
   «se cayó internet» arrancaba anunciando que un agente había terminado, a todo el mundo, en un

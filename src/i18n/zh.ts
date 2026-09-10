@@ -623,6 +623,9 @@ export const zh: Dictionary = {
   // ---- Settings: shared context ----
   "context.saved": "上下文已保存",
   "context.intro": "会添加到所有智能体的系统提示词里。",
+  "context.project": "项目",
+  "context.noProjects.title": "还没有项目",
+  "context.noProjects.body": "上下文属于每个项目。建一个项目，这些笔记就只会交给它的智能体，不会给别人。",
 
   // ---- Settings: presets ----
   "presets.new": "新建指令",

@@ -75,6 +75,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Agent weiß nicht mehr von einem Projekt, von dem ihm niemand erzählt hat.** Der gemeinsame
+  Kontext war ein einziger Text in den Einstellungen und wurde an den Prompt jedes Agenten in jedem
+  Projekt gehängt. Schriebst du etwas über ein Repo, hatten alle Agenten überall es gelesen — so kam
+  es, dass eine Nachricht für ein Projekt in einem anderen verstanden, befolgt und weitergetragen
+  wurde. Jetzt gehört er zu je einem Projekt: die Einstellungen wählen welches, und `ainess context`
+  nimmt `-p`/`-w` wie der Rest des CLI. Was du geschrieben hattest, wird in jedes vorhandene Projekt
+  kopiert, damit nichts verloren geht; galt der Text nur einem, sind die anderen jetzt der Ort, wo
+  du ihn löschst.
+
 - **Ein Hook beginnt mit einer Nachricht zu dem Ereignis, das du gewählt hast.** Hinter allen
   siebzehn stand ein einziger Vorschlag, geschrieben für „ein Agent ist fertig" und fest auf
   Spanisch. Ein Hook auf „Internet weg" begann damit, zu verkünden, ein Agent sei fertig — für

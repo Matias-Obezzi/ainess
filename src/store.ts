@@ -252,7 +252,7 @@ export interface AppState {
   removeHook(id: string): void;
   toggleHook(id: string, enabled: boolean): void;
   testHook(id: string): Promise<void>;
-  setSharedContext(text: string): void;
+  setSharedContext(projectId: string, text: string): void;
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
@@ -366,7 +366,7 @@ export interface AppState {
  */
 function generateSeedConfig(): AppConfig {
   return {
-    version: 12,
+    version: 13,
     language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
@@ -753,7 +753,7 @@ function debouncedSave() {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 12, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
+  config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
   quota: {},
@@ -1641,8 +1641,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     await testHookAction(hook);
   },
 
-  setSharedContext: (text) => {
-    set((state) => ({ config: { ...state.config, sharedContext: text } }));
+  setSharedContext: (projectId, text) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p => (p.id === projectId ? { ...p, sharedContext: text } : p)),
+      },
+    }));
     debouncedSave();
   },
 
@@ -2224,6 +2229,22 @@ async function runInit(): Promise<void> {
         ...config,
         version: 12,
         autoArchiveDoneDays: config.autoArchiveDoneDays ?? null,
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 13: the shared context belongs to a project, not to the whole app.
+    // One global string was appended to every agent's prompt in every project, which is how an
+    // agent of one project came to know about another's — and to act on it. Each project keeps a
+    // copy of what the global one said, so nothing written is lost; the global is emptied because
+    // from here on nothing reads it.
+    if ((config.version as number) < 13) {
+      const global = (config as { sharedContext?: string }).sharedContext ?? "";
+      config = {
+        ...config,
+        version: 13,
+        sharedContext: "",
+        projects: (config.projects ?? []).map(p => ({ ...p, sharedContext: p.sharedContext ?? global })),
       } as AppConfig;
       isSeed = true;
     }
