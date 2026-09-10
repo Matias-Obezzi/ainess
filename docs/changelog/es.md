@@ -14,6 +14,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un link a un archivo en una respuesta ahora hace algo.** Un agente que escribía
+  `[el archivo](file:///C:/Users/vos/notas.txt)` dibujaba un texto gris muerto: `file:` estaba en la
+  misma lista de rechazados que `javascript:` y `data:`, que sí se ejecutan en la página, y había
+  quedado ahí por asociación — no ejecuta absolutamente nada. Ahora hacerle clic te muestra el
+  archivo en el explorador y se detiene ahí. Nunca se convierte en un link de verdad ni se le pasa
+  al sistema para que lo abra, porque `[mirá esto](file:///C:/x.exe)` es una línea que cualquier
+  agente puede escribir.
+
 - **El tablero se desplaza solo cuando llevás una tarjeta al borde.** Un tablero más ancho que la
   ventana no se podía cruzar: la columna que querías estaba fuera de vista, y soltar para scrollear
   dejaba la tarjeta donde no era. Ahora sostener una tarjeta cerca de cualquiera de los dos bordes

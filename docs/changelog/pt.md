@@ -14,6 +14,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um link para um arquivo numa resposta agora faz alguma coisa.** Um agente que escrevia
+  `[o arquivo](file:///C:/Users/voce/notas.txt)` desenhava um texto cinza morto: `file:` estava na
+  mesma lista de recusados que `javascript:` e `data:`, que de fato executam na página, e tinha
+  ficado ali por associação — ele não executa nada. Agora clicar nele mostra o arquivo no
+  gerenciador de arquivos e para por aí. Nunca vira um link de verdade nem é entregue ao sistema
+  para abrir, porque `[olha isso](file:///C:/x.exe)` é uma linha que qualquer agente pode
+  escrever.
+
 - **O quadro rola sozinho quando você leva um cartão até a borda.** Um quadro mais largo que a
   janela não dava para atravessar: a coluna que você queria estava fora de vista, e soltar para
   rolar deixava o cartão onde não era. Agora segurar um cartão perto de qualquer uma das bordas

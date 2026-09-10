@@ -15,6 +15,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Dateilink in einer Antwort tut jetzt etwas.** Schrieb ein Agent
+  `[die Datei](file:///C:/Users/du/notizen.txt)`, wurde daraus ein toter grauer Text: `file:` stand
+  auf derselben Verbotsliste wie `javascript:` und `data:`, die tatsächlich in der Seite ausgeführt
+  werden — dorthin geraten war es nur durch Assoziation, denn es führt gar nichts aus. Ein Klick
+  zeigt die Datei jetzt im Dateimanager und hört dort auf. Ein echter Link wird daraus nie, und dem
+  System zum Öffnen übergeben wird sie auch nicht: `[schau dir das an](file:///C:/x.exe)` ist eine
+  Zeile, die jeder Agent schreiben kann.
+
 - **Das Board scrollt selbst, wenn du eine Karte an seinen Rand ziehst.** Ein Board, das breiter
   ist als das Fenster, ließ sich nicht überqueren: Die gewünschte Spalte lag außerhalb, und
   loszulassen, um zu scrollen, legte die Karte dorthin, wo du sie nicht haben wolltest. Eine Karte

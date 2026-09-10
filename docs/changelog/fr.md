@@ -15,6 +15,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un lien vers un fichier dans une réponse fait enfin quelque chose.** Un agent écrivant
+  `[le fichier](file:///C:/Users/vous/notes.txt)` produisait un texte gris mort : `file:` figurait
+  sur la même liste de refus que `javascript:` et `data:`, qui s'exécutent réellement dans la page,
+  et il s'y était retrouvé par association — il n'exécute rien du tout. Un clic révèle désormais le
+  fichier dans votre gestionnaire de fichiers et s'arrête là. Il ne devient jamais un vrai lien et
+  n'est jamais confié au système pour être ouvert, car `[regarde ça](file:///C:/x.exe)` est une
+  ligne que n'importe quel agent peut écrire.
+
 - **Le tableau défile de lui-même quand vous amenez une carte au bord.** Un tableau plus large que
   la fenêtre ne pouvait pas être traversé : la colonne voulue était hors champ, et lâcher pour
   faire défiler déposait la carte là où vous ne vouliez pas. Tenir une carte près de l'un des deux

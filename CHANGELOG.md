@@ -16,6 +16,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A file link in an answer does something.** An agent writing
+  `[the file](file:///C:/Users/you/notes.txt)` drew a dead grey span: `file:` sat in the same
+  refused list as `javascript:` and `data:`, which run in the page, and it had been put there by
+  association — it runs nothing at all. Clicking one now reveals the file in your file manager and
+  stops there. It never becomes a real link and it is never handed to the system to open, because
+  `[look at this](file:///C:/x.exe)` is a line any agent can write.
+
 - **The board scrolls itself when you drag a card to its edge.** A board wider than the window could
   not be crossed: the column you wanted was off screen, and letting go to scroll dropped the card
   where you did not mean it. Holding a card near either edge now pulls the board along, gently at
