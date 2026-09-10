@@ -6,6 +6,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **As três visões de um projeto são linhas da barra lateral.** Orquestrador, Tarefas e Hierarquia
+  eram um seletor na barra de cima — a única faixa que também precisa segurar o nome do projeto, o
+  branch, o gasto, a chave do modo autônomo e todos os botões de painel. São navegação, e navegação
+  mora na coluna da esquerda. Cada linha abre a visão que nomeia, em vez de deixar você onde o
+  projeto tinha ficado.
+
+- **Os comandos rápidos podem ser seus.** Ao lado dos scripts detectados há agora um lugar para
+  adicionar os que nenhum arquivo declara: a linha do docker compose, o túnel, a migração que só
+  este projeto precisa. Ficam no projeto e aparecem no topo do menu.
+
+- **A barra da janela avisa quando um canal de conversa está conectado.** Ao lado do telefone, uma
+  luz para Telegram, Discord ou Slack assim que um estiver de fato no ar — a pergunta para a qual
+  você teria que abrir as Configurações. Não é um interruptor: ligar um canal pede um token e uma
+  lista de quem pode falar.
+
 - **O painel de terminais oferece os scripts do projeto como botões.** Subir o servidor de
   desenvolvimento era abrir um terminal e digitar o que o projeto já tem escrito. Agora o painel lê
   isso: os `scripts` de um package.json, os alvos de um Makefile e os quatro de sempre do cargo. Um
@@ -87,6 +102,30 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   intocado — ele leva texto, não arquivos, e pegá-lo não o moveria para lugar nenhum.
 
 ### Corrigido
+
+- **Um detalhe longo já não empurra todo o resto para fora do modal.** Um agente escreve o quanto
+  quiser, e o detalhe fica entre os campos de estado e as dependências e a execução. Agora vem
+  dobrado em poucas linhas, com um «Ver mais» que o abre. Se o botão é necessário se mede, não se
+  adivinha pelo tamanho do texto: quantas linhas um parágrafo ocupa depende da largura que recebe.
+
+- **Os scripts do projeto são um menu e não uma fila com rolagem.** Uma fila de botões num painel já
+  estreito significava uma barra de rolagem horizontal, e um projeto com vinte scripts escondia
+  dezenove atrás dela. Agora são um menu ao lado do «+», com a mesma forma do seletor de console.
+
+- **A barra de cima deixa de dizer quantos agentes estão trabalhando.** O ponto ao lado do projeto na
+  barra lateral já respira enquanto eles estão, no lugar para onde você olha para ver o que acontece.
+
+- **O botão do modo autônomo tem a forma dos botões ao redor.** Ele carregava o próprio preenchimento
+  âmbar para ser impossível de não ver. Não precisava: a faixa embaixo da barra é a barulhenta, ocupa
+  toda a largura, e só existe enquanto o modo está ligado.
+
+- **O painel de comunicação é um balão de fala.** O ícone dele descrevia onde o painel abre, que é a
+  coisa menos interessante a seu respeito. O que ele guarda é o que os agentes disseram uns aos
+  outros.
+
+- **A barra do quadro fica alinhada.** Um Button, um Input e um SelectTrigger não concordam por
+  padrão no arredondamento, então uma fila feita dos três saía com dois raios lado a lado. Agora tudo
+  tem uma altura só e um arredondamento só, dito em cada controle em vez de deixado aos padrões.
 
 - **Responder uma pergunta é uma lista que você marca e um botão que você aperta.** As opções eram
   botões em linha, cada um da largura do próprio texto, então um conjunto ficava desalinhado e uma

@@ -1,6 +1,6 @@
 // Everything about one task that does not fit on its card: the long detail, who is on it, what it
 // waits for and the run that carried it out. The board and the graph both open this one dialog.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
@@ -234,9 +234,7 @@ export function TaskDetailDialog({
                       onBlur={commitDetail}
                     />
                   ) : task.detail ? (
-                    <div className="rounded-lg border border-border p-3">
-                      <Markdown text={task.detail} />
-                    </div>
+                    <CollapsibleDetail text={task.detail} />
                   ) : (
                     <p className="text-sm text-muted-foreground">{t("tasks.noDetail")}</p>
                   )}
@@ -375,5 +373,58 @@ export function TaskDetailDialog({
       {task && <OpenPrDialog projectId={projectId} taskId={task.id} open={prOpen} onOpenChange={setPrOpen} />}
       <TaskFamilyDialog projectId={projectId} taskId={taskId} open={familyOpen} onOpenChange={setFamilyOpen} />
     </>
+  );
+}
+
+/**
+ * The task's detail, cut down to a few lines until asked to open.
+ *
+ * A detail written by an agent runs to whatever length the agent felt like, and it sits between the
+ * status fields above it and the dependencies and the run below it. At full height it pushed all of
+ * that off the bottom of a dialog already capped at 80vh, so the sections you came to look at were
+ * behind a scroll whose existence you had to guess at.
+ *
+ * Whether the button is needed is measured, not guessed from the length of the text: how many lines
+ * a paragraph takes depends on the width it is given, and a character count knows nothing about it.
+ */
+function CollapsibleDetail({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = bodyRef.current;
+    if (!element) return;
+    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 4);
+    measure();
+    // Measured again on resize: the dialog is a share of the window, so the same text needs the
+    // button at one width and not at another.
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text, open]);
+
+  return (
+    <div className="rounded-lg border border-border">
+      <div ref={bodyRef} className={cn("relative overflow-hidden p-3", !open && "max-h-44")}>
+        <Markdown text={text} />
+        {/* Something under the fold, so the cut reads as "there is more" rather than as text that
+            happens to stop there. */}
+        {!open && overflows && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent" />
+        )}
+      </div>
+      {(overflows || open) && (
+        <button
+          type="button"
+          className="w-full rounded-b-lg border-t border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          onClick={() => setOpen(v => !v)}
+        >
+          {open ? t("tasks.detailLess") : t("tasks.detailMore")}
+        </button>
+      )}
+    </div>
   );
 }

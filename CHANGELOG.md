@@ -8,6 +8,20 @@ let one of them fall behind.
 
 ### Added
 
+- **A project's three views are rows in the sidebar.** Orquestador, Tareas and Jerarquía were a
+  segmented control in the top bar — the one strip that also has to hold the project name, the
+  branch, the spend, the autonomous switch and every panel toggle. They are navigation, and the rail
+  down the left is where navigation lives. Each row opens the view it names rather than leaving you
+  wherever the project was last left.
+
+- **Quick commands can be your own.** Beside the detected scripts there is now a place to add the
+  ones no file declares: the docker compose line, the tunnel, the migration only this project needs.
+  They live on the project and sit at the top of the menu.
+
+- **The window bar says when a chat channel is connected.** Next to the phone, a light for Telegram,
+  Discord or Slack once one is actually up — the question you would otherwise open Configuración to
+  answer. It is not a switch: turning a channel on takes a token and a list of who may speak.
+
 - **The terminals panel offers the project's own scripts as buttons.** Starting the dev server meant
   opening a terminal and typing what the project already has written down. The panel now reads that:
   the `scripts` of a package.json, the targets of a Makefile, and cargo's usual four. One button
@@ -91,6 +105,30 @@ let one of them fall behind.
   not files, and catching it would move it nowhere.
 
 ### Fixed
+
+- **A long task detail no longer pushes everything else off the dialog.** An agent writes as much as
+  it feels like, and the detail sits between the status fields and the dependencies and the run.
+  It is folded to a few lines now, with a "Ver más" that opens it. Whether the button is needed is
+  measured rather than guessed from the length: how many lines a paragraph takes depends on the
+  width it is given.
+
+- **The project's scripts are a menu instead of a scrolling row.** A row of buttons in a panel that
+  is already narrow meant a horizontal scrollbar, and a project with twenty scripts hid nineteen of
+  them behind it. They are a menu beside the "+" now, in the same shape as the shell picker.
+
+- **The top bar stops saying how many agents are working.** The dot beside the project in the
+  sidebar already breathes while they are, in the place you look to see what is happening.
+
+- **The autonomous-mode button is shaped like the buttons around it.** It carried its own amber fill
+  to be impossible to miss. It did not need to: the strip under the bar is the loud one, it runs the
+  full width, and it only exists while the mode is on.
+
+- **The communications panel is a speech bubble.** Its icon described where the panel opens, which
+  is the least interesting thing about it. What it holds is what the agents said to each other.
+
+- **The board's toolbar lines up.** A Button, an Input and a SelectTrigger do not agree on their
+  corner radius by default, so a row built out of all three came out with two radii side by side.
+  All of it is one height and one radius now, said on each control rather than left to the defaults.
 
 - **Answering a question is a list you tick and a button you press.** The options were inline
   buttons, each as wide as its own text, so a set of them came out ragged and a one-word option was

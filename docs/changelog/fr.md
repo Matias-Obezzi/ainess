@@ -6,6 +6,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Les trois vues d'un projet sont des lignes de la barre latérale.** Orchestrateur, Tâches et
+  Hiérarchie formaient un sélecteur dans la barre du haut — la seule bande qui doit aussi porter le
+  nom du projet, la branche, la dépense, l'interrupteur autonome et tous les boutons de panneaux.
+  C'est de la navigation, et la navigation vit dans la colonne de gauche. Chaque ligne ouvre la vue
+  qu'elle nomme, au lieu de vous laisser là où le projet en était resté.
+
+- **Les commandes rapides peuvent être les vôtres.** À côté des scripts détectés, il y a désormais
+  un endroit pour ajouter celles qu'aucun fichier ne déclare : la ligne docker compose, le tunnel,
+  la migration que seul ce projet demande. Elles appartiennent au projet et s'affichent en tête du
+  menu.
+
+- **La barre de la fenêtre signale qu'un canal de discussion est connecté.** À côté du téléphone, un
+  voyant pour Telegram, Discord ou Slack dès que l'un tourne vraiment — la question pour laquelle il
+  fallait sinon ouvrir les réglages. Ce n'est pas un interrupteur : activer un canal demande un
+  jeton et une liste de qui a le droit de parler.
+
 - **Le panneau des terminaux propose les scripts du projet en boutons.** Lancer le serveur de
   développement, c'était ouvrir un terminal et taper ce que le projet a déjà écrit quelque part. Le
   panneau le lit maintenant : les `scripts` d'un package.json, les cibles d'un Makefile, et les
@@ -95,6 +111,33 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   l'attraper ne la déplacerait nulle part.
 
 ### Corrigé
+
+- **Un long détail de tâche ne pousse plus tout le reste hors de la boîte de dialogue.** Un agent
+  écrit autant qu'il le veut, et le détail se trouve entre les champs d'état et les dépendances et
+  le run. Il est maintenant replié à quelques lignes, avec un « Voir plus » qui l'ouvre. La
+  nécessité du bouton est mesurée, pas devinée d'après la longueur : le nombre de lignes d'un
+  paragraphe dépend de la largeur qu'on lui donne.
+
+- **Les scripts du projet sont un menu et non une rangée qui défile.** Une rangée de boutons dans un
+  panneau déjà étroit signifiait une barre de défilement horizontale, et un projet à vingt scripts
+  en cachait dix-neuf derrière. Ils sont maintenant un menu à côté du « + », de la même forme que le
+  sélecteur de console.
+
+- **La barre du haut ne dit plus combien d'agents travaillent.** Le point à côté du projet dans la
+  barre latérale respire déjà pendant qu'ils travaillent, là où l'on regarde pour voir ce qui se
+  passe.
+
+- **Le bouton du mode autonome a la forme des boutons qui l'entourent.** Il portait son propre fond
+  ambre pour être impossible à manquer. Ce n'était pas nécessaire : la bande sous la barre est la
+  bruyante, elle occupe toute la largeur, et elle n'existe que tant que le mode est actif.
+
+- **Le panneau de communication est une bulle de texte.** Son icône décrivait où le panneau s'ouvre,
+  ce qui en est le moins intéressant. Ce qu'il contient, c'est ce que les agents se sont dit.
+
+- **La barre du tableau est alignée.** Un Button, un Input et un SelectTrigger ne s'accordent pas par
+  défaut sur l'arrondi, donc une rangée faite des trois sortait avec deux rayons côte à côte. Tout a
+  maintenant une seule hauteur et un seul arrondi, dits sur chaque contrôle plutôt que laissés aux
+  valeurs par défaut.
 
 - **Répondre à une question, c'est une liste qu'on coche et un bouton qu'on presse.** Les options
   étaient des boutons en ligne, chacun large comme son propre texte : un ensemble paraissait

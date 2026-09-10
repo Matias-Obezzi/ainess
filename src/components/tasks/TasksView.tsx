@@ -91,12 +91,15 @@ export function TasksView({ projectId }: { projectId: string }) {
     <div className="flex h-full min-h-0 flex-col">
       {/* An empty board has nothing to search and nothing to copy, and its own empty state is where
           the first task gets made. So the whole bar waits until there is something to act on. */}
+      {/* Everything in this row is `h-7 rounded-md`, said on each control rather than left to the
+          defaults: a Button at `sm` is `rounded-md`, an Input and a SelectTrigger are `rounded-lg`,
+          so a row built out of all three came out with two different corner radii side by side. */}
       {tasks.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="h-7 w-56 pl-7 text-xs"
+              className="h-7 w-56 rounded-md pl-7 text-xs"
               placeholder={t("tasks.searchPlaceholder")}
               aria-label={t("tasks.search")}
               value={query}
@@ -104,7 +107,7 @@ export function TasksView({ projectId }: { projectId: string }) {
             />
           </div>
           <Select value={agentId ?? ALL_AGENTS} onValueChange={value => setAgentId(value === ALL_AGENTS ? null : value)}>
-            <SelectTrigger size="sm" className="h-7 w-44 text-xs" aria-label={t("tasks.filterByAgent")}>
+            <SelectTrigger size="sm" className="h-7 w-44 rounded-md text-xs" aria-label={t("tasks.filterByAgent")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -115,7 +118,7 @@ export function TasksView({ projectId }: { projectId: string }) {
             </SelectContent>
           </Select>
           {filtering && (
-            <Button variant="ghost" size="sm" className="h-7" onClick={clearFilter}>
+            <Button variant="ghost" size="sm" className="h-7 rounded-md" onClick={clearFilter}>
               <X className="h-3.5 w-3.5" /> {t("tasks.clearFilter")}
             </Button>
           )}
@@ -125,16 +128,16 @@ export function TasksView({ projectId }: { projectId: string }) {
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto h-7"
+            className="ml-auto h-7 rounded-md"
             title={t("tasks.reconcileHint")}
             onClick={reviewBoard}
           >
             <RefreshCw className="h-3.5 w-3.5" /> {t("tasks.reconcile")}
           </Button>
-          <Button variant="outline" size="sm" className="h-7" onClick={copyBoard}>
+          <Button variant="outline" size="sm" className="h-7 rounded-md" onClick={copyBoard}>
             <ClipboardCopy className="h-3.5 w-3.5" /> {t("tasks.copyMarkdown")}
           </Button>
-          <Button size="sm" className="h-7" onClick={() => openNew()}>
+          <Button size="sm" className="h-7 rounded-md" onClick={() => openNew()}>
             <Plus className="h-3.5 w-3.5" /> {t("tasks.new")}
           </Button>
         </div>

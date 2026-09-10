@@ -6,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -16,10 +18,11 @@ import {
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { TerminalView } from "./TerminalView";
 import { useProjectCommands } from "@/hooks/useProjectCommands";
+import { QuickCommandsDialog } from "@/components/QuickCommandsDialog";
 import { selectProject } from "@/store";
 import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Pencil, Play, Plus, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, Pencil, Play, Plus, Settings2, TerminalSquare, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
@@ -43,8 +46,14 @@ export function TerminalDockSection() {
 
   // What this project's own files say it can run: the `scripts` of a package.json, the targets of a
   // Makefile, cargo's four. Read when the panel opens — the section only mounts then.
-  const workspaceDir = useAppStore(state => selectProject(state, state.currentProjectId)?.workspaceDir);
-  const commands = useProjectCommands(workspaceDir);
+  const project = useAppStore(state => selectProject(state, state.currentProjectId));
+  const detected = useProjectCommands(project?.workspaceDir);
+  const [commandsOpen, setCommandsOpen] = useState(false);
+
+  // The user's own first: they were added on purpose, and there are few of them. What a manifest
+  // declares follows, already ordered by `sortCommands`.
+  const own = (project?.commands ?? []).map(entry => ({ ...entry, source: "custom" as const }));
+  const commands = [...own, ...detected];
 
   /**
    * Runs a script, or goes to it if it is already running.
@@ -164,6 +173,57 @@ export function TerminalDockSection() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* A row of buttons meant a horizontal scrollbar in a panel that is already narrow, and a
+              project with twenty scripts hid nineteen of them behind it. A menu holds them all at
+              full width, in the same shape as the shell picker beside it. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs"
+                title={t("terminals.scripts")}
+                disabled={noShells}
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span className="hidden @sm:inline">{t("terminals.scripts")}</span>
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-80 w-64 overflow-y-auto">
+              {commands.length === 0 && (
+                <DropdownMenuLabel className="font-normal text-muted-foreground">
+                  {t("terminals.scripts.none")}
+                </DropdownMenuLabel>
+              )}
+              {commands.map(command => {
+                const running = terminals.some(tab => tab.command === command.command && tab.exited == null);
+                return (
+                  <DropdownMenuItem
+                    key={command.id}
+                    // Full terminals stop new ones, never the jump to one that is already open.
+                    disabled={atLimit && !running}
+                    onSelect={() => runCommand(command.command, command.label)}
+                  >
+                    {running
+                      ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                      : <Play className="h-3.5 w-3.5 shrink-0 opacity-60" />}
+                    <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{command.source}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+              {project && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setCommandsOpen(true)}>
+                    <Settings2 className="h-3.5 w-3.5" /> {t("terminals.commands.manage")}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="icon"
@@ -175,37 +235,6 @@ export function TerminalDockSection() {
           </Button>
         </div>
       </div>
-
-      {/* Starting the dev server meant opening a terminal and typing what the project already has
-          written down. One button per script, the well-known ones first (see `sortCommands`), each
-          opening its own tab named after it — "PowerShell 3" tells you nothing about which tab the
-          server is in, and that is the one you come back to. */}
-      {commands.length > 0 && !noShells && (
-        <div
-          aria-label={t("terminals.scripts")}
-          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1"
-        >
-          <Play className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-          {commands.map(command => {
-            const running = terminals.some(tab => tab.command === command.command && tab.exited == null);
-            return (
-              <Button
-                key={command.id}
-                variant={running ? "secondary" : "outline"}
-                size="sm"
-                className="h-6 shrink-0 gap-1 px-2 font-mono text-[11px]"
-                // Full terminals stop new ones, never the jump to one that is already open.
-                disabled={atLimit && !running}
-                title={atLimit && !running ? t("terminals.atLimit", { n: MAX_TERMINALS }) : command.command}
-                onClick={() => runCommand(command.command, command.label)}
-              >
-                {running && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />}
-                {command.label}
-              </Button>
-            );
-          })}
-        </div>
-      )}
 
       {terminals.length > 0 && (
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 py-1">
@@ -310,6 +339,10 @@ export function TerminalDockSection() {
             </ContextMenu>
           ))}
         </div>
+      )}
+
+      {project && (
+        <QuickCommandsDialog projectId={project.id} open={commandsOpen} onOpenChange={setCommandsOpen} />
       )}
 
       <div className="relative min-h-0 flex-1">

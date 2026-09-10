@@ -15,8 +15,8 @@ export interface ProjectCommand {
   label: string;
   /** What gets typed into the shell. */
   command: string;
-  /** Which file it was read from, for grouping and for the tooltip. */
-  source: "npm" | "cargo" | "make";
+  /** Which file it was read from, or "custom" when the user wrote it themselves. */
+  source: "npm" | "cargo" | "make" | "custom";
 }
 
 /**

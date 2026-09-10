@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocale, useT } from "@/i18n/useT";
-import { cn } from "@/lib/utils";
 import { Moon } from "lucide-react";
 
 /** Preset lengths offered in the "until" picker, in hours. */
@@ -19,9 +18,12 @@ function formatTime(ms: number, locale: string): string {
 }
 
 /**
- * Button in the project header: an outline pill when the project runs supervised, filled amber and
- * carrying the time it turns off by itself when it does not — the one thing in the bar that has to
- * be impossible to miss, since a user who does not notice it is on is the worst case this has.
+ * Button in the project header, shaped like every other button in it.
+ *
+ * It used to carry its own amber fill to be impossible to miss. It did not need to: the strip under
+ * the bar (`AutonomousBanner`) is the loud one, it runs the whole width, and it only exists while
+ * the mode is on. A button in a row of buttons that is shaped unlike all of them reads as a
+ * different kind of thing, which it is not.
  */
 export function AutonomousToggleButton({ projectId }: { projectId: string }) {
   const t = useT();
@@ -38,9 +40,9 @@ export function AutonomousToggleButton({ projectId }: { projectId: string }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={active ? "default" : "outline"}
+          variant={active ? "secondary" : "ghost"}
           size="sm"
-          className={cn("h-7 gap-1.5", active && "border border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400")}
+          className="h-7 gap-1.5"
           title={t("autonomous.mode")}
         >
           <Moon className="h-3.5 w-3.5" />

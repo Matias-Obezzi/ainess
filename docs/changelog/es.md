@@ -6,6 +6,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Las tres vistas de un proyecto son filas del sidebar.** Orquestador, Tareas y Jerarquía eran un
+  control segmentado en la barra superior — la única franja que además tiene que sostener el nombre
+  del proyecto, la rama, el gasto, el interruptor autónomo y todos los toggles de paneles. Son
+  navegación, y la navegación vive en la columna de la izquierda. Cada fila abre la vista que
+  nombra, en vez de dejarte donde el proyecto quedó la última vez.
+
+- **Los comandos rápidos pueden ser tuyos.** Al lado de los scripts detectados hay ahora un lugar
+  para agregar los que ningún archivo declara: la línea de docker compose, el túnel, la migración
+  que solo este proyecto necesita. Viven en el proyecto y quedan arriba de todo en el menú.
+
+- **La barra de la ventana avisa cuando un canal de chat está conectado.** Al lado del teléfono, una
+  luz para Telegram, Discord o Slack cuando alguno está realmente levantado — la pregunta que si no
+  tenías que abrir Configuración para responder. No es un interruptor: prender un canal pide un
+  token y una lista de quién puede hablar.
+
 - **El panel de terminales ofrece los scripts del proyecto como botones.** Levantar el server de
   desarrollo era abrir una terminal y tipear lo que el proyecto ya tiene escrito. Ahora el panel lo
   lee: los `scripts` de un package.json, los targets de un Makefile, y los cuatro de siempre de
@@ -89,6 +104,32 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   columna no se toca — lleva texto, no archivos, y agarrarla no la movería a ningún lado.
 
 ### Arreglado
+
+- **Un detalle largo ya no empuja todo lo demás fuera del modal.** Un agente escribe lo que se le
+  ocurre, y el detalle está entre los campos de estado y las dependencias y la corrida. Ahora viene
+  plegado a unas pocas líneas, con un «Ver más» que lo abre. Si hace falta el botón se mide, no se
+  adivina por el largo del texto: cuántas líneas ocupa un párrafo depende del ancho que le den.
+
+- **Los scripts del proyecto son un menú y no una fila con scroll.** Una fila de botones en un panel
+  ya angosto significaba una barra de scroll horizontal, y un proyecto con veinte scripts escondía
+  diecinueve detrás de ella. Ahora son un menú al lado del «+», con la misma forma que el selector
+  de consola.
+
+- **La barra superior deja de decir cuántos agentes están trabajando.** El punto al lado del
+  proyecto en el sidebar ya respira mientras lo están, en el lugar donde mirás para ver qué pasa.
+
+- **El botón de modo autónomo tiene la forma de los botones que lo rodean.** Llevaba su propio
+  relleno ámbar para ser imposible de no ver. No le hacía falta: la franja debajo de la barra es la
+  ruidosa, ocupa todo el ancho, y solo existe mientras el modo está activo.
+
+- **El panel de comunicación es una burbuja de texto.** Su ícono describía dónde se abre el panel,
+  que es lo menos interesante que se puede decir de él. Lo que contiene es lo que los agentes se
+  dijeron entre ellos.
+
+- **La barra del tablero queda pareja.** Un Button, un Input y un SelectTrigger no coinciden por
+  defecto en el redondeo, así que una fila hecha de los tres salía con dos radios distintos uno al
+  lado del otro. Ahora todo tiene una sola altura y un solo redondeo, dicho en cada control en lugar
+  de dejarlo a los valores por defecto.
 
 - **Responder una pregunta es una lista que marcás y un botón que apretás.** Las opciones eran
   botones en línea, cada uno del ancho de su propio texto, así que un conjunto quedaba desparejo y

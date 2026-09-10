@@ -34,7 +34,9 @@ import { FolderOpen,
   ChevronDown,
   ChevronRight,
   Copy,
+  GitBranch,
   Home,
+  ListTodo,
   MessageCircle,
   MoreHorizontal,
   Pencil,
@@ -58,6 +60,8 @@ export function Sidebar() {
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
   const screen = useAppStore(state => state.screen);
+  // Which of the three rows is the one you are looking at.
+  const projectMode = useAppStore(state => state.projectMode);
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
   const sidebarOpen = useAppStore(state => state.sidebarOpen);
@@ -301,16 +305,34 @@ export function Sidebar() {
 
               {!collapsed && (
                 <div className="ml-4 mt-0.5 mb-1 flex flex-col gap-0.5">
-                  <button
-                    type="button"
-                    className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs text-left hover:bg-accent ${
-                      isOpenProject && currentChatId === null ? "bg-accent font-medium" : "text-muted-foreground"
-                    }`}
-                    onClick={() => openProject(p.id, null)}
-                  >
-                    <Bot className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{t("sidebar.orchestrator")}</span>
-                  </button>
+                  {/* The project's three views. They were a segmented control in the top bar, which
+                      is the one place that has to hold the project name, the branch, the spend and
+                      every panel toggle — and they are navigation, which is what this rail is for.
+                      Each row says which view it opens rather than leaving the mode to whatever the
+                      project was last left in. */}
+                  {([
+                    { mode: "chat", icon: Bot, label: t("sidebar.orchestrator") },
+                    { mode: "tasks", icon: ListTodo, label: t("projectScreen.tasks") },
+                    { mode: "graph", icon: GitBranch, label: t("projectScreen.hierarchy") },
+                  ] as const).map(row => {
+                    // A chat of its own is showing: none of the three is where you are, not even
+                    // the orchestrator, whose row means "the project's own thread".
+                    const here = isOpenProject && currentChatId === null && projectMode === row.mode;
+                    const Icon = row.icon;
+                    return (
+                      <button
+                        key={row.mode}
+                        type="button"
+                        className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs text-left hover:bg-accent ${
+                          here ? "bg-accent font-medium" : "text-muted-foreground"
+                        }`}
+                        onClick={() => openProject(p.id, null, row.mode)}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{row.label}</span>
+                      </button>
+                    );
+                  })}
 
                   {projectChats.map(chat => {
                     const active = isChatActive(chat.id);

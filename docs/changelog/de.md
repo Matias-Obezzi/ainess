@@ -6,6 +6,21 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Die drei Ansichten eines Projekts sind Zeilen in der Seitenleiste.** Orchestrator, Aufgaben und
+  Hierarchie waren ein Umschalter in der oberen Leiste — der einzige Streifen, der auch den
+  Projektnamen, den Branch, die Ausgaben, den autonomen Schalter und jeden Panel-Knopf tragen muss.
+  Sie sind Navigation, und Navigation gehört in die linke Spalte. Jede Zeile öffnet die Ansicht, die
+  sie benennt, statt dich dort zu lassen, wo das Projekt zuletzt stand.
+
+- **Schnellbefehle dürfen deine eigenen sein.** Neben den erkannten Skripten gibt es jetzt einen
+  Platz für die, die keine Datei deklariert: die docker-compose-Zeile, den Tunnel, die Migration,
+  die nur dieses Projekt braucht. Sie gehören zum Projekt und stehen im Menü ganz oben.
+
+- **Die Fensterleiste sagt, wenn ein Chatkanal verbunden ist.** Neben dem Telefon ein Licht für
+  Telegram, Discord oder Slack, sobald einer wirklich läuft — die Frage, für die du sonst die
+  Einstellungen öffnen müsstest. Es ist kein Schalter: einen Kanal anzuschalten verlangt ein Token
+  und eine Liste, wer sprechen darf.
+
 - **Das Terminal-Panel bietet die Skripte des Projekts als Knöpfe an.** Den Dev-Server zu starten
   hieß, ein Terminal zu öffnen und einzutippen, was im Projekt längst steht. Das Panel liest es
   jetzt: die `scripts` einer package.json, die Targets eines Makefiles und cargos übliche vier. Je
@@ -95,6 +110,34 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   nirgendwohin bewegen.
 
 ### Behoben
+
+- **Ein langes Aufgabendetail schiebt nicht mehr alles andere aus dem Dialog.** Ein Agent schreibt
+  so viel, wie ihm danach ist, und das Detail steht zwischen den Statusfeldern und den Abhängigkeiten
+  und dem Lauf. Es ist jetzt auf wenige Zeilen gefaltet, mit einem „Mehr anzeigen", das es öffnet. Ob
+  der Knopf gebraucht wird, wird gemessen und nicht aus der Textlänge geraten: wie viele Zeilen ein
+  Absatz braucht, hängt von der Breite ab, die er bekommt.
+
+- **Die Skripte des Projekts sind ein Menü statt einer scrollenden Zeile.** Eine Knopfreihe in einem
+  ohnehin schmalen Panel hieß eine waagerechte Scrollleiste, und ein Projekt mit zwanzig Skripten
+  versteckte neunzehn dahinter. Jetzt sind sie ein Menü neben dem „+", in derselben Form wie die
+  Shell-Auswahl daneben.
+
+- **Die obere Leiste sagt nicht mehr, wie viele Agenten arbeiten.** Der Punkt neben dem Projekt in
+  der Seitenleiste atmet ohnehin, solange sie es tun — dort, wo man hinsieht, um zu sehen, was los
+  ist.
+
+- **Der Knopf für den autonomen Modus hat die Form der Knöpfe um ihn herum.** Er trug seine eigene
+  bernsteinfarbene Füllung, um unübersehbar zu sein. Nötig war das nicht: der Streifen unter der
+  Leiste ist der laute, er läuft über die volle Breite, und es gibt ihn nur, solange der Modus an
+  ist.
+
+- **Das Kommunikationspanel ist eine Sprechblase.** Sein Symbol beschrieb, wo sich das Panel öffnet,
+  das Uninteressanteste daran. Was drinsteht, ist, was die Agenten einander gesagt haben.
+
+- **Die Leiste des Boards steht auf einer Linie.** Ein Button, ein Input und ein SelectTrigger sind
+  sich beim Eckenradius von Haus aus nicht einig, also kam eine Reihe aus allen dreien mit zwei
+  Radien nebeneinander heraus. Jetzt hat alles eine Höhe und einen Radius, an jedem Steuerelement
+  gesagt statt den Standardwerten überlassen.
 
 - **Eine Frage zu beantworten ist eine Liste zum Ankreuzen und ein Knopf zum Drücken.** Die
   Optionen waren Knöpfe in einer Zeile, jeder so breit wie sein eigener Text, also wirkte eine Reihe

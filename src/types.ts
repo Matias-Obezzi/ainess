@@ -116,6 +116,12 @@ export interface Project {
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
   /**
+   * Commands the user added by hand, alongside the ones read from the project's manifests. Free
+   * text on purpose: this is the user typing into their own shell, one step removed. The whitelist
+   * in `lib/project-commands.ts` guards names the app builds from a file it did not write.
+   */
+  commands?: { id: string; label: string; command: string }[];
+  /**
    * Notes handed to every agent of this project, and to no one else.
    *
    * It used to be one string on the config, appended to every agent's prompt in every project: an

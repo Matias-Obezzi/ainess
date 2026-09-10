@@ -179,7 +179,11 @@ export interface AppState {
   focusedTaskId: string | null;
   openHome(): void;
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
-  openProject(projectId: string, chatId?: string | null): void;
+  /**
+   * Opens a project. `mode` is what the sidebar's three rows pass — without it the project opens
+   * the way it was left, which is what clicking the project's own name means.
+   */
+  openProject(projectId: string, chatId?: string | null, mode?: ProjectMode): void;
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
   setProjectMode(mode: ProjectMode): void;
@@ -249,6 +253,10 @@ export interface AppState {
   toggleHook(id: string, enabled: boolean): void;
   testHook(id: string): Promise<void>;
   setSharedContext(projectId: string, text: string): void;
+  /** Adds a quick command of the user's own to a project. */
+  addProjectCommand(projectId: string, command: { label: string; command: string }): void;
+  /** Removes one of the user's own quick commands. */
+  removeProjectCommand(projectId: string, id: string): void;
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
@@ -321,6 +329,12 @@ export interface AppState {
   remoteStatus: { running: boolean; url?: string; ip?: string; clients: number; error?: string };
   /** True while the remote server is starting or stopping, so every UI can disable its toggle. */
   remoteBusy: boolean;
+  /**
+   * Channels connected right now (see lib/bridge). Mirrored into the store because the bridge keeps
+   * its providers in a module Map, which nothing can subscribe to — and a light that says a channel
+   * is up has to go out by itself when it goes down.
+   */
+  bridgeConnected: import("@/lib/bridge/types").BridgeProviderId[];
   /** Turns the local remote server on or off, keeping the config in sync. Throws on failure. */
   toggleRemote(enabled: boolean): Promise<void>;
   startRemote(portOverride?: number): Promise<void>;
@@ -794,7 +808,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   /**
    * `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project, or the last remembered one.
    */
-  openProject: (projectId, chatId) => {
+  openProject: (projectId, chatId, mode) => {
     const state = get();
     const sameProject = state.currentProjectId === projectId;
     let nextChatId: string | null;
@@ -818,7 +832,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // Asking for a chat lands on the chat; anything else lands where this project was left. Not
     // where the *last* project was left: that is what made opening B in the hierarchy and coming
     // back to A show A's hierarchy too, when A had been a conversation all along.
-    const nextMode: ProjectMode = nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks");
+    const nextMode: ProjectMode = mode ?? (nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks"));
     if (!sameProject) state.setCurrentProject(projectId);
     set({
       currentChatId: nextChatId,
@@ -954,6 +968,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   remoteStatus: { running: false, clients: 0 },
   remoteBusy: false,
+  bridgeConnected: [],
   toggleBridge: async (id, enabled) => {
     const bridge = await import("@/lib/bridge");
     const messaging = get().config.messaging ?? {};
@@ -1629,6 +1644,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (!hook) return;
     const { testHookAction } = await import("@/lib/hooks");
     await testHookAction(hook);
+  },
+
+  addProjectCommand: (projectId, command) => {
+    const entry = { id: crypto.randomUUID(), label: command.label.trim(), command: command.command.trim() };
+    if (!entry.label || !entry.command) return;
+    set(state => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p =>
+          p.id === projectId ? { ...p, commands: [...(p.commands ?? []), entry] } : p),
+      },
+    }));
+    debouncedSave();
+  },
+
+  removeProjectCommand: (projectId, id) => {
+    set(state => ({
+      config: {
+        ...state.config,
+        projects: state.config.projects.map(p =>
+          p.id === projectId ? { ...p, commands: (p.commands ?? []).filter(c => c.id !== id) } : p),
+      },
+    }));
+    debouncedSave();
   },
 
   setSharedContext: (projectId, text) => {

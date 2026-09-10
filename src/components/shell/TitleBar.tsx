@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ChevronLeft, ChevronRight, Copy, Loader2, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Loader2, MessagesSquare, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
 import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/shell/NotificationBell";
+import type { BridgeProviderId } from "@/lib/bridge/types";
 import { useT } from "@/i18n/useT";
 
 /**
@@ -53,6 +54,49 @@ function RemoteButton() {
       <TooltipContent side="bottom">
         {busy ? t("titlebar.remoteBusy") : running ? t("titlebar.remoteAt", { host: ip ?? t("titlebar.localNetwork"), port }) : t("titlebar.remoteTurnOn")}
       </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** What each channel is called, for the tooltip. Their own names, not ours. */
+const CHANNEL_NAMES: Record<BridgeProviderId, string> = {
+  telegram: "Telegram",
+  discord: "Discord",
+  slack: "Slack",
+};
+
+/**
+ * Beside the phone: a light for the chat apps the app is connected to.
+ *
+ * Not a switch. Turning a channel on takes a token and a list of who is allowed to speak, which is
+ * a screen, not a click — this only answers the question you would otherwise open Configuración to
+ * ask, which is whether the thing you set up is actually up right now.
+ */
+function BridgeIndicator() {
+  const t = useT();
+  const connected = useAppStore(state => state.bridgeConnected);
+  const openSettings = useAppStore(state => state.openSettings);
+
+  // Nothing configured, nothing to say. An always-present grey icon would be one more thing in a
+  // bar that is already full, answering a question nobody asked.
+  if (connected.length === 0) return null;
+
+  const names = connected.map(id => CHANNEL_NAMES[id] ?? id).join(", ");
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          aria-label={t("titlebar.bridgeOn", { channels: names })}
+          onClick={() => openSettings("messaging")}
+        >
+          <MessagesSquare className="h-4 w-4 text-emerald-500" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{t("titlebar.bridgeOn", { channels: names })}</TooltipContent>
     </Tooltip>
   );
 }
@@ -208,6 +252,7 @@ export function TitleBar() {
 
       <div className="flex items-center">
         <NotificationBell />
+        <BridgeIndicator />
         <RemoteButton />
         {isTauri() ? <WindowControls /> : <div className="w-2" />}
       </div>

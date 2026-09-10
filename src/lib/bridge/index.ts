@@ -228,6 +228,14 @@ async function onMessage(provider: BridgeProvider, message: IncomingMessage): Pr
 }
 
 /**
+ * Copies the live channels into the store, so the window bar can show a light that goes out on its
+ * own. `providers` is a module Map and nothing can subscribe to a Map.
+ */
+function publishConnected(): void {
+  useAppStore.setState({ bridgeConnected: [...providers.keys()] });
+}
+
+/**
  * Starts every channel that is turned on. Idempotent: a second call adds nothing.
  *
  * `provider.start` only returns when the provider is stopped, so it is deliberately not awaited.
@@ -243,6 +251,7 @@ export async function startBridge(): Promise<void> {
       log.info("bridge", `${id} conectado`);
     }
   }
+  publishConnected();
 }
 
 /** Stops one channel, or every channel when none is named. */
@@ -254,6 +263,7 @@ export async function stopBridge(id?: BridgeProviderId): Promise<void> {
     providers.delete(channelId);
     log.info("bridge", `${channelId} desconectado`);
   }
+  publishConnected();
 }
 
 /** Whether a channel is connected right now, for the settings screen. */
