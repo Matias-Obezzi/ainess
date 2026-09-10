@@ -85,6 +85,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Eine Frage zu beantworten ist eine Liste zum Ankreuzen und ein Knopf zum Drücken.** Die
+  Optionen waren Knöpfe in einer Zeile, jeder so breit wie sein eigener Text, also wirkte eine Reihe
+  davon ausgefranst und eine Ein-Wort-Option war ein Ziel von der Größe des Wortes. Jetzt sind sie
+  eine Liste, eine pro Zeile, so breit wie der Kasten. Eine Frage, die mehrere Antworten annimmt,
+  sagt das, statt es dich mit zwei Klicks herausfinden zu lassen. Und eine Frage mit einer Antwort
+  geht nicht mehr los, sobald du eine Option berührst: beide warten auf „Antworten", damit das, was
+  gleich gesagt wird, vorher auf dem Bildschirm steht — und ein Fehlklick ist ein Klick zum
+  Rückgängigmachen statt etwas bereits Gesendetes. Bei einer Antwort ersetzen sich Option und
+  Freitextfeld gegenseitig, denn eine Antwort kann nicht zugleich ein anderer Satz sein.
+
 - **Die Knöpfe am Fuß einer Aufgabe ordnen sich danach, was sie tun.** Drei lose Knöpfe unter einer
   „verteil sie"-Regel ließen „archivieren" in der Mitte stranden, gleich weit entfernt von einem
   Link, der woandershin führt, und einem Löschen, das nicht zurückkommt. Woandershin gehen steht

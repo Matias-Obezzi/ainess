@@ -79,6 +79,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Responder una pregunta es una lista que marcás y un botón que apretás.** Las opciones eran
+  botones en línea, cada uno del ancho de su propio texto, así que un conjunto quedaba desparejo y
+  una opción de una palabra era un blanco del tamaño de la palabra. Ahora son una lista, una por
+  fila, del ancho de la caja. Una pregunta que acepta varias respuestas lo dice, en vez de que lo
+  descubras haciendo dos clics. Y una pregunta de una sola respuesta ya no se va apenas tocás una
+  opción: las dos esperan a «Responder», así lo que está por decirse queda en pantalla antes de
+  decirse, y un clic errado es un clic más para deshacerlo en lugar de algo ya enviado. En las de
+  una sola respuesta, la opción y la caja para escribir la tuya se reemplazan entre sí, porque una
+  respuesta no puede ser además otra frase distinta.
+
 - **Los botones del pie de una tarea se ordenan por lo que hacen.** Tres botones sueltos bajo una
   regla de «separalos» dejaban «archivar» varado en el medio, a igual distancia de un link que te
   lleva a otro lado y de un borrar que no vuelve. Ahora irse a otro lado está a la izquierda, y lo

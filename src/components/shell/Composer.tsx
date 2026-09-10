@@ -751,7 +751,7 @@ export function Composer() {
                 {t("questions.pending", { n: pendingQuestionData.pending })}
               </p>
             )}
-            <InlineQuestion questionId={pendingQuestionData.question.id} size="md" />
+            <InlineQuestion key={pendingQuestionData.question.id} questionId={pendingQuestionData.question.id} size="md" />
             <Button
               variant="ghost"
               size="sm"

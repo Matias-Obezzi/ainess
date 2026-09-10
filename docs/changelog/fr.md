@@ -84,6 +84,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Répondre à une question, c'est une liste qu'on coche et un bouton qu'on presse.** Les options
+  étaient des boutons en ligne, chacun large comme son propre texte : un ensemble paraissait
+  irrégulier et une option d'un mot était une cible de la taille du mot. Ce sont maintenant une
+  liste, une par ligne, sur toute la largeur du cadre. Une question qui accepte plusieurs réponses
+  le dit, au lieu de vous le faire découvrir en cliquant deux fois. Et une question à réponse unique
+  ne part plus dès que vous touchez une option : les deux attendent « Répondre », pour que ce qui
+  va être dit soit à l'écran avant de l'être — et un clic raté est un clic de plus à annuler plutôt
+  que quelque chose de déjà envoyé. Sur une question à réponse unique, l'option et le champ libre se
+  remplacent l'un l'autre : une réponse ne peut pas être aussi une phrase différente.
+
 - **Les boutons au pied d'une tâche s'alignent selon ce qu'ils font.** Trois boutons libres sous une
   règle « espacez-les » laissaient « archiver » échoué au milieu, à égale distance d'un lien qui vous
   emmène ailleurs et d'une suppression sans retour. Partir ailleurs est maintenant à gauche, et ce

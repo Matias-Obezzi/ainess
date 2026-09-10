@@ -819,6 +819,7 @@ export const es: Dictionary = {
   "questions.answerPrompt": "Respondiendo a «{question}»: {answer}",
   "questions.title": "Necesita que decidas",
   "questions.other": "Otra respuesta",
+  "questions.pickMany": "Podés elegir más de una.",
   "questions.otherPlaceholder": "Escribí tu respuesta…",
   "questions.send": "Responder",
   "questions.answered": "Respondiste: {answer}",

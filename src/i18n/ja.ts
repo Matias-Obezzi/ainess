@@ -819,6 +819,7 @@ export const ja: Dictionary = {
   "questions.answerPrompt": "「{question}」への回答：{answer}",
   "questions.title": "あなたの判断が必要です",
   "questions.other": "別の回答",
+  "questions.pickMany": "複数選べます。",
   "questions.otherPlaceholder": "回答を書いてください…",
   "questions.send": "回答する",
   "questions.answered": "回答しました：{answer}",

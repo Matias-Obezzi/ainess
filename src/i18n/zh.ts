@@ -818,6 +818,7 @@ export const zh: Dictionary = {
   "questions.answerPrompt": "回答「{question}」：{answer}",
   "questions.title": "需要你来决定",
   "questions.other": "其他回答",
+  "questions.pickMany": "可以多选。",
   "questions.otherPlaceholder": "写下你的回答…",
   "questions.send": "回答",
   "questions.answered": "你回答了：{answer}",

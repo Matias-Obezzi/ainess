@@ -819,6 +819,7 @@ export const en: Dictionary = {
   "questions.answerPrompt": "Answering «{question}»: {answer}",
   "questions.title": "It needs you to decide",
   "questions.other": "Another answer",
+  "questions.pickMany": "You can pick more than one.",
   "questions.otherPlaceholder": "Write your answer…",
   "questions.send": "Answer",
   "questions.answered": "You answered: {answer}",

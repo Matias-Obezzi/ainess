@@ -81,6 +81,16 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Answering a question is a list you tick and a button you press.** The options were inline
+  buttons, each as wide as its own text, so a set of them came out ragged and a one-word option was
+  a target the size of the word. They are a list now, one per row, the full width of the box. A
+  question that takes several answers says so instead of leaving you to find out by clicking twice.
+  And a one-answer question no longer goes off the moment you touch an option: both kinds wait for
+  "Responder", so what is about to be said to the agent is on screen before it is said — and a
+  misclick is one more click to undo rather than something already sent. On a one-answer question
+  the option and the box for writing your own take each other's place, because one answer cannot
+  also be a different sentence.
+
 - **The buttons at the foot of a task line up by what they do.** Three loose buttons under a
   "space them out" rule meant "archive" was marooned in the middle, equidistant from a link that
   takes you elsewhere and a delete that is not coming back. Going somewhere else is on the left now,
