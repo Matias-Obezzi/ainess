@@ -1059,13 +1059,11 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     // Deferred: the caller (`onRunFinished`) still has its own `runtime` update to make for this
     // very run once this function returns, and starting the resumed run synchronously here would
     // have that update stomp on the new run's `currentRunId` a moment after `resumeWithAnswer` sets it.
-    const asked = Object.values(questions);
-    // One resume carrying every question, not one resume per question. The run is a single run:
-    // resuming it once per question forks the lineage, and each fork can ask again — which doubles
-    // every turn, with nothing but the expiry hour underneath it. The prompt joins the questions so
-    // the agent sees all of them answered rather than only the first.
-    const joined: AgentQuestion = { ...asked[0], question: asked.map(q => q.question).join("\n") };
-    setTimeout(() => resumeWithAnswer(joined, autoAnswer), 0);
+    // One resume carrying every question, the same way a person answering them gets one — see
+    // `resumeWithAnswers`. Resuming once per question forks the lineage, and each fork can ask
+    // again, which doubles every turn with nothing but the expiry hour underneath it.
+    const asked = Object.values(questions).map(question => ({ question, answer: autoAnswer }));
+    setTimeout(() => resumeWithAnswers(asked), 0);
     return true;
   }
 
@@ -1086,17 +1084,39 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
  * same way an instruction does. Nothing else of the round moved while it waited.
  */
 export function resumeWithAnswer(question: AgentQuestion, answer: string[]): void {
+  resumeWithAnswers([{ question, answer }]);
+}
+
+/**
+ * Hands back every answer at once and lets the agent carry on — one message, one run.
+ *
+ * A run that asks three things used to be resumed three times, once per answer: three runs off one
+ * turn, three tasks on the board, three agents editing the same workspace over a question the user
+ * answered once. The agent asked in a single turn and it gets a single reply, which is also the only
+ * shape that makes sense to it — the second answer is no use without the first.
+ *
+ * Every question here belongs to the same run; the caller groups them (see `pending-question.ts`).
+ */
+export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer: string[] }>): void {
+  if (items.length === 0) return;
   const store = useAppStore.getState();
+  const question = items[0].question;
   const run = store.runs[question.runId];
-  const chosen = answer.filter(a => a.trim()).join(", ");
-  const text = translateNow("questions.answerPrompt", { question: question.question, answer: chosen });
+
+  const lines = items.map(item => {
+    const chosen = item.answer.filter(a => a.trim()).join(", ");
+    return translateNow("questions.answerPrompt", { question: item.question.question, answer: chosen });
+  });
+  const text = lines.join("\n");
 
   addMessage({
     projectId: question.projectId,
     fromAgentId: "user",
     toAgentId: question.agentId,
     kind: "instruction",
-    text: chosen,
+    // The feed shows what was answered, and with several questions the answers alone ("sí, la B")
+    // say nothing without the questions they belong to.
+    text: items.length === 1 ? items[0].answer.filter(a => a.trim()).join(", ") : text,
     runId: question.runId,
   });
 

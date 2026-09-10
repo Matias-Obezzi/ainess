@@ -32,6 +32,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A turn that asks three things is answered once.** An agent can ask several questions in one go,
+  and each answer resumed its run on its own: three runs off a single turn, three cards on the
+  board, three agents in the same workspace, over questions you answered in one sitting. They come
+  as a group now — a tab each, a tick on the ones you have settled, and one button that stays
+  disabled until none are missing. What goes back is a single message carrying every question with
+  its answer, because the second answer is no use to the agent without the question it belongs to.
+  Questions from a different run wait their turn rather than joining the group.
+
 - **A run waiting for quota stops relaunching itself forever.** Parked runs are picked up again when
   the quota comes back, and one of the moments that gets checked is "the last run just ended" — so a
   relaunch that ran out of quota again was parked again, checked again, and relaunched again, as

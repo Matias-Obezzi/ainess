@@ -319,6 +319,8 @@ export interface AppState {
   questions: Record<string, AgentQuestion>;
   /** Answers one and lets the agent carry on with what was chosen. */
   answerQuestion(questionId: string, answer: string[]): void;
+  /** Settles every question of one turn at once: one message to the agent, one run. */
+  answerQuestions(items: Array<{ questionId: string; answer: string[] }>): void;
 
   // Approvals (delegations waiting for the user's go-ahead)
   approvals: Record<string, Approval>;
@@ -1876,15 +1878,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   answerQuestion: (questionId, answer) => {
-    const question = get().questions[questionId];
-    if (!question || question.status !== "pending") return;
-    set(state => ({
-      questions: {
-        ...state.questions,
-        [questionId]: { ...question, status: "answered", answer, answeredAt: Date.now() },
-      },
-    }));
-    orchestrator.resumeWithAnswer(question, answer);
+    get().answerQuestions([{ questionId, answer }]);
+  },
+
+  answerQuestions: (items) => {
+    const all = get().questions;
+    const pending = items
+      .map(item => ({ question: all[item.questionId], answer: item.answer }))
+      .filter(entry => entry.question && entry.question.status === "pending");
+    if (pending.length === 0) return;
+
+    const answeredAt = Date.now();
+    set(state => {
+      const questions = { ...state.questions };
+      for (const { question, answer } of pending) {
+        questions[question.id] = { ...question, status: "answered", answer, answeredAt };
+      }
+      return { questions };
+    });
+    // One resume for the lot: see `resumeWithAnswers`.
+    orchestrator.resumeWithAnswers(pending);
   },
 
   setWorktree: (projectId, worktree) => {

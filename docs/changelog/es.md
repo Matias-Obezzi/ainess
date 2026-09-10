@@ -31,6 +31,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un turno que pregunta tres cosas se responde una sola vez.** Un agente puede hacer varias
+  preguntas de una, y cada respuesta reanudaba su corrida por su cuenta: tres corridas de un solo
+  turno, tres tarjetas en el tablero, tres agentes en el mismo workspace, por preguntas que
+  contestaste de una sentada. Ahora vienen como grupo: una pestaña por pregunta, un tilde en las que
+  ya resolviste, y un solo botón que queda deshabilitado hasta que no falte ninguna. Lo que vuelve es
+  un único mensaje con cada pregunta y su respuesta, porque la segunda respuesta no le sirve de nada
+  al agente sin la pregunta a la que pertenece. Las preguntas de otra corrida esperan su turno en vez
+  de sumarse al grupo.
+
 - **Una corrida esperando cuota deja de relanzarse para siempre.** Las corridas en espera se retoman
   cuando vuelve la cuota, y uno de los momentos en que eso se chequea es «recién terminó la última
   corrida» — así que un relanzamiento que se quedaba sin cuota otra vez volvía a quedar en espera, se

@@ -13,7 +13,7 @@ import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
-import { InlineQuestion } from "@/components/InlineQuestion";
+import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
@@ -369,8 +369,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                     <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}
 
-                  {/* A run that ended asking something ends here, with the options it offered. */}
-                  {questionIds.map(id => <InlineQuestion key={id} questionId={id} />)}
+                  {/* A run that ended asking something ends here, with the options it offered. All
+                      of them together: they came from one turn and go back as one answer. */}
+                  {questionIds.length > 0 && <RunQuestions ids={questionIds} />}
                 </>
               )}
             </div>
@@ -386,3 +387,12 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
     </div>
   );
 });
+
+/** The questions of one run, in the order they were asked, answered in one go. */
+function RunQuestions({ ids }: { ids: string[] }) {
+  const questions = useAppStore(state => state.questions);
+  const answerQuestions = useAppStore(state => state.answerQuestions);
+  const group = ids.map(id => questions[id]).filter(Boolean);
+  if (group.length === 0) return null;
+  return <QuestionGroup questions={group} onAnswer={answerQuestions} />;
+}

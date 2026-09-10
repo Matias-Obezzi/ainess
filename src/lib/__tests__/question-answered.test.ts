@@ -6,7 +6,7 @@
 // for an answer it had already been given.
 import { describe, it, expect, beforeEach } from "vitest";
 import { useAppStore } from "@/store";
-import { questionForComposer } from "@/lib/pending-question";
+import { questionsForComposer } from "@/lib/pending-question";
 import type { AgentQuestion, Run } from "@/types";
 
 const RUN: Run = {
@@ -41,7 +41,7 @@ const QUESTION: AgentQuestion = {
 
 const composerSees = () => {
   const s = useAppStore.getState();
-  return questionForComposer(s.questions, s.runs, { projectId: "p1", chatId: null, chatAgentIds: [] });
+  return questionsForComposer(s.questions, s.runs, { projectId: "p1", chatId: null, chatAgentIds: [] });
 };
 
 describe("a question the composer answered", () => {
@@ -50,7 +50,7 @@ describe("a question the composer answered", () => {
   });
 
   it("takes over the composer while it is pending", () => {
-    expect(composerSees()?.question.id).toBe("q1");
+    expect(composerSees()?.group[0].id).toBe("q1");
   });
 
   it("lets go once answered, and does not come back", () => {
@@ -70,7 +70,7 @@ describe("a question the composer answered", () => {
     useAppStore.getState().answerQuestion("q1", ["la primera"]);
 
     const left = composerSees();
-    expect(left?.question.id).toBe("q2");
+    expect(left?.group[0].id).toBe("q2");
     expect(left?.pending).toBe(1);
   });
 

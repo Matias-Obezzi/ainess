@@ -32,6 +32,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un tour qui pose trois questions reçoit une seule réponse.** Un agent peut poser plusieurs
+  questions d'un coup, et chaque réponse relançait son run de son côté : trois runs pour un seul
+  tour, trois cartes sur le tableau, trois agents dans le même espace de travail, pour des questions
+  auxquelles vous aviez répondu d'une traite. Elles arrivent en groupe désormais — un onglet par
+  question, une coche sur celles que vous avez réglées, et un seul bouton qui reste désactivé tant
+  qu'il en manque une. Ce qui repart est un unique message portant chaque question et sa réponse,
+  car la deuxième réponse ne sert à rien à l'agent sans la question à laquelle elle appartient. Les
+  questions d'un autre run attendent leur tour au lieu de rejoindre le groupe.
+
 - **Un run qui attend du quota cesse de se relancer indéfiniment.** Les runs en attente sont repris
   quand le quota revient, et l'un des moments où cela est vérifié est « le dernier run vient de se
   terminer » — donc une relance qui se retrouvait de nouveau sans quota était de nouveau mise en

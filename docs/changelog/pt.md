@@ -30,6 +30,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um turno que pergunta três coisas é respondido uma vez só.** Um agente pode fazer várias
+  perguntas de uma vez, e cada resposta retomava a execução dele por conta própria: três execuções
+  de um único turno, três cartões no quadro, três agentes no mesmo workspace, por perguntas que você
+  respondeu de uma sentada. Agora elas vêm como grupo — uma aba por pergunta, um tique nas que você
+  já resolveu, e um único botão que fica desabilitado enquanto faltar alguma. O que volta é uma
+  única mensagem com cada pergunta e a sua resposta, porque a segunda resposta não serve de nada ao
+  agente sem a pergunta a que pertence. Perguntas de outra execução esperam a sua vez em vez de
+  entrar no grupo.
+
 - **Uma execução esperando cota para de se relançar para sempre.** As execuções em espera são
   retomadas quando a cota volta, e um dos momentos em que isso é checado é «acabou de terminar a
   última execução» — então um relançamento que ficava sem cota de novo voltava para a espera, era

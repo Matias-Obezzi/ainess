@@ -24,8 +24,8 @@ import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
-import { InlineQuestion } from "@/components/InlineQuestion";
-import { questionForComposer } from "@/lib/pending-question";
+import { QuestionGroup } from "@/components/InlineQuestion";
+import { questionsForComposer } from "@/lib/pending-question";
 import { ghostFor } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
@@ -156,6 +156,7 @@ export function Composer() {
 
   const questions = useAppStore(state => state.questions);
   const answerQuestion = useAppStore(state => state.answerQuestion);
+  const answerQuestions = useAppStore(state => state.answerQuestions);
   const runs = useAppStore(state => state.runs);
 
   const chatMode = !!currentChatId;
@@ -163,7 +164,7 @@ export function Composer() {
 
   const pendingQuestionData = useMemo(() => {
     const chatAgentIds = chat ? chat.participants.map(p => p.agentId) : [];
-    return questionForComposer(questions, runs, {
+    return questionsForComposer(questions, runs, {
       projectId: currentProjectId,
       chatId: currentChatId,
       chatAgentIds,
@@ -194,7 +195,7 @@ export function Composer() {
     };
   }, [currentChatId, chatMessages, runs, currentProjectId]);
 
-  const pendingQuestionId = pendingQuestionData?.question.id;
+  const pendingQuestionId = pendingQuestionData?.group[0]?.id;
   const [writeInstead, setWriteInstead] = useState(false);
   useEffect(() => {
     setWriteInstead(false);
@@ -563,7 +564,9 @@ export function Composer() {
     //
     // Queueing does not apply here. The agent is not busy, it is blocked on you.
     if (pendingQuestionData) {
-      answerQuestion(pendingQuestionData.question.id, [value]);
+      // Typed into the box instead of picked: it answers whatever is on top, and the rest of
+      // the turn's questions stay where they are with their own tabs.
+      answerQuestion(pendingQuestionData.group[0].id, [value]);
       return;
     }
     if (chatMode && currentChatId) {
@@ -820,7 +823,12 @@ export function Composer() {
                 {t("questions.pending", { n: pendingQuestionData.pending })}
               </p>
             )}
-            <InlineQuestion key={pendingQuestionData.question.id} questionId={pendingQuestionData.question.id} size="md" />
+            <QuestionGroup
+              key={pendingQuestionData.group[0].id}
+              questions={pendingQuestionData.group}
+              size="md"
+              onAnswer={answerQuestions}
+            />
             <Button
               variant="ghost"
               size="sm"

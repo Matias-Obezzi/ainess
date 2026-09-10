@@ -32,6 +32,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Zug, der drei Dinge fragt, wird einmal beantwortet.** Ein Agent kann mehrere Fragen auf
+  einmal stellen, und jede Antwort setzte seinen Lauf für sich fort: drei Läufe aus einem einzigen
+  Zug, drei Karten auf dem Board, drei Agenten im selben Arbeitsverzeichnis, wegen Fragen, die du in
+  einem Rutsch beantwortet hast. Jetzt kommen sie als Gruppe — ein Reiter je Frage, ein Haken auf
+  den erledigten, und ein einziger Knopf, der deaktiviert bleibt, solange eine fehlt. Zurück geht
+  eine einzige Nachricht mit jeder Frage und ihrer Antwort, denn die zweite Antwort nützt dem
+  Agenten nichts ohne die Frage, zu der sie gehört. Fragen aus einem anderen Lauf warten auf ihren
+  Zug, statt sich der Gruppe anzuschließen.
+
 - **Ein Lauf, der auf Kontingent wartet, startet sich nicht mehr endlos neu.** Geparkte Läufe werden
   wieder aufgenommen, wenn das Kontingent zurück ist, und einer der Momente, in denen das geprüft
   wird, ist „der letzte Lauf ist gerade zu Ende" — ein Neustart, dem erneut das Kontingent ausging,
