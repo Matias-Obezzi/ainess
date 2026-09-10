@@ -6,6 +6,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **La zone de saisie finit votre phrase, et Tab l'accepte.** Deux choses, toutes deux calculées sur
+  votre machine et aucune envoyée où que ce soit. La zone vide et le dernier message de l'agent se
+  terminant par une question fermée, la réponse apparaît en gris : Tab la prend, Entrée l'envoie.
+  Avec quelque chose d'écrit, elle complète à partir de ce que vous avez déjà écrit dans cette même
+  conversation — la dernière façon dont vous l'aviez formulé, reproposée dès les premiers caractères.
+  Une question qui demande un choix plutôt qu'un oui n'obtient rien, car « oui » est la mauvaise
+  réponse à « laquelle ? » ; la liste de mots qui en décide penche vers le silence. Rien d'un autre
+  projet n'apparaît ici, la même règle que le contexte partagé. Tab n'agit qu'une fois que le menu
+  `@`/`#`/`/` et un bloc ``` ont eu leur mot à dire, et Entrée reste intacte : accepter et envoyer
+  restent deux décisions.
+
 - **Le bouton de la barre des tâches clignote quand quelque chose attend votre réponse.** Une
   approbation ou une question arrête un agent jusqu'à votre retour, et jusqu'ici le seul moyen de
   l'apprendre était de regarder. Il ne clignote que tant que la fenêtre n'est pas au premier plan,

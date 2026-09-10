@@ -26,6 +26,7 @@ import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { InlineQuestion } from "@/components/InlineQuestion";
 import { questionForComposer } from "@/lib/pending-question";
+import { ghostFor } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,11 @@ export function Composer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
+  // What this conversation has already said, for the grey suggestion below. Read from the
+  // conversation on screen and from nowhere else: a message typed in another project has no
+  // business appearing here, the same rule the shared context follows.
+  const chatMessages = useAppStore(state => state.chatMessages);
+
   const questions = useAppStore(state => state.questions);
   const answerQuestion = useAppStore(state => state.answerQuestion);
   const runs = useAppStore(state => state.runs);
@@ -163,6 +169,30 @@ export function Composer() {
       chatAgentIds,
     });
   }, [questions, runs, currentProjectId, currentChatId, chat]);
+
+  /** The user's own messages here, newest first, and the agent's last word. */
+  const conversation = useMemo(() => {
+    if (currentChatId) {
+      const rows = chatMessages[currentChatId] ?? [];
+      const mine: string[] = [];
+      let lastAgent: string | undefined;
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        if (row.from === "user") mine.push(row.text);
+        else if (!lastAgent && row.status !== "pending" && row.text) lastAgent = row.text;
+      }
+      return { past: mine, lastAgent };
+    }
+    // The orchestrator's thread: a round-zero run with no parent is a prompt the user typed, and
+    // its output is what came back.
+    const own = Object.values(runs)
+      .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0)
+      .sort((a, b) => b.startedAt - a.startedAt);
+    return {
+      past: own.map(r => r.prompt),
+      lastAgent: own.find(r => r.status === "done" && r.output)?.output,
+    };
+  }, [currentChatId, chatMessages, runs, currentProjectId]);
 
   const pendingQuestionId = pendingQuestionData?.question.id;
   const [writeInstead, setWriteInstead] = useState(false);
@@ -405,6 +435,37 @@ export function Composer() {
 
   const menuOpen = !menuDismissed && menuOptions.length > 0;
 
+  /**
+   * The grey text after the caret, and what Tab would take.
+   *
+   * Only with the caret at the very end and nothing selected: this is drawn by appending to the
+   * layer behind the box, so anywhere else it would appear somewhere it does not belong. It also
+   * stays out of the way of the `@`/`#`/`/` menu, which owns Tab while it is open, and of a
+   * question with its own options on screen, which is a better answer than a guessed one.
+   */
+  const ghost = useMemo(() => {
+    if (menuOpen || menuCaret !== text.length) return null;
+    if (pendingQuestionData && !writeInstead) return null;
+    return ghostFor({
+      text,
+      lastAgentMessage: conversation.lastAgent,
+      past: conversation.past,
+      affirmative: t("composer.ghostYes"),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, menuCaret, menuOpen, conversation, pendingQuestionData, writeInstead, t]);
+
+  const acceptGhost = () => {
+    if (!ghost) return;
+    const next = text + ghost.text;
+    setText(next);
+    // Same bookkeeping the box's own `onChange` does: what is in there is no longer a recalled
+    // message, so the arrows start from the end of the history again rather than mid-walk.
+    setHistoryIndex(null);
+    setMenuCaret(next.length);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(next.length, next.length));
+  };
+
   /** Inserts the picked value in place of the trigger — or, for the two that act, acts. */
   const pickOption = (option: MenuOption) => {
     if (!completionReq) return;
@@ -623,6 +684,14 @@ export function Composer() {
       requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
       return;
     }
+    // Tab, once the menu (which owns it while open) and a ``` fence (where it indents) are out of
+    // the way. Enter is left alone: accepting and sending are two decisions, and joining them would
+    // send a guess on one keystroke.
+    if (e.key === "Tab" && ghost) {
+      e.preventDefault();
+      acceptGhost();
+      return;
+    }
     if (e.key === "Escape" && busy) {
       e.preventDefault();
       handleStop();
@@ -789,7 +858,11 @@ export function Composer() {
               aria-hidden
               className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-transparent md:text-sm pr-12"
             >
-              {renderFenceHighlight(text, fenceHighlightRegions)}
+              {/* `renderFenceHighlight` gives back nothing when there are no fences, which is fine
+                  while this layer only paints backgrounds — but the grey text has to sit after what
+                  is typed, so the typed text (still invisible) has to be here to push it there. */}
+              {renderFenceHighlight(text, fenceHighlightRegions) ?? (ghost ? text : null)}
+              {ghost && <span className="text-muted-foreground/70">{ghost.text}</span>}
               {"\n"}
             </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}

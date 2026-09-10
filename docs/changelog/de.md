@@ -6,6 +6,17 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Der Kasten schreibt deinen Satz zu Ende, und Tab nimmt ihn an.** Zwei Dinge, beide auf deinem
+  Rechner ausgerechnet und keines davon irgendwohin geschickt. Ist der Kasten leer und endet die
+  letzte Nachricht des Agenten mit einer Ja/Nein-Frage, erscheint die Antwort in Grau: Tab nimmt sie,
+  Enter schickt sie. Steht schon etwas darin, wird aus dem ergänzt, was du in genau diesem Gespräch
+  vorher geschrieben hast — die letzte Formulierung, ab den ersten Zeichen wieder angeboten. Eine
+  Frage, die eine Wahl statt eines Ja will, bekommt nichts, denn „ja" ist die falsche Antwort auf
+  „welches?"; die Wortliste, die das entscheidet, ist auf Schweigen hin gebaut. Nichts aus einem
+  anderen Projekt taucht hier auf, dieselbe Regel wie beim gemeinsamen Kontext. Tab greift erst,
+  wenn das `@`/`#`/`/`-Menü und ein ```-Block ihr Recht hatten, und Enter bleibt unangetastet:
+  Annehmen und Senden bleiben zwei Entscheidungen.
+
 - **Die Taskleistenschaltfläche blinkt, wenn etwas auf deine Antwort wartet.** Eine Freigabe oder
   eine Frage hält einen Agenten an, bis du zurückkommst, und bisher war Hinsehen die einzige Art,
   davon zu erfahren. Es blinkt nur, solange das Fenster nicht im Vordergrund ist, und diese Prüfung

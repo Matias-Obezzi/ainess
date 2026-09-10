@@ -168,6 +168,7 @@ export const fr: Dictionary = {
   "composer.queue": "Mettre en file",
   "composer.queueHint": "Part quand le tour se termine (Ctrl+Entrée)",
   "composer.target": "Destinataire",
+  "composer.ghostYes": "Oui, vas-y",
   "composer.defaultModel": "Modèle par défaut",
   "composer.otherModel": "Autre…",
   "composer.typeModel": "Écris le modèle…",

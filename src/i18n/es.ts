@@ -169,6 +169,7 @@ export const es: Dictionary = {
   "composer.queue": "Encolar",
   "composer.queueHint": "Se envía cuando termine el turno (Ctrl+Enter)",
   "composer.target": "Destino",
+  "composer.ghostYes": "Sí, dale",
   "composer.defaultModel": "Modelo por defecto",
   "composer.otherModel": "Otro…",
   "composer.typeModel": "Escribí el modelo…",

@@ -168,6 +168,7 @@ export const zh: Dictionary = {
   "composer.queue": "排队",
   "composer.queueHint": "本轮结束后发送（Ctrl+Enter）",
   "composer.target": "目标",
+  "composer.ghostYes": "好，去做吧",
   "composer.defaultModel": "默认模型",
   "composer.otherModel": "其他…",
   "composer.typeModel": "输入模型…",

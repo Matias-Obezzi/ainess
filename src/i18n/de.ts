@@ -168,6 +168,7 @@ export const de: Dictionary = {
   "composer.queue": "Einreihen",
   "composer.queueHint": "Geht raus, wenn der Zug endet (Strg+Enter)",
   "composer.target": "Ziel",
+  "composer.ghostYes": "Ja, mach das",
   "composer.defaultModel": "Standardmodell",
   "composer.otherModel": "Anderes…",
   "composer.typeModel": "Modell eintippen…",

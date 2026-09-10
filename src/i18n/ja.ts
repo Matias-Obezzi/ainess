@@ -169,6 +169,7 @@ export const ja: Dictionary = {
   "composer.queue": "順番待ち",
   "composer.queueHint": "このターンが終わったら送信します（Ctrl+Enter）",
   "composer.target": "宛先",
+  "composer.ghostYes": "はい、お願いします",
   "composer.defaultModel": "デフォルトモデル",
   "composer.otherModel": "その他…",
   "composer.typeModel": "モデル名を入力…",

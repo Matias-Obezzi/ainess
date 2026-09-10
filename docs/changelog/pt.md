@@ -6,6 +6,16 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **A caixa termina a sua frase, e o Tab aceita.** Duas coisas, ambas resolvidas na sua máquina e
+  nenhuma delas enviada a lugar nenhum. Com a caixa vazia e a última mensagem do agente terminando
+  numa pergunta fechada, a resposta aparece em cinza: o Tab pega, o Enter manda. Com algo escrito,
+  completa com o que você já escreveu antes nessa mesma conversa — a última forma como você disse,
+  oferecida de novo desde as primeiras letras. Uma pergunta que pede uma escolha em vez de um sim não
+  recebe nada, porque «sim» é a resposta errada para «qual?»; a lista de palavras que decide isso foi
+  feita para errar para o lado do silêncio. Nada de outro projeto aparece aqui, a mesma regra do
+  contexto compartilhado. O Tab só age depois que o menu de `@`/`#`/`/` e um bloco ``` disseram o que
+  tinham a dizer, e o Enter fica intacto: aceitar e enviar continuam sendo duas decisões.
+
 - **O botão da barra de tarefas pisca quando algo espera a sua resposta.** Uma aprovação ou uma
   pergunta deixam um agente parado até você voltar, e até agora a única forma de saber era estar
   olhando. Pisca só enquanto a janela não é a que está na frente, e essa verificação é feita do lado

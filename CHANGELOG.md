@@ -8,6 +8,16 @@ let one of them fall behind.
 
 ### Added
 
+- **The box finishes your sentence, and Tab takes it.** Two things, both worked out on your machine
+  and neither of them sent anywhere. With the box empty and the agent's last message ending in a
+  yes/no question, the answer appears in grey: press Tab to take it, Enter to send. With something
+  typed, it completes from what you have written before in that same conversation — the last way you
+  phrased it, offered again from its first few characters. A question that asks for a choice rather
+  than a yes gets nothing, because a "yes" is the wrong answer to "which one?"; the word list that
+  decides this errs towards saying nothing. Nothing from another project ever appears here, the same
+  rule the shared context follows. Tab only acts once the `@`/`#`/`/` menu and a ``` fence have had
+  their say, and Enter is left alone: accepting and sending stay two decisions.
+
 - **The taskbar button flashes when something is waiting on your answer.** An approval or a question
   stops an agent until you come back, and until now the only way to find out was to be looking. It
   flashes only while the window is not the one in front, and the check for that is made where the

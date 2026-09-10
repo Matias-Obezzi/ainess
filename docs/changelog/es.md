@@ -6,6 +6,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **La caja te termina la frase, y Tab la acepta.** Dos cosas, las dos resueltas en tu máquina y
+  ninguna sale de ahí. Con la caja vacía y el último mensaje del agente terminando en una pregunta
+  cerrada, la respuesta aparece en gris: Tab la toma, Enter la manda. Con algo escrito, completa con
+  lo que ya escribiste antes en esa misma conversación — la última forma en que lo dijiste, ofrecida
+  de nuevo desde las primeras letras. Una pregunta que pide elegir en vez de un sí no ofrece nada,
+  porque «sí» es la respuesta equivocada a «¿cuál?»; la lista de palabras que decide eso está hecha
+  para errar hacia el silencio. Nada de otro proyecto aparece acá, la misma regla que sigue el
+  contexto compartido. Tab actúa recién después de que el menú de `@`/`#`/`/` y los bloques ``` dijeron
+  lo suyo, y Enter queda intacto: aceptar y mandar siguen siendo dos decisiones.
+
 - **El botón de la barra de tareas titila cuando algo espera tu respuesta.** Una aprobación o una
   pregunta dejan a un agente parado hasta que volvés, y hasta ahora la única forma de enterarte era
   estar mirando. Titila solo mientras la ventana no es la que está adelante, y esa comprobación se

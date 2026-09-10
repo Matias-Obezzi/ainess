@@ -168,6 +168,7 @@ export const pt: Dictionary = {
   "composer.queue": "Enfileirar",
   "composer.queueHint": "Sai quando o turno terminar (Ctrl+Enter)",
   "composer.target": "Destino",
+  "composer.ghostYes": "Sim, pode ir",
   "composer.defaultModel": "Modelo padrão",
   "composer.otherModel": "Outro…",
   "composer.typeModel": "Digite o modelo…",

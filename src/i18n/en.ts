@@ -169,6 +169,7 @@ export const en: Dictionary = {
   "composer.queue": "Queue",
   "composer.queueHint": "Goes out when the turn ends (Ctrl+Enter)",
   "composer.target": "Target",
+  "composer.ghostYes": "Yes, go ahead",
   "composer.defaultModel": "Default model",
   "composer.otherModel": "Other…",
   "composer.typeModel": "Type the model…",
