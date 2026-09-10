@@ -213,6 +213,10 @@ export const de: Dictionary = {
   // ---- Live activity of a run ----
   "activity.showAll": "Alles anzeigen ({n} weitere Schritte)",
   "activity.moreSteps": "… {n} weitere Schritte",
+  "activity.stepsHidden.one": "+{n} Schritt",
+  "activity.stepsHidden.other": "+{n} Schritte",
+  "activity.expand": "Vorherige Schritte anzeigen",
+  "activity.collapse": "Vorherige Schritte ausblenden",
   "activity.waitingToStart": "Wartet auf den Start…",
   "activity.thinking": "Denkt nach…",
   "markdown.invalidDelegation": "Delegation mit ungültigem Format",

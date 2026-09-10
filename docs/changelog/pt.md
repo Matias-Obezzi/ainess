@@ -6,6 +6,18 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Só o que o agente está fazendo agora, em uma linha.** Um agente trabalhando escreve uma linha
+  para cada ferramenta que usa, e uma execução longa escreve centenas: o chat enchia com o que ele
+  já tinha terminado e a única linha que valia a pena ler — o que está fazendo *agora* — ficava
+  enterrada mais acima. Agora os passos passam por uma faixa. Ela tem uma linha de altura e o
+  overflow oculto, então o passo que terminou sai por cima enquanto o novo entra por baixo. O
+  movimento é o ponto: uma linha que troca o texto no lugar parece igual tenha mudado uma vez ou
+  quarenta, e "isso ainda está rodando?" era exatamente a pergunta que uma parede de texto parado
+  provocava. Ao clicar nela o histórico abre acima; clique de novo na mesma linha e ele fecha. Três
+  coisas nunca são dobradas: o texto do próprio agente, um erro, e o cartão de um agente para quem
+  ele delegou. Esse cartão carrega a aprovação que alguém precisa responder, e um chat arrumado não
+  vale escondê-la.
+
 - **A caixa termina a sua frase, e o Tab aceita.** Duas coisas, ambas resolvidas na sua máquina e
   nenhuma delas enviada a lugar nenhum. Com a caixa vazia e a última mensagem do agente terminando
   numa pergunta fechada, a resposta aparece em cinza: o Tab pega, o Enter manda. Com algo escrito,

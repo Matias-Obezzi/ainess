@@ -6,6 +6,18 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Solo lo que el agente está haciendo ahora, en una línea.** Un agente trabajando escribe una
+  línea por cada herramienta que usa, y una corrida larga escribe cientos: el chat se llenaba de lo
+  que ya había terminado y la única línea que valía la pena leer —lo que está haciendo *ahora*—
+  quedaba enterrada más arriba. Ahora los pasos pasan por un renglón. Mide una línea de alto y
+  tiene el overflow oculto, así que el paso que terminó se va por arriba mientras el nuevo entra
+  desde abajo. El movimiento es el punto: una línea que cambia el texto en el lugar se ve igual
+  haya cambiado una vez o cuarenta, y «¿esto sigue andando?» era justo la pregunta que daba una
+  pared de texto quieto. Al hacerle clic se abre la historia arriba; clic de nuevo en la misma
+  línea y se cierra. Tres cosas no se pliegan nunca: el texto del propio agente, un error, y la
+  tarjeta de un agente al que delegó. Esa tarjeta lleva la aprobación que alguien tiene que
+  contestar, y un chat prolijo no vale esconderla.
+
 - **La caja te termina la frase, y Tab la acepta.** Dos cosas, las dos resueltas en tu máquina y
   ninguna sale de ahí. Con la caja vacía y el último mensaje del agente terminando en una pregunta
   cerrada, la respuesta aparece en gris: Tab la toma, Enter la manda. Con algo escrito, completa con

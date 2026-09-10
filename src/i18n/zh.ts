@@ -213,6 +213,10 @@ export const zh: Dictionary = {
   // ---- Live activity of a run ----
   "activity.showAll": "查看全部（还有 {n} 步）",
   "activity.moreSteps": "… 还有 {n} 步",
+  "activity.stepsHidden.one": "+{n} 步",
+  "activity.stepsHidden.other": "+{n} 步",
+  "activity.expand": "显示之前的步骤",
+  "activity.collapse": "隐藏之前的步骤",
   "activity.waitingToStart": "等待启动…",
   "activity.thinking": "思考中…",
   "markdown.invalidDelegation": "委派格式无效",

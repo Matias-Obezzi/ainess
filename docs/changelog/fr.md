@@ -6,6 +6,19 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Seulement ce que l'agent fait maintenant, sur une ligne.** Un agent au travail écrit une ligne
+  par outil qu'il utilise, et une longue exécution en écrit des centaines : le fil se remplissait de
+  ce qu'il avait déjà terminé, et la seule ligne qui valait la peine d'être lue — ce qu'il fait
+  *à cet instant* — se retrouvait enterrée plus haut. Les étapes défilent maintenant dans un
+  bandeau. Il fait une ligne de haut et son débordement est masqué : l'étape qui vient de finir
+  sort par le haut pendant que la nouvelle arrive par le bas. Le mouvement est l'essentiel : une
+  ligne qui change son texte sur place a la même allure qu'elle ait changé une fois ou quarante, et
+  « est-ce que ça tourne encore ? » était exactement la question que posait un mur de texte immobile.
+  Un clic sur la ligne ouvre l'historique au-dessus ; un nouveau clic sur la même ligne le referme.
+  Trois choses ne se replient jamais : le texte de l'agent lui-même, une erreur, et la carte d'un
+  agent à qui il a délégué. Cette carte porte l'approbation que quelqu'un doit donner, et un fil
+  bien rangé ne vaut pas de la cacher.
+
 - **La zone de saisie finit votre phrase, et Tab l'accepte.** Deux choses, toutes deux calculées sur
   votre machine et aucune envoyée où que ce soit. La zone vide et le dernier message de l'agent se
   terminant par une question fermée, la réponse apparaît en gris : Tab la prend, Entrée l'envoie.

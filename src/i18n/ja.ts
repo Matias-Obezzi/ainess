@@ -214,6 +214,10 @@ export const ja: Dictionary = {
   // ---- Live activity of a run ----
   "activity.showAll": "すべて見る (あと{n}ステップ)",
   "activity.moreSteps": "…あと{n}ステップ",
+  "activity.stepsHidden.one": "+{n}ステップ",
+  "activity.stepsHidden.other": "+{n}ステップ",
+  "activity.expand": "前のステップを表示",
+  "activity.collapse": "前のステップを隠す",
   "activity.waitingToStart": "開始を待っています…",
   "activity.thinking": "考え中…",
   "markdown.invalidDelegation": "形式が無効な委任です",

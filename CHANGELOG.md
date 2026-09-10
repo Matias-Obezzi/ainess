@@ -8,6 +8,18 @@ let one of them fall behind.
 
 ### Added
 
+- **Only what the agent is doing now, on one line.** A working agent writes a line for every tool
+  it uses, and a long run writes hundreds: the thread filled up with what it had already finished,
+  and the one line worth reading — what it is doing *right now* — was buried somewhere above. The
+  steps run through a ticker instead. It is one line tall with its overflow hidden, so the step
+  that just finished leaves through the top while the new one arrives from below. The movement is
+  the point: a line that swaps its text in place looks the same whether it changed once or forty
+  times, and "is this thing still going" was the question people were asking of a wall of static
+  text. Click the line and the history opens above it; click the same line again and it closes.
+  Three things never fold — the agent's own text, an error, and the card of an agent it delegated
+  to. That card carries the approval prompt somebody has to answer, and a tidy thread is not worth
+  hiding it for.
+
 - **The box finishes your sentence, and Tab takes it.** Two things, both worked out on your machine
   and neither of them sent anywhere. With the box empty and the agent's last message ending in a
   yes/no question, the answer appears in grey: press Tab to take it, Enter to send. With something

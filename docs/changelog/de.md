@@ -6,6 +6,19 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Nur das, was der Agent gerade tut, in einer Zeile.** Ein arbeitender Agent schreibt eine Zeile
+  pro Werkzeug, das er benutzt, und ein langer Lauf schreibt Hunderte: der Verlauf füllte sich mit
+  dem, was er schon erledigt hatte, und die eine lesenswerte Zeile — was er *gerade jetzt* tut —
+  lag irgendwo weiter oben begraben. Die Schritte laufen jetzt durch eine Laufzeile. Sie ist eine
+  Zeile hoch und ihr Überlauf ist verborgen, also verlässt der eben beendete Schritt sie nach oben,
+  während der neue von unten hereinkommt. Die Bewegung ist der Punkt: eine Zeile, die ihren Text an
+  Ort und Stelle austauscht, sieht gleich aus, ob sie sich einmal oder vierzigmal geändert hat, und
+  "läuft das noch?" war genau die Frage, die eine Wand aus stillem Text aufwarf. Ein Klick auf die
+  Zeile öffnet die Historie darüber, ein weiterer Klick auf dieselbe Zeile schließt sie wieder.
+  Drei Dinge falten sich nie ein: der Text des Agenten selbst, ein Fehler, und die Karte eines
+  Agenten, an den er delegiert hat. Auf dieser Karte sitzt die Freigabe, die jemand beantworten
+  muss, und dafür ist ein aufgeräumter Verlauf nicht genug.
+
 - **Der Kasten schreibt deinen Satz zu Ende, und Tab nimmt ihn an.** Zwei Dinge, beide auf deinem
   Rechner ausgerechnet und keines davon irgendwohin geschickt. Ist der Kasten leer und endet die
   letzte Nachricht des Agenten mit einer Ja/Nein-Frage, erscheint die Antwort in Grau: Tab nimmt sie,
