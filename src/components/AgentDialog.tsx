@@ -40,16 +40,19 @@ const OTHER_MODEL_OPTION = "__other__";
 
 function quotaLine(item: QuotaItem, t: TFunction): { text: string; percent?: number } {
   if (item.unlimited) return { text: t("agentDialog.quotaUnlimited") };
-  if (item.entitlement !== undefined && item.remaining !== undefined) {
-    const percent = item.percentRemaining ?? Math.round((item.remaining / item.entitlement) * 100);
-    return { text: `${item.remaining} / ${item.entitlement} (${Math.round(percent)}%)`, percent };
+  // Both the line and the bar count what has been spent. The bar fills as the quota goes, so the
+  // number beside it has to be the one that grows with it: a line reading "17% left" over a bar
+  // filled to 83% asks you to do the subtraction yourself and to notice the two are not the same
+  // number.
+  // An entitlement of zero divides into a NaN that reaches the bar's `value` and out the other
+  // side; there is nothing to show a share of anyway, so it falls through to the plain note.
+  if (item.entitlement !== undefined && item.remaining !== undefined && item.entitlement > 0) {
+    const remainingPercent = item.percentRemaining ?? (item.remaining / item.entitlement) * 100;
+    const used = item.entitlement - item.remaining;
+    return { text: `${used} / ${item.entitlement} (${Math.round(100 - remainingPercent)}%)`, percent: 100 - remainingPercent };
   }
   if (item.usedPercent !== undefined) {
-    // Said as what is left, because that is what the bar under it fills, and what the ring in the
-    // composer draws. A line reading "83% used" over a bar filled to 17% asks you to do the
-    // subtraction yourself and to notice that the two are not the same number.
-    const remaining = 100 - item.usedPercent;
-    return { text: t("quota.remainingPercent", { percent: remaining }), percent: remaining };
+    return { text: t("quota.usedPercent", { percent: item.usedPercent }), percent: item.usedPercent };
   }
   return { text: item.note || "" };
 }

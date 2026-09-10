@@ -41,6 +41,19 @@ export function truncate(text: string, n: number): string {
   return clean.slice(0, n).trimEnd() + "…";
 }
 
+/**
+ * Caps `text` at `n` characters, keeping its line breaks.
+ *
+ * The difference from `truncate` above is the whole reason this exists: `truncate` folds every run
+ * of whitespace into one space, which is right for a single line in a row and wrong for anything
+ * shown as it was written — a stack trace, a multi-line command, a step's full text in a tooltip.
+ */
+export function clip(text: string, n: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= n) return trimmed;
+  return trimmed.slice(0, n).trimEnd() + "…";
+}
+
 /** The time of day, the way the active locale writes it. */
 export function formatClock(ts: number, locale = "es"): string {
   return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(new Date(ts));

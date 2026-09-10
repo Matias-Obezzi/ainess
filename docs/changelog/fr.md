@@ -74,6 +74,23 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'anneau et la barre de quota se remplissent à mesure qu'il se consomme.** Ils se remplissaient
+  avec ce qui *restait* : un quota intact était un anneau plein, un quota presque épuisé était
+  presque vide — l'inverse de n'importe quelle jauge de quelque chose qui se consomme, et la raison
+  pour laquelle on ne les lisait pas d'un coup d'œil. Ils partent vides et se remplissent de ce qui
+  a été dépensé, et tous les chiffres à côté comptent la même chose : « 83 % », c'est ce qui est
+  parti, pas ce qui reste. La couleur suit toujours ce qui reste, donc un anneau presque plein est
+  aussi rouge : les deux moitiés disent « ça s'épuise » au même moment, au lieu que l'une le dise
+  trop tard.
+
+- **Une étape dit ce qu'elle a fait sans attendre le navigateur.** Chaque ligne de l'activité d'un
+  agent est tronquée — un outil affiche son résumé, une délégation quatre-vingt-dix caractères de la
+  tâche — et le seul moyen de lire le reste était le `title` du navigateur : une seconde d'attente,
+  une boîte nue là où se trouvait le pointeur, et les retours à la ligne écrasés en espaces, soit
+  exactement ce qu'on ne veut pas pour une commande ou une trace d'erreur. Elles ont maintenant
+  l'infobulle de l'application, ancrée à leur ligne, en monospace et avec les retours à la ligne
+  conservés. L'étape en cours en a une aussi, elle qui n'avait rien du tout.
+
 - **Un agent ne sait plus rien d'un projet dont personne ne lui a parlé.** Le contexte partagé était
   un seul texte dans les réglages, ajouté au prompt de chaque agent de chaque projet. Écrivez-y
   quelque chose sur un dépôt et tous les agents, partout, l'avaient lu : c'est ainsi qu'un message

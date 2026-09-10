@@ -1,3 +1,7 @@
+// `fraction` and `label` point opposite ways on purpose, and these tests are where that is held:
+// `fraction` is what is LEFT (it decides whether an agent can run), `label` is what was SPENT (it
+// sits beside a ring and a bar that fill as the quota goes). Every case below checks both, so one
+// of them drifting from the other cannot pass quietly.
 import { describe, it, expect } from "vitest";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
 import type { ProviderQuota, QuotaItem } from "@/types";
@@ -16,7 +20,8 @@ describe("summarizeAgentQuota", () => {
       {},
     );
     expect(summary.fraction).toBeCloseTo(0.25);
-    expect(summary.label).toBe("50/200");
+    // 50 of 200 left is 150 of 200 spent.
+    expect(summary.label).toBe("150/200");
     expect(summary.status).toBe("ok");
   });
 
@@ -29,13 +34,13 @@ describe("summarizeAgentQuota", () => {
       {},
     );
     expect(summary.fraction).toBeCloseTo(0.6);
-    expect(summary.label).toBe("60%");
+    expect(summary.label).toBe("40%");
   });
 
-  it("turns usedPercent into what is left", () => {
+  it("turns usedPercent into what is left, and shows what was used", () => {
     const summary = summarizeAgentQuota(quota([{ label: "Ventana de 5 h", usedPercent: 80 }]), {});
     expect(summary.fraction).toBeCloseTo(0.2);
-    expect(summary.label).toBe("20%");
+    expect(summary.label).toBe("80%");
     expect(summary.detail).toContain("Ventana de 5 h");
   });
 
@@ -94,7 +99,7 @@ describe("summarizeAgentQuota", () => {
     const summary = summarizeAgentQuota(quota(items, { provider: "claude" }), {
       allModels: ["opus", "sonnet"],
     });
-    expect(summary.label).toBe("50/200");
+    expect(summary.label).toBe("150/200");
     expect(summary.fraction).toBeCloseTo(0.25);
   });
 
@@ -113,7 +118,7 @@ describe("summarizeAgentQuota", () => {
       quota([{ label: "Premium requests", remaining: 7, entitlement: 300 }]),
       { model: "gpt-5" },
     );
-    expect(summary.label).toBe("7/300");
+    expect(summary.label).toBe("293/300");
   });
 });
 

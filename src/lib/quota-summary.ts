@@ -1,13 +1,25 @@
-// Turns a provider's raw quota (src/lib/quota.ts) into the single number the UI draws: how much is
-// left for one agent. Pure module, no store and no I/O, so it is easy to test.
+// Turns a provider's raw quota (src/lib/quota.ts) into the numbers the UI draws for one agent.
+//
+// Two of them, and they point opposite ways on purpose. `fraction` is how much is LEFT — that is
+// what says whether an agent can still run, and what colours the ring. `label` is how much was
+// SPENT, because the ring and the bar fill up as the quota is consumed, and a number next to a bar
+// has to be counting the same thing the bar is.
+//
+// Pure module, no store and no I/O, so it is easy to test.
 import { ProviderQuota, QuotaItem } from "@/types";
 import { formatQuotaLine, formatResetsAt, poolOf } from "@/lib/quota";
 import { translateNow } from "@/i18n/useT";
 
 export interface QuotaSummary {
-  /** Remaining share, 0..1, or null when the provider does not report enough to know. */
+  /**
+   * Remaining share, 0..1, or null when the provider does not report enough to know. This is the
+   * one the rest of the app reasons with: zero is an agent that cannot run.
+   */
   fraction: number | null;
-  /** Compact label for the ring: "62%", "12/50" or "∞". */
+  /**
+   * Compact label of what has been SPENT, to sit beside the ring or the bar, both of which fill as
+   * the quota goes: "38%", "38/50", or "∞" when there is no ceiling to spend against.
+   */
   label: string;
   /** One line for the tooltip: what it is and when it resets. */
   detail: string;
@@ -89,14 +101,14 @@ export function summarizeAgentQuota(
     const remaining = counted.reduce((sum, i) => sum + (i.remaining ?? 0), 0);
     const entitlement = counted.reduce((sum, i) => sum + (i.entitlement ?? 0), 0);
     const fraction = entitlement > 0 ? remaining / entitlement : 0;
-    return summaryOf(fraction, `${remaining}/${entitlement}`, detailOf(leadItem(counted, i => share(i))), details);
+    return summaryOf(fraction, `${entitlement - remaining}/${entitlement}`, detailOf(leadItem(counted, i => share(i))), details);
   }
 
   const percents = items.filter(i => !i.unlimited && i.percentRemaining !== undefined);
   if (percents.length > 0) {
     const avg = percents.reduce((sum, i) => sum + (i.percentRemaining ?? 0), 0) / percents.length;
     const fraction = avg / 100;
-    return summaryOf(fraction, `${Math.round(avg)}%`, detailOf(leadItem(percents, i => (i.percentRemaining ?? 0) / 100)), details);
+    return summaryOf(fraction, `${Math.round(100 - avg)}%`, detailOf(leadItem(percents, i => (i.percentRemaining ?? 0) / 100)), details);
   }
 
   const windows = items.filter(i => !i.unlimited && i.usedPercent !== undefined);
@@ -104,7 +116,7 @@ export function summarizeAgentQuota(
     // The tightest window is the one that stops the agent, so it drives the ring.
     const lead = leadItem(windows, i => 1 - (i.usedPercent ?? 0) / 100);
     const fraction = 1 - (lead.usedPercent ?? 0) / 100;
-    return summaryOf(fraction, `${Math.round(fraction * 100)}%`, detailOf(lead), details);
+    return summaryOf(fraction, `${Math.round(100 - fraction * 100)}%`, detailOf(lead), details);
   }
 
   const unlimited = items.filter(i => i.unlimited);

@@ -1,4 +1,4 @@
-// The little circle that says how much quota is left, plus the hook that computes it for an agent.
+// The little circle that says how much of an agent's quota has gone, plus the hook that computes it.
 import { useMemo } from "react";
 import type { AgentConfig } from "@/types";
 import { useAppStore } from "@/store";
@@ -8,24 +8,30 @@ import { cn } from "@/lib/utils";
 import { translateNow } from "@/i18n/useT";
 
 /** Green while there is room, amber when it gets tight, red when it is about to run out. */
-function ringColor(fraction: number | null): string {
-  if (fraction === null) return "text-muted-foreground/40";
-  if (fraction > 0.5) return "text-emerald-500";
-  if (fraction >= 0.2) return "text-amber-500";
+function ringColor(remaining: number | null): string {
+  if (remaining === null) return "text-muted-foreground/40";
+  if (remaining > 0.5) return "text-emerald-500";
+  if (remaining >= 0.2) return "text-amber-500";
   return "text-destructive";
 }
 
 /**
- * A donut with the remaining share drawn as an arc, like Claude's. Too small for text inside: the
- * number goes next to it or in the tooltip.
+ * A donut that fills as the quota is spent. Too small for text inside: the number goes next to it
+ * or in the tooltip.
+ *
+ * The arc and the colour read opposite ways, and both are deliberate. The arc grows with what has
+ * been used, the way every meter of a thing being consumed does — an empty ring is an untouched
+ * quota. The colour follows what is left, so a ring that is nearly full is also red: the two say
+ * "you are running out" together rather than one of them saying it late.
  */
 export function QuotaRing({
-  fraction,
+  remaining,
   size = 18,
   label,
   className
 }: {
-  fraction: number | null;
+  /** Share still available, 0..1, or null when the provider does not report enough to know. */
+  remaining: number | null;
   size?: number;
   label?: string;
   className?: string;
@@ -33,8 +39,9 @@ export function QuotaRing({
   const stroke = Math.max(2, Math.round(size / 9));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const filled = fraction === null ? 0 : Math.max(0, Math.min(1, fraction));
-  const percent = fraction === null ? null : Math.round(filled * 100);
+  const left = remaining === null ? 0 : Math.max(0, Math.min(1, remaining));
+  const filled = remaining === null ? 0 : 1 - left;
+  const percent = remaining === null ? null : Math.round(filled * 100);
   const text = label ?? (percent === null ? translateNow("quota.noData") : `${percent}%`);
 
   return (
@@ -43,8 +50,8 @@ export function QuotaRing({
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-label={translateNow("quota.remaining", { value: text })}
-      className={cn("shrink-0", ringColor(fraction), className)}
+      aria-label={translateNow("quota.used", { value: text })}
+      className={cn("shrink-0", ringColor(remaining), className)}
     >
       <circle
         cx={size / 2}
@@ -55,7 +62,7 @@ export function QuotaRing({
         strokeWidth={stroke}
         className="opacity-20"
       />
-      {fraction !== null && filled > 0 && (
+      {remaining !== null && filled > 0 && (
         <circle
           cx={size / 2}
           cy={size / 2}

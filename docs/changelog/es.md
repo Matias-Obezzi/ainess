@@ -69,6 +69,22 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El anillo y la barra de cuota se llenan a medida que la gastás.** Se llenaban con lo que
+  *quedaba*, así que una cuota intacta era un anillo lleno y una casi agotada estaba casi vacía: al
+  revés de cualquier medidor de algo que se consume, y por eso no se leían de un vistazo. Ahora
+  arrancan vacíos y se llenan con lo gastado, y todos los números al lado cuentan lo mismo: «83%» es
+  lo que se fue, no lo que queda. El color sigue mirando lo que sobra, así que un anillo casi lleno
+  además está en rojo: las dos mitades dicen «se está acabando» en el mismo momento, en lugar de que
+  una lo diga tarde.
+
+- **Un step dice lo que hizo sin esperar al navegador.** Cada fila de la actividad de un agente está
+  recortada —una herramienta muestra su resumen, una delegación noventa caracteres de la tarea— y la
+  única forma de leer el resto era el `title` que dibuja el navegador: un segundo de espera, una
+  cajita pelada donde cayó el puntero, y los saltos de línea aplastados en espacios, que es
+  justamente lo que no querés para un comando o un stack trace. Ahora tienen el tooltip de la app,
+  pegado a la fila, en monoespaciada y con los saltos de línea intactos. El step en el que va la
+  corrida también tiene uno, y antes no tenía nada.
+
 - **Un agente ya no sabe de un proyecto del que nadie le habló.** El contexto compartido era un
   solo texto en la pantalla de ajustes, y se pegaba al prompt de todos los agentes de todos los
   proyectos. Escribías algo sobre un repo y todos los agentes, en todos lados, lo habían leído: así

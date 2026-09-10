@@ -68,6 +68,22 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O anel e a barra de cota se enchem conforme ela é gasta.** Eles se enchiam com o que *sobrava*:
+  uma cota intacta era um anel cheio e uma quase esgotada estava quase vazia — o contrário de
+  qualquer medidor de algo que se consome, e o motivo de ninguém conseguir lê-los de relance. Agora
+  começam vazios e se enchem com o que foi gasto, e todos os números ao lado contam a mesma coisa:
+  «83%» é o que se foi, não o que resta. A cor continua olhando o que sobra, então um anel quase
+  cheio também está vermelho: as duas metades dizem «está acabando» no mesmo momento, em vez de uma
+  delas dizer tarde.
+
+- **Um passo diz o que fez sem esperar pelo navegador.** Cada linha da atividade de um agente está
+  cortada — uma ferramenta mostra o seu resumo, uma delegação noventa caracteres da tarefa — e a
+  única forma de ler o resto era o `title` que o navegador desenha: um segundo de espera, uma
+  caixinha pelada onde o ponteiro calhou de estar, e as quebras de linha achatadas em espaços, que é
+  justamente o que você não quer num comando ou num stack trace. Agora têm o tooltip do app,
+  ancorado na sua linha, em monoespaçada e com as quebras de linha intactas. O passo em que a
+  execução está também tem um, e antes não tinha nada.
+
 - **Um agente já não sabe de um projeto sobre o qual ninguém lhe falou.** O contexto compartilhado
   era um único texto na tela de ajustes, e era colado no prompt de todos os agentes de todos os
   projetos. Você escrevia algo sobre um repositório e todos os agentes, em todo lugar, tinham lido:

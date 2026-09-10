@@ -467,7 +467,7 @@ function AgentsTab({ projectId }: { projectId: string }) {
                 </span>
                 {summary.fraction !== null && (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <QuotaRing fraction={summary.fraction} label={summary.label} size={12} />
+                    <QuotaRing remaining={summary.fraction} label={summary.label} size={12} />
                     <span className="truncate max-w-[120px] tabular-nums" title={summary.detail}>{summary.label}</span>
                   </span>
                 )}

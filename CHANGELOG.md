@@ -72,6 +72,21 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The quota ring and bar fill up as the quota goes.** They filled as it was *left*, so a fresh
+  quota was a full ring and one you had spent was nearly empty — backwards for a meter of something
+  being consumed, and the reason nobody could read them at a glance. They now start empty and fill
+  as you spend, and every number beside them counts the same way: "83%" is what has gone, not what
+  is left. The colour still follows what remains, so a ring that is nearly full is also red — both
+  halves say "running out" at the same moment instead of one of them saying it late.
+
+- **A step says what it did without waiting for the browser.** Every row of an agent's activity is
+  cut short — a tool shows its summary, a delegation ninety characters of the task — and the only
+  way to read the rest was the `title` the browser draws: a second of waiting, a bare box wherever
+  the pointer happened to be, and line breaks folded into spaces, which is exactly what you did not
+  want for a command or a stack trace. They have the app's own tooltip now, anchored to the row,
+  monospace, with the line breaks kept. The step a run is on right now has one too, and it never
+  had anything at all.
+
 - **An agent no longer knows about a project it was never told about.** The shared context was one
   string on the settings screen, and it was appended to the prompt of every agent of every project.
   Say something in it about one repo and every agent everywhere had read it — which is how a

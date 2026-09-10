@@ -246,7 +246,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="ml-auto flex cursor-help items-center gap-1">
-                    <QuotaRing fraction={quota.fraction} label={quota.label} size={14} />
+                    <QuotaRing remaining={quota.fraction} label={quota.label} size={14} />
                     {quota.fraction !== null && (
                       <span className="text-[10px] text-muted-foreground tabular-nums">{quota.label}</span>
                     )}

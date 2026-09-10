@@ -75,6 +75,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ring und Balken des Kontingents füllen sich, während es verbraucht wird.** Sie füllten sich mit
+  dem, was *übrig* war: ein unangetastetes Kontingent war ein voller Ring, ein fast aufgebrauchtes
+  fast leer — verkehrt herum für die Anzeige von etwas, das verbraucht wird, und der Grund, warum
+  sie auf einen Blick nicht zu lesen waren. Jetzt beginnen sie leer und füllen sich mit dem
+  Verbrauchten, und jede Zahl daneben zählt dasselbe: „83 %" ist, was weg ist, nicht was bleibt. Die
+  Farbe richtet sich weiter nach dem Rest, ein fast voller Ring ist also auch rot — beide Hälften
+  sagen im selben Moment „es geht zur Neige", statt dass eine es zu spät sagt.
+
+- **Ein Schritt sagt, was er getan hat, ohne auf den Browser zu warten.** Jede Zeile der Aktivität
+  eines Agenten ist gekürzt — ein Werkzeug zeigt seine Zusammenfassung, eine Delegation neunzig
+  Zeichen der Aufgabe — und der Rest war nur über das `title` des Browsers zu lesen: eine Sekunde
+  Warten, ein nacktes Kästchen irgendwo beim Zeiger, und Zeilenumbrüche zu Leerzeichen plattgedrückt,
+  genau das, was man bei einem Befehl oder einem Stacktrace nicht will. Jetzt haben sie den Tooltip
+  der App, an ihrer Zeile verankert, in Monospace und mit erhaltenen Umbrüchen. Der Schritt, bei dem
+  ein Lauf gerade ist, hat auch einen — er hatte vorher gar nichts.
+
 - **Ein Agent weiß nicht mehr von einem Projekt, von dem ihm niemand erzählt hat.** Der gemeinsame
   Kontext war ein einziger Text in den Einstellungen und wurde an den Prompt jedes Agenten in jedem
   Projekt gehängt. Schriebst du etwas über ein Repo, hatten alle Agenten überall es gelesen — so kam
