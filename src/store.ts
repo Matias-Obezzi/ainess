@@ -25,7 +25,7 @@ import { readWithLegacy } from "@/lib/storage-keys";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 
 /** The channels the messaging config actually has a slot for today. */
-type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord">;
+type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
 
 /** The config as this process last loaded or saved it: the base for the three-way merge on save. */
 let lastSavedConfig: AppConfig | null = null;
@@ -2232,7 +2232,7 @@ async function runInit(): Promise<void> {
     if (isTauri()) {
       const bridge = await import("@/lib/bridge");
       bridge.attachBridgeNotifications();
-      if (config.messaging?.telegram?.enabled || config.messaging?.discord?.enabled) {
+      if (config.messaging?.telegram?.enabled || config.messaging?.discord?.enabled || config.messaging?.slack?.enabled) {
         await bridge.startBridge().catch(() => {});
       }
     }

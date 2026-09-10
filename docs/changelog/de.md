@@ -6,6 +6,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Slack auch, und damit sind es alle drei.** Telegram, Discord und Slack, dieselben Befehle in
+  dem, den du ohnehin offen hast, jeder mit eigener Karte in den Einstellungen und eigener
+  Chatliste — ein Chat, der auf einem autorisiert ist, ist auf einem autorisiert. Slack verlangt
+  zwei Tokens statt einem: eines auf App-Ebene, das die Verbindung öffnet, und eines für den Bot,
+  das schreibt. Das ist Slacks Entwurf, nicht unserer, und der Bildschirm sagt, welches welches
+  ist. Socket Mode muss in deiner Slack-App eingeschaltet und der Bot in den Kanal eingeladen sein;
+  auch das steht dort, denn sonst kommt nichts an und von hier ließe sich nicht sagen, warum.
+
 - **Discord, neben Telegram.** Dieselben Befehle in dem der beiden, den du ohnehin offen hast: Was
   du schreibst, startet eine Aufgabe, `/status` sagt, wer arbeitet, `/approve` und `/answer`
   erledigen, was auf dich wartet. Die Einstellungen haben jetzt eine Karte pro Kanal. Keiner von

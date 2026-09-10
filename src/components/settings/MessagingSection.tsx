@@ -24,7 +24,7 @@ import { useT } from "@/i18n/useT";
 const LAST_PROJECT = "__last__";
 
 /** The channels the messaging config actually has a slot for today. */
-type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord">;
+type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
 
 interface ChannelSpec {
   id: MessagingChannelId;
@@ -35,8 +35,10 @@ interface ChannelSpec {
   tokenPlaceholder: string;
   linkUrl: string;
   linkLabel: string;
-  /** Discord-only, for now: the reminder that the message content intent has to be on. */
+  /** Discord and Slack, so far: a reminder about extra setup that has to happen on the platform. */
   extraWarningKey?: string;
+  /** Slack-only, for now: the app-level token (`xapp-…`) that opens the Socket Mode connection. */
+  appToken?: { hintKey: string; placeholder: string };
 }
 
 const CHANNELS: ChannelSpec[] = [
@@ -61,6 +63,18 @@ const CHANNELS: ChannelSpec[] = [
     linkLabel: "Developer Portal",
     extraWarningKey: "messaging.discord.contentIntentWarning",
   },
+  {
+    id: "slack",
+    titleKey: "messaging.slack.title",
+    descriptionKey: "messaging.slack.description",
+    enableHintKey: "messaging.slack.enableHint",
+    tokenHintKey: "messaging.slack.tokenHint",
+    tokenPlaceholder: "xoxb-…",
+    linkUrl: "https://api.slack.com/apps",
+    linkLabel: "Slack Apps",
+    extraWarningKey: "messaging.slack.socketModeWarning",
+    appToken: { hintKey: "messaging.slack.appTokenHint", placeholder: "xapp-…" },
+  },
 ];
 
 export function MessagingSection() {
@@ -82,6 +96,7 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
   const enabled = channel?.enabled === true;
 
   const [token, setToken] = useState(channel?.token ?? "");
+  const [appToken, setAppToken] = useState(channel?.appToken ?? "");
   const [newChat, setNewChat] = useState("");
   const [testing, setTesting] = useState(false);
   // Neither of these lives in the store: one is a module's memory of who wrote, the other is what
@@ -179,6 +194,20 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
             <ExternalLink className="mr-1 h-3.5 w-3.5" /> {spec.linkLabel}
           </Button>
         </div>
+
+        {spec.appToken && (
+          <div className="flex flex-col gap-1 border-t pt-3">
+            <label className="text-sm font-semibold">{t("messaging.appToken")}</label>
+            <Input
+              type="password"
+              value={appToken}
+              placeholder={spec.appToken.placeholder}
+              onChange={e => setAppToken(e.target.value)}
+              onBlur={() => appToken !== (channel?.appToken ?? "") && save({ appToken: appToken.trim() })}
+            />
+            <span className="text-sm text-muted-foreground">{t(spec.appToken.hintKey)}</span>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 border-t pt-3">
           <label className="text-sm font-semibold">{t("messaging.chats")}</label>

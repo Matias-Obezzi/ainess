@@ -1,7 +1,7 @@
 // Driving the app from a chat you already have open, without opening a door into your machine.
 //
 // The trick is that nothing has to reach you: the providers connect outwards (Telegram is polled
-// over HTTPS, Discord holds a Gateway socket open, Slack will too), so there is no tunnel, no port
+// over HTTPS, Discord holds a Gateway socket open, Slack holds a Socket Mode one), so there is no tunnel, no port
 // and no public address. What arrives is text; what it turns into is `handleRemoteCommand`, the same API
 // the phone talks to — this file translates and decides who is allowed to speak, and that is all.
 import { useAppStore, selectProjectAgents } from "@/store";
@@ -15,23 +15,31 @@ import { notificationText } from "./notify";
 import { parseBridgeCommand, type BridgeCommand } from "./commands";
 import { TelegramProvider } from "./telegram";
 import { DiscordProvider } from "./discord";
+import { SlackProvider } from "./slack";
 import type { BridgeProvider, BridgeProviderId, IncomingMessage } from "./types";
 import type { MessagingChannelConfig } from "@/types";
 
 /** The channels this bridge knows how to speak, in the order the settings screen shows them. */
-const CHANNEL_IDS: BridgeProviderId[] = ["telegram", "discord"];
+const CHANNEL_IDS: BridgeProviderId[] = ["telegram", "discord", "slack"];
 
 /** This channel's own configuration — never another channel's, that is the whole point of having one per channel. */
 function messagingConfig(id: BridgeProviderId): MessagingChannelConfig | undefined {
   const messaging = useAppStore.getState().config.messaging;
   if (id === "telegram") return messaging?.telegram;
   if (id === "discord") return messaging?.discord;
+  if (id === "slack") return messaging?.slack;
   return undefined;
 }
 
-function newProvider(id: BridgeProviderId, token: string): BridgeProvider | null {
+/**
+ * `token` is always the one that sends messages, in every channel. `appToken` only exists for
+ * Slack, and only Slack needs it to open its socket — without both, that channel simply does not
+ * start, the same way any channel without a token does not.
+ */
+function newProvider(id: BridgeProviderId, token: string, appToken?: string): BridgeProvider | null {
   if (id === "telegram") return new TelegramProvider(token);
   if (id === "discord") return new DiscordProvider(token);
+  if (id === "slack") return appToken ? new SlackProvider(token, appToken) : null;
   return null;
 }
 
@@ -208,7 +216,11 @@ async function onMessage(provider: BridgeProvider, message: IncomingMessage): Pr
     const reply = await runCommand(parseBridgeCommand(message.text), message.chatId);
     await provider.send(message.chatId, reply);
   } catch (e) {
-    const error = e instanceof Error ? e.message : String(e);
+    // Through the sanitiser, both here and on the way back out. A failure to send can carry the
+    // URL it failed on, and Telegram's carries the token inside it — a log or a chat reply is the
+    // last place that should be the first to say it out loud.
+    const channel = messagingConfig(provider.id);
+    const error = sanitizeBridgeError(e, channel?.token, channel?.appToken);
     log.error("bridge", `no se pudo responder: ${error}`);
     // An order swallowed in silence is worse than one that says it went wrong.
     await provider.send(message.chatId, translateNow("bridge.reply.error", { error })).catch(() => {});
@@ -224,7 +236,7 @@ export async function startBridge(): Promise<void> {
   for (const id of CHANNEL_IDS) {
     const channel = messagingConfig(id);
     if (channel?.enabled && channel.token && !providers.has(id)) {
-      const provider = newProvider(id, channel.token);
+      const provider = newProvider(id, channel.token, channel.appToken);
       if (!provider) continue;
       providers.set(id, provider);
       void provider.start(m => onMessage(provider, m));
@@ -257,9 +269,9 @@ function allowedChats(id: BridgeProviderId): string[] {
 function getDispatchProviders(id: BridgeProviderId): BridgeProvider[] {
   const existing = providers.get(id);
   if (existing) return [existing];
-  const token = messagingConfig(id)?.token;
-  if (!token) return [];
-  const provider = newProvider(id, token);
+  const channel = messagingConfig(id);
+  if (!channel?.token) return [];
+  const provider = newProvider(id, channel.token, channel.appToken);
   return provider ? [provider] : [];
 }
 
@@ -275,10 +287,10 @@ export async function sendTest(chatId: string, id: BridgeProviderId = "telegram"
   await targets[0].send(chatId, translateNow("bridge.test.message"));
 }
 
-function sanitizeBridgeError(e: unknown, token?: string): string {
+function sanitizeBridgeError(e: unknown, ...tokens: Array<string | undefined>): string {
   let msg = e instanceof Error ? e.message : String(e);
-  if (token && token.trim()) {
-    msg = msg.split(token).join("[REDACTED]");
+  for (const token of tokens) {
+    if (token && token.trim()) msg = msg.split(token).join("[REDACTED]");
   }
   msg = msg.replace(/\/bot[^/\s]+/g, "/bot[REDACTED]");
   return msg;
@@ -300,7 +312,7 @@ export async function sendToAllowed(text: string, id: BridgeProviderId = "telegr
     const targets = getDispatchProviders(id);
     if (targets.length === 0) return 0;
 
-    const token = messagingConfig(id)?.token;
+    const channel = messagingConfig(id);
     for (const chatId of chats) {
       let sent = false;
       for (const provider of targets) {
@@ -308,7 +320,7 @@ export async function sendToAllowed(text: string, id: BridgeProviderId = "telegr
           await provider.send(chatId, text);
           sent = true;
         } catch (e) {
-          log.warn("bridge", `no se pudo avisar a ${chatId}: ${sanitizeBridgeError(e, token)}`);
+          log.warn("bridge", `no se pudo avisar a ${chatId}: ${sanitizeBridgeError(e, channel?.token, channel?.appToken)}`);
         }
       }
       if (sent) sentCount++;
@@ -331,7 +343,7 @@ export async function sendToChat(chatId: string, text: string, id: BridgeProvide
     throw new Error(translateNow("hooks.telegramNotAllowed", { id: chatId }));
   }
   const targets = getDispatchProviders(id);
-  const token = messagingConfig(id)?.token;
+  const channel = messagingConfig(id);
   let sent = false;
   let lastError = "";
   for (const provider of targets) {
@@ -339,7 +351,7 @@ export async function sendToChat(chatId: string, text: string, id: BridgeProvide
       await provider.send(chatId, text);
       sent = true;
     } catch (e) {
-      lastError = sanitizeBridgeError(e, token);
+      lastError = sanitizeBridgeError(e, channel?.token, channel?.appToken);
       log.warn("bridge", `no se pudo avisar a ${chatId}: ${lastError}`);
     }
   }
@@ -374,8 +386,10 @@ export function attachBridgeNotifications(): void {
       : undefined;
     const text = notificationText(newest, project);
     for (const provider of providers.values()) {
+      const channel = messagingConfig(provider.id);
       for (const chatId of allowedChats(provider.id)) {
-        void provider.send(chatId, text).catch(e => log.warn("bridge", `no se pudo avisar: ${e}`));
+        void provider.send(chatId, text).catch(e =>
+          log.warn("bridge", `no se pudo avisar: ${sanitizeBridgeError(e, channel?.token, channel?.appToken)}`));
       }
     }
   });

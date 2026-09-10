@@ -6,6 +6,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **También Slack, y con eso están los tres.** Telegram, Discord y Slack, los mismos comandos en el
+  que ya tengas abierto, cada uno con su tarjeta en Configuración y su propia lista de chats — un
+  chat autorizado en uno está autorizado en uno. Slack pide dos tokens en vez de uno: el de
+  aplicación abre la conexión y el de bot escribe, que es cómo lo diseñó Slack y no nosotros, y la
+  pantalla te dice cuál es cuál. Socket Mode tiene que estar activado en tu app de Slack y el bot
+  tiene que estar invitado al canal; eso también te lo dice, porque si no no llega nada y desde acá
+  no habría forma de explicarte por qué.
+
 - **Discord, al lado de Telegram.** Los mismos comandos en el que ya tengas abierto de los dos:
   cualquier cosa que escribas arranca una tarea, `/status` te dice quién trabaja, `/approve` y
   `/answer` resuelven lo que te necesita. Configuración ahora tiene una tarjeta por canal. Ninguno

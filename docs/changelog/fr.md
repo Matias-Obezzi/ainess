@@ -6,6 +6,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Slack aussi, et cela fait les trois.** Telegram, Discord et Slack, les mêmes commandes dans
+  celui que vous avez déjà ouvert, chacun avec sa carte dans les réglages et sa propre liste de
+  conversations — une conversation autorisée sur l'un est autorisée sur un seul. Slack demande deux
+  jetons plutôt qu'un : celui au niveau de l'application ouvre la connexion, celui du bot écrit.
+  C'est la conception de Slack, pas la nôtre, et l'écran dit lequel est lequel. Le Socket Mode doit
+  être activé dans votre application Slack et le bot invité dans le salon ; l'écran le dit aussi,
+  car sinon rien n'arrive et rien ici ne pourrait vous en donner la raison.
+
 - **Discord, à côté de Telegram.** Les mêmes commandes dans celui des deux que vous avez déjà
   ouvert : ce que vous écrivez lance une tâche, `/status` dit qui travaille, `/approve` et
   `/answer` règlent ce qui vous attend. Les réglages ont désormais une carte par canal. Ni l'un ni

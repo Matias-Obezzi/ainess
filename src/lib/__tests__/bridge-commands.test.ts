@@ -88,6 +88,7 @@ describe("channels do not share their authorised chats", () => {
         messaging: {
           telegram: { enabled: true, token: "tg-token", allowedChatIds: ["shared-id"], projectId: null },
           discord: { enabled: true, token: "dc-token", allowedChatIds: [], projectId: null },
+          slack: { enabled: true, token: "sl-bot-token", appToken: "sl-app-token", allowedChatIds: [], projectId: null },
         },
         projects: [{ id: "p1", name: "Proyecto 1", workspaceDir: "C:/p1", createdAt: 1, agents: [] }],
       },
@@ -109,6 +110,9 @@ describe("channels do not share their authorised chats", () => {
     expect(sent.length).toBe(1);
 
     await expect(sendToChat("shared-id", "hola", "discord")).rejects.toThrow();
+    expect(sent.length).toBe(1);
+
+    await expect(sendToChat("shared-id", "hola", "slack")).rejects.toThrow();
     expect(sent.length).toBe(1);
   });
 });

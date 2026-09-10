@@ -294,7 +294,10 @@ export interface Preset {
 
 export interface MessagingChannelConfig {
   enabled: boolean;
+  /** The token that sends messages: the bot token, in every channel including Slack. */
   token: string;
+  /** Slack-only: the app-level token (`xapp-…`) that opens the Socket Mode connection. */
+  appToken?: string;
   allowedChatIds: string[];
   projectId: string | null;
 }
@@ -307,7 +310,7 @@ export interface AppConfig {
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
-  messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig };
+  messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig; slack?: MessagingChannelConfig };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];

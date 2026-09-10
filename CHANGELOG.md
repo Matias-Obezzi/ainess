@@ -8,6 +8,14 @@ let one of them fall behind.
 
 ### Added
 
+- **Slack too, and that is all three.** Telegram, Discord and Slack, the same commands in whichever
+  one you already have open, each with its own card in Settings and its own list of chats — a chat
+  authorised on one is authorised on one. Slack asks for two tokens rather than one: an app-level
+  one to open the connection and a bot one to write, which is Slack's design, not ours, and the
+  screen says which is which. Socket Mode has to be on in your Slack app and the bot has to be
+  invited to the channel; the screen says that too, because otherwise nothing arrives and there is
+  no way from here to tell you why.
+
 - **Discord, beside Telegram.** The same commands in whichever of the two you already have open:
   anything you write starts a task, `/status` says who is working, `/approve` and `/answer` settle
   what needs you. Settings has a card per channel now. Nothing is exposed by either — the app is
