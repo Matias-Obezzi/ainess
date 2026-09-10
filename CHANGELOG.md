@@ -22,6 +22,16 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The app stops going sluggish while an agent works.** Every line a CLI printed was appended to
+  its run in the store, twelve times a second for the whole length of a run. Eight screens subscribe
+  to the map of runs — the box you type into among them — so all of them re-rendered at that rate,
+  for a buffer nothing on screen was reading: those raw lines are only ever shown in one dialog, and
+  only when you open it. They are kept aside now and written into the run once, when it ends, so the
+  runs stop moving while one is going. The dialog still follows them live, and a crash mid-run still
+  leaves the log on disk. Two more along the way: a flush that carried no text stopped rewriting the
+  feed to put it back unchanged, and the hierarchy's nodes stopped redrawing on every delta — each
+  one now watches the last tool call of its own agent, which does not move between tool calls.
+
 - **A project that was working when the app restarted says so.** Update the app mid-delegation,
   reopen it, go to the hierarchy, and it looked like a project where nothing had ever happened —
   every agent idle, with nothing to say. The runs were coming back from disk all along and the

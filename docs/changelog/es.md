@@ -21,6 +21,17 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La app deja de ponerse lenta mientras un agente trabaja.** Cada línea que imprimía un CLI se
+  agregaba a su corrida en el store, doce veces por segundo durante toda la corrida. Ocho pantallas
+  se suscriben al mapa de corridas —la caja donde escribís, entre ellas— así que todas se volvían a
+  dibujar a ese ritmo, por un buffer que nada en pantalla estaba leyendo: esas líneas crudas solo se
+  muestran en un diálogo, y solo si lo abrís. Ahora se guardan aparte y se escriben en la corrida una
+  sola vez, cuando termina, así las corridas dejan de moverse mientras una está en curso. El diálogo
+  las sigue viendo en vivo, y si la app se cae en medio de una corrida el log igual queda en disco.
+  Dos más de paso: un flush sin texto dejó de reescribir el feed para devolverlo igual, y los nodos
+  de la jerarquía dejaron de redibujarse con cada delta — ahora cada uno mira la última herramienta
+  de su propio agente, que no cambia entre llamada y llamada.
+
 - **Un proyecto que estaba trabajando cuando se reinició la app lo dice.** Actualizabas la app en
   medio de una delegación, la volvías a abrir, ibas a jerarquía y parecía un proyecto donde nunca
   había pasado nada: todos los agentes inactivos, sin nada que decir. Las corridas volvían del disco

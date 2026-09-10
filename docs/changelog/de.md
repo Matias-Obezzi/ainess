@@ -21,6 +21,18 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die App wird nicht mehr träge, während ein Agent arbeitet.** Jede Zeile, die ein CLI ausgab,
+  wurde an seinen Lauf im Store angehängt, zwölfmal pro Sekunde, den ganzen Lauf lang. Acht Ansichten
+  hängen an der Map der Läufe — das Eingabefeld darunter —, also zeichneten sie sich alle in diesem
+  Takt neu, für einen Puffer, den nichts auf dem Bildschirm las: diese Rohzeilen stehen nur in einem
+  Dialog, und nur wenn man ihn öffnet. Sie liegen jetzt beiseite und werden einmal in den Lauf
+  geschrieben, wenn er endet, sodass die Läufe stillstehen, solange einer läuft. Der Dialog folgt
+  ihnen weiterhin live, und ein Absturz mitten im Lauf hinterlässt das Log trotzdem auf der Platte.
+  Zwei weitere nebenbei: ein Flush ohne Text schreibt den Verlauf nicht mehr um, nur um ihn
+  unverändert zurückzugeben, und die Knoten der Hierarchie zeichnen sich nicht mehr bei jedem Delta
+  neu — jeder beobachtet jetzt den letzten Werkzeugaufruf seines eigenen Agenten, der sich zwischen
+  zwei Aufrufen nicht bewegt.
+
 - **Ein Projekt, das beim Neustart der App gearbeitet hat, sagt das auch.** Die App mitten in einer
   Delegation aktualisieren, wieder öffnen, zur Hierarchie gehen — und es sah aus wie ein Projekt, in
   dem nie etwas passiert war: alle Agenten untätig, ohne etwas zu sagen. Die Läufe kamen die ganze

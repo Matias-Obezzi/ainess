@@ -70,7 +70,7 @@ const NO_MESSAGES: CommMessage[] = [];
  */
 let indexCache: { messages: CommMessage[]; byRun: Map<string, CommMessage[]> } | null = null;
 
-function activityByRun(messages: CommMessage[]): Map<string, CommMessage[]> {
+export function activityByRun(messages: CommMessage[]): Map<string, CommMessage[]> {
   if (indexCache && indexCache.messages === messages) return indexCache.byRun;
   const byRun = new Map<string, CommMessage[]>();
   for (const m of messages) {

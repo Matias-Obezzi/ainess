@@ -20,6 +20,17 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O app para de ficar lento enquanto um agente trabalha.** Cada linha que um CLI imprimia era
+  anexada à sua execução no store, doze vezes por segundo durante toda a execução. Oito telas se
+  inscrevem no mapa de execuções — a caixa onde você escreve entre elas — então todas se redesenhavam
+  nesse ritmo, por um buffer que nada na tela estava lendo: essas linhas cruas só aparecem numa
+  janela, e só se você abri-la. Agora ficam guardadas à parte e são escritas na execução uma vez só,
+  quando ela termina, então as execuções param de se mexer enquanto uma está em curso. A janela
+  continua acompanhando ao vivo, e um travamento no meio de uma execução ainda deixa o log em disco.
+  Mais duas de quebra: um flush sem texto parou de reescrever o fio para devolvê-lo igual, e os nós
+  da hierarquia pararam de se redesenhar a cada delta — agora cada um observa a última ferramenta do
+  seu próprio agente, que não muda entre uma chamada e outra.
+
 - **Um projeto que estava trabalhando quando o app reiniciou avisa.** Você atualizava o app no meio
   de uma delegação, abria de novo, ia para a hierarquia e parecia um projeto onde nunca tinha
   acontecido nada: todos os agentes ociosos, sem nada a dizer. As execuções voltavam do disco desde

@@ -21,6 +21,18 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'application ne devient plus poussive pendant qu'un agent travaille.** Chaque ligne imprimée
+  par un CLI était ajoutée à son run dans le store, douze fois par seconde pendant toute sa durée.
+  Huit écrans sont abonnés à la table des runs — dont la zone où vous écrivez —, ils se redessinaient
+  donc tous à ce rythme, pour un tampon que rien à l'écran ne lisait : ces lignes brutes ne
+  s'affichent que dans une boîte de dialogue, et seulement si vous l'ouvrez. Elles sont désormais
+  gardées à part et écrites dans le run une seule fois, à sa fin, si bien que les runs cessent de
+  bouger pendant qu'il y en a un. La boîte de dialogue les suit toujours en direct, et un plantage en
+  cours de run laisse malgré tout le journal sur le disque. Deux autres au passage : un vidage sans
+  texte ne réécrit plus le fil pour le rendre identique, et les nœuds de la hiérarchie ne se
+  redessinent plus à chaque delta — chacun surveille maintenant le dernier outil de son propre agent,
+  qui ne bouge pas entre deux appels.
+
 - **Un projet qui travaillait au redémarrage de l'application le dit.** Mettre l'application à jour
   au milieu d'une délégation, la rouvrir, aller à la hiérarchie : on aurait dit un projet où il ne
   s'était jamais rien passé — tous les agents inactifs, sans rien à dire. Les runs revenaient du

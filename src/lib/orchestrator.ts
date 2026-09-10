@@ -13,6 +13,7 @@ import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
+import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
@@ -128,39 +129,38 @@ export function flushStream() {
   const deltas = streamBuffer.take();
   if (deltas.size === 0) return;
 
-  useAppStore.setState(state => {
-    let runsChanged = false;
-    const runs = { ...state.runs };
-    let messagesChanged = false;
-    let messages = [...state.messages];
-    let addedMessages = 0;
+  // The lines go to a module of their own, not into the store. They used to be appended to
+  // `runs[id].rawLines` here, which gave `runs` a new identity twelve times a second and re-rendered
+  // every component watching it — the composer included — for a buffer only one dialog ever reads.
+  for (const [runId, delta] of deltas.entries()) appendRawLines(runId, delta.lines);
 
+  useAppStore.setState(state => {
+    const runs = state.runs;
     const runIdsWithText = new Set<string>();
     for (const [runId, delta] of deltas.entries()) {
       if (delta.text) runIdsWithText.add(runId);
     }
+    // Nothing but lines this time, and those no longer live here: leave the store alone rather than
+    // copy the whole feed to put it back unchanged.
+    if (runIdsWithText.size === 0) return state;
 
+    let messagesChanged = false;
+    let messages = [...state.messages];
+    let addedMessages = 0;
+
+    // From the end: a run being streamed into has its `text-` message at the tail, and stopping as
+    // soon as they are all found turns a walk over the whole feed into a walk over the last few.
     const msgIndices = new Map<string, number>();
-    if (runIdsWithText.size > 0) {
-      for (let i = 0; i < messages.length; i++) {
-        const m = messages[i];
-        if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId)) {
-          msgIndices.set(m.runId, i);
-        }
+    for (let i = messages.length - 1; i >= 0 && msgIndices.size < runIdsWithText.size; i--) {
+      const m = messages[i];
+      if (m.runId && m.id === `text-${m.runId}` && runIdsWithText.has(m.runId) && !msgIndices.has(m.runId)) {
+        msgIndices.set(m.runId, i);
       }
     }
 
     for (const [runId, delta] of deltas.entries()) {
       const r = runs[runId];
       if (!r) continue;
-
-      if (delta.lines.length > 0) {
-        runs[runId] = {
-          ...r,
-          rawLines: [...r.rawLines, ...delta.lines].slice(-2000)
-        };
-        runsChanged = true;
-      }
 
       if (delta.text) {
         const idx = msgIndices.get(runId);
@@ -187,11 +187,8 @@ export function flushStream() {
       messages = trimMessagesInMemory(messages);
     }
 
-    if (!runsChanged && !messagesChanged) return state;
-    return {
-      ...(runsChanged ? { runs } : {}),
-      ...(messagesChanged ? { messages } : {})
-    };
+    if (!messagesChanged) return state;
+    return { messages };
   });
 
   // A note is worth having while the agent is still working, which is the whole point of it, so it
@@ -663,11 +660,16 @@ function handleExit(e: RunExitEvent) {
   const run = store.runs[e.runId];
   if (!run) return;
 
+  // Everything the run printed, taken out of the live buffer now that there is no more coming. From
+  // here on it belongs to the run: what gets saved, what the raw view of a finished run shows.
+  const rawLines = rawLinesOf(e.runId) ?? run.rawLines;
+  forgetRawLines(e.runId);
+
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
-  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(run.rawLines) : finalOutputFromLines(run.rawLines));
+  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(rawLines) : finalOutputFromLines(rawLines));
   // Providers that only report what each step spent (opencode) are added up here, once.
-  const finalUsage = spec?.finalUsage ? spec.finalUsage(run.rawLines) : undefined;
+  const finalUsage = spec?.finalUsage ? spec.finalUsage(rawLines) : undefined;
   const isError = e.code !== 0 && !e.killed && !collected;
   const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
   const output = e.killed ? translateNow("system.stoppedByUser") : collected;
@@ -680,6 +682,7 @@ function handleExit(e: RunExitEvent) {
         ...state.runs,
         [e.runId]: {
           ...state.runs[e.runId],
+          rawLines,
           status,
           output,
           endedAt: Date.now(),
@@ -698,7 +701,7 @@ function handleExit(e: RunExitEvent) {
   }
 
   if (agentForRun?.provider === "antigravity" && !e.killed) {
-    const text = `${output}\n${run.rawLines.slice(-20).join("\n")}`;
+    const text = `${output}\n${rawLines.slice(-20).join("\n")}`;
     void recordAntigravityOutcome(run.model ?? agentForRun.model, text, status === "done");
   }
 

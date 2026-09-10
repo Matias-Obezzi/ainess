@@ -10,6 +10,7 @@ import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { interruptedStrings } from "@/i18n/interrupted";
+import { rawLinesOf } from "@/lib/raw-lines";
 import { runtimeAfterInterruption } from "@/lib/interrupted-runtime";
 
 interface HistoryFile {
@@ -296,7 +297,9 @@ export async function saveHistory(projectId: string): Promise<void> {
     .filter(r => r.projectId === projectId)
     .sort((a, b) => a.startedAt - b.startedAt)
     .slice(-MAX_RUNS)
-    .map(r => ({ ...r, rawLines: r.rawLines.slice(-MAX_RAW_LINES) }));
+    // A running run keeps its lines in `lib/raw-lines`, not in the store: they are picked up here
+    // so a crash mid-run still leaves behind what the agent had printed.
+    .map(r => ({ ...r, rawLines: (rawLinesOf(r.id) ?? r.rawLines).slice(-MAX_RAW_LINES) }));
   const messages = state.messages.filter(m => m.projectId === projectId).slice(-MAX_MESSAGES);
   const questions = Object.values(state.questions).filter(q => q.projectId === projectId);
   const approvals = Object.values(state.approvals)
