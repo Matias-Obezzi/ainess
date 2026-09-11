@@ -2,6 +2,77 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.14.0 — 2026-09-11
+
+### Neu
+
+- **Ein gehosteter MCP-Server bekommt jetzt die Header, nach denen er fragt.** ainess schrieb einen
+  http-Server in die Sitzungskonfiguration als Typ und URL und sonst nichts, also war alles hinter
+  einem Bearer-Token schlicht nicht erreichbar: das Feld für den Token existierte nicht. Jetzt schon:
+  ein Header pro Zeile, `Name: Wert`, bei einem http-Server. Der Wert wird am ersten Doppelpunkt
+  geteilt und nicht am letzten, denn ein Wert hat eigene Doppelpunkte (eine URL, eine Uhrzeit, ein
+  Base64-Token), und am Ende zu schneiden übergibt dem Server eine halbe Anmeldung — ein Fehler, der
+  viel später als Authentifizierungsproblem auftaucht, das niemand bis zu einem Satzzeichen
+  zurückverfolgt. Schreib `Bearer ${DEINE_VARIABLE}`, und der Client löst sie beim Verbinden aus der
+  Umgebung auf, sodass das Geheimnis nie in die Konfigurationsdatei gerät. Antigravity bekommt sie
+  ebenfalls, über `agy mcp add --header`, Flag und Wert als getrennte Argumente und nie eine aus
+  Strings zusammengeklebte Kommandozeile. Und wenn dieser Befehl fehlschlägt, wird seine Ausgabe mit
+  bereits entfernter Anmeldung gezeigt: die Meldung nennt weiterhin den Server, der fehlschlug — der
+  Teil, der je nützlich war.
+
+### Behoben
+
+- **Antigravity nach dem Rest seines Kontingents zu fragen, öffnet kein Terminal mehr.** Die App
+  nimmt sich beim Start eine Konsole und versteckt sie, damit alles, was ein Agent seinerseits
+  startet, sie erbt und in keiner Tiefe ein Fenster aufgeht. Kurze Abfragen erbten sie ebenfalls —
+  und eine Konsole zu verstecken setzt voraus, dass `ShowWindow` das Fenster erreicht, das sie
+  anzeigt, was unter Windows 11, wo der Standard-Konsolenhost das Windows Terminal in einem eigenen
+  Prozess ist, nicht der Fall ist. Ein Kind, das einen Spinner zeichnet, holt dieses Fenster nach
+  vorn — und `agy models` zeichnet einen. Abfragen bekommen jetzt gar keine Konsole: dasselbe Flag,
+  das die Versionserkennung und die Aufräumbefehle seit jeher übergeben. Die Agenten bleiben, wie
+  sie waren; sie sind die mit einem Baum darunter, der eine Konsole zum Erben braucht.
+
+- **Das Feld für Umgebungsvariablen tut bei einem http-Server etwas.** Es wurde dort gezeichnet und
+  führte nirgendwohin: der http-Zweig der Sitzungskonfiguration hat nie `env` geschrieben, ein dort
+  eingetragener Schlüssel landete also in der Konfigurationsdatei und sonst nirgends. Ein
+  http-MCP-Server hat keinen eigenen Prozess, der Agent aber schon — und die Umgebung des Agenten
+  ist genau der Ort, an dem der MCP-Client nachsieht, wenn er `${VARIABLE}` in einem Header auflöst.
+  Dorthin gehen sie jetzt. Schlüssel ins Feld, `X-Goog-Api-Key: ${DEIN_SCHLUESSEL}` in die Header,
+  und es verbindet sich, ohne die Umgebung des Rechners anzufassen oder etwas neu zu starten. Das
+  Feld sagt, was das kostet, denn es ist weiter, als es aussieht: eine hier gesetzte Variable gehört
+  dem Prozess des Agenten, also sieht sie jeder MCP-Server, der Variablen auflöst, und alles, was
+  der Agent ausführt. Es bringt den Schlüssel in die App statt nach Windows; Geheimhaltung bringt es
+  nicht. Die Variablen eines stdio-Servers bleiben unberührt.
+- **Das Eingabefeld zeichnet sich nicht mehr zweimal pro Sekunde für einen Chat neu, in dem nichts
+  passiert.** Ob ein Chat gerade antwortet, liegt im Speicher des Chat-Moduls und nicht im Store,
+  also konnte nichts darauf reagieren: das Feld fragte auf einem 500-ms-Timer nach, solange eine
+  Unterhaltung offen war — ob etwas geschah oder nicht. Jetzt ist es abonniert: das Feld zeichnet
+  sich neu, wenn ein Zug beginnt oder endet, und sonst nicht.
+
+- **Schnelles Tippen lässt nicht mehr die ganze App für jeden Buchstaben arbeiten, und ein Panel,
+  das kaputtgeht, sagt, was kaputtging.** Was getippt wird, gehört zur Unterhaltung, lag also im
+  Store — und wurde bei jedem Tastendruck dorthin geschrieben. Der Store führt bei jedem Schreiben
+  den Selektor jedes Abonnenten aus, also ließ jedes Zeichen die Selektoren sämtlicher eingehängter
+  Bildschirme neu laufen und rendert neu, was sie speisten. Das Feld ist jetzt lokal und der Store
+  wird dahinter geschrieben: entprellt beim Tippen und sofort, wenn etwas nicht verloren gehen darf
+  — ein geleertes Feld, ein Wechsel der Unterhaltung, das Verlassen des Bildschirms. Davon
+  getrennt: die App hatte nirgends eine Error Boundary, ein Renderfehler riss also das ganze
+  Fenster mit, ohne Meldung und ohne Logeintrag — denn was ihn geschrieben hätte, starb ebenfalls.
+  Jetzt sind der Verlauf und das Feld jeweils ihre eigene Grenze. Ein Panel, das wirft, behält den
+  Fehler bei sich, zeigt ihn an und schreibt den Stack ins Log — das ist der Unterschied zwischen
+  einem Fehler, den man melden kann, und einem, den man nur als schwarz gewordenen Bildschirm
+  beschreiben kann.
+
+- **Das leere Feld malt nicht mehr zwei Sätze in dieselbe Zeile.** Der graue Vorschlag wird auf der
+  Ebene hinter dem Textfeld gezeichnet, die dessen eigenen Innenabstand trägt, damit er zu dem
+  passt, was man tippt — und ein leeres Feld beginnt genau an diesem Punkt, dort, wo der Platzhalter
+  steht. Endete die letzte Nachricht des Agenten also mit einer Ja/Nein-Frage und man hatte noch
+  nichts geschrieben, wurden "Sí, dale" und "Escribí mientras trabaja…" übereinander gedruckt und
+  keines von beiden war lesbar. Den Platz bekommt jetzt der Vorschlag: das ist die Aufgabe des
+  Platzhalters selbst — einem leeren Feld zu sagen, was damit anzufangen ist — nur mit der
+  Unterhaltung in der Hand statt im Allgemeinen. Der rotierende Hinweis tritt aus demselben Grund
+  und an derselben Stelle zurück.
+
 ## 0.13.0 — 2026-09-10
 
 ### Neu

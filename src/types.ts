@@ -92,6 +92,14 @@ export interface McpServer {
   args?: string[];
   env?: Record<string, string>;
   url?: string;
+  /**
+   * Extra HTTP headers sent on every request, for a hosted server that asks for authentication.
+   * Only applies to `transport: "http"`; a stdio server has no request to put them on.
+   *
+   * The value may hold `${VARIABLE}`, which the client expands from the environment when it reads
+   * its config, so the secret itself never has to be written down here.
+   */
+  headers?: Record<string, string>;
   enabledFor: "all" | string[];
 }
 

@@ -40,6 +40,9 @@ export const ja: Dictionary = {
   "common.copy": "コピー",
   "common.copied": "コピーしました",
   "common.retry": "再試行",
+  "error.panel.title": "画面のこの部分が壊れました",
+  "error.panel.body": "アプリの他の部分は動いています。詳細はログに記録しました: 設定 → 診断。",
+  "error.panel.retry": "もう一度試す",
   "common.open": "開く",
   "common.add": "追加",
   "common.remove": "削除",
@@ -1137,6 +1140,10 @@ export const ja: Dictionary = {
   "mcpDialog.transport": "トランスポート",
   "mcpDialog.commandAndArgs": "コマンドと引数 (例: npx -y @modelcontextprotocol/server-filesystem /dir)",
   "mcpDialog.env": "環境変数 (1行に1つ、CLAVE=valor)",
+  "mcpDialog.envHttpHint": "http サーバーは自前のプロセスを持ちません。これらはエージェントの環境に入り、ヘッダー内の ${VARIABLE} はそこから展開されます。このサーバーだけでなく、エージェントが実行するものすべてから見えます。",
+  "mcpDialog.headers": "HTTP ヘッダー（1 行に 1 つ、名前: 値）",
+  "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
+  "mcpDialog.headersHint": "Bearer ${MI_VARIABLE} と書けます。クライアントが環境変数から値を展開するため、シークレットは設定ファイルに保存されません。",
   "mcpDialog.enabledForAll": "すべてのエージェントで有効",
 
   // ---- Preset dialog ----

@@ -42,9 +42,19 @@ export async function syncMcpToAntigravity(servers: McpServer[]): Promise<{succe
     desiredNames.add(s.name);
     
     const args = ["mcp", "add"];
-    if (s.env) {
+    // An environment belongs to a process, and only a stdio server has one. Pushing these for an
+    // http server handed the CLI a credential it has nowhere to put.
+    if (s.transport === "stdio" && s.env) {
       for (const [k, v] of Object.entries(s.env)) {
         args.push("--env", `${k}=${v}`);
+      }
+    }
+    // `agy mcp add --header "Name: value"`, repeatable. One array entry per flag and one per value:
+    // the header carries a credential and building a command line out of strings would put it
+    // through a shell. Headers are an http thing; a stdio server never has any.
+    if (s.transport === "http" && s.headers) {
+      for (const [k, v] of Object.entries(s.headers)) {
+        args.push("--header", `${k}: ${v}`);
       }
     }
     args.push("--type", s.transport);
@@ -62,7 +72,10 @@ export async function syncMcpToAntigravity(servers: McpServer[]): Promise<{succe
 
     const addRes = await transport.exec(agy.path, args);
     if (addRes.code !== 0) {
-      return { success: false, error: `Error agregando ${s.name}: ` + (addRes.stderr || addRes.stdout), added, removed };
+      // The CLI echoes back what it was given, so its own output can carry the token. The name of
+      // the server says which one failed; the value never leaves this function.
+      const detail = redactSecrets(addRes.stderr || addRes.stdout, s);
+      return { success: false, error: `Error agregando ${s.name}: ` + detail, added, removed };
     }
     added++;
   }
@@ -75,4 +88,20 @@ export async function syncMcpToAntigravity(servers: McpServer[]): Promise<{succe
   }
 
   return { success: true, added, removed };
+}
+
+/**
+ * Takes the credentials of one server out of a text that is about to be shown. Same idea as
+ * `sanitizeBridgeError` in `src/lib/bridge/index.ts`: the secret is known here, so it is matched by
+ * its literal value instead of guessed at with a pattern.
+ *
+ * Exported for its own test. This is the one place a token could reach the screen, and a redaction
+ * that quietly stops matching is indistinguishable from one that works until the day it does not.
+ */
+export function redactSecrets(text: string, server: McpServer): string {
+  let out = text;
+  for (const value of [...Object.values(server.headers ?? {}), ...Object.values(server.env ?? {})]) {
+    if (value && value.trim()) out = out.split(value).join("[REDACTED]");
+  }
+  return out;
 }

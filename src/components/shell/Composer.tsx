@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
-import { isChatActive } from "@/lib/chat";
+import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
@@ -26,7 +26,8 @@ import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
-import { ghostFor } from "@/lib/ghost-suggestion";
+import { useDraft } from "@/hooks/useDraft";
+import { ghostFor, ghostTakesPlaceholder } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
 import { cn } from "@/lib/utils";
@@ -221,24 +222,19 @@ export function Composer() {
     }
   }, [agents, targetId, defaultAgent?.id]);
 
-  // Chat activity lives outside the store, so poll it while a chat is open.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!currentChatId) return;
-    const interval = setInterval(() => setTick(t => t + 1), 500);
-    return () => clearInterval(interval);
-  }, [currentChatId]);
-
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
   const draftKey = chatMode && currentChatId ? `chat:${currentChatId}` : currentProjectId ? `project:${currentProjectId}` : "";
-  const text = useAppStore(state => state.drafts[draftKey] ?? "");
-  const setDraft = useAppStore(state => state.setDraft);
-  const setText = (value: string | ((prev: string) => string)) => {
-    const next = typeof value === "function" ? value(useAppStore.getState().drafts[draftKey] ?? "") : value;
-    setDraft(draftKey, next);
-  };
-  const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
+  // Local while typing, written to the store behind it. Every keystroke used to be a `set` on the
+  // store, and zustand re-runs every subscriber's selector on every `set` — so each character made
+  // every mounted screen work. See `useDraft`.
+  const { text, setText } = useDraft(draftKey);
+  // A turn lives outside the store, so this used to be polled twice a second for as long as a chat
+  // was open. It is subscribed now: the box redraws when a turn starts or ends and not otherwise.
+  const chatBusy = useSyncExternalStore(
+    subscribeChatActivity,
+    useCallback(() => (currentChatId ? isChatActive(currentChatId) : false), [currentChatId]),
+  );
   // Where the ``` regions are, for the highlight layer behind the box and for Enter/Tab above.
   const fenceHighlightRegions = useMemo(() => fenceRegions(text), [text]);
 
@@ -746,6 +742,10 @@ export function Composer() {
    * the box there is small enough that a moving line is in the way.
    */
   const rotating = !chatMode && !noTeam && !compact && !busy;
+
+  // An empty box draws its placeholder where the layer behind it draws the grey suggestion, so both
+  // of them landed in the same line of space and neither could be read. See `ghostTakesPlaceholder`.
+  const ghostInstead = ghostTakesPlaceholder(text, ghost);
   const rotatingHints = useMemo(() => [
     t("composer.placeholder.team"),
     t("composer.placeholder.rotate1"),
@@ -883,14 +883,14 @@ export function Composer() {
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
-              placeholder={rotating ? "" : hint}
+              placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
               rows={2}
               className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
-            {rotating && !text && (
+            {rotating && !text && !ghost && (
               <span
                 aria-hidden
                 className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"

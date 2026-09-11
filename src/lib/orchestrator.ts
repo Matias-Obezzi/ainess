@@ -505,7 +505,12 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       const obj: any = { mcpServers: {} };
       for (const s of mcpServers) {
         if (s.transport === "http") {
-          obj.mcpServers[s.name] = { type: "http", url: s.url };
+          // `headers` only when there are any: an empty object is not what a hand-written config
+          // looks like, and the key is what tells the CLI to authenticate at all.
+          const hasHeaders = s.headers && Object.keys(s.headers).length > 0;
+          obj.mcpServers[s.name] = hasHeaders
+            ? { type: "http", url: s.url, headers: s.headers }
+            : { type: "http", url: s.url };
         } else {
           obj.mcpServers[s.name] = { command: s.command, args: s.args || [], env: s.env || {} };
         }
@@ -551,7 +556,15 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       mcpConfigPath
     });
 
-    const spawned = await getTransport().spawnRun({ runId, ...spawnOpts });
+    // An http server has no process of its own, so its variables live in the agent's environment —
+    // that is where the MCP client looks to expand `${VAR}` in a header. The provider's own vars go
+    // last: a name a user picked must not quietly take one the provider needs. See `lib/mcp-env`.
+    const env = { ...httpMcpEnv(mcpServers), ...(spawnOpts.env ?? {}) };
+    const spawned = await getTransport().spawnRun({
+      runId,
+      ...spawnOpts,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
+    });
     // Written down with the run, and so onto disk: if this app dies without getting to kill its
     // agents, the next launch has what it needs to find the process it left behind.
     if (spawned) {
@@ -1450,6 +1463,7 @@ export function processQueuedInstructions(agentId: string, projectId: string) {
 }
 
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
+import { httpMcpEnv } from "@/lib/mcp-env";
 import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 

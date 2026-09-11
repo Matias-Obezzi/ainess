@@ -8,6 +8,25 @@ import { installConsoleCapture, log } from "@/lib/logger";
 installConsoleCapture();
 log.info("app", "webview iniciado");
 
+// A made-up workspace for the README's screenshots, reached only with `?demo=<screen>` in the URL.
+// `import.meta.env.DEV` is replaced with `false` in a production build, so vite drops the whole
+// branch and neither the fixture nor its installer ends up in what ships.
+if (import.meta.env.DEV) {
+  const screen = new URLSearchParams(window.location.search).get("demo");
+  if (screen) {
+    const { installDemo, openDemoScreen } = await import("./demo/install");
+    installDemo();
+    // The store is filled once `runInit` has read the config and settled.
+    const stop = (await import("@/store")).useAppStore.subscribe(state => {
+      if (!state.loaded) return;
+      stop();
+      openDemoScreen(screen as never);
+      // Something for the screenshot script to wait on that means "drawn", not "mounted".
+      requestAnimationFrame(() => document.documentElement.setAttribute("data-demo-ready", "1"));
+    });
+  }
+}
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <App />

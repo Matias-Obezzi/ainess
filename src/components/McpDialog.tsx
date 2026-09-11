@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { McpServer } from "@/types";
+import { parseHeaders, formatHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
 
 interface Props {
@@ -27,6 +28,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
   const [command, setCommand] = useState("");
   const [url, setUrl] = useState("");
   const [env, setEnv] = useState("");
+  const [headers, setHeaders] = useState("");
   const [allAgents, setAllAgents] = useState(true);
   const [enabledAgents, setEnabledAgents] = useState<Set<string>>(new Set());
 
@@ -46,6 +48,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         } else {
           setEnv("");
         }
+        setHeaders(formatHeaders(server.headers));
         setAllAgents(server.enabledFor === "all");
         setEnabledAgents(server.enabledFor === "all" ? new Set() : new Set(server.enabledFor));
       } else {
@@ -55,6 +58,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         setCommand("");
         setUrl("");
         setEnv("");
+        setHeaders("");
         setAllAgents(true);
         setEnabledAgents(new Set());
       }
@@ -69,6 +73,11 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         envObj[line.substring(0, idx).trim()] = line.substring(idx + 1).trim();
       }
     }
+
+    // Headers belong to http alone and are dropped on stdio: a credential stored where nothing
+    // reads it is a credential kept for nothing. The environment is kept either way — see the
+    // comment on the field.
+    const headersObj = transport === "http" ? parseHeaders(headers) : {};
 
     let cmdStr = undefined;
     let argsStr: string[] | undefined = undefined;
@@ -86,6 +95,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
       args: argsStr,
       url: transport === "http" ? url : undefined,
       env: Object.keys(envObj).length > 0 ? envObj : undefined,
+      headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
       enabledFor: allAgents ? "all" : Array.from(enabledAgents)
     });
     onOpenChange(false);
@@ -141,14 +151,34 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               </div>
             )}
 
+            {transport === "http" && (
+              <div className="space-y-1">
+                <Label>{t("mcpDialog.headers")}</Label>
+                <Textarea
+                  className="font-mono resize-none min-h-[80px]"
+                  value={headers}
+                  onChange={e => setHeaders(e.target.value)}
+                  placeholder={t("mcpDialog.headersPlaceholder")}
+                />
+                <p className="text-xs text-muted-foreground">{t("mcpDialog.headersHint")}</p>
+              </div>
+            )}
+
+            {/* Both transports keep this, for different reasons. A stdio server gets its own scoped
+                environment from the MCP client; an http server has no process, so its variables go
+                into the agent's environment, which is where `${VAR}` inside a header is expanded
+                from. The hint says which, because the second one is wider than it looks. */}
             <div className="space-y-1 flex-1 flex flex-col min-h-[150px]">
               <Label>{t("mcpDialog.env")}</Label>
-              <Textarea 
-                className="flex-1 font-mono resize-none min-h-[150px]" 
-                value={env} 
-                onChange={e => setEnv(e.target.value)} 
+              <Textarea
+                className="flex-1 font-mono resize-none min-h-[150px]"
+                value={env}
+                onChange={e => setEnv(e.target.value)}
                 placeholder="API_KEY=xxx"
               />
+              {transport === "http" && (
+                <p className="text-xs text-muted-foreground">{t("mcpDialog.envHttpHint")}</p>
+              )}
             </div>
 
             <div className="space-y-2 border p-4 rounded-md">

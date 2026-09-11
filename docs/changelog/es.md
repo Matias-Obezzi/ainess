@@ -2,6 +2,75 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.14.0 — 2026-09-11
+
+### Nuevo
+
+- **Un servidor MCP alojado ahora puede recibir los headers que pide.** ainess escribía un servidor
+  http en la configuración de la sesión como un tipo y una URL y nada más, así que cualquier cosa
+  detrás de un token bearer era directamente inalcanzable: el campo donde meter el token no existía.
+  Ahora sí: un header por línea, `Nombre: valor`, en un servidor http. El valor se corta en el primer
+  dos puntos y no en el último, porque un valor tiene dos puntos propios (una URL, una hora, un token
+  en base64) y cortar al final le entrega al servidor media credencial — una falla que aparece mucho
+  después, como un error de autenticación que nadie rastrea hasta un signo de puntuación. Si escribís
+  `Bearer ${TU_VARIABLE}`, el cliente la expande desde el entorno al conectarse, así que el secreto
+  nunca entra al archivo de configuración. A Antigravity también le llegan, por `agy mcp add
+  --header`, con el flag y el valor como argumentos separados y nunca una línea de comando armada
+  pegando strings. Y cuando ese comando falla, su salida se te muestra con la credencial ya sacada:
+  el mensaje sigue nombrando el servidor que falló, que es la parte que alguna vez sirvió.
+
+### Arreglado
+
+- **Preguntarle a Antigravity cuánto le queda ya no abre una terminal.** La app toma una consola al
+  arrancar y la esconde, para que todo lo que un agente ejecute a su vez la herede y nada abra una
+  ventana a ninguna profundidad. Las sondas cortas también la heredaban — y esconder una consola
+  depende de que `ShowWindow` llegue a la ventana que la muestra, cosa que en Windows 11, donde el
+  host de consola por defecto es Windows Terminal en un proceso aparte, no pasa. Un hijo que dibuja
+  un spinner levanta esa ventana, y `agy models` dibuja uno. Ahora las sondas no reciben consola: el
+  mismo flag que la detección de versiones y los comandos de limpieza vienen pasando desde siempre.
+  Los agentes quedan igual — ellos sí tienen un árbol debajo que necesita heredar una consola, que
+  es para lo que existe la compartida.
+
+- **El campo de variables de entorno hace algo en un servidor http.** Se dibujaba ahí y no iba a
+  ninguna parte: la rama http de la configuración de sesión nunca escribió `env`, así que una clave
+  puesta ahí en un servidor http quedaba guardada en el archivo de configuración y no se mandaba a
+  ningún lado. Un servidor MCP http no tiene proceso propio, pero el agente sí — y el entorno del
+  agente es justo de donde el cliente MCP las expande cuando ve `${VARIABLE}` dentro de una
+  cabecera. Así que van ahí. Ponés la clave en el campo, escribís `X-Goog-Api-Key: ${TU_CLAVE}` en
+  las cabeceras, y conecta sin tocar el entorno de la máquina ni reiniciar nada. El campo dice lo
+  que eso cuesta, porque es más amplio de lo que parece: una variable puesta ahí pertenece al
+  proceso del agente, así que la ve todo MCP que expanda variables y también todo lo que el agente
+  ejecute. Te compra tener la clave en la app en vez de en Windows; no te compra secreto, porque el
+  valor queda igual en el config. Las variables de un servidor stdio quedan intactas — el cliente ya
+  se las da al proceso de ese servidor, acotadas a él, y sacarlas de ahí sería ampliarlas al pedo.
+- **La caja deja de redibujarse dos veces por segundo por un chat que está quieto.** Que un chat
+  esté contestando vive en la memoria del módulo de chat y no en el store, así que nada podía
+  reaccionar a eso: el composer polleaba con un timer de 500ms mientras hubiera una conversación
+  abierta, estuviera pasando algo o no. Ahora está suscripto — la caja se redibuja cuando un turno
+  arranca o termina, y no en otro momento.
+
+- **Escribir rápido ya no hace trabajar a toda la app por cada letra, y un panel que se rompe dice
+  qué se rompió.** Lo que escribís pertenece a la conversación, así que vivía en el store — y se
+  escribía ahí en cada tecla. El store re-ejecuta el selector de cada suscriptor en cada escritura,
+  así que cada carácter volvía a correr los selectores de todas las pantallas montadas y
+  re-renderizaba lo que esos selectores alimentaran. Ahora la caja es local y el store se escribe
+  por detrás: con debounce mientras tipeás, y de inmediato cuando hay algo que no se puede perder —
+  una caja vaciada, un cambio de conversación, salir de la pantalla. Aparte: la app no tenía ningún
+  error boundary en ninguna parte, así que un error de render se llevaba puesta la ventana entera
+  sin un mensaje y sin nada en el registro, porque lo que lo habría anotado también moría. Ahora el
+  hilo y la caja son cada uno su propio límite. Un panel que explota se queda con la falla adentro,
+  muestra el error y escribe el stack en el registro — que es la diferencia entre un bug que se
+  puede reportar y uno que solo se puede describir como una pantalla que se puso negra.
+
+- **La caja vacía ya no dibuja dos frases en el mismo renglón.** La sugerencia gris se pinta en la
+  capa que está detrás del textarea, que lleva el mismo padding que él para que quede alineada con
+  lo que escribís — y una caja vacía arranca justo en ese punto, que es donde está el placeholder.
+  Así que cuando el último mensaje del agente terminaba en una pregunta cerrada y todavía no habías
+  escrito nada, «Sí, dale» y «Escribí mientras trabaja…» se imprimían una encima de la otra y no se
+  podía leer ninguna. Ahora el lugar se lo queda la sugerencia: es el trabajo del propio placeholder
+  —decirle a una caja vacía qué hacer con ella— hecho con la conversación a mano en vez de en
+  general. El cartel rotativo se corre por lo mismo y en el mismo lugar.
+
 ## 0.13.0 — 2026-09-10
 
 ### Nuevo

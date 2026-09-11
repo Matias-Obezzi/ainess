@@ -2,7 +2,7 @@
   "name": "ainess",
   "private": true,
   "license": "MIT",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "bin": {
     "ainess": "bin/ainess.js"
@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "release:check": "node scripts/release-check.mjs"
+    "release:check": "node scripts/release-check.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

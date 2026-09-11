@@ -40,6 +40,9 @@ export const es: Dictionary = {
   "common.copy": "Copiar",
   "common.copied": "Copiado",
   "common.retry": "Reintentar",
+  "error.panel.title": "Esta parte de la pantalla se rompió",
+  "error.panel.body": "El resto de la app sigue andando. El detalle completo quedó en el registro: Configuración → Diagnóstico.",
+  "error.panel.retry": "Reintentar",
   "common.open": "Abrir",
   "common.add": "Agregar",
   "common.remove": "Quitar",
@@ -1137,6 +1140,10 @@ export const es: Dictionary = {
   "mcpDialog.transport": "Transporte",
   "mcpDialog.commandAndArgs": "Comando y argumentos (ej: npx -y @modelcontextprotocol/server-filesystem /dir)",
   "mcpDialog.env": "Variables de entorno (una por línea, CLAVE=valor)",
+  "mcpDialog.envHttpHint": "Un servidor http no tiene proceso propio: estas variables van al entorno del agente, que es de donde se expande ${VARIABLE} en una cabecera. Las ve todo lo que el agente corra, no solo este servidor.",
+  "mcpDialog.headers": "Cabeceras HTTP (una por línea, Nombre: valor)",
+  "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
+  "mcpDialog.headersHint": "Podés escribir Bearer ${MI_VARIABLE}: el cliente expande la variable desde el entorno y el secreto no queda guardado en el archivo de configuración.",
   "mcpDialog.enabledForAll": "Habilitado para todos los agentes",
 
   // ---- Preset dialog ----

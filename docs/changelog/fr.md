@@ -2,6 +2,78 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.14.0 — 2026-09-11
+
+### Nouveau
+
+- **Un serveur MCP hébergé peut enfin recevoir les en-têtes qu'il demande.** ainess écrivait un
+  serveur http dans la configuration de session comme un type et une URL, rien d'autre : tout ce qui
+  se trouvait derrière un jeton bearer était donc inatteignable, le champ pour le jeton n'existait
+  pas. Il existe maintenant : un en-tête par ligne, `Nom : valeur`, sur un serveur http. La valeur
+  est coupée au premier deux-points et non au dernier, car une valeur a ses propres deux-points (une
+  URL, une heure, un jeton en base64) et couper à la fin remet au serveur la moitié d'une
+  authentification — une panne qui apparaît bien plus tard, sous la forme d'une erreur
+  d'authentification que personne ne remonte jusqu'à un signe de ponctuation. Écrivez
+  `Bearer ${VOTRE_VARIABLE}` et le client l'étend depuis l'environnement au moment de se connecter,
+  si bien que le secret n'entre jamais dans le fichier de configuration. Antigravity les reçoit
+  aussi, via `agy mcp add --header`, l'option et la valeur en arguments séparés et jamais une ligne
+  de commande assemblée en collant des chaînes. Et quand cette commande échoue, sa sortie vous est
+  montrée après en avoir retiré l'identifiant : le message nomme toujours le serveur en cause, la
+  seule partie qui ait jamais servi.
+
+### Corrigé
+
+- **Demander à Antigravity ce qu'il lui reste n'ouvre plus de terminal.** L'application prend une
+  console au démarrage et la cache, pour que tout ce qu'un agent lance à son tour en hérite et que
+  rien ne fasse surgir de fenêtre, à quelque profondeur que ce soit. Les sondes courtes en
+  héritaient aussi — et cacher une console suppose que `ShowWindow` atteigne la fenêtre qui
+  l'affiche, ce qui sous Windows 11, où l'hôte de console par défaut est Windows Terminal dans son
+  propre processus, n'est pas le cas. Un enfant qui dessine un spinner fait remonter cette fenêtre,
+  et `agy models` en dessine un. Les sondes n'ont désormais aucune console : le même drapeau que la
+  détection de versions et les commandes d'entretien passent depuis toujours. Les agents ne changent
+  pas — ce sont eux qui ont un arbre en dessous ayant besoin d'hériter d'une console.
+
+- **Le champ des variables d'environnement sert à quelque chose sur un serveur http.** Il y était
+  dessiné et n'allait nulle part : la branche http de la configuration de session n'a jamais écrit
+  `env`, une clé tapée là sur un serveur http était donc enregistrée dans le fichier de
+  configuration et n'allait nulle part. Un serveur MCP http n'a pas de processus à lui, mais l'agent
+  si — et l'environnement de l'agent est exactement là où le client MCP regarde quand il étend
+  `${VARIABLE}` dans un en-tête. C'est là qu'elles vont. Mettez la clé dans le champ, écrivez
+  `X-Goog-Api-Key: ${VOTRE_CLE}` dans les en-têtes, et la connexion se fait sans toucher à
+  l'environnement de la machine ni redémarrer quoi que ce soit. Le champ dit ce que cela coûte, car
+  c'est plus large qu'il n'y paraît : une variable posée là appartient au processus de l'agent, donc
+  tout serveur MCP qui étend des variables la voit, et tout ce que l'agent exécute aussi. Cela vous
+  fait garder la clé dans l'application plutôt que dans Windows ; cela ne vous achète pas le secret.
+  Les variables d'un serveur stdio restent intactes.
+- **Le champ cesse de se redessiner deux fois par seconde pour une conversation immobile.** Le fait
+  qu'une conversation soit en train de répondre vit dans la mémoire du module de chat et non dans le
+  store : rien ne pouvait donc y réagir, et le champ interrogeait sur un minuteur de 500 ms tant
+  qu'une conversation était ouverte, qu'il se passe quelque chose ou non. Il y est abonné
+  maintenant — le champ se redessine quand un tour commence ou se termine, et pas autrement.
+
+- **Taper vite ne fait plus travailler toute l'application à chaque lettre, et un panneau qui casse
+  dit ce qui a cassé.** Ce que vous tapez appartient à la conversation, cela vivait donc dans le
+  store — et y était écrit à chaque frappe. Le store exécute le sélecteur de chaque abonné à chaque
+  écriture : chaque caractère relançait donc les sélecteurs de tous les écrans montés et
+  re-rendait ce qu'ils alimentaient. Le champ est maintenant local et le store est écrit derrière :
+  avec un délai pendant la frappe, et immédiatement quand quelque chose ne doit pas se perdre — un
+  champ vidé, un changement de conversation, le fait de quitter l'écran. Par ailleurs :
+  l'application n'avait aucune error boundary nulle part, si bien qu'une erreur de rendu emportait
+  la fenêtre entière sans message et sans rien dans le journal, puisque ce qui l'aurait écrit
+  mourait aussi. Le fil et le champ sont désormais chacun leur propre limite. Un panneau qui lève
+  une erreur la garde chez lui, l'affiche et écrit la pile dans le journal — c'est la différence
+  entre un bug qu'on peut signaler et un qu'on ne peut décrire que comme un écran devenu noir.
+
+- **Le champ vide ne dessine plus deux phrases dans la même ligne d'espace.** La suggestion grise
+  est peinte sur la couche derrière la zone de texte, qui porte le même remplissage qu'elle pour
+  s'aligner sur ce que vous tapez — et un champ vide commence exactement à ce point, là où se trouve
+  le texte indicatif. Alors quand le dernier message de l'agent finissait par une question fermée et
+  que vous n'aviez encore rien écrit, « Sí, dale » et « Escribí mientras trabaja… » s'imprimaient
+  l'un sur l'autre et aucun n'était lisible. La place revient désormais à la suggestion : c'est le
+  travail du texte indicatif lui-même — dire à un champ vide quoi faire de lui — fait avec la
+  conversation en main plutôt qu'en général. L'indice rotatif s'efface pour la même raison et au
+  même endroit.
+
 ## 0.13.0 — 2026-09-10
 
 ### Nouveau
