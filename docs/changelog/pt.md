@@ -26,6 +26,19 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   rastreado quando começou, e o detalhe de uma execução terminada tem um botão que devolve a pasta
   ao que era.
 
+- **Um teto para uma execução, não só para o dia.** Os limites diário e mensal nunca impediram que
+  uma única execução gastasse a cota do dia inteiro de uma vez: são totais, e um total só percebe
+  depois. Agora um projeto também pode definir quanto uma execução pode custar.
+
+  Vale dizer com clareza o que isso consegue fazer honestamente, porque não é o que se suporia.
+  Todos os CLI aqui informam o que gastaram quando terminam, não enquanto trabalham — então uma
+  execução que passa do teto não pode ser cortada no meio, porque até terminar o app não sabe o
+  preço. O que o teto faz é parar a *próxima*: assim que uma execução informa que passou, a mensagem
+  diz isso, e nenhuma outra rodada desse mesmo trabalho começa. Conta a cadeia inteira e não só a
+  última execução, então uma delegação de duas rodadas atrás que saiu caríssima ainda assim para
+  tudo — senão um teto deixa de ser um teto. Um orçamento em "apenas avisar" continua apenas
+  avisando.
+
   É deliberadamente conservador e diz em voz alta antes de tocar em nada: a lista de arquivos que
   voltam, a dos que são apagados porque não existiam antes, e a dos que não vai tocar — arquivos que
   já estavam modificados quando a execução começou, em que a edição do agente e a sua estão no mesmo

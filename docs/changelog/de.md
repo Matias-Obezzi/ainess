@@ -26,6 +26,20 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   geändert oder unversioniert war, und das Detail eines beendeten Laufs hat einen Knopf, der den
   Ordner zurückstellt.
 
+- **Eine Obergrenze für einen Lauf, nicht nur für den Tag.** Das Tages- und das Monatslimit haben
+  nie verhindert, dass ein einzelner Lauf das Tagesbudget auf einmal ausgibt: Es sind Summen, und
+  eine Summe merkt es erst hinterher. Ein Projekt kann jetzt auch festlegen, was ein einzelner Lauf
+  kosten darf.
+
+  Was das ehrlicherweise leisten kann, sollte man klar sagen, denn es ist nicht das, was man annehmen
+  würde. Alle CLIs hier melden ihre Kosten, wenn sie fertig sind, nicht während sie arbeiten — ein
+  Lauf, der darüber geht, lässt sich also nicht mittendrin abbrechen, weil die App bis zum Ende den
+  Preis nicht kennt. Was die Obergrenze tut, ist den *nächsten* zu stoppen: Sobald ein Lauf meldet,
+  dass er darüber lag, sagt die Nachricht es, und eine weitere Runde derselben Arbeit startet nicht.
+  Es zählt die ganze Kette und nicht nur der letzte Lauf, sodass auch eine zwei Runden alte
+  Delegation, die ein Vermögen gekostet hat, sie anhält — sonst ist eine Obergrenze keine. Ein
+  Budget auf „nur warnen" warnt weiterhin nur.
+
   Er ist absichtlich vorsichtig und sagt es laut, bevor er irgendetwas anfasst: die Liste der
   Dateien, die zurückkommen, die der Dateien, die gelöscht werden, weil es sie vorher nicht gab, und
   die, die er nicht anfasst — Dateien, die beim Start schon geändert waren, wo die Änderung des

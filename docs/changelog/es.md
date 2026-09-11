@@ -25,6 +25,19 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   mencionaste. Así que ahora una corrida también anota qué estaba modificado o sin trackear cuando
   arrancó, y el detalle de una corrida terminada tiene un botón que deja la carpeta como estaba.
 
+- **Un techo para una corrida, no sólo para el día.** Los topes diario y mensual nunca impidieron
+  que una sola corrida se gastara la cuota del día entero de una vez: son totales, y un total se
+  entera después. Ahora un proyecto también puede fijar cuánto puede costar una corrida.
+
+  Lo que esto puede hacer honestamente conviene decirlo claro, porque no es lo que uno supondría.
+  Todos los CLI de acá informan lo que gastaron cuando terminan, no mientras trabajan — así que una
+  corrida que se pasa no se puede cortar a mitad de camino, porque hasta que no termina la app no
+  sabe el precio. Lo que hace el techo es frenar la *siguiente*: apenas una corrida informa que se
+  pasó, el mensaje lo dice, y no arranca otra ronda de ese mismo trabajo. Cuenta la cadena entera y
+  no sólo la última corrida, así que una delegación de hace dos rondas que salió carísima igual lo
+  frena — si no, un techo deja de serlo. Un presupuesto puesto en "sólo advertir" sigue sólo
+  advirtiendo.
+
   Es deliberadamente conservador y lo dice en voz alta antes de tocar nada: la lista de archivos que
   vuelven atrás, la de los que se borran porque no existían antes, y la de los que no va a tocar —
   archivos que ya estaban modificados cuando la corrida arrancó, donde la edición del agente y la

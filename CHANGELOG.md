@@ -27,6 +27,18 @@ let one of them fall behind.
   untracked when it started, and the detail of a finished run has a button that puts the folder
   back.
 
+- **A ceiling for one run, not just for the day.** The daily and monthly limits never stopped a
+  single run from spending the whole day's allowance in one go: they are totals, and a total only
+  notices afterwards. A project can now also set what one run may cost.
+
+  What it can honestly do is worth saying plainly, because it is not what you would assume. Every
+  CLI here reports its cost when it finishes, not while it works — so a run that goes over cannot be
+  cut off halfway, because until it is over the app has not been told the price. What the ceiling
+  does is stop the *next* one: the moment a run reports it went over, the message says so, and no
+  further round of that same piece of work starts. The whole chain counts, not just the last run, so
+  a delegation two rounds back that cost a fortune still stops it — otherwise a ceiling stops being
+  one. A budget set to "only warn" still only warns.
+
   It is deliberately conservative and it says so out loud before it touches anything: the list of
   files that go back, the list of files that get deleted because they did not exist before, and the
   list it will not touch — files that were already modified when the run started, where the agent's

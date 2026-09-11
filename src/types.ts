@@ -122,6 +122,13 @@ export interface Budget {
   dailyUsd?: number;
   /** Dollars per month. 0 or missing means no limit. */
   monthlyUsd?: number;
+  /**
+   * Dollars a single run may cost. 0 or missing means no limit.
+   *
+   * Checked once a run has reported what it spent, because that is when the CLIs say so — see
+   * `lib/budget.ts`. It stops the chain rather than the run that went over.
+   */
+  perRunUsd?: number;
   /** What to do when the limit is reached. */
   onReached: "warn" | "block";
 }

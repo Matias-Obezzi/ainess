@@ -27,6 +27,21 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   donc aussi ce qui était modifié ou non suivi quand elle a commencé, et le détail d'une exécution
   terminée a un bouton qui remet le dossier en état.
 
+- **Un plafond pour une exécution, pas seulement pour la journée.** Les limites journalière et
+  mensuelle n'ont jamais empêché une seule exécution de dépenser le quota de la journée d'un coup :
+  ce sont des totaux, et un total ne s'en aperçoit qu'après. Un projet peut désormais fixer aussi ce
+  qu'une exécution a le droit de coûter.
+
+  Ce que cela peut honnêtement faire mérite d'être dit clairement, car ce n'est pas ce qu'on
+  supposerait. Tous les CLI d'ici indiquent leur coût quand ils ont fini, pas pendant qu'ils
+  travaillent — une exécution qui dépasse ne peut donc pas être coupée en cours de route, puisque
+  tant qu'elle n'est pas terminée l'application ignore le prix. Ce que fait le plafond, c'est
+  arrêter la *suivante* : dès qu'une exécution annonce qu'elle a dépassé, le message le dit, et
+  aucun autre tour de ce même travail ne démarre. Toute la chaîne compte, pas seulement la dernière
+  exécution, donc une délégation d'il y a deux tours qui a coûté une fortune l'arrête quand même —
+  sinon un plafond n'en est plus un. Un budget réglé sur « avertir seulement » se contente toujours
+  d'avertir.
+
   C'est délibérément conservateur, et cela le dit à voix haute avant de toucher à quoi que ce soit :
   la liste des fichiers qui reviennent, celle des fichiers supprimés parce qu'ils n'existaient pas
   avant, et celle à laquelle il ne touchera pas — les fichiers déjà modifiés au démarrage, où votre

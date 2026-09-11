@@ -19,7 +19,7 @@ import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
-import { budgetState, budgetAllowsStart } from "@/lib/budget";
+import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 
@@ -317,6 +317,24 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
   if (!agent || !project) return undefined;
+  // A chain that already blew the per-run ceiling does not get another round. Checked before the
+  // project's daily and monthly limits because it is the more specific answer, and because a chain
+  // can burn a ceiling's worth of money in a morning without the day's total noticing.
+  const breach = capBreachIn(runsOfProject(store.runs, opts.projectId), opts.rootRunId ?? opts.parentRunId ?? undefined, project.budget);
+  if (!capAllowsContinue(breach, project.budget)) {
+    addMessage({
+      projectId: opts.projectId,
+      fromAgentId: "system",
+      toAgentId: opts.agentId,
+      kind: "error",
+      text: translateNow("budget.perRunBlocked", {
+        limit: formatCost(project.budget?.perRunUsd ?? 0, activeLocale()),
+        spent: formatCost(breach?.usage?.costUsd ?? 0, activeLocale()),
+      }),
+    });
+    return undefined;
+  }
+
   const bState = budgetState(runsOfProject(store.runs, opts.projectId), project.budget);
   if (!budgetAllowsStart(bState, project.budget)) {
     const limitUsd = bState.limit?.usd ?? 0;
@@ -724,8 +742,30 @@ function handleExit(e: RunExitEvent) {
     ),
   }));
 
-  const finishedRun: Run = { ...run, status, output, endedAt: Date.now(), exitCode: e.code };
+  const finishedRun: Run = { ...run, status, output, endedAt: Date.now(), exitCode: e.code, ...(finalUsage ? { usage: finalUsage } : {}) };
   taskSync.taskOnRunFinished(finishedRun);
+
+  // Said at the moment it is known rather than at the next attempt to start something: a run whose
+  // cost only arrives at the end is a run nobody could have stopped, and the least the app can do
+  // is not let it pass in silence.
+  const projectOfRun = store.config.projects.find(p => p.id === run.projectId);
+  if (runOverCap(finishedRun, projectOfRun?.budget)) {
+    const locale = activeLocale();
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: "system",
+      toAgentId: run.agentId,
+      kind: "error",
+      text: translateNow(
+        projectOfRun?.budget?.onReached === "block" ? "budget.perRunOverBlocking" : "budget.perRunOver",
+        {
+          limit: formatCost(projectOfRun?.budget?.perRunUsd ?? 0, locale),
+          spent: formatCost(finishedRun.usage?.costUsd ?? 0, locale),
+        },
+      ),
+      runId: run.id,
+    });
+  }
 
   if (agentForRun) {
     // A project that says what "done" means gets to say it before a reviewer is asked, or before
