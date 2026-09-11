@@ -8,6 +8,27 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The app stopped spending more than every second it had on writing a file to itself.** A project's
+  history is rewritten in full whenever anything in it changes, and read and parsed back first so a
+  decision taken in the CLI or on the phone is not lost. That is cheap for a feed of messages and
+  ruinous for a feed of raw CLI output, which is what it had mostly become: on the machine this was
+  found on, one project's file had grown to **47 MB, 83% of it raw lines**, and a save cost 283 ms of
+  arithmetic on the interface's own thread — twice a second, for as long as an agent was working.
+  That is 566 ms of every second spent thinking instead of drawing, which is why the app went slow
+  exactly when there was something to watch, and why sending a message could leave the thread blank
+  until anything at all — opening a sidebar, changing project — forced it to draw again. It was never
+  the animations and it was never the agent's output arriving: the agent prints one or two lines a
+  second. It was the app, talking to its own disk.
+
+  The old limit counted lines and ignored their size, which was measuring the wrong thing: the median
+  line is 313 characters and the largest one measured was 536 KB. Now a line is cut at 2 KB, a run
+  keeps 64 KB of them, and only the last thirty runs keep any — older ones keep their prompt, their
+  answer and what they cost, and lose only the transcript of how the CLI said it. The same file comes
+  out at 7 MB and a save costs 44 ms. With the save also waiting three seconds instead of half a one
+  while an agent works, the interface went from **566 ms of every second to 15**. Nothing has to be
+  done to an existing history: the first save rewrites it at the new size.
+
+
 - **A flag written with nothing after it is no longer read as its own value.** `ainess hook add
   --action slack --url --template "..."` — `--url` with nothing behind it — stored the flag's mere
   presence where the webhook's address goes, and the hook was saved pointing at something nobody

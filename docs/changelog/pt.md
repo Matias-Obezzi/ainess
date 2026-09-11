@@ -6,6 +6,29 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O app parou de gastar mais de cada segundo que tinha escrevendo um arquivo para si mesmo.** O
+  histórico de um projeto é reescrito inteiro sempre que algo muda, e antes é lido e parseado para
+  não perder uma decisão tomada no CLI ou no celular. Isso é barato para um feed de mensagens e
+  ruinoso para um feed de saída crua dos CLI, que era no que ele tinha se transformado: na máquina
+  onde isso foi encontrado, o arquivo de um projeto tinha chegado a **47 MB, 83% de linhas cruas**, e
+  cada gravação custava 283 ms de contas na própria thread da interface — duas vezes por segundo,
+  durante todo o tempo em que um agente estivesse trabalhando. São 566 ms de cada segundo pensando em
+  vez de desenhando, que é exatamente por que o app ficava lento bem quando havia algo para olhar, e
+  por que mandar uma mensagem podia deixar o fio em branco até que qualquer coisa — abrir uma barra
+  lateral, trocar de projeto — o obrigasse a desenhar de novo. Nunca foram as animações nem a saída
+  do agente chegando: o agente imprime uma ou duas linhas por segundo. Era o app conversando com o
+  próprio disco.
+
+  O limite antigo contava linhas e ignorava o tamanho delas, o que era medir a coisa errada: a linha
+  mediana tem 313 caracteres e a maior medida tinha 536 KB. Agora uma linha é cortada em 2 KB, uma
+  execução guarda 64 KB delas, e só as últimas trinta execuções guardam alguma — as mais antigas
+  mantêm seu prompt, sua resposta e o que custaram, e perdem apenas a transcrição de como o CLI
+  disse. O mesmo arquivo fica em 7 MB e uma gravação custa 44 ms. Com a gravação esperando também
+  três segundos em vez de meio enquanto um agente trabalha, a interface passou de **566 ms de cada
+  segundo para 15**. Não é preciso fazer nada com um histórico que já existe: a primeira gravação o
+  reescreve no tamanho novo.
+
+
 - **Uma opção escrita sem nada depois já não é lida como o próprio valor.** `ainess hook add
   --action slack --url --template "..."` — `--url` sem nada atrás — guardava a simples presença da
   opção onde vai o endereço do webhook, e o hook ficava apontando para algo que ninguém escreveu: não

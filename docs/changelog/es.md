@@ -6,6 +6,29 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La app dejó de gastar más de cada segundo que tenía en escribirse un archivo a sí misma.** El
+  historial de un proyecto se reescribe entero cada vez que algo cambia, y antes se lee y se parsea
+  para no perder una decisión tomada en el CLI o en el celular. Eso es barato para un feed de
+  mensajes y ruinoso para un feed de salida cruda de los CLI, que es en lo que se había convertido:
+  en la máquina donde lo encontré, el archivo de un proyecto había llegado a **47 MB, 83% líneas
+  crudas**, y cada guardado costaba 283 ms de cuentas en el hilo de la interfaz — dos veces por
+  segundo, todo el tiempo que un agente estuviera trabajando. Son 566 ms de cada segundo pensando en
+  lugar de dibujando, que es exactamente por qué la app se ponía lenta justo cuando había algo para
+  mirar, y por qué mandar un mensaje podía dejar el hilo en negro hasta que cualquier cosa — abrir un
+  sidebar, cambiar de proyecto — la obligaba a dibujar de nuevo. Nunca fueron las animaciones ni fue
+  la salida del agente llegando: el agente imprime una o dos líneas por segundo. Era la app hablando
+  con su propio disco.
+
+  El límite viejo contaba líneas y no miraba su tamaño, que era medir lo que no era: la línea mediana
+  tiene 313 caracteres y la más grande medida tenía 536 KB. Ahora una línea se corta en 2 KB, un run
+  guarda 64 KB de ellas, y sólo los últimos treinta runs guardan alguna — los más viejos conservan su
+  prompt, su respuesta y lo que costaron, y pierden nada más que la transcripción de cómo lo dijo el
+  CLI. El mismo archivo queda en 7 MB y un guardado cuesta 44 ms. Con el guardado esperando además
+  tres segundos en vez de medio mientras un agente trabaja, la interfaz pasó de **566 ms de cada
+  segundo a 15**. No hay que hacerle nada a un historial que ya existe: el primer guardado lo
+  reescribe con el tamaño nuevo.
+
+
 - **Una opción escrita sin nada detrás ya no se toma a sí misma como valor.** `ainess hook add
   --action slack --url --template "..."` — `--url` sin nada atrás — guardaba la sola presencia de la
   opción donde va la dirección del webhook, y el hook quedaba apuntando a algo que nadie escribió: no

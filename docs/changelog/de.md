@@ -6,6 +6,29 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die App verbringt nicht mehr über jede Sekunde, die sie hat, damit, sich selbst eine Datei zu
+  schreiben.** Der Verlauf eines Projekts wird vollständig neu geschrieben, sobald sich darin etwas
+  ändert, und vorher gelesen und geparst, damit keine im CLI oder am Telefon getroffene Entscheidung
+  verloren geht. Für einen Nachrichtenstrom ist das billig, für einen Strom roher CLI-Ausgabe
+  ruinös — und dazu war er weitgehend geworden: Auf der Maschine, auf der das gefunden wurde, war die
+  Datei eines Projekts auf **47 MB angewachsen, 83 % davon Rohzeilen**, und ein Speichern kostete
+  283 ms Rechnerei auf dem Thread der Oberfläche — zweimal pro Sekunde, so lange ein Agent arbeitete.
+  Das sind 566 ms jeder Sekunde mit Denken statt Zeichnen, weshalb die App genau dann langsam wurde,
+  wenn es etwas zu sehen gab, und weshalb das Senden einer Nachricht den Verlauf leer lassen konnte,
+  bis irgendetwas — eine Seitenleiste öffnen, das Projekt wechseln — sie zum Neuzeichnen zwang. Es
+  waren nie die Animationen, und es war nie die eintreffende Ausgabe des Agenten: Der Agent druckt
+  ein bis zwei Zeilen pro Sekunde. Es war die App im Gespräch mit ihrer eigenen Festplatte.
+
+  Die alte Grenze zählte Zeilen und übersah deren Größe, was das Falsche maß: Die mittlere Zeile hat
+  313 Zeichen, die größte gemessene hatte 536 KB. Jetzt wird eine Zeile bei 2 KB abgeschnitten, ein
+  Lauf behält 64 KB davon, und nur die letzten dreißig Läufe behalten überhaupt welche — ältere
+  behalten ihren Auftrag, ihre Antwort und ihre Kosten und verlieren nur die Mitschrift davon, wie
+  das CLI es gesagt hat. Dieselbe Datei kommt auf 7 MB, ein Speichern kostet 44 ms. Da das Speichern
+  außerdem drei Sekunden statt einer halben wartet, während ein Agent arbeitet, ging die Oberfläche
+  von **566 ms je Sekunde auf 15**. An einem bestehenden Verlauf ist nichts zu tun: Das erste
+  Speichern schreibt ihn in der neuen Größe neu.
+
+
 - **Eine Option ohne etwas dahinter wird nicht mehr als ihr eigener Wert gelesen.** `ainess hook add
   --action slack --url --template "..."` — `--url` ohne etwas dahinter — schrieb das bloße
   Vorhandensein der Option dorthin, wo die Adresse des Webhooks steht, und der Hook wurde

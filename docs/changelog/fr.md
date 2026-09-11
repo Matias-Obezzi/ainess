@@ -6,6 +6,30 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **L'application a cessé de dépenser plus de chaque seconde dont elle disposait à s'écrire un
+  fichier à elle-même.** L'historique d'un projet est réécrit en entier dès que quelque chose y
+  change, et relu et analysé au préalable pour ne pas perdre une décision prise dans le CLI ou sur le
+  téléphone. C'est bon marché pour un fil de messages et ruineux pour un fil de sortie brute des CLI,
+  ce qu'il était largement devenu : sur la machine où cela a été trouvé, le fichier d'un projet
+  atteignait **47 Mo, dont 83 % de lignes brutes**, et chaque sauvegarde coûtait 283 ms de calcul sur
+  le fil d'exécution de l'interface — deux fois par seconde, aussi longtemps qu'un agent travaillait.
+  Cela fait 566 ms de chaque seconde passées à réfléchir au lieu de dessiner, ce qui explique
+  exactement pourquoi l'application ralentissait au moment même où il y avait quelque chose à
+  regarder, et pourquoi envoyer un message pouvait laisser le fil vide jusqu'à ce que n'importe
+  quoi — ouvrir un panneau, changer de projet — la force à dessiner de nouveau. Ce n'étaient jamais
+  les animations, ni la sortie de l'agent qui arrivait : l'agent imprime une ou deux lignes par
+  seconde. C'était l'application, en conversation avec son propre disque.
+
+  L'ancienne limite comptait les lignes sans regarder leur taille, ce qui revenait à mesurer la
+  mauvaise chose : la ligne médiane fait 313 caractères et la plus grande mesurée en faisait 536 Ko.
+  Désormais une ligne est coupée à 2 Ko, une exécution en garde 64 Ko, et seules les trente dernières
+  exécutions en gardent — les plus anciennes conservent leur consigne, leur réponse et leur coût, et
+  ne perdent que la transcription de la façon dont le CLI l'a dit. Le même fichier tombe à 7 Mo et
+  une sauvegarde coûte 44 ms. La sauvegarde attendant en outre trois secondes au lieu d'une
+  demi-seconde pendant qu'un agent travaille, l'interface est passée de **566 ms par seconde à 15**.
+  Rien à faire sur un historique existant : la première sauvegarde le réécrit à la nouvelle taille.
+
+
 - **Une option écrite sans rien derrière n'est plus prise pour sa propre valeur.** `ainess hook add
   --action slack --url --template "..."` — `--url` sans rien derrière — enregistrait la simple
   présence de l'option à la place de l'adresse du webhook, et le hook était sauvegardé pointant vers
