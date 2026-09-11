@@ -897,6 +897,7 @@ export const zh: Dictionary = {
   "agentDialog.otherModel": "其他…",
   "agentDialog.otherModelPlaceholder": "例如：gemini-3.1-pro-high",
   "agentDialog.autoApprove": "自动批准工具调用",
+  "agentDialog.autoApproveHint": "智能体无需征求你的同意即可运行工具，这样在无人看管的运行中就不会一直等待。",
   "agentDialog.approvalMode": "接收委派任务的批准方式",
   "agentDialog.approvalMode.inherit": "跟随通用设置",
   "agentDialog.approvalMode.always": "始终询问我",

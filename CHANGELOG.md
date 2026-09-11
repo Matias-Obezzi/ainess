@@ -8,6 +8,20 @@ let one of them fall behind.
 
 ### Added
 
+- **A new agent is born auto-approving its own tools, and the CLI can still say otherwise.** ainess
+  launches these CLIs headless: nobody is sitting in front of the process to answer it. An agent
+  created with the permission held was launched with `--permission-mode acceptEdits`, so it asked
+  before anything that was not an edit and then waited there until somebody noticed — which reads
+  exactly like the delegation approval it has nothing to do with. New agents now start with it on,
+  in the dialog and in `ainess agents add`, and the switch says in one line what that means.
+  Nothing already saved is touched: turning a permission on in an agent somebody else configured is
+  not a default, it is a change they did not ask for, and editing an agent still leaves every
+  setting the edit did not name exactly where it was. The CLI gained `--no-auto-approve` in the
+  same move, because a boolean flag has no off switch — `--auto-approve=false` is refused outright
+  — and the day the default flipped was the day a script could no longer set up a team whose tools
+  are held. Passed both at once, off wins: between two readings of a contradictory command, the one
+  that grants less.
+
 - **Approve and answer from Telegram, Discord and Slack by pressing a button.** Everything the
   bridge could do had to be typed, and the two things that actually wait on you had to be typed
   with an id copied out of the message above them: `/approve 3f2a1b2c`. On a phone that is the

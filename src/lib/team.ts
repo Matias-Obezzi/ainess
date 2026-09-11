@@ -55,3 +55,37 @@ export function agentAfterEdit(existing: AgentConfig | undefined, edited: AgentC
   if (!existing) return edited;
   return { ...existing, ...edited, id: existing.id };
 }
+
+/**
+ * Whether an agent is saved auto-approving its own tool calls.
+ *
+ * `autoApprove` is the permission handed to the provider CLI (`--permission-mode`, `--yolo`,
+ * `--full-auto`…), not the delegation gate inside ainess — that one is `requireApproval`, and
+ * nothing here touches it.
+ *
+ * A brand new agent is born with it on: ainess runs these CLIs headless, with nobody sitting in
+ * front of them, so an agent that stops to ask permission for anything that is not an edit just
+ * hangs there until someone notices. An agent that already exists keeps whatever it had — flipping
+ * a permission on somebody else's agent is not a default, it is a change they did not ask for.
+ */
+export function agentAutoApprove(flag: boolean | undefined, existing: AgentConfig | undefined): boolean {
+  if (flag !== undefined) return flag;
+  return existing?.autoApprove ?? true;
+}
+
+/**
+ * `--auto-approve` and `--no-auto-approve` read as one answer, or as none.
+ *
+ * The CLI needs both because a boolean option in `node:util`'s `parseArgs` has no off switch:
+ * `--auto-approve=false` is rejected as an option that takes no argument, so the only way to say
+ * "off" is a second flag. Without it, the day the default became on was the day the CLI stopped
+ * being able to create an agent with its tool permissions held — a state the dialog can still
+ * express, and scripts setting up a locked-down team need.
+ *
+ * Given both, off wins. They contradict each other, and between two readings of an ambiguous
+ * command the one that grants less is the one to take.
+ */
+export function autoApproveFlag(on: boolean | undefined, off: boolean | undefined): boolean | undefined {
+  if (off) return false;
+  return on;
+}

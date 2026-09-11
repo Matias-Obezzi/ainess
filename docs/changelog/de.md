@@ -6,6 +6,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein neuer Agent wird geboren, indem er seine eigenen Werkzeuge automatisch freigibt — und die
+  CLI kann weiterhin das Gegenteil sagen.** ainess startet diese CLIs headless: niemand sitzt vor
+  dem Prozess, um ihm zu antworten. Ein Agent, der mit zurückgehaltener Berechtigung angelegt
+  wurde, startete mit `--permission-mode acceptEdits`, fragte also vor allem, was keine Bearbeitung
+  war, und wartete dort, bis es jemand bemerkte — was sich genauso liest wie die
+  Delegations-Freigabe, mit der es nichts zu tun hat. Neue Agenten starten das jetzt eingeschaltet,
+  im Dialog wie in `ainess agents add`, und der Schalter sagt in einer Zeile, was das bedeutet.
+  Nichts Gespeichertes wird angefasst: eine Berechtigung in einem Agenten einzuschalten, den jemand
+  eingerichtet hat, ist kein Standard, sondern eine Änderung, um die niemand gebeten hat — und eine
+  Bearbeitung lässt weiterhin jede Einstellung, die sie nicht benennt, genau dort, wo sie war. Im
+  selben Zug bekam die CLI `--no-auto-approve`, denn ein boolesches Flag hat kein Aus —
+  `--auto-approve=false` wird schlicht abgelehnt — und der Tag, an dem der Standard kippte, war der
+  Tag, an dem ein Skript kein Team mit zurückgehaltenen Werkzeugen mehr aufsetzen konnte. Beide
+  zusammen übergeben: Aus gewinnt — zwischen zwei Lesarten eines widersprüchlichen Befehls die, die
+  weniger gewährt.
+
 - **Aus Telegram, Discord und Slack per Knopfdruck freigeben und antworten.** Alles, was die
   Brücke konnte, musste getippt werden, und die beiden Dinge, die wirklich auf dich warten, mussten
   mit einer Id getippt werden, die man aus der Nachricht darüber abschrieb: `/approve 3f2a1b2c`.

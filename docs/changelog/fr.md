@@ -6,6 +6,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Un nouvel agent naît en approuvant automatiquement ses propres outils, et la CLI peut toujours
+  dire le contraire.** ainess lance ces CLI en headless : personne n'est assis devant le processus
+  pour lui répondre. Un agent créé avec la permission retenue était lancé avec `--permission-mode
+  acceptEdits`, il demandait donc avant tout ce qui n'était pas une édition et restait là jusqu'à
+  ce que quelqu'un s'en aperçoive — ce qui se lit exactement comme l'approbation de délégation, avec
+  laquelle cela n'a rien à voir. Les nouveaux agents démarrent désormais avec cette option activée,
+  dans la boîte de dialogue comme dans `ainess agents add`, et l'interrupteur dit en une ligne ce
+  que cela signifie. Rien de ce qui est déjà enregistré n'est touché : activer une permission sur
+  un agent que quelqu'un a configuré n'est pas un défaut, c'est un changement qu'il n'a pas
+  demandé, et modifier un agent laisse toujours chaque réglage que la modification n'a pas nommé
+  exactement où il était. Dans le même mouvement, la CLI a gagné `--no-auto-approve`, parce qu'une
+  option booléenne n'a pas d'arrêt — `--auto-approve=false` est refusé net — et le jour où le
+  défaut a basculé est le jour où un script ne pouvait plus monter une équipe aux outils retenus.
+  Les deux passées en même temps : l'arrêt gagne, entre deux lectures d'une commande contradictoire
+  celle qui accorde le moins.
+
 - **Approuver et répondre depuis Telegram, Discord et Slack en appuyant sur un bouton.** Tout ce
   que le pont savait faire devait être tapé, et les deux choses qui vous attendent vraiment devaient
   l'être avec un identifiant recopié du message au-dessus : `/approve 3f2a1b2c`. Sur un téléphone

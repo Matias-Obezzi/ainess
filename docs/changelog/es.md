@@ -6,6 +6,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Un agente nuevo nace auto-aprobando sus herramientas, y el CLI sigue pudiendo decir lo
+  contrario.** ainess lanza estos CLIs headless: no hay nadie sentado adelante del proceso para
+  contestarle. Un agente creado con el permiso apagado se lanzaba con `--permission-mode
+  acceptEdits`, así que preguntaba antes de cualquier cosa que no fuera editar y se quedaba ahí
+  esperando hasta que alguien se diera cuenta — que se lee igual que la aprobación de delegaciones,
+  con la que no tiene nada que ver. Ahora los agentes nuevos arrancan con eso encendido, en el
+  diálogo y en `ainess agents add`, y el switch dice en una línea qué significa. Nada de lo ya
+  guardado se toca: encender un permiso en un agente que alguien configuró no es un default, es un
+  cambio que no pidió, y editar un agente sigue dejando cada ajuste que la edición no nombró
+  exactamente donde estaba. En el mismo movimiento el CLI ganó `--no-auto-approve`, porque un flag
+  booleano no tiene apagado — `--auto-approve=false` se rechaza de plano — y el día que el default
+  se dio vuelta fue el día en que un script ya no podía armar un equipo con las herramientas
+  retenidas. Si le pasás los dos a la vez, gana el apagado: entre dos lecturas de un comando que se
+  contradice, la que concede menos.
+
 - **Aprobar y contestar desde Telegram, Discord y Slack apretando un botón.** Todo lo que el
   bridge sabía hacer había que escribirlo, y las dos cosas que de verdad te esperan había que
   escribirlas con un id copiado del mensaje de arriba: `/approve 3f2a1b2c`. En el celular esa es la

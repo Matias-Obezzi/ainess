@@ -172,7 +172,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [parentId, setParentId] = useState<string | null>(null);
   const [modelOption, setModelOption] = useState<string>(DEFAULT_MODEL_OPTION);
   const [otherModel, setOtherModel] = useState("");
-  const [autoApprove, setAutoApprove] = useState(false);
+  // A headless agent nobody can answer should not sit blocked asking for permission, so a new
+  // one is born auto-approving its tools. Editing an existing one keeps whatever it had.
+  const [autoApprove, setAutoApprove] = useState(true);
   const [approvalMode, setApprovalMode] = useState<"inherit" | "always" | "never">("inherit");
   const [worktree, setWorktree] = useState(false);
   const [retryOnQuota, setRetryOnQuota] = useState(false);
@@ -234,7 +236,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setParentId(null);
         setModelOption(DEFAULT_MODEL_OPTION);
         setOtherModel("");
-        setAutoApprove(false);
+        setAutoApprove(true);
         setApprovalMode("inherit");
         setWorktree(false);
         setRetryOnQuota(false);
@@ -511,9 +513,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
             {provider !== "custom" && <QuotaBlock provider={provider} initialLoading={modelsLoading} />}
 
-            <div className="flex items-center gap-2">
-              <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
-              <Label htmlFor="auto-approve">{t("agentDialog.autoApprove")}</Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
+                <Label htmlFor="auto-approve">{t("agentDialog.autoApprove")}</Label>
+              </div>
+              <span className="text-sm text-muted-foreground block">{t("agentDialog.autoApproveHint")}</span>
             </div>
 
             <div className="space-y-1">

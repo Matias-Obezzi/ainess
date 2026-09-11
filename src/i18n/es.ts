@@ -898,6 +898,7 @@ export const es: Dictionary = {
   "agentDialog.otherModel": "Otro…",
   "agentDialog.otherModelPlaceholder": "Ej: gemini-3.1-pro-high",
   "agentDialog.autoApprove": "Auto-aprobar herramientas",
+  "agentDialog.autoApproveHint": "El agente ejecuta sus herramientas sin pedirte permiso, así no se queda esperando en una corrida sin nadie mirando.",
   "agentDialog.approvalMode": "Aprobación para recibir tareas delegadas",
   "agentDialog.approvalMode.inherit": "Seguir el ajuste general",
   "agentDialog.approvalMode.always": "Pedirme siempre",
