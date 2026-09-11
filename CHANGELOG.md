@@ -4,6 +4,32 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **The app speaks seven languages everywhere, not only where somebody remembered.** A hundred and
+  seven sentences were written into the source instead of into the dictionaries — every toast and
+  dialog that a worktree operation produces, every message a tunnel or an install failure comes back
+  with, the task cards, the whole CLI including its help screen. Six of the seven languages got them
+  in a language nobody had picked, and nothing noticed, which is how there came to be a hundred of
+  them: each was one line at the time.
+
+  They were not all the same kind of thing. What a user reads moved to the dictionaries. What only a
+  developer reads — every log line — is English now instead: a log is grepped, pasted into an issue
+  and read by whoever is debugging, and translating one makes it useless to everyone except the
+  person whose language it happens to be in.
+
+  The CLI's help is a single entry per language rather than twenty-four, because its columns line up
+  and keeping them lined up is a per-language decision — German needs more room than Japanese, and
+  two dozen separate entries would let one drift out of alignment with nothing to show it.
+
+  And there is now something that notices: a check that fails on a literal reading as Spanish prose
+  outside `src/i18n`, run as part of the test suite. It looks for Spanish rather than for text, so
+  the English the source is written in is not flagged. Two lines are allowed and each says why — the
+  chat role values are stored on the chat and go into an agent's prompt, so they are data, not
+  labels.
+
 ## 0.15.1 — 2026-09-11
 
 ### Fixed

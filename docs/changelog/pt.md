@@ -2,6 +2,32 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **O app fala sete idiomas em todo lugar, não só onde alguém lembrou.** Cento e sete frases estavam
+  escritas no código em vez de nos dicionários: cada toast e cada diálogo que uma operação de
+  worktree produz, cada mensagem com que volta um túnel ou uma instalação que falhou, os cartões de
+  tarefa, e todo o CLI incluindo a tela de ajuda. Seis dos sete idiomas as recebiam num idioma que
+  ninguém escolheu, e nada percebia — foi assim que chegaram a ser cem: cada uma era uma linha na
+  hora.
+
+  Não eram todas a mesma coisa. O que um usuário lê foi para os dicionários. O que só quem programa
+  lê — todas as linhas de log — agora está em inglês: um log é grepado, colado num issue e lido por
+  quem está depurando, e traduzir um torna-o inútil para todos menos a pessoa no idioma de quem ele
+  ficou.
+
+  A ajuda do CLI é uma única entrada por idioma e não vinte e quatro, porque suas colunas estão
+  alinhadas e mantê-las alinhadas é uma decisão por idioma: o alemão precisa de mais espaço que o
+  japonês, e duas dúzias de entradas soltas deixariam uma sair do alinhamento sem nada que mostrasse.
+
+  E agora há algo que percebe: uma checagem que falha diante de um literal que se lê como prosa em
+  espanhol fora de `src/i18n`, rodando como parte da suíte de testes. Ela procura espanhol e não
+  texto, então o inglês em que o código está escrito não é marcado. Há duas linhas permitidas e cada
+  uma diz por quê: os valores de papel de um chat são guardados no chat e vão para o prompt do
+  agente, então são dados, não rótulos.
+
 ## 0.15.1 — 2026-09-11
 
 ### Corrigido

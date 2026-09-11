@@ -2,6 +2,33 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Die App spricht überall sieben Sprachen, nicht nur dort, wo jemand daran gedacht hat.**
+  Hundertsieben Sätze standen im Quelltext statt in den Wörterbüchern: jeder Toast und jeder Dialog,
+  den eine Worktree-Operation erzeugt, jede Meldung, mit der ein Tunnel oder eine gescheiterte
+  Installation zurückkommt, die Aufgabenkarten und das gesamte CLI samt Hilfe. Sechs der sieben
+  Sprachen bekamen sie in einer Sprache, die niemand gewählt hatte, und nichts fiel auf — so wurden
+  es hundert: jeder war im Moment nur eine Zeile.
+
+  Sie waren nicht alle dasselbe. Was ein Benutzer liest, ist in die Wörterbücher gewandert. Was nur
+  eine Entwicklerin liest — jede Log-Zeile — ist jetzt Englisch: Ein Log wird gegrept, in ein Ticket
+  geklebt und von dem gelesen, der gerade sucht; eines zu übersetzen macht es für alle nutzlos außer
+  für die Person, in deren Sprache es zufällig steht.
+
+  Die Hilfe des CLI ist ein einziger Eintrag je Sprache statt vierundzwanzig, denn ihre Spalten sind
+  ausgerichtet, und sie ausgerichtet zu halten ist eine Entscheidung je Sprache: Deutsch braucht mehr
+  Platz als Japanisch, und zwei Dutzend einzelne Einträge ließen einen davon verrutschen, ohne dass
+  es auffiele.
+
+  Und jetzt gibt es etwas, dem es auffällt: eine Prüfung, die bei einem Literal anschlägt, das sich
+  außerhalb von `src/i18n` wie spanische Prosa liest, und die mit der Testsuite läuft. Sie sucht
+  Spanisch und nicht Text, also wird das Englisch, in dem der Quelltext geschrieben ist, nicht
+  gemeldet. Zwei Zeilen sind erlaubt, und jede sagt warum: Die Rollenwerte eines Chats werden am Chat
+  gespeichert und gehen in den Prompt eines Agenten — sie sind Daten, keine Beschriftungen.
+
 ## 0.15.1 — 2026-09-11
 
 ### Behoben

@@ -2,6 +2,34 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **L'application parle sept langues partout, pas seulement là où quelqu'un y a pensé.** Cent sept
+  phrases étaient écrites dans le code au lieu des dictionnaires : chaque toast et chaque dialogue
+  produit par une opération de worktree, chaque message que renvoie un tunnel ou une installation
+  ratée, les cartes de tâches, et tout le CLI, écran d'aide compris. Six des sept langues les
+  recevaient dans une langue que personne n'avait choisie, et rien ne le remarquait — c'est ainsi
+  qu'on en est arrivé à cent : chacune n'était qu'une ligne sur le moment.
+
+  Elles n'étaient pas toutes de même nature. Ce qu'un utilisateur lit est parti dans les
+  dictionnaires. Ce que seul un développeur lit — toutes les lignes de log — est désormais en
+  anglais : un log se grep, se colle dans un ticket et se lit par qui débogue, et en traduire un le
+  rend inutile à tout le monde sauf à la personne dont c'est la langue.
+
+  L'aide du CLI est une seule entrée par langue et non vingt-quatre, parce que ses colonnes sont
+  alignées et que les garder alignées est une décision par langue : l'allemand prend plus de place
+  que le japonais, et deux douzaines d'entrées séparées laisseraient l'une d'elles se désaligner
+  sans rien pour le montrer.
+
+  Et il y a maintenant quelque chose qui le remarque : une vérification qui échoue sur un littéral
+  se lisant comme de la prose espagnole hors de `src/i18n`, exécutée avec la suite de tests. Elle
+  cherche de l'espagnol et non du texte, donc l'anglais dans lequel le code est écrit n'est pas
+  signalé. Deux lignes sont autorisées et chacune dit pourquoi : les valeurs de rôle d'un chat sont
+  enregistrées sur le chat et partent dans la consigne de l'agent, ce sont donc des données, pas des
+  libellés.
+
 ## 0.15.1 — 2026-09-11
 
 ### Corrigé

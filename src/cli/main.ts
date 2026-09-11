@@ -74,28 +74,7 @@ async function main() {
   }
 
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.log("ainess CLI — Uso: ainess [opciones] <prompt>");
-    console.log("  -a, --agent <nombre>   Agente a usar");
-    console.log("  -w, --workspace <dir>  Directorio de trabajo (busca o crea proyecto)");
-    console.log("  -p, --project <nombre> Proyecto a usar");
-    console.log("  --json                 Salida en JSON");
-    console.log("  -q, --quiet            Solo imprimir resultado");
-    console.log("  --max-rounds <n>       Rondas máximas");
-    console.log("Subcomandos: agents, formations, skills, mcp, hooks, context, projects, detect, quota, profile, presets, chat, history, status, usage, run");
-    console.log("  agents list|add|edit|remove|init [-p proyecto|-w dir]   Equipo de un proyecto");
-    console.log("  formations list | apply <nombre> [-p proyecto|-w dir]   Equipos guardados");
-    console.log("  history [-w dir|-p proyecto] [--limit N]   Últimos runs del proyecto");
-    console.log("  history show <runId>                       Prompt, salida y líneas crudas de un run");
-    console.log("  status                                     Estado guardado de agentes y tareas por proyecto");
-    console.log("  usage [-p proyecto | -w dir] [--by agent|day] [--days N] [--json]  Consumo reportado de los runs");
-    console.log("  quota [provider] [--json]                  Cuota restante (sin provider: todos los usados por algún agente)");
-    console.log("  doctor [--json]                            Chequeos del sistema; termina con código 1 si algo está mal");
-    console.log("  approvals list|approve <id>|reject <id>    Delegaciones que esperan tu aprobación");
-    console.log("  serve [--port N] [--tunnel [prov]] [--tunnel-domain dominio] [--tunnel-name nombre] [-w dir|-p proyecto]  Servidor para el celular, Ctrl+C termina");
-    console.log("  remote url [--tunnel] | token [--regenerate]             URL con token para el celular"); 
-    console.log("  chat -a <agente> [-w dir]              Chat interactivo con un agente");
-    console.log("  chat --shared \"A:rol,B:rol\" [-w dir]   Chat compartido entre agentes con roles");
-    console.log("  chat send <nombre-chat> \"texto\"        Un turno no interactivo en un chat existente");
+    console.log(t("cli.help"));
     process.exit(0);
   }
 
@@ -105,7 +84,7 @@ async function main() {
   // A bare lowercase word that is not a subcommand is a typo, never a prompt (prompts go
   // through `ainess run "<texto>"` or contain spaces). Rejecting it avoids burning tokens.
   if (!first.startsWith("-") && !KNOWN.has(first) && /^[a-z][a-z0-9-]{0,24}$/.test(first)) {
-    error(`Subcomando desconocido: "${first}". Subcomandos: ${[...KNOWN].join(", ")}. Para mandar un prompt usá: ainess run "<texto>"`);
+    error(t("cli.unknownSubcommand", { name: first, known: [...KNOWN].join(", ") }));
   }
 
   if (first === "detect") {
@@ -116,9 +95,9 @@ async function main() {
         for (const d of claudeCandidateDirs()) {
           let entries: string[] = [];
           try { entries = fs.readdirSync(d); } catch { /* missing */ }
-          console.log(`Carpeta Claude Code ${d}: ${fs.existsSync(d) ? entries.join(", ") || "(vacía)" : "no existe"}`);
+          console.log(t("cli.claudeFolder", { dir: d, contents: fs.existsSync(d) ? entries.join(", ") || t("cli.folderEmpty") : t("cli.folderMissing") }));
         }
-        console.log(`PATH tiene claude: ${process.env.PATH?.split(";").some(p => fs.existsSync(path.join(p, "claude.exe")) || fs.existsSync(path.join(p, "claude.cmd"))) ? "sí" : "no"}`);
+        console.log(t("cli.claudeOnPath", { yes: String(process.env.PATH?.split(";").some(p => fs.existsSync(path.join(p, "claude.exe")) || fs.existsSync(path.join(p, "claude.cmd"))) ? "sí" : "no") }));
         for (const name of ["copilot", "gemini", "codex"]) {
           const found = wingetCandidates(name).filter(p => fs.existsSync(p));
           if (found.length) console.log(`winget ${name}: ${found.join(", ")}`);
@@ -173,7 +152,7 @@ async function main() {
         if (q.status !== "ok") {
           console.log(`${p}: ${q.message || q.status}`);
         } else if (q.items.length === 0) {
-          console.log(`${p}: sin información`);
+          console.log(t("cli.noInfo", { name: p }));
         } else {
           console.log(`${p}: ${q.items.map(formatQuotaLine).join(", ")}`);
         }
@@ -298,7 +277,7 @@ async function main() {
       if (jsonOutput) {
         console.log(JSON.stringify(team));
       } else {
-        if (team.length === 0) console.log("Este proyecto no tiene agentes. Aplicá una formación: ainess formations apply <nombre>");
+        if (team.length === 0) console.log(t("cli.noAgentsApplyFormation"));
         for (const a of team) {
           const parent = a.parentId ? team.find(x => x.id === a.parentId)?.name || a.parentId : "root";
           console.log(`- ${a.name} [${a.role}] (Provider: ${a.provider}, Parent: ${parent})`);
@@ -355,14 +334,14 @@ async function main() {
       if (!targetName) error("Falta nombre");
 
       let agent = projectAgentByName(agentsProjectId, targetName);
-      if (sub === "add" && agent) error("Agente ya existe en este proyecto");
+      if (sub === "add" && agent) error(t("cli.agentExists"));
       if (sub === "edit" && !agent) error("Agente no encontrado en este proyecto");
 
       const id = agent ? agent.id : crypto.randomUUID();
       const name = (values.name as string) || (agent ? agent.name : targetName);
       if (values.name) {
         const existing = projectAgentByName(agentsProjectId, String(values.name));
-        if (existing && existing.id !== id) error("Ya existe otro agente con ese nombre en este proyecto");
+        if (existing && existing.id !== id) error(t("cli.agentNameTaken"));
       }
 
       let parentId: string | null = agent ? agent.parentId : null;
@@ -459,12 +438,12 @@ async function main() {
       const wanted = fp[0];
       if (!wanted) error("Uso: ainess formations apply <nombre> [-p proyecto | -w dir]");
       const formation = live().config.formations.find(f => f.name.toLowerCase() === wanted.toLowerCase());
-      if (!formation) error(`Formación "${wanted}" no encontrada.`);
+      if (!formation) error(t("cli.formationNotFound", { name: wanted }));
       const projectId = resolveProjectId(fv.project as string | undefined, fv.workspace as string | undefined);
       store.applyFormation(projectId, formation.id);
       await store.saveConfig();
       const added = formation.agents.length;
-      print({ ok: true, added }, `Formación "${formation.name}" aplicada: ${added} agentes agregados.`);
+      print({ ok: true, added }, t("cli.formationApplied", { name: formation.name, n: added }));
       process.exit(0);
     }
     error("Uso: ainess formations list | apply <nombre> [-p proyecto | -w dir]");
@@ -595,7 +574,7 @@ async function main() {
       }
       // After the switch rather than in a `default`: this is the one place that decides a hook
       // cannot be built, and saying it here is also what lets the type stop being nullable.
-      if (!action) error("Acción desconocida");
+      if (!action) error(t("cli.unknownAction"));
 
       // Built up as the flags are read, which is why it is not the Hook's own optional field yet.
       const filter: NonNullable<import("@/types").Hook["filter"]> = {};
@@ -763,8 +742,8 @@ async function main() {
       if (report.length === 0) console.log("No hay proyectos.");
       for (const r of report) {
         console.log(`- ${r.project} (${r.workspaceDir}): ${r.runs} runs guardados`);
-        for (const x of r.running) console.log(`    en curso (según el último guardado): ${x.agent}: ${x.task}`);
-        if (r.last) console.log(`    último: ${r.last.agent} [${r.last.status}] ${fmt(r.last.at)}`);
+        for (const x of r.running) console.log("    " + t("cli.runningPerSave", { agent: x.agent, task: x.task }));
+        if (r.last) console.log("    " + t("cli.lastRun", { agent: r.last.agent, status: r.last.status, when: fmt(r.last.at) }));
       }
       process.exit(0);
     }
@@ -778,17 +757,17 @@ async function main() {
       const prefix = hp[1];
       if (!prefix) error("Uso: ainess history show <runId>");
       const run = runs.find(r => r.id.startsWith(prefix));
-      if (!run) error(`No hay un run que empiece con "${prefix}".`);
+      if (!run) error(t("cli.runNotFound", { prefix }));
       if (jsonOutput || hv.json) { console.log(JSON.stringify(run)); process.exit(0); }
       console.log(`Run ${run.id}\nAgente: ${agentName(run.agentId)}  Estado: ${run.status}  Ronda: ${run.round}  Inicio: ${fmt(run.startedAt)}${run.endedAt ? `  Fin: ${fmt(run.endedAt)}` : ""}`);
-      console.log(`\n## Prompt\n${run.prompt}\n\n## Salida\n${run.output}\n\n## Líneas crudas (${run.rawLines.length})\n${run.rawLines.join("\n")}`);
+      console.log(`\n${t("cli.runDetail")}\n${run.prompt}\n\n${t("cli.runOutput")}\n${run.output}\n\n${t("cli.runRawLines", { n: run.rawLines.length })}\n${run.rawLines.join("\n")}`);
       process.exit(0);
     }
 
     const limit = parseInt(String(hv.limit || "20"), 10) || 20;
     const shown = runs.slice(0, limit);
     if (jsonOutput || hv.json) { console.log(JSON.stringify(shown)); process.exit(0); }
-    if (shown.length === 0) console.log("Sin runs guardados para este proyecto.");
+    if (shown.length === 0) console.log(t("cli.noRuns"));
     for (const r of shown) {
       console.log(`${fmt(r.startedAt)}  ${r.id.slice(0, 8)}  ${agentName(r.agentId)} [${r.status}] r${r.round}`);
       console.log(`    > ${oneLine(r.prompt, 80)}`);
@@ -813,7 +792,7 @@ async function main() {
     const by = String(uv.by ?? "agent");
     if (by !== "agent" && by !== "day") error('--by acepta "agent" o "day".');
     const days = parseInt(String(uv.days ?? "30"), 10);
-    if (isNaN(days) || days < 1 || days > 365) error("Los días deben ser un número entre 1 y 365.");
+    if (isNaN(days) || days < 1 || days > 365) error(t("cli.daysRange"));
     const labels = { tokens: t("cli.usage.tokens"), premiumRequests: t("cli.usage.premiumRequests") };
     const agentName = (id: string) => agentById(id)?.name || id.slice(0, 8);
 
@@ -900,7 +879,7 @@ async function main() {
         // The tunnel only exists inside a running `ainess serve --tunnel` (or the app).
         const st = await nodeTransport.tunnelStatus();
         if (!st.running || !st.url) {
-          error("No hay un tunel activo en este proceso. Levantalo con `ainess serve --tunnel` o desde la app (Configuracion -> Remoto).");
+          error(t("cli.noTunnelHere"));
         }
         const turl = tunnelUrl(st.url!, remote.token);
         print({ url: turl, provider: st.provider }, turl);
@@ -946,7 +925,7 @@ async function main() {
       if (port !== undefined && useAppStore.getState().remoteStatus.running) await store.stopRemote();
       await store.startRemote(port);
     } catch (e) {
-      error(`No se pudo iniciar el servidor: ${e instanceof Error ? e.message : String(e)}`);
+      error(t("cli.serverFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
     const st = useAppStore.getState().remoteStatus;
 
@@ -965,15 +944,15 @@ async function main() {
         await store.startTunnel();
         publicUrl = tunnelUrl(useAppStore.getState().tunnelStatus.url ?? "", store.config.remote.token);
       } catch (e) {
-        error(`No se pudo abrir el tunel: ${e instanceof Error ? e.message : String(e)}`);
+        error(t("cli.tunnelFailed", { error: e instanceof Error ? e.message : String(e) }));
       }
     }
 
     if (jsonOutput) console.log(JSON.stringify({ url: st.url, ip: st.ip, port: port ?? store.config.remote.port, tunnelUrl: publicUrl }));
     else {
       console.log(`Servidor remoto escuchando en ${st.ip}:${port ?? store.config.remote.port}`);
-      if (publicUrl) console.log(`Tunel publico:\n  ${publicUrl}\nCualquiera con esta URL y el token puede operar la app.`);
-      console.log(`Abrí desde el celular (misma WiFi):\n  ${st.url}\nCtrl+C para terminar.`);
+      if (publicUrl) console.log(t("cli.publicTunnel", { url: publicUrl }));
+      console.log(t("cli.openFromPhone", { url: st.url ?? "" }));
     }
     // Live feed of what the phone triggers, same format as `run`.
     const printedIds = new Set<string>(useAppStore.getState().messages.map(m => m.id));
@@ -1015,7 +994,7 @@ async function main() {
       if (!prefix) error(`Uso: ainess approvals ${sub} <id> [--note "..."]`);
       const { values: av } = parseArgs({ args: args.slice(3), options: { note: { type: "string" } }, strict: false });
       const target = pending.find(a => a.id.startsWith(prefix));
-      if (!target) error(`No hay una aprobación pendiente que empiece con "${prefix}".`);
+      if (!target) error(t("cli.approvalNotFound", { prefix }));
       // Deciding may launch runs in THIS process (the child, or the parent's continuation
       // after a rejection): stay alive until nothing is running any more.
       const projectId = target.projectId;
@@ -1039,7 +1018,7 @@ async function main() {
       const last = after.messages.filter(m => m.projectId === projectId && m.kind === "result" && m.toAgentId === "user" && m.ts >= decidedAt).pop();
       if (last) console.log(`\n${last.text}`);
       const stillPending = Object.values(after.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
-      for (const a of stillPending) console.log(`Nueva aprobación pendiente: ${a.id.slice(0, 8)}  ${a.summary}`);
+      for (const a of stillPending) console.log(t("cli.newPendingApproval", { id: a.id.slice(0, 8), summary: a.summary }));
       await flushAll();
       process.exit(0);
     }
@@ -1176,7 +1155,7 @@ async function main() {
       : undefined;
     if (!chat) {
       if (participants.length === 0) {
-        error(isSend ? `Chat "${chatName}" no encontrado. Indicá -a <agente> o --shared para crearlo.` : "Indicá -a <agente> o --shared \"A:rol,B:rol\".");
+        error(isSend ? t("cli.chatNotFound", { name: chatName ?? "" }) : t("cli.chatNeedsAgent"));
       }
       const names = participants.map(p => agentById(p.agentId)?.name).join(", ");
       const id = store.createChat({
@@ -1221,14 +1200,14 @@ async function main() {
     if (isSend) {
       let text = cp.slice(2).join(" ");
       if (!text && !process.stdin.isTTY) text = fs.readFileSync(0, "utf-8").trim();
-      if (!text) error("Falta el texto del mensaje.");
+      if (!text) error(t("cli.messageTextMissing"));
       await runTurn(text);
       process.exit(0);
     }
 
     if (!jsonOutput) {
       const who = chat.participants.map(p => agentLabel(p.agentId)).join(", ");
-      console.log(`Chat "${chat.name}" con ${who}. Escribí y Enter para enviar; /nuevo reinicia las sesiones; /salir termina.`);
+      console.log(t("cli.chatHeader", { name: chat.name, who }));
     }
     if (!process.stdin.isTTY) {
       // Piped input: one turn per non-empty line, then exit.
@@ -1328,7 +1307,7 @@ async function main() {
   } else {
     const planner = roots.find(r => r.role === "planner");
     agentId = (planner || roots[0])?.id;
-    if (!agentId) error("Este proyecto no tiene agentes. Aplicá una formación: ainess formations apply <nombre>");
+    if (!agentId) error(t("cli.noAgentsApplyFormation"));
   }
 
   if (values["max-rounds"]) store.setMaxRounds(parseInt(String(values["max-rounds"]), 10));
@@ -1386,9 +1365,9 @@ async function main() {
       const running = Object.values(s.runs).some(r => r.projectId === projectId && r.status === "running");
       if (pending.length > 0 && !running) {
         if (!values.json) {
-          console.log("\n\x1b[33mEsperando tu aprobación:\x1b[0m");
+          console.log(`\n\x1b[33m${t("cli.waitingYourApproval")}\x1b[0m`);
           for (const a of pending) console.log(`  ${a.id.slice(0, 8)}  ${a.summary}`);
-          console.log("Aprobá con: ainess approvals approve <id>   (o rechazá con reject)");
+          console.log(t("cli.approveWith"));
         }
         void flushAll().finally(() => process.exit(3));
         return;
