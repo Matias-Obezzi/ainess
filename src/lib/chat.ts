@@ -17,6 +17,43 @@ const activeTurns = new Map<string, {
   runId?: string;
 }>();
 
+/**
+ * Who to tell when a turn starts or ends.
+ *
+ * A turn lives in this module and not in the store, so nothing could react to it: the composer
+ * polled `isChatActive` on a 500ms timer, re-rendering itself twice a second for as long as a chat
+ * was open, whether or not anything was happening. Same shape as `lib/raw-lines`.
+ */
+const activityListeners = new Set<() => void>();
+
+/** Goes through here so a turn cannot start or end without the screen hearing about it. */
+function setTurn(chatId: string, turn: NonNullable<ReturnType<typeof activeTurns.get>>): void {
+  activeTurns.set(chatId, turn);
+  for (const fn of activityListeners) fn();
+}
+
+function clearTurn(chatId: string): void {
+  if (!activeTurns.delete(chatId)) return;
+  for (const fn of activityListeners) fn();
+}
+
+/**
+ * For `useSyncExternalStore` around `isChatActive`.
+ *
+ * Also listens to the store, because `isChatActive` reads `remoteActiveChats` from it — the phone
+ * runs its turns in its own process. That subscription fires on every store write, which is cheap
+ * here: what it wakes is a snapshot that returns a boolean, and React only re-renders when the
+ * boolean actually moved.
+ */
+export function subscribeChatActivity(onChange: () => void): () => void {
+  activityListeners.add(onChange);
+  const unsubscribeStore = useAppStore.subscribe(onChange);
+  return () => {
+    activityListeners.delete(onChange);
+    unsubscribeStore();
+  };
+}
+
 // ---- Persistence helpers ----
 
 function chatFilePath(chatId: string): string {
@@ -226,7 +263,7 @@ async function startTurn(
     systemPromptOverride: systemPrompt,
   });
 
-  activeTurns.set(chatId, {
+  setTurn(chatId, {
     turnId,
     participantIdx,
     responses: previousResponses,
@@ -336,7 +373,7 @@ export function onChatRunFinished(runId: string): void {
     void startTurn(chatId, lastUserText, nextIdx, newResponses);
   } else {
     // Turn complete
-    activeTurns.delete(chatId);
+    clearTurn(chatId);
     // What was written while this turn was running goes out now (see `flushChatQueue`).
     void useAppStore.getState().flushChatQueue(chatId);
   }
@@ -388,7 +425,7 @@ export async function stopChat(chatId: string): Promise<void> {
   const turn = activeTurns.get(chatId);
   if (!turn || !turn.runId) return;
 
-  activeTurns.delete(chatId);
+  clearTurn(chatId);
   await getTransport().killRun(turn.runId).catch(() => {});
   // The run's completion no longer maps to a turn, so close the pending bubble here.
   useAppStore.setState(state => {
@@ -407,7 +444,7 @@ export async function stopChat(chatId: string): Promise<void> {
  * empty its file, so the conversation does not come back the next time something reads it.
  */
 export function forgetChat(chatId: string): void {
-  activeTurns.delete(chatId);
+  clearTurn(chatId);
   void getTransport().deleteFile(chatFilePath(chatId)).catch(() => {});
 }
 

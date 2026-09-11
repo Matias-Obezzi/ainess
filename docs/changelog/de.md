@@ -22,6 +22,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Eingabefeld zeichnet sich nicht mehr zweimal pro Sekunde für einen Chat neu, in dem nichts
+  passiert.** Ob ein Chat gerade antwortet, liegt im Speicher des Chat-Moduls und nicht im Store,
+  also konnte nichts darauf reagieren: das Feld fragte auf einem 500-ms-Timer nach, solange eine
+  Unterhaltung offen war — ob etwas geschah oder nicht. Jetzt ist es abonniert: das Feld zeichnet
+  sich neu, wenn ein Zug beginnt oder endet, und sonst nicht.
+
 - **Schnelles Tippen lässt nicht mehr die ganze App für jeden Buchstaben arbeiten, und ein Panel,
   das kaputtgeht, sagt, was kaputtging.** Was getippt wird, gehört zur Unterhaltung, lag also im
   Store — und wurde bei jedem Tastendruck dorthin geschrieben. Der Store führt bei jedem Schreiben

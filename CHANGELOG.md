@@ -23,6 +23,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The box stops redrawing itself twice a second for a chat that is sitting still.** Whether a chat
+  is answering lives in the chat module's own memory and not in the store, so nothing could react to
+  it: the composer polled on a 500ms timer for as long as a conversation was open, whether or not
+  anything was happening. It is subscribed now — the box redraws when a turn starts or ends and not
+  otherwise.
+
 - **Typing fast no longer makes the whole app work for every letter, and a panel that breaks says
   what broke.** What is typed belongs to the conversation, so it lived in the store — and it was
   written there on every keystroke. The store runs every subscriber's selector on every write, so

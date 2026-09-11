@@ -21,6 +21,12 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La caja deja de redibujarse dos veces por segundo por un chat que está quieto.** Que un chat
+  esté contestando vive en la memoria del módulo de chat y no en el store, así que nada podía
+  reaccionar a eso: el composer polleaba con un timer de 500ms mientras hubiera una conversación
+  abierta, estuviera pasando algo o no. Ahora está suscripto — la caja se redibuja cuando un turno
+  arranca o termina, y no en otro momento.
+
 - **Escribir rápido ya no hace trabajar a toda la app por cada letra, y un panel que se rompe dice
   qué se rompió.** Lo que escribís pertenece a la conversación, así que vivía en el store — y se
   escribía ahí en cada tecla. El store re-ejecuta el selector de cada suscriptor en cada escritura,

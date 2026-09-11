@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS } from "@/lib/providers";
-import { isChatActive } from "@/lib/chat";
+import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
@@ -222,14 +222,6 @@ export function Composer() {
     }
   }, [agents, targetId, defaultAgent?.id]);
 
-  // Chat activity lives outside the store, so poll it while a chat is open.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!currentChatId) return;
-    const interval = setInterval(() => setTick(t => t + 1), 500);
-    return () => clearInterval(interval);
-  }, [currentChatId]);
-
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
   const draftKey = chatMode && currentChatId ? `chat:${currentChatId}` : currentProjectId ? `project:${currentProjectId}` : "";
@@ -237,7 +229,12 @@ export function Composer() {
   // store, and zustand re-runs every subscriber's selector on every `set` — so each character made
   // every mounted screen work. See `useDraft`.
   const { text, setText } = useDraft(draftKey);
-  const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
+  // A turn lives outside the store, so this used to be polled twice a second for as long as a chat
+  // was open. It is subscribed now: the box redraws when a turn starts or ends and not otherwise.
+  const chatBusy = useSyncExternalStore(
+    subscribeChatActivity,
+    useCallback(() => (currentChatId ? isChatActive(currentChatId) : false), [currentChatId]),
+  );
   // Where the ``` regions are, for the highlight layer behind the box and for Enter/Tab above.
   const fenceHighlightRegions = useMemo(() => fenceRegions(text), [text]);
 

@@ -21,6 +21,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **A caixa para de se redesenhar duas vezes por segundo por causa de um chat parado.** Se um chat
+  está respondendo vive na memória do próprio módulo de chat e não no store, então nada podia
+  reagir a isso: o composer ficava consultando num timer de 500ms enquanto houvesse uma conversa
+  aberta, estivesse acontecendo algo ou não. Agora está inscrito — a caixa se redesenha quando um
+  turno começa ou termina, e não em outro momento.
+
 - **Digitar rápido não faz mais o app inteiro trabalhar a cada letra, e um painel que quebra diz o
   que quebrou.** O que você digita pertence à conversa, então vivia no store — e era escrito lá a
   cada tecla. O store roda o seletor de cada assinante a cada escrita, então cada caractere refazia

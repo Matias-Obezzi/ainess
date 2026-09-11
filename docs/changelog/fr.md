@@ -23,6 +23,12 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le champ cesse de se redessiner deux fois par seconde pour une conversation immobile.** Le fait
+  qu'une conversation soit en train de répondre vit dans la mémoire du module de chat et non dans le
+  store : rien ne pouvait donc y réagir, et le champ interrogeait sur un minuteur de 500 ms tant
+  qu'une conversation était ouverte, qu'il se passe quelque chose ou non. Il y est abonné
+  maintenant — le champ se redessine quand un tour commence ou se termine, et pas autrement.
+
 - **Taper vite ne fait plus travailler toute l'application à chaque lettre, et un panneau qui casse
   dit ce qui a cassé.** Ce que vous tapez appartient à la conversation, cela vivait donc dans le
   store — et y était écrit à chaque frappe. Le store exécute le sélecteur de chaque abonné à chaque
