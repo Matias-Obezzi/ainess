@@ -6,10 +6,10 @@
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { useAppStore } from "@/store";
-import { demoConfig, demoState, DEMO_PROJECT_ID } from "./seed";
+import { demoChat, demoConfig, demoState, DEMO_CHAT_ID, DEMO_PROJECT_ID } from "./seed";
 
 /** Which screen the shot wants. Adding one here is adding one to `scripts/screenshots.mjs`. */
-export type DemoScreen = "home" | "chat" | "board" | "hierarchy" | "settings";
+export type DemoScreen = "home" | "chat" | "board" | "hierarchy" | "settings" | "onechat";
 
 /**
  * Stands in for the transport before React mounts, so `runInit` reads the made-up config instead of
@@ -34,6 +34,18 @@ export function openDemoScreen(screen: DemoScreen): void {
   if (screen === "home") {
     // Said out loud rather than relied on: whatever the restore decided, this shot is of the home.
     store.openHome();
+    return;
+  }
+
+  // A one-on-one chat, which is a different screen from the orchestrator thread and the one the
+  // "it goes black on send" report is about.
+  if (screen === "onechat") {
+    const { chat, messages } = demoChat();
+    useAppStore.setState(state => ({
+      config: { ...state.config, chats: [chat] },
+      chatMessages: { [DEMO_CHAT_ID]: messages },
+    }) as never);
+    store.openProject(DEMO_PROJECT_ID, DEMO_CHAT_ID, "chat");
     return;
   }
 

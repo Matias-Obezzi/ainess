@@ -17,10 +17,14 @@ if (import.meta.env.DEV) {
     const { installDemo, openDemoScreen } = await import("./demo/install");
     installDemo();
     // The store is filled once `runInit` has read the config and settled.
-    const stop = (await import("@/store")).useAppStore.subscribe(state => {
+    const store = (await import("@/store")).useAppStore;
+    const stop = store.subscribe(state => {
       if (!state.loaded) return;
       stop();
       openDemoScreen(screen as never);
+      // The store, for a script driving the app from outside: `scripts/repro-chat.mjs` sends a
+      // message the way the box does and watches what the render makes of it.
+      (window as unknown as { __ainess?: unknown }).__ainess = store;
       // Something for the screenshot script to wait on that means "drawn", not "mounted".
       requestAnimationFrame(() => document.documentElement.setAttribute("data-demo-ready", "1"));
     });

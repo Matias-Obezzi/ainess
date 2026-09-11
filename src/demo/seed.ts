@@ -203,3 +203,26 @@ export function demoState() {
 }
 
 export const DEMO_PROJECT_ID = PROJECT;
+export const DEMO_CHAT_ID = "c-demo";
+
+/** A one-on-one chat with some history, for the screen that is not the orchestrator thread. */
+export function demoChat() {
+  return {
+    chat: {
+      id: DEMO_CHAT_ID, projectId: PROJECT, name: "Claude", mode: "individual" as const,
+      participants: [{ agentId: PLANNER, role: "planner" }],
+      createdAt: NOW - 2 * HOUR,
+    },
+    messages: [
+      { id: "cm-1", chatId: DEMO_CHAT_ID, ts: NOW - 40 * 60 * 1000, from: "user" as const,
+        text: "Where does the tax get applied, before or after the discount?" },
+      { id: "cm-2", chatId: DEMO_CHAT_ID, ts: NOW - 39 * 60 * 1000, from: PLANNER,
+        text: "After. `applyDiscount` runs first and `computeTax` takes its result, so a percentage discount lowers the tax too.",
+        status: "done" as const },
+      { id: "cm-3", chatId: DEMO_CHAT_ID, ts: NOW - 12 * 60 * 1000, from: "user" as const,
+        text: "Is that what the invoices show?" },
+      { id: "cm-4", chatId: DEMO_CHAT_ID, ts: NOW - 11 * 60 * 1000, from: PLANNER,
+        text: "Yes — the three I checked all tax the discounted subtotal.", status: "done" as const },
+    ],
+  };
+}
