@@ -57,7 +57,7 @@ export async function installNgrok(onPhase: (phase: NgrokInstallPhase) => void):
   // winget answers "already installed" with a non-zero code, which is not a failure here.
   if (res.code !== 0 && !/already installed|ya está instalado/i.test(output)) {
     const detail = output.trim().split(/\r?\n/).filter(Boolean).slice(-2).join(" ");
-    throw new Error(detail || `winget terminó con código ${res.code}`);
+    throw new Error(detail || translateNow("ngrok.wingetExited", { code: res.code ?? "?" }));
   }
 
   onPhase("detecting");
@@ -118,7 +118,7 @@ async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
     // path from an earlier detection can be stale. Look the binary up again before giving up.
     const found = await getTransport().tunnelDetect().catch(() => ({ ngrok: null, cloudflared: null }));
     if (!found.ngrok) {
-      log.warn("tunnel", "no se pudo actualizar ngrok: no está instalado");
+      log.warn("tunnel", "could not update ngrok: it is not installed");
       return { status: "failed", version: null, message: translateNow("ngrok.notInstalled") };
     }
     path = found.ngrok;
@@ -137,7 +137,7 @@ async function runUpdate(ngrokPath: string): Promise<NgrokUpdateState> {
     log.warn("tunnel", `no se pudo actualizar ngrok: ${message}`);
     return { status: "failed", version, message };
   }
-  log.info("tunnel", outcome === "updated" ? `ngrok actualizado${version ? ` a ${version}` : ""}` : "ngrok ya estaba al día");
+  log.info("tunnel", outcome === "updated" ? `ngrok updated${version ? ` to ${version}` : ""}` : "ngrok was already up to date");
   return { status: outcome, version };
 }
 
@@ -189,11 +189,11 @@ export async function saveNgrokCredential(ngrokPath: string, kind: "authtoken" |
   } catch (e) {
     const message = maskSecrets(e instanceof Error ? e.message : String(e));
     log.error("tunnel", `no se pudo ejecutar ngrok config ${subcommand}: ${message}`);
-    throw new Error(isMissingBinaryError(message) ? `No se encontró ngrok en ${ngrokPath}` : message);
+    throw new Error(isMissingBinaryError(message) ? translateNow("ngrok.notFoundAt", { path: ngrokPath }) : message);
   }
   if (res.code !== 0) {
-    const message = maskSecrets(res.stderr || res.stdout || `ngrok config ${subcommand} falló`);
-    log.error("tunnel", `ngrok config ${subcommand} terminó con ${res.code}: ${message}`);
+    const message = maskSecrets(res.stderr || res.stdout || translateNow("ngrok.configFailed", { subcommand }));
+    log.error("tunnel", `ngrok config ${subcommand} exited with ${res.code}: ${message}`);
     throw new Error(message);
   }
   log.info("tunnel", `${kind} de ngrok guardado`);
@@ -218,7 +218,7 @@ export async function ngrokReservedDomains(ngrokPath: string): Promise<string[]>
     throw new Error(translateNow("ngrok.invalidApiKey"));
   }
   if (httpRes.status !== 200) {
-    throw new Error(`La API de ngrok respondió HTTP ${httpRes.status}`);
+    throw new Error(translateNow("ngrok.apiStatus", { status: httpRes.status }));
   }
   return parseReservedDomains(httpRes.body);
 }

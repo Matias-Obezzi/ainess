@@ -1412,7 +1412,7 @@ async function verifyFinishedRun(run: Run, commands: VerifyCommand[], agent: Age
     // Something here threw where nothing was supposed to. The chain is holding for an answer that
     // is never coming, and stranding it is worse than carrying on without the check: the card is
     // where `taskOnRunFinished` left it and the run itself is over either way.
-    log.error("verify", `La verificación de ${run.id} se rompió: ${errorText(e)}`);
+    log.error("verify", `verification of ${run.id} threw: ${errorText(e)}`);
     verifying.delete(run.id);
     if (run.parentRunId) maybeContinueParent(run.parentRunId);
   }
@@ -1953,7 +1953,7 @@ function requestApproval(input: Pick<Approval, "kind" | "agentId" | "toAgentId" 
     ...input,
   };
   useAppStore.setState(state => ({ approvals: { ...state.approvals, [approval.id]: approval } }));
-  addMessage({ projectId: approval.projectId, fromAgentId: "system", toAgentId: approval.agentId, kind: "system", text: `Esperando aprobación: ${approval.summary}`, runId: approval.payload.parentRunId ?? undefined });
+  addMessage({ projectId: approval.projectId, fromAgentId: "system", toAgentId: approval.agentId, kind: "system", text: translateNow("approval.waiting", { summary: approval.summary }), runId: approval.payload.parentRunId ?? undefined });
   const store = useAppStore.getState();
   const project = store.config.projects.find(p => p.id === approval.projectId);
   const agent = selectAgent(store, approval.agentId);
@@ -2142,7 +2142,7 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
     });
     if (rejected > 0) {
       const agent = selectAgent(store, agentId);
-      addMessage({ projectId, fromAgentId: "system", toAgentId: agentId, kind: "system", text: `Tarea de ${agent?.name ?? agentId} detenida: ${rejected} delegación(es) pendientes de aprobación descartadas` });
+      addMessage({ projectId, fromAgentId: "system", toAgentId: agentId, kind: "system", text: translateNow("approval.droppedOnStop", { name: agent?.name ?? agentId, n: rejected }) });
     }
   }
 }

@@ -1,6 +1,7 @@
 import { Transport } from "./transport";
+import { translateNow } from "@/i18n/useT";
 
-const NOT_AVAILABLE = "Esto solo está disponible en la app de escritorio";
+const notAvailable = () => translateNow("app.desktopOnly");
 
 /**
  * Transport of the phone build (see src/remote/): the orchestrator runs on the PC, so nothing
@@ -35,7 +36,7 @@ export const remoteTransport: Transport = {
   filesExistAbs: async () => [],
   storageStat: async () => null,
   portAvailable: async () => null,
-  remoteStart: async () => { throw new Error(NOT_AVAILABLE); },
+  remoteStart: async () => { throw new Error(notAvailable()); },
   remoteStop: async () => {},
   remoteStatus: async () => ({ running: false, clients: 0 }),
   remotePushState: async () => {},
@@ -44,15 +45,15 @@ export const remoteTransport: Transport = {
   requestAttention: async () => {},
   logAppend: async () => {},
   logsDir: async () => "",
-  openLogsDir: async () => { throw new Error(NOT_AVAILABLE); },
-  tunnelStart: async () => { throw new Error(NOT_AVAILABLE); },
+  openLogsDir: async () => { throw new Error(notAvailable()); },
+  tunnelStart: async () => { throw new Error(notAvailable()); },
   tunnelStop: async () => {},
   tunnelStatus: async () => ({ running: false }),
   tunnelDetect: async () => ({ cloudflared: null, ngrok: null }),
-  ptySpawn: async () => { throw new Error(NOT_AVAILABLE); },
-  ptyWrite: async () => { throw new Error(NOT_AVAILABLE); },
-  ptyResize: async () => { throw new Error(NOT_AVAILABLE); },
-  ptyKill: async () => { throw new Error(NOT_AVAILABLE); },
+  ptySpawn: async () => { throw new Error(notAvailable()); },
+  ptyWrite: async () => { throw new Error(notAvailable()); },
+  ptyResize: async () => { throw new Error(notAvailable()); },
+  ptyKill: async () => { throw new Error(notAvailable()); },
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},

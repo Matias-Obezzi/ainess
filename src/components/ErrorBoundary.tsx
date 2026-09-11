@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // The stack goes to the log and not to the screen: it is the part that identifies the bug, and
     // the part nobody can act on while looking at it.
-    log.error("ui", `${this.props.where} falló: ${error.message}`, error.stack ?? "", info.componentStack ?? "");
+    log.error("ui", `${this.props.where} failed: ${error.message}`, error.stack ?? "", info.componentStack ?? "");
   }
 
   componentDidUpdate(prev: Props): void {

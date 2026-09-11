@@ -1,3 +1,4 @@
+import { translateNow } from "@/i18n/useT";
 // Public tunnel helpers shared by the app, the CLI and the tests. The process itself is
 // spawned by the transport (Rust in src-tauri/src/tunnel.rs, node in src/lib/tunnel-node.ts).
 
@@ -21,9 +22,7 @@ export function tunnelInstallCommand(provider: TunnelProvider): string {
 }
 
 export function tunnelDescription(provider: TunnelProvider): string {
-  return provider === "ngrok"
-    ? "Requiere una cuenta y un authtoken (`ngrok config add-authtoken …`). El plan gratis incluye un dominio estático: con eso la URL queda fija."
-    : "Sin cuenta ni configuración, pero la URL cambia cada vez. Con un named tunnel y un dominio tuyo en Cloudflare, la URL queda fija.";
+  return translateNow(provider === "ngrok" ? "tunnel.ngrokNote" : "tunnel.cloudflaredNote");
 }
 
 export interface TunnelOptions {

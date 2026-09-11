@@ -27,7 +27,8 @@ export interface ProviderSpec {
   models: ModelInfo[];
   supportsSessions: boolean;
   promptVia: "stdin" | "arg";
-  note?: string;
+  /** Dictionary key of a line of help about this provider (see `provider.*` in src/i18n). */
+  noteKey?: string;
   buildCommand(input: BuildInput): Omit<SpawnOptions, "runId">;
   parseLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[];
   /** Final answer when the provider's own `result` event doesn't carry it (default: all raw lines). */
@@ -501,7 +502,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     ]),
     supportsSessions: true,
     promptVia: "arg",
-    note: "En modo no interactivo Copilot exige --allow-all-tools; con auto-aprobación se usa --yolo (también rutas y URLs).",
+    noteKey: "provider.copilotNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       // -p without --allow-all-tools makes every tool call fail, so it is always on;
@@ -631,7 +632,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     // shim on Windows, and Windows refuses to start a batch file whose arguments carry newlines
     // ("batch file arguments are invalid"), which every system prompt does.
     promptVia: "stdin",
-    note: "Los modelos son «proveedor/modelo» (por ejemplo google/gemini-3-flash) y salen de `opencode models`. Conectá la cuenta o la API key con `opencode auth login`: la clave queda en opencode, ainess no la guarda. Sin auto-aprobación las herramientas quedan denegadas, así que un implementador la necesita.",
+    noteKey: "provider.opencodeNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       const args = ["run", "--format", "json"];

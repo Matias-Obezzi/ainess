@@ -25,7 +25,7 @@ async function ensureNotificationsGranted(): Promise<boolean> {
     }
     return granted;
   } catch (e) {
-    log.warn("notifications", "No se pudo verificar el permiso de notificaciones", e);
+    log.warn("notifications", "could not check the notification permission", e);
     return false;
   }
 }
@@ -37,7 +37,7 @@ async function notify(title: string, body: string): Promise<void> {
     const mod = await import("@tauri-apps/plugin-notification");
     mod.sendNotification({ title, body });
   } catch (e) {
-    log.warn("notifications", "No se pudo enviar la notificación del sistema", e);
+    log.warn("notifications", "could not send the system notification", e);
   }
 }
 

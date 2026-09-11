@@ -1139,7 +1139,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       tunnelStatus: status.running
         ? { ...status }
-        : { running: false, error: state.tunnelStatus.running ? "Se cayó el túnel" : state.tunnelStatus.error },
+        : { running: false, error: state.tunnelStatus.running ? translateNow("tunnel.down") : state.tunnelStatus.error },
     }));
     if (fell) {
       get().notify({ kind: "tunnel", title: translateNow("notify.tunnelDown"), body: translateNow("notify.tunnelDownBody") });
@@ -1166,7 +1166,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (state.terminals.length >= MAX_TERMINALS) return;
     const shells = state.shells;
     if (shells.length === 0) {
-      log.warn("terminal", "no hay ningún shell disponible en esta máquina");
+      log.warn("terminal", "no shell available on this machine");
       return;
     }
     const shell = (opts?.shellId && shells.find(sh => sh.id === opts.shellId)) || shells[0];
@@ -1193,7 +1193,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       projectPanels: panelsWith(s, { term: true }),
     }));
     saveUiPrefs();
-    log.info("terminal", `nueva terminal ${terminal.title} (${shell.path}) en ${cwd || "home"}`);
+    log.info("terminal", `new terminal ${terminal.title} (${shell.path}) in ${cwd || "home"}`);
   },
 
   closeTerminal: (id) => {
@@ -2373,7 +2373,7 @@ async function runInit(): Promise<void> {
         const formation: Formation = {
           id: crypto.randomUUID(),
           name: "Mi equipo",
-          description: "El equipo que compartían todos los proyectos",
+          description: translateNow("formation.sharedTeamDescription"),
           agents: cloneAgents(legacy),
         };
         formations.push(formation);
@@ -2485,7 +2485,7 @@ async function runInit(): Promise<void> {
 
     setLogLevel(config.logLevel ?? "info");
     const agentCount = config.projects.reduce((n, p) => n + p.agents.length, 0);
-    log.info("app", `configuración cargada (${config.projects.length} proyectos, ${agentCount} agentes)`);
+    log.info("app", `config loaded (${config.projects.length} projects, ${agentCount} agents)`);
 
     if (isTauri()) {
       void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
@@ -2493,7 +2493,7 @@ async function runInit(): Promise<void> {
       void getTransport()
         .ptyListShells()
         .then(shells => set({ shells }))
-        .catch(e => log.warn("terminal", `no se pudieron detectar los shells: ${e}`));
+        .catch(e => log.warn("terminal", `could not detect the shells: ${e}`));
     }
 
     if (isSeed) {
