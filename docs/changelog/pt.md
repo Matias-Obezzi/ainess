@@ -2,6 +2,137 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.15.0 — 2026-09-11
+
+### Novo
+
+- **As linhas da hierarquia agora conectam.** Os cartões dos agentes sempre desenharam pontos de
+  conexão — é de onde as setas saem — mas a tela não era conectável, então eles pareciam algo que
+  dava para puxar e não era. Agora arrastar uma linha de um cartão até outro move aquele agente para
+  baixo de um novo planejador. As regras são as que o editor de agentes já aplicava — não a si
+  mesmo, não sob alguém que já está abaixo dele, e um único planejador no topo — lidas do mesmo
+  lugar em vez de escritas uma segunda vez, para que as duas telas não acabem discordando sobre o
+  que é uma equipe válida.
+
+
+- **Um projeto pode dizer o que significa "terminado", e o ainess confere.** Até agora uma tarefa
+  avançava porque o processo do agente terminou com código zero. Nada mais era olhado, então
+  "terminado" queria dizer "o CLI voltou" — e descobrir o contrário era trabalho seu, de manhã,
+  cartão por cartão. Agora um projeto pode listar seus próprios comandos (`npm test`,
+  `npx tsc --noEmit`, `cargo check`), e quando um agente termina um trabalho delegado eles são
+  executados na pasta em que ele realmente trabalhou — seu worktree, se tiver um, para que os testes
+  vejam o código que acabou de ser escrito. Se passam, o cartão segue como antes, para o revisor se
+  houver um. Se falham, o cartão volta para você com o nome do comando e o que ele imprimiu, uma
+  mensagem no fio e um hook `verify.failed` para o celular te avisar às três da manhã. Os comandos
+  que o projeto já declara — `test`, `lint`, `typecheck`, `check`, `build` do package.json, Makefile
+  ou Cargo.toml — são oferecidos com um clique.
+
+- **Desfazer o que uma execução fez.** Uma execução já guardava onde aconteceu e sobre qual commit
+  começou, porque o painel de diff precisava disso, então o material já estava lá; o que faltava era
+  saber o que a pasta já tinha em andamento *antes*. Sem isso, "desfazer a execução" e "jogar fora
+  tudo que não foi commitado" são o mesmo comando, e não são a mesma coisa: o segundo come trabalho
+  seu que você nunca mencionou. Agora uma execução também anota o que estava modificado ou não
+  rastreado quando começou, e o detalhe de uma execução terminada tem um botão que devolve a pasta
+  ao que era.
+
+- **Um teto para uma execução, não só para o dia.** Os limites diário e mensal nunca impediram que
+  uma única execução gastasse a cota do dia inteiro de uma vez: são totais, e um total só percebe
+  depois. Agora um projeto também pode definir quanto uma execução pode custar.
+
+  Vale dizer com clareza o que isso consegue fazer honestamente, porque não é o que se suporia.
+  Todos os CLI aqui informam o que gastaram quando terminam, não enquanto trabalham — então uma
+  execução que passa do teto não pode ser cortada no meio, porque até terminar o app não sabe o
+  preço. O que o teto faz é parar a *próxima*: assim que uma execução informa que passou, a mensagem
+  diz isso, e nenhuma outra rodada desse mesmo trabalho começa. Conta a cadeia inteira e não só a
+  última execução, então uma delegação de duas rodadas atrás que saiu caríssima ainda assim para
+  tudo — senão um teto deixa de ser um teto. Um orçamento em "apenas avisar" continua apenas
+  avisando.
+
+  É deliberadamente conservador e diz em voz alta antes de tocar em nada: a lista de arquivos que
+  voltam, a dos que são apagados porque não existiam antes, e a dos que não vai tocar — arquivos que
+  já estavam modificados quando a execução começou, em que a edição do agente e a sua estão no mesmo
+  arquivo e daqui não há como separá-las. Apagar é `git clean` com uma lista explícita de caminhos,
+  nunca solto sobre a pasta. Execuções anteriores a isso também oferecem o botão, tratando a pasta
+  como se tivesse começado limpa, que é a única coisa que se pode supor sobre elas.
+
+  Nada é repetido automaticamente. Uma falha que o agente não consegue consertar viraria um laço
+  rodando a noite inteira, e decidir devolver um trabalho é uma decisão, não um reflexo.
+
+  O que você digita é separado em programa e argumentos na sua frente, e as partes aparecem embaixo
+  do campo, porque é assim que é executado: nada digitado aqui chega a um shell. Um `&&`, um pipe ou
+  um redirecionamento são recusados com um motivo em vez de escapados em silêncio — o app roda sobre
+  o shell que a máquina oferecer e eles não concordam sobre aspas. Dois comandos é a resposta para
+  querer dois comandos. Um projeto sem comandos listados se comporta exatamente como antes.
+
+
+### Corrigido
+
+- **Dá para falar com um planejador que delegou enquanto os implementadores trabalham.** Antes ele
+  enfileirava sua mensagem até a rodada inteira voltar, o que fazia do único agente cujo trabalho é
+  continuar planejando o único com quem você não conseguia falar enquanto havia trabalho em
+  andamento. A causa era uma única palavra fazendo três trabalhos: "esperando" queria dizer
+  esperando uma resposta, parado até a cota voltar, *e* esperando os implementadores — e só o último
+  descreve um agente sem nenhum processo próprio rodando. Agora esse último caso pega a mensagem e
+  começa um turno; os outros dois continuam enfileirando, porque um turno novo ali falaria por cima
+  justamente daquilo que se está esperando.
+
+  O que tornou isso mais que uma mudança de uma linha é o que acontece quando os implementadores
+  voltam com o planejador no meio de uma resposta para você. Duas execuções de um agente são dois
+  escritores na mesma sessão do CLI, então os resultados esperam aquele turno terminar e são
+  entregues logo em seguida — o fio da própria tarefa primeiro, antes de qualquer outra coisa na
+  fila. E um planejador cujo turno termina enquanto ainda roda trabalho que ele distribuiu agora
+  aparece como esperando, e não como livre, que é o que ele é.
+
+- **Um agente que pergunta a mesma coisa para sempre agora para.** Responder a uma pergunta retoma o
+  agente na rodada em que ele já estava — uma pergunta não avança a rodada — e a rodada é a única
+  coisa que `maxRounds` conta. Então um agente que responde cada resposta com outra pergunta não
+  tinha absolutamente nada o limitando: você responde, ele pergunta de novo, e a única coisa que
+  encerra isso é você desistir. O modo autônomo tinha percebido e criado o próprio teto, mas só para
+  as perguntas que ele mesmo responde; quando quem respondia era você, não havia teto nenhum.
+
+  Agora são duas regras. Uma pergunta que esta tarefa já respondeu não é feita de novo: a resposta
+  está registrada, então volta direto, e isso não é um juízo de valor. E uma tarefa que já perguntou
+  doze vezes para de perguntar e diz isso, porque doze turnos em círculos são uma tarde ruim e uma
+  noite disso é pior. Perguntar muitas coisas *diferentes* continua permitido: limita-se a
+  quantidade, nunca o conteúdo.
+
+
+- **O app parou de gastar mais de cada segundo que tinha escrevendo um arquivo para si mesmo.** O
+  histórico de um projeto é reescrito inteiro sempre que algo muda, e antes é lido e parseado para
+  não perder uma decisão tomada no CLI ou no celular. Isso é barato para um feed de mensagens e
+  ruinoso para um feed de saída crua dos CLI, que era no que ele tinha se transformado: na máquina
+  onde isso foi encontrado, o arquivo de um projeto tinha chegado a **47 MB, 83% de linhas cruas**, e
+  cada gravação custava 283 ms de contas na própria thread da interface — duas vezes por segundo,
+  durante todo o tempo em que um agente estivesse trabalhando. São 566 ms de cada segundo pensando em
+  vez de desenhando, que é exatamente por que o app ficava lento bem quando havia algo para olhar, e
+  por que mandar uma mensagem podia deixar o fio em branco até que qualquer coisa — abrir uma barra
+  lateral, trocar de projeto — o obrigasse a desenhar de novo. Nunca foram as animações nem a saída
+  do agente chegando: o agente imprime uma ou duas linhas por segundo. Era o app conversando com o
+  próprio disco.
+
+  O limite antigo contava linhas e ignorava o tamanho delas, o que era medir a coisa errada: a linha
+  mediana tem 313 caracteres e a maior medida tinha 536 KB. Agora uma linha é cortada em 2 KB, uma
+  execução guarda 64 KB delas, e só as últimas trinta execuções guardam alguma — as mais antigas
+  mantêm seu prompt, sua resposta e o que custaram, e perdem apenas a transcrição de como o CLI
+  disse. O mesmo arquivo fica em 7 MB e uma gravação custa 44 ms. Com a gravação esperando também
+  três segundos em vez de meio enquanto um agente trabalha, a interface passou de **566 ms de cada
+  segundo para 15**. Não é preciso fazer nada com um histórico que já existe: a primeira gravação o
+  reescreve no tamanho novo.
+
+
+- **Uma opção escrita sem nada depois já não é lida como o próprio valor.** `ainess hook add
+  --action slack --url --template "..."` — `--url` sem nada atrás — guardava a simples presença da
+  opção onde vai o endereço do webhook, e o hook ficava apontando para algo que ninguém escreveu: não
+  chegava a lugar nenhum e nunca dizia por quê. Agora ele para e avisa que falta `--url`, que era o
+  que faltava. O mesmo com `--program`, `--args` e `--template`: uma opção sem nada depois é uma que
+  você esqueceu de preencher, não um valor.
+- **Um turno do Claude que começa sem id de sessão inicia uma conversa nova em vez de retomar uma
+  vazia.** O ainess guarda o id que o provedor anuncia para que a mensagem seguinte continue o mesmo
+  fio. Uma linha de abertura que vinha sem id era guardada assim mesmo, como nada, e o turno seguinte
+  pedia ao Claude para retomar uma sessão sem nome. Essa linha agora é ignorada, então o turno
+  seguinte começa limpo — que é onde ele ia parar de qualquer jeito, só que sem a retomada falha no
+  caminho.
+
 ## 0.14.0 — 2026-09-11
 
 ### Novo

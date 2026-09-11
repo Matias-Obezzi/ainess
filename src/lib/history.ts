@@ -11,6 +11,7 @@ import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@
 import { translateNow } from "@/i18n/useT";
 import { interruptedStrings } from "@/i18n/interrupted";
 import { rawLinesOf } from "@/lib/raw-lines";
+import { needsTrim, trimRawLines, trimRunsForDisk } from "@/lib/history-trim";
 import { runtimeAfterInterruption } from "@/lib/interrupted-runtime";
 
 interface HistoryFile {
@@ -49,9 +50,18 @@ export function isInterruptedOutput(text: string): boolean {
 
 const MAX_RUNS = 300;
 const MAX_MESSAGES = 3000;
-const MAX_RAW_LINES = 300;
 const MAX_APPROVALS = 100;
+/**
+ * How long a change waits before the file is rewritten — longer while an agent is working.
+ *
+ * Every save reads the file back first, so another process's decisions survive, which makes a save
+ * a parse and a serialise of the whole thing. At 500 ms that ran twice a second for as long as a
+ * run lasted, which is where the app went to think instead of to paint. Nothing is lost by waiting:
+ * a clean exit flushes, and the only thing a crash costs is the last few seconds of a transcript
+ * that is still on the agent's own stdout.
+ */
 const SAVE_DELAY_MS = 500;
+const SAVE_DELAY_BUSY_MS = 3000;
 const SYNC_INTERVAL_MS = 5000;
 
 const loadedProjects = new Set<string>();
@@ -144,10 +154,13 @@ export function startHistorySync(): void {
 function scheduleSave(projectId: string): void {
   dirtyProjects.add(projectId);
   if (timers.has(projectId)) return;
+  const busy = Object.values(useAppStore.getState().runs).some(
+    r => r.projectId === projectId && r.status === "running",
+  );
   timers.set(projectId, setTimeout(() => {
     timers.delete(projectId);
     void saveHistory(projectId);
-  }, SAVE_DELAY_MS));
+  }, busy ? SAVE_DELAY_BUSY_MS : SAVE_DELAY_MS));
 }
 
 async function readFile(projectId: string): Promise<HistoryFile | null> {
@@ -293,13 +306,15 @@ export async function saveHistory(projectId: string): Promise<void> {
   // Another process may have added runs/approvals since we last read the file.
   await mergeFromDisk(projectId);
   const state = useAppStore.getState();
-  const runs = Object.values(state.runs)
-    .filter(r => r.projectId === projectId)
-    .sort((a, b) => a.startedAt - b.startedAt)
-    .slice(-MAX_RUNS)
+  const runs = trimRunsForDisk(
+    Object.values(state.runs)
+      .filter(r => r.projectId === projectId)
+      .sort((a, b) => a.startedAt - b.startedAt)
+      .slice(-MAX_RUNS),
     // A running run keeps its lines in `lib/raw-lines`, not in the store: they are picked up here
     // so a crash mid-run still leaves behind what the agent had printed.
-    .map(r => ({ ...r, rawLines: (rawLinesOf(r.id) ?? r.rawLines).slice(-MAX_RAW_LINES) }));
+    r => rawLinesOf(r.id) ?? r.rawLines,
+  );
   const messages = state.messages.filter(m => m.projectId === projectId).slice(-MAX_MESSAGES);
   const questions = Object.values(state.questions).filter(q => q.projectId === projectId);
   const approvals = Object.values(state.approvals)
@@ -363,8 +378,8 @@ export function trimRunsInMemory(runs: Record<string, Run>, projectId: string): 
   const out: Record<string, Run> = {};
   for (const [id, run] of Object.entries(runs)) {
     if (drop.has(id)) continue;
-    if (run.projectId === projectId && run.status !== "running" && run.rawLines.length > MAX_RAW_LINES) {
-      out[id] = { ...run, rawLines: run.rawLines.slice(-MAX_RAW_LINES) };
+    if (run.projectId === projectId && run.status !== "running" && needsTrim(run.rawLines)) {
+      out[id] = { ...run, rawLines: trimRawLines(run.rawLines) };
       changed = true;
     } else {
       out[id] = run;

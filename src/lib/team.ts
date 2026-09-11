@@ -89,3 +89,46 @@ export function autoApproveFlag(on: boolean | undefined, off: boolean | undefine
   if (off) return false;
   return on;
 }
+
+/** Every agent at or below `agentId`, itself included. */
+export function descendantsOf(roster: AgentConfig[], agentId: string): Set<string> {
+  const out = new Set<string>([agentId]);
+  const queue = [agentId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const child of roster) {
+      if (child.parentId === current && !out.has(child.id)) {
+        out.add(child.id);
+        queue.push(child.id);
+      }
+    }
+  }
+  return out;
+}
+
+/** Why a move was refused, so the screen that refused it can say which rule it broke. */
+export type ReparentProblem = "unknown" | "self" | "cycle" | "root-planner-clash";
+
+/**
+ * Whether `agentId` may be hung under `parentId` (null meaning the top of the team).
+ *
+ * The same rules the agent editor has always applied, moved here so the graph can apply them too
+ * rather than growing a second, slightly different copy of them.
+ */
+export function reparentProblem(
+  roster: AgentConfig[],
+  agentId: string,
+  parentId: string | null,
+): ReparentProblem | undefined {
+  const agent = roster.find(a => a.id === agentId);
+  if (!agent) return "unknown";
+  if (parentId === agentId) return "self";
+  if (parentId !== null) {
+    if (!roster.some(a => a.id === parentId)) return "unknown";
+    // Hanging an agent under its own descendant closes a ring, and the walk that builds the tree
+    // would never come back out of it.
+    if (descendantsOf(roster, agentId).has(parentId)) return "cycle";
+  }
+  if (rootPlannerClash(roster, { id: agentId, role: agent.role, parentId })) return "root-planner-clash";
+  return undefined;
+}

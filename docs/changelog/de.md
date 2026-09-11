@@ -2,6 +2,144 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.15.0 — 2026-09-11
+
+### Neu
+
+- **Die Linien in der Hierarchie verbinden jetzt etwas.** Die Agentenkarten haben immer
+  Verbindungspunkte gezeichnet — daran hängen die Pfeile — aber die Fläche war nicht verbindbar, sie
+  sahen also nach etwas aus, das man ziehen kann, und waren es nicht. Eine Linie von einer Karte zur
+  anderen zu ziehen hängt diesen Agenten jetzt unter einen neuen Planer. Die Regeln sind die, die
+  der Agenten-Editor längst anwendet — nicht unter sich selbst, nicht unter jemanden, der schon
+  darunter steht, und nur ein Planer ganz oben — an derselben Stelle gelesen statt ein zweites Mal
+  geschrieben, damit die beiden Bildschirme nicht irgendwann uneins darüber werden, was ein gültiges
+  Team ist.
+
+
+- **Ein Projekt kann sagen, was „fertig“ bedeutet, und ainess prüft es nach.** Bisher rückte eine
+  Aufgabe vor, weil der Prozess des Agenten mit Code null endete. Mehr wurde nicht angesehen, also
+  hieß „fertig“ nur „das CLI ist zurück“ — und das Gegenteil herauszufinden war Ihre Arbeit, morgens,
+  Karte für Karte. Ein Projekt kann jetzt eigene Befehle auflisten (`npm test`, `npx tsc --noEmit`,
+  `cargo check`), und wenn ein Agent delegierte Arbeit beendet, werden sie in dem Ordner ausgeführt,
+  in dem er tatsächlich gearbeitet hat — seinem Worktree, falls er einen hat, damit die Tests den
+  gerade geschriebenen Code sehen. Gehen sie durch, läuft die Karte weiter wie bisher, zum Prüfer,
+  falls es einen gibt. Scheitern sie, kommt die Karte mit dem Namen des Befehls und seiner Ausgabe zu
+  Ihnen zurück, dazu eine Nachricht im Verlauf und ein `verify.failed`-Hook, damit das Telefon Sie um
+  drei Uhr morgens erreicht. Befehle, die das Projekt ohnehin angibt — `test`, `lint`, `typecheck`,
+  `check`, `build` aus package.json, Makefile oder Cargo.toml — werden per Klick angeboten.
+
+- **Rückgängig machen, was ein Lauf getan hat.** Ein Lauf hielt schon fest, wo er stattfand und auf
+  welchem Commit er öffnete, weil das Diff-Panel das brauchte; was fehlte, war zu wissen, was der
+  Ordner *vorher* schon offen hatte. Ohne das sind „den Lauf rückgängig machen" und „alles
+  Uncommittete wegwerfen" derselbe Befehl, und sie sind nicht dasselbe: Das zweite frisst Arbeit,
+  die Sie selbst gemacht und nie erwähnt haben. Ein Lauf notiert jetzt also auch, was beim Start
+  geändert oder unversioniert war, und das Detail eines beendeten Laufs hat einen Knopf, der den
+  Ordner zurückstellt.
+
+- **Eine Obergrenze für einen Lauf, nicht nur für den Tag.** Das Tages- und das Monatslimit haben
+  nie verhindert, dass ein einzelner Lauf das Tagesbudget auf einmal ausgibt: Es sind Summen, und
+  eine Summe merkt es erst hinterher. Ein Projekt kann jetzt auch festlegen, was ein einzelner Lauf
+  kosten darf.
+
+  Was das ehrlicherweise leisten kann, sollte man klar sagen, denn es ist nicht das, was man annehmen
+  würde. Alle CLIs hier melden ihre Kosten, wenn sie fertig sind, nicht während sie arbeiten — ein
+  Lauf, der darüber geht, lässt sich also nicht mittendrin abbrechen, weil die App bis zum Ende den
+  Preis nicht kennt. Was die Obergrenze tut, ist den *nächsten* zu stoppen: Sobald ein Lauf meldet,
+  dass er darüber lag, sagt die Nachricht es, und eine weitere Runde derselben Arbeit startet nicht.
+  Es zählt die ganze Kette und nicht nur der letzte Lauf, sodass auch eine zwei Runden alte
+  Delegation, die ein Vermögen gekostet hat, sie anhält — sonst ist eine Obergrenze keine. Ein
+  Budget auf „nur warnen" warnt weiterhin nur.
+
+  Er ist absichtlich vorsichtig und sagt es laut, bevor er irgendetwas anfasst: die Liste der
+  Dateien, die zurückkommen, die der Dateien, die gelöscht werden, weil es sie vorher nicht gab, und
+  die, die er nicht anfasst — Dateien, die beim Start schon geändert waren, wo die Änderung des
+  Agenten und Ihre in derselben Datei liegen und von hier aus nicht zu trennen sind. Gelöscht wird
+  mit `git clean` und einer ausdrücklichen Pfadliste, nie frei auf dem Ordner. Ältere Läufe bieten
+  den Knopf ebenfalls an und behandeln den Ordner als anfangs sauber, was das Einzige ist, was sich
+  über sie annehmen lässt.
+
+  Nichts wird automatisch wiederholt. Ein Fehlschlag, den der Agent nicht beheben kann, würde zu
+  einer Schleife, die die ganze Nacht läuft, und Arbeit zurückzugeben ist eine Entscheidung, kein
+  Reflex.
+
+  Was Sie tippen, wird vor Ihren Augen in Programm und Argumente zerlegt, und die Teile stehen unter
+  dem Feld, denn genau so wird es gestartet: Nichts hiervon erreicht je eine Shell. Ein `&&`, eine
+  Pipe oder eine Umleitung werden mit Begründung abgelehnt statt still maskiert — die App läuft auf
+  der Shell, die die Maschine anbietet, und die sind sich über Anführungszeichen nicht einig. Zwei
+  Befehle ist die Antwort darauf, zwei Befehle zu wollen. Ein Projekt ohne aufgelistete Befehle
+  verhält sich genau wie zuvor.
+
+
+### Behoben
+
+- **Mit einem Planer, der delegiert hat, lässt sich reden, während seine Implementierer
+  arbeiten.** Bisher wurde Ihre Nachricht eingereiht, bis die ganze Runde zurück war — womit
+  ausgerechnet der eine Agent, dessen Aufgabe das Weiterplanen ist, der einzige war, den man während
+  laufender Arbeit nicht erreichte. Schuld war ein Wort mit drei Bedeutungen: „wartet" hieß wartet
+  auf eine Antwort, pausiert bis das Kontingent zurückkommt, *und* wartet auf die Implementierer —
+  und nur Letzteres beschreibt einen Agenten ohne eigenen laufenden Prozess. Dieser Fall nimmt die
+  Nachricht nun an und beginnt einen Zug; die anderen beiden reihen weiter ein, weil ein neuer Zug
+  dort genau dem ins Wort fiele, worauf gewartet wird.
+
+  Mehr als eine Zeile wurde daraus, weil die Implementierer zurückkommen können, während der Planer
+  mitten in einer Antwort an Sie steckt. Zwei Läufe eines Agenten sind zwei Schreiber auf einer
+  CLI-Sitzung, also warten die Ergebnisse auf das Ende dieses Zuges und werden unmittelbar danach
+  übergeben — der eigene Faden der Aufgabe zuerst, vor allem anderen Eingereihten. Und ein Planer,
+  dessen Zug endet, während von ihm verteilte Arbeit noch läuft, liest sich jetzt als wartend statt
+  als frei, was er auch ist.
+
+- **Ein Agent, der ewig dasselbe fragt, hört jetzt auf.** Eine Antwort setzt den Agenten in der
+  Runde fort, in der er ohnehin war — eine Frage bringt die Runde nicht weiter — und die Runde ist
+  das Einzige, was `maxRounds` zählt. Ein Agent, der jede Antwort mit einer weiteren Frage
+  beantwortet, hatte also überhaupt nichts, was ihn begrenzte: Sie antworten, er fragt erneut, und
+  beendet wird das nur dadurch, dass Sie aufgeben. Der autonome Modus hatte das bemerkt und sich
+  eine eigene Obergrenze gegeben, aber nur für die Fragen, die er selbst beantwortet; wenn Sie
+  antworteten, gab es nirgends eine.
+
+  Jetzt zwei Regeln. Eine Frage, die diese Aufgabe schon beantwortet hat, wird nicht erneut
+  gestellt: Die Antwort steht fest, also geht sie direkt zurück — das ist keine Ermessensfrage. Und
+  eine Aufgabe, die zwölfmal gefragt hat, hört auf zu fragen und sagt es, denn zwölf Runden im Kreis
+  sind ein schlechter Nachmittag und eine Nacht davon ist schlimmer. Viele *verschiedene* Fragen
+  sind weiterhin erlaubt: begrenzt wird die Anzahl, nie der Inhalt.
+
+
+- **Die App verbringt nicht mehr über jede Sekunde, die sie hat, damit, sich selbst eine Datei zu
+  schreiben.** Der Verlauf eines Projekts wird vollständig neu geschrieben, sobald sich darin etwas
+  ändert, und vorher gelesen und geparst, damit keine im CLI oder am Telefon getroffene Entscheidung
+  verloren geht. Für einen Nachrichtenstrom ist das billig, für einen Strom roher CLI-Ausgabe
+  ruinös — und dazu war er weitgehend geworden: Auf der Maschine, auf der das gefunden wurde, war die
+  Datei eines Projekts auf **47 MB angewachsen, 83 % davon Rohzeilen**, und ein Speichern kostete
+  283 ms Rechnerei auf dem Thread der Oberfläche — zweimal pro Sekunde, so lange ein Agent arbeitete.
+  Das sind 566 ms jeder Sekunde mit Denken statt Zeichnen, weshalb die App genau dann langsam wurde,
+  wenn es etwas zu sehen gab, und weshalb das Senden einer Nachricht den Verlauf leer lassen konnte,
+  bis irgendetwas — eine Seitenleiste öffnen, das Projekt wechseln — sie zum Neuzeichnen zwang. Es
+  waren nie die Animationen, und es war nie die eintreffende Ausgabe des Agenten: Der Agent druckt
+  ein bis zwei Zeilen pro Sekunde. Es war die App im Gespräch mit ihrer eigenen Festplatte.
+
+  Die alte Grenze zählte Zeilen und übersah deren Größe, was das Falsche maß: Die mittlere Zeile hat
+  313 Zeichen, die größte gemessene hatte 536 KB. Jetzt wird eine Zeile bei 2 KB abgeschnitten, ein
+  Lauf behält 64 KB davon, und nur die letzten dreißig Läufe behalten überhaupt welche — ältere
+  behalten ihren Auftrag, ihre Antwort und ihre Kosten und verlieren nur die Mitschrift davon, wie
+  das CLI es gesagt hat. Dieselbe Datei kommt auf 7 MB, ein Speichern kostet 44 ms. Da das Speichern
+  außerdem drei Sekunden statt einer halben wartet, während ein Agent arbeitet, ging die Oberfläche
+  von **566 ms je Sekunde auf 15**. An einem bestehenden Verlauf ist nichts zu tun: Das erste
+  Speichern schreibt ihn in der neuen Größe neu.
+
+
+- **Eine Option ohne etwas dahinter wird nicht mehr als ihr eigener Wert gelesen.** `ainess hook add
+  --action slack --url --template "..."` — `--url` ohne etwas dahinter — schrieb das bloße
+  Vorhandensein der Option dorthin, wo die Adresse des Webhooks steht, und der Hook wurde
+  gespeichert, zeigend auf etwas, das niemand getippt hatte: Er kam nirgends an und sagte nie,
+  warum. Jetzt bricht er ab und meldet, dass `--url` fehlt, was auch stimmte. Dasselbe für
+  `--program`, `--args` und `--template`: Eine Option ohne etwas dahinter ist eine, die Sie
+  auszufüllen vergessen haben, kein Wert.
+- **Ein Claude-Zug, der ohne Session-ID beginnt, startet ein neues Gespräch, statt ein leeres
+  fortzusetzen.** ainess merkt sich die ID, die der Anbieter ankündigt, damit die nächste Nachricht
+  denselben Faden fortsetzt. Eine Eröffnungszeile, die ohne ID ankam, wurde trotzdem gemerkt, als
+  nichts, und der Zug danach bat Claude, eine Session ohne Namen fortzusetzen. Diese Zeile wird nun
+  ignoriert, also startet der nächste Zug sauber — wo er ohnehin gelandet wäre, nur ohne das
+  gescheiterte Fortsetzen auf dem Weg.
+
 ## 0.14.0 — 2026-09-11
 
 ### Neu

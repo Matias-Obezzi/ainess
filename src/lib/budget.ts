@@ -97,3 +97,35 @@ export function budgetState(runs: Run[], budget: Budget | undefined, now: number
 export function budgetAllowsStart(state: BudgetState, budget: Budget | undefined): boolean {
   return !(budget?.onReached === "block" && state.exceeded);
 }
+
+
+/**
+ * Whether one run cost more than a single run is allowed to.
+ *
+ * Answered from what the run reported, which is all there is: every CLI here prints its cost when
+ * it finishes and not while it works, so there is nothing to compare against mid-run. A run with no
+ * cost reported is not over: absence of a number is not a large number.
+ */
+export function runOverCap(run: Pick<Run, "usage">, budget: Budget | undefined): boolean {
+  if (!isValidLimit(budget?.perRunUsd)) return false;
+  const cost = run.usage?.costUsd;
+  if (typeof cost !== "number" || Number.isNaN(cost)) return false;
+  return cost > budget!.perRunUsd!;
+}
+
+/**
+ * The run of this chain that blew the per-run ceiling, if any.
+ *
+ * The whole chain and not just the last one: a root, its rounds and everything it delegated are one
+ * piece of work as far as the ceiling is concerned, and letting the next round start because the
+ * expensive run was two rounds ago is how a ceiling stops being one.
+ */
+export function capBreachIn(runs: Run[], rootRunId: string | undefined, budget: Budget | undefined): Run | undefined {
+  if (!rootRunId || !isValidLimit(budget?.perRunUsd)) return undefined;
+  return runs.find(r => (r.rootRunId === rootRunId || r.id === rootRunId) && runOverCap(r, budget));
+}
+
+/** Whether the chain may carry on. A budget that only warns never stops anything. */
+export function capAllowsContinue(breach: Run | undefined, budget: Budget | undefined): boolean {
+  return !(budget?.onReached === "block" && !!breach);
+}

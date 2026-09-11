@@ -2,6 +2,146 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.15.0 — 2026-09-11
+
+### Nouveau
+
+- **Les lignes de la hiérarchie relient enfin quelque chose.** Les cartes des agents ont toujours
+  dessiné des points de connexion — c'est de là que partent les flèches — mais le canevas n'était
+  pas connectable : ils avaient l'air de quelque chose qu'on pouvait tirer, sans l'être. Tirer une
+  ligne d'une carte à une autre place désormais cet agent sous un nouveau planificateur. Les règles
+  sont celles que l'éditeur d'agents appliquait déjà — pas à lui-même, pas sous quelqu'un qui est
+  déjà en dessous de lui, et un seul planificateur au sommet — lues au même endroit plutôt
+  qu'écrites une seconde fois, pour que les deux écrans ne finissent pas par diverger sur ce qu'est
+  une équipe valide.
+
+
+- **Un projet peut dire ce que « terminé » veut dire, et ainess le vérifie.** Jusqu'ici une tâche
+  avançait parce que le processus de l'agent s'était terminé avec un code zéro. Rien d'autre n'était
+  regardé, donc « terminé » voulait dire « le CLI est revenu » — et s'apercevoir du contraire était
+  votre travail, le matin, carte par carte. Un projet peut désormais lister ses propres commandes
+  (`npm test`, `npx tsc --noEmit`, `cargo check`), et quand un agent termine un travail délégué elles
+  sont exécutées dans le dossier où il a réellement travaillé — son worktree, s'il en a un, pour que
+  les tests voient le code qui vient d'être écrit. Si elles passent, la carte continue comme avant,
+  vers le relecteur s'il y en a un. Si elles échouent, la carte vous revient avec le nom de la
+  commande et ce qu'elle a affiché, un message dans le fil et un hook `verify.failed` pour que le
+  téléphone vous prévienne à trois heures du matin. Les commandes que le projet déclare déjà —
+  `test`, `lint`, `typecheck`, `check`, `build` de son package.json, Makefile ou Cargo.toml — sont
+  proposées en un clic.
+
+- **Annuler ce qu'une exécution a fait.** Une exécution notait déjà où elle avait eu lieu et sur
+  quel commit elle s'était ouverte, parce que le panneau de diff en avait besoin ; ce qui manquait,
+  c'était de savoir ce que le dossier avait *déjà* en cours. Sans cela, « annuler l'exécution » et
+  « jeter tout ce qui n'est pas commité » sont la même commande, et ce ne sont pas la même chose :
+  la seconde dévore le travail que vous avez fait vous-même sans jamais le dire. Une exécution note
+  donc aussi ce qui était modifié ou non suivi quand elle a commencé, et le détail d'une exécution
+  terminée a un bouton qui remet le dossier en état.
+
+- **Un plafond pour une exécution, pas seulement pour la journée.** Les limites journalière et
+  mensuelle n'ont jamais empêché une seule exécution de dépenser le quota de la journée d'un coup :
+  ce sont des totaux, et un total ne s'en aperçoit qu'après. Un projet peut désormais fixer aussi ce
+  qu'une exécution a le droit de coûter.
+
+  Ce que cela peut honnêtement faire mérite d'être dit clairement, car ce n'est pas ce qu'on
+  supposerait. Tous les CLI d'ici indiquent leur coût quand ils ont fini, pas pendant qu'ils
+  travaillent — une exécution qui dépasse ne peut donc pas être coupée en cours de route, puisque
+  tant qu'elle n'est pas terminée l'application ignore le prix. Ce que fait le plafond, c'est
+  arrêter la *suivante* : dès qu'une exécution annonce qu'elle a dépassé, le message le dit, et
+  aucun autre tour de ce même travail ne démarre. Toute la chaîne compte, pas seulement la dernière
+  exécution, donc une délégation d'il y a deux tours qui a coûté une fortune l'arrête quand même —
+  sinon un plafond n'en est plus un. Un budget réglé sur « avertir seulement » se contente toujours
+  d'avertir.
+
+  C'est délibérément conservateur, et cela le dit à voix haute avant de toucher à quoi que ce soit :
+  la liste des fichiers qui reviennent, celle des fichiers supprimés parce qu'ils n'existaient pas
+  avant, et celle à laquelle il ne touchera pas — les fichiers déjà modifiés au démarrage, où votre
+  modification et celle de l'agent sont dans le même fichier et où rien ici ne peut les distinguer.
+  Supprimer, c'est `git clean` avec une liste explicite de chemins, jamais lâché sur le dossier. Les
+  exécutions antérieures proposent aussi le bouton, en considérant que le dossier était propre au
+  départ, ce qui est la seule chose que l'on puisse en supposer.
+
+  Rien n'est relancé automatiquement. Un échec que l'agent ne peut pas corriger deviendrait une
+  boucle tournant toute la nuit, et décider de renvoyer un travail est une décision, pas un réflexe.
+
+  Ce que vous tapez est découpé en programme et arguments sous vos yeux, et les morceaux sont montrés
+  sous le champ, parce que c'est ainsi qu'il est lancé : rien de ce qui est tapé ici n'atteint jamais
+  un shell. Un `&&`, un tube ou une redirection sont refusés avec un motif plutôt qu'échappés en
+  silence — l'application tourne sur le shell que la machine propose et ils ne s'accordent pas sur
+  les guillemets. Deux commandes est la réponse à vouloir deux commandes. Un projet sans commande
+  listée se comporte exactement comme avant.
+
+
+### Corrigé
+
+- **On peut parler à un planificateur qui a délégué pendant que ses implémenteurs travaillent.** Il
+  mettait votre message en file jusqu'au retour du tour complet, ce qui faisait du seul agent dont
+  le métier est de continuer à planifier le seul qu'on ne pouvait pas joindre pendant que du travail
+  était en cours. La cause tenait à un mot qui faisait trois métiers : « en attente » voulait dire
+  en attente d'une réponse, en pause jusqu'au retour du quota, *et* en attente des implémenteurs —
+  et seul le dernier décrit un agent sans aucun processus à lui. Ce dernier cas prend maintenant le
+  message et démarre un tour ; les deux autres continuent d'attendre, car un nouveau tour y
+  parlerait par-dessus ce que l'on attend précisément.
+
+  Ce qui en fait plus qu'un changement d'une ligne, c'est ce qui se passe quand les implémenteurs
+  reviennent alors que le planificateur est en train de vous répondre. Deux exécutions d'un agent,
+  ce sont deux auteurs sur une même session CLI : les résultats attendent donc la fin de ce tour et
+  sont remis juste après — le fil de la tâche d'abord, avant tout ce qui attend par ailleurs. Et un
+  planificateur dont le tour se termine alors que du travail qu'il a distribué tourne encore
+  s'affiche désormais comme en attente et non comme libre, ce qu'il est.
+
+- **Un agent qui pose éternellement la même question s'arrête.** Répondre à une question reprend
+  l'agent dans le tour où il était déjà — une question ne fait pas avancer le tour — et le tour est
+  la seule chose que `maxRounds` compte. Un agent qui répond à chaque réponse par une autre question
+  n'avait donc absolument rien qui le borne : vous répondez, il redemande, et la seule chose qui y
+  met fin, c'est que vous renonciez. Le mode autonome l'avait remarqué et s'était donné son propre
+  plafond, mais seulement pour les questions qu'il répond lui-même ; quand c'était vous qui
+  répondiez, il n'y avait de plafond nulle part.
+
+  Deux règles désormais. Une question à laquelle cette tâche a déjà répondu n'est pas reposée : la
+  réponse est enregistrée, elle repart donc directement, et ce n'est pas un jugement. Et une tâche
+  qui a demandé douze fois cesse de demander et le dit, parce que douze tours en rond font un
+  mauvais après-midi et qu'une nuit ainsi est pire. Poser beaucoup de questions *différentes* reste
+  permis : on borne le nombre, jamais le contenu.
+
+
+- **L'application a cessé de dépenser plus de chaque seconde dont elle disposait à s'écrire un
+  fichier à elle-même.** L'historique d'un projet est réécrit en entier dès que quelque chose y
+  change, et relu et analysé au préalable pour ne pas perdre une décision prise dans le CLI ou sur le
+  téléphone. C'est bon marché pour un fil de messages et ruineux pour un fil de sortie brute des CLI,
+  ce qu'il était largement devenu : sur la machine où cela a été trouvé, le fichier d'un projet
+  atteignait **47 Mo, dont 83 % de lignes brutes**, et chaque sauvegarde coûtait 283 ms de calcul sur
+  le fil d'exécution de l'interface — deux fois par seconde, aussi longtemps qu'un agent travaillait.
+  Cela fait 566 ms de chaque seconde passées à réfléchir au lieu de dessiner, ce qui explique
+  exactement pourquoi l'application ralentissait au moment même où il y avait quelque chose à
+  regarder, et pourquoi envoyer un message pouvait laisser le fil vide jusqu'à ce que n'importe
+  quoi — ouvrir un panneau, changer de projet — la force à dessiner de nouveau. Ce n'étaient jamais
+  les animations, ni la sortie de l'agent qui arrivait : l'agent imprime une ou deux lignes par
+  seconde. C'était l'application, en conversation avec son propre disque.
+
+  L'ancienne limite comptait les lignes sans regarder leur taille, ce qui revenait à mesurer la
+  mauvaise chose : la ligne médiane fait 313 caractères et la plus grande mesurée en faisait 536 Ko.
+  Désormais une ligne est coupée à 2 Ko, une exécution en garde 64 Ko, et seules les trente dernières
+  exécutions en gardent — les plus anciennes conservent leur consigne, leur réponse et leur coût, et
+  ne perdent que la transcription de la façon dont le CLI l'a dit. Le même fichier tombe à 7 Mo et
+  une sauvegarde coûte 44 ms. La sauvegarde attendant en outre trois secondes au lieu d'une
+  demi-seconde pendant qu'un agent travaille, l'interface est passée de **566 ms par seconde à 15**.
+  Rien à faire sur un historique existant : la première sauvegarde le réécrit à la nouvelle taille.
+
+
+- **Une option écrite sans rien derrière n'est plus prise pour sa propre valeur.** `ainess hook add
+  --action slack --url --template "..."` — `--url` sans rien derrière — enregistrait la simple
+  présence de l'option à la place de l'adresse du webhook, et le hook était sauvegardé pointant vers
+  quelque chose que personne n'avait écrit : il n'aboutissait nulle part et ne disait jamais
+  pourquoi. Maintenant il s'arrête et signale que `--url` manque, ce qui était le cas. Pareil pour
+  `--program`, `--args` et `--template` : une option sans rien derrière est une option que vous avez
+  oublié de remplir, pas une valeur.
+- **Un tour de Claude qui démarre sans identifiant de session ouvre une nouvelle conversation au lieu
+  d'en reprendre une vide.** ainess retient l'identifiant annoncé par le fournisseur pour que le
+  message suivant poursuive le même fil. Une ligne d'ouverture arrivée sans identifiant était retenue
+  quand même, comme rien, et le tour suivant demandait à Claude de reprendre une session sans nom.
+  Cette ligne est désormais ignorée, donc le tour suivant démarre propre — ce à quoi il allait
+  aboutir de toute façon, mais sans la reprise ratée en chemin.
+
 ## 0.14.0 — 2026-09-11
 
 ### Nouveau

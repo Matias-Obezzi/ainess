@@ -55,7 +55,8 @@ async function main() {
   const projectAgentByName = (projectId: string, name: string) =>
     selectProjectAgents(live(), projectId).find(a => a.name.toLowerCase() === name.trim().toLowerCase());
 
-  function print(obj: any, text: string) {
+  // Anything JSON can carry: `--json` prints it verbatim, and the shape is the caller's business.
+  function print(obj: unknown, text: string) {
     if (jsonOutput) {
       console.log(JSON.stringify(obj));
     } else {
@@ -560,36 +561,44 @@ async function main() {
       });
       if (!values.event || !values.action) error("Faltan --event y --action");
 
-      let action: any = null;
+      let action: import("@/types").HookAction | null = null;
+      // `parseArgs` hands back `string | boolean`: a flag written with no value arrives as `true`.
+      // Typing the action is what surfaced it — `--url` with nothing after it was being stored as
+      // the webhook's address.
+      const text = (value: string | boolean | undefined, fallback = ""): string =>
+        typeof value === "string" ? value : fallback;
+
       switch (values.action) {
         case "slack":
         case "discord":
-          if (!values.url) error("Falta --url");
-          action = { type: values.action, webhookUrl: values.url, template: values.template || "{{output}}" };
+          if (!text(values.url)) error("Falta --url");
+          action = { type: values.action, webhookUrl: text(values.url), template: text(values.template, "{{output}}") };
           break;
         case "webhook":
-          if (!values.url) error("Falta --url");
-          action = { type: "webhook", url: values.url, bodyTemplate: values.template || "{}" };
+          if (!text(values.url)) error("Falta --url");
+          action = { type: "webhook", url: text(values.url), bodyTemplate: text(values.template, "{}") };
           break;
         case "command":
-          if (!values.program) error("Falta --program");
-          const pArgs = (values.args as string || "").split(" ").filter(Boolean);
-          action = { type: "command", program: values.program, args: pArgs, cwd: "workspace" };
+          if (!text(values.program)) error("Falta --program");
+          const pArgs = text(values.args).split(" ").filter(Boolean);
+          action = { type: "command", program: text(values.program), args: pArgs, cwd: "workspace" };
           break;
         case "instruct":
           if (!values.agent) error("Falta --agent (el agente a instruir)");
           const instrAgent = agentByName(String(values.agent));
           if (!instrAgent) error(`Agente "${values.agent}" no encontrado`);
-          action = { type: "instruct", agentId: instrAgent.id, template: values.template || "{{output}}" };
+          action = { type: "instruct", agentId: instrAgent.id, template: text(values.template, "{{output}}") };
           break;
         case "notify":
-          action = { type: "notify", title: "Aviso", template: values.template || "{{output}}" };
+          action = { type: "notify", title: "Aviso", template: text(values.template, "{{output}}") };
           break;
-        default:
-          error("Acción desconocida");
       }
+      // After the switch rather than in a `default`: this is the one place that decides a hook
+      // cannot be built, and saying it here is also what lets the type stop being nullable.
+      if (!action) error("Acción desconocida");
 
-      let filter: any = {};
+      // Built up as the flags are read, which is why it is not the Hook's own optional field yet.
+      const filter: NonNullable<import("@/types").Hook["filter"]> = {};
       if (values["filter-agent"]) {
         const a = agentByName(String(values["filter-agent"]));
         if (!a) error("Filtro: Agente no encontrado");
@@ -604,7 +613,7 @@ async function main() {
       const h: import("@/types").Hook = {
         id: crypto.randomUUID(),
         name,
-        event: values.event as any,
+        event: values.event as import("@/types").HookEvent,
         enabled: true,
         action,
         filter: Object.keys(filter).length > 0 ? filter : undefined
@@ -819,7 +828,7 @@ async function main() {
     for (const p of projects) await loadHistory(p.id);
     const state = useAppStore.getState();
 
-    let jsonResult: any = {};
+    const jsonResult: Record<string, unknown> = {};
     const allProjectRuns = [];
 
     for (const p of projects) {

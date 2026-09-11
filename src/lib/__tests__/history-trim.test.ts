@@ -1,93 +1,105 @@
 import { describe, it, expect } from "vitest";
-import { trimMessagesInMemory, trimRunsInMemory } from "@/lib/history";
-import type { CommMessage, Run } from "@/types";
+import {
+  MAX_LINE_CHARS,
+  MAX_RUN_RAW_CHARS,
+  RUNS_KEEPING_RAW,
+  needsTrim,
+  trimRawLines,
+  trimRunsForDisk,
+} from "@/lib/history-trim";
 
-const msg = (id: string, projectId: string, ts: number): CommMessage => ({
-  id,
-  ts,
-  projectId,
-  fromAgentId: "a1",
-  kind: "text",
-  text: id,
+const line = (n: number, fill = "x") => fill.repeat(n);
+
+describe("trimRawLines", () => {
+  it("leaves output that is already small alone", () => {
+    const lines = ["a", "b", "c"];
+    expect(trimRawLines(lines)).toEqual(lines);
+  });
+
+  it("cuts a line that is longer than the limit, and says so", () => {
+    const [kept] = trimRawLines([line(MAX_LINE_CHARS + 500)]);
+    expect(kept.length).toBe(MAX_LINE_CHARS + 1);
+    expect(kept.endsWith("…")).toBe(true);
+  });
+
+  // The end of a run is what anyone opens the raw view to look at.
+  it("keeps the tail, not the head", () => {
+    const lines = [];
+    for (let i = 0; i < 200; i++) lines.push(`${i}:${line(1000)}`);
+    const kept = trimRawLines(lines);
+    expect(kept.length).toBeLessThan(lines.length);
+    expect(kept[kept.length - 1]).toBe(lines[lines.length - 1]);
+    expect(kept[0]).not.toBe(lines[0]);
+  });
+
+  it("stays inside the budget for a run", () => {
+    const lines = [];
+    for (let i = 0; i < 500; i++) lines.push(line(2000));
+    const chars = trimRawLines(lines).reduce((a, l) => a + l.length, 0);
+    expect(chars).toBeLessThanOrEqual(MAX_RUN_RAW_CHARS + MAX_LINE_CHARS + 1);
+  });
+
+  // A run whose every line is enormous used to come back with nothing at all, which reads as a run
+  // that printed nothing rather than one that printed too much.
+  it("keeps one line even when that line alone is over the budget", () => {
+    const kept = trimRawLines([line(MAX_RUN_RAW_CHARS * 3)]);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].length).toBe(MAX_LINE_CHARS + 1);
+  });
+
+  it("handles no output", () => {
+    expect(trimRawLines([])).toEqual([]);
+  });
 });
 
-/** The feed used to grow for as long as the app stayed open; it is now capped per project. */
-describe("trimMessagesInMemory", () => {
-  it("leaves a feed that fits untouched, and the same array", () => {
-    const messages = [msg("1", "p1", 1), msg("2", "p2", 2)];
-    expect(trimMessagesInMemory(messages)).toBe(messages);
+describe("needsTrim", () => {
+  it("says no to output that fits", () => {
+    expect(needsTrim(["a", "b"])).toBe(false);
   });
 
-  it("keeps the newest per project and counts each project on its own", () => {
-    const many: CommMessage[] = [];
-    for (let i = 0; i < 3200; i++) many.push(msg(`p1-${i}`, "p1", i));
-    // A quiet project must not lose anything because a noisy one filled up.
-    many.push(msg("p2-only", "p2", 9999));
-
-    const trimmed = trimMessagesInMemory(many);
-    const p1 = trimmed.filter(m => m.projectId === "p1");
-    const p2 = trimmed.filter(m => m.projectId === "p2");
-
-    expect(p1).toHaveLength(3000);
-    expect(p1[0].id).toBe("p1-200");
-    expect(p1[p1.length - 1].id).toBe("p1-3199");
-    expect(p2).toHaveLength(1);
+  it("says yes to one long line", () => {
+    expect(needsTrim(["a", line(MAX_LINE_CHARS + 1)])).toBe(true);
   });
 
-  it("keeps the original order", () => {
-    const many: CommMessage[] = [];
-    for (let i = 0; i < 3100; i++) many.push(msg(`m-${i}`, "p1", i));
-    const trimmed = trimMessagesInMemory(many);
-    const timestamps = trimmed.map(m => m.ts);
-    expect([...timestamps].sort((a, b) => a - b)).toEqual(timestamps);
+  it("says yes to many short lines that add up", () => {
+    const lines = [];
+    for (let i = 0; i < 100; i++) lines.push(line(1000));
+    expect(needsTrim(lines)).toBe(true);
+  });
+
+  it("agrees with trimRawLines about whether there is work to do", () => {
+    const small = ["a", "b", "c"];
+    expect(needsTrim(small)).toBe(false);
+    expect(trimRawLines(small)).toEqual(small);
   });
 });
 
-const run = (id: string, projectId: string, endedAt: number | undefined, rawLines: number, status: Run["status"] = "done"): Run => ({
-  id,
-  projectId,
-  agentId: "a1",
-  parentRunId: null,
-  rootRunId: id,
-  prompt: "",
-  status,
-  startedAt: endedAt ?? 0,
-  endedAt,
-  output: "",
-  rawLines: Array.from({ length: rawLines }, (_, i) => `line ${i}`),
-  childRunIds: [],
-  round: 0,
-});
+describe("trimRunsForDisk", () => {
+  const runsWith = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ id: `r${i}`, rawLines: ["one", "two"] }));
 
-/** Finished runs used to pile up in memory with their whole raw buffer. */
-describe("trimRunsInMemory", () => {
-  it("keeps the newest 300 finished runs of that project and leaves other projects alone", () => {
-    const runs: Record<string, Run> = {};
-    for (let i = 0; i < 320; i++) runs[`p1-${i}`] = run(`p1-${i}`, "p1", i, 10);
-    runs["p2-1"] = run("p2-1", "p2", 5, 10);
-
-    const trimmed = trimRunsInMemory(runs, "p1");
-    const kept = Object.values(trimmed).filter(r => r.projectId === "p1");
-
-    expect(kept).toHaveLength(300);
-    expect(trimmed["p1-0"]).toBeUndefined();
-    expect(trimmed["p1-319"]).toBeDefined();
-    expect(trimmed["p2-1"]).toBeDefined();
+  it("keeps raw output only for the most recent runs", () => {
+    const runs = runsWith(RUNS_KEEPING_RAW + 10);
+    const out = trimRunsForDisk(runs, r => r.rawLines);
+    expect(out[0].rawLines).toEqual([]);
+    expect(out[9].rawLines).toEqual([]);
+    expect(out[10].rawLines).toEqual(["one", "two"]);
+    expect(out[out.length - 1].rawLines).toEqual(["one", "two"]);
   });
 
-  it("cuts the raw lines of a finished run but never of one still going", () => {
-    const runs: Record<string, Run> = {
-      done: run("done", "p1", 1, 900),
-      live: run("live", "p1", undefined, 900, "running"),
-    };
-    const trimmed = trimRunsInMemory(runs, "p1");
-    expect(trimmed.done.rawLines).toHaveLength(300);
-    expect(trimmed.done.rawLines[299]).toBe("line 899");
-    expect(trimmed.live.rawLines).toHaveLength(900);
+  it("keeps all of them when there are fewer than the limit", () => {
+    const out = trimRunsForDisk(runsWith(3), r => r.rawLines);
+    expect(out.every(r => r.rawLines.length === 2)).toBe(true);
   });
 
-  it("returns the same object when there is nothing to trim", () => {
-    const runs: Record<string, Run> = { a: run("a", "p1", 1, 10) };
-    expect(trimRunsInMemory(runs, "p1")).toBe(runs);
+  // The lines of a live run are held elsewhere, so the caller passes a reader rather than the field.
+  it("takes the lines from where the caller says they are", () => {
+    const out = trimRunsForDisk([{ id: "r0", rawLines: ["stale"] }], () => ["fresh"]);
+    expect(out[0].rawLines).toEqual(["fresh"]);
+  });
+
+  it("does not mind a run with no lines anywhere", () => {
+    const out = trimRunsForDisk([{ id: "r0", rawLines: undefined }], r => r.rawLines);
+    expect(out[0].rawLines).toEqual([]);
   });
 });

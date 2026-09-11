@@ -117,6 +117,12 @@ describe("claude provider", () => {
     expect(assistant.map(e => e.type)).toEqual(["text", "tool"]);
     expect(p.parseLine('{"type":"result","subtype":"success","result":"fin","session_id":"s1"}', "stdout")).toEqual([{ type: "result", text: "fin", sessionId: "s1" }]);
   });
+
+  // An init without an id used to come out as a session event carrying `undefined`, and the next
+  // turn resumed on it. Better no session at all: the run starts fresh instead of pointing nowhere.
+  it("ignores an init line that brings no session id", () => {
+    expect(PROVIDERS.claude.parseLine('{"type":"system","subtype":"init"}', "stdout")).toEqual([]);
+  });
 });
 
 describe("plain-text providers and system prompt", () => {

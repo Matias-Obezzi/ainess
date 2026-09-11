@@ -26,7 +26,7 @@ export interface HookContext {
  */
 export async function emitHookEvent(
   event: HookEvent,
-  vars: Record<string, any>,
+  vars: Record<string, unknown>,
   ctx: HookContext | ((hook: Hook) => HookContext),
 ): Promise<void> {
   const store = useAppStore.getState();

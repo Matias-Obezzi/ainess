@@ -4,6 +4,132 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.15.0 — 2026-09-11
+
+### Added
+
+- **The lines in the hierarchy connect things now.** The agent cards have always drawn connection
+  points — they are what the arrows hang off — but the canvas was not connectable, so they looked
+  like something you could pull and were not. Dragging a line from one card to another moves that
+  agent under a new planner. The rules are the ones the agent editor already applied — not itself,
+  not under something already below it, and only one planner at the top — read from the same place
+  rather than written a second time, so the two screens cannot come to disagree about what a valid
+  team is.
+
+
+- **A project can say what "done" means, and ainess checks it.** Until now a task moved forward
+  because the agent's process exited zero. Nothing else was looked at, so "done" meant "the CLI came
+  back" — and finding out otherwise was your job, in the morning, one card at a time. A project can
+  now list its own commands (`npm test`, `npx tsc --noEmit`, `cargo check`), and when an agent
+  finishes delegated work they are run in the folder it actually worked in — its worktree, when it
+  has one, so the tests see the code that was just written. Pass and the card carries on as before,
+  to the reviewer if there is one. Fail and the card comes back to you with the name of the command
+  and what it printed, a message in the thread, and a `verify.failed` hook so the phone can tell you
+  at three in the morning. Commands the project already declares — `test`, `lint`, `typecheck`,
+  `check`, `build` from its package.json, Makefile or Cargo.toml — are offered as one click.
+
+- **Undo what a run did.** A run has recorded where it happened and which commit it opened on since
+  the diff panel needed them, so the material for this was already there; what was missing was
+  knowing what the folder *already* had in flight. Without that, "undo the run" and "throw away
+  everything uncommitted" are the same command, and they are not the same thing — the second one
+  eats work you did yourself and never mentioned. So a run now also notes what was modified or
+  untracked when it started, and the detail of a finished run has a button that puts the folder
+  back.
+
+- **A ceiling for one run, not just for the day.** The daily and monthly limits never stopped a
+  single run from spending the whole day's allowance in one go: they are totals, and a total only
+  notices afterwards. A project can now also set what one run may cost.
+
+  What it can honestly do is worth saying plainly, because it is not what you would assume. Every
+  CLI here reports its cost when it finishes, not while it works — so a run that goes over cannot be
+  cut off halfway, because until it is over the app has not been told the price. What the ceiling
+  does is stop the *next* one: the moment a run reports it went over, the message says so, and no
+  further round of that same piece of work starts. The whole chain counts, not just the last run, so
+  a delegation two rounds back that cost a fortune still stops it — otherwise a ceiling stops being
+  one. A budget set to "only warn" still only warns.
+
+  It is deliberately conservative and it says so out loud before it touches anything: the list of
+  files that go back, the list of files that get deleted because they did not exist before, and the
+  list it will not touch — files that were already modified when the run started, where the agent's
+  edit and yours are in the same file and nothing here can tell them apart. Deleting is `git clean`
+  given an explicit list of paths and never let loose on the folder. Runs recorded before this
+  existed still offer it, treating the folder as having started clean, which is the only thing that
+  can be assumed about them.
+
+  Nothing is retried automatically. A failure the agent cannot fix would become a loop that runs all
+  night, and deciding to send work back is a decision, not a reflex.
+
+  What you type is split into a program and its arguments in front of you, and the pieces are shown
+  under the field, because that is how it is spawned: nothing typed here is ever handed to a shell.
+  A `&&`, a pipe or a redirection is refused with a reason rather than quietly escaped — the app
+  runs on whichever shell the machine offers and they do not agree on quoting. Two commands is the
+  answer to wanting two commands. A project with no commands listed behaves exactly as it did.
+
+
+### Fixed
+
+- **A planner that delegated can be talked to while its implementers work.** It was queueing your
+  message until the whole round came back, which made the one agent whose job is to keep planning
+  the only one you could not reach while work was in flight. The reason was a single word doing
+  three jobs: "waiting" meant waiting for an answer, parked until quota returns, *and* waiting for
+  implementers — and only the last describes an agent with no process of its own running. Now that
+  last case takes the message and starts a turn; the other two still queue, because a new turn there
+  would talk over the very thing being waited for.
+
+  What made this more than a one-line change is what happens when the implementers come back while
+  the planner is mid-answer to you. Two runs of one agent is two writers on one CLI session, so the
+  results wait for that turn to end and are handed over immediately afterwards — the task's own
+  thread first, before anything else queued. And a planner whose turn ends while work it handed out
+  is still running now reads as waiting rather than idle, which is what it is.
+
+- **An agent that asks the same thing forever now stops.** Answering a question resumes the agent in
+  the round it was already in — a question does not advance the round — and the round is the only
+  thing `maxRounds` counts. So an agent that answers every answer with another question had nothing
+  bounding it at all: you answer, it asks again, and the only thing that ends it is you giving up.
+  Autonomous mode had noticed and grown its own ceiling, but only for the questions it answers
+  itself; when the person answering was you there was no ceiling anywhere.
+
+  Two rules now. A question this task already answered is not asked again — the answer is on record,
+  so it goes straight back, which is not a judgement call. And a task that has asked twelve times
+  stops asking and says so, because twelve turns of circles is a bad afternoon and a night of them
+  is worse. Asking many *different* questions is still allowed: only the count is capped, never the
+  content.
+
+
+- **The app stopped spending more than every second it had on writing a file to itself.** A project's
+  history is rewritten in full whenever anything in it changes, and read and parsed back first so a
+  decision taken in the CLI or on the phone is not lost. That is cheap for a feed of messages and
+  ruinous for a feed of raw CLI output, which is what it had mostly become: on the machine this was
+  found on, one project's file had grown to **47 MB, 83% of it raw lines**, and a save cost 283 ms of
+  arithmetic on the interface's own thread — twice a second, for as long as an agent was working.
+  That is 566 ms of every second spent thinking instead of drawing, which is why the app went slow
+  exactly when there was something to watch, and why sending a message could leave the thread blank
+  until anything at all — opening a sidebar, changing project — forced it to draw again. It was never
+  the animations and it was never the agent's output arriving: the agent prints one or two lines a
+  second. It was the app, talking to its own disk.
+
+  The old limit counted lines and ignored their size, which was measuring the wrong thing: the median
+  line is 313 characters and the largest one measured was 536 KB. Now a line is cut at 2 KB, a run
+  keeps 64 KB of them, and only the last thirty runs keep any — older ones keep their prompt, their
+  answer and what they cost, and lose only the transcript of how the CLI said it. The same file comes
+  out at 7 MB and a save costs 44 ms. With the save also waiting three seconds instead of half a one
+  while an agent works, the interface went from **566 ms of every second to 15**. Nothing has to be
+  done to an existing history: the first save rewrites it at the new size.
+
+
+- **A flag written with nothing after it is no longer read as its own value.** `ainess hook add
+  --action slack --url --template "..."` — `--url` with nothing behind it — stored the flag's mere
+  presence where the webhook's address goes, and the hook was saved pointing at something nobody
+  typed: it posted nowhere and never said why. Now it stops and says `--url` is missing, which is
+  what it was. The same for `--program`, `--args` and `--template`: a flag with nothing after it is
+  one you forgot to fill in, not a value.
+- **A Claude turn that starts without a session id begins a fresh conversation instead of resuming
+  an empty one.** ainess remembers the id the provider announces so the next message continues the
+  same thread. An opening line that arrived without one was remembered anyway, as nothing, and the
+  turn after it asked Claude to resume a session with no name. That line is ignored now, so the next
+  turn starts clean — which is where it was going to end up regardless, only without the failed
+  resume on the way.
+
 ## 0.14.0 — 2026-09-11
 
 ### Added
