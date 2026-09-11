@@ -2,7 +2,7 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
-## Sin publicar
+## 0.14.0 — 2026-09-11
 
 ### Nuevo
 
@@ -31,26 +31,18 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   Los agentes quedan igual — ellos sí tienen un árbol debajo que necesita heredar una consola, que
   es para lo que existe la compartida.
 
-- **El campo de variables de entorno funciona en un servidor http, en vez de estar escondido.** Un
-  servidor MCP http no tiene proceso propio, así que sus variables van al entorno del agente — que
-  es justo de donde el cliente MCP las expande cuando ve `${VARIABLE}` dentro de una cabecera. Ponés
-  la clave en el campo, escribís `X-Goog-Api-Key: ${TU_CLAVE}` en las cabeceras, y conecta sin tocar
-  el entorno de la máquina ni reiniciar nada. El campo dice lo que eso cuesta, porque es más amplio
-  de lo que parece: una variable puesta ahí pertenece al proceso del agente, así que la ve todo MCP
-  que expanda variables y también todo lo que el agente ejecute. Te compra tener la clave en la app
-  en vez de en Windows; no te compra secreto, porque el valor queda igual en el config. Las
-  variables de un servidor stdio siguen donde estaban — el cliente ya se las da al proceso de ese
-  servidor, acotadas a él, y sacarlas de ahí sería ampliarlas al pedo.
-
-- **El campo de variables de entorno deja de aparecer en un servidor que no tiene entorno.** Un
-  servidor MCP http es una URL a la que el cliente llama, no un proceso que ainess arranca, y la
-  rama http de la configuración de sesión nunca escribió `env` — pero el campo se dibujaba igual.
-  Escribir una clave ahí en un servidor http la guardaba en el archivo de configuración y no la
-  mandaba a ninguna parte: un campo que prometía un lugar donde dejar una credencial y la tiraba en
-  silencio. Ahora es un campo de stdio, tanto en el diálogo como en el camino a Antigravity, y
-  cambiar el transporte a otra cosa descarta lo que se había escrito en vez de guardar un secreto
-  que nadie va a leer. Un servidor http pone su credencial en una cabecera.
-
+- **El campo de variables de entorno hace algo en un servidor http.** Se dibujaba ahí y no iba a
+  ninguna parte: la rama http de la configuración de sesión nunca escribió `env`, así que una clave
+  puesta ahí en un servidor http quedaba guardada en el archivo de configuración y no se mandaba a
+  ningún lado. Un servidor MCP http no tiene proceso propio, pero el agente sí — y el entorno del
+  agente es justo de donde el cliente MCP las expande cuando ve `${VARIABLE}` dentro de una
+  cabecera. Así que van ahí. Ponés la clave en el campo, escribís `X-Goog-Api-Key: ${TU_CLAVE}` en
+  las cabeceras, y conecta sin tocar el entorno de la máquina ni reiniciar nada. El campo dice lo
+  que eso cuesta, porque es más amplio de lo que parece: una variable puesta ahí pertenece al
+  proceso del agente, así que la ve todo MCP que expanda variables y también todo lo que el agente
+  ejecute. Te compra tener la clave en la app en vez de en Windows; no te compra secreto, porque el
+  valor queda igual en el config. Las variables de un servidor stdio quedan intactas — el cliente ya
+  se las da al proceso de ese servidor, acotadas a él, y sacarlas de ahí sería ampliarlas al pedo.
 - **La caja deja de redibujarse dos veces por segundo por un chat que está quieto.** Que un chat
   esté contestando vive en la memoria del módulo de chat y no en el store, así que nada podía
   reaccionar a eso: el composer polleaba con un timer de 500ms mientras hubiera una conversación

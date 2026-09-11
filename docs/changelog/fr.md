@@ -2,7 +2,7 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## Non publié
+## 0.14.0 — 2026-09-11
 
 ### Nouveau
 
@@ -33,26 +33,18 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   détection de versions et les commandes d'entretien passent depuis toujours. Les agents ne changent
   pas — ce sont eux qui ont un arbre en dessous ayant besoin d'hériter d'une console.
 
-- **Le champ des variables d'environnement fonctionne sur un serveur http, au lieu de lui être
-  caché.** Un serveur MCP http n'a pas de processus à lui : ses variables vont donc dans
-  l'environnement de l'agent — exactement là où le client MCP regarde quand il étend `${VARIABLE}`
-  dans un en-tête. Mettez la clé dans le champ, écrivez `X-Goog-Api-Key: ${VOTRE_CLE}` dans les
-  en-têtes, et la connexion se fait sans toucher à l'environnement de la machine ni redémarrer quoi
-  que ce soit. Le champ dit ce que cela coûte, car c'est plus large qu'il n'y paraît : une variable
-  posée là appartient au processus de l'agent, donc tout serveur MCP qui étend des variables la
-  voit, et tout ce que l'agent exécute aussi. Cela vous fait garder la clé dans l'application plutôt
-  que dans Windows ; cela ne vous achète pas le secret, la valeur finissant dans la configuration
-  de toute façon. Les variables d'un serveur stdio restent où elles étaient.
-
-- **Le champ des variables d'environnement n'apparaît plus sur un serveur qui n'a pas
-  d'environnement.** Un serveur MCP http est une URL que le client appelle, pas un processus que
-  ainess démarre, et la branche http de la configuration de session n'a jamais écrit `env` — le
-  champ était pourtant dessiné. Y taper une clé sur un serveur http l'enregistrait dans le fichier
-  de configuration et ne l'envoyait nulle part : un champ qui promettait un endroit où garder un
-  identifiant et le jetait en silence. C'est désormais un champ stdio, dans la boîte de dialogue
-  comme sur le chemin vers Antigravity, et changer de transport jette ce qui a été tapé plutôt que
-  de conserver un secret que personne ne lira. Un serveur http met son identifiant dans un en-tête.
-
+- **Le champ des variables d'environnement sert à quelque chose sur un serveur http.** Il y était
+  dessiné et n'allait nulle part : la branche http de la configuration de session n'a jamais écrit
+  `env`, une clé tapée là sur un serveur http était donc enregistrée dans le fichier de
+  configuration et n'allait nulle part. Un serveur MCP http n'a pas de processus à lui, mais l'agent
+  si — et l'environnement de l'agent est exactement là où le client MCP regarde quand il étend
+  `${VARIABLE}` dans un en-tête. C'est là qu'elles vont. Mettez la clé dans le champ, écrivez
+  `X-Goog-Api-Key: ${VOTRE_CLE}` dans les en-têtes, et la connexion se fait sans toucher à
+  l'environnement de la machine ni redémarrer quoi que ce soit. Le champ dit ce que cela coûte, car
+  c'est plus large qu'il n'y paraît : une variable posée là appartient au processus de l'agent, donc
+  tout serveur MCP qui étend des variables la voit, et tout ce que l'agent exécute aussi. Cela vous
+  fait garder la clé dans l'application plutôt que dans Windows ; cela ne vous achète pas le secret.
+  Les variables d'un serveur stdio restent intactes.
 - **Le champ cesse de se redessiner deux fois par seconde pour une conversation immobile.** Le fait
   qu'une conversation soit en train de répondre vit dans la mémoire du module de chat et non dans le
   store : rien ne pouvait donc y réagir, et le champ interrogeait sur un minuteur de 500 ms tant

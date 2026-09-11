@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## Unreleased
+## 0.14.0 — 2026-09-11
 
 ### Added
 
@@ -33,25 +33,18 @@ let one of them fall behind.
   themselves are unchanged — they are the ones with a tree underneath that needs a console to
   inherit, which is what the shared one is for.
 
-- **The environment box works on an http server instead of being hidden from it.** An http MCP
-  server has no process of its own, so its variables go into the agent's environment — which is
-  exactly where the MCP client looks when it expands `${VARIABLE}` inside a header. Put the key in
-  the box, write `X-Goog-Api-Key: ${YOUR_KEY}` in the headers, and it connects without touching the
-  machine's own environment or restarting anything. The field says what that costs, because it is
-  wider than it looks: a variable set here belongs to the agent's process, so every MCP server that
-  expands variables sees it and so does anything the agent runs. It buys keeping the key in the app
-  rather than in Windows; it does not buy secrecy, since the value lands in the config either way.
-  A stdio server's variables stay where they were — the client already gives them to that server's
-  own process, scoped to it, and copying them out would widen them for nothing.
-
-- **The environment box stops appearing on a server that has no environment.** An http MCP server is
-  a URL the client calls, not a process ainess starts, and the http branch of the session config has
-  never written `env` — but the box was drawn all the same. Typing a key into it on an http server
-  saved that key to the config file and sent it nowhere: a field that promised somewhere to keep a
-  credential and quietly dropped it. It is a stdio field now, in the dialog and on the way to
-  Antigravity, and a transport switched away from stdio drops what was typed rather than storing a
-  secret nothing will ever read. An http server puts its credential in a header.
-
+- **The environment box does something on an http server.** It was drawn there and went nowhere:
+  the http branch of the session config never wrote `env`, so a key typed into it on an http server
+  was saved to the config file and sent nowhere. An http MCP server has no process of its own, but
+  the agent does — and the agent's environment is exactly where the MCP client looks when it expands
+  `${VARIABLE}` inside a header. So that is where they go. Put the key in the box, write
+  `X-Goog-Api-Key: ${YOUR_KEY}` in the headers, and it connects without touching the machine's own
+  environment or restarting anything. The field says what that costs, because it is wider than it
+  looks: a variable set here belongs to the agent's process, so every MCP server that expands
+  variables sees it and so does anything the agent runs. It buys keeping the key in the app rather
+  than in Windows; it does not buy secrecy, since the value lands in the config either way. A stdio
+  server's variables are untouched — the client already gives them to that server's own process,
+  scoped to it, and copying them out would widen them for nothing.
 - **The box stops redrawing itself twice a second for a chat that is sitting still.** Whether a chat
   is answering lives in the chat module's own memory and not in the store, so nothing could react to
   it: the composer polled on a 500ms timer for as long as a conversation was open, whether or not

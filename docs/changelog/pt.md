@@ -2,7 +2,7 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
-## Não publicado
+## 0.14.0 — 2026-09-11
 
 ### Novo
 
@@ -30,26 +30,17 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   flag que a detecção de versões e os comandos de limpeza sempre passaram. Os agentes ficam iguais —
   eles é que têm uma árvore embaixo precisando herdar um console.
 
-- **O campo de variáveis de ambiente funciona num servidor http, em vez de ficar escondido dele.**
-  Um servidor MCP http não tem processo próprio, então suas variáveis vão para o ambiente do agente
-  — que é exatamente de onde o cliente MCP as expande quando vê `${VARIABLE}` dentro de um
-  cabeçalho. Você põe a chave no campo, escreve `X-Goog-Api-Key: ${SUA_CHAVE}` nos cabeçalhos, e
+- **O campo de variáveis de ambiente faz alguma coisa num servidor http.** Ele era desenhado ali e
+  não ia a lugar nenhum: o ramo http da configuração de sessão nunca escreveu `env`, então uma chave
+  digitada ali num servidor http era salva no arquivo de configuração e não ia a lugar nenhum. Um
+  servidor MCP http não tem processo próprio, mas o agente tem — e o ambiente do agente é exatamente
+  de onde o cliente MCP as expande quando vê `${VARIABLE}` dentro de um cabeçalho. É para lá que
+  elas vão. Você põe a chave no campo, escreve `X-Goog-Api-Key: ${SUA_CHAVE}` nos cabeçalhos, e
   conecta sem mexer no ambiente da máquina nem reiniciar nada. O campo diz o que isso custa, porque
   é mais amplo do que parece: uma variável posta ali pertence ao processo do agente, então todo MCP
   que expande variáveis a enxerga, e tudo o que o agente rodar também. Compra ter a chave no app em
   vez de no Windows; não compra segredo, já que o valor vai para a configuração de qualquer jeito.
-  As variáveis de um servidor stdio ficam onde estavam — o cliente já as dá ao processo daquele
-  servidor, restritas a ele, e tirá-las de lá seria ampliá-las à toa.
-
-- **O campo de variáveis de ambiente deixa de aparecer num servidor que não tem ambiente.** Um
-  servidor MCP http é uma URL que o cliente chama, não um processo que o ainess inicia, e o ramo
-  http da configuração de sessão nunca escreveu `env` — mas o campo era desenhado do mesmo jeito.
-  Digitar uma chave ali num servidor http salvava essa chave no arquivo de configuração e não a
-  mandava a lugar nenhum: um campo que prometia um lugar para guardar uma credencial e a descartava
-  em silêncio. Agora é um campo de stdio, no diálogo e no caminho até o Antigravity, e trocar o
-  transporte descarta o que foi digitado em vez de guardar um segredo que ninguém vai ler. Um
-  servidor http põe a credencial num cabeçalho.
-
+  As variáveis de um servidor stdio ficam intactas.
 - **A caixa para de se redesenhar duas vezes por segundo por causa de um chat parado.** Se um chat
   está respondendo vive na memória do próprio módulo de chat e não no store, então nada podia
   reagir a isso: o composer ficava consultando num timer de 500ms enquanto houvesse uma conversa

@@ -2,7 +2,7 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## Unveröffentlicht
+## 0.14.0 — 2026-09-11
 
 ### Neu
 
@@ -32,26 +32,17 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   das die Versionserkennung und die Aufräumbefehle seit jeher übergeben. Die Agenten bleiben, wie
   sie waren; sie sind die mit einem Baum darunter, der eine Konsole zum Erben braucht.
 
-- **Das Feld für Umgebungsvariablen funktioniert bei einem http-Server, statt vor ihm versteckt zu
-  werden.** Ein http-MCP-Server hat keinen eigenen Prozess, also gehen seine Variablen in die
-  Umgebung des Agenten — genau dorthin, wo der MCP-Client nachsieht, wenn er `${VARIABLE}` in einem
-  Header auflöst. Schlüssel ins Feld, `X-Goog-Api-Key: ${DEIN_SCHLUESSEL}` in die Header, und es
-  verbindet sich, ohne die Umgebung des Rechners anzufassen oder etwas neu zu starten. Das Feld
-  sagt, was das kostet, denn es ist weiter, als es aussieht: eine hier gesetzte Variable gehört dem
-  Prozess des Agenten, also sieht sie jeder MCP-Server, der Variablen auflöst, und alles, was der
-  Agent ausführt. Es bringt den Schlüssel in die App statt nach Windows; Geheimhaltung bringt es
-  nicht, denn der Wert landet ohnehin in der Konfiguration. Die Variablen eines stdio-Servers
-  bleiben, wo sie waren — der Client gibt sie dem Prozess dieses Servers bereits, beschränkt darauf.
-
-- **Das Feld für Umgebungsvariablen erscheint nicht mehr bei einem Server, der keine Umgebung hat.**
-  Ein http-MCP-Server ist eine URL, die der Client aufruft, kein Prozess, den ainess startet, und
-  der http-Zweig der Sitzungskonfiguration hat nie `env` geschrieben — das Feld wurde trotzdem
-  gezeichnet. Einen Schlüssel dort bei einem http-Server einzutragen, speicherte ihn in der
-  Konfigurationsdatei und schickte ihn nirgendwohin: ein Feld, das einen Platz für eine Anmeldung
-  versprach und sie stillschweigend fallen ließ. Es ist jetzt ein stdio-Feld, im Dialog wie auf dem
-  Weg zu Antigravity, und ein gewechselter Transport verwirft das Getippte, statt ein Geheimnis zu
-  speichern, das nie jemand liest. Ein http-Server legt seine Anmeldung in einen Header.
-
+- **Das Feld für Umgebungsvariablen tut bei einem http-Server etwas.** Es wurde dort gezeichnet und
+  führte nirgendwohin: der http-Zweig der Sitzungskonfiguration hat nie `env` geschrieben, ein dort
+  eingetragener Schlüssel landete also in der Konfigurationsdatei und sonst nirgends. Ein
+  http-MCP-Server hat keinen eigenen Prozess, der Agent aber schon — und die Umgebung des Agenten
+  ist genau der Ort, an dem der MCP-Client nachsieht, wenn er `${VARIABLE}` in einem Header auflöst.
+  Dorthin gehen sie jetzt. Schlüssel ins Feld, `X-Goog-Api-Key: ${DEIN_SCHLUESSEL}` in die Header,
+  und es verbindet sich, ohne die Umgebung des Rechners anzufassen oder etwas neu zu starten. Das
+  Feld sagt, was das kostet, denn es ist weiter, als es aussieht: eine hier gesetzte Variable gehört
+  dem Prozess des Agenten, also sieht sie jeder MCP-Server, der Variablen auflöst, und alles, was
+  der Agent ausführt. Es bringt den Schlüssel in die App statt nach Windows; Geheimhaltung bringt es
+  nicht. Die Variablen eines stdio-Servers bleiben unberührt.
 - **Das Eingabefeld zeichnet sich nicht mehr zweimal pro Sekunde für einen Chat neu, in dem nichts
   passiert.** Ob ein Chat gerade antwortet, liegt im Speicher des Chat-Moduls und nicht im Store,
   also konnte nichts darauf reagieren: das Feld fragte auf einem 500-ms-Timer nach, solange eine
