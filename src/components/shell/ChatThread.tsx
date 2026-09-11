@@ -163,7 +163,10 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollRef} onScroll={onScroll}>
         <div className="flex flex-col gap-3 max-w-3xl mx-auto">
-          {chatLoading ? (
+          {/* Skeletons only over an empty thread. A reload that happens while the history is
+              already on screen used to replace it with three grey blocks, which reads as the
+              conversation having been lost. */}
+          {chatLoading && messages.length === 0 ? (
             <>
               <BubbleSkeleton align="start" />
               <BubbleSkeleton align="end" />

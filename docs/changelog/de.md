@@ -6,6 +6,21 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Aus Telegram, Discord und Slack per Knopfdruck freigeben und antworten.** Alles, was die
+  Brücke konnte, musste getippt werden, und die beiden Dinge, die wirklich auf dich warten, mussten
+  mit einer Id getippt werden, die man aus der Nachricht darüber abschrieb: `/approve 3f2a1b2c`.
+  Auf dem Telefon ist das der Unterschied zwischen antworten und nicht antworten. Eine zur Freigabe
+  angehaltene Delegation kommt jetzt mit einem Ja und einem Nein darunter an, und eine Frage mit
+  einem Knopf pro Option. Alle drei Plattformen liefern den Druck über die Verbindung, die sie
+  ohnehin offen halten — Telegram neben seinen Updates, Discord über das Gateway, Slack über Socket
+  Mode — also wird nichts exponiert und keine deiner Adressen geht irgendwohin. Der Druck kommt
+  durch dieselbe Tür wie eine getippte Nachricht, und das mit Absicht: die Erlaubnisliste wird an
+  einer Stelle geprüft, und ein Knopf ist kein Weg daran vorbei. Dem Druck wird auch nichts
+  geglaubt: die Id muss noch offen sein und die Option eine, die die Frage wirklich hat — ein alter
+  Knopf in einer Nachricht von gestern entscheidet also nichts ein zweites Mal. Eine Frage mit
+  mehreren Antworten bekommt keine Knöpfe, denn ein Druck ist eine Option und das ist eine andere
+  Antwort als die verlangte; die werden weiter getippt, und die Nachricht sagt das.
+
 - **Der Startbildschirm beginnt die Arbeit, statt sie aufzuzählen.** Er hatte die Projekte, das
   Wartende und das Laufende; um irgendetwas zu tun, musste man trotzdem einen Dialog öffnen, ein
   Projekt benennen, einen Ordner wählen, ein Team zusammenstellen, speichern, öffnen und das
@@ -21,6 +36,19 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   gekostet haben, in Aufgaben, Tokens und Dollar, über alle Projekte statt über eines. Nichts
   davon wird geschätzt: ein CLI ohne Verbrauchsmeldung zählt als Lauf und null Tokens, und zwei
   Wochen, in denen keines gemeldet hat, sagen das, statt eine flache Linie zu zeichnen.
+
+### Behoben
+
+- **Ein Chat wird nicht mehr leer, wenn du eine Nachricht hineinschickst.** Eine Unterhaltung zu
+  laden heißt, eine Datei zu lesen, und das dauert. In diesem Zeitfenster gingen drei verschiedene
+  Dinge schief, und alle drei endeten gleich: der Verlauf weg, bis man den Chat verließ und
+  zurückkam, was den Lesevorgang wiederholte. Eine Nachricht, die während des Lesens gesendet
+  wurde, wurde von einer Datei überschrieben, die vor ihr geschrieben worden war — jetzt gewinnt
+  der Speicher, und was während des Lesens ankam, bleibt. Ein fehlgeschlagenes Lesen flog aus dem
+  Lader heraus, statt aufgefangen zu werden, und ließ den Chat ohne Inhalt im Speicher zurück; es
+  kann aus einem banalen Grund fehlschlagen, etwa weil dieselbe Datei gerade geschrieben wird. Und
+  ein Neuladen legte drei graue Skelette über einen Verlauf, der längst da war, was sich liest, als
+  wäre die Unterhaltung verloren.
 
 ## 0.12.0 — 2026-09-10
 

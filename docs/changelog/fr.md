@@ -6,6 +6,21 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Approuver et répondre depuis Telegram, Discord et Slack en appuyant sur un bouton.** Tout ce
+  que le pont savait faire devait être tapé, et les deux choses qui vous attendent vraiment devaient
+  l'être avec un identifiant recopié du message au-dessus : `/approve 3f2a1b2c`. Sur un téléphone
+  c'est la différence entre répondre et ne pas répondre. Une délégation retenue pour approbation
+  arrive désormais avec un oui et un non en dessous, et une question avec un bouton par option. Les
+  trois plateformes livrent l'appui par la connexion qu'elles tiennent déjà ouverte — Telegram avec
+  ses updates, Discord par la Gateway, Slack par Socket Mode — donc rien n'est exposé et aucune de
+  vos adresses ne part nulle part. L'appui passe par la même porte qu'un message tapé, et c'est
+  voulu : la liste d'autorisation est vérifiée à un seul endroit et un bouton n'est pas un moyen de
+  la contourner. Rien n'est cru sur parole non plus : l'identifiant doit être encore en attente et
+  l'option doit être une de celles que la question a vraiment, donc un vieux bouton dans un message
+  d'hier ne décide rien une seconde fois. Une question à plusieurs réponses n'a pas de boutons, car
+  un appui est une option et c'est une réponse différente de celle demandée ; celles-là se tapent
+  toujours, et le message le dit.
+
 - **L'écran d'accueil lance le travail au lieu de le lister.** Il avait les projets, ce qui vous
   attendait et ce qui tournait ; pour faire quoi que ce soit, il fallait quand même ouvrir une
   boîte de dialogue, nommer un projet, choisir un dossier, monter une équipe, enregistrer, ouvrir
@@ -21,6 +36,19 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   coûté les quinze derniers jours, en tâches, tokens et dollars, tous projets confondus. Rien n'y
   est estimé : un CLI qui ne rapporte aucune consommation compte comme une exécution et zéro
   token, et une quinzaine où aucun n'a rapporté le dit plutôt que de tracer une ligne plate.
+
+### Corrigé
+
+- **Une conversation ne devient plus vide quand vous y envoyez un message.** Charger une
+  conversation, c'est lire un fichier, et lire un fichier prend du temps. Dans cette fenêtre, trois
+  choses différentes tournaient mal et les trois finissaient pareil : l'historique disparu jusqu'à
+  ce qu'on quitte la conversation et qu'on y revienne, ce qui relançait la lecture. Un message
+  envoyé pendant la lecture était écrasé par un fichier écrit avant qu'il n'existe — la mémoire
+  gagne désormais, et ce qui est arrivé pendant la lecture est conservé. Une lecture en échec
+  s'échappait du chargeur au lieu d'être attrapée, laissant la conversation sans rien en mémoire ;
+  elle peut échouer pour une raison banale, comme tomber au moment où ce même fichier est écrit. Et
+  un rechargement posait trois squelettes gris sur un historique qui était là, ce qui se lit comme
+  une conversation perdue.
 
 ## 0.12.0 — 2026-09-10
 

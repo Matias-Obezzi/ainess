@@ -8,6 +8,20 @@ let one of them fall behind.
 
 ### Added
 
+- **Approve and answer from Telegram, Discord and Slack by pressing a button.** Everything the
+  bridge could do had to be typed, and the two things that actually wait on you had to be typed
+  with an id copied out of the message above them: `/approve 3f2a1b2c`. On a phone that is the
+  difference between answering and not answering. A delegation held for approval now arrives with
+  a yes and a no under it, and a question arrives with one button per option. All three platforms
+  deliver the press over the connection they already hold open — Telegram alongside its updates,
+  Discord over the Gateway, Slack over Socket Mode — so nothing is exposed and no address of yours
+  goes anywhere. The press goes through the same door as a typed message, which is the point: the
+  allowlist is checked in one place and a button is not a way past it. Nothing in the press is
+  believed either — the id has to still be pending and the option has to be one the question
+  actually has, so a button left over in an old message decides nothing a second time. A question
+  that takes several answers gets no buttons, because one press is one option and that is a
+  different answer from the one being asked for; those stay typed, and the message says so.
+
 - **The home screen starts the work instead of listing it.** It had the projects, what was waiting
   on you and what was running; the way to do anything was still to open a dialog, name a project,
   pick a folder, assemble a team, save it, open it and find the box. The box is the first thing on
@@ -22,6 +36,18 @@ let one of them fall behind.
   what the last fortnight cost, in tasks, tokens and dollars, across all of them rather than one.
   Nothing there is estimated: a CLI that reports no usage is counted as a run and no tokens, and a
   fortnight where none of them reported says so instead of drawing a flat line.
+
+### Fixed
+
+- **A chat no longer goes blank when you send a message into it.** Loading a conversation is a file
+  read, and a file read takes time. Three separate things went wrong inside that window and all
+  three ended the same way: the history gone until you left the chat and came back, which retried
+  the read. A message sent while the read was in flight was overwritten by a file written before it
+  existed — memory wins now, and what arrived during the read is kept. A read that failed threw out
+  of the loader instead of being caught, leaving the chat with nothing in memory; it can fail for a
+  mundane reason, like landing on the moment the same file is being written. And a reload put three
+  grey skeletons over a history that was sitting right there, which reads as the conversation
+  having been lost.
 
 ## 0.12.0 — 2026-09-10
 

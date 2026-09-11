@@ -1623,6 +1623,8 @@ export const zh: Dictionary = {
   "bridge.test.message": "我是 ainess。你能看到这条消息，说明桥接是通的。发送 /help 看看能让我做什么。",
   "bridge.notify.howToApprove": "回复 /approve {id} 或 /reject {id}。",
   "bridge.notify.howToAnswer": "回复 /answer，后面跟上你的答复。",
+  "bridge.notify.orWrite": "点一个选项，或者直接写下你想回答的内容。",
+  "bridge.reply.actionGone": "这个按钮已经没用了：它问的事情已经解决了。",
   "install.notDetected": "已安装，但 CLI 仍未出现。请重启应用并重新检测。",
 
   "ngrok.notDetected": "winget 已完成，但 ngrok 仍未出现。请重启应用并重试。",

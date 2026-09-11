@@ -6,6 +6,20 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Aprovar e responder pelo Telegram, Discord e Slack apertando um botão.** Tudo o que a ponte
+  sabia fazer tinha que ser digitado, e as duas coisas que de fato esperam por você tinham que ser
+  digitadas com um id copiado da mensagem acima: `/approve 3f2a1b2c`. No celular essa é a diferença
+  entre responder e não responder. Agora uma delegação esperando aprovação chega com um sim e um
+  não embaixo, e uma pergunta chega com um botão por opção. As três plataformas entregam o toque
+  pela conexão que já mantêm aberta — Telegram junto com seus updates, Discord pelo Gateway, Slack
+  por Socket Mode — então nada é exposto e nenhum endereço seu vai para lugar nenhum. O toque entra
+  pela mesma porta que uma mensagem digitada, e isso é de propósito: a lista de permitidos é
+  verificada em um único lugar e um botão não é um jeito de contorná-la. Nada no toque é acreditado
+  tampouco: o id precisa continuar pendente e a opção precisa ser uma que a pergunta realmente
+  tenha, então um botão velho numa mensagem de ontem não decide nada uma segunda vez. Uma pergunta
+  que aceita várias respostas não leva botões, porque um toque é uma opção e essa é uma resposta
+  diferente da que está sendo pedida; essas continuam digitadas, e a mensagem diz isso.
+
 - **A tela inicial agora começa o trabalho em vez de listá-lo.** Ela tinha os projetos, o que
   esperava por você e o que estava rodando; para fazer qualquer coisa ainda era preciso abrir um
   diálogo, dar nome a um projeto, escolher a pasta, montar uma equipe, salvar, abrir e procurar a
@@ -20,6 +34,18 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   aconteceu — e quanto custou a última quinzena em tarefas, tokens e dólares, somando todos os
   projetos. Nada disso é estimado: um CLI que não reporta consumo conta como execução e zero
   tokens, e uma quinzena em que nenhum reportou diz isso em vez de desenhar uma linha plana.
+
+### Corrigido
+
+- **Um chat não fica mais em branco quando você manda uma mensagem nele.** Carregar uma conversa é
+  ler um arquivo, e ler um arquivo leva tempo. Dentro dessa janela três coisas diferentes davam
+  errado e as três terminavam igual: o histórico sumido até você sair do chat e voltar, o que
+  refazia a leitura. Uma mensagem enviada enquanto a leitura estava em voo era sobrescrita por um
+  arquivo escrito antes de ela existir — agora a memória ganha, e o que chegou durante a leitura é
+  preservado. Uma leitura que falhava escapava do carregador em vez de ser capturada, deixando o
+  chat sem nada na memória; ela pode falhar por algo banal, como cair no momento em que esse mesmo
+  arquivo está sendo escrito. E um recarregamento cobria com três esqueletos cinzas um histórico
+  que estava bem ali, o que se lê como a conversa ter se perdido.
 
 ## 0.12.0 — 2026-09-10
 

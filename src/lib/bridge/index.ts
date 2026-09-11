@@ -4,7 +4,7 @@
 // over HTTPS, Discord holds a Gateway socket open, Slack holds a Socket Mode one), so there is no tunnel, no port
 // and no public address. What arrives is text; what it turns into is `handleRemoteCommand`, the same API
 // the phone talks to — this file translates and decides who is allowed to speak, and that is all.
-import { useAppStore, selectProjectAgents } from "@/store";
+import { useAppStore, selectProjectAgents, type AppState } from "@/store";
 import { handleRemoteCommand } from "@/lib/remote";
 import { attentionItems, workingItems } from "@/lib/attention";
 import { pendingApprovals } from "@/lib/approvals";
@@ -13,10 +13,12 @@ import { truncate } from "@/lib/format";
 import { log } from "@/lib/logger";
 import { notificationText } from "./notify";
 import { parseBridgeCommand, type BridgeCommand } from "./commands";
+import { approvalButtons, parseActionToken, questionButtons, type BridgeButton } from "./actions";
 import { TelegramProvider } from "./telegram";
 import { DiscordProvider } from "./discord";
 import { SlackProvider } from "./slack";
 import type { BridgeProvider, BridgeProviderId, IncomingMessage } from "./types";
+import type { AppNotification } from "@/types";
 import type { MessagingChannelConfig } from "@/types";
 
 /** The channels this bridge knows how to speak, in the order the settings screen shows them. */
@@ -204,6 +206,27 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
   }
 }
 
+/**
+ * What a button press means, or null when it no longer means anything.
+ *
+ * Everything in the token is looked up rather than trusted: the id has to match something actually
+ * pending, and the option index has to be inside the question's own list. A token the app never
+ * minted, or one for an approval that has since been decided, resolves to nothing.
+ */
+export function commandForPress(token: string, s: AppState): BridgeCommand | null {
+  const action = parseActionToken(token);
+  if (!action) return null;
+
+  if (action.kind === "approve" || action.kind === "reject") {
+    return { kind: action.kind, id: action.id };
+  }
+
+  const question = Object.values(s.questions).find(q => q.status === "pending" && short(q.id) === action.id);
+  const option = question?.options[action.option];
+  if (!question || option === undefined) return null;
+  return { kind: "answer", id: question.id, text: option };
+}
+
 async function onMessage(provider: BridgeProvider, message: IncomingMessage): Promise<void> {
   if (!isAllowed(message.chatId, allowedChats(provider.id))) {
     // Not a word back: confirming the bot exists is the one thing a stranger learns for free.
@@ -213,7 +236,19 @@ async function onMessage(provider: BridgeProvider, message: IncomingMessage): Pr
   }
   chatChannel.set(message.chatId, provider.id);
   try {
-    const reply = await runCommand(parseBridgeCommand(message.text), message.chatId);
+    // A press goes through the same door as a message, which is why the allowlist above covers it
+    // too: there is no second path a button could take past it.
+    let command: BridgeCommand | null;
+    if (message.action) {
+      command = commandForPress(message.action, useAppStore.getState());
+      if (!command) {
+        await provider.send(message.chatId, translateNow("bridge.reply.actionGone"));
+        return;
+      }
+    } else {
+      command = parseBridgeCommand(message.text);
+    }
+    const reply = await runCommand(command, message.chatId);
     await provider.send(message.chatId, reply);
   } catch (e) {
     // Through the sanitiser, both here and on the way back out. A failure to send can carry the
@@ -295,6 +330,29 @@ export async function sendTest(chatId: string, id: BridgeProviderId = "telegram"
   const targets = getDispatchProviders(id);
   if (targets.length === 0) throw new Error(translateNow("messaging.testNoToken"));
   await targets[0].send(chatId, translateNow("bridge.test.message"));
+}
+
+/**
+ * The buttons that belong under a notification, if any.
+ *
+ * Only the two kinds that are waiting for an answer. Everything else is news, and a button under
+ * news is a button that does nothing. A question that takes several answers gets none either: see
+ * `questionButtons`.
+ */
+export function buttonsFor(n: AppNotification, s: AppState): BridgeButton[] | undefined {
+  if (n.kind === "approval" && n.approvalId) {
+    return approvalButtons(n.approvalId, {
+      approve: translateNow("approvals.approve"),
+      reject: translateNow("approvals.reject"),
+    });
+  }
+  if (n.kind === "question" && n.questionId) {
+    const question = s.questions[n.questionId];
+    if (!question || question.status !== "pending") return undefined;
+    const buttons = questionButtons(question);
+    return buttons.length > 0 ? buttons : undefined;
+  }
+  return undefined;
 }
 
 function sanitizeBridgeError(e: unknown, ...tokens: Array<string | undefined>): string {
@@ -394,11 +452,12 @@ export function attachBridgeNotifications(): void {
     const project = newest.projectId
       ? state.config.projects.find(p => p.id === newest.projectId)?.name
       : undefined;
-    const text = notificationText(newest, project);
+    const buttons = buttonsFor(newest, state);
+    const text = notificationText(newest, project, !!buttons);
     for (const provider of providers.values()) {
       const channel = messagingConfig(provider.id);
       for (const chatId of allowedChats(provider.id)) {
-        void provider.send(chatId, text).catch(e =>
+        void provider.send(chatId, text, buttons).catch(e =>
           log.warn("bridge", `no se pudo avisar: ${sanitizeBridgeError(e, channel?.token, channel?.appToken)}`));
       }
     }

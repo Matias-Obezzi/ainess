@@ -1625,6 +1625,8 @@ export const es: Dictionary = {
   "bridge.test.message": "Soy ainess. Si leés esto, el puente funciona. Escribime /help para ver qué le podés pedir.",
   "bridge.notify.howToApprove": "Respondé /approve {id} o /reject {id}.",
   "bridge.notify.howToAnswer": "Respondé /answer y lo que quieras contestar.",
+  "bridge.notify.orWrite": "Tocá una opción, o escribí la respuesta que quieras.",
+  "bridge.reply.actionGone": "Ese botón ya no sirve: lo que preguntaba se resolvió.",
   "install.notDetected": "Se instaló, pero el CLI todavía no aparece. Reiniciá la app y volvé a detectar.",
 
   "ngrok.notDetected": "winget terminó pero ngrok sigue sin aparecer. Reiniciá la app y probá de nuevo.",

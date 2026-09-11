@@ -1,6 +1,6 @@
 import { getTransport } from "@/lib/transport";
-import type { BridgeProvider, IncomingMessage } from "./types";
-import { envelopeIdOf, messageFrom } from "./slack-events";
+import type { BridgeButton, BridgeProvider, IncomingMessage } from "./types";
+import { blocksFor, envelopeIdOf, messageFrom, pressFrom } from "./slack-events";
 
 /**
  * Socket Mode, not the Events API: the app opens the connection, so there is no public URL to
@@ -80,7 +80,7 @@ export class SlackProvider implements BridgeProvider {
     }
 
     if (this.onMessage) {
-      const message = messageFrom(frame);
+      const message = messageFrom(frame) ?? pressFrom(frame);
       if (message) void this.onMessage(message);
     }
   }
@@ -110,11 +110,13 @@ export class SlackProvider implements BridgeProvider {
     }
   }
 
-  async send(chatId: string, text: string): Promise<void> {
+  async send(chatId: string, text: string, buttons?: BridgeButton[]): Promise<void> {
     const clipped = text.length > 40000 ? text.slice(0, 39999) + "…" : text;
+    // `text` stays alongside the blocks: it is what a notification and a screen reader get.
+    const blocks = buttons && buttons.length > 0 ? { blocks: blocksFor(clipped, buttons) } : {};
     const res = await getTransport().httpPost(
       "https://slack.com/api/chat.postMessage",
-      JSON.stringify({ channel: chatId, text: clipped }),
+      JSON.stringify({ channel: chatId, text: clipped, ...blocks }),
       { "Content-Type": "application/json", Authorization: `Bearer ${this.botToken}` },
     );
     // Slack answers 200 even on failure: the real verdict is `ok` in the body.

@@ -1624,6 +1624,8 @@ export const ja: Dictionary = {
   "bridge.test.message": "ainess です。これが読めていればブリッジは動いています。/help と送ると、できることが分かります。",
   "bridge.notify.howToApprove": "/approve {id} または /reject {id} と返信してください。",
   "bridge.notify.howToAnswer": "/answer に続けて答えを書いて返信してください。",
+  "bridge.notify.orWrite": "選択肢をタップするか、好きな答えを書いてください。",
+  "bridge.reply.actionGone": "このボタンはもう使えません。尋ねていた件は解決済みです。",
   "install.notDetected": "インストールしたけど、CLIがまだ出てこないよ。アプリを再起動してもう一度検出してね。",
 
   "ngrok.notDetected": "wingetは完了したけど、ngrokがまだ出てこないよ。アプリを再起動してもう一度試してね。",

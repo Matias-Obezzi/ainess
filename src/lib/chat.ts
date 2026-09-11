@@ -1,4 +1,5 @@
 // Chat orchestrator: individual and shared chat conversations with agents.
+import { mergeLoaded } from "@/lib/chat-merge";
 import { useAppStore, selectAgent, selectSkillsFor } from "@/store";
 import { startRun, addMessage } from "@/lib/orchestrator";
 import { getTransport } from "@/lib/transport";
@@ -34,6 +35,21 @@ async function persistMessages(chatId: string): Promise<void> {
   await getTransport().writeTextFile(chatFilePath(chatId), JSON.stringify(file, null, 2));
 }
 
+/**
+ * Brings a chat's history in from disk, without ever costing it what it already had.
+ *
+ * Three things here are deliberate, and each of them was a way the thread came back empty:
+ *
+ * The read is caught. It used to be inside a `try/finally` with no `catch`, so a read that failed
+ * threw out of here as an unhandled rejection and left the chat with nothing in memory until the
+ * next visit retried it — and a read can fail for a mundane reason, like landing on the moment
+ * `persistMessages` has the same file open for writing.
+ *
+ * What came in while the read was in flight is kept: see `mergeLoaded`.
+ *
+ * And the loading flag goes down whatever happens, so nothing can leave the thread showing
+ * skeletons over a history that is sitting right there.
+ */
 export async function loadChatMessages(chatId: string): Promise<void> {
   const existing = useAppStore.getState().chatMessages[chatId];
   if (existing && existing.length > 0) return; // already loaded
@@ -41,16 +57,17 @@ export async function loadChatMessages(chatId: string): Promise<void> {
   try {
     const raw = await getTransport().readTextFile(chatFilePath(chatId));
     if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as ChatFile | ChatMessage[];
-        const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
-        const sessions = Array.isArray(parsed) ? {} : parsed.sessions || {};
-        useAppStore.setState(state => ({
-          chatMessages: { ...state.chatMessages, [chatId]: msgs },
-          chatSessions: { ...state.chatSessions, [chatId]: { ...sessions, ...(state.chatSessions[chatId] || {}) } },
-        }));
-      } catch { /* corrupt file, ignore */ }
+      const parsed = JSON.parse(raw) as ChatFile | ChatMessage[];
+      const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
+      const sessions = Array.isArray(parsed) ? {} : parsed.sessions || {};
+      useAppStore.setState(state => ({
+        chatMessages: { ...state.chatMessages, [chatId]: mergeLoaded(msgs, state.chatMessages[chatId] ?? []) },
+        chatSessions: { ...state.chatSessions, [chatId]: { ...sessions, ...(state.chatSessions[chatId] || {}) } },
+      }));
     }
+  } catch {
+    // Unreadable or corrupt: whatever is in memory stays on screen. There is nothing better to put
+    // there, and emptying it is the one outcome that loses something.
   } finally {
     useAppStore.setState(state => ({ chatLoading: { ...state.chatLoading, [chatId]: false } }));
   }

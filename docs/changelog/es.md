@@ -6,6 +6,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Aprobar y contestar desde Telegram, Discord y Slack apretando un botón.** Todo lo que el
+  bridge sabía hacer había que escribirlo, y las dos cosas que de verdad te esperan había que
+  escribirlas con un id copiado del mensaje de arriba: `/approve 3f2a1b2c`. En el celular esa es la
+  diferencia entre contestar y no contestar. Ahora una delegación esperando aprobación llega con un
+  sí y un no abajo, y una pregunta llega con un botón por opción. Las tres plataformas entregan la
+  pulsación por la conexión que ya tienen abierta —Telegram junto con sus updates, Discord por el
+  Gateway, Slack por Socket Mode— así que no se expone nada ni sale ninguna dirección tuya a ningún
+  lado. La pulsación entra por la misma puerta que un mensaje escrito, y eso es a propósito: la
+  lista de permitidos se chequea en un solo lugar y un botón no es una forma de esquivarla. Tampoco
+  se le cree nada a la pulsación: el id tiene que seguir pendiente y la opción tiene que ser una que
+  la pregunta realmente tenga, así que un botón viejo en un mensaje de ayer no decide nada por
+  segunda vez. Una pregunta que admite varias respuestas no lleva botones, porque una pulsación es
+  una opción y esa es una respuesta distinta de la que se está pidiendo; esas se siguen escribiendo,
+  y el mensaje lo dice.
+
 - **El inicio ahora arranca el trabajo en vez de listarlo.** Tenía los proyectos, lo que te
   esperaba y lo que estaba corriendo; para hacer algo había que abrir un diálogo igual, ponerle
   nombre a un proyecto, elegir carpeta, armar un equipo, guardarlo, abrirlo y buscar la caja. Ahora
@@ -20,6 +35,18 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   última quincena en tareas, tokens y dólares, sumando todos los proyectos y no uno. Nada de eso
   se estima: un CLI que no reporta consumo cuenta como corrida y cero tokens, y una quincena donde
   ninguno reportó lo dice en vez de dibujar una línea plana.
+
+### Arreglado
+
+- **Un chat ya no se queda en blanco cuando le mandás un mensaje.** Cargar una conversación es
+  leer un archivo, y leer un archivo lleva tiempo. Adentro de esa ventana fallaban tres cosas
+  distintas y las tres terminaban igual: el historial desaparecido hasta que salías del chat y
+  volvías, que era lo que reintentaba la lectura. Un mensaje mandado mientras la lectura estaba en
+  vuelo quedaba pisado por un archivo escrito antes de que existiera — ahora gana la memoria, y lo
+  que llegó durante la lectura se conserva. Una lectura que fallaba se escapaba del cargador en vez
+  de ser atrapada, y dejaba el chat sin nada en memoria; puede fallar por algo tan común como caer
+  justo en el momento en que ese mismo archivo se está escribiendo. Y una recarga tapaba con tres
+  esqueletos grises un historial que estaba ahí, que se lee como que la conversación se perdió.
 
 ## 0.12.0 — 2026-09-10
 

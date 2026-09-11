@@ -1625,6 +1625,8 @@ export const en: Dictionary = {
   "bridge.test.message": "This is ainess. If you can read this, the bridge works. Write /help to see what you can ask for.",
   "bridge.notify.howToApprove": "Reply /approve {id} or /reject {id}.",
   "bridge.notify.howToAnswer": "Reply /answer and whatever your answer is.",
+  "bridge.notify.orWrite": "Tap an option, or write whatever you want to answer.",
+  "bridge.reply.actionGone": "That button is no longer good for anything: what it asked about is settled.",
   "install.notDetected": "Installed, but the CLI hasn't appeared yet. Restart the app and detect again.",
 
   "ngrok.notDetected": "winget finished but ngrok still hasn't appeared. Restart the app and try again.",

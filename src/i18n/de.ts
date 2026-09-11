@@ -1623,6 +1623,8 @@ export const de: Dictionary = {
   "bridge.test.message": "Hier ist ainess. Wenn du das liest, funktioniert die Brücke. Schreib /help, um zu sehen, was geht.",
   "bridge.notify.howToApprove": "Antworte /approve {id} oder /reject {id}.",
   "bridge.notify.howToAnswer": "Antworte /answer und deine Antwort.",
+  "bridge.notify.orWrite": "Tippe auf eine Option oder schreib, was du antworten willst.",
+  "bridge.reply.actionGone": "Dieser Knopf nützt nichts mehr: Worum es ging, ist entschieden.",
   "install.notDetected": "Installiert, aber die CLI ist noch nicht da. Starte die App neu und suche noch mal.",
 
   "ngrok.notDetected": "winget ist fertig, aber ngrok ist immer noch nicht da. Starte die App neu und versuch es noch mal.",

@@ -1075,6 +1075,8 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     projectId: run.projectId,
     agentId: agent.id,
     runId: run.id,
+    // The oldest of the turn, which is the one the composer and the bridge both offer first.
+    questionId: first.id,
   });
   return true;
 }
