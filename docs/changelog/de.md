@@ -2,6 +2,83 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.13.0 — 2026-09-10
+
+### Neu
+
+- **Ein neuer Agent wird geboren, indem er seine eigenen Werkzeuge automatisch freigibt — und die
+  CLI kann weiterhin das Gegenteil sagen.** ainess startet diese CLIs headless: niemand sitzt vor
+  dem Prozess, um ihm zu antworten. Ein Agent, der mit zurückgehaltener Berechtigung angelegt
+  wurde, startete mit `--permission-mode acceptEdits`, fragte also vor allem, was keine Bearbeitung
+  war, und wartete dort, bis es jemand bemerkte — was sich genauso liest wie die
+  Delegations-Freigabe, mit der es nichts zu tun hat. Neue Agenten starten das jetzt eingeschaltet,
+  im Dialog wie in `ainess agents add`, und der Schalter sagt in einer Zeile, was das bedeutet.
+  Nichts Gespeichertes wird angefasst: eine Berechtigung in einem Agenten einzuschalten, den jemand
+  eingerichtet hat, ist kein Standard, sondern eine Änderung, um die niemand gebeten hat — und eine
+  Bearbeitung lässt weiterhin jede Einstellung, die sie nicht benennt, genau dort, wo sie war. Im
+  selben Zug bekam die CLI `--no-auto-approve`, denn ein boolesches Flag hat kein Aus —
+  `--auto-approve=false` wird schlicht abgelehnt — und der Tag, an dem der Standard kippte, war der
+  Tag, an dem ein Skript kein Team mit zurückgehaltenen Werkzeugen mehr aufsetzen konnte. Beide
+  zusammen übergeben: Aus gewinnt — zwischen zwei Lesarten eines widersprüchlichen Befehls die, die
+  weniger gewährt.
+
+- **Aus Telegram, Discord und Slack per Knopfdruck freigeben und antworten.** Alles, was die
+  Brücke konnte, musste getippt werden, und die beiden Dinge, die wirklich auf dich warten, mussten
+  mit einer Id getippt werden, die man aus der Nachricht darüber abschrieb: `/approve 3f2a1b2c`.
+  Auf dem Telefon ist das der Unterschied zwischen antworten und nicht antworten. Eine zur Freigabe
+  angehaltene Delegation kommt jetzt mit einem Ja und einem Nein darunter an, und eine Frage mit
+  einem Knopf pro Option. Alle drei Plattformen liefern den Druck über die Verbindung, die sie
+  ohnehin offen halten — Telegram neben seinen Updates, Discord über das Gateway, Slack über Socket
+  Mode — also wird nichts exponiert und keine deiner Adressen geht irgendwohin. Der Druck kommt
+  durch dieselbe Tür wie eine getippte Nachricht, und das mit Absicht: die Erlaubnisliste wird an
+  einer Stelle geprüft, und ein Knopf ist kein Weg daran vorbei. Dem Druck wird auch nichts
+  geglaubt: die Id muss noch offen sein und die Option eine, die die Frage wirklich hat — ein alter
+  Knopf in einer Nachricht von gestern entscheidet also nichts ein zweites Mal. Eine Frage mit
+  mehreren Antworten bekommt keine Knöpfe, denn ein Druck ist eine Option und das ist eine andere
+  Antwort als die verlangte; die werden weiter getippt, und die Nachricht sagt das.
+
+- **Der Startbildschirm beginnt die Arbeit, statt sie aufzuzählen.** Er war ein Dashboard: jedes
+  Projekt eine Zeile, das Wartende, das Laufende. All das wohnt längst dort, wo es hingehört — die
+  Seitenleiste hat die Projekte und den Knopf, eines anzulegen, das Panel darüber zeigt weiterhin,
+  was zur Freigabe angehalten ist, Glocke und Taskleiste melden, wenn etwas eine Antwort will. Hier
+  stand also eine zweite Kopie davon, ausgerechnet an der einen Stelle, an der das, was man nirgends
+  sonst kann, das Anfangen ist. Jetzt ist es ein Feld, in der Mitte, und darüber nichts: schreib, was
+  zu tun ist, wähl den Ordner und eines deiner Teams — das Projekt entsteht und der Prompt geht raus.
+  Ist der Ordner schon ein Projekt, geht es einfach dorthin, samt Team: zwei Projekte auf einem
+  Workspace wären zwei Teams, die dieselben Dateien bearbeiten, ohne voneinander zu wissen, und ein
+  Ordner bleibt derselbe Ordner, wie auch immer er geschrieben wird. Ein Team erfindet er nicht: ist
+  keines gespeichert, zeigt er dorthin, wo Teams entstehen, und ein Team ohne Wurzel-Agenten wird
+  gesagt, statt den Prompt dem erstbesten Agenten zu geben. Unter dem Feld die eine Zahl, die kein
+  anderer Bildschirm über Projekte hinweg zusammenzählt: was die letzten zwei Wochen gekostet haben,
+  in Aufgaben, Tokens und Dollar. Nichts davon wird geschätzt — ein CLI ohne Verbrauchsmeldung zählt
+  als Lauf und null Tokens, und zwei Wochen, in denen keines gemeldet hat, sagen das, statt eine
+  flache Linie zu zeichnen.
+
+### Behoben
+
+- **`ainess agents edit` macht eine gesetzte Berechtigung nicht mehr stillschweigend rückgängig.**
+  Jeder Editor übergibt dem Store einen ganzen Agenten, und der Store setzt ihn an die Stelle des
+  alten — ein Feld, das dieser Editor nicht in das Objekt gebaut hat, bleibt also nicht unberührt,
+  es ist weg. Die CLI baut dieses Objekt aus ihren eigenen Flags und hat keines für die
+  Freigabe-Ausnahme bei Delegationen, keines für den Worktree und keines für den Wiederholversuch
+  nach Kontingent. `ainess agents edit Impl --model x` setzte einen auf "nie fragen" gestellten
+  Agenten damit zurück auf die globale Einstellung, und mit der eingeschalteten Einstellung fragte
+  er bei der nächsten Delegation wieder. Eine Bearbeitung legt sich jetzt über den Agenten, der da
+  war: was sie benennt, gewinnt; was sie nicht benennt, bleibt. Benennen zählt auch dann, wenn der
+  Wert "der globalen Einstellung folgen" ist — der reist als gar nichts und muss ein "nie" löschen
+  können.
+
+- **Ein Chat wird nicht mehr leer, wenn du eine Nachricht hineinschickst.** Eine Unterhaltung zu
+  laden heißt, eine Datei zu lesen, und das dauert. In diesem Zeitfenster gingen drei verschiedene
+  Dinge schief, und alle drei endeten gleich: der Verlauf weg, bis man den Chat verließ und
+  zurückkam, was den Lesevorgang wiederholte. Eine Nachricht, die während des Lesens gesendet
+  wurde, wurde von einer Datei überschrieben, die vor ihr geschrieben worden war — jetzt gewinnt
+  der Speicher, und was während des Lesens ankam, bleibt. Ein fehlgeschlagenes Lesen flog aus dem
+  Lader heraus, statt aufgefangen zu werden, und ließ den Chat ohne Inhalt im Speicher zurück; es
+  kann aus einem banalen Grund fehlschlagen, etwa weil dieselbe Datei gerade geschrieben wird. Und
+  ein Neuladen legte drei graue Skelette über einen Verlauf, der längst da war, was sich liest, als
+  wäre die Unterhaltung verloren.
+
 ## 0.12.0 — 2026-09-10
 
 ### Neu

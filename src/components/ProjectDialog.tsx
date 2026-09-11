@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { AgentDialog } from "@/components/AgentDialog";
-import { open } from "@tauri-apps/plugin-dialog";
-import { isTauri } from "@/lib/tauri";
+import { pickWorkspaceDir } from "@/lib/pick-dir";
+import { projectNameFromDir } from "@/lib/home-start";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { AgentConfig, Project, Budget } from "@/types";
-import { toast } from "@/components/ui/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 /** Value of the formation select when the project starts with no agents at all. */
@@ -92,21 +91,12 @@ export function ProjectDialog({
   };
 
   const handleSelectDir = async () => {
-    if (!isTauri()) {
-      toast.error(t("projectDialog.webUnavailable"));
-      return;
-    }
-    try {
-      const selected = await open({ directory: true, multiple: false });
-      if (typeof selected === "string") {
-        setWorkspaceDir(selected);
-        if (!name) {
-          const folder = selected.replace(/\\/g, "/").split("/").pop();
-          if (folder) setName(folder);
-        }
-      }
-    } catch {
-      toast.error(t("projectDialog.dialogFailed"));
+    const selected = await pickWorkspaceDir();
+    if (!selected) return;
+    setWorkspaceDir(selected);
+    if (!name) {
+      const folder = projectNameFromDir(selected);
+      if (folder) setName(folder);
     }
   };
 

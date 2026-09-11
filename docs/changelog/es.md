@@ -2,6 +2,79 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.13.0 — 2026-09-10
+
+### Nuevo
+
+- **Un agente nuevo nace auto-aprobando sus herramientas, y el CLI sigue pudiendo decir lo
+  contrario.** ainess lanza estos CLIs headless: no hay nadie sentado adelante del proceso para
+  contestarle. Un agente creado con el permiso apagado se lanzaba con `--permission-mode
+  acceptEdits`, así que preguntaba antes de cualquier cosa que no fuera editar y se quedaba ahí
+  esperando hasta que alguien se diera cuenta — que se lee igual que la aprobación de delegaciones,
+  con la que no tiene nada que ver. Ahora los agentes nuevos arrancan con eso encendido, en el
+  diálogo y en `ainess agents add`, y el switch dice en una línea qué significa. Nada de lo ya
+  guardado se toca: encender un permiso en un agente que alguien configuró no es un default, es un
+  cambio que no pidió, y editar un agente sigue dejando cada ajuste que la edición no nombró
+  exactamente donde estaba. En el mismo movimiento el CLI ganó `--no-auto-approve`, porque un flag
+  booleano no tiene apagado — `--auto-approve=false` se rechaza de plano — y el día que el default
+  se dio vuelta fue el día en que un script ya no podía armar un equipo con las herramientas
+  retenidas. Si le pasás los dos a la vez, gana el apagado: entre dos lecturas de un comando que se
+  contradice, la que concede menos.
+
+- **Aprobar y contestar desde Telegram, Discord y Slack apretando un botón.** Todo lo que el
+  bridge sabía hacer había que escribirlo, y las dos cosas que de verdad te esperan había que
+  escribirlas con un id copiado del mensaje de arriba: `/approve 3f2a1b2c`. En el celular esa es la
+  diferencia entre contestar y no contestar. Ahora una delegación esperando aprobación llega con un
+  sí y un no abajo, y una pregunta llega con un botón por opción. Las tres plataformas entregan la
+  pulsación por la conexión que ya tienen abierta —Telegram junto con sus updates, Discord por el
+  Gateway, Slack por Socket Mode— así que no se expone nada ni sale ninguna dirección tuya a ningún
+  lado. La pulsación entra por la misma puerta que un mensaje escrito, y eso es a propósito: la
+  lista de permitidos se chequea en un solo lugar y un botón no es una forma de esquivarla. Tampoco
+  se le cree nada a la pulsación: el id tiene que seguir pendiente y la opción tiene que ser una que
+  la pregunta realmente tenga, así que un botón viejo en un mensaje de ayer no decide nada por
+  segunda vez. Una pregunta que admite varias respuestas no lleva botones, porque una pulsación es
+  una opción y esa es una respuesta distinta de la que se está pidiendo; esas se siguen escribiendo,
+  y el mensaje lo dice.
+
+- **El inicio ahora arranca el trabajo en vez de listarlo.** Era un tablero: cada proyecto como una
+  fila, lo que te esperaba, lo que estaba corriendo. Todo eso ya vive en algún lugar que le
+  corresponde — el sidebar tiene los proyectos y el botón para crear uno, el panel de arriba sigue
+  mostrando lo que está retenido esperando aprobación, la campanita y la barra de tareas avisan
+  cuando algo quiere respuesta — así que acá había una segunda copia de todo eso, justo en el único
+  lugar donde lo que no podés hacer en ningún otro lado es empezar. Ahora es una caja, en el medio, y
+  nada arriba: escribís qué querés, elegís la carpeta y elegís uno de tus equipos, y el proyecto se
+  crea y el prompt sale. Si elegís una carpeta que ya es un proyecto va ahí, con su equipo — dos
+  proyectos sobre un mismo workspace serían dos equipos editando los mismos archivos sin saber uno
+  del otro, y una misma carpeta escrita de tres formas sigue siendo una sola. No inventa equipos: si
+  no tenés ninguno guardado te manda a donde se crean, y un equipo sin agente raíz te lo dice en vez
+  de mandarle el prompt al primero que aparezca. Debajo de la caja, el único número que ninguna otra
+  pantalla suma entre proyectos: cuánto salió la última quincena en tareas, tokens y dólares. Nada de
+  eso se estima — un CLI que no reporta consumo cuenta como corrida y cero tokens, y una quincena
+  donde ninguno reportó lo dice en vez de dibujar una línea plana.
+
+### Arreglado
+
+- **`ainess agents edit` ya no deshace en silencio un permiso que habías puesto.** Todo editor le
+  entrega al store un agente entero y el store lo pone en lugar del viejo, así que un campo que ese
+  editor no construyó dentro del objeto no queda intacto: desaparece. El CLI arma ese objeto con
+  sus propios flags, y no tiene flag para el override de aprobación de delegaciones, ni para el
+  worktree, ni para el reintento por cuota. Por eso `ainess agents edit Impl --model x` dejaba a un
+  agente marcado como «nunca pedir» siguiendo de nuevo el ajuste global, y con ese ajuste encendido
+  volvía a pedir aprobación en la siguiente delegación que recibía. Ahora una edición se apoya
+  sobre el agente que ya estaba: lo que nombra gana, lo que no nombra se conserva. Y nombrarlo
+  cuenta incluso cuando el valor es «seguir el ajuste global», que viaja como nada y tiene que
+  poder borrar un «nunca».
+
+- **Un chat ya no se queda en blanco cuando le mandás un mensaje.** Cargar una conversación es
+  leer un archivo, y leer un archivo lleva tiempo. Adentro de esa ventana fallaban tres cosas
+  distintas y las tres terminaban igual: el historial desaparecido hasta que salías del chat y
+  volvías, que era lo que reintentaba la lectura. Un mensaje mandado mientras la lectura estaba en
+  vuelo quedaba pisado por un archivo escrito antes de que existiera — ahora gana la memoria, y lo
+  que llegó durante la lectura se conserva. Una lectura que fallaba se escapaba del cargador en vez
+  de ser atrapada, y dejaba el chat sin nada en memoria; puede fallar por algo tan común como caer
+  justo en el momento en que ese mismo archivo se está escribiendo. Y una recarga tapaba con tres
+  esqueletos grises un historial que estaba ahí, que se lee como que la conversación se perdió.
+
 ## 0.12.0 — 2026-09-10
 
 ### Nuevo

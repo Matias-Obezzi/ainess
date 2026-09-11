@@ -28,10 +28,10 @@ describe("updatesFrom", () => {
   });
 
   it("survives an answer that is not what it should be", () => {
-    expect(updatesFrom("")).toEqual({ messages: [], nextOffset: null });
-    expect(updatesFrom("<html>502</html>")).toEqual({ messages: [], nextOffset: null });
-    expect(updatesFrom(JSON.stringify({ ok: false, description: "unauthorized" }))).toEqual({ messages: [], nextOffset: null });
-    expect(updatesFrom(body([]))).toEqual({ messages: [], nextOffset: null });
+    expect(updatesFrom("")).toEqual({ messages: [], nextOffset: null, callbackIds: [] });
+    expect(updatesFrom("<html>502</html>")).toEqual({ messages: [], nextOffset: null, callbackIds: [] });
+    expect(updatesFrom(JSON.stringify({ ok: false, description: "unauthorized" }))).toEqual({ messages: [], nextOffset: null, callbackIds: [] });
+    expect(updatesFrom(body([]))).toEqual({ messages: [], nextOffset: null, callbackIds: [] });
   });
 
   it("does not trip over a message with no chat", () => {

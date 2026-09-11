@@ -2,6 +2,82 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.13.0 — 2026-09-10
+
+### Nouveau
+
+- **Un nouvel agent naît en approuvant automatiquement ses propres outils, et la CLI peut toujours
+  dire le contraire.** ainess lance ces CLI en headless : personne n'est assis devant le processus
+  pour lui répondre. Un agent créé avec la permission retenue était lancé avec `--permission-mode
+  acceptEdits`, il demandait donc avant tout ce qui n'était pas une édition et restait là jusqu'à
+  ce que quelqu'un s'en aperçoive — ce qui se lit exactement comme l'approbation de délégation, avec
+  laquelle cela n'a rien à voir. Les nouveaux agents démarrent désormais avec cette option activée,
+  dans la boîte de dialogue comme dans `ainess agents add`, et l'interrupteur dit en une ligne ce
+  que cela signifie. Rien de ce qui est déjà enregistré n'est touché : activer une permission sur
+  un agent que quelqu'un a configuré n'est pas un défaut, c'est un changement qu'il n'a pas
+  demandé, et modifier un agent laisse toujours chaque réglage que la modification n'a pas nommé
+  exactement où il était. Dans le même mouvement, la CLI a gagné `--no-auto-approve`, parce qu'une
+  option booléenne n'a pas d'arrêt — `--auto-approve=false` est refusé net — et le jour où le
+  défaut a basculé est le jour où un script ne pouvait plus monter une équipe aux outils retenus.
+  Les deux passées en même temps : l'arrêt gagne, entre deux lectures d'une commande contradictoire
+  celle qui accorde le moins.
+
+- **Approuver et répondre depuis Telegram, Discord et Slack en appuyant sur un bouton.** Tout ce
+  que le pont savait faire devait être tapé, et les deux choses qui vous attendent vraiment devaient
+  l'être avec un identifiant recopié du message au-dessus : `/approve 3f2a1b2c`. Sur un téléphone
+  c'est la différence entre répondre et ne pas répondre. Une délégation retenue pour approbation
+  arrive désormais avec un oui et un non en dessous, et une question avec un bouton par option. Les
+  trois plateformes livrent l'appui par la connexion qu'elles tiennent déjà ouverte — Telegram avec
+  ses updates, Discord par la Gateway, Slack par Socket Mode — donc rien n'est exposé et aucune de
+  vos adresses ne part nulle part. L'appui passe par la même porte qu'un message tapé, et c'est
+  voulu : la liste d'autorisation est vérifiée à un seul endroit et un bouton n'est pas un moyen de
+  la contourner. Rien n'est cru sur parole non plus : l'identifiant doit être encore en attente et
+  l'option doit être une de celles que la question a vraiment, donc un vieux bouton dans un message
+  d'hier ne décide rien une seconde fois. Une question à plusieurs réponses n'a pas de boutons, car
+  un appui est une option et c'est une réponse différente de celle demandée ; celles-là se tapent
+  toujours, et le message le dit.
+
+- **L'écran d'accueil lance le travail au lieu de le lister.** C'était un tableau de bord : chaque
+  projet en ligne, ce qui vous attendait, ce qui tournait. Tout cela vit déjà là où c'est sa place —
+  la barre latérale tient les projets et le bouton pour en créer un, le panneau au-dessus continue de
+  montrer ce qui est retenu en attente d'approbation, la cloche et la barre des tâches signalent
+  qu'on attend une réponse. Il y avait donc ici une seconde copie de tout ça, précisément au seul
+  endroit où ce qu'on ne peut faire nulle part ailleurs, c'est commencer. C'est maintenant un champ,
+  au milieu, et rien au-dessus : écrivez ce que vous voulez, choisissez le dossier et une de vos
+  équipes, le projet est créé et le prompt part. Si le dossier est déjà un projet, ça y va, avec son
+  équipe — deux projets sur un même espace de travail seraient deux équipes modifiant les mêmes
+  fichiers sans se connaître, et un dossier reste le même dossier quelle que soit la façon de
+  l'écrire. Il n'invente pas d'équipe : sans aucune enregistrée, il indique où on les crée, et une
+  équipe sans agent racine est annoncée plutôt que le prompt confié au premier agent venu. Sous le
+  champ, le seul chiffre qu'aucun autre écran n'additionne entre projets : ce qu'ont coûté les quinze
+  derniers jours, en tâches, tokens et dollars. Rien n'y est estimé — un CLI qui ne rapporte aucune
+  consommation compte comme une exécution et zéro token, et une quinzaine où aucun n'a rapporté le
+  dit plutôt que de tracer une ligne plate.
+
+### Corrigé
+
+- **`ainess agents edit` ne défait plus en silence une permission que vous aviez posée.** Chaque
+  éditeur remet au store un agent entier et le store le met à la place de l'ancien : un champ que
+  cet éditeur n'a pas construit dans l'objet n'est donc pas laissé tranquille, il disparaît. La CLI
+  construit cet objet à partir de ses propres options, et elle n'en a aucune pour la dérogation
+  d'approbation des délégations, ni pour le worktree, ni pour la reprise après quota. `ainess agents
+  edit Impl --model x` remettait donc un agent réglé sur « ne jamais demander » à suivre le réglage
+  global, et avec ce réglage activé il redemandait une approbation à la délégation suivante. Une
+  modification se pose désormais par-dessus l'agent qui était là : ce qu'elle nomme l'emporte, ce
+  qu'elle ne nomme pas est conservé. Et le nommer compte même quand la valeur est « suivre le
+  réglage global », qui voyage comme rien du tout et doit pouvoir effacer un « jamais ».
+
+- **Une conversation ne devient plus vide quand vous y envoyez un message.** Charger une
+  conversation, c'est lire un fichier, et lire un fichier prend du temps. Dans cette fenêtre, trois
+  choses différentes tournaient mal et les trois finissaient pareil : l'historique disparu jusqu'à
+  ce qu'on quitte la conversation et qu'on y revienne, ce qui relançait la lecture. Un message
+  envoyé pendant la lecture était écrasé par un fichier écrit avant qu'il n'existe — la mémoire
+  gagne désormais, et ce qui est arrivé pendant la lecture est conservé. Une lecture en échec
+  s'échappait du chargeur au lieu d'être attrapée, laissant la conversation sans rien en mémoire ;
+  elle peut échouer pour une raison banale, comme tomber au moment où ce même fichier est écrit. Et
+  un rechargement posait trois squelettes gris sur un historique qui était là, ce qui se lit comme
+  une conversation perdue.
+
 ## 0.12.0 — 2026-09-10
 
 ### Nouveau

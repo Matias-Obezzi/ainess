@@ -95,6 +95,19 @@ export function runsOfProject(runs: Record<string, Run>, projectId: string): Run
   return Object.values(runs).filter(run => run.projectId === projectId);
 }
 
+/**
+ * Everything spent since a moment, across whatever runs are handed in.
+ *
+ * By when the run *started*, the same as `totalsByDay`: a run belongs to the day it was asked for,
+ * not the day it happened to finish, and one that began before the window and ended inside it was
+ * work done before the window.
+ */
+export function totalsSince(runs: Run[], since: number): UsageTotals {
+  const totals = emptyTotals();
+  for (const run of runs) if (run.startedAt >= since) add(totals, run.usage);
+  return totals;
+}
+
 /** Dollars the way the active locale writes them: "US$ 0,42" in Spanish, "$0.42" in English. */
 export function formatCost(costUsd: number, locale: string): string {
   const fractionDigits = costUsd > 0 && costUsd < 0.01 ? 4 : 2;

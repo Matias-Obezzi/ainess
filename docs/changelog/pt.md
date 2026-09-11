@@ -2,6 +2,77 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.13.0 — 2026-09-10
+
+### Novo
+
+- **Um agente novo nasce aprovando automaticamente as próprias ferramentas, e a CLI ainda pode
+  dizer o contrário.** O ainess lança essas CLIs headless: não há ninguém sentado na frente do
+  processo para responder. Um agente criado com a permissão retida era lançado com
+  `--permission-mode acceptEdits`, então perguntava antes de qualquer coisa que não fosse editar e
+  ficava ali esperando até alguém perceber — o que se lê igual à aprovação de delegações, com a
+  qual não tem nada a ver. Agora agentes novos começam com isso ligado, no diálogo e no `ainess
+  agents add`, e o switch diz em uma linha o que isso significa. Nada do que já estava salvo é
+  tocado: ligar uma permissão num agente que alguém configurou não é um padrão, é uma mudança que
+  essa pessoa não pediu, e editar um agente continua deixando cada ajuste que a edição não nomeou
+  exatamente onde estava. No mesmo movimento a CLI ganhou `--no-auto-approve`, porque uma flag
+  booleana não tem desligado — `--auto-approve=false` é recusado de cara — e o dia em que o padrão
+  virou foi o dia em que um script deixou de poder montar uma equipe com as ferramentas retidas.
+  Passando as duas de uma vez, ganha o desligado: entre duas leituras de um comando que se
+  contradiz, a que concede menos.
+
+- **Aprovar e responder pelo Telegram, Discord e Slack apertando um botão.** Tudo o que a ponte
+  sabia fazer tinha que ser digitado, e as duas coisas que de fato esperam por você tinham que ser
+  digitadas com um id copiado da mensagem acima: `/approve 3f2a1b2c`. No celular essa é a diferença
+  entre responder e não responder. Agora uma delegação esperando aprovação chega com um sim e um
+  não embaixo, e uma pergunta chega com um botão por opção. As três plataformas entregam o toque
+  pela conexão que já mantêm aberta — Telegram junto com seus updates, Discord pelo Gateway, Slack
+  por Socket Mode — então nada é exposto e nenhum endereço seu vai para lugar nenhum. O toque entra
+  pela mesma porta que uma mensagem digitada, e isso é de propósito: a lista de permitidos é
+  verificada em um único lugar e um botão não é um jeito de contorná-la. Nada no toque é acreditado
+  tampouco: o id precisa continuar pendente e a opção precisa ser uma que a pergunta realmente
+  tenha, então um botão velho numa mensagem de ontem não decide nada uma segunda vez. Uma pergunta
+  que aceita várias respostas não leva botões, porque um toque é uma opção e essa é uma resposta
+  diferente da que está sendo pedida; essas continuam digitadas, e a mensagem diz isso.
+
+- **A tela inicial agora começa o trabalho em vez de listá-lo.** Era um painel: cada projeto como
+  uma linha, o que esperava por você, o que estava rodando. Tudo isso já vive em algum lugar que lhe
+  cabe — a barra lateral tem os projetos e o botão de criar um, o painel de cima continua mostrando
+  o que está retido esperando aprovação, o sininho e a barra de tarefas avisam quando algo quer
+  resposta — então aqui havia uma segunda cópia disso, justamente no único lugar onde o que você não
+  pode fazer em nenhum outro é começar. Agora é uma caixa, no meio, e nada acima: você escreve o que
+  quer, escolhe a pasta e escolhe uma das suas equipes, e o projeto é criado e o prompt sai. Se a
+  pasta já for um projeto, vai direto para lá, com a equipe dele — dois projetos no mesmo workspace
+  seriam duas equipes editando os mesmos arquivos sem saber uma da outra, e uma mesma pasta escrita
+  de três formas continua sendo uma só. Ela não inventa equipe: sem nenhuma salva, aponta para onde
+  se criam, e uma equipe sem agente raiz é dita em voz alta em vez de o prompt ir para o primeiro
+  agente que aparecer. Embaixo da caixa, o único número que nenhuma outra tela soma entre projetos:
+  quanto custou a última quinzena em tarefas, tokens e dólares. Nada disso é estimado — um CLI que
+  não reporta consumo conta como execução e zero tokens, e uma quinzena em que nenhum reportou diz
+  isso em vez de desenhar uma linha plana.
+
+### Corrigido
+
+- **`ainess agents edit` não desfaz mais em silêncio uma permissão que você tinha definido.** Todo
+  editor entrega ao store um agente inteiro e o store o põe no lugar do antigo, então um campo que
+  esse editor não construiu dentro do objeto não fica intacto: some. A CLI monta esse objeto com as
+  suas próprias flags, e não tem flag para o override de aprovação de delegações, nem para o
+  worktree, nem para a repetição por cota. Por isso `ainess agents edit Impl --model x` devolvia um
+  agente marcado como "nunca pedir" a seguir o ajuste global, e com esse ajuste ligado ele voltava a
+  pedir aprovação na delegação seguinte. Agora uma edição se apoia sobre o agente que já estava: o
+  que ela nomeia vence, o que não nomeia é preservado. E nomear conta mesmo quando o valor é "seguir
+  o ajuste global", que viaja como nada e precisa poder apagar um "nunca".
+
+- **Um chat não fica mais em branco quando você manda uma mensagem nele.** Carregar uma conversa é
+  ler um arquivo, e ler um arquivo leva tempo. Dentro dessa janela três coisas diferentes davam
+  errado e as três terminavam igual: o histórico sumido até você sair do chat e voltar, o que
+  refazia a leitura. Uma mensagem enviada enquanto a leitura estava em voo era sobrescrita por um
+  arquivo escrito antes de ela existir — agora a memória ganha, e o que chegou durante a leitura é
+  preservado. Uma leitura que falhava escapava do carregador em vez de ser capturada, deixando o
+  chat sem nada na memória; ela pode falhar por algo banal, como cair no momento em que esse mesmo
+  arquivo está sendo escrito. E um recarregamento cobria com três esqueletos cinzas um histórico
+  que estava bem ali, o que se lê como a conversa ter se perdido.
+
 ## 0.12.0 — 2026-09-10
 
 ### Novo

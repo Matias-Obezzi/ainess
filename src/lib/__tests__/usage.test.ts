@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   dayKey,
+  emptyTotals,
   formatCompact,
   formatCost,
   formatUsage,
@@ -8,6 +9,7 @@ import {
   totalsByAgent,
   totalsByDay,
   totalsOf,
+  totalsSince,
   totalTokens,
 } from "@/lib/usage";
 import type { Run, RunUsage } from "@/types";
@@ -155,5 +157,26 @@ describe("a run's usage survives the trip to disk", () => {
     const back = (JSON.parse(file) as { runs: Run[] }).runs[0];
     expect(back.usage).toEqual(claude);
     expect(totalsOf([back]).costUsd).toBe(0.25);
+  });
+});
+
+describe("totalsSince", () => {
+  const run = (id: string, startedAt: number, costUsd: number): Run => ({
+    id, projectId: "p1", agentId: "a1", parentRunId: null, rootRunId: id, prompt: "", status: "done",
+    startedAt, output: "", rawLines: [], childRunIds: [], round: 0, usage: { costUsd },
+  });
+
+  it("adds up only what started inside the window", () => {
+    const totals = totalsSince([run("viejo", 100, 1), run("nuevo", 5_000, 2)], 1_000);
+    expect(totals.costUsd).toBe(2);
+    expect(totals.runs).toBe(1);
+  });
+
+  it("takes a run that started exactly on the edge", () => {
+    expect(totalsSince([run("justo", 1_000, 3)], 1_000).costUsd).toBe(3);
+  });
+
+  it("is empty for a window nothing started in", () => {
+    expect(totalsSince([run("viejo", 100, 1)], 1_000)).toEqual(emptyTotals());
   });
 });

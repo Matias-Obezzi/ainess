@@ -37,3 +37,55 @@ export function rootPlannerClash(
   if (candidate.role !== "planner" || candidate.parentId !== null) return undefined;
   return roster.find(a => a.id !== candidate.id && a.role === "planner" && a.parentId === null);
 }
+
+/**
+ * The agent an edit leaves behind: what the edit says, on top of what the agent already was.
+ *
+ * Every editor hands the store a whole `AgentConfig` and the store puts it in place of the old one,
+ * so a field the editor did not build into that object is not "left alone", it is gone. `ainess
+ * agents edit` builds it out of its own flags, and it has no flag for the delegation approval
+ * override, for the worktree or for the quota retry — so `ainess agents edit Impl --model x` used to
+ * put an agent set to "never ask" back to following the global setting, and that agent started
+ * asking for approval again on the next delegation it received.
+ *
+ * A key `edited` does carry wins, even when it carries it as `undefined`: that is how the agent
+ * dialog says "follow the global setting" and it has to be able to erase a `true`.
+ */
+export function agentAfterEdit(existing: AgentConfig | undefined, edited: AgentConfig): AgentConfig {
+  if (!existing) return edited;
+  return { ...existing, ...edited, id: existing.id };
+}
+
+/**
+ * Whether an agent is saved auto-approving its own tool calls.
+ *
+ * `autoApprove` is the permission handed to the provider CLI (`--permission-mode`, `--yolo`,
+ * `--full-auto`…), not the delegation gate inside ainess — that one is `requireApproval`, and
+ * nothing here touches it.
+ *
+ * A brand new agent is born with it on: ainess runs these CLIs headless, with nobody sitting in
+ * front of them, so an agent that stops to ask permission for anything that is not an edit just
+ * hangs there until someone notices. An agent that already exists keeps whatever it had — flipping
+ * a permission on somebody else's agent is not a default, it is a change they did not ask for.
+ */
+export function agentAutoApprove(flag: boolean | undefined, existing: AgentConfig | undefined): boolean {
+  if (flag !== undefined) return flag;
+  return existing?.autoApprove ?? true;
+}
+
+/**
+ * `--auto-approve` and `--no-auto-approve` read as one answer, or as none.
+ *
+ * The CLI needs both because a boolean option in `node:util`'s `parseArgs` has no off switch:
+ * `--auto-approve=false` is rejected as an option that takes no argument, so the only way to say
+ * "off" is a second flag. Without it, the day the default became on was the day the CLI stopped
+ * being able to create an agent with its tool permissions held — a state the dialog can still
+ * express, and scripts setting up a locked-down team need.
+ *
+ * Given both, off wins. They contradict each other, and between two readings of an ambiguous
+ * command the one that grants less is the one to take.
+ */
+export function autoApproveFlag(on: boolean | undefined, off: boolean | undefined): boolean | undefined {
+  if (off) return false;
+  return on;
+}

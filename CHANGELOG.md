@@ -4,6 +4,76 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.13.0 — 2026-09-10
+
+### Added
+
+- **A new agent is born auto-approving its own tools, and the CLI can still say otherwise.** ainess
+  launches these CLIs headless: nobody is sitting in front of the process to answer it. An agent
+  created with the permission held was launched with `--permission-mode acceptEdits`, so it asked
+  before anything that was not an edit and then waited there until somebody noticed — which reads
+  exactly like the delegation approval it has nothing to do with. New agents now start with it on,
+  in the dialog and in `ainess agents add`, and the switch says in one line what that means.
+  Nothing already saved is touched: turning a permission on in an agent somebody else configured is
+  not a default, it is a change they did not ask for, and editing an agent still leaves every
+  setting the edit did not name exactly where it was. The CLI gained `--no-auto-approve` in the
+  same move, because a boolean flag has no off switch — `--auto-approve=false` is refused outright
+  — and the day the default flipped was the day a script could no longer set up a team whose tools
+  are held. Passed both at once, off wins: between two readings of a contradictory command, the one
+  that grants less.
+
+- **Approve and answer from Telegram, Discord and Slack by pressing a button.** Everything the
+  bridge could do had to be typed, and the two things that actually wait on you had to be typed
+  with an id copied out of the message above them: `/approve 3f2a1b2c`. On a phone that is the
+  difference between answering and not answering. A delegation held for approval now arrives with
+  a yes and a no under it, and a question arrives with one button per option. All three platforms
+  deliver the press over the connection they already hold open — Telegram alongside its updates,
+  Discord over the Gateway, Slack over Socket Mode — so nothing is exposed and no address of yours
+  goes anywhere. The press goes through the same door as a typed message, which is the point: the
+  allowlist is checked in one place and a button is not a way past it. Nothing in the press is
+  believed either — the id has to still be pending and the option has to be one the question
+  actually has, so a button left over in an old message decides nothing a second time. A question
+  that takes several answers gets no buttons, because one press is one option and that is a
+  different answer from the one being asked for; those stay typed, and the message says so.
+
+- **The home screen starts the work instead of listing it.** It was a dashboard: every project as a
+  row, what was waiting on you, what was running. All of that already lives somewhere that belongs
+  to it — the sidebar holds the projects and the button that makes one, the panel above keeps
+  showing what is held for approval, the bell and the taskbar say when something wants an answer —
+  so what was here was a second copy of it, in the one place where the thing you cannot do anywhere
+  else is start. Now it is a box, in the middle, and nothing above it: type what you want done, pick
+  the folder and pick one of your teams, and the project is made and the prompt is on its way. Pick
+  a folder that is already a project and it simply goes there, team and all — two projects on one
+  workspace would be two sets of agents editing the same files, neither knowing the other exists,
+  and one folder written three ways is still one folder. It will not invent a team: with none saved
+  it points at where teams are made, and a team with no root agent is said out loud rather than
+  given the prompt to whichever agent came first. Under the box, the one number no other screen adds
+  up across projects: what the last fortnight cost, in tasks, tokens and dollars. Nothing there is
+  estimated — a CLI that reports no usage is counted as a run and no tokens, and a fortnight where
+  none of them reported says so instead of drawing a flat line.
+
+### Fixed
+
+- **`ainess agents edit` no longer quietly undoes a permission you set.** Every editor hands the
+  store a whole agent and the store puts it in place of the old one, so a field the editor did not
+  build into that object is not left alone — it is gone. The CLI builds that object out of its own
+  flags, and it has no flag for the delegation approval override, for the worktree or for the quota
+  retry. `ainess agents edit Impl --model x` therefore put an agent set to "never ask" back to
+  following the global setting, and with that setting on it started asking for approval again on
+  the next delegation it received. An edit now lands on top of the agent that was there: what it
+  names wins, what it does not name is kept. Naming it still counts even when the value is "follow
+  the global setting", which travels as nothing at all and has to be able to erase a "never".
+
+- **A chat no longer goes blank when you send a message into it.** Loading a conversation is a file
+  read, and a file read takes time. Three separate things went wrong inside that window and all
+  three ended the same way: the history gone until you left the chat and came back, which retried
+  the read. A message sent while the read was in flight was overwritten by a file written before it
+  existed — memory wins now, and what arrived during the read is kept. A read that failed threw out
+  of the loader instead of being caught, leaving the chat with nothing in memory; it can fail for a
+  mundane reason, like landing on the moment the same file is being written. And a reload put three
+  grey skeletons over a history that was sitting right there, which reads as the conversation
+  having been lost.
+
 ## 0.12.0 — 2026-09-10
 
 ### Added

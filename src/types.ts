@@ -664,6 +664,13 @@ export interface AppNotification {
   agentId?: string;
   runId?: string;
   approvalId?: string;
+  /**
+   * The question that was asked, so a notification about one can carry its options.
+   *
+   * The approval next to it has had this since it existed; a question had only its text, which is
+   * enough to read and not enough to answer without going and finding it.
+   */
+  questionId?: string;
 }
 
 // ---- Tasks (per project board + dependency graph, see src/lib/tasks.ts) ----

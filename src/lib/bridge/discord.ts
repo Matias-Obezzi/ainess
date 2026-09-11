@@ -1,6 +1,6 @@
 import { getTransport } from "@/lib/transport";
-import type { BridgeProvider, IncomingMessage } from "./types";
-import { messageFrom } from "./discord-events";
+import type { BridgeButton, BridgeProvider, IncomingMessage } from "./types";
+import { componentsFor, messageFrom, pressFrom } from "./discord-events";
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -74,8 +74,30 @@ export class DiscordProvider implements BridgeProvider {
 
     if (parsed.op === OP_DISPATCH && this.onMessage) {
       const message = messageFrom(parsed);
-      if (message) void this.onMessage(message);
+      if (message) {
+        void this.onMessage(message);
+        return;
+      }
+      // A button press. Discord gives three seconds to acknowledge it or the client shows the
+      // interaction as failed, and the work behind the press can take a whole run — so the
+      // acknowledgement goes first and the press is handled after it.
+      const press = pressFrom(parsed);
+      if (press) {
+        void this.acknowledge(press.interactionId, press.interactionToken);
+        void this.onMessage(press.message);
+      }
     }
+  }
+
+  /** Type 6 is "I have it, leave the message as it is": no second message under every press. */
+  private async acknowledge(interactionId: string, interactionToken: string): Promise<void> {
+    try {
+      await getTransport().httpPost(
+        `https://discord.com/api/v10/interactions/${interactionId}/${interactionToken}/callback`,
+        JSON.stringify({ type: 6 }),
+        { "Content-Type": "application/json" },
+      );
+    } catch { /* the press already arrived; this only stops the spinner */ }
   }
 
   private identify(): void {
@@ -133,10 +155,11 @@ export class DiscordProvider implements BridgeProvider {
     }
   }
 
-  async send(chatId: string, text: string): Promise<void> {
+  async send(chatId: string, text: string, buttons?: BridgeButton[]): Promise<void> {
     const url = `https://discord.com/api/v10/channels/${chatId}/messages`;
     const clipped = text.length > 2000 ? text.slice(0, 1999) + "…" : text;
-    const res = await getTransport().httpPost(url, JSON.stringify({ content: clipped }), {
+    const components = buttons && buttons.length > 0 ? { components: componentsFor(buttons) } : {};
+    const res = await getTransport().httpPost(url, JSON.stringify({ content: clipped, ...components }), {
       "Content-Type": "application/json",
       Authorization: `Bot ${this.token}`,
     });
