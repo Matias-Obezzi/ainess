@@ -32,7 +32,8 @@ have, with the sessions you already opened.
 ## Contents
 
 - [Getting started](#getting-started) · [How it works](#how-it-works) · [Inside the app](#inside-the-app)
-- [From your phone](#from-your-phone) · [Shared resources](#shared-resources) · [Hooks](#hooks) · [CLI](#cli)
+- [From your phone](#from-your-phone) · [From a chat you already have open](#from-a-chat-you-already-have-open)
+- [Shared resources](#shared-resources) · [Hooks](#hooks) · [CLI](#cli)
 - [Languages](#languages) · [Where your data lives](#where-your-data-lives) · [Releases](#releases) · [Layout](#layout)
 
 ## Getting started
@@ -183,6 +184,20 @@ button, from `exit`, or with the app.
 **Approvals.** You can require your go-ahead before an agent receives a delegated task, per agent or
 globally. Pending ones show up in the app, on your phone and in the CLI, and survive a restart.
 
+**Autonomous mode.** A project can be set to run unattended for a number of hours. While it is on,
+the orchestrator stops waiting for you at the four points that otherwise pause a run: the round cap,
+a delegation held for approval, a question an agent asked, and a run that died out of quota. It is
+always a window — there is no indefinite mode, and the mode turns itself off when the window ends.
+Answering for you is bounded too: past a few questions on the same task they go back to being
+questions, because waking up to a task that needs an answer beats waking up to a night of quota
+spent going in circles. Every decision it took on your behalf is written down, and the morning after
+you get the report.
+
+**Spending.** A project can carry a daily and a monthly limit in dollars. Reaching it either warns
+you or blocks new runs, whichever you chose. What it counts is what the providers actually reported;
+a CLI that reports nothing contributes runs and no cost, and the figure says so rather than
+estimating.
+
 **Chats.** Besides task delegation you can talk to one agent directly, or set up a shared
 conversation where several answer in turn, each with a role for that chat.
 
@@ -281,11 +296,43 @@ ainess remote url --tunnel                  # public URL of this process's tunne
 
 Anyone with the public URL and the token can operate the app. If it leaked, regenerate the token.
 
+## From a chat you already have open
+
+The app can connect to **Telegram, Discord or Slack** and be driven from there. Unlike the phone
+page this needs no URL of yours at all: each channel connects outwards — Telegram is polled over
+HTTPS, Discord holds a Gateway socket open, Slack a Socket Mode one — so there is no port, no
+tunnel and no public address.
+
+Who may speak is an allowlist of chat ids per channel, and an empty list authorises nobody. A
+message from a chat that is not on it gets no reply at all: confirming the bot exists is the one
+thing a stranger would otherwise learn for free. Each channel reaches only its own list — a Discord
+channel never earns a message by being on Telegram's.
+
+| Command | What it does |
+| --- | --- |
+| anything not starting with `/` | a prompt for the project's planner |
+| `/status` | who is working and what is waiting for you |
+| `/tasks` | the open cards |
+| `/approve <id> [note]` · `/reject <id> [note]` | decide a held delegation |
+| `/answer [id] <text>` | answer a question an agent asked |
+| `/project [name]` | see or change the project |
+| `/stop` · `/help` | stop everything · this list |
+
+The two things that actually wait on you arrive with **buttons**: a held delegation with a yes and a
+no, a question with one per option. A press comes back over the connection the channel already
+holds, and goes through the same door as a typed message, so the allowlist is checked in one place
+and a button is not a way past it. Nothing the press carries is taken on trust either: the id has to
+still be pending and the option has to be one the question actually has, so a button left in an old
+message decides nothing a second time.
+
 ## Shared resources
 
 - **Skills** — reusable instructions injected into the system prompt, for all agents or some.
-- **MCP servers** — extra tools. Claude gets them per session with `--mcp-config`; Antigravity is
-  synced machine-wide with `ainess mcp sync`.
+- **MCP servers** — extra tools, over stdio or http. Claude and Copilot get them per session with
+  `--mcp-config`; Antigravity is synced machine-wide with `ainess mcp sync`. A hosted server that
+  asks for authentication takes HTTP headers, one per line; write `Bearer ${YOUR_VARIABLE}` and the
+  variable is expanded at connection time from the environment, which the environment box on the
+  same server can fill.
 - **Shared context** — a block of text every agent receives about the project or the team.
 - **Profile** — who you are and how you like to work, also injected into the system prompt.
 
@@ -337,6 +384,7 @@ ainess approvals list | approve <id> | reject <id>
 ainess chat -a Antigravity -w C:\repo                # interactive chat
 ainess chat --shared "Claude:architect,Antigravity:critic" -w C:\repo
 ainess serve --port 4710                             # phone server
+ainess mcp sync                                      # push the MCP servers to Antigravity
 ```
 
 `ainess run` exits with code 3 when a delegation is left waiting for approval.
