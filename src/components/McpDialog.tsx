@@ -74,9 +74,10 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
       }
     }
 
-    // Only an http server has requests to put headers on; a transport switched to stdio drops
-    // whatever was typed rather than saving a field nothing will ever read.
+    // Each transport keeps only the field it can act on. The other one is dropped rather than
+    // saved: a credential stored where nothing reads it is a credential kept for nothing.
     const headersObj = transport === "http" ? parseHeaders(headers) : {};
+    const envForTransport = transport === "stdio" ? envObj : {};
 
     let cmdStr = undefined;
     let argsStr: string[] | undefined = undefined;
@@ -93,7 +94,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
       command: cmdStr,
       args: argsStr,
       url: transport === "http" ? url : undefined,
-      env: Object.keys(envObj).length > 0 ? envObj : undefined,
+      env: Object.keys(envForTransport).length > 0 ? envForTransport : undefined,
       headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
       enabledFor: allAgents ? "all" : Array.from(enabledAgents)
     });
@@ -163,15 +164,21 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               </div>
             )}
 
-            <div className="space-y-1 flex-1 flex flex-col min-h-[150px]">
-              <Label>{t("mcpDialog.env")}</Label>
-              <Textarea 
-                className="flex-1 font-mono resize-none min-h-[150px]" 
-                value={env} 
-                onChange={e => setEnv(e.target.value)} 
-                placeholder="API_KEY=xxx"
-              />
-            </div>
+            {/* Only a stdio server has a process to give an environment to. On an http one this box
+                was drawn all the same and went nowhere — the http branch of the session config has
+                never written `env` — so it promised somewhere to keep a key and quietly dropped it.
+                An http server puts its credential in a header. */}
+            {transport === "stdio" && (
+              <div className="space-y-1 flex-1 flex flex-col min-h-[150px]">
+                <Label>{t("mcpDialog.env")}</Label>
+                <Textarea
+                  className="flex-1 font-mono resize-none min-h-[150px]"
+                  value={env}
+                  onChange={e => setEnv(e.target.value)}
+                  placeholder="API_KEY=xxx"
+                />
+              </div>
+            )}
 
             <div className="space-y-2 border p-4 rounded-md">
               <div className="flex items-center gap-2">

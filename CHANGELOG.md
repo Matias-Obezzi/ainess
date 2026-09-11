@@ -23,6 +23,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The environment box stops appearing on a server that has no environment.** An http MCP server is
+  a URL the client calls, not a process ainess starts, and the http branch of the session config has
+  never written `env` — but the box was drawn all the same. Typing a key into it on an http server
+  saved that key to the config file and sent it nowhere: a field that promised somewhere to keep a
+  credential and quietly dropped it. It is a stdio field now, in the dialog and on the way to
+  Antigravity, and a transport switched away from stdio drops what was typed rather than storing a
+  secret nothing will ever read. An http server puts its credential in a header.
+
 - **The box stops redrawing itself twice a second for a chat that is sitting still.** Whether a chat
   is answering lives in the chat module's own memory and not in the store, so nothing could react to
   it: the composer polled on a 500ms timer for as long as a conversation was open, whether or not

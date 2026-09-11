@@ -42,7 +42,9 @@ export async function syncMcpToAntigravity(servers: McpServer[]): Promise<{succe
     desiredNames.add(s.name);
     
     const args = ["mcp", "add"];
-    if (s.env) {
+    // An environment belongs to a process, and only a stdio server has one. Pushing these for an
+    // http server handed the CLI a credential it has nowhere to put.
+    if (s.transport === "stdio" && s.env) {
       for (const [k, v] of Object.entries(s.env)) {
         args.push("--env", `${k}=${v}`);
       }

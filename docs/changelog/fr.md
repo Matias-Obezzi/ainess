@@ -23,6 +23,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le champ des variables d'environnement n'apparaît plus sur un serveur qui n'a pas
+  d'environnement.** Un serveur MCP http est une URL que le client appelle, pas un processus que
+  ainess démarre, et la branche http de la configuration de session n'a jamais écrit `env` — le
+  champ était pourtant dessiné. Y taper une clé sur un serveur http l'enregistrait dans le fichier
+  de configuration et ne l'envoyait nulle part : un champ qui promettait un endroit où garder un
+  identifiant et le jetait en silence. C'est désormais un champ stdio, dans la boîte de dialogue
+  comme sur le chemin vers Antigravity, et changer de transport jette ce qui a été tapé plutôt que
+  de conserver un secret que personne ne lira. Un serveur http met son identifiant dans un en-tête.
+
 - **Le champ cesse de se redessiner deux fois par seconde pour une conversation immobile.** Le fait
   qu'une conversation soit en train de répondre vit dans la mémoire du module de chat et non dans le
   store : rien ne pouvait donc y réagir, et le champ interrogeait sur un minuteur de 500 ms tant

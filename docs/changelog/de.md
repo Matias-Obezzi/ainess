@@ -22,6 +22,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Feld für Umgebungsvariablen erscheint nicht mehr bei einem Server, der keine Umgebung hat.**
+  Ein http-MCP-Server ist eine URL, die der Client aufruft, kein Prozess, den ainess startet, und
+  der http-Zweig der Sitzungskonfiguration hat nie `env` geschrieben — das Feld wurde trotzdem
+  gezeichnet. Einen Schlüssel dort bei einem http-Server einzutragen, speicherte ihn in der
+  Konfigurationsdatei und schickte ihn nirgendwohin: ein Feld, das einen Platz für eine Anmeldung
+  versprach und sie stillschweigend fallen ließ. Es ist jetzt ein stdio-Feld, im Dialog wie auf dem
+  Weg zu Antigravity, und ein gewechselter Transport verwirft das Getippte, statt ein Geheimnis zu
+  speichern, das nie jemand liest. Ein http-Server legt seine Anmeldung in einen Header.
+
 - **Das Eingabefeld zeichnet sich nicht mehr zweimal pro Sekunde für einen Chat neu, in dem nichts
   passiert.** Ob ein Chat gerade antwortet, liegt im Speicher des Chat-Moduls und nicht im Store,
   also konnte nichts darauf reagieren: das Feld fragte auf einem 500-ms-Timer nach, solange eine

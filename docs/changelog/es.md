@@ -21,6 +21,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El campo de variables de entorno deja de aparecer en un servidor que no tiene entorno.** Un
+  servidor MCP http es una URL a la que el cliente llama, no un proceso que ainess arranca, y la
+  rama http de la configuración de sesión nunca escribió `env` — pero el campo se dibujaba igual.
+  Escribir una clave ahí en un servidor http la guardaba en el archivo de configuración y no la
+  mandaba a ninguna parte: un campo que prometía un lugar donde dejar una credencial y la tiraba en
+  silencio. Ahora es un campo de stdio, tanto en el diálogo como en el camino a Antigravity, y
+  cambiar el transporte a otra cosa descarta lo que se había escrito en vez de guardar un secreto
+  que nadie va a leer. Un servidor http pone su credencial en una cabecera.
+
 - **La caja deja de redibujarse dos veces por segundo por un chat que está quieto.** Que un chat
   esté contestando vive en la memoria del módulo de chat y no en el store, así que nada podía
   reaccionar a eso: el composer polleaba con un timer de 500ms mientras hubiera una conversación
