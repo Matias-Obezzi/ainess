@@ -4,6 +4,19 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **The empty box no longer draws two sentences in the same line of space.** The grey suggestion is
+  painted on the layer behind the textarea, which carries the textarea's own padding so that it
+  lines up with what you type — and an empty box starts at exactly that point, which is where the
+  placeholder is. So when the agent's last message ended in a yes/no question and you had not
+  written anything yet, "Sí, dale" and "Escribí mientras trabaja…" were printed on top of each
+  other and neither could be read. The suggestion takes the space: it is the placeholder's own job,
+  telling an empty box what to do with itself, done with the conversation in hand rather than in
+  general. The rotating hint stands down for the same reason and in the same place.
+
 ## 0.13.0 — 2026-09-10
 
 ### Added

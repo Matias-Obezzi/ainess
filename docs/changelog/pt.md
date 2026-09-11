@@ -2,6 +2,19 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **A caixa vazia não desenha mais duas frases na mesma linha de espaço.** A sugestão cinza é
+  pintada na camada atrás do textarea, que carrega o mesmo padding dele para ficar alinhada com o
+  que você digita — e uma caixa vazia começa exatamente nesse ponto, que é onde fica o placeholder.
+  Então, quando a última mensagem do agente terminava numa pergunta fechada e você ainda não tinha
+  escrito nada, "Sí, dale" e "Escribí mientras trabaja…" eram impressos um sobre o outro e não dava
+  para ler nenhum. Agora o lugar fica com a sugestão: é o trabalho do próprio placeholder — dizer a
+  uma caixa vazia o que fazer consigo — feito com a conversa em mãos em vez de em geral. A dica
+  rotativa sai de cena pelo mesmo motivo e no mesmo lugar.
+
 ## 0.13.0 — 2026-09-10
 
 ### Novo

@@ -2,6 +2,20 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Das leere Feld malt nicht mehr zwei Sätze in dieselbe Zeile.** Der graue Vorschlag wird auf der
+  Ebene hinter dem Textfeld gezeichnet, die dessen eigenen Innenabstand trägt, damit er zu dem
+  passt, was man tippt — und ein leeres Feld beginnt genau an diesem Punkt, dort, wo der Platzhalter
+  steht. Endete die letzte Nachricht des Agenten also mit einer Ja/Nein-Frage und man hatte noch
+  nichts geschrieben, wurden "Sí, dale" und "Escribí mientras trabaja…" übereinander gedruckt und
+  keines von beiden war lesbar. Den Platz bekommt jetzt der Vorschlag: das ist die Aufgabe des
+  Platzhalters selbst — einem leeren Feld zu sagen, was damit anzufangen ist — nur mit der
+  Unterhaltung in der Hand statt im Allgemeinen. Der rotierende Hinweis tritt aus demselben Grund
+  und an derselben Stelle zurück.
+
 ## 0.13.0 — 2026-09-10
 
 ### Neu

@@ -4,7 +4,7 @@
 // open question puts a "yes" where a choice was asked for. A completion that appears too eagerly
 // covers what you are still typing with something you wrote once, weeks ago.
 import { describe, it, expect } from "vitest";
-import { ghostFor, historyCompletion, isClosedQuestion, trailingQuestion } from "@/lib/ghost-suggestion";
+import { ghostFor, ghostTakesPlaceholder, historyCompletion, isClosedQuestion, trailingQuestion } from "@/lib/ghost-suggestion";
 
 describe("trailingQuestion", () => {
   it("finds the question an answer ends with", () => {
@@ -100,5 +100,24 @@ describe("ghostFor", () => {
 
   it("treats a box of only spaces as empty", () => {
     expect(ghostFor({ text: "   ", past: [], lastAgentMessage: "¿Lo arreglo?", affirmative })?.source).toBe("reply");
+  });
+});
+
+describe("ghostTakesPlaceholder", () => {
+  const yes = { text: "Sí, dale", source: "reply" as const };
+
+  it("stands in for the placeholder on an empty box", () => {
+    // Both are drawn at the same point — the layer behind the box carries the textarea's padding —
+    // so they were painted on top of each other and neither could be read.
+    expect(ghostTakesPlaceholder("", yes)).toBe(true);
+  });
+
+  it("leaves the placeholder alone when there is nothing to suggest", () => {
+    expect(ghostTakesPlaceholder("", null)).toBe(false);
+  });
+
+  it("does not claim it once something is typed, when no placeholder is drawn anyway", () => {
+    // Here the grey text sits after what you wrote, which is where it belongs.
+    expect(ghostTakesPlaceholder("arre", { text: "glalo", source: "history" })).toBe(false);
   });
 });

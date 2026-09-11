@@ -26,7 +26,7 @@ import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
-import { ghostFor } from "@/lib/ghost-suggestion";
+import { ghostFor, ghostTakesPlaceholder } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
 import { cn } from "@/lib/utils";
@@ -746,6 +746,10 @@ export function Composer() {
    * the box there is small enough that a moving line is in the way.
    */
   const rotating = !chatMode && !noTeam && !compact && !busy;
+
+  // An empty box draws its placeholder where the layer behind it draws the grey suggestion, so both
+  // of them landed in the same line of space and neither could be read. See `ghostTakesPlaceholder`.
+  const ghostInstead = ghostTakesPlaceholder(text, ghost);
   const rotatingHints = useMemo(() => [
     t("composer.placeholder.team"),
     t("composer.placeholder.rotate1"),
@@ -883,14 +887,14 @@ export function Composer() {
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
-              placeholder={rotating ? "" : hint}
+              placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
               rows={2}
               className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
-            {rotating && !text && (
+            {rotating && !text && !ghost && (
               <span
                 aria-hidden
                 className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"

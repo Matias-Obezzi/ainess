@@ -97,6 +97,21 @@ export function historyCompletion(prefix: string, past: string[]): string | null
 }
 
 /**
+ * Whether the suggestion is standing where the placeholder stands.
+ *
+ * The grey text is drawn on the layer behind the box, which carries the textarea's own padding so
+ * that it lines up with what is typed — and an empty box starts at that same point, which is
+ * exactly where the placeholder is. They were painted on top of each other: two sentences in one
+ * line of space, neither readable.
+ *
+ * The suggestion wins, because it is the placeholder's own job — tell an empty box what to do with
+ * itself — done with the conversation in hand instead of in general.
+ */
+export function ghostTakesPlaceholder(text: string, ghost: Ghost | null): boolean {
+  return !text && !!ghost;
+}
+
+/**
  * What to show in grey right now, or nothing.
  *
  * The empty box is the only place the suggested reply appears: once you are writing, you have said

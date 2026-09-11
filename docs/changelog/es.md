@@ -2,6 +2,19 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **La caja vacía ya no dibuja dos frases en el mismo renglón.** La sugerencia gris se pinta en la
+  capa que está detrás del textarea, que lleva el mismo padding que él para que quede alineada con
+  lo que escribís — y una caja vacía arranca justo en ese punto, que es donde está el placeholder.
+  Así que cuando el último mensaje del agente terminaba en una pregunta cerrada y todavía no habías
+  escrito nada, «Sí, dale» y «Escribí mientras trabaja…» se imprimían una encima de la otra y no se
+  podía leer ninguna. Ahora el lugar se lo queda la sugerencia: es el trabajo del propio placeholder
+  —decirle a una caja vacía qué hacer con ella— hecho con la conversación a mano en vez de en
+  general. El cartel rotativo se corre por lo mismo y en el mismo lugar.
+
 ## 0.13.0 — 2026-09-10
 
 ### Nuevo

@@ -2,6 +2,20 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Le champ vide ne dessine plus deux phrases dans la même ligne d'espace.** La suggestion grise
+  est peinte sur la couche derrière la zone de texte, qui porte le même remplissage qu'elle pour
+  s'aligner sur ce que vous tapez — et un champ vide commence exactement à ce point, là où se trouve
+  le texte indicatif. Alors quand le dernier message de l'agent finissait par une question fermée et
+  que vous n'aviez encore rien écrit, « Sí, dale » et « Escribí mientras trabaja… » s'imprimaient
+  l'un sur l'autre et aucun n'était lisible. La place revient désormais à la suggestion : c'est le
+  travail du texte indicatif lui-même — dire à un champ vide quoi faire de lui — fait avec la
+  conversation en main plutôt qu'en général. L'indice rotatif s'efface pour la même raison et au
+  même endroit.
+
 ## 0.13.0 — 2026-09-10
 
 ### Nouveau
