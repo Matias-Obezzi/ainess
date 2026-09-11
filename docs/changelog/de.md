@@ -22,6 +22,20 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Schnelles Tippen lässt nicht mehr die ganze App für jeden Buchstaben arbeiten, und ein Panel,
+  das kaputtgeht, sagt, was kaputtging.** Was getippt wird, gehört zur Unterhaltung, lag also im
+  Store — und wurde bei jedem Tastendruck dorthin geschrieben. Der Store führt bei jedem Schreiben
+  den Selektor jedes Abonnenten aus, also ließ jedes Zeichen die Selektoren sämtlicher eingehängter
+  Bildschirme neu laufen und rendert neu, was sie speisten. Das Feld ist jetzt lokal und der Store
+  wird dahinter geschrieben: entprellt beim Tippen und sofort, wenn etwas nicht verloren gehen darf
+  — ein geleertes Feld, ein Wechsel der Unterhaltung, das Verlassen des Bildschirms. Davon
+  getrennt: die App hatte nirgends eine Error Boundary, ein Renderfehler riss also das ganze
+  Fenster mit, ohne Meldung und ohne Logeintrag — denn was ihn geschrieben hätte, starb ebenfalls.
+  Jetzt sind der Verlauf und das Feld jeweils ihre eigene Grenze. Ein Panel, das wirft, behält den
+  Fehler bei sich, zeigt ihn an und schreibt den Stack ins Log — das ist der Unterschied zwischen
+  einem Fehler, den man melden kann, und einem, den man nur als schwarz gewordenen Bildschirm
+  beschreiben kann.
+
 - **Das leere Feld malt nicht mehr zwei Sätze in dieselbe Zeile.** Der graue Vorschlag wird auf der
   Ebene hinter dem Textfeld gezeichnet, die dessen eigenen Innenabstand trägt, damit er zu dem
   passt, was man tippt — und ein leeres Feld beginnt genau an diesem Punkt, dort, wo der Platzhalter

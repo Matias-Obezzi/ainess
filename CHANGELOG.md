@@ -23,6 +23,18 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Typing fast no longer makes the whole app work for every letter, and a panel that breaks says
+  what broke.** What is typed belongs to the conversation, so it lived in the store — and it was
+  written there on every keystroke. The store runs every subscriber's selector on every write, so
+  each character re-ran the selectors of every mounted screen and re-rendered whatever they fed.
+  The box is local now and the store is written behind it: debounced while typing, and at once when
+  something must not be lost — an emptied box, a change of conversation, leaving the screen.
+  Separately: the app had no error boundary anywhere, so a render error took the entire window down
+  with no message and nothing in the log, because the thing that would have written it down died
+  too. The thread and the box are now their own boundaries. A panel that throws keeps the failure
+  inside itself, shows the error, and writes the stack to the log — which is the difference between
+  a bug that can be reported and one that can only be described as a screen going black.
+
 - **The empty box no longer draws two sentences in the same line of space.** The grey suggestion is
   painted on the layer behind the textarea, which carries the textarea's own padding so that it
   lines up with what you type — and an empty box starts at exactly that point, which is where the

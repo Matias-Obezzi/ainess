@@ -23,6 +23,19 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Taper vite ne fait plus travailler toute l'application à chaque lettre, et un panneau qui casse
+  dit ce qui a cassé.** Ce que vous tapez appartient à la conversation, cela vivait donc dans le
+  store — et y était écrit à chaque frappe. Le store exécute le sélecteur de chaque abonné à chaque
+  écriture : chaque caractère relançait donc les sélecteurs de tous les écrans montés et
+  re-rendait ce qu'ils alimentaient. Le champ est maintenant local et le store est écrit derrière :
+  avec un délai pendant la frappe, et immédiatement quand quelque chose ne doit pas se perdre — un
+  champ vidé, un changement de conversation, le fait de quitter l'écran. Par ailleurs :
+  l'application n'avait aucune error boundary nulle part, si bien qu'une erreur de rendu emportait
+  la fenêtre entière sans message et sans rien dans le journal, puisque ce qui l'aurait écrit
+  mourait aussi. Le fil et le champ sont désormais chacun leur propre limite. Un panneau qui lève
+  une erreur la garde chez lui, l'affiche et écrit la pile dans le journal — c'est la différence
+  entre un bug qu'on peut signaler et un qu'on ne peut décrire que comme un écran devenu noir.
+
 - **Le champ vide ne dessine plus deux phrases dans la même ligne d'espace.** La suggestion grise
   est peinte sur la couche derrière la zone de texte, qui porte le même remplissage qu'elle pour
   s'aligner sur ce que vous tapez — et un champ vide commence exactement à ce point, là où se trouve

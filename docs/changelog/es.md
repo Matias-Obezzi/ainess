@@ -21,6 +21,19 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Escribir rápido ya no hace trabajar a toda la app por cada letra, y un panel que se rompe dice
+  qué se rompió.** Lo que escribís pertenece a la conversación, así que vivía en el store — y se
+  escribía ahí en cada tecla. El store re-ejecuta el selector de cada suscriptor en cada escritura,
+  así que cada carácter volvía a correr los selectores de todas las pantallas montadas y
+  re-renderizaba lo que esos selectores alimentaran. Ahora la caja es local y el store se escribe
+  por detrás: con debounce mientras tipeás, y de inmediato cuando hay algo que no se puede perder —
+  una caja vaciada, un cambio de conversación, salir de la pantalla. Aparte: la app no tenía ningún
+  error boundary en ninguna parte, así que un error de render se llevaba puesta la ventana entera
+  sin un mensaje y sin nada en el registro, porque lo que lo habría anotado también moría. Ahora el
+  hilo y la caja son cada uno su propio límite. Un panel que explota se queda con la falla adentro,
+  muestra el error y escribe el stack en el registro — que es la diferencia entre un bug que se
+  puede reportar y uno que solo se puede describir como una pantalla que se puso negra.
+
 - **La caja vacía ya no dibuja dos frases en el mismo renglón.** La sugerencia gris se pinta en la
   capa que está detrás del textarea, que lleva el mismo padding que él para que quede alineada con
   lo que escribís — y una caja vacía arranca justo en ese punto, que es donde está el placeholder.

@@ -21,6 +21,18 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Digitar rápido não faz mais o app inteiro trabalhar a cada letra, e um painel que quebra diz o
+  que quebrou.** O que você digita pertence à conversa, então vivia no store — e era escrito lá a
+  cada tecla. O store roda o seletor de cada assinante a cada escrita, então cada caractere refazia
+  os seletores de todas as telas montadas e re-renderizava o que eles alimentavam. Agora a caixa é
+  local e o store é escrito por trás: com debounce enquanto você digita, e na hora quando há algo
+  que não pode se perder — uma caixa esvaziada, uma troca de conversa, sair da tela. À parte: o app
+  não tinha nenhum error boundary em lugar nenhum, então um erro de render levava a janela inteira
+  junto, sem mensagem e sem nada no log, porque o que teria anotado também morria. Agora o fio e a
+  caixa são cada um o seu próprio limite. Um painel que estoura mantém a falha dentro de si, mostra
+  o erro e escreve o stack no log — que é a diferença entre um bug que dá para reportar e um que só
+  dá para descrever como uma tela que ficou preta.
+
 - **A caixa vazia não desenha mais duas frases na mesma linha de espaço.** A sugestão cinza é
   pintada na camada atrás do textarea, que carrega o mesmo padding dele para ficar alinhada com o
   que você digita — e uma caixa vazia começa exatamente nesse ponto, que é onde fica o placeholder.

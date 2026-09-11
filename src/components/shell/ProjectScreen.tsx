@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAppStore, selectProject } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -107,18 +108,27 @@ export function ProjectScreen() {
 
       <AutonomousBanner projectId={project.id} />
 
+      {/* The thread and the box are separate boundaries. A thread that cannot draw one bad message
+          must not take the box down with it: being able to keep typing, or to leave, is the
+          difference between a panel that failed and an app that did. */}
       <div className="flex-1 min-h-0">
-        {projectMode === "tasks"
-          ? <TasksView projectId={project.id} />
-          : projectMode === "graph"
-            ? <HierarchyGraph />
-            : currentChatId
-              ? <ChatThread chatId={currentChatId} />
-              : <OrchestratorThread />}
+        <ErrorBoundary where={`thread:${projectMode}`} resetKey={`${project.id}:${currentChatId ?? ""}`}>
+          {projectMode === "tasks"
+            ? <TasksView projectId={project.id} />
+            : projectMode === "graph"
+              ? <HierarchyGraph />
+              : currentChatId
+                ? <ChatThread chatId={currentChatId} />
+                : <OrchestratorThread />}
+        </ErrorBoundary>
       </div>
 
       {/* Only the conversation takes a prompt: the board and the hierarchy are not places to type. */}
-      {projectMode === "chat" && <Composer />}
+      {projectMode === "chat" && (
+        <ErrorBoundary where="composer" resetKey={`${project.id}:${currentChatId ?? ""}`}>
+          <Composer />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { useT } from "@/i18n/useT";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
+import { useDraft } from "@/hooks/useDraft";
 import { ghostFor, ghostTakesPlaceholder } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { Typewriter } from "@/components/ui/typewriter";
@@ -232,12 +233,10 @@ export function Composer() {
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
   const draftKey = chatMode && currentChatId ? `chat:${currentChatId}` : currentProjectId ? `project:${currentProjectId}` : "";
-  const text = useAppStore(state => state.drafts[draftKey] ?? "");
-  const setDraft = useAppStore(state => state.setDraft);
-  const setText = (value: string | ((prev: string) => string)) => {
-    const next = typeof value === "function" ? value(useAppStore.getState().drafts[draftKey] ?? "") : value;
-    setDraft(draftKey, next);
-  };
+  // Local while typing, written to the store behind it. Every keystroke used to be a `set` on the
+  // store, and zustand re-runs every subscriber's selector on every `set` — so each character made
+  // every mounted screen work. See `useDraft`.
+  const { text, setText } = useDraft(draftKey);
   const chatBusy = currentChatId ? isChatActive(currentChatId) : false;
   // Where the ``` regions are, for the highlight layer behind the box and for Enter/Tab above.
   const fenceHighlightRegions = useMemo(() => fenceRegions(text), [text]);
