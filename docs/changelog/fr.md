@@ -2,7 +2,7 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## 0.12.0 — 2026-09-10
+## Non publié
 
 ### Nouveau
 
@@ -21,6 +21,10 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   coûté les quinze derniers jours, en tâches, tokens et dollars, tous projets confondus. Rien n'y
   est estimé : un CLI qui ne rapporte aucune consommation compte comme une exécution et zéro
   token, et une quinzaine où aucun n'a rapporté le dit plutôt que de tracer une ligne plate.
+
+## 0.12.0 — 2026-09-10
+
+### Nouveau
 
 - **Les messages mis en file pendant qu'un agent travaille partent tous ensemble, en un seul.**
   Avant, ils partaient à la queue leu leu : le premier à la fin du tour, le second attendant la fin

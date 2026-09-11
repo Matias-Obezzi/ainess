@@ -2,7 +2,7 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
-## 0.12.0 — 2026-09-10
+## Sin publicar
 
 ### Nuevo
 
@@ -20,6 +20,10 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   última quincena en tareas, tokens y dólares, sumando todos los proyectos y no uno. Nada de eso
   se estima: un CLI que no reporta consumo cuenta como corrida y cero tokens, y una quincena donde
   ninguno reportó lo dice en vez de dibujar una línea plana.
+
+## 0.12.0 — 2026-09-10
+
+### Nuevo
 
 - **Los mensajes encolados mientras un agente trabaja se mandan todos juntos, como uno solo.**
   Antes salían en fila: el primero cuando terminaba el turno, y el segundo esperando a que

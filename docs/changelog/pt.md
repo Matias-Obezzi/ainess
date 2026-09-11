@@ -2,7 +2,7 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
-## 0.12.0 — 2026-09-10
+## Não publicado
 
 ### Novo
 
@@ -20,6 +20,10 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   aconteceu — e quanto custou a última quinzena em tarefas, tokens e dólares, somando todos os
   projetos. Nada disso é estimado: um CLI que não reporta consumo conta como execução e zero
   tokens, e uma quinzena em que nenhum reportou diz isso em vez de desenhar uma linha plana.
+
+## 0.12.0 — 2026-09-10
+
+### Novo
 
 - **As mensagens enfileiradas enquanto um agente trabalha vão todas juntas, como uma só.** Antes
   saíam em fila: a primeira quando o turno terminava, e a segunda esperando *aquele* turno

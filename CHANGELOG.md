@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## 0.12.0 — 2026-09-10
+## Unreleased
 
 ### Added
 
@@ -22,6 +22,10 @@ let one of them fall behind.
   what the last fortnight cost, in tasks, tokens and dollars, across all of them rather than one.
   Nothing there is estimated: a CLI that reports no usage is counted as a run and no tokens, and a
   fortnight where none of them reported says so instead of drawing a flat line.
+
+## 0.12.0 — 2026-09-10
+
+### Added
 
 - **Messages queued while an agent works go over together, as one.** They used to go in single
   file: the first one when the turn ended, the second waiting for *that* turn to end. Three lines

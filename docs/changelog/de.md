@@ -2,7 +2,7 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## 0.12.0 — 2026-09-10
+## Unveröffentlicht
 
 ### Neu
 
@@ -21,6 +21,10 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   gekostet haben, in Aufgaben, Tokens und Dollar, über alle Projekte statt über eines. Nichts
   davon wird geschätzt: ein CLI ohne Verbrauchsmeldung zählt als Lauf und null Tokens, und zwei
   Wochen, in denen keines gemeldet hat, sagen das, statt eine flache Linie zu zeichnen.
+
+## 0.12.0 — 2026-09-10
+
+### Neu
 
 - **Nachrichten, die während der Arbeit eines Agenten in die Warteschlange gehen, gehen zusammen
   hinaus, als eine.** Vorher gingen sie im Gänsemarsch: die erste, wenn der Zug endete, die zweite
