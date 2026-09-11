@@ -6,6 +6,33 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Lo que un agente dice mientras trabaja ya no desaparece cuando termina.** Dos personas lo
+  reportaron desde puntas opuestas — «se me borró la respuesta cuando delegó, quedó sólo la
+  delegación» y «las respuestas parciales se pierden al finalizar la actividad, sólo muestra lo
+  último que contestó» — y es el mismo bug.
+
+  Hay dos cosas distintas que llevan las palabras de un agente. El stream lleva todo lo que va
+  diciendo mientras lo dice. `run.output` es la respuesta *final* del proveedor: en Claude, la línea
+  `result`, que es el último mensaje y sólo el último mensaje. La burbuja mostraba `run.output`. Así
+  que un turno que explicaba lo que encontró, corría tres herramientas y cerraba con una delegación
+  o un resumen de una línea perdía todo lo anterior a esa línea en el instante en que dejaba de
+  correr: legible mientras trabajaba, ido al terminar.
+
+  Nunca se perdió de verdad: el stream está en el feed de comunicación y dentro de la lista de
+  actividad. Simplemente había dejado de estar en algún lugar donde alguien estuviera mirando, y
+  cuando un turno no usaba ninguna herramienta la sección de actividad tampoco aparecía. Ahora la
+  burbuja muestra el turno entero, y agrega la respuesta final después sólo cuando esa respuesta
+  dice algo que la transcripción no tiene ya — si no, una respuesta común, que se streamea y después
+  se repite como resultado, saldría dos veces.
+
+- **La lista de modelos de Claude no tenía Fable, y `fable-5.1` no es su nombre.** La lista está
+  escrita en el código, a diferencia de las de antigravity y opencode, que se consultan — así que se
+  queda vieja en silencio y nadie se entera hasta que busca un modelo que no está. Escribirlo a mano
+  tampoco servía: Claude Code responde `unrecognized_model` a `fable-5.1`, porque el id que acepta es
+  `claude-fable-5-1`. Los dos están arreglados: el modelo aparece en el selector, y la lista ahora
+  dice en un solo lugar que está hardcodeada y por qué eso importa.
+
+
 - **La app habla siete idiomas en todos lados, no sólo donde alguien se acordó.** Ciento siete
   frases estaban escritas en el código en vez de en los diccionarios: cada toast y cada diálogo que
   produce una operación de worktree, cada mensaje con el que vuelve un túnel o una instalación

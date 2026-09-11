@@ -109,6 +109,22 @@ function useRunMessages(runId: string): CommMessage[] {
   return useMemo(() => activityByRun(messages).get(runId) ?? NO_MESSAGES, [messages, runId]);
 }
 
+/**
+ * Everything the agent said during the run, as one piece of text.
+ *
+ * The stream is kept as a single `text-<runId>` message that grows, so in practice this is one
+ * string; it is joined anyway because nothing guarantees a turn produced exactly one.
+ */
+export function useRunTranscript(runId: string): string {
+  return useAppStore(state => {
+    let text = "";
+    for (const m of activityByRun(state.messages).get(runId) ?? NO_MESSAGES) {
+      if (m.kind === "text") text = text ? `${text}\n${m.text}` : m.text;
+    }
+    return text;
+  });
+}
+
 /** How many steps (tools, delegations, errors) a run has taken. Used for the "Actividad" header. */
 export function useActivityCount(runId: string): number {
   // A number, not an array: a finished bubble then only re-renders when its own count moves.

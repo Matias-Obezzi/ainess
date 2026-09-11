@@ -6,6 +6,28 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Was ein Agent sagt, während er arbeitet, verschwindet nicht mehr, wenn er aufhört.** Zwei
+  Leute haben es von entgegengesetzten Enden gemeldet — „meine Antwort war weg, als er delegiert
+  hat, nur die Delegation blieb" und „die Zwischenantworten gehen verloren, wenn die Aktivität endet,
+  es zeigt nur das Letzte" — und es ist derselbe Fehler.
+
+  Zwei verschiedene Dinge tragen die Worte eines Agenten. Der Strom trägt alles, was er sagt,
+  während er es sagt. `run.output` ist die *endgültige* Antwort des Anbieters: bei Claude die
+  `result`-Zeile, die letzte Nachricht und nur sie. Die Blase zeigte `run.output`. Ein Zug, der
+  erklärte, was er gefunden hatte, drei Werkzeuge laufen ließ und mit einer Delegation endete, verlor
+  also alles davor in dem Moment, in dem er aufhörte zu laufen.
+
+  Verloren war nie etwas: Der Strom steht im Kommunikationsverlauf und in der Aktivitätsliste. Er war
+  nur nicht mehr dort, wo jemand hinsah, und ein Zug ganz ohne Werkzeuge zeigte die Aktivität gar
+  nicht erst an. Die Blase zeigt jetzt den ganzen Zug und hängt die endgültige Antwort nur an, wenn
+  sie etwas sagt, das die Mitschrift nicht ohnehin enthält.
+
+- **In Claudes Modellliste fehlte Fable, und `fable-5.1` ist nicht sein Name.** Die Liste steht im
+  Quelltext, anders als die von antigravity und opencode, die abgefragt werden — sie veraltet also
+  still. Von Hand eintippen half auch nicht: Claude Code antwortet auf `fable-5.1` mit
+  `unrecognized_model`, denn die ID, die es nimmt, ist `claude-fable-5-1`. Beides ist behoben.
+
+
 - **Die App spricht überall sieben Sprachen, nicht nur dort, wo jemand daran gedacht hat.**
   Hundertsieben Sätze standen im Quelltext statt in den Wörterbüchern: jeder Toast und jeder Dialog,
   den eine Worktree-Operation erzeugt, jede Meldung, mit der ein Tunnel oder eine gescheiterte

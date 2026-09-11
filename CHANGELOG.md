@@ -8,6 +8,32 @@ let one of them fall behind.
 
 ### Fixed
 
+- **What an agent said while it worked no longer disappears when it stops.** Two people reported
+  this from opposite ends — "my answer vanished when it delegated, only the delegation was left" and
+  "the partial answers are lost when the activity ends, it only shows the last thing it said" — and
+  it is one bug.
+
+  Two different things carry an agent's words. The stream carries everything it says as it says it.
+  `run.output` is the provider's *final* answer: for Claude, the `result` line, which is the last
+  message and only the last message. The bubble showed `run.output`. So a turn that explained what
+  it found, ran three tools and finished with a delegation or a one-line summary lost everything
+  before that line the instant it stopped running — readable while it worked, gone when it ended.
+
+  Nothing was ever actually lost: the stream is in the communication feed and inside the activity
+  list. It had simply stopped being anywhere anyone was looking, and when a turn used no tools at
+  all the activity section did not appear either. The bubble now shows the whole turn, and adds the
+  final answer after it only when that answer says something the transcript does not already
+  contain — otherwise a plain reply, which is streamed and then repeated as the result, would print
+  twice.
+
+- **Claude's model list had no Fable, and `fable-5.1` is not its name.** The list is written into
+  the source, unlike antigravity's and opencode's, which are asked — so it goes stale in silence and
+  nobody finds out until they look for a model that is missing. Typing the name by hand did not help
+  either: Claude Code answers `unrecognized_model` to `fable-5.1`, because the id it takes is
+  `claude-fable-5-1`. Both are fixed — the model is in the picker, and the list now says in one
+  place that it is hardcoded and why that matters.
+
+
 - **The app speaks seven languages everywhere, not only where somebody remembered.** A hundred and
   seven sentences were written into the source instead of into the dictionaries — every toast and
   dialog that a worktree operation produces, every message a tunnel or an install failure comes back

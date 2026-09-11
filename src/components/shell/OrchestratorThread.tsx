@@ -13,7 +13,8 @@ import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
-import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
+import { RunActivity, useActivityCount, useRunTranscript } from "@/components/shell/RunActivity";
+import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
@@ -235,6 +236,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [retryOpen, setRetryOpen] = useState(false);
   const steps = useActivityCount(run.id);
+  const transcript = useRunTranscript(run.id);
 
   // A pending question is answered from the composer, which takes over the input box for it;
   // showing it here too would let it be answered twice. An answered question stays, since the
@@ -256,6 +258,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const output = interrupted ? "" : (run.output ?? "");
   // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
   const usage = runUsageText(run, locale, t);
+  const answer = useMemo(() => runAnswer(interrupted ? "" : transcript, output), [interrupted, transcript, output]);
 
   const retry = () =>
     void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
@@ -371,8 +374,13 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                         {t("common.retry")}
                       </Button>
                     </div>
-                  ) : run.output ? (
-                    <Markdown text={run.output} />
+                  ) : answer.transcript || answer.final ? (
+                    <>
+                      {/* What it said while it worked, which `run.output` is only the last line of.
+                          See `lib/run-answer.ts`: the final answer follows only when it adds to it. */}
+                      {answer.transcript && <Markdown text={answer.transcript} />}
+                      {answer.final && <Markdown text={answer.final} />}
+                    </>
                   ) : (
                     <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}

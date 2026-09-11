@@ -6,6 +6,29 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O que um agente diz enquanto trabalha não desaparece mais quando ele termina.** Duas pessoas
+  relataram isso de pontas opostas — “minha resposta sumiu quando ele delegou, ficou só a delegação”
+  e “as respostas parciais se perdem quando a atividade termina, só mostra a última coisa que
+  respondeu” — e é o mesmo bug.
+
+  Duas coisas diferentes carregam as palavras de um agente. O stream carrega tudo o que ele vai
+  dizendo enquanto diz. `run.output` é a resposta *final* do provedor: no Claude, a linha `result`,
+  que é a última mensagem e só a última. A bolha mostrava `run.output`. Então um turno que explicava
+  o que encontrou, rodava três ferramentas e fechava com uma delegação ou um resumo de uma linha
+  perdia tudo antes dessa linha no instante em que parava de rodar.
+
+  Nada se perdeu de fato: o stream está no feed de comunicação e dentro da lista de atividade. Ele
+  só tinha deixado de estar em algum lugar onde alguém estivesse olhando, e quando um turno não usava
+  nenhuma ferramenta a seção de atividade também não aparecia. Agora a bolha mostra o turno inteiro e
+  acrescenta a resposta final depois só quando ela diz algo que a transcrição já não contém.
+
+- **A lista de modelos do Claude não tinha Fable, e `fable-5.1` não é o nome dele.** A lista está
+  escrita no código, ao contrário das do antigravity e do opencode, que são consultadas — então ela
+  envelhece em silêncio. Escrever à mão também não ajudava: o Claude Code responde
+  `unrecognized_model` a `fable-5.1`, porque o id que ele aceita é `claude-fable-5-1`. Os dois estão
+  corrigidos.
+
+
 - **O app fala sete idiomas em todo lugar, não só onde alguém lembrou.** Cento e sete frases estavam
   escritas no código em vez de nos dicionários: cada toast e cada diálogo que uma operação de
   worktree produz, cada mensagem com que volta um túnel ou uma instalação que falhou, os cartões de

@@ -6,6 +6,29 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Ce qu'un agent dit pendant qu'il travaille ne disparaît plus quand il s'arrête.** Deux
+  personnes l'ont signalé par les deux bouts — « ma réponse a disparu quand il a délégué, il ne
+  restait que la délégation » et « les réponses partielles sont perdues à la fin de l'activité, il
+  ne montre que la dernière chose dite » — et c'est le même bug.
+
+  Deux choses distinctes portent les mots d'un agent. Le flux porte tout ce qu'il dit au fur et à
+  mesure. `run.output` est la réponse *finale* du fournisseur : pour Claude, la ligne `result`, qui
+  est le dernier message et rien que lui. La bulle affichait `run.output`. Un tour qui expliquait ce
+  qu'il avait trouvé, lançait trois outils et se terminait par une délégation perdait donc tout ce
+  qui précédait, à l'instant où il cessait de tourner.
+
+  Rien n'était réellement perdu : le flux est dans le fil de communication et dans la liste
+  d'activité. Il avait seulement cessé d'être là où quelqu'un regardait, et un tour sans outils
+  n'affichait même pas la section d'activité. La bulle montre désormais tout le tour, et n'ajoute la
+  réponse finale que lorsqu'elle dit quelque chose que la transcription ne contient pas déjà.
+
+- **La liste de modèles de Claude n'avait pas Fable, et `fable-5.1` n'est pas son nom.** Elle est
+  écrite dans le code, contrairement à celles d'antigravity et d'opencode qui sont interrogées : elle
+  vieillit donc en silence. L'écrire à la main n'aidait pas non plus : Claude Code répond
+  `unrecognized_model` à `fable-5.1`, car l'identifiant qu'il accepte est `claude-fable-5-1`. Les
+  deux sont corrigés.
+
+
 - **L'application parle sept langues partout, pas seulement là où quelqu'un y a pensé.** Cent sept
   phrases étaient écrites dans le code au lieu des dictionnaires : chaque toast et chaque dialogue
   produit par une opération de worktree, chaque message que renvoie un tunnel ou une installation

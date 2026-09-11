@@ -4,6 +4,18 @@ import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
+/**
+ * What Claude Code accepts after `--model`.
+ *
+ * Hardcoded, unlike antigravity and opencode, which are asked (`listModels` runs their `models`
+ * subcommand). So this list goes stale in silence: a model released after the last time somebody
+ * edited this line does not appear in the picker, and the only way in is the "Otro…" field.
+ */
+const CLAUDE_MODELS = [
+  "opus", "sonnet", "haiku",
+  "claude-opus-5", "claude-sonnet-5", "claude-fable-5-1", "claude-haiku-4-5-20251001",
+];
+
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
   return ids.map(id => ({ id, label: id }));
@@ -418,8 +430,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   claude: {
     id: "claude",
     label: "Claude Code",
-    defaultModels: ["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"],
-    models: toModels(["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"]),
+    // Both spellings, because Claude Code takes both: the short alias tracks whatever that family
+    // currently points at, and the dated id pins one build. `fable` has no short alias in the CLI —
+    // `fable-5.1` is rejected as an unrecognised model, which is what someone typing the name they
+    // see everywhere else will write.
+    defaultModels: CLAUDE_MODELS,
+    models: toModels(CLAUDE_MODELS),
     supportsSessions: true,
     promptVia: "stdin",
     buildCommand: (input) => {
