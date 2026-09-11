@@ -129,11 +129,18 @@ same session — from the app or from your phone.
 
 ## Inside the app
 
-**Projects.** Each project points at a workspace folder and keeps its own team of agents, their
-state, history and chats. A new project starts from a **formation**: a team you saved once and
-apply to the next project, with its skills and MCP servers.
+**Starting.** The first screen is a box. Write what you want done, pick the folder to do it in, pick
+one of the teams you saved, and the project is made and the prompt is already on its way. Pick a
+folder that is already a project and it simply goes there, with the team that project has. Under the
+box is the one number no other screen adds up across projects: what the last fortnight cost, in
+tasks, tokens and dollars.
 
-![The projects and what is waiting for you](docs/screenshots/home.png)
+![The first screen: say what you want done](docs/screenshots/home.png)
+
+**Projects.** Each project points at a workspace folder and keeps its own team of agents, their
+state, history and chats. They live in the sidebar, which marks the ones with something running. A
+new project starts from a **formation**: a team you saved once and apply to the next project, with
+its skills and MCP servers.
 
 **Tasks.** Opening a project lands on its board: six columns from backlog to done, drag and drop,
 right-click actions and an archive at the bottom.
