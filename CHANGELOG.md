@@ -23,6 +23,17 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The environment box works on an http server instead of being hidden from it.** An http MCP
+  server has no process of its own, so its variables go into the agent's environment — which is
+  exactly where the MCP client looks when it expands `${VARIABLE}` inside a header. Put the key in
+  the box, write `X-Goog-Api-Key: ${YOUR_KEY}` in the headers, and it connects without touching the
+  machine's own environment or restarting anything. The field says what that costs, because it is
+  wider than it looks: a variable set here belongs to the agent's process, so every MCP server that
+  expands variables sees it and so does anything the agent runs. It buys keeping the key in the app
+  rather than in Windows; it does not buy secrecy, since the value lands in the config either way.
+  A stdio server's variables stay where they were — the client already gives them to that server's
+  own process, scoped to it, and copying them out would widen them for nothing.
+
 - **The environment box stops appearing on a server that has no environment.** An http MCP server is
   a URL the client calls, not a process ainess starts, and the http branch of the session config has
   never written `env` — but the box was drawn all the same. Typing a key into it on an http server

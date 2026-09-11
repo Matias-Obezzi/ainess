@@ -1139,6 +1139,7 @@ export const zh: Dictionary = {
   "mcpDialog.transport": "传输方式",
   "mcpDialog.commandAndArgs": "命令和参数（例如：npx -y @modelcontextprotocol/server-filesystem /dir）",
   "mcpDialog.env": "环境变量（每行一个，KEY=value）",
+  "mcpDialog.envHttpHint": "http 服务器没有自己的进程：这些变量会进入智能体的环境，请求头里的 ${VARIABLE} 就是从那里展开的。智能体运行的一切都能看到它们，不只是这个服务器。",
   "mcpDialog.headers": "HTTP 请求头（每行一个，名称: 值）",
   "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
   "mcpDialog.headersHint": "可以写 Bearer ${MI_VARIABLE}：客户端会从环境变量展开该变量，密钥不会保存在配置文件里。",

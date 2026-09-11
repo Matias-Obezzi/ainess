@@ -22,6 +22,17 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Feld für Umgebungsvariablen funktioniert bei einem http-Server, statt vor ihm versteckt zu
+  werden.** Ein http-MCP-Server hat keinen eigenen Prozess, also gehen seine Variablen in die
+  Umgebung des Agenten — genau dorthin, wo der MCP-Client nachsieht, wenn er `${VARIABLE}` in einem
+  Header auflöst. Schlüssel ins Feld, `X-Goog-Api-Key: ${DEIN_SCHLUESSEL}` in die Header, und es
+  verbindet sich, ohne die Umgebung des Rechners anzufassen oder etwas neu zu starten. Das Feld
+  sagt, was das kostet, denn es ist weiter, als es aussieht: eine hier gesetzte Variable gehört dem
+  Prozess des Agenten, also sieht sie jeder MCP-Server, der Variablen auflöst, und alles, was der
+  Agent ausführt. Es bringt den Schlüssel in die App statt nach Windows; Geheimhaltung bringt es
+  nicht, denn der Wert landet ohnehin in der Konfiguration. Die Variablen eines stdio-Servers
+  bleiben, wo sie waren — der Client gibt sie dem Prozess dieses Servers bereits, beschränkt darauf.
+
 - **Das Feld für Umgebungsvariablen erscheint nicht mehr bei einem Server, der keine Umgebung hat.**
   Ein http-MCP-Server ist eine URL, die der Client aufruft, kein Prozess, den ainess startet, und
   der http-Zweig der Sitzungskonfiguration hat nie `env` geschrieben — das Feld wurde trotzdem

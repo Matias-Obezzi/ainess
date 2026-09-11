@@ -23,6 +23,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le champ des variables d'environnement fonctionne sur un serveur http, au lieu de lui être
+  caché.** Un serveur MCP http n'a pas de processus à lui : ses variables vont donc dans
+  l'environnement de l'agent — exactement là où le client MCP regarde quand il étend `${VARIABLE}`
+  dans un en-tête. Mettez la clé dans le champ, écrivez `X-Goog-Api-Key: ${VOTRE_CLE}` dans les
+  en-têtes, et la connexion se fait sans toucher à l'environnement de la machine ni redémarrer quoi
+  que ce soit. Le champ dit ce que cela coûte, car c'est plus large qu'il n'y paraît : une variable
+  posée là appartient au processus de l'agent, donc tout serveur MCP qui étend des variables la
+  voit, et tout ce que l'agent exécute aussi. Cela vous fait garder la clé dans l'application plutôt
+  que dans Windows ; cela ne vous achète pas le secret, la valeur finissant dans la configuration
+  de toute façon. Les variables d'un serveur stdio restent où elles étaient.
+
 - **Le champ des variables d'environnement n'apparaît plus sur un serveur qui n'a pas
   d'environnement.** Un serveur MCP http est une URL que le client appelle, pas un processus que
   ainess démarre, et la branche http de la configuration de session n'a jamais écrit `env` — le

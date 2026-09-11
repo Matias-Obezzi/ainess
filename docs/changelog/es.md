@@ -21,6 +21,17 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El campo de variables de entorno funciona en un servidor http, en vez de estar escondido.** Un
+  servidor MCP http no tiene proceso propio, así que sus variables van al entorno del agente — que
+  es justo de donde el cliente MCP las expande cuando ve `${VARIABLE}` dentro de una cabecera. Ponés
+  la clave en el campo, escribís `X-Goog-Api-Key: ${TU_CLAVE}` en las cabeceras, y conecta sin tocar
+  el entorno de la máquina ni reiniciar nada. El campo dice lo que eso cuesta, porque es más amplio
+  de lo que parece: una variable puesta ahí pertenece al proceso del agente, así que la ve todo MCP
+  que expanda variables y también todo lo que el agente ejecute. Te compra tener la clave en la app
+  en vez de en Windows; no te compra secreto, porque el valor queda igual en el config. Las
+  variables de un servidor stdio siguen donde estaban — el cliente ya se las da al proceso de ese
+  servidor, acotadas a él, y sacarlas de ahí sería ampliarlas al pedo.
+
 - **El campo de variables de entorno deja de aparecer en un servidor que no tiene entorno.** Un
   servidor MCP http es una URL a la que el cliente llama, no un proceso que ainess arranca, y la
   rama http de la configuración de sesión nunca escribió `env` — pero el campo se dibujaba igual.
