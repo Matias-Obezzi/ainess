@@ -37,21 +37,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   un appui est une option et c'est une réponse différente de celle demandée ; celles-là se tapent
   toujours, et le message le dit.
 
-- **L'écran d'accueil lance le travail au lieu de le lister.** Il avait les projets, ce qui vous
-  attendait et ce qui tournait ; pour faire quoi que ce soit, il fallait quand même ouvrir une
-  boîte de dialogue, nommer un projet, choisir un dossier, monter une équipe, enregistrer, ouvrir
-  et trouver le champ. Le champ est maintenant la première chose à l'écran : écrivez ce que vous
-  voulez, choisissez le dossier et une de vos équipes, le projet est créé et le prompt part. Si le
-  dossier est déjà un projet, ça y va, avec son équipe — deux projets sur un même espace de
-  travail seraient deux équipes modifiant les mêmes fichiers sans se connaître, et un dossier
-  reste le même dossier quelle que soit la façon de l'écrire. Il n'invente pas d'équipe : sans
-  aucune enregistrée, il indique où on les crée, et une équipe sans agent racine est annoncée
-  plutôt que le prompt confié au premier agent venu. En dessous, deux choses que cet écran n'avait
-  jamais eues : ce qui a été fait dernièrement — tâches et conversations terminées de tous les
-  projets, les plus récentes d'abord, chacune à un clic de là où elle s'est passée — et ce qu'ont
-  coûté les quinze derniers jours, en tâches, tokens et dollars, tous projets confondus. Rien n'y
-  est estimé : un CLI qui ne rapporte aucune consommation compte comme une exécution et zéro
-  token, et une quinzaine où aucun n'a rapporté le dit plutôt que de tracer une ligne plate.
+- **L'écran d'accueil lance le travail au lieu de le lister.** C'était un tableau de bord : chaque
+  projet en ligne, ce qui vous attendait, ce qui tournait. Tout cela vit déjà là où c'est sa place —
+  la barre latérale tient les projets et le bouton pour en créer un, le panneau au-dessus continue de
+  montrer ce qui est retenu en attente d'approbation, la cloche et la barre des tâches signalent
+  qu'on attend une réponse. Il y avait donc ici une seconde copie de tout ça, précisément au seul
+  endroit où ce qu'on ne peut faire nulle part ailleurs, c'est commencer. C'est maintenant un champ,
+  au milieu, et rien au-dessus : écrivez ce que vous voulez, choisissez le dossier et une de vos
+  équipes, le projet est créé et le prompt part. Si le dossier est déjà un projet, ça y va, avec son
+  équipe — deux projets sur un même espace de travail seraient deux équipes modifiant les mêmes
+  fichiers sans se connaître, et un dossier reste le même dossier quelle que soit la façon de
+  l'écrire. Il n'invente pas d'équipe : sans aucune enregistrée, il indique où on les crée, et une
+  équipe sans agent racine est annoncée plutôt que le prompt confié au premier agent venu. Sous le
+  champ, le seul chiffre qu'aucun autre écran n'additionne entre projets : ce qu'ont coûté les quinze
+  derniers jours, en tâches, tokens et dollars. Rien n'y est estimé — un CLI qui ne rapporte aucune
+  consommation compte comme une exécution et zéro token, et une quinzaine où aucun n'a rapporté le
+  dit plutôt que de tracer une ligne plate.
 
 ### Corrigé
 

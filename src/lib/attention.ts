@@ -21,11 +21,6 @@ export interface WorkingItem {
   since?: number;
 }
 
-export interface ProjectCounts {
-  needsYou: number;
-  working: number;
-}
-
 /**
  * Everything across every project that is waiting on the user, in one list.
  *
@@ -136,28 +131,4 @@ export function workingItems(input: {
   });
 
   return items;
-}
-
-/**
- * Counts the number of attention items and working agents per project.
- * Returns only entries for projects that have at least one item.
- */
-export function countsByProject(items: AttentionItem[], working: WorkingItem[]): Record<string, ProjectCounts> {
-  const counts: Record<string, ProjectCounts> = {};
-
-  for (const item of items) {
-    if (!counts[item.projectId]) {
-      counts[item.projectId] = { needsYou: 0, working: 0 };
-    }
-    counts[item.projectId].needsYou++;
-  }
-
-  for (const w of working) {
-    if (!counts[w.projectId]) {
-      counts[w.projectId] = { needsYou: 0, working: 0 };
-    }
-    counts[w.projectId].working++;
-  }
-
-  return counts;
 }

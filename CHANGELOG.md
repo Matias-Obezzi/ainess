@@ -36,20 +36,21 @@ let one of them fall behind.
   that takes several answers gets no buttons, because one press is one option and that is a
   different answer from the one being asked for; those stay typed, and the message says so.
 
-- **The home screen starts the work instead of listing it.** It had the projects, what was waiting
-  on you and what was running; the way to do anything was still to open a dialog, name a project,
-  pick a folder, assemble a team, save it, open it and find the box. The box is the first thing on
-  the screen now: type what you want done, pick the folder and pick one of your teams, and the
-  project is made and the prompt is on its way. Pick a folder that is already a project and it
-  simply goes there, team and all — two projects on one workspace would be two sets of agents
-  editing the same files, neither knowing the other exists, and one folder written three ways is
-  still one folder. It will not invent a team: with none saved it points at where teams are made,
-  and a team with no root agent is said out loud rather than given the prompt to whichever agent
-  came first. Below it, two things the screen never had: what was done lately — finished tasks and
-  conversations across every project, newest first, each one a click from where it happened — and
-  what the last fortnight cost, in tasks, tokens and dollars, across all of them rather than one.
-  Nothing there is estimated: a CLI that reports no usage is counted as a run and no tokens, and a
-  fortnight where none of them reported says so instead of drawing a flat line.
+- **The home screen starts the work instead of listing it.** It was a dashboard: every project as a
+  row, what was waiting on you, what was running. All of that already lives somewhere that belongs
+  to it — the sidebar holds the projects and the button that makes one, the panel above keeps
+  showing what is held for approval, the bell and the taskbar say when something wants an answer —
+  so what was here was a second copy of it, in the one place where the thing you cannot do anywhere
+  else is start. Now it is a box, in the middle, and nothing above it: type what you want done, pick
+  the folder and pick one of your teams, and the project is made and the prompt is on its way. Pick
+  a folder that is already a project and it simply goes there, team and all — two projects on one
+  workspace would be two sets of agents editing the same files, neither knowing the other exists,
+  and one folder written three ways is still one folder. It will not invent a team: with none saved
+  it points at where teams are made, and a team with no root agent is said out loud rather than
+  given the prompt to whichever agent came first. Under the box, the one number no other screen adds
+  up across projects: what the last fortnight cost, in tasks, tokens and dollars. Nothing there is
+  estimated — a CLI that reports no usage is counted as a run and no tokens, and a fortnight where
+  none of them reported says so instead of drawing a flat line.
 
 ### Fixed
 

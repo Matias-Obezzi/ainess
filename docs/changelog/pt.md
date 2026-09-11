@@ -35,20 +35,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   que aceita várias respostas não leva botões, porque um toque é uma opção e essa é uma resposta
   diferente da que está sendo pedida; essas continuam digitadas, e a mensagem diz isso.
 
-- **A tela inicial agora começa o trabalho em vez de listá-lo.** Ela tinha os projetos, o que
-  esperava por você e o que estava rodando; para fazer qualquer coisa ainda era preciso abrir um
-  diálogo, dar nome a um projeto, escolher a pasta, montar uma equipe, salvar, abrir e procurar a
-  caixa. Agora a caixa é a primeira coisa da tela: você escreve o que quer, escolhe a pasta e
-  escolhe uma das suas equipes, e o projeto é criado e o prompt sai. Se a pasta já for um projeto,
-  vai direto para lá, com a equipe dele — dois projetos no mesmo workspace seriam duas equipes
-  editando os mesmos arquivos sem saber uma da outra, e uma mesma pasta escrita de três formas
-  continua sendo uma só. Ela não inventa equipe: sem nenhuma salva, aponta para onde se criam, e
-  uma equipe sem agente raiz é dita em voz alta em vez de o prompt ir para o primeiro agente que
-  aparecer. Abaixo, duas coisas que a tela nunca teve: o que foi feito recentemente — tarefas e
-  conversas terminadas de todos os projetos, as mais novas primeiro, cada uma a um clique de onde
-  aconteceu — e quanto custou a última quinzena em tarefas, tokens e dólares, somando todos os
-  projetos. Nada disso é estimado: um CLI que não reporta consumo conta como execução e zero
-  tokens, e uma quinzena em que nenhum reportou diz isso em vez de desenhar uma linha plana.
+- **A tela inicial agora começa o trabalho em vez de listá-lo.** Era um painel: cada projeto como
+  uma linha, o que esperava por você, o que estava rodando. Tudo isso já vive em algum lugar que lhe
+  cabe — a barra lateral tem os projetos e o botão de criar um, o painel de cima continua mostrando
+  o que está retido esperando aprovação, o sininho e a barra de tarefas avisam quando algo quer
+  resposta — então aqui havia uma segunda cópia disso, justamente no único lugar onde o que você não
+  pode fazer em nenhum outro é começar. Agora é uma caixa, no meio, e nada acima: você escreve o que
+  quer, escolhe a pasta e escolhe uma das suas equipes, e o projeto é criado e o prompt sai. Se a
+  pasta já for um projeto, vai direto para lá, com a equipe dele — dois projetos no mesmo workspace
+  seriam duas equipes editando os mesmos arquivos sem saber uma da outra, e uma mesma pasta escrita
+  de três formas continua sendo uma só. Ela não inventa equipe: sem nenhuma salva, aponta para onde
+  se criam, e uma equipe sem agente raiz é dita em voz alta em vez de o prompt ir para o primeiro
+  agente que aparecer. Embaixo da caixa, o único número que nenhuma outra tela soma entre projetos:
+  quanto custou a última quinzena em tarefas, tokens e dólares. Nada disso é estimado — um CLI que
+  não reporta consumo conta como execução e zero tokens, e uma quinzena em que nenhum reportou diz
+  isso em vez de desenhar uma linha plana.
 
 ### Corrigido
 

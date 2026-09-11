@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { attentionItems, workingItems, countsByProject } from "../attention";
+import { attentionItems, workingItems } from "../attention";
 import type { Approval, AgentQuestion, Task, Project, AgentRuntime, Run } from "@/types";
 
 describe("attention", () => {
@@ -111,33 +111,6 @@ describe("attention", () => {
       expect(items[1]).toMatchObject({ agentId: "ag5", since: 75 });
       expect(items[2]).toMatchObject({ agentId: "ag1", since: 100 });
       expect(items[3]).toMatchObject({ agentId: "ag4", since: undefined });
-    });
-  });
-
-  describe("countsByProject", () => {
-    it("cuenta bien con varios proyectos y no inventa entradas vacías", () => {
-      const att = [
-        { id: "1", kind: "task" as const, projectId: "p1", title: "1", at: 1 },
-        { id: "2", kind: "task" as const, projectId: "p1", title: "2", at: 1 },
-        { id: "3", kind: "question" as const, projectId: "p2", title: "3", at: 1 },
-      ];
-      
-      const work = [
-        { projectId: "p1", agentId: "ag1" },
-        { projectId: "p3", agentId: "ag2" },
-        { projectId: "p3", agentId: "ag3" },
-      ];
-
-      const counts = countsByProject(att, work);
-
-      // p1 should have 2 needsYou, 1 working
-      expect(counts.p1).toEqual({ needsYou: 2, working: 1 });
-      // p2 should have 1 needsYou, 0 working
-      expect(counts.p2).toEqual({ needsYou: 1, working: 0 });
-      // p3 should have 0 needsYou, 2 working
-      expect(counts.p3).toEqual({ needsYou: 0, working: 2 });
-      // p4 shouldn't be there
-      expect(counts.p4).toBeUndefined();
     });
   });
 });

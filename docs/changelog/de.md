@@ -37,21 +37,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   mehreren Antworten bekommt keine Knöpfe, denn ein Druck ist eine Option und das ist eine andere
   Antwort als die verlangte; die werden weiter getippt, und die Nachricht sagt das.
 
-- **Der Startbildschirm beginnt die Arbeit, statt sie aufzuzählen.** Er hatte die Projekte, das
-  Wartende und das Laufende; um irgendetwas zu tun, musste man trotzdem einen Dialog öffnen, ein
-  Projekt benennen, einen Ordner wählen, ein Team zusammenstellen, speichern, öffnen und das
-  Eingabefeld suchen. Jetzt ist das Feld das Erste auf dem Bildschirm: schreib, was zu tun ist,
-  wähl den Ordner und eines deiner Teams — das Projekt entsteht und der Prompt geht raus. Ist der
-  Ordner schon ein Projekt, geht es einfach dorthin, samt Team: zwei Projekte auf einem Workspace
-  wären zwei Teams, die dieselben Dateien bearbeiten, ohne voneinander zu wissen, und ein Ordner
-  bleibt derselbe Ordner, wie auch immer er geschrieben wird. Ein Team erfindet er nicht: ist
+- **Der Startbildschirm beginnt die Arbeit, statt sie aufzuzählen.** Er war ein Dashboard: jedes
+  Projekt eine Zeile, das Wartende, das Laufende. All das wohnt längst dort, wo es hingehört — die
+  Seitenleiste hat die Projekte und den Knopf, eines anzulegen, das Panel darüber zeigt weiterhin,
+  was zur Freigabe angehalten ist, Glocke und Taskleiste melden, wenn etwas eine Antwort will. Hier
+  stand also eine zweite Kopie davon, ausgerechnet an der einen Stelle, an der das, was man nirgends
+  sonst kann, das Anfangen ist. Jetzt ist es ein Feld, in der Mitte, und darüber nichts: schreib, was
+  zu tun ist, wähl den Ordner und eines deiner Teams — das Projekt entsteht und der Prompt geht raus.
+  Ist der Ordner schon ein Projekt, geht es einfach dorthin, samt Team: zwei Projekte auf einem
+  Workspace wären zwei Teams, die dieselben Dateien bearbeiten, ohne voneinander zu wissen, und ein
+  Ordner bleibt derselbe Ordner, wie auch immer er geschrieben wird. Ein Team erfindet er nicht: ist
   keines gespeichert, zeigt er dorthin, wo Teams entstehen, und ein Team ohne Wurzel-Agenten wird
-  gesagt, statt den Prompt dem erstbesten Agenten zu geben. Darunter zwei Dinge, die es dort nie
-  gab: was zuletzt erledigt wurde — fertige Aufgaben und Unterhaltungen aus allen Projekten, das
-  Neueste zuerst, jedes einen Klick von seinem Ort entfernt — und was die letzten zwei Wochen
-  gekostet haben, in Aufgaben, Tokens und Dollar, über alle Projekte statt über eines. Nichts
-  davon wird geschätzt: ein CLI ohne Verbrauchsmeldung zählt als Lauf und null Tokens, und zwei
-  Wochen, in denen keines gemeldet hat, sagen das, statt eine flache Linie zu zeichnen.
+  gesagt, statt den Prompt dem erstbesten Agenten zu geben. Unter dem Feld die eine Zahl, die kein
+  anderer Bildschirm über Projekte hinweg zusammenzählt: was die letzten zwei Wochen gekostet haben,
+  in Aufgaben, Tokens und Dollar. Nichts davon wird geschätzt — ein CLI ohne Verbrauchsmeldung zählt
+  als Lauf und null Tokens, und zwei Wochen, in denen keines gemeldet hat, sagen das, statt eine
+  flache Linie zu zeichnen.
 
 ### Behoben
 
