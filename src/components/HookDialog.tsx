@@ -92,7 +92,12 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const [chatId, setChatId] = useState(hook?.action.type === "telegram" ? hook.action.chatId || "" : "");
 
   // Action fields
-  const [url, setUrl] = useState(hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "webhook" ? (hook.action as any).webhookUrl || (hook.action as any).url || "" : "");
+  // Asked per type instead of through a cast: the three actions that carry an address do not call it
+  // the same thing, and the union already says which one has which.
+  const [url, setUrl] = useState(
+    hook?.action.type === "slack" || hook?.action.type === "discord" ? hook.action.webhookUrl :
+    hook?.action.type === "webhook" ? hook.action.url : ""
+  );
   const [template, setTemplate] = useState(
     hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "telegram" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
     hook?.action.type === "webhook" ? hook.action.bodyTemplate : presetFor(t, hook?.event ?? "task.finished")

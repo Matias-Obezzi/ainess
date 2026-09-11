@@ -2,6 +2,23 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **Una opción escrita sin nada detrás ya no se toma a sí misma como valor.** `ainess hook add
+  --action slack --url --template "..."` — `--url` sin nada atrás — guardaba la sola presencia de la
+  opción donde va la dirección del webhook, y el hook quedaba apuntando a algo que nadie escribió: no
+  llegaba a ningún lado y nunca decía por qué. Ahora corta y avisa que falta `--url`, que es lo que
+  faltaba. Lo mismo con `--program`, `--args` y `--template`: una opción sin nada detrás es una que
+  te olvidaste de completar, no un valor.
+- **Un turno de Claude que arranca sin id de sesión empieza una conversación nueva en lugar de
+  reanudar una vacía.** ainess se guarda el id que anuncia el proveedor para que el mensaje siguiente
+  siga el mismo hilo. Una línea de apertura que venía sin id se guardaba igual, como nada, y el turno
+  siguiente le pedía a Claude reanudar una sesión sin nombre. Esa línea ahora se ignora, así que el
+  turno siguiente arranca limpio — que es donde iba a terminar de todos modos, sólo que sin el
+  intento fallido de reanudar en el camino.
+
 ## 0.14.0 — 2026-09-11
 
 ### Nuevo

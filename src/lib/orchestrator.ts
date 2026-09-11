@@ -502,7 +502,12 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     // Antigravity is configured machine-wide instead (`ainess mcp sync`), and the rest have no way in
     // yet — see Configuración → MCP.
     if ((agent.provider === "claude" || agent.provider === "copilot") && mcpServers.length > 0) {
-      const obj: any = { mcpServers: {} };
+      // The file Claude Code and Copilot read. Declared rather than built loose: it is a contract
+      // with another program, and a key misspelled here fails as a server that never connects.
+      type McpEntry =
+        | { type: "http"; url?: string; headers?: Record<string, string> }
+        | { command?: string; args: string[]; env: Record<string, string> };
+      const obj: { mcpServers: Record<string, McpEntry> } = { mcpServers: {} };
       for (const s of mcpServers) {
         if (s.transport === "http") {
           // `headers` only when there are any: an empty object is not what a hand-written config

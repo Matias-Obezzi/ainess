@@ -39,12 +39,92 @@ export interface ProviderSpec {
   finalUsage?(rawLines: string[]): RunUsage | undefined;
 }
 
-function parseJsonTolerant(line: string): any {
+// ---- What each provider is assumed to print on one line of stdout -------------------------------
+//
+// These were `any`. Not a shape nobody knew — a shape nobody wrote down: a field renamed between
+// CLI versions then read as `undefined` at some call site far from here, instead of failing where
+// the assumption lives. Every field is optional because every one of them is the provider's choice,
+// and the parsers still check before they use; what changed is that the assumption now has a name
+// and a place, and adding a field means declaring it.
+
+interface ClaudeLine {
+  type?: string;
+  subtype?: string;
+  session_id?: string;
+  message?: { content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }> };
+  result?: string;
+}
+
+interface AntigravityLine {
+  event?: string;
+  conversation_id?: string;
+  step_update?: {
+    step_type?: string;
+    state?: string;
+    text_delta?: string;
+    tool_name?: string;
+    tool_info?: { name?: string; parameters?: unknown };
+  };
+  result?: { status?: string; error?: string; response?: string; conversation_id?: string };
+}
+
+interface CopilotLine {
+  type?: string;
+  sessionId?: string;
+  message?: unknown;
+  data?: {
+    content?: unknown;
+    message?: unknown;
+    toolRequests?: Array<{ name?: string; toolName?: string; arguments?: unknown }>;
+  };
+}
+
+interface OpencodeLine {
+  type?: string;
+  sessionID?: string;
+  error?: { name?: string; data?: { statusCode?: number; message?: unknown } };
+  part?: {
+    id?: string;
+    type?: string;
+    text?: string;
+    tool?: unknown;
+    state?: { status?: string; input?: unknown; error?: string };
+    /** Only on `step-finish`: what that step spent. */
+    tokens?: { input?: unknown; output?: unknown; cache?: { read?: unknown; write?: unknown } };
+    cost?: unknown;
+  };
+}
+
+/**
+ * One line of a CLI's stdout as the shape its parser expects.
+ *
+ * The caller names the shape, which is the point: the cast happens once, here, against a declared
+ * interface, instead of implicitly at every property access downstream.
+ */
+function parseJsonTolerant<T = Record<string, unknown>>(line: string): T | null {
   try {
-    return JSON.parse(line);
+    const parsed: unknown = JSON.parse(line);
+    return isRecord(parsed) ? (parsed as T) : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * One property of something that came off a CLI's stdout.
+ *
+ * `unknown` rather than a shape, because that is what it is: every provider names its fields
+ * differently, changes them between versions, and is free to send something else entirely. Reading
+ * through here is what keeps "the CLI printed a string where we expected a number" from becoming a
+ * crash three lines later.
+ */
+function field(value: unknown, name: string): unknown {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>)[name] : undefined;
+}
+
+/** Whether something parsed off stdout is worth reading fields from at all. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 /** A number only when the provider actually sent one: strings, nulls and NaN are "not reported". */
@@ -62,18 +142,18 @@ function compactUsage(usage: RunUsage): RunUsage | undefined {
  * Claude Code's `result` line: `total_cost_usd`, `num_turns`, `duration_ms` and a `usage` object
  * with the token counts. The two cache counters are added up into one "cached" figure.
  */
-export function claudeUsage(obj: any): RunUsage | undefined {
-  const u = obj?.usage ?? {};
-  const cacheRead = num(u.cache_read_input_tokens);
-  const cacheWrite = num(u.cache_creation_input_tokens);
+export function claudeUsage(obj: unknown): RunUsage | undefined {
+  const u = field(obj, "usage");
+  const cacheRead = num(field(u, "cache_read_input_tokens"));
+  const cacheWrite = num(field(u, "cache_creation_input_tokens"));
   const cached = cacheRead === undefined && cacheWrite === undefined ? undefined : (cacheRead ?? 0) + (cacheWrite ?? 0);
   return compactUsage({
-    costUsd: num(obj?.total_cost_usd),
-    inputTokens: num(u.input_tokens),
-    outputTokens: num(u.output_tokens),
+    costUsd: num(field(obj, "total_cost_usd")),
+    inputTokens: num(field(u, "input_tokens")),
+    outputTokens: num(field(u, "output_tokens")),
     cachedInputTokens: cached,
-    turns: num(obj?.num_turns),
-    durationMs: num(obj?.duration_ms),
+    turns: num(field(obj, "num_turns")),
+    durationMs: num(field(obj, "duration_ms")),
   });
 }
 
@@ -82,24 +162,24 @@ export function claudeUsage(obj: any): RunUsage | undefined {
  * versions have named the same counters differently, so every spelling we have seen is accepted
  * and whatever is missing simply stays out.
  */
-export function antigravityUsage(result: any): RunUsage | undefined {
-  const u = result?.usage;
-  if (!u || typeof u !== "object") return undefined;
+export function antigravityUsage(result: unknown): RunUsage | undefined {
+  const u = field(result, "usage");
+  if (!isRecord(u)) return undefined;
   return compactUsage({
     costUsd: num(u.total_cost_usd ?? u.cost_usd ?? u.cost),
     inputTokens: num(u.input_tokens ?? u.inputTokens ?? u.prompt_tokens ?? u.promptTokens),
     outputTokens: num(u.output_tokens ?? u.outputTokens ?? u.completion_tokens ?? u.completionTokens),
     cachedInputTokens: num(u.cached_input_tokens ?? u.cachedInputTokens ?? u.cache_read_input_tokens ?? u.cached_tokens),
-    turns: num(u.turns ?? u.num_turns ?? result?.num_turns),
-    durationMs: num(u.duration_ms ?? u.durationMs ?? result?.duration_ms),
+    turns: num(u.turns ?? u.num_turns ?? field(result, "num_turns")),
+    durationMs: num(u.duration_ms ?? u.durationMs ?? field(result, "duration_ms")),
     premiumRequests: num(u.premium_requests ?? u.premiumRequests),
   });
 }
 
 /** Copilot's `result.usage`: premium requests and the session duration, no tokens and no cost. */
-export function copilotUsage(obj: any): RunUsage | undefined {
-  const u = obj?.usage;
-  if (!u || typeof u !== "object") return undefined;
+export function copilotUsage(obj: unknown): RunUsage | undefined {
+  const u = field(obj, "usage");
+  if (!isRecord(u)) return undefined;
   return compactUsage({
     inputTokens: num(u.input_tokens ?? u.inputTokens),
     outputTokens: num(u.output_tokens ?? u.outputTokens),
@@ -110,23 +190,25 @@ export function copilotUsage(obj: any): RunUsage | undefined {
 }
 
 function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
-  const obj = parseJsonTolerant(line);
+  const obj = parseJsonTolerant<ClaudeLine>(line);
   if (!obj) {
     if (stream === "stderr") return [{ type: "error", text: line }];
     return [{ type: "raw", text: line }];
   }
   
-  if (obj.type === "system" && obj.subtype === "init") {
+  // The id is checked rather than assumed: `sessionId` is declared a string, and an init line
+  // without one used to travel as `undefined` pretending to be one — which the resume then used.
+  if (obj.type === "system" && obj.subtype === "init" && obj.session_id) {
     return [{ type: "session", sessionId: obj.session_id }];
   }
   if (obj.type === "assistant" && obj.message && Array.isArray(obj.message.content)) {
     const events: ParsedEvent[] = [];
     for (const item of obj.message.content) {
       if (item.type === "text") {
-        events.push({ type: "text", text: item.text });
+        events.push({ type: "text", text: item.text ?? "" });
       } else if (item.type === "tool_use") {
         const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
-        events.push({ type: "tool", name: item.name, detail, input: item.input });
+        events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
       }
     }
     return events;
@@ -139,7 +221,7 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
 }
 
 function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
-  const obj = parseJsonTolerant(line);
+  const obj = parseJsonTolerant<AntigravityLine>(line);
   if (!obj) {
     if (stream === "stderr") return [{ type: "error", text: line }];
     return [{ type: "raw", text: line }];
@@ -155,7 +237,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
     }
     if (step_type === "user_input" || step_type === "system_message") return [];
     // Tool steps arrive twice (ACTIVE then DONE/ERROR): log once when they start, plus failures.
-    const name: string = tool_name || tool_info?.name || step_type;
+    const name: string = tool_name || tool_info?.name || step_type || "tool";
     const params = tool_info?.parameters;
     const detail = params ? JSON.stringify(params).substring(0, 200) : undefined;
     if (state === "ACTIVE") return [{ type: "tool", name, detail, input: params }];
@@ -181,7 +263,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
  * Ephemeral deltas (`assistant.message_delta`, `assistant.tool_call_delta`) are ignored.
  */
 function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
-  const obj = parseJsonTolerant(line);
+  const obj = parseJsonTolerant<CopilotLine>(line);
   if (!obj || typeof obj.type !== "string") {
     if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
     return line.trim() ? [{ type: "raw", text: line }] : [];
@@ -216,7 +298,7 @@ function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEven
 function copilotFinalOutput(lines: string[]): string {
   const parts: string[] = [];
   for (const line of lines) {
-    const obj = parseJsonTolerant(line);
+    const obj = parseJsonTolerant<CopilotLine>(line);
     if (obj?.type === "assistant.message" && typeof obj.data?.content === "string" && obj.data.content.trim()) {
       parts.push(obj.data.content);
     }
@@ -232,7 +314,7 @@ function copilotFinalOutput(lines: string[]): string {
  * (`opencodeFinalOutput`) and what a run spent is added up across its steps (`opencodeUsage`).
  */
 function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
-  const obj = parseJsonTolerant(line);
+  const obj = parseJsonTolerant<OpencodeLine>(line);
   if (!obj || typeof obj.type !== "string") {
     if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
     return line.trim() ? [{ type: "raw", text: line }] : [];
@@ -279,7 +361,7 @@ function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEve
 function opencodeFinalOutput(lines: string[]): string {
   const byPart = new Map<string, string>();
   for (const line of lines) {
-    const obj = parseJsonTolerant(line);
+    const obj = parseJsonTolerant<OpencodeLine>(line);
     const part = obj?.part;
     if (part?.type !== "text" || typeof part.text !== "string") continue;
     if (!part.text.trim()) continue;
@@ -292,7 +374,7 @@ function opencodeFinalOutput(lines: string[]): string {
 export function opencodeUsage(lines: string[]): RunUsage | undefined {
   let input = 0, output = 0, cached = 0, cost = 0, steps = 0;
   for (const line of lines) {
-    const obj = parseJsonTolerant(line);
+    const obj = parseJsonTolerant<OpencodeLine>(line);
     const part = obj?.part;
     if (part?.type !== "step-finish") continue;
     steps++;
@@ -1053,7 +1135,7 @@ export function parseResult(text: string): ParsedResult | null {
     const obj = JSON.parse(lastMatch[1]);
     if (!obj || typeof obj !== 'object') return null;
     
-    const normalize = (val: any) => {
+    const normalize = (val: unknown): string[] => {
       if (Array.isArray(val)) return val.filter(v => typeof v === 'string').map(v => v.trim()).filter(Boolean);
       if (typeof val === 'string') return val.trim() ? [val.trim()] : [];
       return [];
@@ -1069,6 +1151,14 @@ export function parseResult(text: string): ParsedResult | null {
   }
 }
 
+/** One entry of a ```task block. Same bargain as the stream lines: declared, and still checked. */
+interface TaskOpLine {
+  new?: unknown;
+  detail?: unknown;
+  priority?: unknown;
+  status?: unknown;
+}
+
 export type ParsedTaskOp =
   | { kind: "update"; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
   | { kind: "create"; title: string; detail?: string; priority?: "low" | "normal" | "high" };
@@ -1082,7 +1172,7 @@ export function parseTaskOps(text: string): ParsedTaskOp[] {
   while ((match = regex.exec(text)) !== null) {
     try {
       const obj = JSON.parse(match[1]);
-      let items: any[] = [];
+      let items: TaskOpLine[] = [];
       if (Array.isArray(obj)) {
         items = obj;
       } else if (obj && typeof obj === "object") {

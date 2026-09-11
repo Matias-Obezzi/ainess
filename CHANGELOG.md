@@ -4,6 +4,23 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **A flag written with nothing after it is no longer read as its own value.** `ainess hook add
+  --action slack --url --template "..."` — `--url` with nothing behind it — stored the flag's mere
+  presence where the webhook's address goes, and the hook was saved pointing at something nobody
+  typed: it posted nowhere and never said why. Now it stops and says `--url` is missing, which is
+  what it was. The same for `--program`, `--args` and `--template`: a flag with nothing after it is
+  one you forgot to fill in, not a value.
+- **A Claude turn that starts without a session id begins a fresh conversation instead of resuming
+  an empty one.** ainess remembers the id the provider announces so the next message continues the
+  same thread. An opening line that arrived without one was remembered anyway, as nothing, and the
+  turn after it asked Claude to resume a session with no name. That line is ignored now, so the next
+  turn starts clean — which is where it was going to end up regardless, only without the failed
+  resume on the way.
+
 ## 0.14.0 — 2026-09-11
 
 ### Added

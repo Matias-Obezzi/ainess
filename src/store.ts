@@ -650,26 +650,49 @@ function clampDockSize(value: unknown): number {
 }
 
 /** localStorage does not exist in the CLI/node build, so every access is guarded. */
+/** A property of the saved preferences, without pretending to know what it is. */
+function saved(value: unknown, name: string): unknown {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>)[name] : undefined;
+}
+
+/**
+ * A map of booleans, keeping only the entries that are actually booleans.
+ *
+ * This used to be handed straight through if it happened to be an object, so a `sidebarCollapsed`
+ * left holding strings by some older version travelled as `Record<string, boolean>` and was read
+ * as one everywhere after.
+ */
+function sanitizeBoolMap(value: unknown): Record<string, boolean> {
+  if (typeof value !== "object" || value === null) return {};
+  const out: Record<string, boolean> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry === "boolean") out[key] = entry;
+  }
+  return out;
+}
+
 function loadUiPrefs(): UiPrefs {
   if (typeof localStorage === "undefined") return { ...defaultUiPrefs };
   try {
     const raw = readWithLegacy(localStorage, UI_PREFS_KEY, UI_PREFS_LEGACY_KEY);
     if (!raw) return { ...defaultUiPrefs };
-    const parsed = JSON.parse(raw) as any;
+    // Whatever a previous version of the app left in localStorage. Every field below is checked
+    // before it is used, which is the only reason reading this is safe at all.
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     
     let dockSizes = defaultUiPrefs.dockSizes;
     if (parsed.dockSizes && typeof parsed.dockSizes === "object") {
       dockSizes = {
-        comm: clampDockSize(parsed.dockSizes.comm),
-        diff: clampDockSize(parsed.dockSizes.diff),
-        term: clampDockSize(parsed.dockSizes.term),
+        comm: clampDockSize(saved(parsed.dockSizes, "comm")),
+        diff: clampDockSize(saved(parsed.dockSizes, "diff")),
+        term: clampDockSize(saved(parsed.dockSizes, "term")),
       };
     }
 
     return {
       paneWidths: {
-        sidebar: clampPaneWidth("sidebar", parsed.paneWidths?.sidebar),
-        dock: clampPaneWidth("dock", parsed.paneWidths?.dock),
+        sidebar: clampPaneWidth("sidebar", saved(parsed.paneWidths, "sidebar")),
+        dock: clampPaneWidth("dock", saved(parsed.paneWidths, "dock")),
       },
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
@@ -681,7 +704,7 @@ function loadUiPrefs(): UiPrefs {
       termPanelOpen: parsed.termPanelOpen === true,
       dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
-      sidebarCollapsed: parsed.sidebarCollapsed && typeof parsed.sidebarCollapsed === "object" ? parsed.sidebarCollapsed : {},
+      sidebarCollapsed: sanitizeBoolMap(parsed.sidebarCollapsed),
       sidebarOpen: parsed.sidebarOpen !== false,
       activeTerminalIds: sanitizeActiveTerminalIds(parsed.activeTerminalIds),
     };
@@ -2233,7 +2256,9 @@ async function runInit(): Promise<void> {
     
     // Migration to version 3
     if ((config.version as number) < 3) {
-      const oldConfig = config as any;
+      // Before version 3 there was one workspace instead of projects. The old shape is named
+      // rather than cast away: it is the only record left of what this migration is reading.
+      const oldConfig = config as unknown as { workspaceDir?: string };
       let projects: Project[] = [];
       let lastProjectId = null;
       if (oldConfig.workspaceDir) {
@@ -2255,7 +2280,7 @@ async function runInit(): Promise<void> {
         mcpServers: config.mcpServers || [],
         sharedContext: config.sharedContext || ""
       } as unknown as AppConfig;
-      delete (config as any).workspaceDir;
+      delete (config as { workspaceDir?: string }).workspaceDir;
       isSeed = true; // force save
     }
 
