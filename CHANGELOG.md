@@ -8,6 +8,31 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The chat going blank when you send a message.** Reported four times, never reproduced, never
+  logged — because nothing was going wrong in the sense anyone was looking for. No error was thrown,
+  the messages were still in the store, and switching project brought them back, which is the
+  signature of something that is still there and is not being shown.
+
+  The thread follows its own tail every 150 ms while an answer is being written, and it did that
+  with `scrollIntoView`. That method does not scroll *a* container: it walks up from the element and
+  scrolls **every scroll container on the way**, as far as each one needs. And `overflow: hidden`
+  does not opt a box out of being a scroll container — it takes away the scrollbar and stops the
+  wheel, while `scrollTop` keeps working. The app shell is `h-screen overflow-hidden` and so are
+  several boxes under it, so a shell whose content came out a few pixels taller than its box could
+  be scrolled by that call, and then stayed scrolled: no scrollbar, no wheel, nothing to put it
+  back. The conversation slid up out of sight and stayed there until something forced a relayout —
+  opening a sidebar, changing project.
+
+  It only ever happened on sending a message because that loop only runs while an answer is coming.
+  And the harness built to catch it never could: its transport cannot start a run, so the loop it
+  needed to exercise never started once.
+
+  The three feeds now set `scrollTop` on the container they already hold, which touches that element
+  and nothing above it. They also check, on the same beat, whether anything above them has been
+  scrolled — nothing up there is ever supposed to be — and put it back, with a line in the log
+  saying which box and by how much. If this ever happens again there will be something to read.
+
+
 - **Changing a project's team no longer leaves its planner delegating to agents that are gone.** A
   delegation is resolved by name against the planner's children, and the names the planner knows
   come from the system prompt it was handed. But a session is *resumed*: the CLI replays the whole

@@ -6,6 +6,32 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le chat devenant blanc à l'envoi d'un message.** Signalé quatre fois, jamais reproduit, jamais
+  journalisé — parce que rien ne tombait en panne au sens où tout le monde cherchait. Aucune
+  exception n'était levée, les messages étaient toujours dans le store, et changer de projet les
+  ramenait : la signature de quelque chose qui est toujours là et qu'on ne montre pas.
+
+  Le fil suit sa propre fin toutes les 150 ms pendant qu'une réponse s'écrit, et il le faisait avec
+  `scrollIntoView`. Cette méthode ne fait pas défiler *un* conteneur : elle remonte depuis l'élément
+  et fait défiler **tous les conteneurs de défilement du chemin**, autant que chacun en a besoin. Et
+  `overflow: hidden` ne dispense pas une boîte d'être un conteneur de défilement : cela retire la
+  barre et coupe la molette, tandis que `scrollTop` continue de fonctionner. Le shell de
+  l'application est en `h-screen overflow-hidden`, plusieurs boîtes en dessous aussi : un shell dont
+  le contenu dépassait de quelques pixels pouvait donc être défilé par cet appel — et le restait :
+  pas de barre, pas de molette, rien pour le remettre. La conversation montait hors de vue et y
+  restait jusqu'à ce que quelque chose force un relayout : ouvrir un panneau, changer de projet.
+
+  Cela n'arrivait qu'à l'envoi d'un message parce que cette boucle ne tourne que pendant qu'une
+  réponse arrive. Et le harnais construit pour l'attraper n'a jamais pu : son transport ne sait pas
+  démarrer une exécution, donc la boucle qu'il devait solliciter n'a jamais démarré une seule fois.
+
+  Les trois fils écrivent désormais `scrollTop` sur le conteneur qu'ils tiennent déjà, ce qui touche
+  cet élément et rien au-dessus. Ils vérifient aussi, au même rythme, si quelque chose au-dessus a
+  été défilé — rien là-haut ne devrait jamais l'être — et le remettent, avec une ligne dans le
+  journal disant quelle boîte et de combien. Si cela se reproduit, il y aura enfin quelque chose à
+  lire.
+
+
 - **Changer l'équipe d'un projet ne laisse plus son planificateur déléguer à des agents disparus.**
   Une délégation se résout par nom contre les enfants du planificateur, et les noms que celui-ci
   connaît viennent du system prompt qu'on lui a remis. Mais la session est *reprise* : le CLI rejoue

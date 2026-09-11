@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { QueuedMessages } from "./QueuedMessages";
 import { Button } from "@/components/ui/button";
@@ -104,13 +105,13 @@ export function OrchestratorThread() {
   // Opening a project (or finishing its first load) lands on the newest turn, not the oldest.
   useEffect(() => {
     if (historyLoading) return;
-    const id = requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: "end" }));
+    const id = requestAnimationFrame(() => stick(scrollRef.current));
     return () => cancelAnimationFrame(id);
   }, [currentProjectId, historyLoading]);
 
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
-      if (stickToBottom) bottomRef.current?.scrollIntoView();
+      if (stickToBottom) stick(scrollRef.current);
       else setNewCount(n => n + (rootRuns.length - prevCount.current));
     }
     prevCount.current = rootRuns.length;
@@ -118,14 +119,19 @@ export function OrchestratorThread() {
 
   // A run streams dozens of deltas per second: follow the bottom on a timer (and inside a frame)
   // instead of scrolling on every one of them.
+  //
+  // `stick` and not `scrollIntoView`: this is the loop that runs while a message is being answered,
+  // and `scrollIntoView` scrolls every scroll container above the element as well — including the
+  // `overflow: hidden` ones, which have no scrollbar to put back. See `lib/stick-to-bottom.ts`.
   useEffect(() => {
     if (!hasRunning || !stickToBottom) return;
     const interval = setInterval(() => {
       requestAnimationFrame(() => {
         const el = scrollRef.current;
-        if (!el) return;
-        if (el.scrollHeight - el.scrollTop - el.clientHeight < 4) return;
-        bottomRef.current?.scrollIntoView({ block: "end" });
+        if (!el || isAtBottom(el)) return;
+        stick(el);
+        // Nothing above a thread is meant to scroll, so if something did, this is where it shows.
+        resetScrolledAncestors(el, "thread");
       });
     }, FOLLOW_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -145,7 +151,7 @@ export function OrchestratorThread() {
     if (!el || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       lastHeight.current = el.clientHeight;
-      if (stickRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+      if (stickRef.current) stick(el);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -167,7 +173,7 @@ export function OrchestratorThread() {
   const scrollToBottom = () => {
     setStickToBottom(true);
     setNewCount(0);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    stick(scrollRef.current, "smooth");
   };
 
   return (

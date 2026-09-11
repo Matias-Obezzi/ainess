@@ -6,6 +6,31 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **El chat quedándose en blanco al mandar un mensaje.** Reportado cuatro veces, nunca reproducido,
+  nunca logueado — porque no estaba fallando nada en el sentido que todos buscábamos. No se tiraba
+  ninguna excepción, los mensajes seguían en el store, y cambiar de proyecto los traía de vuelta,
+  que es la firma de algo que sigue ahí y no se está mostrando.
+
+  El hilo sigue su propia cola cada 150 ms mientras se está escribiendo una respuesta, y lo hacía
+  con `scrollIntoView`. Ese método no scrollea *un* contenedor: sube desde el elemento y scrollea
+  **todos los contenedores scrolleables del camino**, lo que cada uno necesite. Y `overflow: hidden`
+  no saca a una caja de ser un contenedor scrolleable: le saca la barra y le corta la rueda,
+  mientras `scrollTop` sigue funcionando igual. El shell de la app es `h-screen overflow-hidden` y
+  varias cajas debajo también, así que un shell cuyo contenido quedaba unos píxeles más alto que su
+  caja podía ser scrolleado por esa llamada — y se quedaba scrolleado: sin barra, sin rueda, sin
+  nada que lo devuelva. La conversación se iba para arriba fuera de vista y se quedaba ahí hasta que
+  algo forzaba un relayout: abrir un sidebar, cambiar de proyecto.
+
+  Pasaba sólo al mandar un mensaje porque ese bucle sólo corre mientras viene una respuesta. Y el
+  harness que armé para cazarlo nunca pudo: su transporte no puede arrancar una corrida, así que el
+  bucle que tenía que ejercitar no arrancó ni una vez.
+
+  Los tres feeds ahora escriben `scrollTop` sobre el contenedor que ya tienen a mano, que toca ese
+  elemento y nada por encima. Además chequean, en el mismo pulso, si algo arriba de ellos fue
+  scrolleado — nada allá arriba tendría que estarlo nunca — y lo devuelven, con una línea en el log
+  diciendo qué caja y cuánto. Si vuelve a pasar, esta vez va a haber algo para leer.
+
+
 - **Cambiar el equipo de un proyecto ya no deja al planificador delegando a agentes que no están.**
   Una delegación se resuelve por nombre contra los hijos del planificador, y los nombres que el
   planificador conoce vienen del system prompt que le pasaron. Pero la sesión se *reanuda*: el CLI

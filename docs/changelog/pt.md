@@ -6,6 +6,31 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **O chat ficando em branco ao enviar uma mensagem.** Relatado quatro vezes, nunca reproduzido,
+  nunca registrado — porque nada estava falhando no sentido em que todos procuravam. Nenhuma exceção
+  era lançada, as mensagens continuavam no store, e trocar de projeto as trazia de volta, que é a
+  assinatura de algo que continua lá e não está sendo mostrado.
+
+  O fio segue a própria cauda a cada 150 ms enquanto uma resposta é escrita, e fazia isso com
+  `scrollIntoView`. Esse método não rola *um* contêiner: ele sobe a partir do elemento e rola **todos
+  os contêineres roláveis do caminho**, o quanto cada um precisar. E `overflow: hidden` não tira uma
+  caixa de ser um contêiner rolável: tira a barra e corta a roda, enquanto `scrollTop` continua
+  funcionando. O shell do app é `h-screen overflow-hidden` e várias caixas abaixo também, então um
+  shell cujo conteúdo ficava alguns pixels mais alto que sua caixa podia ser rolado por essa
+  chamada — e ficava rolado: sem barra, sem roda, sem nada que o devolvesse. A conversa subia para
+  fora de vista e ficava lá até que algo forçasse um relayout: abrir uma barra lateral, trocar de
+  projeto.
+
+  Só acontecia ao enviar uma mensagem porque esse laço só roda enquanto vem uma resposta. E o
+  harness feito para caçá-lo nunca conseguiu: seu transporte não consegue iniciar uma execução,
+  então o laço que precisava exercitar nunca começou uma vez sequer.
+
+  Os três feeds agora escrevem `scrollTop` no contêiner que já têm em mãos, o que toca aquele
+  elemento e nada acima. Também verificam, no mesmo pulso, se algo acima deles foi rolado — nada lá
+  em cima deveria estar — e devolvem, com uma linha no log dizendo qual caixa e quanto. Se
+  acontecer de novo, desta vez haverá algo para ler.
+
+
 - **Mudar a equipe de um projeto não deixa mais o planejador delegando para agentes que não estão
   lá.** Uma delegação é resolvida por nome contra os filhos do planejador, e os nomes que o
   planejador conhece vêm do system prompt que lhe entregaram. Mas a sessão é *retomada*: o CLI

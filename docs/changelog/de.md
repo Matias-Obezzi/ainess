@@ -6,6 +6,31 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Der Chat, der beim Senden einer Nachricht leer wird.** Viermal gemeldet, nie reproduziert, nie
+  protokolliert — weil nichts kaputtging in dem Sinn, in dem alle gesucht haben. Es wurde keine
+  Ausnahme geworfen, die Nachrichten standen weiter im Store, und ein Projektwechsel holte sie
+  zurück: die Signatur von etwas, das noch da ist und nicht gezeigt wird.
+
+  Der Verlauf folgt seinem eigenen Ende alle 150 ms, während eine Antwort geschrieben wird, und tat
+  das mit `scrollIntoView`. Diese Methode scrollt nicht *einen* Container: Sie geht vom Element
+  aufwärts und scrollt **jeden Scroll-Container auf dem Weg**, so weit jeder es braucht. Und
+  `overflow: hidden` nimmt einer Box nicht die Eigenschaft, ein Scroll-Container zu sein: Es nimmt
+  die Bildlaufleiste und das Mausrad, `scrollTop` funktioniert weiter. Die Hülle der App ist
+  `h-screen overflow-hidden`, mehrere Kästen darunter auch — eine Hülle, deren Inhalt ein paar Pixel
+  höher ausfiel als ihr Kasten, konnte von diesem Aufruf gescrollt werden und blieb dann gescrollt:
+  keine Leiste, kein Rad, nichts, was sie zurückholt. Das Gespräch rutschte aus dem Bild und blieb
+  dort, bis etwas ein Neu-Layout erzwang: eine Seitenleiste öffnen, das Projekt wechseln.
+
+  Es passierte nur beim Senden, weil diese Schleife nur läuft, während eine Antwort kommt. Und der
+  Prüfstand, der es fangen sollte, konnte es nie: Sein Transport kann keinen Lauf starten, also
+  startete die Schleife, die er hätte belasten müssen, kein einziges Mal.
+
+  Die drei Verläufe setzen jetzt `scrollTop` auf dem Container, den sie ohnehin halten — das
+  betrifft dieses Element und nichts darüber. Sie prüfen im selben Takt auch, ob etwas über ihnen
+  gescrollt wurde — dort oben soll nie etwas gescrollt sein — und stellen es zurück, mit einer Zeile
+  im Log, welche Box und um wie viel. Falls es wieder passiert, gibt es diesmal etwas zu lesen.
+
+
 - **Das Team eines Projekts zu ändern lässt seinen Planer nicht mehr an verschwundene Agenten
   delegieren.** Eine Delegation wird über den Namen gegen die Kinder des Planers aufgelöst, und die
   Namen, die der Planer kennt, stammen aus dem System-Prompt, den er bekommen hat. Eine Sitzung wird

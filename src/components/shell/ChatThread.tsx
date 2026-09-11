@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { useAppStore, selectAllAgents } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   // Opening a chat (or finishing its load) lands on the last message, instantly.
   useEffect(() => {
     if (chatLoading) return;
-    const id = requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
+    const id = requestAnimationFrame(() => stick(scrollRef.current));
     return () => cancelAnimationFrame(id);
   }, [chatId, chatLoading]);
 
@@ -86,24 +87,34 @@ export function ChatThread({ chatId }: { chatId: string }) {
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
       if (stickToBottom) {
-        endRef.current?.scrollIntoView({ behavior: "smooth" });
+        stick(scrollRef.current, "smooth");
       } else {
         setNewCount(n => n + (messages.length - prevMessagesLength.current));
       }
     } else if (stickToBottom) {
       // The last message growing as it is written: follow it, but only from the bottom.
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
+      stick(scrollRef.current, "smooth");
     }
     prevMessagesLength.current = messages.length;
   }, [messages.length, messages[messages.length - 1]?.text, stickToBottom]);
 
   // While an agent answers, its activity grows inside the bubble: follow the bottom on a timer
   // instead of reacting to every streamed delta.
+  //
+  // `stick` and not `scrollIntoView`: this loop runs for as long as an answer is being written, and
+  // `scrollIntoView` scrolls every scroll container above the element too — including the
+  // `overflow: hidden` ones, which have no scrollbar to put back. See `lib/stick-to-bottom.ts`.
   const answering = messages.some(m => m.status === "pending");
   useEffect(() => {
     if (!answering || !stickToBottom) return;
     const interval = setInterval(() => {
-      requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        stick(el);
+        // Nothing above a chat is meant to scroll, so if something did, this is where it shows.
+        resetScrolledAncestors(el, "chat");
+      });
     }, 150);
     return () => clearInterval(interval);
   }, [answering, stickToBottom]);
@@ -126,7 +137,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const scrollToBottom = () => {
     setStickToBottom(true);
     setNewCount(0);
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    stick(scrollRef.current, "smooth");
   };
 
   const handleRemove = async () => {
