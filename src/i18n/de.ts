@@ -878,6 +878,16 @@ export const de: Dictionary = {
   "verify.passed": "Die Überprüfung ist bestanden.",
   "verify.failedMessage": "Die Überprüfung scheiterte an {label}:\n{output}",
   "verify.failedDetail": "Überprüfung fehlgeschlagen ({label}):\n{output}",
+  "revert.button": "Rückgängig machen",
+  "revert.confirmTitle": "Die Arbeit dieses Laufs rückgängig machen?",
+  "revert.confirmAction": "Rückgängig",
+  "revert.willRestore": "Kommen zurück, wie sie waren ({n}): {files}",
+  "revert.willRemove": "Werden gelöscht, weil sie vorher nicht da waren ({n}): {files}",
+  "revert.willKeep": "Bleiben unberührt, waren schon vor dem Lauf geändert ({n}): {files}",
+  "revert.nothingToUndo": "Nichts rückgängig zu machen: Der Ordner ist, wie er war.",
+  "revert.unavailable": "Der Zustand des Ordners lässt sich nicht lesen, also lässt sich nichts sicher rückgängig machen.",
+  "revert.done": "Fertig: {n} Datei(en) zurückgesetzt.",
+  "revert.failed": "git konnte es nicht rückgängig machen: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "Neuer Agent",

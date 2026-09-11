@@ -879,6 +879,16 @@ export const es: Dictionary = {
   "verify.passed": "La verificación pasó.",
   "verify.failedMessage": "La verificación falló en {label}:\n{output}",
   "verify.failedDetail": "Verificación fallida ({label}):\n{output}",
+  "revert.button": "Deshacer lo que hizo",
+  "revert.confirmTitle": "¿Deshacer el trabajo de esta corrida?",
+  "revert.confirmAction": "Deshacer",
+  "revert.willRestore": "Vuelven a como estaban ({n}): {files}",
+  "revert.willRemove": "Se borran, porque no existían antes ({n}): {files}",
+  "revert.willKeep": "No se tocan, ya estaban modificados antes de que la corrida arrancara ({n}): {files}",
+  "revert.nothingToUndo": "No hay nada que deshacer: la carpeta está como estaba.",
+  "revert.unavailable": "No se puede leer el estado de la carpeta, así que no hay nada que deshacer con seguridad.",
+  "revert.done": "Listo: {n} archivo(s) vueltos atrás.",
+  "revert.failed": "git no pudo deshacerlo: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "Nuevo agente",

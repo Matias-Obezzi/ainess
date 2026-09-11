@@ -18,6 +18,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   que o projeto já declara — `test`, `lint`, `typecheck`, `check`, `build` do package.json, Makefile
   ou Cargo.toml — são oferecidos com um clique.
 
+- **Desfazer o que uma execução fez.** Uma execução já guardava onde aconteceu e sobre qual commit
+  começou, porque o painel de diff precisava disso, então o material já estava lá; o que faltava era
+  saber o que a pasta já tinha em andamento *antes*. Sem isso, "desfazer a execução" e "jogar fora
+  tudo que não foi commitado" são o mesmo comando, e não são a mesma coisa: o segundo come trabalho
+  seu que você nunca mencionou. Agora uma execução também anota o que estava modificado ou não
+  rastreado quando começou, e o detalhe de uma execução terminada tem um botão que devolve a pasta
+  ao que era.
+
+  É deliberadamente conservador e diz em voz alta antes de tocar em nada: a lista de arquivos que
+  voltam, a dos que são apagados porque não existiam antes, e a dos que não vai tocar — arquivos que
+  já estavam modificados quando a execução começou, em que a edição do agente e a sua estão no mesmo
+  arquivo e daqui não há como separá-las. Apagar é `git clean` com uma lista explícita de caminhos,
+  nunca solto sobre a pasta. Execuções anteriores a isso também oferecem o botão, tratando a pasta
+  como se tivesse começado limpa, que é a única coisa que se pode supor sobre elas.
+
   Nada é repetido automaticamente. Uma falha que o agente não consegue consertar viraria um laço
   rodando a noite inteira, e decidir devolver um trabalho é uma decisão, não um reflexo.
 

@@ -19,6 +19,22 @@ let one of them fall behind.
   at three in the morning. Commands the project already declares — `test`, `lint`, `typecheck`,
   `check`, `build` from its package.json, Makefile or Cargo.toml — are offered as one click.
 
+- **Undo what a run did.** A run has recorded where it happened and which commit it opened on since
+  the diff panel needed them, so the material for this was already there; what was missing was
+  knowing what the folder *already* had in flight. Without that, "undo the run" and "throw away
+  everything uncommitted" are the same command, and they are not the same thing — the second one
+  eats work you did yourself and never mentioned. So a run now also notes what was modified or
+  untracked when it started, and the detail of a finished run has a button that puts the folder
+  back.
+
+  It is deliberately conservative and it says so out loud before it touches anything: the list of
+  files that go back, the list of files that get deleted because they did not exist before, and the
+  list it will not touch — files that were already modified when the run started, where the agent's
+  edit and yours are in the same file and nothing here can tell them apart. Deleting is `git clean`
+  given an explicit list of paths and never let loose on the folder. Runs recorded before this
+  existed still offer it, treating the folder as having started clean, which is the only thing that
+  can be assumed about them.
+
   Nothing is retried automatically. A failure the agent cannot fix would become a loop that runs all
   night, and deciding to send work back is a decision, not a reflex.
 

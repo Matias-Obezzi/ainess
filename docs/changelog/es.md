@@ -18,6 +18,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   ya declara — `test`, `lint`, `typecheck`, `check`, `build` de su package.json, Makefile o
   Cargo.toml — se ofrecen a un click.
 
+- **Deshacer lo que hizo una corrida.** Una corrida ya guardaba dónde pasó y sobre qué commit
+  arrancó, porque el panel de diff los necesitaba, así que el material estaba; lo que faltaba era
+  saber qué tenía la carpeta en el aire *antes*. Sin eso, "deshacer la corrida" y "tirar todo lo no
+  commiteado" son el mismo comando, y no son lo mismo: el segundo se come trabajo tuyo que nunca
+  mencionaste. Así que ahora una corrida también anota qué estaba modificado o sin trackear cuando
+  arrancó, y el detalle de una corrida terminada tiene un botón que deja la carpeta como estaba.
+
+  Es deliberadamente conservador y lo dice en voz alta antes de tocar nada: la lista de archivos que
+  vuelven atrás, la de los que se borran porque no existían antes, y la de los que no va a tocar —
+  archivos que ya estaban modificados cuando la corrida arrancó, donde la edición del agente y la
+  tuya están en el mismo archivo y desde acá no hay manera de separarlas. Borrar es `git clean` con
+  una lista explícita de rutas, nunca suelto sobre la carpeta. Las corridas anteriores a esto
+  también ofrecen el botón, tratando la carpeta como si hubiera arrancado limpia, que es lo único
+  que se puede suponer de ellas.
+
   No se reintenta nada solo. Una falla que el agente no puede arreglar se convertiría en un loop que
   corre toda la noche, y decidir devolver un trabajo es una decisión, no un reflejo.
 

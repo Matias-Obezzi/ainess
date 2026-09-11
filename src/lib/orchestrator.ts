@@ -10,6 +10,7 @@ import { truncate } from "@/lib/format";
 import { translateNow, activeLocale } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
+import { readTreeState } from "@/lib/run-revert";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
@@ -540,9 +541,19 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       // Not a git repo, repo without commits, or exec failed; leave baseSha undefined.
     }
 
+    // What the folder already had in flight, so undoing this run later can leave it alone. Read
+    // next to the base commit because it is the same question about the same moment.
+    const treeAtStart = baseSha ? await readTreeState(cwd) : null;
+
     useAppStore.setState(state => {
       const run = state.runs[runId];
-      return run ? { runs: { ...state.runs, [runId]: { ...run, cwd, baseSha } } } : state;
+      if (!run) return state;
+      return {
+        runs: {
+          ...state.runs,
+          [runId]: { ...run, cwd, baseSha, ...(treeAtStart ? { treeAtStart } : {}) },
+        },
+      };
     });
 
     // The user pressed stop while the worktree was being prepared. The install itself cannot be

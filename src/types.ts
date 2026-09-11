@@ -471,6 +471,13 @@ export interface Run {
   cwd?: string;
   /** The commit the workspace was on when the run started, so its own diff can be taken later. */
   baseSha?: string;
+  /**
+   * What was already modified or untracked in `cwd` when the run started.
+   *
+   * Only used to undo a run: without it, "put this back" cannot tell the agent's work from work
+   * the user had in flight, and would throw both away. See `lib/run-revert.ts`.
+   */
+  treeAtStart?: { modified: string[]; untracked: string[] };
   /** What the project's verification commands said about this run's work, when it has any. */
   verification?: {
     status: "passed" | "failed";

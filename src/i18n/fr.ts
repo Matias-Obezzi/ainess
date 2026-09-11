@@ -878,6 +878,16 @@ export const fr: Dictionary = {
   "verify.passed": "La vérification est passée.",
   "verify.failedMessage": "La vérification a échoué à {label} :\n{output}",
   "verify.failedDetail": "Vérification échouée ({label}) :\n{output}",
+  "revert.button": "Annuler ce qu'il a fait",
+  "revert.confirmTitle": "Annuler le travail de cette exécution ?",
+  "revert.confirmAction": "Annuler",
+  "revert.willRestore": "Reviennent à leur état d'avant ({n}) : {files}",
+  "revert.willRemove": "Supprimés, car ils n'existaient pas avant ({n}) : {files}",
+  "revert.willKeep": "Laissés tels quels, déjà modifiés avant le début de l'exécution ({n}) : {files}",
+  "revert.nothingToUndo": "Rien à annuler : le dossier est tel qu'il était.",
+  "revert.unavailable": "L'état du dossier ne peut pas être lu, donc rien ne peut être annulé sans risque.",
+  "revert.done": "Fait : {n} fichier(s) remis en état.",
+  "revert.failed": "git n'a pas pu annuler : {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "Nouvel agent",

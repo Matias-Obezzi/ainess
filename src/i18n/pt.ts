@@ -878,6 +878,16 @@ export const pt: Dictionary = {
   "verify.passed": "A verificação passou.",
   "verify.failedMessage": "A verificação falhou em {label}:\n{output}",
   "verify.failedDetail": "Verificação falhou ({label}):\n{output}",
+  "revert.button": "Desfazer o que ele fez",
+  "revert.confirmTitle": "Desfazer o trabalho desta execução?",
+  "revert.confirmAction": "Desfazer",
+  "revert.willRestore": "Voltam a como estavam ({n}): {files}",
+  "revert.willRemove": "São apagados, porque não existiam antes ({n}): {files}",
+  "revert.willKeep": "Não são tocados, já estavam modificados antes de a execução começar ({n}): {files}",
+  "revert.nothingToUndo": "Não há nada para desfazer: a pasta está como estava.",
+  "revert.unavailable": "Não dá para ler o estado da pasta, então não há nada que possa ser desfeito com segurança.",
+  "revert.done": "Pronto: {n} arquivo(s) revertido(s).",
+  "revert.failed": "o git não conseguiu desfazer: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "Novo agente",

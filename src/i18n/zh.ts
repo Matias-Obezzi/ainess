@@ -878,6 +878,16 @@ export const zh: Dictionary = {
   "verify.passed": "验证通过。",
   "verify.failedMessage": "验证在 {label} 失败：\n{output}",
   "verify.failedDetail": "验证失败（{label}）：\n{output}",
+  "revert.button": "撤销它做的改动",
+  "revert.confirmTitle": "撤销这次运行的工作？",
+  "revert.confirmAction": "撤销",
+  "revert.willRestore": "恢复成原来的样子（{n}）：{files}",
+  "revert.willRemove": "会被删除，因为之前并不存在（{n}）：{files}",
+  "revert.willKeep": "不会动，在这次运行开始之前就已经改过了（{n}）：{files}",
+  "revert.nothingToUndo": "没有什么可撤销的：文件夹和原来一样。",
+  "revert.unavailable": "读不到文件夹的状态，所以没有什么能安全地撤销。",
+  "revert.done": "完成：{n} 个文件已还原。",
+  "revert.failed": "git 无法撤销：{error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "新建智能体",

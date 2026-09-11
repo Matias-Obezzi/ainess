@@ -18,6 +18,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   drei Uhr morgens erreicht. Befehle, die das Projekt ohnehin angibt — `test`, `lint`, `typecheck`,
   `check`, `build` aus package.json, Makefile oder Cargo.toml — werden per Klick angeboten.
 
+- **Rückgängig machen, was ein Lauf getan hat.** Ein Lauf hielt schon fest, wo er stattfand und auf
+  welchem Commit er öffnete, weil das Diff-Panel das brauchte; was fehlte, war zu wissen, was der
+  Ordner *vorher* schon offen hatte. Ohne das sind „den Lauf rückgängig machen" und „alles
+  Uncommittete wegwerfen" derselbe Befehl, und sie sind nicht dasselbe: Das zweite frisst Arbeit,
+  die Sie selbst gemacht und nie erwähnt haben. Ein Lauf notiert jetzt also auch, was beim Start
+  geändert oder unversioniert war, und das Detail eines beendeten Laufs hat einen Knopf, der den
+  Ordner zurückstellt.
+
+  Er ist absichtlich vorsichtig und sagt es laut, bevor er irgendetwas anfasst: die Liste der
+  Dateien, die zurückkommen, die der Dateien, die gelöscht werden, weil es sie vorher nicht gab, und
+  die, die er nicht anfasst — Dateien, die beim Start schon geändert waren, wo die Änderung des
+  Agenten und Ihre in derselben Datei liegen und von hier aus nicht zu trennen sind. Gelöscht wird
+  mit `git clean` und einer ausdrücklichen Pfadliste, nie frei auf dem Ordner. Ältere Läufe bieten
+  den Knopf ebenfalls an und behandeln den Ordner als anfangs sauber, was das Einzige ist, was sich
+  über sie annehmen lässt.
+
   Nichts wird automatisch wiederholt. Ein Fehlschlag, den der Agent nicht beheben kann, würde zu
   einer Schleife, die die ganze Nacht läuft, und Arbeit zurückzugeben ist eine Entscheidung, kein
   Reflex.

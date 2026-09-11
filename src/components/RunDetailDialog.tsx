@@ -6,6 +6,7 @@ import { useT, useLocale } from "@/i18n/useT";
 import { parseResult } from "@/lib/providers";
 import { DiffPanel } from "@/components/DiffPanel";
 import { rawLinesOf, rawLinesVersion, subscribeRawLines } from "@/lib/raw-lines";
+import { RevertRunButton } from "@/components/RevertRunButton";
 
 export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
@@ -88,7 +89,10 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm mb-1">{t("diff.taskTitle")}</h4>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="font-semibold text-sm">{t("diff.taskTitle")}</h4>
+              <RevertRunButton run={run} />
+            </div>
             {/* A real height, not a max: the panel is `h-full` and scrolls its own list under a
                 header that stays put. Against an auto-height box that header scrolls away. */}
             <div className="h-[50vh] overflow-hidden border rounded bg-background">

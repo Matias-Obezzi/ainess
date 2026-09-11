@@ -879,6 +879,16 @@ export const en: Dictionary = {
   "verify.passed": "Verification passed.",
   "verify.failedMessage": "Verification failed at {label}:\n{output}",
   "verify.failedDetail": "Verification failed ({label}):\n{output}",
+  "revert.button": "Undo what it did",
+  "revert.confirmTitle": "Undo this run's work?",
+  "revert.confirmAction": "Undo",
+  "revert.willRestore": "Go back to how they were ({n}): {files}",
+  "revert.willRemove": "Deleted, because they did not exist before ({n}): {files}",
+  "revert.willKeep": "Left alone, already modified before the run started ({n}): {files}",
+  "revert.nothingToUndo": "Nothing to undo: the folder is as it was.",
+  "revert.unavailable": "The folder's state cannot be read, so there is nothing that can be undone safely.",
+  "revert.done": "Done: {n} file(s) put back.",
+  "revert.failed": "git could not undo it: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "New agent",

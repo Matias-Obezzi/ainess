@@ -19,6 +19,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   `test`, `lint`, `typecheck`, `check`, `build` de son package.json, Makefile ou Cargo.toml — sont
   proposées en un clic.
 
+- **Annuler ce qu'une exécution a fait.** Une exécution notait déjà où elle avait eu lieu et sur
+  quel commit elle s'était ouverte, parce que le panneau de diff en avait besoin ; ce qui manquait,
+  c'était de savoir ce que le dossier avait *déjà* en cours. Sans cela, « annuler l'exécution » et
+  « jeter tout ce qui n'est pas commité » sont la même commande, et ce ne sont pas la même chose :
+  la seconde dévore le travail que vous avez fait vous-même sans jamais le dire. Une exécution note
+  donc aussi ce qui était modifié ou non suivi quand elle a commencé, et le détail d'une exécution
+  terminée a un bouton qui remet le dossier en état.
+
+  C'est délibérément conservateur, et cela le dit à voix haute avant de toucher à quoi que ce soit :
+  la liste des fichiers qui reviennent, celle des fichiers supprimés parce qu'ils n'existaient pas
+  avant, et celle à laquelle il ne touchera pas — les fichiers déjà modifiés au démarrage, où votre
+  modification et celle de l'agent sont dans le même fichier et où rien ici ne peut les distinguer.
+  Supprimer, c'est `git clean` avec une liste explicite de chemins, jamais lâché sur le dossier. Les
+  exécutions antérieures proposent aussi le bouton, en considérant que le dossier était propre au
+  départ, ce qui est la seule chose que l'on puisse en supposer.
+
   Rien n'est relancé automatiquement. Un échec que l'agent ne peut pas corriger deviendrait une
   boucle tournant toute la nuit, et décider de renvoyer un travail est une décision, pas un réflexe.
 

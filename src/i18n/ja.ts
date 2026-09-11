@@ -879,6 +879,16 @@ export const ja: Dictionary = {
   "verify.passed": "検証は通りました。",
   "verify.failedMessage": "{label} で検証に失敗しました:\n{output}",
   "verify.failedDetail": "検証失敗（{label}）:\n{output}",
+  "revert.button": "やったことを取り消す",
+  "revert.confirmTitle": "この実行の作業を取り消しますか？",
+  "revert.confirmAction": "取り消す",
+  "revert.willRestore": "元の状態に戻ります（{n}）: {files}",
+  "revert.willRemove": "前は存在しなかったので削除されます（{n}）: {files}",
+  "revert.willKeep": "触りません。実行が始まる前から変更されていました（{n}）: {files}",
+  "revert.nothingToUndo": "取り消すものはありません。フォルダは元のままです。",
+  "revert.unavailable": "フォルダの状態を読めないので、安全に取り消せるものはありません。",
+  "revert.done": "完了: {n} 件のファイルを戻しました。",
+  "revert.failed": "git が取り消せませんでした: {error}",
 
   // ---- Agent dialog ----
   "agentDialog.newAgent": "新しいエージェント",
