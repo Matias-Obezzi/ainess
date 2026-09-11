@@ -1137,6 +1137,9 @@ export const en: Dictionary = {
   "mcpDialog.transport": "Transport",
   "mcpDialog.commandAndArgs": "Command and arguments (e.g.: npx -y @modelcontextprotocol/server-filesystem /dir)",
   "mcpDialog.env": "Environment variables (one per line, KEY=value)",
+  "mcpDialog.headers": "HTTP headers (one per line, Name: value)",
+  "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
+  "mcpDialog.headersHint": "You can write Bearer ${MI_VARIABLE}: the client expands the variable from the environment, so the secret is not stored in the config file.",
   "mcpDialog.enabledForAll": "Enabled for all agents",
 
   // ---- Preset dialog ----

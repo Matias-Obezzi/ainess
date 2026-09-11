@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { McpServer } from "@/types";
+import { parseHeaders, formatHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
 
 interface Props {
@@ -27,6 +28,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
   const [command, setCommand] = useState("");
   const [url, setUrl] = useState("");
   const [env, setEnv] = useState("");
+  const [headers, setHeaders] = useState("");
   const [allAgents, setAllAgents] = useState(true);
   const [enabledAgents, setEnabledAgents] = useState<Set<string>>(new Set());
 
@@ -46,6 +48,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         } else {
           setEnv("");
         }
+        setHeaders(formatHeaders(server.headers));
         setAllAgents(server.enabledFor === "all");
         setEnabledAgents(server.enabledFor === "all" ? new Set() : new Set(server.enabledFor));
       } else {
@@ -55,6 +58,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         setCommand("");
         setUrl("");
         setEnv("");
+        setHeaders("");
         setAllAgents(true);
         setEnabledAgents(new Set());
       }
@@ -69,6 +73,10 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
         envObj[line.substring(0, idx).trim()] = line.substring(idx + 1).trim();
       }
     }
+
+    // Only an http server has requests to put headers on; a transport switched to stdio drops
+    // whatever was typed rather than saving a field nothing will ever read.
+    const headersObj = transport === "http" ? parseHeaders(headers) : {};
 
     let cmdStr = undefined;
     let argsStr: string[] | undefined = undefined;
@@ -86,6 +94,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
       args: argsStr,
       url: transport === "http" ? url : undefined,
       env: Object.keys(envObj).length > 0 ? envObj : undefined,
+      headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
       enabledFor: allAgents ? "all" : Array.from(enabledAgents)
     });
     onOpenChange(false);
@@ -138,6 +147,19 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               <div className="space-y-1">
                 <Label>URL</Label>
                 <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/sse" />
+              </div>
+            )}
+
+            {transport === "http" && (
+              <div className="space-y-1">
+                <Label>{t("mcpDialog.headers")}</Label>
+                <Textarea
+                  className="font-mono resize-none min-h-[80px]"
+                  value={headers}
+                  onChange={e => setHeaders(e.target.value)}
+                  placeholder={t("mcpDialog.headersPlaceholder")}
+                />
+                <p className="text-xs text-muted-foreground">{t("mcpDialog.headersHint")}</p>
               </div>
             )}
 

@@ -4,6 +4,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **Um servidor MCP hospedado agora pode receber os cabeçalhos que pede.** O ainess escrevia um
+  servidor http na configuração da sessão como um tipo e uma URL e nada mais, então qualquer coisa
+  atrás de um token bearer era simplesmente inalcançável: o campo para guardar o token não existia.
+  Agora existe: um cabeçalho por linha, `Nome: valor`, num servidor http. O valor é cortado nos
+  primeiros dois-pontos e não nos últimos, porque um valor tem dois-pontos próprios (uma URL, uma
+  hora, um token em base64) e cortar no fim entrega ao servidor meia credencial — uma falha que
+  aparece muito depois, como um erro de autenticação que ninguém rastreia até um sinal de pontuação.
+  Escreva `Bearer ${SUA_VARIAVEL}` e o cliente a expande do ambiente na hora de conectar, então o
+  segredo nunca entra no arquivo de configuração. O Antigravity também os recebe, via `agy mcp add
+  --header`, com a flag e o valor como argumentos separados e nunca uma linha de comando montada
+  colando strings. E quando esse comando falha, a saída dele é mostrada a você com a credencial já
+  retirada: a mensagem continua nomeando o servidor que falhou, que é a parte que sempre serviu.
+
 ### Corrigido
 
 - **A caixa vazia não desenha mais duas frases na mesma linha de espaço.** A sugestão cinza é

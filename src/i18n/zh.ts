@@ -1136,6 +1136,9 @@ export const zh: Dictionary = {
   "mcpDialog.transport": "传输方式",
   "mcpDialog.commandAndArgs": "命令和参数（例如：npx -y @modelcontextprotocol/server-filesystem /dir）",
   "mcpDialog.env": "环境变量（每行一个，KEY=value）",
+  "mcpDialog.headers": "HTTP 请求头（每行一个，名称: 值）",
+  "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
+  "mcpDialog.headersHint": "可以写 Bearer ${MI_VARIABLE}：客户端会从环境变量展开该变量，密钥不会保存在配置文件里。",
   "mcpDialog.enabledForAll": "对所有智能体启用",
 
   // ---- Preset dialog ----

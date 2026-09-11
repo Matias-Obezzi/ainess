@@ -505,7 +505,12 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       const obj: any = { mcpServers: {} };
       for (const s of mcpServers) {
         if (s.transport === "http") {
-          obj.mcpServers[s.name] = { type: "http", url: s.url };
+          // `headers` only when there are any: an empty object is not what a hand-written config
+          // looks like, and the key is what tells the CLI to authenticate at all.
+          const hasHeaders = s.headers && Object.keys(s.headers).length > 0;
+          obj.mcpServers[s.name] = hasHeaders
+            ? { type: "http", url: s.url, headers: s.headers }
+            : { type: "http", url: s.url };
         } else {
           obj.mcpServers[s.name] = { command: s.command, args: s.args || [], env: s.env || {} };
         }

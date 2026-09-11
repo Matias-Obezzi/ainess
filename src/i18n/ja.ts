@@ -1137,6 +1137,9 @@ export const ja: Dictionary = {
   "mcpDialog.transport": "トランスポート",
   "mcpDialog.commandAndArgs": "コマンドと引数 (例: npx -y @modelcontextprotocol/server-filesystem /dir)",
   "mcpDialog.env": "環境変数 (1行に1つ、CLAVE=valor)",
+  "mcpDialog.headers": "HTTP ヘッダー（1 行に 1 つ、名前: 値）",
+  "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
+  "mcpDialog.headersHint": "Bearer ${MI_VARIABLE} と書けます。クライアントが環境変数から値を展開するため、シークレットは設定ファイルに保存されません。",
   "mcpDialog.enabledForAll": "すべてのエージェントで有効",
 
   // ---- Preset dialog ----

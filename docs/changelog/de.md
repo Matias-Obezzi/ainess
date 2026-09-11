@@ -4,6 +4,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Ein gehosteter MCP-Server bekommt jetzt die Header, nach denen er fragt.** ainess schrieb einen
+  http-Server in die Sitzungskonfiguration als Typ und URL und sonst nichts, also war alles hinter
+  einem Bearer-Token schlicht nicht erreichbar: das Feld für den Token existierte nicht. Jetzt schon:
+  ein Header pro Zeile, `Name: Wert`, bei einem http-Server. Der Wert wird am ersten Doppelpunkt
+  geteilt und nicht am letzten, denn ein Wert hat eigene Doppelpunkte (eine URL, eine Uhrzeit, ein
+  Base64-Token), und am Ende zu schneiden übergibt dem Server eine halbe Anmeldung — ein Fehler, der
+  viel später als Authentifizierungsproblem auftaucht, das niemand bis zu einem Satzzeichen
+  zurückverfolgt. Schreib `Bearer ${DEINE_VARIABLE}`, und der Client löst sie beim Verbinden aus der
+  Umgebung auf, sodass das Geheimnis nie in die Konfigurationsdatei gerät. Antigravity bekommt sie
+  ebenfalls, über `agy mcp add --header`, Flag und Wert als getrennte Argumente und nie eine aus
+  Strings zusammengeklebte Kommandozeile. Und wenn dieser Befehl fehlschlägt, wird seine Ausgabe mit
+  bereits entfernter Anmeldung gezeigt: die Meldung nennt weiterhin den Server, der fehlschlug — der
+  Teil, der je nützlich war.
+
 ### Behoben
 
 - **Das leere Feld malt nicht mehr zwei Sätze in dieselbe Zeile.** Der graue Vorschlag wird auf der

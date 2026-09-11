@@ -6,6 +6,21 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **A hosted MCP server can be given the headers it asks for.** ainess wrote an http server into the
+  session config as a type and a URL and nothing else, so anything behind a bearer token simply
+  could not be reached — the field to hold the token did not exist. It does now: one header per
+  line, `Name: value`, on an http server. The value is split on the first colon only, because a
+  value has colons of its own (a URL, a time, a base64 token) and cutting at the last one hands the
+  server half a credential — a failure that surfaces much later as an authentication error nobody
+  traces back to punctuation. Write `Bearer ${YOUR_VARIABLE}` and the client expands it from the
+  environment at connection time, so the secret itself never goes into the config file. Antigravity
+  gets them too, through `agy mcp add --header`, flag and value as separate arguments and never a
+  command line built by pasting strings together. And when that command fails, its output is echoed
+  back to you with the credential taken out of it first: the message still names the server that
+  failed, which is the part that was ever useful.
+
 ### Fixed
 
 - **The empty box no longer draws two sentences in the same line of space.** The grey suggestion is

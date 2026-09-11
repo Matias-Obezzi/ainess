@@ -4,6 +4,23 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **Un serveur MCP hébergé peut enfin recevoir les en-têtes qu'il demande.** ainess écrivait un
+  serveur http dans la configuration de session comme un type et une URL, rien d'autre : tout ce qui
+  se trouvait derrière un jeton bearer était donc inatteignable, le champ pour le jeton n'existait
+  pas. Il existe maintenant : un en-tête par ligne, `Nom : valeur`, sur un serveur http. La valeur
+  est coupée au premier deux-points et non au dernier, car une valeur a ses propres deux-points (une
+  URL, une heure, un jeton en base64) et couper à la fin remet au serveur la moitié d'une
+  authentification — une panne qui apparaît bien plus tard, sous la forme d'une erreur
+  d'authentification que personne ne remonte jusqu'à un signe de ponctuation. Écrivez
+  `Bearer ${VOTRE_VARIABLE}` et le client l'étend depuis l'environnement au moment de se connecter,
+  si bien que le secret n'entre jamais dans le fichier de configuration. Antigravity les reçoit
+  aussi, via `agy mcp add --header`, l'option et la valeur en arguments séparés et jamais une ligne
+  de commande assemblée en collant des chaînes. Et quand cette commande échoue, sa sortie vous est
+  montrée après en avoir retiré l'identifiant : le message nomme toujours le serveur en cause, la
+  seule partie qui ait jamais servi.
+
 ### Corrigé
 
 - **Le champ vide ne dessine plus deux phrases dans la même ligne d'espace.** La suggestion grise

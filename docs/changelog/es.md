@@ -4,6 +4,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
+### Nuevo
+
+- **Un servidor MCP alojado ahora puede recibir los headers que pide.** ainess escribía un servidor
+  http en la configuración de la sesión como un tipo y una URL y nada más, así que cualquier cosa
+  detrás de un token bearer era directamente inalcanzable: el campo donde meter el token no existía.
+  Ahora sí: un header por línea, `Nombre: valor`, en un servidor http. El valor se corta en el primer
+  dos puntos y no en el último, porque un valor tiene dos puntos propios (una URL, una hora, un token
+  en base64) y cortar al final le entrega al servidor media credencial — una falla que aparece mucho
+  después, como un error de autenticación que nadie rastrea hasta un signo de puntuación. Si escribís
+  `Bearer ${TU_VARIABLE}`, el cliente la expande desde el entorno al conectarse, así que el secreto
+  nunca entra al archivo de configuración. A Antigravity también le llegan, por `agy mcp add
+  --header`, con el flag y el valor como argumentos separados y nunca una línea de comando armada
+  pegando strings. Y cuando ese comando falla, su salida se te muestra con la credencial ya sacada:
+  el mensaje sigue nombrando el servidor que falló, que es la parte que alguna vez sirvió.
+
 ### Arreglado
 
 - **La caja vacía ya no dibuja dos frases en el mismo renglón.** La sugerencia gris se pinta en la
