@@ -39,6 +39,18 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **`ainess agents edit` macht eine gesetzte Berechtigung nicht mehr stillschweigend rückgängig.**
+  Jeder Editor übergibt dem Store einen ganzen Agenten, und der Store setzt ihn an die Stelle des
+  alten — ein Feld, das dieser Editor nicht in das Objekt gebaut hat, bleibt also nicht unberührt,
+  es ist weg. Die CLI baut dieses Objekt aus ihren eigenen Flags und hat keines für die
+  Freigabe-Ausnahme bei Delegationen, keines für den Worktree und keines für den Wiederholversuch
+  nach Kontingent. `ainess agents edit Impl --model x` setzte einen auf "nie fragen" gestellten
+  Agenten damit zurück auf die globale Einstellung, und mit der eingeschalteten Einstellung fragte
+  er bei der nächsten Delegation wieder. Eine Bearbeitung legt sich jetzt über den Agenten, der da
+  war: was sie benennt, gewinnt; was sie nicht benennt, bleibt. Benennen zählt auch dann, wenn der
+  Wert "der globalen Einstellung folgen" ist — der reist als gar nichts und muss ein "nie" löschen
+  können.
+
 - **Ein Chat wird nicht mehr leer, wenn du eine Nachricht hineinschickst.** Eine Unterhaltung zu
   laden heißt, eine Datei zu lesen, und das dauert. In diesem Zeitfenster gingen drei verschiedene
   Dinge schief, und alle drei endeten gleich: der Verlauf weg, bis man den Chat verließ und

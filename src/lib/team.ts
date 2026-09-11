@@ -37,3 +37,21 @@ export function rootPlannerClash(
   if (candidate.role !== "planner" || candidate.parentId !== null) return undefined;
   return roster.find(a => a.id !== candidate.id && a.role === "planner" && a.parentId === null);
 }
+
+/**
+ * The agent an edit leaves behind: what the edit says, on top of what the agent already was.
+ *
+ * Every editor hands the store a whole `AgentConfig` and the store puts it in place of the old one,
+ * so a field the editor did not build into that object is not "left alone", it is gone. `ainess
+ * agents edit` builds it out of its own flags, and it has no flag for the delegation approval
+ * override, for the worktree or for the quota retry — so `ainess agents edit Impl --model x` used to
+ * put an agent set to "never ask" back to following the global setting, and that agent started
+ * asking for approval again on the next delegation it received.
+ *
+ * A key `edited` does carry wins, even when it carries it as `undefined`: that is how the agent
+ * dialog says "follow the global setting" and it has to be able to erase a `true`.
+ */
+export function agentAfterEdit(existing: AgentConfig | undefined, edited: AgentConfig): AgentConfig {
+  if (!existing) return edited;
+  return { ...existing, ...edited, id: existing.id };
+}

@@ -21,6 +21,7 @@ import * as os from "node:os";
 import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { defaultAgentDescription } from "@/lib/providers";
+import { agentAfterEdit } from "@/lib/team";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 import { nodeI18n } from "@/i18n/node";
 import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
@@ -406,9 +407,13 @@ async function main() {
         };
       }
 
-      store.addAgent(agentsProjectId, newAgent);
+      // Only the flags above are named here, and `addAgent` replaces the agent whole: without
+      // this, an edit dropped everything the CLI has no flag for — the delegation approval
+      // override among them, which is how an agent set to "never ask" went back to asking.
+      const saved = agentAfterEdit(agent, newAgent);
+      store.addAgent(agentsProjectId, saved);
       await store.saveConfig();
-      print(newAgent, `Agente ${sub === "add" ? "agregado" : "editado"}: ${name}`);
+      print(saved, `Agente ${sub === "add" ? "agregado" : "editado"}: ${name}`);
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];

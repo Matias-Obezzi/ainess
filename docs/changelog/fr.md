@@ -39,6 +39,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **`ainess agents edit` ne défait plus en silence une permission que vous aviez posée.** Chaque
+  éditeur remet au store un agent entier et le store le met à la place de l'ancien : un champ que
+  cet éditeur n'a pas construit dans l'objet n'est donc pas laissé tranquille, il disparaît. La CLI
+  construit cet objet à partir de ses propres options, et elle n'en a aucune pour la dérogation
+  d'approbation des délégations, ni pour le worktree, ni pour la reprise après quota. `ainess agents
+  edit Impl --model x` remettait donc un agent réglé sur « ne jamais demander » à suivre le réglage
+  global, et avec ce réglage activé il redemandait une approbation à la délégation suivante. Une
+  modification se pose désormais par-dessus l'agent qui était là : ce qu'elle nomme l'emporte, ce
+  qu'elle ne nomme pas est conservé. Et le nommer compte même quand la valeur est « suivre le
+  réglage global », qui voyage comme rien du tout et doit pouvoir effacer un « jamais ».
+
 - **Une conversation ne devient plus vide quand vous y envoyez un message.** Charger une
   conversation, c'est lire un fichier, et lire un fichier prend du temps. Dans cette fenêtre, trois
   choses différentes tournaient mal et les trois finissaient pareil : l'historique disparu jusqu'à

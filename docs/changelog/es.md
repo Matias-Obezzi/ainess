@@ -38,6 +38,17 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **`ainess agents edit` ya no deshace en silencio un permiso que habías puesto.** Todo editor le
+  entrega al store un agente entero y el store lo pone en lugar del viejo, así que un campo que ese
+  editor no construyó dentro del objeto no queda intacto: desaparece. El CLI arma ese objeto con
+  sus propios flags, y no tiene flag para el override de aprobación de delegaciones, ni para el
+  worktree, ni para el reintento por cuota. Por eso `ainess agents edit Impl --model x` dejaba a un
+  agente marcado como «nunca pedir» siguiendo de nuevo el ajuste global, y con ese ajuste encendido
+  volvía a pedir aprobación en la siguiente delegación que recibía. Ahora una edición se apoya
+  sobre el agente que ya estaba: lo que nombra gana, lo que no nombra se conserva. Y nombrarlo
+  cuenta incluso cuando el valor es «seguir el ajuste global», que viaja como nada y tiene que
+  poder borrar un «nunca».
+
 - **Un chat ya no se queda en blanco cuando le mandás un mensaje.** Cargar una conversación es
   leer un archivo, y leer un archivo lleva tiempo. Adentro de esa ventana fallaban tres cosas
   distintas y las tres terminaban igual: el historial desaparecido hasta que salías del chat y

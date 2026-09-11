@@ -39,6 +39,16 @@ let one of them fall behind.
 
 ### Fixed
 
+- **`ainess agents edit` no longer quietly undoes a permission you set.** Every editor hands the
+  store a whole agent and the store puts it in place of the old one, so a field the editor did not
+  build into that object is not left alone — it is gone. The CLI builds that object out of its own
+  flags, and it has no flag for the delegation approval override, for the worktree or for the quota
+  retry. `ainess agents edit Impl --model x` therefore put an agent set to "never ask" back to
+  following the global setting, and with that setting on it started asking for approval again on
+  the next delegation it received. An edit now lands on top of the agent that was there: what it
+  names wins, what it does not name is kept. Naming it still counts even when the value is "follow
+  the global setting", which travels as nothing at all and has to be able to erase a "never".
+
 - **A chat no longer goes blank when you send a message into it.** Loading a conversation is a file
   read, and a file read takes time. Three separate things went wrong inside that window and all
   three ended the same way: the history gone until you left the chat and came back, which retried
