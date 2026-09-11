@@ -30,11 +30,19 @@ export function HomeComposer() {
   const openProject = useAppStore(state => state.openProject);
   const submitPrompt = useAppStore(state => state.submitPrompt);
   const openSettings = useAppStore(state => state.openSettings);
+  // The box is drawn before the config comes off disk, so that it works on an install with nothing
+  // in it. Until it does, `formations` is empty for a reason that is not "you have no teams".
+  const loaded = useAppStore(state => state.loaded);
 
   const [prompt, setPrompt] = useState("");
   const [workspaceDir, setWorkspaceDir] = useState("");
-  const [formationId, setFormationId] = useState<string | null>(defaultFormationId);
   const [sending, setSending] = useState(false);
+
+  // Derived, not initial state: `useState(defaultFormationId)` reads it once, on the first render,
+  // and this box is drawn before the config is off disk — so the default team arrived a moment too
+  // late and the field sat empty for somebody who has one. A pick of your own wins over it.
+  const [pickedFormationId, setPickedFormationId] = useState<string | null>(null);
+  const formationId = pickedFormationId ?? defaultFormationId;
 
   // The folder decides everything else: an existing one brings its own team, so the team field is
   // not a choice to make but a fact to report.
@@ -44,8 +52,10 @@ export function HomeComposer() {
     [prompt, workspaceDir, formationId, formations, projects],
   );
 
-  const noTeams = blockers.includes("formations");
-  const ready = blockers.length === 0 && !sending;
+  // Only once there is something to be sure about: telling somebody who has three teams that they
+  // have never made one, for the second it takes to read the file, is worse than saying nothing.
+  const noTeams = loaded && blockers.includes("formations");
+  const ready = loaded && blockers.length === 0 && !sending;
 
   const chooseDir = async () => {
     const dir = await pickWorkspaceDir();
@@ -105,7 +115,10 @@ export function HomeComposer() {
           }
         }}
         placeholder={t("home.start.placeholder")}
-        className="min-h-[84px] resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+        // `dark:bg-transparent` is not redundant: the base textarea fills itself with
+        // `dark:bg-input/30`, and a plain `bg-transparent` loses to a dark variant in the cascade.
+        // Without it the box draws its own grey rectangle inside this card, two boxes deep.
+        className="min-h-[84px] resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -131,7 +144,7 @@ export function HomeComposer() {
         ) : (
           <Select
             value={formationId ?? ""}
-            onValueChange={value => setFormationId(value || null)}
+            onValueChange={value => setPickedFormationId(value || null)}
             disabled={noTeams}
           >
             <SelectTrigger className="h-8 w-[13rem] text-xs">
@@ -159,7 +172,7 @@ export function HomeComposer() {
 
       {/* One line, about the first thing that is missing. Listing all three at once reads as a form
           you failed rather than a next step. */}
-      {blockers.length > 0 && (
+      {loaded && blockers.length > 0 && (
         <p className={cn("text-xs", noTeams ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
           {t(`home.start.need.${blockers[0]}`)}
           {noTeams && (

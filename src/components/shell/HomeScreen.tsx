@@ -155,246 +155,253 @@ export function HomeScreen() {
   ];
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-6 gap-6">
-      <div className="flex justify-between items-center">
-        {/* The screen is Inicio and one of its three sections is Proyectos. Reusing the sidebar's
-            own word for the page keeps the two from both being called the same thing. */}
-        <h2 className="text-xl font-bold">{t("home.greeting")}</h2>
-        <Button variant="outline" onClick={newProject}>{t("sidebar.newProject")}</Button>
-      </div>
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* One column down the middle. Full width, the box stretched across a desktop monitor into a
+          letterbox nobody wants to write a paragraph into. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pb-6">
 
-      {/* First, and before anything is loaded: it is the one thing here that works on an install
-          with nothing in it. */}
-      <HomeComposer />
-
-      {!loaded ? (
-        <div className="flex flex-col gap-1">
-          <ProjectRowSkeleton />
-          <ProjectRowSkeleton />
-          <ProjectRowSkeleton />
+        {/* The whole first screen is the box. Everything else starts below the fold, which is the
+            point: opening the app asks what you want done, it does not present a dashboard. */}
+        <div className="flex min-h-[72vh] flex-col justify-center gap-4">
+          <h2 className="text-center text-2xl font-bold">{t("home.greeting")}</h2>
+          <HomeComposer />
         </div>
-      ) : projects.length === 0 ? (
-        // Not the full empty state any more: the box above is the call to action, and a second one
-        // under it would be two things to do first.
-        <p className="text-sm text-muted-foreground">{t("home.empty.body")}</p>
-      ) : (
-        <>
-          {attentionList.length === 0 && workingList.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("home.allClear")}</p>
-          )}
 
-          {attentionList.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Bell className="w-4 h-4" /> {t("home.attention.title")}
-              </h3>
-              <div className="flex flex-col gap-1">
-                {attentionList.slice(0, 6).map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
-                    onClick={() => {
-                      openProject(item.projectId, null);
-                      if (item.kind === "task") {
-                        setProjectMode("tasks");
-                        if (item.taskId) focusTask(item.taskId);
-                      } else {
-                        setProjectMode("chat");
-                      }
-                    }}
-                  >
-                    <Badge variant="secondary" className="shrink-0 mt-0.5">
-                      {t(`home.attention.kind.${item.kind}`)}
-                    </Badge>
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <span className="font-medium truncate">{item.title}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {[
-                          projectName(item.projectId),
-                          item.agentId ? agentName(item.agentId) : null,
-                          formatTimeAgo(item.at, now, locale),
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-                {attentionList.length > 6 && (
-                  <div className="text-sm text-muted-foreground p-2">{t("home.more", { n: attentionList.length - 6 })}</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {workingList.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Shimmer>{t("home.working.title")}</Shimmer>
-              </h3>
-              <div className="flex flex-col gap-1">
-                {workingList.slice(0, 6).map(item => (
-                  <button
-                    key={`${item.projectId}-${item.agentId}`}
-                    type="button"
-                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
-                    onClick={() => {
-                      openProject(item.projectId, null);
-                      setProjectMode("chat");
-                    }}
-                  >
-                    <div className="shrink-0 mt-0.5">
-                      <AgentAvatar provider={agentProvider(item.agentId)} color={agentColor(item.agentId)} size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <span className="font-medium truncate">
-                        {item.task || t("home.working", { name: agentName(item.agentId) })}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {[
-                          projectName(item.projectId),
-                          agentName(item.agentId),
-                          item.since ? formatTimeAgo(item.since, now, locale) : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-                {workingList.length > 6 && (
-                  <div className="text-sm text-muted-foreground p-2">{t("home.more", { n: workingList.length - 6 })}</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* What has already happened. The lists above are the present tense; without this one the
-              app forgot an afternoon of work the moment it stopped running. */}
-          {recent.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold flex items-center gap-2">
-                <History className="w-4 h-4" /> {t("home.recent.title")}
-              </h3>
-              <div className="flex flex-col gap-1">
-                {recent.map(item => (
-                  <button
-                    key={item.runId}
-                    type="button"
-                    className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
-                    onClick={() => {
-                      // A chat run belongs to its conversation; a task run to the orchestrator
-                      // thread, which is where its answer is.
-                      openProject(item.projectId, item.chatId ?? null, "chat");
-                    }}
-                  >
-                    <div className="shrink-0 mt-1.5">
-                      <StatusDot status={runDotStatus[item.status]} />
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <span className="font-medium truncate">{truncate(item.prompt, 90)}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {[
-                          projectName(item.projectId),
-                          agentName(item.agentId),
-                          formatTimeAgo(item.at, now, locale),
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </div>
-                    {item.kind === "chat" && (
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <HomeUsage />
-
-          <div className="flex flex-col gap-2">
-            <h3 className="font-semibold">{t("home.title")}</h3>
-            <div className="flex flex-col gap-1">
-              {projects.map(p => {
-                const busy = busyByProject[p.id] ?? [];
-                const last = lastRootRun[p.id];
-                const pCounts = counts[p.id] || { needsYou: 0, working: 0 };
-
-                let statusText: string;
-                if (busy.length > 0) {
-                  const first = busy[0];
-                  statusText = first.task
-                    ? t("home.workingOnTask", { name: agentName(first.agentId), task: truncate(first.task, 80) })
-                    : t("home.working", { name: agentName(first.agentId) });
-                } else if (last) {
-                  const timeAgo = formatTimeAgo(last.endedAt ?? last.startedAt, now, locale);
-                  statusText = `${t("home.lastTask", { task: truncate(last.prompt, 80) })} · ${timeAgo}`;
-                } else {
-                  statusText = t("home.noActivity");
-                }
-
-                return (
-                  <ContextMenu key={p.id}>
-                    <ContextMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
-                        onClick={() => openProject(p.id)}
-                      >
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
-                          style={{ backgroundColor: p.color || "#4f8cff" }}
-                        />
-                        <div className="flex-1 min-w-0 flex flex-col">
-                          <div className="flex items-baseline gap-2 min-w-0">
-                            <span className="font-bold truncate shrink-0 max-w-[60%]">{p.name}</span>
-                            {p.workspaceDir && (
-                              <span className="text-xs text-muted-foreground truncate min-w-0" title={p.workspaceDir}>
-                                {shortenPath(p.workspaceDir, 44)}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground truncate">
-                            {statusText}
-                          </span>
-                        </div>
-                        {(pCounts.needsYou > 0 || pCounts.working > 0) && (
-                          <div className="flex items-center gap-1.5 shrink-0 self-center">
-                            {pCounts.needsYou > 0 && (
-                              <Badge variant="secondary">
-                                {plural(
-                                  pCounts.needsYou,
-                                  t("home.counts.needsYou.one", { n: pCounts.needsYou }),
-                                  t("home.counts.needsYou.other", { n: pCounts.needsYou }),
-                                )}
-                              </Badge>
-                            )}
-                            {pCounts.working > 0 && (
-                              <Badge variant="outline">
-                                {plural(
-                                  pCounts.working,
-                                  t("home.counts.working.one", { n: pCounts.working }),
-                                  t("home.counts.working.other", { n: pCounts.working }),
-                                )}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </button>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-48">
-                      <ContextActionItems actions={projectActions(p)} />
-                    </ContextMenuContent>
-                  </ContextMenu>
-                );
-              })}
-            </div>
+        {!loaded ? (
+          <div className="flex flex-col gap-1">
+            <ProjectRowSkeleton />
+            <ProjectRowSkeleton />
+            <ProjectRowSkeleton />
           </div>
-        </>
-      )}
+        ) : projects.length === 0 ? (
+          // Not the full empty state any more: the box above is the call to action, and a second one
+          // under it would be two things to do first.
+          <p className="text-sm text-muted-foreground">{t("home.empty.body")}</p>
+        ) : (
+          <>
+            {attentionList.length === 0 && workingList.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t("home.allClear")}</p>
+            )}
+
+            {attentionList.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Bell className="w-4 h-4" /> {t("home.attention.title")}
+                </h3>
+                <div className="flex flex-col gap-1">
+                  {attentionList.slice(0, 6).map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                      onClick={() => {
+                        openProject(item.projectId, null);
+                        if (item.kind === "task") {
+                          setProjectMode("tasks");
+                          if (item.taskId) focusTask(item.taskId);
+                        } else {
+                          setProjectMode("chat");
+                        }
+                      }}
+                    >
+                      <Badge variant="secondary" className="shrink-0 mt-0.5">
+                        {t(`home.attention.kind.${item.kind}`)}
+                      </Badge>
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <span className="font-medium truncate">{item.title}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {[
+                            projectName(item.projectId),
+                            item.agentId ? agentName(item.agentId) : null,
+                            formatTimeAgo(item.at, now, locale),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                  {attentionList.length > 6 && (
+                    <div className="text-sm text-muted-foreground p-2">{t("home.more", { n: attentionList.length - 6 })}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {workingList.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Shimmer>{t("home.working.title")}</Shimmer>
+                </h3>
+                <div className="flex flex-col gap-1">
+                  {workingList.slice(0, 6).map(item => (
+                    <button
+                      key={`${item.projectId}-${item.agentId}`}
+                      type="button"
+                      className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                      onClick={() => {
+                        openProject(item.projectId, null);
+                        setProjectMode("chat");
+                      }}
+                    >
+                      <div className="shrink-0 mt-0.5">
+                        <AgentAvatar provider={agentProvider(item.agentId)} color={agentColor(item.agentId)} size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <span className="font-medium truncate">
+                          {item.task || t("home.working", { name: agentName(item.agentId) })}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {[
+                            projectName(item.projectId),
+                            agentName(item.agentId),
+                            item.since ? formatTimeAgo(item.since, now, locale) : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                  {workingList.length > 6 && (
+                    <div className="text-sm text-muted-foreground p-2">{t("home.more", { n: workingList.length - 6 })}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* What has already happened. The lists above are the present tense; without this one the
+                app forgot an afternoon of work the moment it stopped running. */}
+            {recent.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <History className="w-4 h-4" /> {t("home.recent.title")}
+                </h3>
+                <div className="flex flex-col gap-1">
+                  {recent.map(item => (
+                    <button
+                      key={item.runId}
+                      type="button"
+                      className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                      onClick={() => {
+                        // A chat run belongs to its conversation; a task run to the orchestrator
+                        // thread, which is where its answer is.
+                        openProject(item.projectId, item.chatId ?? null, "chat");
+                      }}
+                    >
+                      <div className="shrink-0 mt-1.5">
+                        <StatusDot status={runDotStatus[item.status]} />
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <span className="font-medium truncate">{truncate(item.prompt, 90)}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {[
+                            projectName(item.projectId),
+                            agentName(item.agentId),
+                            formatTimeAgo(item.at, now, locale),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </div>
+                      {item.kind === "chat" && (
+                        <MessageSquare className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <HomeUsage />
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold">{t("home.title")}</h3>
+                {/* Down here with the projects now: at the top it competed with the box for being
+                    the thing to do first. The box wins — this is the long way round. */}
+                <Button variant="outline" size="sm" onClick={newProject}>{t("sidebar.newProject")}</Button>
+              </div>
+              <div className="flex flex-col gap-1">
+                {projects.map(p => {
+                  const busy = busyByProject[p.id] ?? [];
+                  const last = lastRootRun[p.id];
+                  const pCounts = counts[p.id] || { needsYou: 0, working: 0 };
+
+                  let statusText: string;
+                  if (busy.length > 0) {
+                    const first = busy[0];
+                    statusText = first.task
+                      ? t("home.workingOnTask", { name: agentName(first.agentId), task: truncate(first.task, 80) })
+                      : t("home.working", { name: agentName(first.agentId) });
+                  } else if (last) {
+                    const timeAgo = formatTimeAgo(last.endedAt ?? last.startedAt, now, locale);
+                    statusText = `${t("home.lastTask", { task: truncate(last.prompt, 80) })} · ${timeAgo}`;
+                  } else {
+                    statusText = t("home.noActivity");
+                  }
+
+                  return (
+                    <ContextMenu key={p.id}>
+                      <ContextMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-start gap-3 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors text-sm group min-w-0"
+                          onClick={() => openProject(p.id)}
+                        >
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                            style={{ backgroundColor: p.color || "#4f8cff" }}
+                          />
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="flex items-baseline gap-2 min-w-0">
+                              <span className="font-bold truncate shrink-0 max-w-[60%]">{p.name}</span>
+                              {p.workspaceDir && (
+                                <span className="text-xs text-muted-foreground truncate min-w-0" title={p.workspaceDir}>
+                                  {shortenPath(p.workspaceDir, 44)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {statusText}
+                            </span>
+                          </div>
+                          {(pCounts.needsYou > 0 || pCounts.working > 0) && (
+                            <div className="flex items-center gap-1.5 shrink-0 self-center">
+                              {pCounts.needsYou > 0 && (
+                                <Badge variant="secondary">
+                                  {plural(
+                                    pCounts.needsYou,
+                                    t("home.counts.needsYou.one", { n: pCounts.needsYou }),
+                                    t("home.counts.needsYou.other", { n: pCounts.needsYou }),
+                                  )}
+                                </Badge>
+                              )}
+                              {pCounts.working > 0 && (
+                                <Badge variant="outline">
+                                  {plural(
+                                    pCounts.working,
+                                    t("home.counts.working.one", { n: pCounts.working }),
+                                    t("home.counts.working.other", { n: pCounts.working }),
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="w-48">
+                        <ContextActionItems actions={projectActions(p)} />
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+      </div>
 
       <ProjectDialog
         isOpen={projectDialogOpen}
