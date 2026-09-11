@@ -20,7 +20,9 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   Rien n'était réellement perdu : le flux est dans le fil de communication et dans la liste
   d'activité. Il avait seulement cessé d'être là où quelqu'un regardait, et un tour sans outils
   n'affichait même pas la section d'activité. La bulle montre désormais tout le tour, et n'ajoute la
-  réponse finale que lorsqu'elle dit quelque chose que la transcription ne contient pas déjà.
+  réponse finale que lorsqu'elle dit quelque chose que la transcription ne contient pas déjà. Le
+  chat en tête-à-tête perdait la même chose par l'autre bout — sa bulle était écrasée par la
+  réponse finale à la fin du tour — et suit désormais la même règle.
 
 - **La liste de modèles de Claude n'avait pas Fable, et `fable-5.1` n'est pas son nom.** Elle est
   écrite dans le code, contrairement à celles d'antigravity et d'opencode qui sont interrogées : elle

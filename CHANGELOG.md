@@ -24,7 +24,8 @@ let one of them fall behind.
   all the activity section did not appear either. The bubble now shows the whole turn, and adds the
   final answer after it only when that answer says something the transcript does not already
   contain — otherwise a plain reply, which is streamed and then repeated as the result, would print
-  twice.
+  twice. The one-on-one chat had the same loss from the other side — its bubble was overwritten
+  with the final answer when the turn ended — and follows the same rule now.
 
 - **Claude's model list had no Fable, and `fable-5.1` is not its name.** The list is written into
   the source, unlike antigravity's and opencode's, which are asked — so it goes stale in silence and

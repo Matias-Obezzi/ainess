@@ -20,7 +20,9 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   Nada se perdeu de fato: o stream está no feed de comunicação e dentro da lista de atividade. Ele
   só tinha deixado de estar em algum lugar onde alguém estivesse olhando, e quando um turno não usava
   nenhuma ferramenta a seção de atividade também não aparecia. Agora a bolha mostra o turno inteiro e
-  acrescenta a resposta final depois só quando ela diz algo que a transcrição já não contém.
+  acrescenta a resposta final depois só quando ela diz algo que a transcrição já não contém. O
+  chat um-a-um perdia o mesmo pelo outro lado — a bolha era sobrescrita com a resposta final no fim
+  do turno — e agora segue a mesma regra.
 
 - **A lista de modelos do Claude não tinha Fable, e `fable-5.1` não é o nome dele.** A lista está
   escrita no código, ao contrário das do antigravity e do opencode, que são consultadas — então ela

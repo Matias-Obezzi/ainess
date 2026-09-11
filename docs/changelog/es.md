@@ -23,7 +23,9 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   cuando un turno no usaba ninguna herramienta la sección de actividad tampoco aparecía. Ahora la
   burbuja muestra el turno entero, y agrega la respuesta final después sólo cuando esa respuesta
   dice algo que la transcripción no tiene ya — si no, una respuesta común, que se streamea y después
-  se repite como resultado, saldría dos veces.
+  se repite como resultado, saldría dos veces. El chat uno-a-uno perdía lo mismo desde el otro
+  lado — su burbuja se pisaba con la respuesta final al terminar el turno — y ahora sigue la misma
+  regla.
 
 - **La lista de modelos de Claude no tenía Fable, y `fable-5.1` no es su nombre.** La lista está
   escrita en el código, a diferencia de las de antigravity y opencode, que se consultan — así que se

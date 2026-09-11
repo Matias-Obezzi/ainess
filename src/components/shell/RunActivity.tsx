@@ -7,6 +7,7 @@
 // instead — one line tall, the finished step leaving through the top as the new one arrives from
 // below — and clicking it opens the history above. See `lib/activity-view` for what folds and why.
 import { ProviderLogo } from "@/components/ProviderLogo";
+import { transcriptOf } from "@/lib/run-answer";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
@@ -116,13 +117,7 @@ function useRunMessages(runId: string): CommMessage[] {
  * string; it is joined anyway because nothing guarantees a turn produced exactly one.
  */
 export function useRunTranscript(runId: string): string {
-  return useAppStore(state => {
-    let text = "";
-    for (const m of activityByRun(state.messages).get(runId) ?? NO_MESSAGES) {
-      if (m.kind === "text") text = text ? `${text}\n${m.text}` : m.text;
-    }
-    return text;
-  });
+  return useAppStore(state => transcriptOf(activityByRun(state.messages).get(runId) ?? NO_MESSAGES, runId));
 }
 
 /** How many steps (tools, delegations, errors) a run has taken. Used for the "Actividad" header. */

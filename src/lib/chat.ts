@@ -7,6 +7,7 @@ import { recordTurn } from "@/lib/agent-history";
 import { buildSystemPrompt } from "@/lib/providers";
 import { translateNow } from "@/i18n/useT";
 import { rewound } from "@/lib/chat-rewind";
+import { runAnswerText, transcriptOf } from "@/lib/run-answer";
 import type { ChatMessage } from "@/types";
 
 /** Tracks the current turn: chatId → { pending participant indices, turnId, responses so far } */
@@ -308,7 +309,14 @@ export function onChatRunFinished(runId: string): void {
   const agent = selectAgent(store, run.agentId);
   const agentName = agent?.name || run.agentId;
 
-  const output = run.status === "error" ? (run.output ? translateNow("chat.runError", { error: run.output }) : translateNow("chat.runFailed")) : (run.output || "");
+  // `run.output` is the provider's final answer — for Claude the `result` line, the last message and
+  // only the last message. Writing that over the bubble threw away everything streamed before it, so
+  // a turn that explained itself and then summarised in one line kept only the line. Same rule as
+  // the orchestrator's thread: the transcript, and the final answer only when it adds to it.
+  const transcript = transcriptOf(store.messages, runId);
+  const output = run.status === "error"
+    ? (run.output ? translateNow("chat.runError", { error: run.output }) : translateNow("chat.runFailed"))
+    : runAnswerText(transcript, run.output || "");
   const msgStatus = run.status === "error" ? "error" as const : "done" as const;
 
   // The session is written where it belongs the moment the provider reports it (see

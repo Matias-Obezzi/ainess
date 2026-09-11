@@ -20,7 +20,9 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Verloren war nie etwas: Der Strom steht im Kommunikationsverlauf und in der Aktivitätsliste. Er war
   nur nicht mehr dort, wo jemand hinsah, und ein Zug ganz ohne Werkzeuge zeigte die Aktivität gar
   nicht erst an. Die Blase zeigt jetzt den ganzen Zug und hängt die endgültige Antwort nur an, wenn
-  sie etwas sagt, das die Mitschrift nicht ohnehin enthält.
+  sie etwas sagt, das die Mitschrift nicht ohnehin enthält. Der Einzelchat verlor dasselbe von der
+  anderen Seite — seine Blase wurde am Ende des Zuges mit der endgültigen Antwort überschrieben —
+  und folgt jetzt derselben Regel.
 
 - **In Claudes Modellliste fehlte Fable, und `fable-5.1` ist nicht sein Name.** Die Liste steht im
   Quelltext, anders als die von antigravity und opencode, die abgefragt werden — sie veraltet also

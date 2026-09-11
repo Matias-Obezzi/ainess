@@ -39,3 +39,23 @@ export function runAnswer(transcript: string, output: string): RunAnswer {
   if (streamed === final || streamed.includes(final)) return { transcript: streamed, final: "" };
   return { transcript: streamed, final };
 }
+
+/**
+ * The same decision as one string, for a bubble that holds one `text` rather than two parts.
+ *
+ * The chat's message is a single field, and it used to be overwritten with `run.output` when the
+ * turn ended — the same loss as the thread's, arrived at from the other side.
+ */
+export function runAnswerText(transcript: string, output: string): string {
+  const answer = runAnswer(transcript, output);
+  return [answer.transcript, answer.final].filter(Boolean).join("\n\n");
+}
+
+/** Everything the run said as it said it: its streamed `text` messages, in order. */
+export function transcriptOf(messages: ReadonlyArray<{ runId?: string; kind: string; text: string }>, runId: string): string {
+  let text = "";
+  for (const m of messages) {
+    if (m.runId === runId && m.kind === "text") text = text ? `${text}\n${m.text}` : m.text;
+  }
+  return text;
+}
