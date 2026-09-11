@@ -2,6 +2,34 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Changer l'équipe d'un projet ne laisse plus son planificateur déléguer à des agents disparus.**
+  Une délégation se résout par nom contre les enfants du planificateur, et les noms que celui-ci
+  connaît viennent du system prompt qu'on lui a remis. Mais la session est *reprise* : le CLI rejoue
+  toute la conversation précédente, où l'ancienne équipe était listée et où les délégations vers ces
+  noms ont été faites et ont fonctionné — et une transcription pèse plus lourd qu'un system prompt
+  ajouté par-dessus. Renommer un agent, changer de formation ou ajouter un implémenteur laissait
+  donc le planificateur parler à une équipe qui n'existait plus, et le travail revenait en
+  « délégation échouée ».
+
+  La session garde désormais une note de ce qu'on lui a dit de l'équipe : le nom de cet agent et
+  celui de ses enfants, rien d'autre, car les noms sont tout ce contre quoi une délégation se
+  résout. Quand cela ne correspond plus, le tour suivant ouvre une nouvelle conversation au lieu de
+  reprendre la mauvaise, et le dit. Les sessions ouvertes avant sont adoptées plutôt que jetées : le
+  remède ne peut pas être que tous les agents de tous les projets perdent leur contexte.
+
+- **Une délégation qui nomme un agent inexistant ne perd plus ce travail en silence.** Quand tous
+  les noms étaient faux, le tour était relancé, et c'était juste. Quand *certains* l'étaient, les
+  valides démarraient, les invalides laissaient une erreur dans le fil, et du travail qu'ils
+  portaient il n'était plus jamais question — par personne, à personne. Ces noms voyagent maintenant
+  jusqu'à la fin du tour et sont placés devant le planificateur quand il reprend, avec la liste de
+  ceux qui dépendent réellement de lui. Et un nom qui ne correspondait à personne est pris pour ce
+  qu'il est — la preuve que la session se souvient d'une équipe antérieure — donc cette session est
+  abandonnée et le tour suivant repart de l'équipe qui existe.
+
 ## 0.15.0 — 2026-09-11
 
 ### Nouveau

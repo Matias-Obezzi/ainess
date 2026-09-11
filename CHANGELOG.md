@@ -4,6 +4,33 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **Changing a project's team no longer leaves its planner delegating to agents that are gone.** A
+  delegation is resolved by name against the planner's children, and the names the planner knows
+  come from the system prompt it was handed. But a session is *resumed*: the CLI replays the whole
+  earlier conversation, in which the old roster was listed and delegations to the old names were
+  made and worked — and a transcript is louder than a system prompt appended on top of it. So
+  renaming an agent, swapping the formation or adding an implementer left the planner talking to a
+  team that no longer existed, and the work came back as "delegation failed".
+
+  A session now carries a note of what it was told about the team — this agent's name and its
+  children's, nothing else, because names are the whole of what a delegation resolves against. When
+  that no longer matches, the next turn opens a fresh conversation instead of resuming into the
+  wrong one, and says so. Sessions opened before this are adopted rather than thrown away: the cure
+  should not be every agent in every project losing its context.
+
+- **A delegation that names one agent that does not exist no longer loses that work in silence.**
+  With every name wrong the turn was retried, which was right. With *some* names wrong the valid
+  ones started, the invalid ones produced an error in the feed, and the piece of work behind them
+  was never mentioned again — by anyone, to anyone. Those names now travel to the end of the round
+  and are put in front of the planner when it picks the work back up, along with the list of who
+  actually answers to it. And a name that matched nobody is treated as what it is — proof the
+  session remembers an older team — so that session is dropped and the next turn starts from the
+  team that exists.
+
 ## 0.15.0 — 2026-09-11
 
 ### Added

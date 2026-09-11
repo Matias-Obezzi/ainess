@@ -24,6 +24,7 @@ import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOver
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
+import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -466,7 +467,42 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   // This project's notes, and only this project's: the global one is what sent an agent off to
   // work on somebody else's repo because it had been told about it (see migration 13).
   const sharedContext = project.sharedContext ?? "";
-  const sessionId = resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
+  // A session remembers the team it was opened with, because `--resume` replays the conversation
+  // where that team was named and delegated to. Resuming into a different one is how a planner came
+  // to delegate to an agent that no longer exists (see `lib/session-team.ts`).
+  const fingerprint = teamFingerprint(agent, children);
+  const known = store.runtime[opts.projectId]?.[opts.agentId];
+  const teamChanged = !!known?.sessionId && !opts.chatId && !sessionKnowsTeam(known.sessionTeam, fingerprint);
+  if (teamChanged) {
+    addMessage({
+      projectId: opts.projectId,
+      fromAgentId: "system",
+      toAgentId: opts.agentId,
+      kind: "system",
+      text: translateNow("session.teamChanged", { name: agent.name }),
+    });
+  }
+  const sessionId = teamChanged
+    ? undefined
+    : resumeSessionId(opts, store.runtime[opts.projectId]?.[opts.agentId]?.sessionId);
+  useAppStore.setState(state => {
+    const pRuntime = state.runtime[opts.projectId] || {};
+    const rt = pRuntime[opts.agentId];
+    if (!rt || (rt.sessionTeam === fingerprint && !teamChanged)) return state;
+    return {
+      runtime: {
+        ...state.runtime,
+        [opts.projectId]: {
+          ...pRuntime,
+          [opts.agentId]: {
+            ...rt,
+            sessionTeam: fingerprint,
+            ...(teamChanged ? { sessionId: undefined, sessionUpdatedAt: Date.now() } : {}),
+          },
+        },
+      },
+    };
+  });
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
   const hasPast = Object.values(store.runs).some(r =>
     r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
@@ -952,9 +988,41 @@ function onRunFinished(runId: string) {
           }
         }
 
+        // A name that matches no child is the symptom of a session that remembers an older team,
+        // which is exactly what `sessionTeam` prevents from here on — but a session already in that
+        // state has to get out of it. Dropping it makes the next turn open fresh, with a system
+        // prompt listing the team that actually exists.
+        if (unknown.length > 0) {
+          useAppStore.setState(state => {
+            const pRuntime = state.runtime[run.projectId] || {};
+            const rt = pRuntime[agent.id];
+            if (!rt?.sessionId) return state;
+            return {
+              runtime: {
+                ...state.runtime,
+                [run.projectId]: {
+                  ...pRuntime,
+                  [agent.id]: { ...rt, sessionId: undefined, sessionUpdatedAt: Date.now() },
+                },
+              },
+            };
+          });
+        }
+
         if (startedCount > 0) {
           waitingForChildren = true;
           agentStatus = "waiting";
+          // Some names landed and some did not. Retrying the turn now would run the planner beside
+          // the children it just started, so what went nowhere is carried to the continuation and
+          // put in front of it there — rather than ending, as it used to, as an error message in
+          // the feed and a piece of work nobody ever hears about again.
+          if (unknown.length > 0) {
+            useAppStore.setState(state => {
+              const stored = state.runs[runId];
+              if (!stored) return state;
+              return { runs: { ...state.runs, [runId]: { ...stored, unknownDelegations: unknown } } };
+            });
+          }
         } else if (unknown.length > 0) {
           if (run.round + 1 <= store.config.maxRounds) {
             const validNames = children.length > 0 ? children.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
@@ -1615,6 +1683,15 @@ function maybeContinueParent(parentRunId: string) {
 
       outputText += quotaNote(childRun, childAgent);
       outputText += "\n";
+    }
+
+    // Delegations of this turn that reached nobody. Said here because this is the first moment the
+    // planner is listening again, and the work behind them still has to be done by someone.
+    const unknown = parentRun.unknownDelegations ?? [];
+    if (unknown.length > 0) {
+      const roster = selectChildren(store, parentRun.projectId, parentRun.agentId);
+      const valid = roster.length > 0 ? roster.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
+      outputText += "\n" + translateNow("delegation.retryUnknown", { names: unknown.join(", "), valid }) + "\n";
     }
 
     const cancelled = cancelledRuns.delete(parentRunId);

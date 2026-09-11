@@ -1522,6 +1522,7 @@ export const zh: Dictionary = {
   "delegation.couldNotStart": "向「{name}」的委派根本没有开始，所以没有什么可等的。",
   "delegation.retryUnknown": "您的委派没有一个到达真实的代理：{names}。您指挥的代理有：{valid}。请使用这些确切的名称再次委派。",
   "delegation.noChildren": "无",
+  "session.teamChanged": "团队变了，所以 {name} 会开一段新的对话：之前那段还记着旧的智能体，会把活派给它们。",
   "delegation.gaveUp": "回合已用尽且未能委派：此团队中不存在代理 {names}。",
   "rounds.maxReached": "已达到最大回合数 {n}：任务在此停止。",
   "rounds.maxReachedDetail": "任务在达到最大回合数 {n} 时停止。请检查已完成的工作并从那里继续。",

@@ -1524,6 +1524,7 @@ export const es: Dictionary = {
   "delegation.couldNotStart": "La delegación a «{name}» no llegó a arrancar, así que no hay nada que esperar de ella.",
   "delegation.retryUnknown": "Ninguna de tus delegaciones llegó a un agente real: {names}. Los que tenés bajo tu mando son: {valid}. Volvé a delegar con esos nombres exactos.",
   "delegation.noChildren": "ninguno",
+  "session.teamChanged": "El equipo cambió, así que {name} arranca una conversación nueva: la anterior recordaba a los agentes de antes y les habría delegado a ellos.",
   "delegation.gaveUp": "Se agotaron las rondas sin poder delegar: los agentes {names} no existen en este equipo.",
   "rounds.maxReached": "Se alcanzó el máximo de {n} rondas: la tarea se corta acá.",
   "rounds.maxReachedDetail": "La tarea se cortó al llegar al máximo de {n} rondas. Revisá lo que quedó hecho y seguí desde ahí.",

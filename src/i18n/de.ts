@@ -1522,6 +1522,7 @@ export const de: Dictionary = {
   "delegation.couldNotStart": "Die Delegation an „{name}“ ist nie gestartet, es gibt also nichts, worauf man warten müsste.",
   "delegation.retryUnknown": "Keine deiner Delegationen hat einen echten Agenten erreicht: {names}. Die dir unterstellten Agenten sind: {valid}. Delegiere erneut mit genau diesen Namen.",
   "delegation.noChildren": "keine",
+  "session.teamChanged": "Das Team hat sich geändert, also beginnt {name} ein neues Gespräch: Das vorige kannte noch die alten Agenten und hätte an sie delegiert.",
   "delegation.gaveUp": "Maximale Anzahl an Runden erreicht, ohne zu delegieren: Die Agenten {names} existieren in diesem Team nicht.",
   "rounds.maxReached": "Maximum von {n} Runden erreicht: Die Aufgabe wird hier abgebrochen.",
   "rounds.maxReachedDetail": "Die Aufgabe wurde beim Erreichen des Maximums von {n} Runden abgebrochen. Überprüfe, was erledigt wurde, und fahre von dort fort.",

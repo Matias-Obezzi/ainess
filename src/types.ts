@@ -420,6 +420,13 @@ export interface AgentRuntime {
   sessionId?: string;
   /** When `sessionId` last changed (set or cleared); newest wins when merging with disk. */
   sessionUpdatedAt?: number;
+  /**
+   * What the session was told about the team: this agent's name and its children's.
+   *
+   * A resumed conversation carries the old roster with it, so a session opened under one team
+   * cannot be handed to another — see `lib/session-team.ts`.
+   */
+  sessionTeam?: string;
   lastError?: string;
   /** What is being set up before the run can start ("Creando el worktree…"). In memory only. */
   preparing?: string;
@@ -478,6 +485,14 @@ export interface Run {
   cwd?: string;
   /** The commit the workspace was on when the run started, so its own diff can be taken later. */
   baseSha?: string;
+  /**
+   * Names this run delegated to that matched no child of its agent.
+   *
+   * Kept because the work they carried has to be mentioned again when the round comes back: with
+   * some delegations valid the run cannot simply be retried, and without this the piece of work
+   * behind a mistyped name disappeared with the error message.
+   */
+  unknownDelegations?: string[];
   /**
    * What was already modified or untracked in `cwd` when the run started.
    *

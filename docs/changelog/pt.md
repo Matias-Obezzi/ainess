@@ -2,6 +2,33 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **Mudar a equipe de um projeto não deixa mais o planejador delegando para agentes que não estão
+  lá.** Uma delegação é resolvida por nome contra os filhos do planejador, e os nomes que o
+  planejador conhece vêm do system prompt que lhe entregaram. Mas a sessão é *retomada*: o CLI
+  reproduz a conversa inteira, onde a equipe antiga estava listada e onde as delegações para aqueles
+  nomes foram feitas e funcionaram — e uma transcrição pesa mais do que um system prompt colado por
+  cima. Então renomear um agente, trocar a formação ou somar um implementador deixava o planejador
+  falando com uma equipe que já não existia, e o trabalho voltava como "delegação falhou".
+
+  Agora a sessão guarda uma nota do que lhe contaram sobre a equipe: o nome daquele agente e o dos
+  seus filhos, nada mais, porque os nomes são tudo contra o que uma delegação se resolve. Quando
+  isso deixa de bater, o turno seguinte abre uma conversa nova em vez de retomar a errada, e diz
+  isso. Sessões abertas antes disso são adotadas em vez de descartadas: a cura não pode ser todos os
+  agentes de todos os projetos perderem seu contexto.
+
+- **Uma delegação que nomeia um agente que não existe não perde mais aquele trabalho em silêncio.**
+  Com todos os nomes errados o turno era repetido, e isso estava certo. Com *alguns* errados, os
+  válidos começavam, os inválidos deixavam um erro no feed, e do trabalho que carregavam não se
+  falava mais — nem ninguém, nem com ninguém. Agora esses nomes viajam até o fim da rodada e são
+  colocados na frente do planejador quando ele retoma, junto com a lista de quem de fato responde a
+  ele. E um nome que não bateu com ninguém é tratado pelo que é — prova de que a sessão lembra de
+  uma equipe anterior — então essa sessão é descartada e o turno seguinte começa da equipe que
+  existe.
+
 ## 0.15.0 — 2026-09-11
 
 ### Novo

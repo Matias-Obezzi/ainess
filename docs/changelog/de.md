@@ -2,6 +2,34 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Das Team eines Projekts zu ändern lässt seinen Planer nicht mehr an verschwundene Agenten
+  delegieren.** Eine Delegation wird über den Namen gegen die Kinder des Planers aufgelöst, und die
+  Namen, die der Planer kennt, stammen aus dem System-Prompt, den er bekommen hat. Eine Sitzung wird
+  aber *fortgesetzt*: Das CLI spielt das ganze frühere Gespräch erneut ab, in dem das alte Team
+  aufgezählt war und Delegationen an jene Namen gemacht wurden und funktionierten — und ein
+  Protokoll ist lauter als ein oben angehängter System-Prompt. Einen Agenten umzubenennen, die
+  Formation zu wechseln oder einen Implementierer hinzuzufügen ließ den Planer also mit einem Team
+  sprechen, das es nicht mehr gab, und die Arbeit kam als „Delegation fehlgeschlagen" zurück.
+
+  Eine Sitzung merkt sich jetzt, was ihr über das Team gesagt wurde: den Namen dieses Agenten und
+  die seiner Kinder, sonst nichts, denn Namen sind alles, wogegen eine Delegation aufgelöst wird.
+  Stimmt das nicht mehr, eröffnet der nächste Zug ein neues Gespräch, statt in das falsche
+  zurückzukehren, und sagt es. Früher eröffnete Sitzungen werden übernommen statt weggeworfen: Die
+  Heilung darf nicht sein, dass jeder Agent in jedem Projekt seinen Kontext verliert.
+
+- **Eine Delegation, die einen nicht existierenden Agenten nennt, verliert diese Arbeit nicht mehr
+  stillschweigend.** Waren alle Namen falsch, wurde der Zug wiederholt, und das war richtig. Waren
+  *einige* falsch, starteten die gültigen, die ungültigen hinterließen einen Fehler im Verlauf, und
+  von der Arbeit dahinter war nie wieder die Rede — von niemandem, gegenüber niemandem. Diese Namen
+  reisen nun bis zum Ende der Runde und werden dem Planer vorgelegt, wenn er wieder übernimmt,
+  zusammen mit der Liste derer, die ihm tatsächlich unterstehen. Und ein Name, der zu niemandem
+  passte, gilt als das, was er ist — Beleg dafür, dass die Sitzung ein älteres Team erinnert — also
+  wird sie verworfen und der nächste Zug beginnt bei dem Team, das existiert.
+
 ## 0.15.0 — 2026-09-11
 
 ### Neu

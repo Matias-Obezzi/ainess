@@ -1523,6 +1523,7 @@ export const ja: Dictionary = {
   "delegation.couldNotStart": "「{name}」への委任は始まらなかったので、待つものはありません。",
   "delegation.retryUnknown": "どの委任も実際のエージェントに届きませんでした: {names}。あなたの指揮下にあるのは次のエージェントです: {valid}。正確な名前を使用してもう一度委任してください。",
   "delegation.noChildren": "なし",
+  "session.teamChanged": "チームが変わったので、{name} は新しい会話を始めます。前の会話は以前のエージェントを覚えていて、そちらに委譲してしまうからです。",
   "delegation.gaveUp": "ラウンドの上限に達しましたが委任できませんでした: エージェント {names} はこのチームに存在しません。",
   "rounds.maxReached": "上限の {n} ラウンドに達しました: タスクはここで終了します。",
   "rounds.maxReachedDetail": "上限の {n} ラウンドに達したためタスクが中断されました。完了した内容を確認し、そこから再開してください。",

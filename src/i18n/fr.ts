@@ -1522,6 +1522,7 @@ export const fr: Dictionary = {
   "delegation.couldNotStart": "La délégation à « {name} » n'a jamais démarré, il n'y a donc rien à en attendre.",
   "delegation.retryUnknown": "Aucune de vos délégations n'a atteint un agent réel : {names}. Ceux sous vos ordres sont : {valid}. Déléguez à nouveau en utilisant ces noms exacts.",
   "delegation.noChildren": "aucun",
+  "session.teamChanged": "L'équipe a changé, donc {name} démarre une nouvelle conversation : la précédente se souvenait des anciens agents et leur aurait délégué.",
   "delegation.gaveUp": "Plus de tours sans déléguer : les agents {names} ne font pas partie de cette équipe.",
   "rounds.maxReached": "Le maximum de {n} tours a été atteint : la tâche s'arrête ici.",
   "rounds.maxReachedDetail": "La tâche s'est arrêtée après avoir atteint le maximum de {n} tours. Regardez ce qui a été fait et reprenez à partir de là.",

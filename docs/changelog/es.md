@@ -2,6 +2,34 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **Cambiar el equipo de un proyecto ya no deja al planificador delegando a agentes que no están.**
+  Una delegación se resuelve por nombre contra los hijos del planificador, y los nombres que el
+  planificador conoce vienen del system prompt que le pasaron. Pero la sesión se *reanuda*: el CLI
+  vuelve a reproducir la conversación entera, donde estaba listado el equipo viejo y donde las
+  delegaciones a esos nombres se hicieron y funcionaron — y una transcripción pesa más que un system
+  prompt agregado encima. Así que renombrar un agente, cambiar la formación o sumar un implementador
+  dejaba al planificador hablándole a un equipo que ya no existía, y el trabajo volvía como
+  "delegación fallida".
+
+  Ahora la sesión se guarda con una nota de qué le contaron sobre el equipo: el nombre de ese agente
+  y el de sus hijos, nada más, porque los nombres son todo contra lo que se resuelve una delegación.
+  Cuando eso deja de coincidir, el turno siguiente abre una conversación nueva en vez de reanudar la
+  equivocada, y lo dice. Las sesiones abiertas antes de esto se adoptan en lugar de tirarse: la cura
+  no puede ser que todos los agentes de todos los proyectos pierdan su contexto.
+
+- **Una delegación que nombra a un agente que no existe ya no pierde ese trabajo en silencio.** Si
+  todos los nombres estaban mal, el turno se reintentaba, y eso estaba bien. Si estaban mal *algunos*,
+  los válidos arrancaban, los inválidos dejaban un error en el feed, y del trabajo que llevaban
+  adentro no se volvía a hablar — ni nadie, ni con nadie. Ahora esos nombres viajan hasta el final de
+  la ronda y se le ponen adelante al planificador cuando retoma, junto con la lista de quiénes
+  responden de verdad a su mando. Y un nombre que no le coincidió a nadie se toma por lo que es —
+  prueba de que la sesión recuerda un equipo anterior — así que esa sesión se descarta y el turno
+  siguiente arranca desde el equipo que existe.
+
 ## 0.15.0 — 2026-09-11
 
 ### Nuevo

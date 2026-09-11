@@ -1524,6 +1524,7 @@ export const en: Dictionary = {
   "delegation.couldNotStart": "The delegation to “{name}” never started, so there is nothing to wait for from it.",
   "delegation.retryUnknown": "None of your delegations reached a real agent: {names}. The ones under your command are: {valid}. Delegate again using those exact names.",
   "delegation.noChildren": "none",
+  "session.teamChanged": "The team changed, so {name} starts a fresh conversation: the previous one remembered the old agents and would have delegated to them.",
   "delegation.gaveUp": "Out of rounds without delegating: the agents {names} are not on this team.",
   "rounds.maxReached": "Hit the ceiling of {n} rounds: the task stops here.",
   "rounds.maxReachedDetail": "The task stopped at the ceiling of {n} rounds. Look at what got done and pick it up from there.",
