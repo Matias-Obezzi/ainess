@@ -12,7 +12,8 @@ import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
-import { AgentConfig, Project, Budget } from "@/types";
+import { AgentConfig, Project, Budget, VerifyCommand } from "@/types";
+import { VerifySection } from "@/components/VerifySection";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 /** Value of the formation select when the project starts with no agents at all. */
@@ -38,6 +39,7 @@ export function ProjectDialog({
   const [dailyUsd, setDailyUsd] = useState("");
   const [monthlyUsd, setMonthlyUsd] = useState("");
   const [onReached, setOnReached] = useState<"warn" | "block">("warn");
+  const [verify, setVerify] = useState<VerifyCommand[]>([]);
   const store = useAppStore();
   const formations = useAppStore(state => state.config.formations);
   const defaultFormationId = useAppStore(state => state.config.defaultFormationId);
@@ -52,6 +54,7 @@ export function ProjectDialog({
       setDailyUsd(editProject.budget?.dailyUsd ? String(editProject.budget.dailyUsd) : "");
       setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
       setOnReached(editProject.budget?.onReached ?? "warn");
+      setVerify(editProject.verify ?? []);
       // The team of an existing project is managed from its hierarchy, not from here.
       setFormationId(NO_FORMATION);
       setAgents([]);
@@ -63,6 +66,7 @@ export function ProjectDialog({
     setDailyUsd("");
     setMonthlyUsd("");
     setOnReached("warn");
+    setVerify([]);
     const initial = defaultFormationId && formations.some(f => f.id === defaultFormationId) ? defaultFormationId : NO_FORMATION;
     setFormationId(initial);
     const formation = formations.find(f => f.id === initial);
@@ -113,11 +117,15 @@ export function ProjectDialog({
       onReached,
     } : undefined;
 
+    // A command with no program is a row someone started and left: it would fail to spawn every
+    // time and block every card, so it does not travel.
+    const verifyCommands = verify.filter(c => c.program.trim().length > 0);
+
     if (editProject) {
-      store.updateProject(editProject.id, { name, workspaceDir, color, budget });
+      store.updateProject(editProject.id, { name, workspaceDir, color, budget, verify: verifyCommands });
     } else {
       // What the user left in the list is the team, formation or not.
-      store.addProject({ name, workspaceDir, color, agents, budget });
+      store.addProject({ name, workspaceDir, color, agents, budget, verify: verifyCommands });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
@@ -193,6 +201,8 @@ export function ProjectDialog({
               </Select>
               <p className="text-xs text-muted-foreground">{t("budget.hint")}</p>
             </div>
+
+            <VerifySection workspaceDir={workspaceDir} commands={verify} onChange={setVerify} />
 
             {/* Only when creating: an existing project's team is managed from its hierarchy. */}
             {!editProject && (

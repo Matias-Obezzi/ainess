@@ -26,6 +26,7 @@ const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "result", label: "result" },
   { value: "question.asked", label: "question.asked" },
   { value: "review.changes", label: "review.changes" },
+  { value: "verify.failed", label: "verify.failed" },
   { value: "quota.exhausted", label: "quota.exhausted" },
   // The machine's own conditions (src/lib/system-hooks.ts).
   { value: "app.started", label: "app.started" },

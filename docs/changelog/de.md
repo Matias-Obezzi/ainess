@@ -4,6 +4,32 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Ein Projekt kann sagen, was „fertig“ bedeutet, und ainess prüft es nach.** Bisher rückte eine
+  Aufgabe vor, weil der Prozess des Agenten mit Code null endete. Mehr wurde nicht angesehen, also
+  hieß „fertig“ nur „das CLI ist zurück“ — und das Gegenteil herauszufinden war Ihre Arbeit, morgens,
+  Karte für Karte. Ein Projekt kann jetzt eigene Befehle auflisten (`npm test`, `npx tsc --noEmit`,
+  `cargo check`), und wenn ein Agent delegierte Arbeit beendet, werden sie in dem Ordner ausgeführt,
+  in dem er tatsächlich gearbeitet hat — seinem Worktree, falls er einen hat, damit die Tests den
+  gerade geschriebenen Code sehen. Gehen sie durch, läuft die Karte weiter wie bisher, zum Prüfer,
+  falls es einen gibt. Scheitern sie, kommt die Karte mit dem Namen des Befehls und seiner Ausgabe zu
+  Ihnen zurück, dazu eine Nachricht im Verlauf und ein `verify.failed`-Hook, damit das Telefon Sie um
+  drei Uhr morgens erreicht. Befehle, die das Projekt ohnehin angibt — `test`, `lint`, `typecheck`,
+  `check`, `build` aus package.json, Makefile oder Cargo.toml — werden per Klick angeboten.
+
+  Nichts wird automatisch wiederholt. Ein Fehlschlag, den der Agent nicht beheben kann, würde zu
+  einer Schleife, die die ganze Nacht läuft, und Arbeit zurückzugeben ist eine Entscheidung, kein
+  Reflex.
+
+  Was Sie tippen, wird vor Ihren Augen in Programm und Argumente zerlegt, und die Teile stehen unter
+  dem Feld, denn genau so wird es gestartet: Nichts hiervon erreicht je eine Shell. Ein `&&`, eine
+  Pipe oder eine Umleitung werden mit Begründung abgelehnt statt still maskiert — die App läuft auf
+  der Shell, die die Maschine anbietet, und die sind sich über Anführungszeichen nicht einig. Zwei
+  Befehle ist die Antwort darauf, zwei Befehle zu wollen. Ein Projekt ohne aufgelistete Befehle
+  verhält sich genau wie zuvor.
+
+
 ### Behoben
 
 - **Die App verbringt nicht mehr über jede Sekunde, die sie hat, damit, sich selbst eine Datei zu

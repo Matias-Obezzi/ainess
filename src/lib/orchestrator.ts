@@ -1,6 +1,6 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
-import type { Approval } from "@/types";
+import type { Approval, VerifyCommand } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
@@ -9,6 +9,7 @@ import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow, activeLocale } from "@/i18n/useT";
 import * as taskSync from "@/lib/task-sync";
+import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { pickReviewer } from "@/lib/review";
 import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
@@ -712,10 +713,19 @@ function handleExit(e: RunExitEvent) {
     ),
   }));
 
-  taskSync.taskOnRunFinished({ ...run, status, output, endedAt: Date.now(), exitCode: e.code });
+  const finishedRun: Run = { ...run, status, output, endedAt: Date.now(), exitCode: e.code };
+  taskSync.taskOnRunFinished(finishedRun);
 
   if (agentForRun) {
-    maybeStartReview({ ...run, status, output, endedAt: Date.now(), exitCode: e.code }, agentForRun);
+    // A project that says what "done" means gets to say it before a reviewer is asked, or before
+    // the card is called ready. Everything else about this exit carries on meanwhile: the check is
+    // about the card, not about the run, which is over either way.
+    const commands = taskSync.verificationFor(finishedRun);
+    if (commands.length > 0) {
+      void verifyFinishedRun(finishedRun, commands, agentForRun);
+    } else {
+      maybeStartReview(finishedRun, agentForRun);
+    }
   }
 
   if (agentForRun?.provider === "antigravity" && !e.killed) {
@@ -1170,6 +1180,94 @@ export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer
       runId: question.runId,
     });
   }
+}
+
+/**
+ * Runs the project's verification commands against what an agent just did.
+ *
+ * Where a run actually happened is already known: `run.cwd` is the agent's worktree when it has one
+ * and the project's workspace when it does not, so the tests run over the code that was written and
+ * not over whatever the main checkout happens to hold.
+ *
+ * A failure stops here. The card goes back to you with what the command printed and the hook fires;
+ * the agent is not relaunched with the error. An automatic retry is a loop that runs all night when
+ * the failure is one the agent cannot fix, and deciding that is not this function's business.
+ */
+async function verifyFinishedRun(run: Run, commands: VerifyCommand[], agent: AgentConfig): Promise<void> {
+  const store = useAppStore.getState();
+  const project = store.config.projects.find(p => p.id === run.projectId);
+  const cwd = run.cwd || project?.workspaceDir;
+  if (!cwd) {
+    // Nowhere to run them: treat it as nothing to check rather than as a failure the user has to
+    // clear by hand.
+    taskSync.taskOnVerified(run, { ok: true });
+    maybeStartReview(run, agent);
+    return;
+  }
+
+  addMessage({
+    projectId: run.projectId,
+    fromAgentId: "system",
+    kind: "system",
+    text: translateNow("verify.running", { n: String(commands.length) }),
+    runId: run.id,
+  });
+
+  const verdict = await runVerification(commands, cwd);
+
+  useAppStore.setState(state => {
+    const current = state.runs[run.id];
+    if (!current) return state;
+    return {
+      runs: {
+        ...state.runs,
+        [run.id]: {
+          ...current,
+          verification: {
+            status: verdict.ok ? "passed" : "failed",
+            ...(verdict.failed ? { failed: verdict.failed } : {}),
+            ranAt: Date.now(),
+          },
+        },
+      },
+    };
+  });
+
+  taskSync.taskOnVerified(run, verdict);
+
+  if (verdict.ok) {
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: "system",
+      kind: "system",
+      text: translateNow("verify.passed"),
+      runId: run.id,
+    });
+    maybeStartReview(run, agent);
+    return;
+  }
+
+  const failed = verdict.failed;
+  const detail = briefOutput(failed ? failed.output : "");
+  addMessage({
+    projectId: run.projectId,
+    fromAgentId: "system",
+    toAgentId: agent.id,
+    kind: "error",
+    text: translateNow("verify.failedMessage", { label: failed ? failed.label : "", output: detail }),
+    runId: run.id,
+  });
+
+  void emitHookEvent("verify.failed", {}, {
+    project,
+    agent,
+    runId: run.id,
+    round: run.round,
+    prompt: run.prompt,
+    output: run.output,
+    error: failed ? `${failed.label}: ${detail}` : detail,
+    taskPrompt: run.prompt,
+  });
 }
 
 /**

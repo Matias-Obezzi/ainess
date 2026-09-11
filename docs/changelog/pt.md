@@ -4,6 +4,30 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **Um projeto pode dizer o que significa "terminado", e o ainess confere.** Até agora uma tarefa
+  avançava porque o processo do agente terminou com código zero. Nada mais era olhado, então
+  "terminado" queria dizer "o CLI voltou" — e descobrir o contrário era trabalho seu, de manhã,
+  cartão por cartão. Agora um projeto pode listar seus próprios comandos (`npm test`,
+  `npx tsc --noEmit`, `cargo check`), e quando um agente termina um trabalho delegado eles são
+  executados na pasta em que ele realmente trabalhou — seu worktree, se tiver um, para que os testes
+  vejam o código que acabou de ser escrito. Se passam, o cartão segue como antes, para o revisor se
+  houver um. Se falham, o cartão volta para você com o nome do comando e o que ele imprimiu, uma
+  mensagem no fio e um hook `verify.failed` para o celular te avisar às três da manhã. Os comandos
+  que o projeto já declara — `test`, `lint`, `typecheck`, `check`, `build` do package.json, Makefile
+  ou Cargo.toml — são oferecidos com um clique.
+
+  Nada é repetido automaticamente. Uma falha que o agente não consegue consertar viraria um laço
+  rodando a noite inteira, e decidir devolver um trabalho é uma decisão, não um reflexo.
+
+  O que você digita é separado em programa e argumentos na sua frente, e as partes aparecem embaixo
+  do campo, porque é assim que é executado: nada digitado aqui chega a um shell. Um `&&`, um pipe ou
+  um redirecionamento são recusados com um motivo em vez de escapados em silêncio — o app roda sobre
+  o shell que a máquina oferecer e eles não concordam sobre aspas. Dois comandos é a resposta para
+  querer dois comandos. Um projeto sem comandos listados se comporta exatamente como antes.
+
+
 ### Corrigido
 
 - **O app parou de gastar mais de cada segundo que tinha escrevendo um arquivo para si mesmo.** O

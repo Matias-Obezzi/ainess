@@ -4,6 +4,32 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **Un projet peut dire ce que « terminé » veut dire, et ainess le vérifie.** Jusqu'ici une tâche
+  avançait parce que le processus de l'agent s'était terminé avec un code zéro. Rien d'autre n'était
+  regardé, donc « terminé » voulait dire « le CLI est revenu » — et s'apercevoir du contraire était
+  votre travail, le matin, carte par carte. Un projet peut désormais lister ses propres commandes
+  (`npm test`, `npx tsc --noEmit`, `cargo check`), et quand un agent termine un travail délégué elles
+  sont exécutées dans le dossier où il a réellement travaillé — son worktree, s'il en a un, pour que
+  les tests voient le code qui vient d'être écrit. Si elles passent, la carte continue comme avant,
+  vers le relecteur s'il y en a un. Si elles échouent, la carte vous revient avec le nom de la
+  commande et ce qu'elle a affiché, un message dans le fil et un hook `verify.failed` pour que le
+  téléphone vous prévienne à trois heures du matin. Les commandes que le projet déclare déjà —
+  `test`, `lint`, `typecheck`, `check`, `build` de son package.json, Makefile ou Cargo.toml — sont
+  proposées en un clic.
+
+  Rien n'est relancé automatiquement. Un échec que l'agent ne peut pas corriger deviendrait une
+  boucle tournant toute la nuit, et décider de renvoyer un travail est une décision, pas un réflexe.
+
+  Ce que vous tapez est découpé en programme et arguments sous vos yeux, et les morceaux sont montrés
+  sous le champ, parce que c'est ainsi qu'il est lancé : rien de ce qui est tapé ici n'atteint jamais
+  un shell. Un `&&`, un tube ou une redirection sont refusés avec un motif plutôt qu'échappés en
+  silence — l'application tourne sur le shell que la machine propose et ils ne s'accordent pas sur
+  les guillemets. Deux commandes est la réponse à vouloir deux commandes. Un projet sans commande
+  listée se comporte exactement comme avant.
+
+
 ### Corrigé
 
 - **L'application a cessé de dépenser plus de chaque seconde dont elle disposait à s'écrire un

@@ -103,6 +103,19 @@ export interface McpServer {
   enabledFor: "all" | string[];
 }
 
+/**
+ * A command the app runs itself to decide whether an agent's work holds up.
+ *
+ * The program and its arguments are kept apart rather than stored as one line, because that is how
+ * they are spawned: nothing typed here is ever handed to a shell. See `lib/verify-commands.ts`.
+ */
+export interface VerifyCommand {
+  id: string;
+  label: string;
+  program: string;
+  args: string[];
+}
+
 /** Spending limits and policy for a project. */
 export interface Budget {
   /** Dollars per day. 0 or missing means no limit. */
@@ -123,6 +136,11 @@ export interface Project {
   agents: AgentConfig[];
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
+  /**
+   * What this project calls "done": run after an agent finishes delegated work, in the folder it
+   * worked in. Missing or empty means nothing is checked, which is how it behaved before.
+   */
+  verify?: VerifyCommand[];
   /**
    * Commands the user added by hand, alongside the ones read from the project's manifests. Free
    * text on purpose: this is the user typing into their own shell, one step removed. The whitelist
@@ -176,6 +194,8 @@ export type HookEvent =
   | "result"
   | "question.asked"
   | "review.changes"
+  /** A project's own verification commands said no. */
+  | "verify.failed"
   | "quota.exhausted"
   // Something that happened to the machine, with no agent behind it (see src/lib/system-hooks.ts).
   /** The app was opened. */
@@ -451,6 +471,13 @@ export interface Run {
   cwd?: string;
   /** The commit the workspace was on when the run started, so its own diff can be taken later. */
   baseSha?: string;
+  /** What the project's verification commands said about this run's work, when it has any. */
+  verification?: {
+    status: "passed" | "failed";
+    /** The command that failed, with what it printed. Absent when everything passed. */
+    failed?: { label: string; code: number | null; output: string };
+    ranAt: number;
+  };
   /** "task" (default) or "chat" — chat runs skip delegation parsing. */
   kind?: "task" | "chat";
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */

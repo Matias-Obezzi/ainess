@@ -6,6 +6,29 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **A project can say what "done" means, and ainess checks it.** Until now a task moved forward
+  because the agent's process exited zero. Nothing else was looked at, so "done" meant "the CLI came
+  back" — and finding out otherwise was your job, in the morning, one card at a time. A project can
+  now list its own commands (`npm test`, `npx tsc --noEmit`, `cargo check`), and when an agent
+  finishes delegated work they are run in the folder it actually worked in — its worktree, when it
+  has one, so the tests see the code that was just written. Pass and the card carries on as before,
+  to the reviewer if there is one. Fail and the card comes back to you with the name of the command
+  and what it printed, a message in the thread, and a `verify.failed` hook so the phone can tell you
+  at three in the morning. Commands the project already declares — `test`, `lint`, `typecheck`,
+  `check`, `build` from its package.json, Makefile or Cargo.toml — are offered as one click.
+
+  Nothing is retried automatically. A failure the agent cannot fix would become a loop that runs all
+  night, and deciding to send work back is a decision, not a reflex.
+
+  What you type is split into a program and its arguments in front of you, and the pieces are shown
+  under the field, because that is how it is spawned: nothing typed here is ever handed to a shell.
+  A `&&`, a pipe or a redirection is refused with a reason rather than quietly escaped — the app
+  runs on whichever shell the machine offers and they do not agree on quoting. Two commands is the
+  answer to wanting two commands. A project with no commands listed behaves exactly as it did.
+
+
 ### Fixed
 
 - **The app stopped spending more than every second it had on writing a file to itself.** A project's

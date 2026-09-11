@@ -21,7 +21,7 @@ const dictionaries: Record<Language, Dictionary> = { es, en, pt, zh, ja, fr, de 
 const EVENTS: HookEvent[] = [
   "task.started", "task.finished", "task.failed", "delegation", "approval.requested",
   "run.finished", "run.failed", "agent.stopped", "result", "question.asked",
-  "review.changes", "quota.exhausted",
+  "review.changes", "verify.failed", "quota.exhausted",
   "app.started", "schedule", "internet.lost", "internet.back", "file.changed",
 ];
 

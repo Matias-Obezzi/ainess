@@ -6,7 +6,8 @@
 // a broken task file can never stop a run from starting or finishing.
 import { useAppStore, selectProjectAgents } from "@/store";
 import { truncate } from "@/lib/format";
-import type { Run, Task } from "@/types";
+import type { Run, Task, VerifyCommand } from "@/types";
+import { briefOutput, type Verdict } from "@/lib/verify-commands";
 import { translateNow } from "@/i18n/useT";
 import { parseReviewVerdict } from "@/lib/review";
 import { emitHookEvent } from "@/lib/hooks";
@@ -197,9 +198,51 @@ export function taskOnRunFinished(run: Run): void {
     const task = findByRun(run.projectId, run.id);
     if (!task) return;
     const failed = run.status === "error" || run.status === "killed";
+    // A project with verification commands has a reviewer that is a machine, and the card waits for
+    // it exactly as it waits for a person. `taskOnVerified` is what settles it afterwards.
+    const checking = !failed && verificationFor(run).length > 0;
     useAppStore.getState().updateTask(task.id, {
-      status: failed ? "needs-you" : hasReviewer(run.projectId) ? "in-review" : "ready",
+      status: failed ? "needs-you" : checking || hasReviewer(run.projectId) ? "in-review" : "ready",
       detail: failed ? [task.detail, `Error: ${run.output || "la corrida terminó sin salida"}`].filter(Boolean).join("\n\n") : task.detail,
+    });
+  });
+}
+
+/**
+ * The commands this run's work has to survive before its card may move on.
+ *
+ * Only delegated work: a chat with the planner is a conversation, and running a test suite because
+ * someone asked a question would be a surprise. Empty when the project declared none, which is how
+ * every project behaved before there was a way to declare any.
+ */
+export function verificationFor(run: Run): VerifyCommand[] {
+  if (!run.parentRunId) return [];
+  if (run.status !== "done") return [];
+  const project = useAppStore.getState().config.projects.find(p => p.id === run.projectId);
+  return project?.verify ?? [];
+}
+
+/** What the project's own commands said. Settles the card `taskOnRunFinished` left in review. */
+export function taskOnVerified(run: Run, verdict: Verdict): void {
+  guard(() => {
+    const task = findByRun(run.projectId, run.id);
+    if (!task) return;
+    if (verdict.ok) {
+      useAppStore.getState().updateTask(task.id, {
+        status: hasReviewer(run.projectId) ? "in-review" : "ready",
+      });
+      return;
+    }
+    const failed = verdict.failed;
+    useAppStore.getState().updateTask(task.id, {
+      status: "needs-you",
+      detail: [
+        task.detail,
+        translateNow("verify.failedDetail", {
+          label: failed ? failed.label : "",
+          output: briefOutput(failed ? failed.output : ""),
+        }),
+      ].filter(Boolean).join("\n\n"),
     });
   });
 }
