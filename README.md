@@ -85,8 +85,14 @@ npm run build:remote   # only the phone page (dist-remote/index.html)
 npm run build:cli      # the CLI bundle, which embeds the phone page
 npm test               # unit tests (vitest)
 npx tsc --noEmit       # typecheck
+npm run screenshots    # the ones in this file, from the fixture in src/demo
 cd src-tauri && cargo check && cargo test
 ```
+
+The screenshots above are taken from a made-up workspace (`src/demo`), not from anyone's real one:
+headless Chrome opens the app with `?demo=<screen>`, waits for it to have drawn, and saves the
+picture. The fixture is behind `import.meta.env.DEV`, so none of it reaches a release build. The
+project, the prompts and the figures in them are invented; the app around them is not.
 
 ## How it works
 
