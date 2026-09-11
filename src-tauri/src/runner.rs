@@ -499,15 +499,20 @@ fn exec_capture_blocking(
         }
     }
     
-    // Same reasoning as `build_command`: inherit the app's hidden console when there is one, so a
-    // program this one runs in turn has no reason to open a window either.
+    // Not `build_command`'s reasoning, because this is not an agent. What comes through here is a
+    // probe — `agy models`, `git rev-parse`, `gh auth token` — that captures its output and is over
+    // in seconds. It runs no tree that needs a console to inherit, so it gets none: the flag its
+    // two siblings already pass, `detect.rs` for version probes and `windowless` for housekeeping.
+    //
+    // Inheriting instead was the odd one out, and it is not free. Hiding the console we allocate
+    // relies on `ShowWindow` reaching the window that shows it — which on Windows 11, where the
+    // default console host is Windows Terminal in a process of its own, it does not. A child that
+    // draws a spinner then brings that window up, and `agy models` draws one.
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        if !crate::console::is_shared() {
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
+        cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
     let child = cmd.spawn().map_err(|e| {

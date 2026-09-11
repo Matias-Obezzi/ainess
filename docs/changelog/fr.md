@@ -23,6 +23,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Demander à Antigravity ce qu'il lui reste n'ouvre plus de terminal.** L'application prend une
+  console au démarrage et la cache, pour que tout ce qu'un agent lance à son tour en hérite et que
+  rien ne fasse surgir de fenêtre, à quelque profondeur que ce soit. Les sondes courtes en
+  héritaient aussi — et cacher une console suppose que `ShowWindow` atteigne la fenêtre qui
+  l'affiche, ce qui sous Windows 11, où l'hôte de console par défaut est Windows Terminal dans son
+  propre processus, n'est pas le cas. Un enfant qui dessine un spinner fait remonter cette fenêtre,
+  et `agy models` en dessine un. Les sondes n'ont désormais aucune console : le même drapeau que la
+  détection de versions et les commandes d'entretien passent depuis toujours. Les agents ne changent
+  pas — ce sont eux qui ont un arbre en dessous ayant besoin d'hériter d'une console.
+
 - **Le champ des variables d'environnement fonctionne sur un serveur http, au lieu de lui être
   caché.** Un serveur MCP http n'a pas de processus à lui : ses variables vont donc dans
   l'environnement de l'agent — exactement là où le client MCP regarde quand il étend `${VARIABLE}`

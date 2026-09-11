@@ -22,6 +22,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Antigravity nach dem Rest seines Kontingents zu fragen, öffnet kein Terminal mehr.** Die App
+  nimmt sich beim Start eine Konsole und versteckt sie, damit alles, was ein Agent seinerseits
+  startet, sie erbt und in keiner Tiefe ein Fenster aufgeht. Kurze Abfragen erbten sie ebenfalls —
+  und eine Konsole zu verstecken setzt voraus, dass `ShowWindow` das Fenster erreicht, das sie
+  anzeigt, was unter Windows 11, wo der Standard-Konsolenhost das Windows Terminal in einem eigenen
+  Prozess ist, nicht der Fall ist. Ein Kind, das einen Spinner zeichnet, holt dieses Fenster nach
+  vorn — und `agy models` zeichnet einen. Abfragen bekommen jetzt gar keine Konsole: dasselbe Flag,
+  das die Versionserkennung und die Aufräumbefehle seit jeher übergeben. Die Agenten bleiben, wie
+  sie waren; sie sind die mit einem Baum darunter, der eine Konsole zum Erben braucht.
+
 - **Das Feld für Umgebungsvariablen funktioniert bei einem http-Server, statt vor ihm versteckt zu
   werden.** Ein http-MCP-Server hat keinen eigenen Prozess, also gehen seine Variablen in die
   Umgebung des Agenten — genau dorthin, wo der MCP-Client nachsieht, wenn er `${VARIABLE}` in einem

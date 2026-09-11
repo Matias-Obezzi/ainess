@@ -21,6 +21,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Perguntar ao Antigravity quanto resta não abre mais um terminal.** O app pega um console ao
+  iniciar e o esconde, para que tudo o que um agente rodar por sua vez o herde e nada abra uma
+  janela em nenhuma profundidade. As sondas curtas também o herdavam — e esconder um console depende
+  de o `ShowWindow` alcançar a janela que o mostra, o que no Windows 11, onde o host de console
+  padrão é o Windows Terminal num processo próprio, não acontece. Um filho que desenha um spinner
+  levanta essa janela, e o `agy models` desenha um. Agora as sondas não recebem console: a mesma
+  flag que a detecção de versões e os comandos de limpeza sempre passaram. Os agentes ficam iguais —
+  eles é que têm uma árvore embaixo precisando herdar um console.
+
 - **O campo de variáveis de ambiente funciona num servidor http, em vez de ficar escondido dele.**
   Um servidor MCP http não tem processo próprio, então suas variáveis vão para o ambiente do agente
   — que é exatamente de onde o cliente MCP as expande quando vê `${VARIABLE}` dentro de um

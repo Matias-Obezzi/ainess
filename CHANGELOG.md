@@ -23,6 +23,16 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Asking Antigravity what it has left stops opening a terminal.** The app takes one console at
+  startup and hides it, so that everything an agent runs in turn inherits it and nothing pops a
+  window at any depth. Short probes were inheriting it too — and hiding a console depends on
+  `ShowWindow` reaching the window that shows it, which on Windows 11, where the default console
+  host is Windows Terminal in a process of its own, it does not. A child that draws a spinner then
+  brings that window up, and `agy models` draws one. Probes get no console at all now: the same
+  flag the version detection and the housekeeping commands have always passed. The agents
+  themselves are unchanged — they are the ones with a tree underneath that needs a console to
+  inherit, which is what the shared one is for.
+
 - **The environment box works on an http server instead of being hidden from it.** An http MCP
   server has no process of its own, so its variables go into the agent's environment — which is
   exactly where the MCP client looks when it expands `${VARIABLE}` inside a header. Put the key in
