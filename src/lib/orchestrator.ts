@@ -19,6 +19,7 @@ import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
+import { log } from "@/lib/logger";
 import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
@@ -773,6 +774,7 @@ function handleExit(e: RunExitEvent) {
     // about the card, not about the run, which is over either way.
     const commands = taskSync.verificationFor(finishedRun);
     if (commands.length > 0) {
+      verifying.add(run.id);
       void verifyFinishedRun(finishedRun, commands, agentForRun);
     } else {
       maybeStartReview(finishedRun, agentForRun);
@@ -1027,9 +1029,13 @@ function onRunFinished(runId: string) {
           if (run.status !== "killed") notifyTaskOutcome(run, false);
         }
       }
-    } else {
+    } else if (!verifying.has(run.id)) {
       maybeContinueParent(run.parentRunId);
     }
+    // Otherwise the parent is told once the project's own commands have had their say — in
+    // `verifyFinishedRun`, which continues it if they passed and does not if they did not. Telling
+    // the planner the work is done while the tests are still running is the same as not running
+    // them: it would hear "finished" and move on, and the failure would arrive to nobody.
   }
 
   processQueuedInstructions(agent.id, run.projectId);
@@ -1244,7 +1250,29 @@ export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer
  * the agent is not relaunched with the error. An automatic retry is a loop that runs all night when
  * the failure is one the agent cannot fix, and deciding that is not this function's business.
  */
+/**
+ * Runs whose verification is still going, and whose parent therefore has not been told anything yet.
+ *
+ * Module-level and not on the run, because it is about this process: an app that closes mid-check
+ * should come back with nothing pending rather than with a run that believes it is being verified
+ * by someone who no longer exists.
+ */
+const verifying = new Set<string>();
+
 async function verifyFinishedRun(run: Run, commands: VerifyCommand[], agent: AgentConfig): Promise<void> {
+  try {
+    await verifyAndSettle(run, commands, agent);
+  } catch (e) {
+    // Something here threw where nothing was supposed to. The chain is holding for an answer that
+    // is never coming, and stranding it is worse than carrying on without the check: the card is
+    // where `taskOnRunFinished` left it and the run itself is over either way.
+    log.error("verify", `La verificación de ${run.id} se rompió: ${errorText(e)}`);
+    verifying.delete(run.id);
+    if (run.parentRunId) maybeContinueParent(run.parentRunId);
+  }
+}
+
+async function verifyAndSettle(run: Run, commands: VerifyCommand[], agent: AgentConfig): Promise<void> {
   const store = useAppStore.getState();
   const project = store.config.projects.find(p => p.id === run.projectId);
   const cwd = run.cwd || project?.workspaceDir;
@@ -1253,6 +1281,8 @@ async function verifyFinishedRun(run: Run, commands: VerifyCommand[], agent: Age
     // clear by hand.
     taskSync.taskOnVerified(run, { ok: true });
     maybeStartReview(run, agent);
+    verifying.delete(run.id);
+    if (run.parentRunId) maybeContinueParent(run.parentRunId);
     return;
   }
 
@@ -1295,8 +1325,14 @@ async function verifyFinishedRun(run: Run, commands: VerifyCommand[], agent: Age
       runId: run.id,
     });
     maybeStartReview(run, agent);
+    verifying.delete(run.id);
+    if (run.parentRunId) maybeContinueParent(run.parentRunId);
     return;
   }
+
+  // Failed: the chain stops here. The planner is not told the work is done, because it is not, and
+  // the card is already back with the user carrying what the command printed.
+  verifying.delete(run.id);
 
   const failed = verdict.failed;
   const detail = briefOutput(failed ? failed.output : "");
