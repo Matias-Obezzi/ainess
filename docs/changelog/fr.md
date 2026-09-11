@@ -6,6 +6,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Les lignes de la hiérarchie relient enfin quelque chose.** Les cartes des agents ont toujours
+  dessiné des points de connexion — c'est de là que partent les flèches — mais le canevas n'était
+  pas connectable : ils avaient l'air de quelque chose qu'on pouvait tirer, sans l'être. Tirer une
+  ligne d'une carte à une autre place désormais cet agent sous un nouveau planificateur. Les règles
+  sont celles que l'éditeur d'agents appliquait déjà — pas à lui-même, pas sous quelqu'un qui est
+  déjà en dessous de lui, et un seul planificateur au sommet — lues au même endroit plutôt
+  qu'écrites une seconde fois, pour que les deux écrans ne finissent pas par diverger sur ce qu'est
+  une équipe valide.
+
+
 - **Un projet peut dire ce que « terminé » veut dire, et ainess le vérifie.** Jusqu'ici une tâche
   avançait parce que le processus de l'agent s'était terminé avec un code zéro. Rien d'autre n'était
   regardé, donc « terminé » voulait dire « le CLI est revenu » — et s'apercevoir du contraire était
@@ -62,6 +72,37 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 
 ### Corrigé
+
+- **On peut parler à un planificateur qui a délégué pendant que ses implémenteurs travaillent.** Il
+  mettait votre message en file jusqu'au retour du tour complet, ce qui faisait du seul agent dont
+  le métier est de continuer à planifier le seul qu'on ne pouvait pas joindre pendant que du travail
+  était en cours. La cause tenait à un mot qui faisait trois métiers : « en attente » voulait dire
+  en attente d'une réponse, en pause jusqu'au retour du quota, *et* en attente des implémenteurs —
+  et seul le dernier décrit un agent sans aucun processus à lui. Ce dernier cas prend maintenant le
+  message et démarre un tour ; les deux autres continuent d'attendre, car un nouveau tour y
+  parlerait par-dessus ce que l'on attend précisément.
+
+  Ce qui en fait plus qu'un changement d'une ligne, c'est ce qui se passe quand les implémenteurs
+  reviennent alors que le planificateur est en train de vous répondre. Deux exécutions d'un agent,
+  ce sont deux auteurs sur une même session CLI : les résultats attendent donc la fin de ce tour et
+  sont remis juste après — le fil de la tâche d'abord, avant tout ce qui attend par ailleurs. Et un
+  planificateur dont le tour se termine alors que du travail qu'il a distribué tourne encore
+  s'affiche désormais comme en attente et non comme libre, ce qu'il est.
+
+- **Un agent qui pose éternellement la même question s'arrête.** Répondre à une question reprend
+  l'agent dans le tour où il était déjà — une question ne fait pas avancer le tour — et le tour est
+  la seule chose que `maxRounds` compte. Un agent qui répond à chaque réponse par une autre question
+  n'avait donc absolument rien qui le borne : vous répondez, il redemande, et la seule chose qui y
+  met fin, c'est que vous renonciez. Le mode autonome l'avait remarqué et s'était donné son propre
+  plafond, mais seulement pour les questions qu'il répond lui-même ; quand c'était vous qui
+  répondiez, il n'y avait de plafond nulle part.
+
+  Deux règles désormais. Une question à laquelle cette tâche a déjà répondu n'est pas reposée : la
+  réponse est enregistrée, elle repart donc directement, et ce n'est pas un jugement. Et une tâche
+  qui a demandé douze fois cesse de demander et le dit, parce que douze tours en rond font un
+  mauvais après-midi et qu'une nuit ainsi est pire. Poser beaucoup de questions *différentes* reste
+  permis : on borne le nombre, jamais le contenu.
+
 
 - **L'application a cessé de dépenser plus de chaque seconde dont elle disposait à s'écrire un
   fichier à elle-même.** L'historique d'un projet est réécrit en entier dès que quelque chose y

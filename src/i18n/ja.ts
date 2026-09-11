@@ -355,6 +355,11 @@ export const ja: Dictionary = {
 
   // ---- Hierarchy board ----
   "hierarchy.delegated": "委任中",
+  "hierarchy.reparent.done": "{name} は {parent} の下になりました",
+  "hierarchy.reparent.self": "エージェントを自分自身の下に置くことはできません。",
+  "hierarchy.reparent.cycle": "すでに自分の下にいる相手の下に、そのエージェントを置くことはできません。",
+  "hierarchy.reparent.root-planner-clash": "一番上にはすでにプランナーがいます。二人目のプランナーは一人目の下に入ります。",
+  "hierarchy.reparent.unknown": "そのエージェントはもうチームにいません。",
   "hierarchy.empty.title": "このプロジェクトにはまだエージェントがいません",
   "hierarchy.empty.body": "階層は誰が誰に委任するかを示します。まず1人追加してください。",
   "hierarchy.working": "{n} 件作業中",
@@ -839,6 +844,8 @@ export const ja: Dictionary = {
   "approvals.inlineTitle": "開始するにはあなたの承認が必要です",
   "notify.asksSomething": "{name} があなたに聞いています",
   "questions.answerPrompt": "「{question}」への回答：{answer}",
+  "questions.tooMany": "{name} はこのタスクですでに {n} 回質問していて、まだ聞いてきます。ここで止めます。中身を見て、足りないものを送ってください。",
+  "questions.alreadyAnswered": "{name} が、すでに答えたことをもう一度聞いてきました。もう一度聞く代わりに、前の回答をそのまま渡します。",
   "questions.title": "あなたの判断が必要です",
   "questions.other": "別の回答",
   "questions.pickMany": "複数選べます。",

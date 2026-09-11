@@ -6,6 +6,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Die Linien in der Hierarchie verbinden jetzt etwas.** Die Agentenkarten haben immer
+  Verbindungspunkte gezeichnet — daran hängen die Pfeile — aber die Fläche war nicht verbindbar, sie
+  sahen also nach etwas aus, das man ziehen kann, und waren es nicht. Eine Linie von einer Karte zur
+  anderen zu ziehen hängt diesen Agenten jetzt unter einen neuen Planer. Die Regeln sind die, die
+  der Agenten-Editor längst anwendet — nicht unter sich selbst, nicht unter jemanden, der schon
+  darunter steht, und nur ein Planer ganz oben — an derselben Stelle gelesen statt ein zweites Mal
+  geschrieben, damit die beiden Bildschirme nicht irgendwann uneins darüber werden, was ein gültiges
+  Team ist.
+
+
 - **Ein Projekt kann sagen, was „fertig“ bedeutet, und ainess prüft es nach.** Bisher rückte eine
   Aufgabe vor, weil der Prozess des Agenten mit Code null endete. Mehr wurde nicht angesehen, also
   hieß „fertig“ nur „das CLI ist zurück“ — und das Gegenteil herauszufinden war Ihre Arbeit, morgens,
@@ -61,6 +71,37 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 
 ### Behoben
+
+- **Mit einem Planer, der delegiert hat, lässt sich reden, während seine Implementierer
+  arbeiten.** Bisher wurde Ihre Nachricht eingereiht, bis die ganze Runde zurück war — womit
+  ausgerechnet der eine Agent, dessen Aufgabe das Weiterplanen ist, der einzige war, den man während
+  laufender Arbeit nicht erreichte. Schuld war ein Wort mit drei Bedeutungen: „wartet" hieß wartet
+  auf eine Antwort, pausiert bis das Kontingent zurückkommt, *und* wartet auf die Implementierer —
+  und nur Letzteres beschreibt einen Agenten ohne eigenen laufenden Prozess. Dieser Fall nimmt die
+  Nachricht nun an und beginnt einen Zug; die anderen beiden reihen weiter ein, weil ein neuer Zug
+  dort genau dem ins Wort fiele, worauf gewartet wird.
+
+  Mehr als eine Zeile wurde daraus, weil die Implementierer zurückkommen können, während der Planer
+  mitten in einer Antwort an Sie steckt. Zwei Läufe eines Agenten sind zwei Schreiber auf einer
+  CLI-Sitzung, also warten die Ergebnisse auf das Ende dieses Zuges und werden unmittelbar danach
+  übergeben — der eigene Faden der Aufgabe zuerst, vor allem anderen Eingereihten. Und ein Planer,
+  dessen Zug endet, während von ihm verteilte Arbeit noch läuft, liest sich jetzt als wartend statt
+  als frei, was er auch ist.
+
+- **Ein Agent, der ewig dasselbe fragt, hört jetzt auf.** Eine Antwort setzt den Agenten in der
+  Runde fort, in der er ohnehin war — eine Frage bringt die Runde nicht weiter — und die Runde ist
+  das Einzige, was `maxRounds` zählt. Ein Agent, der jede Antwort mit einer weiteren Frage
+  beantwortet, hatte also überhaupt nichts, was ihn begrenzte: Sie antworten, er fragt erneut, und
+  beendet wird das nur dadurch, dass Sie aufgeben. Der autonome Modus hatte das bemerkt und sich
+  eine eigene Obergrenze gegeben, aber nur für die Fragen, die er selbst beantwortet; wenn Sie
+  antworteten, gab es nirgends eine.
+
+  Jetzt zwei Regeln. Eine Frage, die diese Aufgabe schon beantwortet hat, wird nicht erneut
+  gestellt: Die Antwort steht fest, also geht sie direkt zurück — das ist keine Ermessensfrage. Und
+  eine Aufgabe, die zwölfmal gefragt hat, hört auf zu fragen und sagt es, denn zwölf Runden im Kreis
+  sind ein schlechter Nachmittag und eine Nacht davon ist schlimmer. Viele *verschiedene* Fragen
+  sind weiterhin erlaubt: begrenzt wird die Anzahl, nie der Inhalt.
+
 
 - **Die App verbringt nicht mehr über jede Sekunde, die sie hat, damit, sich selbst eine Datei zu
   schreiben.** Der Verlauf eines Projekts wird vollständig neu geschrieben, sobald sich darin etwas

@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Added
 
+- **The lines in the hierarchy connect things now.** The agent cards have always drawn connection
+  points — they are what the arrows hang off — but the canvas was not connectable, so they looked
+  like something you could pull and were not. Dragging a line from one card to another moves that
+  agent under a new planner. The rules are the ones the agent editor already applied — not itself,
+  not under something already below it, and only one planner at the top — read from the same place
+  rather than written a second time, so the two screens cannot come to disagree about what a valid
+  team is.
+
+
 - **A project can say what "done" means, and ainess checks it.** Until now a task moved forward
   because the agent's process exited zero. Nothing else was looked at, so "done" meant "the CLI came
   back" — and finding out otherwise was your job, in the morning, one card at a time. A project can
@@ -58,6 +67,34 @@ let one of them fall behind.
 
 
 ### Fixed
+
+- **A planner that delegated can be talked to while its implementers work.** It was queueing your
+  message until the whole round came back, which made the one agent whose job is to keep planning
+  the only one you could not reach while work was in flight. The reason was a single word doing
+  three jobs: "waiting" meant waiting for an answer, parked until quota returns, *and* waiting for
+  implementers — and only the last describes an agent with no process of its own running. Now that
+  last case takes the message and starts a turn; the other two still queue, because a new turn there
+  would talk over the very thing being waited for.
+
+  What made this more than a one-line change is what happens when the implementers come back while
+  the planner is mid-answer to you. Two runs of one agent is two writers on one CLI session, so the
+  results wait for that turn to end and are handed over immediately afterwards — the task's own
+  thread first, before anything else queued. And a planner whose turn ends while work it handed out
+  is still running now reads as waiting rather than idle, which is what it is.
+
+- **An agent that asks the same thing forever now stops.** Answering a question resumes the agent in
+  the round it was already in — a question does not advance the round — and the round is the only
+  thing `maxRounds` counts. So an agent that answers every answer with another question had nothing
+  bounding it at all: you answer, it asks again, and the only thing that ends it is you giving up.
+  Autonomous mode had noticed and grown its own ceiling, but only for the questions it answers
+  itself; when the person answering was you there was no ceiling anywhere.
+
+  Two rules now. A question this task already answered is not asked again — the answer is on record,
+  so it goes straight back, which is not a judgement call. And a task that has asked twelve times
+  stops asking and says so, because twelve turns of circles is a bad afternoon and a night of them
+  is worse. Asking many *different* questions is still allowed: only the count is capped, never the
+  content.
+
 
 - **The app stopped spending more than every second it had on writing a file to itself.** A project's
   history is rewritten in full whenever anything in it changes, and read and parsed back first so a

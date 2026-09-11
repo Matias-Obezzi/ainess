@@ -11,11 +11,13 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  type Connection,
   type Edge,
   type Node
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useAppStore, selectProjectAgents, selectProjectWorktrees } from "@/store";
+import { reparentProblem } from "@/lib/team";
 import { AgentNode } from "./AgentNode";
 import { AgentDialog } from "./AgentDialog";
 import { AgentInspector } from "./shell/AgentInspector";
@@ -197,6 +199,28 @@ function HierarchyBoard() {
     setEdges(next);
   }, [agents, statusOf, setEdges, t]);
 
+  /**
+   * Dragging a line from one card to another moves an agent under a new planner.
+   *
+   * The nodes have always drawn connection points — they are what the arrows hang off — but the
+   * canvas was not connectable, so they looked like something you could pull and were not. The
+   * rules are the ones the agent editor already applies (`lib/team.ts`), read from there rather
+   * than written again here, so the two screens cannot come to disagree about what a valid team is.
+   */
+  const onConnect = useCallback((connection: Connection) => {
+    const { source, target } = connection;
+    if (!source || !target || !currentProjectId) return;
+    const problem = reparentProblem(agents, target, source);
+    if (problem) {
+      toast.error(t(`hierarchy.reparent.${problem}`));
+      return;
+    }
+    useAppStore.getState().updateAgent(currentProjectId, target, { parentId: source });
+    const moved = agents.find(a => a.id === target);
+    const under = agents.find(a => a.id === source);
+    toast.success(t("hierarchy.reparent.done", { name: moved?.name ?? "", parent: under?.name ?? "" }));
+  }, [agents, currentProjectId, t]);
+
   const clearSelection = useCallback(() => {
     setSelectedAgentId(null);
     setNodes(prev => (prev.some(n => n.selected) ? prev.map(n => (n.selected ? { ...n, selected: false } : n)) : prev));
@@ -276,7 +300,8 @@ function HierarchyBoard() {
         minZoom={0.4}
         maxZoom={1.5}
         nodesDraggable
-        nodesConnectable={false}
+        nodesConnectable
+        onConnect={onConnect}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
       >

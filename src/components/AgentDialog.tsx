@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
-import { rootPlannerClash } from "@/lib/team";
+import { rootPlannerClash, descendantsOf } from "@/lib/team";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -279,17 +279,10 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, provider]);
 
-  // Find valid parents (not self, not descendant)
-  const descendants = new Set<string>();
-  if (agent) {
-    const queue = [agent.id];
-    while (queue.length > 0) {
-      const cur = queue.shift()!;
-      descendants.add(cur);
-      const children = roster.filter(a => a.parentId === cur);
-      for (const c of children) queue.push(c.id);
-    }
-  }
+  // Not itself and nothing below it: hanging an agent under its own descendant closes a ring. The
+  // walk lives in `lib/team.ts` because the hierarchy graph asks the same question when a line is
+  // dragged, and two copies of this rule would eventually stop agreeing.
+  const descendants = agent ? descendantsOf(roster, agent.id) : new Set<string>();
   const validParents = roster.filter(a => !descendants.has(a.id));
 
   /**

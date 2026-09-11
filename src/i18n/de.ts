@@ -354,6 +354,11 @@ export const de: Dictionary = {
 
   // ---- Hierarchy board ----
   "hierarchy.delegated": "delegiert",
+  "hierarchy.reparent.done": "{name} berichtet jetzt an {parent}",
+  "hierarchy.reparent.self": "Ein Agent kann nicht an sich selbst berichten.",
+  "hierarchy.reparent.cycle": "Ein Agent kann nicht unter jemanden, der bereits unter ihm steht.",
+  "hierarchy.reparent.root-planner-clash": "Ganz oben steht bereits ein Planer. Ein zweiter Planer kommt unter den ersten.",
+  "hierarchy.reparent.unknown": "Dieser Agent gehört nicht mehr zum Team.",
   "hierarchy.empty.title": "Dieses Projekt hat noch keine Agenten",
   "hierarchy.empty.body": "Die Hierarchie zeigt, wer an wen delegiert. Füg den ersten hinzu, um loszulegen.",
   "hierarchy.working": "{n} aktiv",
@@ -838,6 +843,8 @@ export const de: Dictionary = {
   "approvals.inlineTitle": "Wartet auf deine Freigabe zum Start",
   "notify.asksSomething": "{name} fragt dich etwas",
   "questions.answerPrompt": "Antwort auf «{question}»: {answer}",
+  "questions.tooMany": "{name} hat in dieser Aufgabe schon {n}-mal gefragt und fragt weiter. Hier ist Schluss: Sehen Sie es sich an und schicken Sie, was fehlt.",
+  "questions.alreadyAnswered": "{name} hat noch einmal gefragt, was Sie bereits beantwortet hatten. Ihre frühere Antwort geht zurück, statt Sie zweimal zu fragen.",
   "questions.title": "Es braucht deine Entscheidung",
   "questions.other": "Andere Antwort",
   "questions.pickMany": "Du kannst mehrere auswählen.",

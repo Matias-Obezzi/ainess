@@ -354,6 +354,11 @@ export const zh: Dictionary = {
 
   // ---- Hierarchy board ----
   "hierarchy.delegated": "已委派",
+  "hierarchy.reparent.done": "{name} 现在归 {parent} 管",
+  "hierarchy.reparent.self": "一个智能体不能归自己管。",
+  "hierarchy.reparent.cycle": "不能把一个智能体挂到已经在它下面的人下面。",
+  "hierarchy.reparent.root-planner-clash": "最上面已经有一个规划者了。第二个规划者要放在第一个下面。",
+  "hierarchy.reparent.unknown": "那个智能体已经不在团队里了。",
   "hierarchy.empty.title": "这个项目还没有智能体",
   "hierarchy.empty.body": "层级图展示谁委派给谁。先加第一个智能体吧。",
   "hierarchy.working": "{n} 个在工作",
@@ -838,6 +843,8 @@ export const zh: Dictionary = {
   "approvals.inlineTitle": "等待你的批准后开始",
   "notify.asksSomething": "{name} 在问你一件事",
   "questions.answerPrompt": "回答「{question}」：{answer}",
+  "questions.tooMany": "{name} 在这个任务里已经问了 {n} 次，还在继续问。到此为止：你看一下，把缺的东西发给它。",
+  "questions.alreadyAnswered": "{name} 又问了一个你已经回答过的问题。把你之前的回答直接交回去，而不是再问你一遍。",
   "questions.title": "需要你来决定",
   "questions.other": "其他回答",
   "questions.pickMany": "可以多选。",

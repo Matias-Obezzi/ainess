@@ -355,6 +355,11 @@ export const en: Dictionary = {
 
   // ---- Hierarchy board ----
   "hierarchy.delegated": "delegated",
+  "hierarchy.reparent.done": "{name} now reports to {parent}",
+  "hierarchy.reparent.self": "An agent cannot report to itself.",
+  "hierarchy.reparent.cycle": "You cannot hang an agent under someone who is already below it.",
+  "hierarchy.reparent.root-planner-clash": "There is already a planner at the top. A second planner goes under the first.",
+  "hierarchy.reparent.unknown": "That agent is no longer on the team.",
   "hierarchy.empty.title": "This project doesn't have agents yet",
   "hierarchy.empty.body": "The hierarchy shows who delegates to whom. Add the first one to get started.",
   "hierarchy.working": "{n} working",
@@ -839,6 +844,8 @@ export const en: Dictionary = {
   "approvals.inlineTitle": "Waiting for your go-ahead to start",
   "notify.asksSomething": "{name} is asking you something",
   "questions.answerPrompt": "Answering «{question}»: {answer}",
+  "questions.tooMany": "{name} has asked {n} times in this task and is still asking. Stopping here: take a look and send it whatever is missing.",
+  "questions.alreadyAnswered": "{name} asked again something you had already answered. Handing it your earlier answer instead of asking you twice.",
   "questions.title": "It needs you to decide",
   "questions.other": "Another answer",
   "questions.pickMany": "You can pick more than one.",

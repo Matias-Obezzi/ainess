@@ -6,6 +6,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Las líneas de la jerarquía ahora conectan.** Las tarjetas de los agentes siempre dibujaron
+  puntos de conexión — son de donde cuelgan las flechas — pero el lienzo no era conectable, así que
+  parecían algo que se podía arrastrar y no lo era. Ahora arrastrar una línea de una tarjeta a otra
+  mueve ese agente debajo de un planificador nuevo. Las reglas son las que el editor de agentes ya
+  aplicaba — no a sí mismo, no debajo de algo que ya está debajo suyo, y un solo planificador
+  arriba de todo — leídas del mismo lugar en vez de escritas por segunda vez, así las dos pantallas
+  no pueden terminar en desacuerdo sobre qué es un equipo válido.
+
+
 - **Un proyecto puede decir qué significa "terminado", y ainess lo comprueba.** Hasta ahora una tarea
   avanzaba porque el proceso del agente terminó con código cero. No se miraba nada más, así que
   "terminado" quería decir "el CLI volvió" — y enterarse de lo contrario era tu trabajo, a la mañana,
@@ -58,6 +67,36 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 
 ### Arreglado
+
+- **A un planificador que delegó se le puede hablar mientras sus implementadores trabajan.** Antes
+  encolaba tu mensaje hasta que volviera la ronda entera, lo que convertía al único agente cuyo
+  trabajo es seguir planificando en el único al que no le podías llegar mientras había trabajo en
+  curso. La causa era una sola palabra haciendo tres trabajos: "esperando" quería decir esperando
+  una respuesta, parado hasta que vuelva la cuota, *y* esperando a los implementadores — y sólo el
+  último describe a un agente sin ningún proceso propio corriendo. Ahora ese último caso toma el
+  mensaje y arranca un turno; los otros dos siguen encolando, porque un turno nuevo ahí le hablaría
+  encima justo a lo que se está esperando.
+
+  Lo que hizo que esto fuera más que un cambio de una línea es qué pasa cuando los implementadores
+  vuelven mientras el planificador está a mitad de contestarte. Dos corridas de un agente son dos
+  escritores sobre la misma sesión del CLI, así que los resultados esperan a que ese turno termine y
+  se entregan inmediatamente después — el hilo de la tarea primero, antes que cualquier otra cosa
+  encolada. Y un planificador cuyo turno termina mientras sigue corriendo trabajo que él repartió
+  ahora se lee como esperando y no como libre, que es lo que es.
+
+- **Un agente que pregunta lo mismo para siempre ahora se frena.** Contestar una pregunta reanuda al
+  agente en la ronda en la que ya estaba — una pregunta no avanza la ronda — y la ronda es lo único
+  que `maxRounds` cuenta. Así que un agente que responde cada respuesta con otra pregunta no tenía
+  absolutamente nada acotándolo: contestás, vuelve a preguntar, y lo único que lo termina es que te
+  canses. El modo autónomo se había dado cuenta y se había puesto su propio techo, pero sólo para
+  las preguntas que contesta él; cuando el que contestaba eras vos no había techo en ningún lado.
+
+  Ahora hay dos reglas. Una pregunta que esta tarea ya contestó no se vuelve a hacer: la respuesta
+  está registrada, así que se le devuelve directamente, y eso no es un juicio de valor. Y una tarea
+  que ya preguntó doce veces deja de preguntar y lo dice, porque doce turnos en círculos son una
+  mala tarde y una noche de eso es peor. Preguntar muchas cosas *distintas* sigue permitido: se
+  acota la cantidad, nunca el contenido.
+
 
 - **La app dejó de gastar más de cada segundo que tenía en escribirse un archivo a sí misma.** El
   historial de un proyecto se reescribe entero cada vez que algo cambia, y antes se lee y se parsea
