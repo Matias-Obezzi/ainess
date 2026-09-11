@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## Unreleased
+## 0.13.0 — 2026-09-10
 
 ### Added
 
