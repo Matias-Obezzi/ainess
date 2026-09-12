@@ -2,6 +2,121 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.16.0 — 2026-09-11
+
+### Neu
+
+- **`--header` bei `ainess mcp add|edit`.** Die App kann einem gehosteten MCP-Server seit 0.14.0
+  die Header geben, die er verlangt; das CLI konnte es nicht. Jetzt `--header "Name: Wert"`,
+  wiederholbar, am ersten Doppelpunkt getrennt, damit ein Wert mit eigenen Doppelpunkten — eine
+  URL, ein Base64-Token — ganz ankommt. Bei `edit` kommen neue Header zu den vorhandenen dazu, und
+  `--header "Name:"` entfernt einen. Ein Header ist ein Zugangsdatum, also erreicht er nie ein Log
+  oder eine Ausgabe: Die Startzeile des CLI maskiert den Wert, und `--json` druckt stattdessen `***`.
+
+### Behoben
+
+- **Der Knopf „Befehl hinzufügen" unter Überprüfung tat nichts.** Seit 0.15.0. Er gab der Zeile
+  einen leeren Befehl, der leere Befehl wurde als ungültig abgewiesen, bevor die Zeile entstand,
+  und der Klick endete dort — die Ein-Klick-Vorschläge gingen, der Knopf nicht. Gefunden vom
+  ersten Komponententest, der je für diese App geschrieben wurde, an seinem ersten Tag.
+
+
+- **Was ein Agent sagt, während er arbeitet, verschwindet nicht mehr, wenn er aufhört.** Zwei
+  Leute haben es von entgegengesetzten Enden gemeldet — „meine Antwort war weg, als er delegiert
+  hat, nur die Delegation blieb" und „die Zwischenantworten gehen verloren, wenn die Aktivität endet,
+  es zeigt nur das Letzte" — und es ist derselbe Fehler.
+
+  Zwei verschiedene Dinge tragen die Worte eines Agenten. Der Strom trägt alles, was er sagt,
+  während er es sagt. `run.output` ist die *endgültige* Antwort des Anbieters: bei Claude die
+  `result`-Zeile, die letzte Nachricht und nur sie. Die Blase zeigte `run.output`. Ein Zug, der
+  erklärte, was er gefunden hatte, drei Werkzeuge laufen ließ und mit einer Delegation endete, verlor
+  also alles davor in dem Moment, in dem er aufhörte zu laufen.
+
+  Verloren war nie etwas: Der Strom steht im Kommunikationsverlauf und in der Aktivitätsliste. Er war
+  nur nicht mehr dort, wo jemand hinsah, und ein Zug ganz ohne Werkzeuge zeigte die Aktivität gar
+  nicht erst an. Die Blase zeigt jetzt den ganzen Zug und hängt die endgültige Antwort nur an, wenn
+  sie etwas sagt, das die Mitschrift nicht ohnehin enthält. Der Einzelchat verlor dasselbe von der
+  anderen Seite — seine Blase wurde am Ende des Zuges mit der endgültigen Antwort überschrieben —
+  und folgt jetzt derselben Regel.
+
+- **In Claudes Modellliste fehlte Fable, und `fable-5.1` ist nicht sein Name.** Die Liste steht im
+  Quelltext, anders als die von antigravity und opencode, die abgefragt werden — sie veraltet also
+  still. Von Hand eintippen half auch nicht: Claude Code antwortet auf `fable-5.1` mit
+  `unrecognized_model`, denn die ID, die es nimmt, ist `claude-fable-5-1`. Beides ist behoben.
+
+
+- **Die App spricht überall sieben Sprachen, nicht nur dort, wo jemand daran gedacht hat.**
+  Hundertsieben Sätze standen im Quelltext statt in den Wörterbüchern: jeder Toast und jeder Dialog,
+  den eine Worktree-Operation erzeugt, jede Meldung, mit der ein Tunnel oder eine gescheiterte
+  Installation zurückkommt, die Aufgabenkarten und das gesamte CLI samt Hilfe. Sechs der sieben
+  Sprachen bekamen sie in einer Sprache, die niemand gewählt hatte, und nichts fiel auf — so wurden
+  es hundert: jeder war im Moment nur eine Zeile.
+
+  Sie waren nicht alle dasselbe. Was ein Benutzer liest, ist in die Wörterbücher gewandert. Was nur
+  eine Entwicklerin liest — jede Log-Zeile — ist jetzt Englisch: Ein Log wird gegrept, in ein Ticket
+  geklebt und von dem gelesen, der gerade sucht; eines zu übersetzen macht es für alle nutzlos außer
+  für die Person, in deren Sprache es zufällig steht.
+
+  Die Hilfe des CLI ist ein einziger Eintrag je Sprache statt vierundzwanzig, denn ihre Spalten sind
+  ausgerichtet, und sie ausgerichtet zu halten ist eine Entscheidung je Sprache: Deutsch braucht mehr
+  Platz als Japanisch, und zwei Dutzend einzelne Einträge ließen einen davon verrutschen, ohne dass
+  es auffiele.
+
+  Und jetzt gibt es etwas, dem es auffällt: eine Prüfung, die bei einem Literal anschlägt, das sich
+  außerhalb von `src/i18n` wie spanische Prosa liest, und die mit der Testsuite läuft. Sie sucht
+  Spanisch und nicht Text, also wird das Englisch, in dem der Quelltext geschrieben ist, nicht
+  gemeldet. Zwei Zeilen sind erlaubt, und jede sagt warum: Die Rollenwerte eines Chats werden am Chat
+  gespeichert und gehen in den Prompt eines Agenten — sie sind Daten, keine Beschriftungen.
+
+- **Der Chat, der beim Senden einer Nachricht leer wird.** Viermal gemeldet, nie reproduziert, nie
+  protokolliert — weil nichts kaputtging in dem Sinn, in dem alle gesucht haben. Es wurde keine
+  Ausnahme geworfen, die Nachrichten standen weiter im Store, und ein Projektwechsel holte sie
+  zurück: die Signatur von etwas, das noch da ist und nicht gezeigt wird.
+
+  Der Verlauf folgt seinem eigenen Ende alle 150 ms, während eine Antwort geschrieben wird, und tat
+  das mit `scrollIntoView`. Diese Methode scrollt nicht *einen* Container: Sie geht vom Element
+  aufwärts und scrollt **jeden Scroll-Container auf dem Weg**, so weit jeder es braucht. Und
+  `overflow: hidden` nimmt einer Box nicht die Eigenschaft, ein Scroll-Container zu sein: Es nimmt
+  die Bildlaufleiste und das Mausrad, `scrollTop` funktioniert weiter. Die Hülle der App ist
+  `h-screen overflow-hidden`, mehrere Kästen darunter auch — eine Hülle, deren Inhalt ein paar Pixel
+  höher ausfiel als ihr Kasten, konnte von diesem Aufruf gescrollt werden und blieb dann gescrollt:
+  keine Leiste, kein Rad, nichts, was sie zurückholt. Das Gespräch rutschte aus dem Bild und blieb
+  dort, bis etwas ein Neu-Layout erzwang: eine Seitenleiste öffnen, das Projekt wechseln.
+
+  Es passierte nur beim Senden, weil diese Schleife nur läuft, während eine Antwort kommt. Und der
+  Prüfstand, der es fangen sollte, konnte es nie: Sein Transport kann keinen Lauf starten, also
+  startete die Schleife, die er hätte belasten müssen, kein einziges Mal.
+
+  Die drei Verläufe setzen jetzt `scrollTop` auf dem Container, den sie ohnehin halten — das
+  betrifft dieses Element und nichts darüber. Sie prüfen im selben Takt auch, ob etwas über ihnen
+  gescrollt wurde — dort oben soll nie etwas gescrollt sein — und stellen es zurück, mit einer Zeile
+  im Log, welche Box und um wie viel. Falls es wieder passiert, gibt es diesmal etwas zu lesen.
+
+
+- **Das Team eines Projekts zu ändern lässt seinen Planer nicht mehr an verschwundene Agenten
+  delegieren.** Eine Delegation wird über den Namen gegen die Kinder des Planers aufgelöst, und die
+  Namen, die der Planer kennt, stammen aus dem System-Prompt, den er bekommen hat. Eine Sitzung wird
+  aber *fortgesetzt*: Das CLI spielt das ganze frühere Gespräch erneut ab, in dem das alte Team
+  aufgezählt war und Delegationen an jene Namen gemacht wurden und funktionierten — und ein
+  Protokoll ist lauter als ein oben angehängter System-Prompt. Einen Agenten umzubenennen, die
+  Formation zu wechseln oder einen Implementierer hinzuzufügen ließ den Planer also mit einem Team
+  sprechen, das es nicht mehr gab, und die Arbeit kam als „Delegation fehlgeschlagen" zurück.
+
+  Eine Sitzung merkt sich jetzt, was ihr über das Team gesagt wurde: den Namen dieses Agenten und
+  die seiner Kinder, sonst nichts, denn Namen sind alles, wogegen eine Delegation aufgelöst wird.
+  Stimmt das nicht mehr, eröffnet der nächste Zug ein neues Gespräch, statt in das falsche
+  zurückzukehren, und sagt es. Früher eröffnete Sitzungen werden übernommen statt weggeworfen: Die
+  Heilung darf nicht sein, dass jeder Agent in jedem Projekt seinen Kontext verliert.
+
+- **Eine Delegation, die einen nicht existierenden Agenten nennt, verliert diese Arbeit nicht mehr
+  stillschweigend.** Waren alle Namen falsch, wurde der Zug wiederholt, und das war richtig. Waren
+  *einige* falsch, starteten die gültigen, die ungültigen hinterließen einen Fehler im Verlauf, und
+  von der Arbeit dahinter war nie wieder die Rede — von niemandem, gegenüber niemandem. Diese Namen
+  reisen nun bis zum Ende der Runde und werden dem Planer vorgelegt, wenn er wieder übernimmt,
+  zusammen mit der Liste derer, die ihm tatsächlich unterstehen. Und ein Name, der zu niemandem
+  passte, gilt als das, was er ist — Beleg dafür, dass die Sitzung ein älteres Team erinnert — also
+  wird sie verworfen und der nächste Zug beginnt bei dem Team, das existiert.
+
 ## 0.15.0 — 2026-09-11
 
 ### Neu

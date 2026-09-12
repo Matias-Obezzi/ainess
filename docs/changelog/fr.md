@@ -2,6 +2,126 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.16.0 — 2026-09-11
+
+### Nouveau
+
+- **`--header` dans `ainess mcp add|edit`.** L'application sait donner à un serveur MCP hébergé
+  les en-têtes qu'il demande depuis la 0.14.0 ; le CLI ne le pouvait pas. Désormais
+  `--header "Nom: valeur"`, répétable, coupé au premier deux-points pour qu'une valeur ayant ses
+  propres deux-points — une URL, un jeton en base64 — arrive entière. Sur `edit` les nouveaux
+  en-têtes rejoignent les existants, et `--header "Nom:"` en retire un. Un en-tête est un
+  identifiant, donc il n'atteint jamais un journal ni une sortie : la ligne de démarrage du CLI
+  masque la valeur, et `--json` imprime `***` à sa place.
+
+### Corrigé
+
+- **Le bouton « Ajouter une commande » de la vérification ne faisait rien.** Depuis la 0.15.0. Il
+  donnait à la ligne une commande vide, la commande vide était refusée comme invalide avant que la
+  ligne existe, et le clic s'arrêtait là — les suggestions en un clic marchaient, le bouton non.
+  Trouvé par le premier test de composant jamais écrit pour cette application, le jour de sa
+  création.
+
+
+- **Ce qu'un agent dit pendant qu'il travaille ne disparaît plus quand il s'arrête.** Deux
+  personnes l'ont signalé par les deux bouts — « ma réponse a disparu quand il a délégué, il ne
+  restait que la délégation » et « les réponses partielles sont perdues à la fin de l'activité, il
+  ne montre que la dernière chose dite » — et c'est le même bug.
+
+  Deux choses distinctes portent les mots d'un agent. Le flux porte tout ce qu'il dit au fur et à
+  mesure. `run.output` est la réponse *finale* du fournisseur : pour Claude, la ligne `result`, qui
+  est le dernier message et rien que lui. La bulle affichait `run.output`. Un tour qui expliquait ce
+  qu'il avait trouvé, lançait trois outils et se terminait par une délégation perdait donc tout ce
+  qui précédait, à l'instant où il cessait de tourner.
+
+  Rien n'était réellement perdu : le flux est dans le fil de communication et dans la liste
+  d'activité. Il avait seulement cessé d'être là où quelqu'un regardait, et un tour sans outils
+  n'affichait même pas la section d'activité. La bulle montre désormais tout le tour, et n'ajoute la
+  réponse finale que lorsqu'elle dit quelque chose que la transcription ne contient pas déjà. Le
+  chat en tête-à-tête perdait la même chose par l'autre bout — sa bulle était écrasée par la
+  réponse finale à la fin du tour — et suit désormais la même règle.
+
+- **La liste de modèles de Claude n'avait pas Fable, et `fable-5.1` n'est pas son nom.** Elle est
+  écrite dans le code, contrairement à celles d'antigravity et d'opencode qui sont interrogées : elle
+  vieillit donc en silence. L'écrire à la main n'aidait pas non plus : Claude Code répond
+  `unrecognized_model` à `fable-5.1`, car l'identifiant qu'il accepte est `claude-fable-5-1`. Les
+  deux sont corrigés.
+
+
+- **L'application parle sept langues partout, pas seulement là où quelqu'un y a pensé.** Cent sept
+  phrases étaient écrites dans le code au lieu des dictionnaires : chaque toast et chaque dialogue
+  produit par une opération de worktree, chaque message que renvoie un tunnel ou une installation
+  ratée, les cartes de tâches, et tout le CLI, écran d'aide compris. Six des sept langues les
+  recevaient dans une langue que personne n'avait choisie, et rien ne le remarquait — c'est ainsi
+  qu'on en est arrivé à cent : chacune n'était qu'une ligne sur le moment.
+
+  Elles n'étaient pas toutes de même nature. Ce qu'un utilisateur lit est parti dans les
+  dictionnaires. Ce que seul un développeur lit — toutes les lignes de log — est désormais en
+  anglais : un log se grep, se colle dans un ticket et se lit par qui débogue, et en traduire un le
+  rend inutile à tout le monde sauf à la personne dont c'est la langue.
+
+  L'aide du CLI est une seule entrée par langue et non vingt-quatre, parce que ses colonnes sont
+  alignées et que les garder alignées est une décision par langue : l'allemand prend plus de place
+  que le japonais, et deux douzaines d'entrées séparées laisseraient l'une d'elles se désaligner
+  sans rien pour le montrer.
+
+  Et il y a maintenant quelque chose qui le remarque : une vérification qui échoue sur un littéral
+  se lisant comme de la prose espagnole hors de `src/i18n`, exécutée avec la suite de tests. Elle
+  cherche de l'espagnol et non du texte, donc l'anglais dans lequel le code est écrit n'est pas
+  signalé. Deux lignes sont autorisées et chacune dit pourquoi : les valeurs de rôle d'un chat sont
+  enregistrées sur le chat et partent dans la consigne de l'agent, ce sont donc des données, pas des
+  libellés.
+
+- **Le chat devenant blanc à l'envoi d'un message.** Signalé quatre fois, jamais reproduit, jamais
+  journalisé — parce que rien ne tombait en panne au sens où tout le monde cherchait. Aucune
+  exception n'était levée, les messages étaient toujours dans le store, et changer de projet les
+  ramenait : la signature de quelque chose qui est toujours là et qu'on ne montre pas.
+
+  Le fil suit sa propre fin toutes les 150 ms pendant qu'une réponse s'écrit, et il le faisait avec
+  `scrollIntoView`. Cette méthode ne fait pas défiler *un* conteneur : elle remonte depuis l'élément
+  et fait défiler **tous les conteneurs de défilement du chemin**, autant que chacun en a besoin. Et
+  `overflow: hidden` ne dispense pas une boîte d'être un conteneur de défilement : cela retire la
+  barre et coupe la molette, tandis que `scrollTop` continue de fonctionner. Le shell de
+  l'application est en `h-screen overflow-hidden`, plusieurs boîtes en dessous aussi : un shell dont
+  le contenu dépassait de quelques pixels pouvait donc être défilé par cet appel — et le restait :
+  pas de barre, pas de molette, rien pour le remettre. La conversation montait hors de vue et y
+  restait jusqu'à ce que quelque chose force un relayout : ouvrir un panneau, changer de projet.
+
+  Cela n'arrivait qu'à l'envoi d'un message parce que cette boucle ne tourne que pendant qu'une
+  réponse arrive. Et le harnais construit pour l'attraper n'a jamais pu : son transport ne sait pas
+  démarrer une exécution, donc la boucle qu'il devait solliciter n'a jamais démarré une seule fois.
+
+  Les trois fils écrivent désormais `scrollTop` sur le conteneur qu'ils tiennent déjà, ce qui touche
+  cet élément et rien au-dessus. Ils vérifient aussi, au même rythme, si quelque chose au-dessus a
+  été défilé — rien là-haut ne devrait jamais l'être — et le remettent, avec une ligne dans le
+  journal disant quelle boîte et de combien. Si cela se reproduit, il y aura enfin quelque chose à
+  lire.
+
+
+- **Changer l'équipe d'un projet ne laisse plus son planificateur déléguer à des agents disparus.**
+  Une délégation se résout par nom contre les enfants du planificateur, et les noms que celui-ci
+  connaît viennent du system prompt qu'on lui a remis. Mais la session est *reprise* : le CLI rejoue
+  toute la conversation précédente, où l'ancienne équipe était listée et où les délégations vers ces
+  noms ont été faites et ont fonctionné — et une transcription pèse plus lourd qu'un system prompt
+  ajouté par-dessus. Renommer un agent, changer de formation ou ajouter un implémenteur laissait
+  donc le planificateur parler à une équipe qui n'existait plus, et le travail revenait en
+  « délégation échouée ».
+
+  La session garde désormais une note de ce qu'on lui a dit de l'équipe : le nom de cet agent et
+  celui de ses enfants, rien d'autre, car les noms sont tout ce contre quoi une délégation se
+  résout. Quand cela ne correspond plus, le tour suivant ouvre une nouvelle conversation au lieu de
+  reprendre la mauvaise, et le dit. Les sessions ouvertes avant sont adoptées plutôt que jetées : le
+  remède ne peut pas être que tous les agents de tous les projets perdent leur contexte.
+
+- **Une délégation qui nomme un agent inexistant ne perd plus ce travail en silence.** Quand tous
+  les noms étaient faux, le tour était relancé, et c'était juste. Quand *certains* l'étaient, les
+  valides démarraient, les invalides laissaient une erreur dans le fil, et du travail qu'ils
+  portaient il n'était plus jamais question — par personne, à personne. Ces noms voyagent maintenant
+  jusqu'à la fin du tour et sont placés devant le planificateur quand il reprend, avec la liste de
+  ceux qui dépendent réellement de lui. Et un nom qui ne correspondait à personne est pris pour ce
+  qu'il est — la preuve que la session se souvient d'une équipe antérieure — donc cette session est
+  abandonnée et le tour suivant repart de l'équipe qui existe.
+
 ## 0.15.0 — 2026-09-11
 
 ### Nouveau

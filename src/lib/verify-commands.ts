@@ -11,6 +11,7 @@
 // redirection — is refused rather than escaped, because the app spawns whichever shell the machine
 // offers and they do not agree on quoting. Two commands is the answer to wanting two commands.
 import { getTransport } from "./transport";
+import { translateNow } from "@/i18n/useT";
 import type { VerifyCommand } from "@/types";
 
 /** Generous, because a test suite is allowed to be slow; finite, because a hung one is not. */
@@ -121,7 +122,7 @@ export async function runVerifyCommand(command: VerifyCommand, cwd: string): Pro
   const shimmed = await attempt("cmd.exe", ["/d", "/s", "/c", command.program, ...command.args]);
   if (shimmed) return shimmed;
 
-  return { label, code: null, output: `No se pudo ejecutar "${command.program}".` };
+  return { label, code: null, output: translateNow("verify.programMissing", { program: command.program }) };
 }
 
 /**

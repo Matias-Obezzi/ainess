@@ -2,6 +2,7 @@
 // Mirrors src-tauri/src/tunnel.rs: spawn the binary hidden, read its output until the public
 // URL shows up (30 s timeout) and keep the child so it can be stopped and killed on exit.
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { translateNow } from "@/i18n/useT";
 import * as readline from "node:readline";
 import {
   extractTunnelUrl,
@@ -80,7 +81,7 @@ export const nodeTunnel = {
     const bin = tunnelBinary(p);
     const paths = await detect();
     const program = p === "ngrok" ? paths.ngrok : paths.cloudflared;
-    if (!program) throw new Error(`No se encontró \`${bin}\`. Instalalo y volvé a intentar.`);
+    if (!program) throw new Error(translateNow("tunnel.binaryMissing", { bin }));
 
     const args = tunnelArgs(p, port, p === "ngrok" ? { ...opts, ngrokFlag: probeNgrokFlag(program) } : opts);
     const proc = spawn(program, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
@@ -97,7 +98,7 @@ export const nodeTunnel = {
       const timer = setTimeout(() => {
         finish(() => {
           killTree(proc);
-          reject(new Error(`\`${bin}\` no publicó una URL en 30 s. Últimas líneas: ${tail.join(" | ")}`));
+          reject(new Error(translateNow("tunnel.noUrl", { bin, tail: tail.join(" | ") })));
         });
       }, URL_TIMEOUT_MS);
 
@@ -118,9 +119,9 @@ export const nodeTunnel = {
       proc.on("error", err => finish(() => reject(new Error(`No se pudo iniciar \`${bin}\`: ${err.message}`))));
       proc.on("close", code => {
         const hint = p === "ngrok" && tail.some(l => l.includes("authtoken"))
-          ? " Configurá tu cuenta con `ngrok config add-authtoken <token>`."
+          ? translateNow("tunnel.authtokenHint")
           : "";
-        finish(() => reject(new Error(`\`${bin}\` terminó con código ${code}.${hint} Últimas líneas: ${tail.join(" | ")}`)));
+        finish(() => reject(new Error(translateNow("tunnel.exited", { bin, code: code ?? "?", hint, tail: tail.join(" | ") }))));
       });
     });
 

@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { QueuedMessages } from "./QueuedMessages";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
-import { RunActivity, useActivityCount } from "@/components/shell/RunActivity";
+import { RunActivity, useActivityCount, useRunTranscript } from "@/components/shell/RunActivity";
+import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
@@ -104,13 +106,13 @@ export function OrchestratorThread() {
   // Opening a project (or finishing its first load) lands on the newest turn, not the oldest.
   useEffect(() => {
     if (historyLoading) return;
-    const id = requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: "end" }));
+    const id = requestAnimationFrame(() => stick(scrollRef.current));
     return () => cancelAnimationFrame(id);
   }, [currentProjectId, historyLoading]);
 
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
-      if (stickToBottom) bottomRef.current?.scrollIntoView();
+      if (stickToBottom) stick(scrollRef.current);
       else setNewCount(n => n + (rootRuns.length - prevCount.current));
     }
     prevCount.current = rootRuns.length;
@@ -118,14 +120,19 @@ export function OrchestratorThread() {
 
   // A run streams dozens of deltas per second: follow the bottom on a timer (and inside a frame)
   // instead of scrolling on every one of them.
+  //
+  // `stick` and not `scrollIntoView`: this is the loop that runs while a message is being answered,
+  // and `scrollIntoView` scrolls every scroll container above the element as well — including the
+  // `overflow: hidden` ones, which have no scrollbar to put back. See `lib/stick-to-bottom.ts`.
   useEffect(() => {
     if (!hasRunning || !stickToBottom) return;
     const interval = setInterval(() => {
       requestAnimationFrame(() => {
         const el = scrollRef.current;
-        if (!el) return;
-        if (el.scrollHeight - el.scrollTop - el.clientHeight < 4) return;
-        bottomRef.current?.scrollIntoView({ block: "end" });
+        if (!el || isAtBottom(el)) return;
+        stick(el);
+        // Nothing above a thread is meant to scroll, so if something did, this is where it shows.
+        resetScrolledAncestors(el, "thread");
       });
     }, FOLLOW_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -145,7 +152,7 @@ export function OrchestratorThread() {
     if (!el || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       lastHeight.current = el.clientHeight;
-      if (stickRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+      if (stickRef.current) stick(el);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -167,7 +174,7 @@ export function OrchestratorThread() {
   const scrollToBottom = () => {
     setStickToBottom(true);
     setNewCount(0);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    stick(scrollRef.current, "smooth");
   };
 
   return (
@@ -229,6 +236,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [retryOpen, setRetryOpen] = useState(false);
   const steps = useActivityCount(run.id);
+  const transcript = useRunTranscript(run.id);
 
   // A pending question is answered from the composer, which takes over the input box for it;
   // showing it here too would let it be answered twice. An answered question stays, since the
@@ -250,6 +258,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const output = interrupted ? "" : (run.output ?? "");
   // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
   const usage = runUsageText(run, locale, t);
+  const answer = useMemo(() => runAnswer(interrupted ? "" : transcript, output), [interrupted, transcript, output]);
 
   const retry = () =>
     void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
@@ -365,8 +374,13 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                         {t("common.retry")}
                       </Button>
                     </div>
-                  ) : run.output ? (
-                    <Markdown text={run.output} />
+                  ) : answer.transcript || answer.final ? (
+                    <>
+                      {/* What it said while it worked, which `run.output` is only the last line of.
+                          See `lib/run-answer.ts`: the final answer follows only when it adds to it. */}
+                      {answer.transcript && <Markdown text={answer.transcript} />}
+                      {answer.final && <Markdown text={answer.final} />}
+                    </>
                   ) : (
                     <div className="text-sm text-muted-foreground italic">{t("thread.noOutput")}</div>
                   )}

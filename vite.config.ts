@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -26,4 +27,26 @@ export default defineConfig(async () => ({
     // src/lib/project-folder.ts). Watched, moving a card in the window reloads the window.
     watch: { ignored: ["**/src-tauri/**", "**/.ainess/**"] },
   },
+  test: {
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "node",
+          include: ["src/**/*.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "components",
+          environment: "jsdom",
+          include: ["src/**/*.test.tsx"],
+          setupFiles: ["src/test/setup.ts"],
+        },
+      },
+    ],
+  },
 }));
+

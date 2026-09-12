@@ -217,7 +217,7 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
         toast({ title, description });
       } catch (e) {
         // CLI fallback
-        console.error(`[notificación] ${title}: ${description}`);
+        console.error(`[notification] ${title}: ${description}`);
       }
       break;
     }

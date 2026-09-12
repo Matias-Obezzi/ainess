@@ -16,7 +16,7 @@ import type { ParsedTaskOp } from "@/lib/providers";
 /** Title of a task: its first meaningful line, without markdown decoration. */
 function titleFrom(text: string): string {
   const line = text.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? "";
-  return truncate(line.replace(/^[#>*\-\s]+/, ""), 120) || "Tarea sin título";
+  return truncate(line.replace(/^[#>*\-\s]+/, ""), 120) || translateNow("task.untitled");
 }
 
 function tasksOf(projectId: string): Task[] {
@@ -139,7 +139,7 @@ export function taskOnApprovalSettled(approvalId: string, approved: boolean, run
     if (!task) return;
     store.updateTask(task.id, approved
       ? { status: "working", runId, approvalId: undefined }
-      : { status: "backlog", approvalId: undefined, detail: [task.detail, "[rechazada por el usuario]"].filter(Boolean).join("\n\n") });
+      : { status: "backlog", approvalId: undefined, detail: [task.detail, translateNow("task.rejectedByUser")].filter(Boolean).join("\n\n") });
   });
 }
 
@@ -203,7 +203,7 @@ export function taskOnRunFinished(run: Run): void {
     const checking = !failed && verificationFor(run).length > 0;
     useAppStore.getState().updateTask(task.id, {
       status: failed ? "needs-you" : checking || hasReviewer(run.projectId) ? "in-review" : "ready",
-      detail: failed ? [task.detail, `Error: ${run.output || "la corrida terminó sin salida"}`].filter(Boolean).join("\n\n") : task.detail,
+      detail: failed ? [task.detail, translateNow("task.runError", { error: run.output || translateNow("task.runNoOutput") })].filter(Boolean).join("\n\n") : task.detail,
     });
   });
 }

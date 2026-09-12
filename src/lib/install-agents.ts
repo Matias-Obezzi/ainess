@@ -90,7 +90,7 @@ export async function installProvider(
   const method = installerFor(provider);
   const command = method && installCommand(method);
   if (!method || !command) {
-    throw new Error(`${PROVIDERS[provider]?.label ?? provider} no se instala desde acá: seguí sus instrucciones.`);
+    throw new Error(translateNow("install.notFromHere", { provider: PROVIDERS[provider]?.label ?? provider }));
   }
 
   const transport = getTransport();
@@ -103,8 +103,8 @@ export async function installProvider(
     const message = e instanceof Error ? e.message : String(e);
     throw new Error(
       MISSING_RE.test(message)
-        ? `No se encontró \`${command.program}\` en esta máquina.`
-        : `No se pudo ejecutar \`${command.program}\`: ${message}`,
+        ? translateNow("install.programMissing", { program: command.program })
+        : translateNow("install.programFailed", { program: command.program, error: message }),
     );
   }
 
@@ -112,7 +112,7 @@ export async function installProvider(
   // winget answers "already installed" with a non-zero code, which is not a failure here.
   if (res.code !== 0 && !/already installed|ya está instalado/i.test(output)) {
     const detail = output.trim().split(/\r?\n/).filter(Boolean).slice(-2).join(" ");
-    throw new Error(detail || `\`${command.program}\` terminó con código ${res.code}`);
+    throw new Error(detail || translateNow("install.programExited", { program: command.program, code: res.code ?? "?" }));
   }
 
   onPhase("detecting");

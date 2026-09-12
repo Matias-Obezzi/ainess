@@ -6,6 +6,7 @@
 // `git worktree remove` follows the link and deletes the real folder, so dependencies are
 // installed for real inside the worktree.
 import { getTransport } from "@/lib/transport";
+import { translateNow } from "@/i18n/useT";
 import type { AgentConfig, AgentWorktree, Project } from "@/types";
 
 /** Plain git reads answer fast; anything slower than this is a hung repo. */
@@ -102,7 +103,7 @@ async function tryExec(program: string, args: string[], cwd: string | undefined,
 
 async function git(args: string[], timeoutSecs = GIT_TIMEOUT_SECS): Promise<ExecResult> {
   const result = await tryExec("git", args, undefined, timeoutSecs);
-  if (!result) throw new Error("No se pudo ejecutar git. Verificá que esté instalado y en el PATH.");
+  if (!result) throw new Error(translateNow("worktree.gitMissing"));
   return result;
 }
 
@@ -122,7 +123,7 @@ async function npm(args: string[], cwd: string): Promise<ExecResult> {
   if (direct) return direct;
   const shell = await tryExec("cmd.exe", ["/d", "/s", "/c", "npm", ...args], cwd, INSTALL_TIMEOUT_SECS);
   if (shell) return shell;
-  throw new Error("No se pudo ejecutar npm para instalar las dependencias del worktree.");
+  throw new Error(translateNow("worktree.npmMissing"));
 }
 
 /** Whether `dir` is inside a git working tree. */
@@ -180,9 +181,9 @@ export async function ensureWorktree(
   known?: AgentWorktree,
 ): Promise<AgentWorktree> {
   const workspace = project.workspaceDir;
-  if (!workspace) throw new Error("El proyecto no tiene carpeta de trabajo.");
+  if (!workspace) throw new Error(translateNow("worktree.noWorkspace"));
   if (!(await isGitRepo(workspace))) {
-    throw new Error("El proyecto no es un repositorio git: no se puede crear un worktree.");
+    throw new Error(translateNow("worktree.notARepoForCreate"));
   }
 
   const path = known?.path ?? worktreePath(workspace, agent.name);
@@ -206,7 +207,7 @@ export async function ensureWorktree(
     // Already registered and already prepared: leave it exactly as it is.
     if (record.readyAt) return record;
   } else {
-    onStep?.("Creando el worktree…");
+    onStep?.(translateNow("worktree.creating"));
     const base = await currentBranch(workspace);
     const exists = await branchExists(workspace, branch);
     const args = exists
@@ -214,7 +215,7 @@ export async function ensureWorktree(
       : ["-C", workspace, "worktree", "add", "-b", branch, path];
     const added = await git(args, ADD_TIMEOUT_SECS);
     if (added.code !== 0) {
-      throw new Error(`No se pudo crear el worktree: ${gitError(added, "git worktree add falló.")}`);
+      throw new Error(translateNow("worktree.createFailed", { error: gitError(added, translateNow("worktree.addFailed")) }));
     }
     record = { agentId: agent.id, path, branch, base, createdAt: Date.now() };
   }
@@ -223,10 +224,10 @@ export async function ensureWorktree(
   // to the main repo's — `git worktree remove` would follow the link and delete the original.
   const hasPackageJson = (await getTransport().readFileAbs(joinPath(workspace, "package.json"))) !== null;
   if (hasPackageJson && !(await hasNodeModules(record.path))) {
-    onStep?.("Instalando dependencias…");
+    onStep?.(translateNow("worktree.installing"));
     const installed = await npm(["install"], record.path);
     if (installed.code !== 0) {
-      throw new Error(`Falló la instalación de dependencias en el worktree: ${gitError(installed, "npm install falló.")}`);
+      throw new Error(translateNow("worktree.installFailed", { error: gitError(installed, translateNow("worktree.npmInstallFailed")) }));
     }
   }
 
@@ -251,18 +252,18 @@ export async function removeWorktree(
     const stillListed = await git(["-C", workspace, "worktree", "list", "--porcelain"]);
     const present = stillListed.code === 0 && parseWorktreeList(stillListed.stdout).some(w => samePath(w.path, worktree.path));
     if (present || pruned.code !== 0) {
-      return { ok: false, message: gitError(removed, "No se pudo eliminar el worktree.") };
+      return { ok: false, message: gitError(removed, translateNow("worktree.removeFailed")) };
     }
   }
 
   if (opts.deleteBranch) {
     const deleted = await git(["-C", workspace, "branch", "-D", worktree.branch]);
     if (deleted.code !== 0) {
-      return { ok: true, message: `Se eliminó el worktree, pero la rama ${worktree.branch} quedó: ${gitError(deleted, "no se pudo borrar.")}` };
+      return { ok: true, message: translateNow("worktree.removedBranchKept", { branch: worktree.branch, error: gitError(deleted, translateNow("worktree.branchDeleteFailed")) }) };
     }
-    return { ok: true, message: `Se eliminaron el worktree y la rama ${worktree.branch}.` };
+    return { ok: true, message: translateNow("worktree.removedWithBranch", { branch: worktree.branch }) };
   }
-  return { ok: true, message: `Se eliminó el worktree. La rama ${worktree.branch} sigue ahí.` };
+  return { ok: true, message: translateNow("worktree.removedBranchStays", { branch: worktree.branch }) };
 }
 
 export type MergeStatus = "merged" | "up-to-date" | "dirty-workspace" | "dirty-worktree" | "conflict" | "error";
@@ -280,23 +281,23 @@ export interface MergeResult {
 export async function mergeWorktree(project: Project, worktree: AgentWorktree): Promise<MergeResult> {
   const workspace = project.workspaceDir;
   if (!(await isGitRepo(workspace))) {
-    return { status: "error", message: "El proyecto no es un repositorio git." };
+    return { status: "error", message: translateNow("worktree.notARepo") };
   }
 
   const workspaceDirty = await hasUncommittedChanges(workspace);
   if (workspaceDirty === null) {
-    return { status: "error", message: "No se pudo leer el estado del repositorio del proyecto." };
+    return { status: "error", message: translateNow("worktree.workspaceUnreadable") };
   }
   if (workspaceDirty) {
-    return { status: "dirty-workspace", message: "El proyecto tiene cambios sin commitear: commiteá o descartá antes de mergear." };
+    return { status: "dirty-workspace", message: translateNow("worktree.workspaceDirty") };
   }
 
   const worktreeDirty = await hasUncommittedChanges(worktree.path);
   if (worktreeDirty === null) {
-    return { status: "error", message: "No se pudo leer el estado del worktree." };
+    return { status: "error", message: translateNow("worktree.worktreeUnreadable") };
   }
   if (worktreeDirty) {
-    return { status: "dirty-worktree", message: "El worktree tiene cambios sin commitear: el agente tiene que commitearlos primero." };
+    return { status: "dirty-worktree", message: translateNow("worktree.worktreeDirty") };
   }
 
   const target = await currentBranch(workspace);
@@ -304,15 +305,15 @@ export async function mergeWorktree(project: Project, worktree: AgentWorktree): 
   const output = `${merged.stdout}\n${merged.stderr}`;
   if (merged.code === 0) {
     if (/already up[- ]to[- ]date/i.test(output)) {
-      return { status: "up-to-date", message: `${target} ya tenía todo lo de ${worktree.branch}.` };
+      return { status: "up-to-date", message: translateNow("worktree.upToDate", { target, branch: worktree.branch }) };
     }
-    return { status: "merged", message: `Se mergeó ${worktree.branch} en ${target}.` };
+    return { status: "merged", message: translateNow("worktree.merged", { branch: worktree.branch, target }) };
   }
   if (/conflict/i.test(output)) {
     return {
       status: "conflict",
-      message: `El merge de ${worktree.branch} quedó en conflicto. Resolvelo a mano en la carpeta del proyecto.`,
+      message: translateNow("worktree.conflict", { branch: worktree.branch }),
     };
   }
-  return { status: "error", message: gitError(merged, "No se pudo mergear la rama del worktree.") };
+  return { status: "error", message: translateNow("worktree.mergeFailed") };
 }

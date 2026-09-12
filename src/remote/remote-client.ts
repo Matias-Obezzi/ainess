@@ -2,6 +2,7 @@
 // pours every snapshot into the store and replaces the store actions that do something with
 // the matching HTTP call. See src/lib/remote.ts for the other side of the protocol.
 import { useAppStore } from "@/store";
+import { translateNow } from "@/i18n/useT";
 import { toast } from "@/components/ui/toast";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { createTask } from "@/lib/tasks";
@@ -15,7 +16,7 @@ const TOKEN_LEGACY_KEY = "ais.remote.token";
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 10000;
 
-const NOT_ON_PHONE = "Esto se edita desde la app de escritorio";
+const notOnPhone = () => translateNow("app.editOnDesktop");
 
 export class RemoteError extends Error {
   constructor(message: string, readonly status: number) {
@@ -208,7 +209,7 @@ export function installRemoteActions(): void {
       toast.error(e instanceof Error ? e.message : String(e));
     }
   };
-  const refuse = () => { toast.error(NOT_ON_PHONE); };
+  const refuse = () => { toast.error(notOnPhone()); };
 
   useAppStore.setState({
     submitPrompt: (text, targetAgentId, projectId, opts) =>

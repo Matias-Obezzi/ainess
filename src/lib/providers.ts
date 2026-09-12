@@ -4,6 +4,18 @@ import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
 
+/**
+ * What Claude Code accepts after `--model`.
+ *
+ * Hardcoded, unlike antigravity and opencode, which are asked (`listModels` runs their `models`
+ * subcommand). So this list goes stale in silence: a model released after the last time somebody
+ * edited this line does not appear in the picker, and the only way in is the "Otro…" field.
+ */
+const CLAUDE_MODELS = [
+  "opus", "sonnet", "haiku",
+  "claude-opus-5", "claude-sonnet-5", "claude-fable-5-1", "claude-haiku-4-5-20251001",
+];
+
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
   return ids.map(id => ({ id, label: id }));
@@ -27,7 +39,8 @@ export interface ProviderSpec {
   models: ModelInfo[];
   supportsSessions: boolean;
   promptVia: "stdin" | "arg";
-  note?: string;
+  /** Dictionary key of a line of help about this provider (see `provider.*` in src/i18n). */
+  noteKey?: string;
   buildCommand(input: BuildInput): Omit<SpawnOptions, "runId">;
   parseLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[];
   /** Final answer when the provider's own `result` event doesn't carry it (default: all raw lines). */
@@ -410,15 +423,19 @@ function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[
  */
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
-  return `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+  return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   claude: {
     id: "claude",
     label: "Claude Code",
-    defaultModels: ["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"],
-    models: toModels(["sonnet", "opus", "haiku", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"]),
+    // Both spellings, because Claude Code takes both: the short alias tracks whatever that family
+    // currently points at, and the dated id pins one build. `fable` has no short alias in the CLI —
+    // `fable-5.1` is rejected as an unrecognised model, which is what someone typing the name they
+    // see everywhere else will write.
+    defaultModels: CLAUDE_MODELS,
+    models: toModels(CLAUDE_MODELS),
     supportsSessions: true,
     promptVia: "stdin",
     buildCommand: (input) => {
@@ -501,7 +518,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     ]),
     supportsSessions: true,
     promptVia: "arg",
-    note: "En modo no interactivo Copilot exige --allow-all-tools; con auto-aprobación se usa --yolo (también rutas y URLs).",
+    noteKey: "provider.copilotNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       // -p without --allow-all-tools makes every tool call fail, so it is always on;
@@ -631,7 +648,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     // shim on Windows, and Windows refuses to start a batch file whose arguments carry newlines
     // ("batch file arguments are invalid"), which every system prompt does.
     promptVia: "stdin",
-    note: "Los modelos son «proveedor/modelo» (por ejemplo google/gemini-3-flash) y salen de `opencode models`. Conectá la cuenta o la API key con `opencode auth login`: la clave queda en opencode, ainess no la guarda. Sin auto-aprobación las herramientas quedan denegadas, así que un implementador la necesita.",
+    noteKey: "provider.opencodeNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       const args = ["run", "--format", "json"];

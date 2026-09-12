@@ -7,6 +7,7 @@
 // instead — one line tall, the finished step leaving through the top as the new one arrives from
 // below — and clicking it opens the history above. See `lib/activity-view` for what folds and why.
 import { ProviderLogo } from "@/components/ProviderLogo";
+import { transcriptOf } from "@/lib/run-answer";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
@@ -107,6 +108,16 @@ export function activityByRun(messages: CommMessage[]): Map<string, CommMessage[
 function useRunMessages(runId: string): CommMessage[] {
   const messages = useAppStore(state => state.messages);
   return useMemo(() => activityByRun(messages).get(runId) ?? NO_MESSAGES, [messages, runId]);
+}
+
+/**
+ * Everything the agent said during the run, as one piece of text.
+ *
+ * The stream is kept as a single `text-<runId>` message that grows, so in practice this is one
+ * string; it is joined anyway because nothing guarantees a turn produced exactly one.
+ */
+export function useRunTranscript(runId: string): string {
+  return useAppStore(state => transcriptOf(activityByRun(state.messages).get(runId) ?? NO_MESSAGES, runId));
 }
 
 /** How many steps (tools, delegations, errors) a run has taken. Used for the "Actividad" header. */

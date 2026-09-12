@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useAppStore, selectProjectAgents } from "@/store";
+import { stickToBottom as stick } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { MessageItem } from "./MessageItem";
 import { plural } from "@/i18n";
@@ -59,14 +60,14 @@ export function CommunicationPanel() {
   // happened. A frame later, so the list is laid out and `scrollIntoView` has somewhere to go.
   useEffect(() => {
     setStickToBottom(true);
-    const id = requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: "end" }));
+    const id = requestAnimationFrame(() => stick(scrollContainerRef.current));
     return () => cancelAnimationFrame(id);
   }, [currentProjectId]);
 
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
       if (stickToBottom) {
-        bottomRef.current?.scrollIntoView();
+        stick(scrollContainerRef.current);
       } else {
         setNewCount(n => n + (messages.length - prevMessagesLength.current));
       }
@@ -86,7 +87,7 @@ export function CommunicationPanel() {
   const scrollToBottom = () => {
     setStickToBottom(true);
     setNewCount(0);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    stick(scrollContainerRef.current, "smooth");
   };
 
   const toggleKind = (kind: MessageKind) => {

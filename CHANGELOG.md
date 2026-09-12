@@ -4,6 +4,122 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.16.0 — 2026-09-11
+
+### Added
+
+- **`--header` on `ainess mcp add|edit`.** The app has been able to give a hosted MCP server the
+  headers it asks for since 0.14.0; the CLI could not. Now `--header "Name: value"`, repeatable,
+  split on the first colon so a value with colons of its own — a URL, a base64 token — arrives
+  whole. On `edit` new headers join the existing ones, and `--header "Name:"` removes one. A
+  header is a credential, so it never reaches a log or an output: the CLI's own startup line masks
+  the value, and `--json` prints `***` in its place.
+
+### Fixed
+
+- **The "Add command" button under Verification did nothing.** Since 0.15.0. It handed the row an
+  empty command, the empty command was refused as invalid before the row was created, and the click
+  ended there — the one-click suggestions worked, the button did not. Found by the first component
+  test ever written for this app, on the first day it existed.
+
+
+- **What an agent said while it worked no longer disappears when it stops.** Two people reported
+  this from opposite ends — "my answer vanished when it delegated, only the delegation was left" and
+  "the partial answers are lost when the activity ends, it only shows the last thing it said" — and
+  it is one bug.
+
+  Two different things carry an agent's words. The stream carries everything it says as it says it.
+  `run.output` is the provider's *final* answer: for Claude, the `result` line, which is the last
+  message and only the last message. The bubble showed `run.output`. So a turn that explained what
+  it found, ran three tools and finished with a delegation or a one-line summary lost everything
+  before that line the instant it stopped running — readable while it worked, gone when it ended.
+
+  Nothing was ever actually lost: the stream is in the communication feed and inside the activity
+  list. It had simply stopped being anywhere anyone was looking, and when a turn used no tools at
+  all the activity section did not appear either. The bubble now shows the whole turn, and adds the
+  final answer after it only when that answer says something the transcript does not already
+  contain — otherwise a plain reply, which is streamed and then repeated as the result, would print
+  twice. The one-on-one chat had the same loss from the other side — its bubble was overwritten
+  with the final answer when the turn ended — and follows the same rule now.
+
+- **Claude's model list had no Fable, and `fable-5.1` is not its name.** The list is written into
+  the source, unlike antigravity's and opencode's, which are asked — so it goes stale in silence and
+  nobody finds out until they look for a model that is missing. Typing the name by hand did not help
+  either: Claude Code answers `unrecognized_model` to `fable-5.1`, because the id it takes is
+  `claude-fable-5-1`. Both are fixed — the model is in the picker, and the list now says in one
+  place that it is hardcoded and why that matters.
+
+
+- **The app speaks seven languages everywhere, not only where somebody remembered.** A hundred and
+  seven sentences were written into the source instead of into the dictionaries — every toast and
+  dialog that a worktree operation produces, every message a tunnel or an install failure comes back
+  with, the task cards, the whole CLI including its help screen. Six of the seven languages got them
+  in a language nobody had picked, and nothing noticed, which is how there came to be a hundred of
+  them: each was one line at the time.
+
+  They were not all the same kind of thing. What a user reads moved to the dictionaries. What only a
+  developer reads — every log line — is English now instead: a log is grepped, pasted into an issue
+  and read by whoever is debugging, and translating one makes it useless to everyone except the
+  person whose language it happens to be in.
+
+  The CLI's help is a single entry per language rather than twenty-four, because its columns line up
+  and keeping them lined up is a per-language decision — German needs more room than Japanese, and
+  two dozen separate entries would let one drift out of alignment with nothing to show it.
+
+  And there is now something that notices: a check that fails on a literal reading as Spanish prose
+  outside `src/i18n`, run as part of the test suite. It looks for Spanish rather than for text, so
+  the English the source is written in is not flagged. Two lines are allowed and each says why — the
+  chat role values are stored on the chat and go into an agent's prompt, so they are data, not
+  labels.
+
+- **The chat going blank when you send a message.** Reported four times, never reproduced, never
+  logged — because nothing was going wrong in the sense anyone was looking for. No error was thrown,
+  the messages were still in the store, and switching project brought them back, which is the
+  signature of something that is still there and is not being shown.
+
+  The thread follows its own tail every 150 ms while an answer is being written, and it did that
+  with `scrollIntoView`. That method does not scroll *a* container: it walks up from the element and
+  scrolls **every scroll container on the way**, as far as each one needs. And `overflow: hidden`
+  does not opt a box out of being a scroll container — it takes away the scrollbar and stops the
+  wheel, while `scrollTop` keeps working. The app shell is `h-screen overflow-hidden` and so are
+  several boxes under it, so a shell whose content came out a few pixels taller than its box could
+  be scrolled by that call, and then stayed scrolled: no scrollbar, no wheel, nothing to put it
+  back. The conversation slid up out of sight and stayed there until something forced a relayout —
+  opening a sidebar, changing project.
+
+  It only ever happened on sending a message because that loop only runs while an answer is coming.
+  And the harness built to catch it never could: its transport cannot start a run, so the loop it
+  needed to exercise never started once.
+
+  The three feeds now set `scrollTop` on the container they already hold, which touches that element
+  and nothing above it. They also check, on the same beat, whether anything above them has been
+  scrolled — nothing up there is ever supposed to be — and put it back, with a line in the log
+  saying which box and by how much. If this ever happens again there will be something to read.
+
+
+- **Changing a project's team no longer leaves its planner delegating to agents that are gone.** A
+  delegation is resolved by name against the planner's children, and the names the planner knows
+  come from the system prompt it was handed. But a session is *resumed*: the CLI replays the whole
+  earlier conversation, in which the old roster was listed and delegations to the old names were
+  made and worked — and a transcript is louder than a system prompt appended on top of it. So
+  renaming an agent, swapping the formation or adding an implementer left the planner talking to a
+  team that no longer existed, and the work came back as "delegation failed".
+
+  A session now carries a note of what it was told about the team — this agent's name and its
+  children's, nothing else, because names are the whole of what a delegation resolves against. When
+  that no longer matches, the next turn opens a fresh conversation instead of resuming into the
+  wrong one, and says so. Sessions opened before this are adopted rather than thrown away: the cure
+  should not be every agent in every project losing its context.
+
+- **A delegation that names one agent that does not exist no longer loses that work in silence.**
+  With every name wrong the turn was retried, which was right. With *some* names wrong the valid
+  ones started, the invalid ones produced an error in the feed, and the piece of work behind them
+  was never mentioned again — by anyone, to anyone. Those names now travel to the end of the round
+  and are put in front of the planner when it picks the work back up, along with the list of who
+  actually answers to it. And a name that matched nobody is treated as what it is — proof the
+  session remembers an older team — so that session is dropped and the next turn starts from the
+  team that exists.
+
 ## 0.15.0 — 2026-09-11
 
 ### Added

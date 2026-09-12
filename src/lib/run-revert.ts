@@ -13,6 +13,7 @@
 // much later. Nothing is guessed: what cannot be undone safely is named.
 
 import { getTransport } from "./transport";
+import { translateNow } from "@/i18n/useT";
 
 /** The state of a working tree at a moment: what git says is not clean. */
 export interface TreeState {
@@ -200,5 +201,5 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 function firstLine(text: string): string {
-  return text.split(/\r?\n/).find(l => l.trim().length > 0)?.trim() ?? "git no dijo por qué";
+  return text.split(/\r?\n/).find(l => l.trim().length > 0)?.trim() ?? translateNow("revert.gitSaidNothing");
 }

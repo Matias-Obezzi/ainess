@@ -2,6 +2,7 @@
 // used by the dependency graph. Nothing here touches the store or the disk, so it is all testable
 // (see src/lib/__tests__/tasks.test.ts). Persistence lives in src/lib/task-store.ts.
 import type { Task, TaskPriority, TaskStatus } from "@/types";
+import { translateNow } from "@/i18n/useT";
 
 /** Columns of the board, left to right. */
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "in-review", "ready", "done"];
@@ -25,7 +26,7 @@ export function createTask(partial: Partial<Task> & { projectId: string }): Task
   return {
     id: partial.id ?? crypto.randomUUID(),
     projectId: partial.projectId,
-    title: (partial.title ?? "Tarea sin título").trim() || "Tarea sin título",
+    title: (partial.title ?? translateNow("task.untitled")).trim() || translateNow("task.untitled"),
     detail: partial.detail,
     status: partial.status ?? "backlog",
     priority: TASK_PRIORITIES.includes(partial.priority as TaskPriority) ? partial.priority : undefined,

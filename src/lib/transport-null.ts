@@ -1,6 +1,7 @@
 import { Transport } from "./transport";
+import { translateNow } from "@/i18n/useT";
 
-const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app de escritorio";
+const terminalsUnavailable = () => translateNow("app.terminalsDesktopOnly");
 
 // Used by the plain-browser preview (vite dev without Tauri): nothing can run or persist.
 export const nullTransport: Transport = {
@@ -24,7 +25,7 @@ export const nullTransport: Transport = {
   filesExistAbs: async () => [],
   storageStat: async () => null,
   portAvailable: async () => null,
-  remoteStart: async () => { throw new Error("El acceso remoto no está disponible en el navegador"); },
+  remoteStart: async () => { throw new Error(translateNow("app.remoteNotInBrowser")); },
   remoteStop: async () => {},
   remoteStatus: async () => ({ running: false, clients: 0 }),
   remotePushState: async () => {},
@@ -34,14 +35,14 @@ export const nullTransport: Transport = {
   logAppend: async () => {},
   logsDir: async () => "",
   openLogsDir: async () => { throw new Error("No disponible en el navegador"); },
-  tunnelStart: async () => { throw new Error("El túnel no está disponible en el navegador"); },
+  tunnelStart: async () => { throw new Error(translateNow("app.tunnelNotInBrowser")); },
   tunnelStop: async () => {},
   tunnelStatus: async () => ({ running: false }),
   tunnelDetect: async () => ({ cloudflared: null, ngrok: null }),
-  ptySpawn: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyWrite: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyResize: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyKill: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptySpawn: async () => { throw new Error(terminalsUnavailable()); },
+  ptyWrite: async () => { throw new Error(terminalsUnavailable()); },
+  ptyResize: async () => { throw new Error(terminalsUnavailable()); },
+  ptyKill: async () => { throw new Error(terminalsUnavailable()); },
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},

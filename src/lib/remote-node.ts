@@ -145,7 +145,7 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): P
     json(res, result.error ? 400 : 200, result);
     return;
   }
-  json(res, 404, { error: "No encontrado" });
+  json(res, 404, { error: translateNow("remote.notFound") });
 }
 
 export const nodeRemote: Pick<Transport, "remoteStart" | "remoteStop" | "remoteStatus" | "remotePushState" | "onRemoteCommand"> = {
@@ -155,7 +155,7 @@ export const nodeRemote: Pick<Transport, "remoteStart" | "remoteStop" | "remoteS
     const s = http.createServer((req, res) => { void onRequest(req, res); });
     s.on("error", (err: NodeJS.ErrnoException) => {
       server = null;
-      reject(new Error(err.code === "EADDRINUSE" ? `El puerto ${port} está ocupado` : err.message));
+      reject(new Error(err.code === "EADDRINUSE" ? translateNow("remote.portBusy", { port }) : err.message));
     });
     s.listen(port, "0.0.0.0", () => {
       server = s;

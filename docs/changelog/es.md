@@ -2,6 +2,125 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.16.0 — 2026-09-11
+
+### Nuevo
+
+- **`--header` en `ainess mcp add|edit`.** La app puede darle a un servidor MCP alojado los
+  headers que pide desde la 0.14.0; el CLI no podía. Ahora `--header "Nombre: valor"`, repetible,
+  cortado en el primer dos puntos para que un valor con dos puntos propios — una URL, un token en
+  base64 — llegue entero. En `edit` los headers nuevos se suman a los que había, y
+  `--header "Nombre:"` saca uno. Un header es una credencial, así que nunca llega a un log ni a una
+  salida: la línea de arranque del CLI enmascara el valor, y `--json` imprime `***` en su lugar.
+
+### Arreglado
+
+- **El botón "Agregar comando" de Verificación no hacía nada.** Desde la 0.15.0. Le pasaba a la
+  fila un comando vacío, el comando vacío se rechazaba como inválido antes de crear la fila, y el
+  click terminaba ahí — las sugerencias de un click andaban, el botón no. Lo encontró el primer
+  test de componentes que se escribió para esta app, el primer día que existió.
+
+
+- **Lo que un agente dice mientras trabaja ya no desaparece cuando termina.** Dos personas lo
+  reportaron desde puntas opuestas — «se me borró la respuesta cuando delegó, quedó sólo la
+  delegación» y «las respuestas parciales se pierden al finalizar la actividad, sólo muestra lo
+  último que contestó» — y es el mismo bug.
+
+  Hay dos cosas distintas que llevan las palabras de un agente. El stream lleva todo lo que va
+  diciendo mientras lo dice. `run.output` es la respuesta *final* del proveedor: en Claude, la línea
+  `result`, que es el último mensaje y sólo el último mensaje. La burbuja mostraba `run.output`. Así
+  que un turno que explicaba lo que encontró, corría tres herramientas y cerraba con una delegación
+  o un resumen de una línea perdía todo lo anterior a esa línea en el instante en que dejaba de
+  correr: legible mientras trabajaba, ido al terminar.
+
+  Nunca se perdió de verdad: el stream está en el feed de comunicación y dentro de la lista de
+  actividad. Simplemente había dejado de estar en algún lugar donde alguien estuviera mirando, y
+  cuando un turno no usaba ninguna herramienta la sección de actividad tampoco aparecía. Ahora la
+  burbuja muestra el turno entero, y agrega la respuesta final después sólo cuando esa respuesta
+  dice algo que la transcripción no tiene ya — si no, una respuesta común, que se streamea y después
+  se repite como resultado, saldría dos veces. El chat uno-a-uno perdía lo mismo desde el otro
+  lado — su burbuja se pisaba con la respuesta final al terminar el turno — y ahora sigue la misma
+  regla.
+
+- **La lista de modelos de Claude no tenía Fable, y `fable-5.1` no es su nombre.** La lista está
+  escrita en el código, a diferencia de las de antigravity y opencode, que se consultan — así que se
+  queda vieja en silencio y nadie se entera hasta que busca un modelo que no está. Escribirlo a mano
+  tampoco servía: Claude Code responde `unrecognized_model` a `fable-5.1`, porque el id que acepta es
+  `claude-fable-5-1`. Los dos están arreglados: el modelo aparece en el selector, y la lista ahora
+  dice en un solo lugar que está hardcodeada y por qué eso importa.
+
+
+- **La app habla siete idiomas en todos lados, no sólo donde alguien se acordó.** Ciento siete
+  frases estaban escritas en el código en vez de en los diccionarios: cada toast y cada diálogo que
+  produce una operación de worktree, cada mensaje con el que vuelve un túnel o una instalación
+  fallida, las tarjetas de tareas, y todo el CLI incluida su pantalla de ayuda. Seis de los siete
+  idiomas las recibían en un idioma que nadie eligió, y nada lo notaba — que es cómo se llegó a
+  tener cien: cada una era una línea en su momento.
+
+  No eran todas la misma cosa. Lo que lee un usuario se fue a los diccionarios. Lo que sólo lee
+  quien programa — todas las líneas de log — ahora está en inglés: un log se grepea, se pega en un
+  issue y lo lee quien está debuggeando, y traducir uno lo vuelve inútil para todos salvo la persona
+  en cuyo idioma quedó.
+
+  La ayuda del CLI es una sola entrada por idioma y no veinticuatro, porque sus columnas están
+  alineadas y mantenerlas alineadas es una decisión por idioma: el alemán necesita más lugar que el
+  japonés, y dos docenas de entradas sueltas dejarían que una se desalineara sin nada que lo muestre.
+
+  Y ahora hay algo que lo nota: un chequeo que falla ante un literal que se lee como prosa en
+  español fuera de `src/i18n`, que corre como parte de la suite de tests. Busca español y no texto,
+  así que el inglés en el que está escrito el código no se marca. Hay dos líneas permitidas y cada
+  una dice por qué: los valores de rol de un chat se guardan en el chat y van al prompt del agente,
+  así que son datos, no etiquetas.
+
+- **El chat quedándose en blanco al mandar un mensaje.** Reportado cuatro veces, nunca reproducido,
+  nunca logueado — porque no estaba fallando nada en el sentido que todos buscábamos. No se tiraba
+  ninguna excepción, los mensajes seguían en el store, y cambiar de proyecto los traía de vuelta,
+  que es la firma de algo que sigue ahí y no se está mostrando.
+
+  El hilo sigue su propia cola cada 150 ms mientras se está escribiendo una respuesta, y lo hacía
+  con `scrollIntoView`. Ese método no scrollea *un* contenedor: sube desde el elemento y scrollea
+  **todos los contenedores scrolleables del camino**, lo que cada uno necesite. Y `overflow: hidden`
+  no saca a una caja de ser un contenedor scrolleable: le saca la barra y le corta la rueda,
+  mientras `scrollTop` sigue funcionando igual. El shell de la app es `h-screen overflow-hidden` y
+  varias cajas debajo también, así que un shell cuyo contenido quedaba unos píxeles más alto que su
+  caja podía ser scrolleado por esa llamada — y se quedaba scrolleado: sin barra, sin rueda, sin
+  nada que lo devuelva. La conversación se iba para arriba fuera de vista y se quedaba ahí hasta que
+  algo forzaba un relayout: abrir un sidebar, cambiar de proyecto.
+
+  Pasaba sólo al mandar un mensaje porque ese bucle sólo corre mientras viene una respuesta. Y el
+  harness que armé para cazarlo nunca pudo: su transporte no puede arrancar una corrida, así que el
+  bucle que tenía que ejercitar no arrancó ni una vez.
+
+  Los tres feeds ahora escriben `scrollTop` sobre el contenedor que ya tienen a mano, que toca ese
+  elemento y nada por encima. Además chequean, en el mismo pulso, si algo arriba de ellos fue
+  scrolleado — nada allá arriba tendría que estarlo nunca — y lo devuelven, con una línea en el log
+  diciendo qué caja y cuánto. Si vuelve a pasar, esta vez va a haber algo para leer.
+
+
+- **Cambiar el equipo de un proyecto ya no deja al planificador delegando a agentes que no están.**
+  Una delegación se resuelve por nombre contra los hijos del planificador, y los nombres que el
+  planificador conoce vienen del system prompt que le pasaron. Pero la sesión se *reanuda*: el CLI
+  vuelve a reproducir la conversación entera, donde estaba listado el equipo viejo y donde las
+  delegaciones a esos nombres se hicieron y funcionaron — y una transcripción pesa más que un system
+  prompt agregado encima. Así que renombrar un agente, cambiar la formación o sumar un implementador
+  dejaba al planificador hablándole a un equipo que ya no existía, y el trabajo volvía como
+  "delegación fallida".
+
+  Ahora la sesión se guarda con una nota de qué le contaron sobre el equipo: el nombre de ese agente
+  y el de sus hijos, nada más, porque los nombres son todo contra lo que se resuelve una delegación.
+  Cuando eso deja de coincidir, el turno siguiente abre una conversación nueva en vez de reanudar la
+  equivocada, y lo dice. Las sesiones abiertas antes de esto se adoptan en lugar de tirarse: la cura
+  no puede ser que todos los agentes de todos los proyectos pierdan su contexto.
+
+- **Una delegación que nombra a un agente que no existe ya no pierde ese trabajo en silencio.** Si
+  todos los nombres estaban mal, el turno se reintentaba, y eso estaba bien. Si estaban mal *algunos*,
+  los válidos arrancaban, los inválidos dejaban un error en el feed, y del trabajo que llevaban
+  adentro no se volvía a hablar — ni nadie, ni con nadie. Ahora esos nombres viajan hasta el final de
+  la ronda y se le ponen adelante al planificador cuando retoma, junto con la lista de quiénes
+  responden de verdad a su mando. Y un nombre que no le coincidió a nadie se toma por lo que es —
+  prueba de que la sesión recuerda un equipo anterior — así que esa sesión se descarta y el turno
+  siguiente arranca desde el equipo que existe.
+
 ## 0.15.0 — 2026-09-11
 
 ### Nuevo

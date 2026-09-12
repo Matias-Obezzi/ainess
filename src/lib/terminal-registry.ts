@@ -7,6 +7,7 @@
 // here, and the view only borrows the element while it is on screen. A session is torn down only
 // when its tab is closed (see disposeTerminal).
 import { Terminal } from "@xterm/xterm";
+import { translateNow } from "@/i18n/useT";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
@@ -111,7 +112,7 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
   const unsubscribePty = subscribePty(id, {
     onData: data => term.write(data),
     onExit: code => {
-      term.write(`\r\n\x1b[90m[proceso terminado con código ${code ?? "?"}]\x1b[0m\r\n`);
+      term.write(`\r\n\x1b[90m${translateNow("terminal.processEnded", { code: code ?? "?" })}\x1b[0m\r\n`);
       useAppStore.getState().markTerminalExited(id, code);
     },
   });

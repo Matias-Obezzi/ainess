@@ -359,7 +359,7 @@ export async function startTunnel(): Promise<TunnelStatus> {
     domain: remote.tunnel.domain,
     tunnelName: remote.tunnel.tunnelName,
   });
-  log.info("tunnel", `túnel ${remote.tunnel.provider} activo`);
+  log.info("tunnel", `${remote.tunnel.provider} tunnel up`);
   return { running: true, url: info.url, provider: remote.tunnel.provider };
 }
 

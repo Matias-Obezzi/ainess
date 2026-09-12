@@ -62,7 +62,7 @@ export async function reapAfterCrash(): Promise<number> {
   try {
     killed = await getTransport().reapOrphans(orphans);
   } catch (err) {
-    log.warn("recovery", `no se pudieron revisar los procesos de la sesión anterior: ${err}`);
+    log.warn("recovery", `could not check the previous session's processes: ${err}`);
     return 0;
   }
   if (killed.length === 0) return 0;

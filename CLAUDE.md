@@ -4,6 +4,18 @@ Tauri 2 + React 19 + TypeScript + Tailwind 4 + componentes `@uiness` (registry s
 `src/components/ui`). UI en español, código en inglés. `PLAN.md` es la fuente de verdad de la
 arquitectura y los contratos (tipos, comandos Rust, protocolo de delegación).
 
+**Todo lo que va al remoto se escribe en inglés**: mensajes de commit, títulos y cuerpos de PR,
+descripciones de issues, releases. No es una preferencia de estilo — es lo que ve cualquiera que
+llegue al repositorio. Lo que sigue en español es lo que mira el usuario dentro de la app: la UI,
+los changelogs traducidos (`CHANGELOG.md` es el inglés, `docs/changelog/<lang>.md` el resto) y este
+archivo. El código y los comentarios ya eran en inglés y siguen igual.
+
+**Ningún texto que lea un usuario se escribe en el código.** Va a los siete diccionarios de
+`src/i18n/` y se lee con `t(...)` o `translateNow(...)` — la app, el CLI y su pantalla de ayuda
+incluidos. Lo único que se escribe suelto son las líneas de log, y esas van en inglés: un log se
+grepea y se pega en un issue, traducirlo lo vuelve inútil para todos salvo uno.
+`scripts/check-hardcoded-strings.mjs` corre dentro de `npm test` y falla si aparece una nueva.
+
 Comandos: `npx tsc --noEmit` (front), `npm test` (unit, vitest), `cd src-tauri && cargo check` (back), `npm run build:cli` (CLI), `npm run tauri dev` (app), `npm run tauri build` (instalador).
 
 ## Handoff a Antigravity

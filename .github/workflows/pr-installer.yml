@@ -9,6 +9,13 @@ name: PR installer
 on:
   pull_request:
     branches: [main]
+    # Once when the pull request appears, not once per push. A full Tauri build is the expensive
+    # job in this repository, and building it again for every follow-up commit spent the month's
+    # Actions minutes on installers nobody downloaded — twice a pull request was closed over it.
+    # `ci.yml` still runs the cheap checks on every push; this is only the .exe.
+    types: [opened, ready_for_review]
+  # For the times a fresh installer of an open pull request is actually wanted.
+  workflow_dispatch:
 
 # A new push to the branch makes the build of the previous one pointless.
 concurrency:

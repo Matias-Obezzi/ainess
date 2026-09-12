@@ -1,4 +1,5 @@
 import { Transport } from "./transport";
+import { translateNow } from "@/i18n/useT";
 import { nodeRemote } from "./remote-node";
 import { nodeTunnel } from "./tunnel-node";
 import type { AppConfig, BinaryInfo, RunExitEvent, RunOutputEvent, SpawnOptions, StorageStat } from "@/types";
@@ -9,7 +10,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as net from "node:net";
 
-const TERMINALS_UNAVAILABLE = "Las terminales solo están disponibles en la app de escritorio";
+const terminalsUnavailable = () => translateNow("app.terminalsDesktopOnly");
 
 const activeRuns = new Map<string, ChildProcess>();
 const killedRuns = new Set<string>();
@@ -439,7 +440,7 @@ export const nodeTransport: Transport = {
     // A program that outlives the timeout is an error, not an empty result: `exec_capture`
     // in src-tauri/src/runner.rs rejects with the same message.
     if ((res.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
-      throw new Error(`${program} no respondió en ${timeout / 1000} s: se canceló la ejecución.`);
+      throw new Error(translateNow("exec.timedOut", { program, seconds: timeout / 1000 }));
     }
     return {
       code: res.status,
@@ -529,13 +530,13 @@ export const nodeTransport: Transport = {
 
   logAppend: async (level: string, source: string, message: string) => appendLog(level, source, message),
   logsDir: async () => getLogsDir(),
-  openLogsDir: async () => { throw new Error("Abrí la carpeta a mano: " + getLogsDir()); },
+  openLogsDir: async () => { throw new Error(translateNow("app.openFolderByHand") + getLogsDir()); },
 
   // Integrated terminals are a desktop-app feature; the CLI has a real shell already.
-  ptySpawn: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyWrite: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyResize: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
-  ptyKill: async () => { throw new Error(TERMINALS_UNAVAILABLE); },
+  ptySpawn: async () => { throw new Error(terminalsUnavailable()); },
+  ptyWrite: async () => { throw new Error(terminalsUnavailable()); },
+  ptyResize: async () => { throw new Error(terminalsUnavailable()); },
+  ptyKill: async () => { throw new Error(terminalsUnavailable()); },
   ptyListShells: async () => [],
   onPtyOutput: async () => () => {},
   onPtyExit: async () => () => {},
