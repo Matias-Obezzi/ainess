@@ -1252,8 +1252,14 @@ function onRunFinished(runId: string) {
   // owes them a round before it takes anything else. Then the runs that waited for this agent to be
   // free, then what you wrote to it meanwhile.
   drainContinuations(agent.id, run.projectId);
-  launchQueuedRuns(agent.id, run.projectId);
-  processQueuedInstructions(agent.id, run.projectId);
+  if (interruptedForMessage.delete(`${run.projectId}:${agent.id}`)) {
+    // Stopped to deliver a message: that message first, then whatever was queued.
+    processQueuedInstructions(agent.id, run.projectId);
+    launchQueuedRuns(agent.id, run.projectId);
+  } else {
+    launchQueuedRuns(agent.id, run.projectId);
+    processQueuedInstructions(agent.id, run.projectId);
+  }
 
   // What was said, into the project itself, where the agent can read it next time (and so can you,
   // with an editor). Failures and stops are written too: knowing a turn ended badly is the point.
@@ -2052,6 +2058,7 @@ export async function sendNowInterrupting(agentId: string, projectId: string): P
     };
   });
 
+  interruptedForMessage.add(`${projectId}:${agentId}`);
   await stopAgent(agentId, projectId);
 }
 
@@ -2236,6 +2243,12 @@ function drainContinuations(agentId: string, projectId: string): void {
 
 /** Runs whose continuation was cancelled by the user while they waited for children. */
 const cancelledRuns = new Set<string>();
+
+/**
+ * Agents (`project:agent`) stopped by "send it now": the message that cut the turn short goes
+ * before any run that was waiting its turn, or the interruption would have been for nothing.
+ */
+const interruptedForMessage = new Set<string>();
 
 /**
  * Runs the user stopped before anything was spawned, which happens while a worktree is being

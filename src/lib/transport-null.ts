@@ -31,6 +31,7 @@ export const nullTransport: Transport = {
   remotePushState: async () => {},
   onRemoteCommand: async () => () => {},
   setTrayEnabled: async () => {},
+  configureTray: async () => {},
   requestAttention: async () => {},
   logAppend: async () => {},
   logsDir: async () => "",

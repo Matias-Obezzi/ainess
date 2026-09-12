@@ -6,6 +6,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Pegar código lo mete en un bloque de código.** Varias líneas con pinta de código — indentadas,
+  terminadas en llaves o punto y coma, empezando con `import`, `def`, `SELECT` y similares — caen
+  dentro de un bloque ``` propio, en sus propias líneas, con el cursor después. La prosa y las
+  listas quedan como están, y también lo pegado dentro de un bloque ya abierto.
+- **Reintentar desde el error mismo.** Cuando una corrida termina en error, la caja roja de la
+  actividad ahora lleva "Reintentar con…", el mismo diálogo que vivía a dos clics dentro de la
+  tarjeta: otro agente, otro modelo, el mismo prompt.
+- **El menú de la bandeja habla el idioma de la app.** "Mostrar", "Salir" y el tooltip estaban
+  escritos en el binario, en español. Ahora salen de los diccionarios, como todo lo demás, y
+  cambian con el idioma elegido.
 - **La caja te ayuda a escribir markdown, y el hilo lo dibuja.** Ctrl+B, Ctrl+I y Ctrl+E ponen la
   selección en negrita, cursiva o código, y de nuevo lo deshacen; Ctrl+Shift+K la convierte en un
   link. Shift+Enter en un ítem de lista arranca el siguiente — `-` sigue siendo `-`, `3.` pasa a
@@ -17,6 +27,12 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   alta como el código, de esquinas rectas, con las líneas de las comillas atenuadas para que lo que
   se vea sea el código. Desde ahora las palabras las dibuja la capa debajo del textarea, que es lo
   que lo hace posible.
+
+### Arreglado
+
+- **"Enviar ahora" entrega tu mensaje primero.** Detener a un agente para pasarle un mensaje,
+  cuando además había una corrida esperando su turno con ese agente, lanzaba la corrida en espera
+  y dejaba tu mensaje detrás — la interrupción no servía de nada. Ahora el mensaje va primero.
 
 ## 0.17.0 — 2026-09-11
 

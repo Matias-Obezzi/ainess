@@ -1,7 +1,7 @@
 // The box helps you write markdown: a list carries on when you ask for a new line, and the keys
 // every editor uses for bold, italic, code and links do that to the selection.
 import { describe, it, expect } from "vitest";
-import { continueList, linkSelection, wrapSelection } from "@/lib/markdown-edit";
+import { continueList, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
 
 describe("continueList", () => {
   it("carries a bullet on to the next line, indentation and all", () => {
@@ -66,5 +66,43 @@ describe("linkSelection", () => {
 
   it("puts down an empty link around a bare caret", () => {
     expect(linkSelection("", 0, 0)).toEqual({ text: "[]()", start: 1, end: 1 });
+  });
+});
+
+describe("looksLikeCode", () => {
+  it("knows code when it sees several lines of it", () => {
+    expect(looksLikeCode("function a() {\n  return 1;\n}")).toBe(true);
+    expect(looksLikeCode("import x from 'y';\nconst z = x();")).toBe(true);
+    expect(looksLikeCode("def f(x):\n    return x * 2")).toBe(true);
+    expect(looksLikeCode("SELECT id\nFROM users\nWHERE id = 1;")).toBe(true);
+  });
+
+  it("leaves prose, lists and single lines alone", () => {
+    expect(looksLikeCode("Hola, ¿cómo va?\nTe paso lo que encontré ayer.")).toBe(false);
+    expect(looksLikeCode("- una cosa\n- otra cosa\n- la tercera")).toBe(false);
+    expect(looksLikeCode("const x = 1;")).toBe(false);
+    expect(looksLikeCode("1. primero\n2. segundo")).toBe(false);
+  });
+
+  it("does not fence what is fenced already", () => {
+    expect(looksLikeCode("```\nconst a = 1;\nconst b = 2;\n```")).toBe(false);
+  });
+});
+
+describe("pasteAsCode", () => {
+  it("puts the block on lines of its own, caret after the fence", () => {
+    const edit = pasteAsCode("mirá esto:", 10, 10, "const a = 1;\n");
+    expect(edit.text).toBe("mirá esto:\n```\nconst a = 1;\n```");
+    expect(edit.start).toBe(edit.text.length);
+  });
+
+  it("adds no blank lines when the paste already sits on its own line", () => {
+    expect(pasteAsCode("a\n", 2, 2, "x = 1;\ny = 2;").text).toBe("a\n```\nx = 1;\ny = 2;\n```");
+  });
+
+  it("keeps what follows on its own line too, and replaces a selection", () => {
+    const edit = pasteAsCode("before SEL after", 7, 10, "a;\nb;");
+    expect(edit.text).toBe("before \n```\na;\nb;\n```\n after");
+    expect(edit.text.slice(edit.start)).toBe("\n after");
   });
 });

@@ -8,6 +8,16 @@ let one of them fall behind.
 
 ### Added
 
+- **Pasting code puts it in a code block.** Several lines that read as code — indented, ending in
+  braces or semicolons, starting with `import`, `def`, `SELECT` and the like — land inside a ```
+  fence of their own, on their own lines, with the caret after it. Prose and lists are left alone,
+  and so is a paste inside a fence that is already open.
+- **Retry from the error itself.** When a run ends in an error, the red box in the activity now
+  carries "Retry with…", the same dialog that lived two clicks away inside the task's card: another
+  agent, another model, the same prompt.
+- **The tray menu speaks the app's language.** "Show" and "Quit" and the tooltip were written into
+  the binary, in Spanish. They come from the dictionaries now, like every other sentence, and
+  change with the language setting.
 - **The box helps you write markdown, and the thread draws it.** Ctrl+B, Ctrl+I and Ctrl+E make
   the selection bold, italic or code, and again to undo it; Ctrl+Shift+K makes it a link. Shift+Enter
   on a list item starts the next one — `-` stays `-`, `3.` becomes `4.`, a ticked box comes back
@@ -18,6 +28,12 @@ let one of them fall behind.
   behind the lines, backticks and all. Now it is a box the width of the composer and as tall as the
   code, square-cornered, with the fence lines faded out so the code is what you see. The words are
   drawn by the layer under the textarea from here on, which is what makes that possible.
+
+### Fixed
+
+- **"Send it now" delivers your message first.** Stopping an agent to hand it a message, when a
+  run was also waiting its turn for that agent, launched the waiting run and held your message
+  behind it — the interruption was for nothing. The message goes first now.
 
 ## 0.17.0 — 2026-09-11
 

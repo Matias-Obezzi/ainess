@@ -6,6 +6,16 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Colar código o coloca num bloco de código.** Várias linhas com cara de código — indentadas,
+  terminadas em chaves ou ponto e vírgula, começando com `import`, `def`, `SELECT` e afins — caem
+  dentro de um bloco ``` próprio, em linhas próprias, com o cursor depois. Prosa e listas ficam como
+  estão, e também o que se cola dentro de um bloco já aberto.
+- **Tentar de novo a partir do próprio erro.** Quando uma execução termina em erro, a caixa
+  vermelha da atividade agora traz "Tentar com…", o mesmo diálogo que ficava a dois cliques dentro
+  do cartão: outro agente, outro modelo, o mesmo prompt.
+- **O menu da bandeja fala o idioma do app.** "Mostrar", "Sair" e a dica estavam escritos no
+  binário, em espanhol. Agora vêm dos dicionários, como todo o resto, e mudam com o idioma
+  escolhido.
 - **A caixa ajuda a escrever markdown, e o fio o desenha.** Ctrl+B, Ctrl+I e Ctrl+E põem a seleção
   em negrito, itálico ou código, e de novo desfazem; Ctrl+Shift+K a transforma em link. Shift+Enter
   num item de lista começa o seguinte — `-` continua `-`, `3.` vira `4.`, uma caixa marcada volta
@@ -17,6 +27,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   código, de cantos retos, com as linhas das crases esmaecidas para que o código seja o que se vê.
   Daqui em diante as palavras são desenhadas pela camada sob o textarea, que é o que torna isso
   possível.
+
+### Corrigido
+
+- **"Enviar agora" entrega a sua mensagem primeiro.** Parar um agente para lhe passar uma
+  mensagem, quando também havia uma execução esperando a vez com esse agente, lançava a execução em
+  espera e deixava a sua mensagem atrás — a interrupção não servia para nada. Agora a mensagem vai
+  primeiro.
 
 ## 0.17.0 — 2026-09-11
 

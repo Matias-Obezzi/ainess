@@ -6,6 +6,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Eingefügter Code landet in einem Codeblock.** Mehrere Zeilen, die wie Code aussehen —
+  eingerückt, mit Klammern oder Semikolons am Ende, beginnend mit `import`, `def`, `SELECT` und
+  dergleichen — kommen in einen eigenen ```-Block auf eigenen Zeilen, den Cursor dahinter. Prosa
+  und Listen bleiben, wie sie sind, ebenso ein Einfügen in einen bereits offenen Block.
+- **Erneut versuchen direkt aus dem Fehler.** Endet ein Lauf mit einem Fehler, trägt der rote
+  Kasten in der Aktivität jetzt „Erneut versuchen mit…“, denselben Dialog, der zwei Klicks tief in
+  der Karte lag: ein anderer Agent, ein anderes Modell, derselbe Prompt.
+- **Das Menü im Infobereich spricht die Sprache der App.** „Anzeigen“, „Beenden“ und der Tooltip
+  standen im Binary, auf Spanisch. Jetzt kommen sie aus den Wörterbüchern wie jeder andere Satz und
+  wechseln mit der eingestellten Sprache.
 - **Das Eingabefeld hilft beim Schreiben von Markdown, und der Verlauf zeichnet es.** Strg+B,
   Strg+I und Strg+E machen die Auswahl fett, kursiv oder zu Code, und noch einmal machen sie es
   rückgängig; Strg+Umschalt+K macht daraus einen Link. Umschalt+Eingabe auf einem Listenpunkt
@@ -18,6 +28,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   des Eingabefelds und so hoch wie der Code, mit geraden Ecken, die Zeilen mit den Backticks
   abgeblendet, damit der Code das ist, was man sieht. Die Wörter zeichnet von nun an die Ebene unter
   dem Textfeld, was das erst möglich macht.
+
+### Behoben
+
+- **„Jetzt senden“ liefert Ihre Nachricht zuerst.** Einen Agenten anzuhalten, um ihm eine
+  Nachricht zu geben, während für ihn auch ein Lauf auf seinen Zug wartete, startete den wartenden
+  Lauf und hielt Ihre Nachricht dahinter zurück — die Unterbrechung war umsonst. Die Nachricht geht
+  jetzt zuerst.
 
 ## 0.17.0 — 2026-09-11
 

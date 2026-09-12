@@ -19,7 +19,7 @@ import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { continueList, linkSelection, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { continueList, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
@@ -339,9 +339,20 @@ export function Composer() {
   /** Ctrl+V with a screenshot or a file in the clipboard: text keeps pasting as text. */
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const files = [...(e.clipboardData?.files ?? [])];
-    if (files.length === 0) return;
+    if (files.length > 0) {
+      e.preventDefault();
+      addFiles(files);
+      return;
+    }
+    // Several lines that read as code go into a ``` block of their own, so the fence never has to
+    // be typed around a paste. Inside a fence already, the paste is just text.
+    const pasted = e.clipboardData?.getData("text/plain") ?? "";
+    const { selectionStart, selectionEnd } = e.currentTarget;
+    if (!looksLikeCode(pasted) || insideFence(text, selectionStart)) return;
     e.preventDefault();
-    addFiles(files);
+    const edit = pasteAsCode(text, selectionStart, selectionEnd, pasted);
+    setText(edit.text);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(edit.start, edit.end));
   };
 
   /**

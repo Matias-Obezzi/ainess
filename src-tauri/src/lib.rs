@@ -60,7 +60,6 @@ pub fn run() {
                 "app",
                 &format!("ainess {} starting", handle.package_info().version),
             );
-            tray::setup_tray(app)?;
             // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
             // one agent session per account: whatever the last session left behind goes now.
             tunnel::kill_orphan(&handle);
@@ -103,6 +102,7 @@ pub fn run() {
             remote::remote_push_state,
             remote::remote_reply,
             tray::set_tray_enabled,
+            tray::tray_configure,
             tray::request_attention,
             tunnel::tunnel_start,
             tunnel::tunnel_stop,

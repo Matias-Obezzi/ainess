@@ -6,6 +6,17 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Coller du code le met dans un bloc de code.** Plusieurs lignes qui ressemblent à du code —
+  indentées, finissant par des accolades ou des points-virgules, commençant par `import`, `def`,
+  `SELECT` et consorts — atterrissent dans un bloc ``` à elles, sur leurs propres lignes, le curseur
+  après. La prose et les listes restent telles quelles, de même qu'un collage dans un bloc déjà
+  ouvert.
+- **Réessayer depuis l'erreur elle-même.** Quand une exécution finit en erreur, la boîte rouge de
+  l'activité porte maintenant « Réessayer avec… », le même dialogue qui vivait à deux clics dans la
+  carte : un autre agent, un autre modèle, le même prompt.
+- **Le menu de la zone de notification parle la langue de l'application.** « Afficher », « Quitter »
+  et l'infobulle étaient écrits dans le binaire, en espagnol. Ils viennent maintenant des
+  dictionnaires, comme chaque autre phrase, et changent avec la langue choisie.
 - **La zone de saisie aide à écrire du markdown, et le fil l'affiche.** Ctrl+B, Ctrl+I et Ctrl+E
   mettent la sélection en gras, italique ou code, et à nouveau l'annulent ; Ctrl+Shift+K en fait un
   lien. Shift+Entrée sur un élément de liste commence le suivant — `-` reste `-`, `3.` devient `4.`,
@@ -17,6 +28,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   la zone et de la hauteur du code, aux coins droits, avec les lignes de délimitation estompées pour
   que le code soit ce que l'on voit. Désormais les mots sont dessinés par la couche sous le
   textarea, ce qui rend cela possible.
+
+### Corrigé
+
+- **« Envoyer maintenant » livre votre message d'abord.** Arrêter un agent pour lui remettre un
+  message, alors qu'une exécution attendait aussi son tour pour cet agent, lançait l'exécution en
+  attente et gardait votre message derrière — l'interruption ne servait à rien. Le message passe
+  maintenant en premier.
 
 ## 0.17.0 — 2026-09-11
 

@@ -56,6 +56,12 @@ export interface Transport {
 
   /** Toggles closing the window to the system tray instead of quitting. No-op outside Tauri. */
   setTrayEnabled(enabled: boolean): Promise<void>;
+  /**
+   * Builds the tray, or relabels it, with the menu's words in the app's language. The tray does
+   * not exist until this is called once: its words come from the dictionaries, like every other
+   * sentence the user reads. No-op outside Tauri.
+   */
+  configureTray(labels: { show: string; quit: string; tooltip: string }): Promise<void>;
 
   /**
    * Flashes the window's taskbar button. A no-op while the window is focused — that check lives on

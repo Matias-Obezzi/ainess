@@ -80,3 +80,38 @@ export function linkSelection(text: string, start: number, end: number): TextEdi
   const caret = start + selected.length + 3;
   return { text: `${before}[${selected}]()${after}`, start: selected ? caret : start + 1, end: selected ? caret : start + 1 };
 }
+
+/** A line that reads as code rather than prose: indented, punctuated like code, or starting like it. */
+const CODE_LINE = [
+  /^\s{2,}\S/, // indented
+  /[;{}]\s*$/, // ends the way statements and blocks do
+  /^\s*(import|export|const|let|var|function|class|def|return|if|else|for|while|fn|pub|use|struct|impl|package|public|private|static|#include|from|async|await|try|catch|match|SELECT|FROM|WHERE)\b/,
+  /=>|::|->|\(\)|===|!==|\+\+|\$\{|<\/|\/>/, // the operators prose does not use
+  /^\s*[#$>] \S/, // a shell prompt, a comment
+];
+
+const LIST_OR_QUOTE = /^\s*([-*+]|\d+[.)]|>)\s/;
+
+/**
+ * Whether pasted text is code — several lines, most of them shaped like code and not like a
+ * list. Prose is left alone: a wrong guess here wraps somebody's paragraph in a fence.
+ */
+export function looksLikeCode(text: string): boolean {
+  if (text.includes("```")) return false;
+  const lines = text.split("\n").filter(line => line.trim() !== "");
+  if (lines.length < 2) return false;
+  if (lines.filter(line => LIST_OR_QUOTE.test(line)).length * 2 > lines.length) return false;
+  const codey = lines.filter(line => CODE_LINE.some(re => re.test(line))).length;
+  return codey * 2 >= lines.length;
+}
+
+/** `code` put down at the selection inside a ``` fence on lines of its own, caret after the fence. */
+export function pasteAsCode(text: string, start: number, end: number, code: string): TextEdit {
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const lead = before === "" || before.endsWith("\n") ? "" : "\n";
+  const trail = after === "" || after.startsWith("\n") ? "" : "\n";
+  const block = `${lead}\`\`\`\n${code.replace(/\s+$/, "")}\n\`\`\`${trail}`;
+  const caret = start + block.length - trail.length;
+  return { text: before + block + after, start: caret, end: caret };
+}

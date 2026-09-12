@@ -21,7 +21,9 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
-import { ChevronDown, ChevronUp, CornerDownRight, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, CornerDownRight, Info, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -216,9 +218,7 @@ function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId
 
   if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} mode={mode} />;
 
-  if (msg.kind === "error") {
-    return <ErrorMessage text={msg.text} className="my-1" />;
-  }
+  if (msg.kind === "error") return <ErrorRow msg={msg} />;
   // What the CLI wrote to stderr: progress, warnings, the occasional real complaint. Shown as
   // what it is — a mono line in the activity — rather than dressed as a failure of the app's own.
   if (msg.kind === "stderr") {
@@ -226,6 +226,30 @@ function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId
   }
 
   return <div className="text-xs text-muted-foreground italic break-words">{msg.text}</div>;
+}
+
+/**
+ * An error, and — when it is the run's last word — the way to try again with another agent or
+ * model, right here. It used to be two clicks away inside the task's dialog, which is a long way
+ * from the red box that says the model ran dry.
+ */
+function ErrorRow({ msg }: { msg: CommMessage }) {
+  const t = useT();
+  const [retryOpen, setRetryOpen] = useState(false);
+  const failed = useAppStore(state => (msg.runId ? state.runs[msg.runId]?.status === "error" : false));
+  return (
+    <div className="my-1 flex flex-col items-start gap-1">
+      <ErrorMessage text={msg.text} className="w-full" />
+      {failed && msg.runId && (
+        <>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setRetryOpen(true)}>
+            <Sparkles className="h-3.5 w-3.5" /> {t("retry.action")}
+          </Button>
+          <RetryRunDialog runId={msg.runId} open={retryOpen} onOpenChange={setRetryOpen} />
+        </>
+      )}
+    </div>
+  );
 }
 
 /** A delegation: who got the task, plus that agent's own activity nested underneath. */

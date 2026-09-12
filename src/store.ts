@@ -844,6 +844,13 @@ function rememberPanels(state: AppState, patch: { comm?: boolean; diff?: boolean
   };
 }
 
+/** The tray menu's words, in the app's language, handed to the side that draws it. */
+function syncTrayLabels(): void {
+  void getTransport()
+    .configureTray({ show: translateNow("tray.show"), quit: translateNow("tray.quit"), tooltip: translateNow("tray.tooltip") })
+    .catch(e => log.warn("tray", `could not configure the tray: ${e}`));
+}
+
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
   config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
@@ -1817,6 +1824,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (patch.tray && isTauri()) {
       void getTransport().setTrayEnabled(patch.tray.enabled).catch(() => {});
     }
+    // The tray menu is drawn by the OS, in whatever words it was given: given again here.
+    if (patch.language !== undefined && isTauri()) syncTrayLabels();
     if (patch.logLevel) setLogLevel(patch.logLevel);
     debouncedSave();
   },
@@ -2489,6 +2498,7 @@ async function runInit(): Promise<void> {
 
     if (isTauri()) {
       void getTransport().setTrayEnabled(config.tray.enabled).catch(() => {});
+      syncTrayLabels();
       // Terminals need the list of shells before the first tab can be opened.
       void getTransport()
         .ptyListShells()
