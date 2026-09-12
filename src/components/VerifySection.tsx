@@ -38,6 +38,13 @@ export function VerifySection({
   }, [detected, commands]);
 
   const add = (label: string, text: string) => {
+    if (!text.trim()) {
+      onChange([
+        ...commands,
+        { id: crypto.randomUUID(), label, program: "", args: [] },
+      ]);
+      return;
+    }
     const { tokens, problem } = splitCommandLine(text);
     if (problem) return;
     onChange([
