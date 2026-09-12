@@ -6,6 +6,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Une exécution devenue silencieuse le dit.** Un agent bloqué sur une invite à laquelle personne
+  ne répondra ressemble exactement à un agent qui réfléchit. Après trois minutes sans une ligne de
+  sortie, le ticker de l'exécution affiche « rien depuis 3:00 », en ambre, à côté de l'horloge ;
+  après dix, la cloche sonne une fois et un toast nomme l'agent. Mesuré depuis la dernière ligne
+  écrite par le CLI, hors du store, donc sans coût tant que l'agent parle.
 - **Coller du code le met dans un bloc de code.** Plusieurs lignes qui ressemblent à du code —
   indentées, finissant par des accolades ou des points-virgules, commençant par `import`, `def`,
   `SELECT` et consorts — atterrissent dans un bloc ``` à elles, sur leurs propres lignes, le curseur

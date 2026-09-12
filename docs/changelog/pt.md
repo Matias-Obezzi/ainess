@@ -6,6 +6,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Uma execução que ficou muda diz isso.** Um agente travado num prompt que ninguém vai
+  responder parece igual a um pensando muito. Depois de três minutos sem uma linha de saída, o
+  ticker da execução diz "sem saída há 3:00", em âmbar, ao lado do relógio; aos dez o sino toca uma
+  vez e um toast nomeia o agente. Medido desde a última linha que o CLI imprimiu, fora do store,
+  então não custa nada enquanto o agente fala.
 - **Colar código o coloca num bloco de código.** Várias linhas com cara de código — indentadas,
   terminadas em chaves ou ponto e vírgula, começando com `import`, `def`, `SELECT` e afins — caem
   dentro de um bloco ``` próprio, em linhas próprias, com o cursor depois. Prosa e listas ficam como

@@ -6,6 +6,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Una corrida que se quedó muda lo dice.** Un agente trabado en un prompt que nadie va a
+  responder se ve igual que uno pensando fuerte. Después de tres minutos sin una línea de salida,
+  el ticker de la corrida dice "sin salida hace 3:00", en ámbar, al lado del reloj; a los diez la
+  campana suena una vez y un toast nombra al agente. Se mide desde la última línea que imprimió el
+  CLI, fuera del store, así que no cuesta nada mientras el agente habla.
 - **Pegar código lo mete en un bloque de código.** Varias líneas con pinta de código — indentadas,
   terminadas en llaves o punto y coma, empezando con `import`, `def`, `SELECT` y similares — caen
   dentro de un bloque ``` propio, en sus propias líneas, con el cursor después. La prosa y las

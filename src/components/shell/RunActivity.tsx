@@ -17,6 +17,7 @@ import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
 import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
 import { activityView } from "@/lib/activity-view";
+import { lastOutputAt, silenceMs, STALL_AFTER_MS } from "@/lib/stall";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
@@ -184,6 +185,7 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
           line you were reading does not move out from under the pointer when you click it. */}
       {live && run && (view.current || isRunning) && (
         <ActivityTicker
+          runId={runId}
           step={view.current}
           running={!!isRunning}
           startedAt={run.startedAt}
@@ -334,7 +336,8 @@ function TickerLine({ step, running }: { step: CommMessage | null; running: bool
  * question people were asking of a wall of static text. The step on its way out stays mounted for
  * as long as it takes to leave and not a frame longer.
  */
-function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, label }: {
+function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggle, label }: {
+  runId: string;
   step: CommMessage | null;
   running: boolean;
   startedAt: number;
@@ -369,6 +372,10 @@ function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, labe
 
   const Chevron = open ? ChevronDown : ChevronUp;
   const full = step ? (step.meta?.failed && step.meta?.error ? `${step.text}\n\n${step.meta.error}` : step.text) : "";
+  // A run that has printed nothing for a while looks exactly like one thinking hard. Read on the
+  // same tick as the clock, so it appears the second it becomes true.
+  const quietFor = running ? silenceMs(lastOutputAt(runId), startedAt, now) : 0;
+  const quiet = quietFor >= STALL_AFTER_MS;
 
   return (
     <button
@@ -400,6 +407,11 @@ function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, labe
       {!open && hidden > 0 && (
         <span className="shrink-0 text-[10px] tabular-nums">
           {plural(hidden, t("activity.stepsHidden.one", { n: hidden }), t("activity.stepsHidden.other", { n: hidden }))}
+        </span>
+      )}
+      {quiet && (
+        <span className="shrink-0 text-amber-600 dark:text-amber-400">
+          {t("activity.quietFor", { time: formatElapsed(quietFor / 1000) })}
         </span>
       )}
       {running && <span className="shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>}

@@ -17,6 +17,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
 import { useQuotaSync } from "@/hooks/useQuotaSync";
+import { useStallWatch } from "@/hooks/useStallWatch";
 import { useAutonomousExpiry } from "@/hooks/useAutonomousExpiry";
 import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
@@ -58,6 +59,7 @@ export default function App() {
   useRemoteSync();
   useNoDefaultContextMenu();
   useQuotaSync();
+  useStallWatch();
   useAutonomousExpiry();
   useRepoSync();
   useRepoWatch();

@@ -8,6 +8,11 @@ let one of them fall behind.
 
 ### Added
 
+- **A run that has gone quiet says so.** An agent stuck on a prompt nobody will answer looks
+  exactly like one thinking hard. After three minutes without a line of output the run's ticker
+  says "no output for 3:00", in amber, next to the clock; after ten the bell rings once and a toast
+  names the agent. Measured from the last line the CLI printed, outside the store, so it costs
+  nothing while the agent is talking.
 - **Pasting code puts it in a code block.** Several lines that read as code — indented, ending in
   braces or semicolons, starting with `import`, `def`, `SELECT` and the like — land inside a ```
   fence of their own, on their own lines, with the caret after it. Prose and lists are left alone,

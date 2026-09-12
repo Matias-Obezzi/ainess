@@ -6,6 +6,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Ein verstummter Lauf sagt es.** Ein Agent, der an einer Eingabeaufforderung hängt, die
+  niemand beantworten wird, sieht genauso aus wie einer, der angestrengt nachdenkt. Nach drei
+  Minuten ohne eine Zeile Ausgabe steht im Ticker des Laufs „seit 3:00 keine Ausgabe“, in Bernstein,
+  neben der Uhr; nach zehn klingelt die Glocke einmal und ein Toast nennt den Agenten. Gemessen ab
+  der letzten Zeile, die das CLI geschrieben hat, außerhalb des Stores, also kostenlos, solange der
+  Agent redet.
 - **Eingefügter Code landet in einem Codeblock.** Mehrere Zeilen, die wie Code aussehen —
   eingerückt, mit Klammern oder Semikolons am Ende, beginnend mit `import`, `def`, `SELECT` und
   dergleichen — kommen in einen eigenen ```-Block auf eigenen Zeilen, den Cursor dahinter. Prosa

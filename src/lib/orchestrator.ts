@@ -26,6 +26,7 @@ import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
 import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
+import { touchRun, forgetStall } from "@/lib/stall";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -810,6 +811,7 @@ function handleOutput(e: RunOutputEvent) {
   const events = provider.parseLine(e.line, e.stream);
 
   streamBuffer.pushLine(e.runId, e.line);
+  touchRun(e.runId);
 
   for (const ev of events) {
     if (ev.type === "session") {
@@ -883,6 +885,7 @@ function handleExit(e: RunExitEvent) {
   // here on it belongs to the run: what gets saved, what the raw view of a finished run shows.
   const rawLines = rawLinesOf(e.runId) ?? run.rawLines;
   forgetRawLines(e.runId);
+  forgetStall(e.runId);
 
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
