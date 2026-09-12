@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fenceRegions, insideFence, lineIndent } from "../fences";
+import { fenceRegions, fenceSegments, insideFence, lineIndent } from "../fences";
 
 describe("fences", () => {
   it("fenceRegions is empty with no fences", () => {
@@ -82,5 +82,53 @@ describe("fences", () => {
   it("lineIndent works on the first line of the text", () => {
     const text = "  indented first line";
     expect(lineIndent(text, 4)).toBe("  ");
+  });
+});
+
+// The layer draws each fence as a block. A block takes the newline after it with it: outside, that
+// newline is a line of its own under the box, and every line after it lands one row too low.
+describe("fenceSegments", () => {
+  const segments = (text: string) => fenceSegments(text, fenceRegions(text));
+  const joined = (text: string) => segments(text).map(s => s.text).join("");
+
+  it("is the text plus the trailing newline, in one plain piece, with no fences", () => {
+    expect(segments("hola\nmundo")).toEqual([{ kind: "plain", text: "hola\nmundo\n" }]);
+  });
+
+  it("cuts a closed fence into opener, body and closer, the closer taking the newline after it", () => {
+    expect(segments("a\n```ts\ncode\n```\nb")).toEqual([
+      { kind: "plain", text: "a\n" },
+      { kind: "opener", text: "```ts\n", fence: 0 },
+      { kind: "body", text: "code\n", fence: 0 },
+      { kind: "closer", text: "```\n", fence: 0 },
+      { kind: "plain", text: "b\n" },
+    ]);
+  });
+
+  it("gives an open fence no closer, and the trailing newline goes into the box", () => {
+    expect(segments("```\ncode")).toEqual([
+      { kind: "opener", text: "```\n", fence: 0 },
+      { kind: "body", text: "code\n", fence: 0 },
+    ]);
+    expect(segments("```")).toEqual([{ kind: "opener", text: "```\n", fence: 0 }]);
+  });
+
+  it("keeps a fence with nothing in it to its two lines", () => {
+    expect(segments("```\n```")).toEqual([
+      { kind: "opener", text: "```\n", fence: 0 },
+      { kind: "closer", text: "```\n", fence: 0 },
+    ]);
+  });
+
+  it("never loses or invents a character, whatever the text", () => {
+    for (const text of ["", "a", "a\n", "```\na\n```\n\n```\nb\n```", "x\n```\n", "```\n```\n```"]) {
+      expect(joined(text)).toBe(text + "\n");
+    }
+  });
+
+  it("numbers the fences so two of them do not share a box", () => {
+    const two = segments("```\na\n```\n```\nb\n```");
+    expect(two.filter(s => s.fence === 0)).toHaveLength(3);
+    expect(two.filter(s => s.fence === 1)).toHaveLength(3);
   });
 });

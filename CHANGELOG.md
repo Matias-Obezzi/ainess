@@ -4,6 +4,21 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Added
+
+- **The box helps you write markdown, and the thread draws it.** Ctrl+B, Ctrl+I and Ctrl+E make
+  the selection bold, italic or code, and again to undo it; Ctrl+Shift+K makes it a link. Shift+Enter
+  on a list item starts the next one — `-` stays `-`, `3.` becomes `4.`, a ticked box comes back
+  empty — and on an empty item ends the list. What you sent is then drawn as what you wrote: lists,
+  links and code blocks in your own bubble, in the thread and in the chats, where it used to be the
+  raw text with the asterisks in it.
+- **A code block in the box looks like one.** Typing ``` used to put a rounded grey highlight
+  behind the lines, backticks and all. Now it is a box the width of the composer and as tall as the
+  code, square-cornered, with the fence lines faded out so the code is what you see. The words are
+  drawn by the layer under the textarea from here on, which is what makes that possible.
+
 ## 0.17.0 — 2026-09-11
 
 ### Added

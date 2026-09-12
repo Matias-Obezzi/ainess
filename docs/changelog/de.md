@@ -2,6 +2,23 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Neu
+
+- **Das Eingabefeld hilft beim Schreiben von Markdown, und der Verlauf zeichnet es.** Strg+B,
+  Strg+I und Strg+E machen die Auswahl fett, kursiv oder zu Code, und noch einmal machen sie es
+  rückgängig; Strg+Umschalt+K macht daraus einen Link. Umschalt+Eingabe auf einem Listenpunkt
+  beginnt den nächsten — `-` bleibt `-`, `3.` wird `4.`, ein abgehaktes Kästchen kommt leer zurück
+  — und auf einem leeren Punkt beendet es die Liste. Was Sie gesendet haben, wird dann so
+  gezeichnet, wie Sie es geschrieben haben: Listen, Links und Codeblöcke in Ihrer eigenen Blase, im
+  Verlauf und in den Chats, wo es bisher der rohe Text mit den Sternchen darin war.
+- **Ein Codeblock im Eingabefeld sieht aus wie einer.** ``` zu tippen legte eine abgerundete graue
+  Hervorhebung hinter die Zeilen, Backticks eingeschlossen. Jetzt ist es ein Kasten in der Breite
+  des Eingabefelds und so hoch wie der Code, mit geraden Ecken, die Zeilen mit den Backticks
+  abgeblendet, damit der Code das ist, was man sieht. Die Wörter zeichnet von nun an die Ebene unter
+  dem Textfeld, was das erst möglich macht.
+
 ## 0.17.0 — 2026-09-11
 
 ### Neu

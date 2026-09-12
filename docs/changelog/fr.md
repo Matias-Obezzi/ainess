@@ -2,6 +2,22 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Nouveau
+
+- **La zone de saisie aide à écrire du markdown, et le fil l'affiche.** Ctrl+B, Ctrl+I et Ctrl+E
+  mettent la sélection en gras, italique ou code, et à nouveau l'annulent ; Ctrl+Shift+K en fait un
+  lien. Shift+Entrée sur un élément de liste commence le suivant — `-` reste `-`, `3.` devient `4.`,
+  une case cochée revient vide — et sur un élément vide termine la liste. Ce que vous avez envoyé
+  s'affiche ensuite comme vous l'avez écrit : listes, liens et blocs de code dans votre propre bulle,
+  dans le fil et dans les chats, là où c'était le texte brut avec les astérisques dedans.
+- **Un bloc de code dans la zone de saisie en a l'air.** Taper ``` posait un surlignage gris
+  arrondi derrière les lignes, accents graves compris. C'est maintenant une boîte de la largeur de
+  la zone et de la hauteur du code, aux coins droits, avec les lignes de délimitation estompées pour
+  que le code soit ce que l'on voit. Désormais les mots sont dessinés par la couche sous le
+  textarea, ce qui rend cela possible.
+
 ## 0.17.0 — 2026-09-11
 
 ### Nouveau

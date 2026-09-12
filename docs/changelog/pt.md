@@ -2,6 +2,22 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Novo
+
+- **A caixa ajuda a escrever markdown, e o fio o desenha.** Ctrl+B, Ctrl+I e Ctrl+E põem a seleção
+  em negrito, itálico ou código, e de novo desfazem; Ctrl+Shift+K a transforma em link. Shift+Enter
+  num item de lista começa o seguinte — `-` continua `-`, `3.` vira `4.`, uma caixa marcada volta
+  vazia — e num item vazio encerra a lista. O que você enviou é então desenhado como escreveu:
+  listas, links e blocos de código no seu próprio balão, no fio e nos chats, onde antes era o texto
+  cru com os asteriscos dentro.
+- **Um bloco de código na caixa parece um.** Digitar ``` punha um realce cinza arredondado atrás
+  das linhas, crases incluídas. Agora é uma caixa da largura do compositor e tão alta quanto o
+  código, de cantos retos, com as linhas das crases esmaecidas para que o código seja o que se vê.
+  Daqui em diante as palavras são desenhadas pela camada sob o textarea, que é o que torna isso
+  possível.
+
 ## 0.17.0 — 2026-09-11
 
 ### Novo

@@ -347,7 +347,8 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             ) : message.status === "error" ? (
               <ErrorMessage text={message.text} />
             ) : isUser ? (
-              message.text
+              // As you wrote it, unless you wrote markdown: a list is a list here too.
+              hasMarkdown(message.text) ? <Markdown text={message.text} /> : message.text
             ) : (
               <Markdown text={message.text} />
             )}

@@ -18,7 +18,8 @@ import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
-import { fenceRegions, insideFence, lineIndent } from "@/lib/fences";
+import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
+import { continueList, linkSelection, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
@@ -60,24 +61,50 @@ interface MenuOption {
  */
 const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
 
-/** The text of the box with each ``` region wrapped for a background — the fence highlight layer's content. */
-function renderFenceHighlight(text: string, regions: Array<{ start: number; end: number }>) {
-  if (regions.length === 0) return null;
+/**
+ * The text of the box as the highlight layer draws it: plain text as is, and each ``` fence as a
+ * box the width of the composer, as tall as its lines, with the fence lines themselves faded so
+ * the code is what stands out. The textarea on top draws nothing but the caret and the selection;
+ * this is the text you read.
+ *
+ * No `font-mono` in the box, tempting as it is: the layer only works while every character sits
+ * exactly where the textarea puts it, and a different font would wrap at a different column and
+ * slide every line after it out of place.
+ */
+function renderComposerText(text: string, regions: ReturnType<typeof fenceRegions>) {
+  const segments = fenceSegments(text, regions);
   const nodes: React.ReactNode[] = [];
-  let cursor = 0;
-  regions.forEach((region, i) => {
-    if (region.start > cursor) nodes.push(text.slice(cursor, region.start));
+  let box: React.ReactNode[] = [];
+  let boxIndex = -1;
+  const flush = () => {
+    if (boxIndex === -1) return;
     nodes.push(
-      // No `font-mono` here, tempting as it is: this layer only works while every character sits
-      // exactly where the textarea puts it, and a different font would wrap at a different column
-      // and slide every line after it out of place. The background is the whole of the signal.
-      <span key={i} className="rounded bg-muted/50">
-        {text.slice(region.start, region.end)}
-      </span>
+      // Out to the edges of the composer: the layer's own padding is undone on each side and put
+      // back inside, so the text keeps its column and the background reaches the border.
+      <span key={`fence-${boxIndex}`} className="block -ml-3 -mr-12 rounded-sm bg-muted pl-3 pr-12">
+        {box}
+      </span>,
     );
-    cursor = region.end;
+    box = [];
+    boxIndex = -1;
+  };
+  segments.forEach((segment, i) => {
+    if (segment.kind === "plain") {
+      flush();
+      nodes.push(segment.text);
+      return;
+    }
+    if (segment.fence !== boxIndex) {
+      flush();
+      boxIndex = segment.fence ?? i;
+    }
+    box.push(
+      segment.kind === "body"
+        ? segment.text
+        : <span key={i} className="text-muted-foreground/50">{segment.text}</span>,
+    );
   });
-  if (cursor < text.length) nodes.push(text.slice(cursor));
+  flush();
   return nodes;
 }
 
@@ -628,6 +655,29 @@ export function Composer() {
         return;
       }
     }
+    // Bold, italic, code and link on the selection, the keys every editor uses for them. Ctrl+B
+    // is also the sidebar's key, and while the box has the focus the box wins: the event stops
+    // here so the window listener never sees it.
+    const applyEdit = (edit: TextEdit) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setText(edit.text);
+      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(edit.start, edit.end));
+    };
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const { selectionStart: s, selectionEnd: n } = e.currentTarget;
+      const key = e.key.toLowerCase();
+      if (!e.shiftKey && key === "b") return applyEdit(wrapSelection(text, s, n, "**"));
+      if (!e.shiftKey && key === "i") return applyEdit(wrapSelection(text, s, n, "*"));
+      if (!e.shiftKey && key === "e") return applyEdit(wrapSelection(text, s, n, "`"));
+      if (e.shiftKey && key === "k") return applyEdit(linkSelection(text, s, n));
+    }
+    // Shift+Enter on a list item is the next item, not a bare line — outside a ``` fence, where a
+    // dash is just a dash.
+    if (e.key === "Enter" && e.shiftKey && !insideFence(text, e.currentTarget.selectionStart)) {
+      const next = continueList(text, e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
+      if (next) return applyEdit(next);
+    }
     // Enter sends, Shift+Enter is a line break, Ctrl+Enter queues for when the agent is free —
     // unless the caret sits in a ``` fence, where Enter has to stay a line break (see below).
     if (e.key === "Enter" && !e.shiftKey) {
@@ -857,21 +907,20 @@ export function Composer() {
                 ))}
               </div>
             )}
-            {/* The background behind ``` regions: same font metrics and padding as the textarea on
-                top of it, so its text lines up exactly. Its own text is invisible (`text-transparent`)
-                — only the span backgrounds show through — the textarea's text is what gets read. Kept
-                mounted even with nothing to highlight, so there is no flash of misaligned layout. */}
+            {/* The text you read: same font metrics and padding as the textarea on top of it, so
+                every character sits where the textarea's (invisible) one does. This layer draws the
+                words, the code boxes and the grey suggestion; the textarea draws the caret and the
+                selection. Kept mounted even with nothing to draw, so there is no flash of misaligned
+                layout. */}
             <div
               ref={highlightRef}
               aria-hidden
-              className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-transparent md:text-sm pr-12"
+              className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-foreground md:text-sm pr-12"
             >
-              {/* `renderFenceHighlight` gives back nothing when there are no fences, which is fine
-                  while this layer only paints backgrounds — but the grey text has to sit after what
-                  is typed, so the typed text (still invisible) has to be here to push it there. */}
-              {renderFenceHighlight(text, fenceHighlightRegions) ?? (ghost ? text : null)}
+              {/* The trailing newline the textarea counts is inside `renderComposerText`, so the
+                  suggestion after it lands on the line the caret is on. */}
+              {renderComposerText(text, fenceHighlightRegions)}
               {ghost && <span className="text-muted-foreground/70">{ghost.text}</span>}
-              {"\n"}
             </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
@@ -886,7 +935,8 @@ export function Composer() {
               placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
               rows={2}
-              className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 dark:bg-transparent"
+              // Transparent text, a caret and a selection: the layer underneath draws the words.
+              className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}

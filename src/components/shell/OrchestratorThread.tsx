@@ -299,8 +299,10 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
       {/* A round > 0 run is an automatic continuation, not something the user typed. */}
       {run.round === 0 && (
         <div className="flex flex-col items-end gap-1">
+          {/* Shown as you wrote it — and when you wrote a list, a link or a block of code, as
+              those: the box helps you write them, so the thread has to draw them. */}
           <div className="rounded-xl px-3.5 py-2 max-w-[85%] text-sm whitespace-pre-wrap break-words bg-muted">
-            {run.prompt}
+            {hasMarkdown(run.prompt) ? <Markdown text={run.prompt} /> : run.prompt}
           </div>
           <span className="text-[11px] text-muted-foreground">
             → {agentName(run.agentId)}

@@ -2,6 +2,22 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Nuevo
+
+- **La caja te ayuda a escribir markdown, y el hilo lo dibuja.** Ctrl+B, Ctrl+I y Ctrl+E ponen la
+  selección en negrita, cursiva o código, y de nuevo lo deshacen; Ctrl+Shift+K la convierte en un
+  link. Shift+Enter en un ítem de lista arranca el siguiente — `-` sigue siendo `-`, `3.` pasa a
+  `4.`, una casilla marcada vuelve vacía — y en un ítem vacío cierra la lista. Lo que mandaste se
+  dibuja después como lo escribiste: listas, links y bloques de código en tu propia burbuja, en el
+  hilo y en los chats, donde antes era el texto crudo con los asteriscos adentro.
+- **Un bloque de código en la caja se ve como tal.** Escribir ``` ponía un resaltado gris redondeado
+  detrás de las líneas, comillas incluidas. Ahora es una caja del ancho de la caja de texto y tan
+  alta como el código, de esquinas rectas, con las líneas de las comillas atenuadas para que lo que
+  se vea sea el código. Desde ahora las palabras las dibuja la capa debajo del textarea, que es lo
+  que lo hace posible.
+
 ## 0.17.0 — 2026-09-11
 
 ### Nuevo
