@@ -6,6 +6,13 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **The window comes back the way you left it.** Size, position, maximized or full screen: the
+  next launch opens where the last one ended, on the same monitor if it is still there, instead of
+  at 1400×900 in the middle of the screen every time. Written down when the window goes to the tray
+  and when the app quits.
+
 ### Changed
 
 - **Clicking the project you are already in takes you to its orchestrator.** The first click still

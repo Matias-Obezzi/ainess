@@ -119,7 +119,7 @@ pub async fn tunnel_start(
 
     // A tunnel from a session that ended badly still holds the account's only agent session.
     kill_orphan(&app);
-    logging::append(&app, "info", "tunnel", &format!("iniciando túnel {provider} en el puerto {port} ({program})"));
+    logging::append(&app, "info", "tunnel", &format!("starting {provider} tunnel on port {port} ({program})"));
 
     let p = provider.clone();
     let d = domain.clone();
@@ -146,7 +146,7 @@ pub async fn tunnel_start(
             Ok(TunnelInfo { url })
         }
         Err(e) => {
-            logging::append(&app, "error", "tunnel", &format!("no se pudo abrir el túnel: {e}"));
+            logging::append(&app, "error", "tunnel", &format!("could not open the tunnel: {e}"));
             Err(e)
         }
     }

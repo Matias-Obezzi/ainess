@@ -357,7 +357,7 @@ pub fn shutdown(app: &tauri::AppHandle) {
                 .status();
         }
         let _ = c.kill();
-        crate::logging::append(app, "warn", "runner", &format!("run {run_id} matado al cerrar la app"));
+        crate::logging::append(app, "warn", "runner", &format!("run {run_id} killed on app shutdown"));
     }
 }
 

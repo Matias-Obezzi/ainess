@@ -4,6 +4,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **La fenêtre revient comme vous l'aviez laissée.** Taille, position, agrandie ou en plein écran :
+  le lancement suivant s'ouvre là où le précédent s'est terminé, sur le même écran s'il est encore
+  là, au lieu de 1400×900 au milieu de l'écran à chaque fois. Noté quand la fenêtre part dans la
+  zone de notification et quand l'application se ferme.
+
 ### Modifié
 
 - **Cliquer sur le projet où vous êtes déjà mène à son orchestrateur.** Le premier clic ouvre

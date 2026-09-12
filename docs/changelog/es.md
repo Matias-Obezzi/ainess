@@ -4,6 +4,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
+### Nuevo
+
+- **La ventana vuelve como la dejaste.** Tamaño, posición, maximizada o en pantalla completa: el
+  próximo arranque abre donde terminó el anterior, en el mismo monitor si sigue ahí, en vez de a
+  1400×900 en el medio de la pantalla cada vez. Se anota cuando la ventana se va a la bandeja y
+  cuando la app se cierra.
+
 ### Cambiado
 
 - **Clickear el proyecto en el que ya estás te lleva a su orquestador.** El primer click sigue

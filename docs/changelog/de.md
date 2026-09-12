@@ -4,6 +4,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Das Fenster kommt so zurück, wie Sie es verlassen haben.** Größe, Position, maximiert oder
+  Vollbild: der nächste Start öffnet dort, wo der letzte aufgehört hat, auf demselben Monitor, wenn
+  er noch da ist, statt jedes Mal mit 1400×900 in der Bildschirmmitte. Festgehalten, wenn das
+  Fenster in den Infobereich geht und wenn die App beendet wird.
+
 ### Geändert
 
 - **Ein Klick auf das Projekt, in dem Sie schon sind, führt zu seinem Orchestrator.** Der erste

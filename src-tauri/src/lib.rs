@@ -28,7 +28,7 @@ pub fn run() {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
-            logging::append(app, "info", "app", "otra instancia quiso abrirse: se enfocó la que ya estaba");
+            logging::append(app, "info", "app", "another instance tried to open: the one already running was focused");
         }))
         .manage(runner::RunnerState::default())
         .manage(remote::RemoteState::default())
@@ -42,6 +42,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Size, position, maximized and fullscreen come back on the next launch; `tauri.conf.json`
+        // only says how the very first one opens. Never visibility: closing the window hides it in
+        // the tray, and a hidden window written down as hidden would come back that way. Never
+        // decorations either: they are off by config, and the title bar is ours.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(tray::WINDOW_STATE_FLAGS)
+                .build(),
+        )
         .setup(|app| {
             let handle = app.handle().clone();
             logging::prune_old(&handle);
@@ -49,7 +58,7 @@ pub fn run() {
                 &handle,
                 "info",
                 "app",
-                &format!("ainess {} iniciando", handle.package_info().version),
+                &format!("ainess {} starting", handle.package_info().version),
             );
             tray::setup_tray(app)?;
             // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
@@ -112,7 +121,7 @@ pub fn run() {
             tunnel::shutdown(handle);
             repo_watch::shutdown(handle);
             pty::shutdown(handle);
-            logging::append(handle, "info", "app", "ainess cerrando");
+            logging::append(handle, "info", "app", "ainess shutting down");
         }
     });
 }

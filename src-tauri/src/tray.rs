@@ -5,6 +5,13 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, State,
 };
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
+
+/// What the window remembers between launches: where it was and how big, maximized, fullscreen.
+/// Not whether it was visible (see `lib.rs`), and not its decorations (there are none).
+pub const WINDOW_STATE_FLAGS: StateFlags = StateFlags::all()
+    .difference(StateFlags::VISIBLE)
+    .difference(StateFlags::DECORATIONS);
 
 /// Whether closing the main window should hide it to the tray instead of quitting.
 /// Defaults to `true`: the app stays in the background unless the user turns it off.
@@ -62,11 +69,11 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
-                crate::logging::append(app, "debug", "tray", "mostrar ventana desde la bandeja");
+                crate::logging::append(app, "debug", "tray", "show window from the tray");
                 show_main_window(app);
             }
             "quit" => {
-                crate::logging::append(app, "info", "tray", "salir desde la bandeja");
+                crate::logging::append(app, "info", "tray", "quit from the tray");
                 app.exit(0);
             }
             _ => {}
@@ -87,8 +94,12 @@ pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
         let state = window.state::<TrayState>();
         if state.enabled.load(Ordering::Relaxed) {
             api.prevent_close();
+            // Written down now, while the window is still there to be measured: the plugin saves
+            // on exit, and by then the window may have been hidden for hours. A hidden window
+            // still answers, but this is the moment its state is known to be the user's.
+            let _ = window.app_handle().save_window_state(WINDOW_STATE_FLAGS);
             let _ = window.hide();
-            crate::logging::append(window.app_handle(), "debug", "tray", "ventana oculta en la bandeja");
+            crate::logging::append(window.app_handle(), "debug", "tray", "window hidden in the tray");
         }
     }
 }

@@ -4,6 +4,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **A janela volta como você a deixou.** Tamanho, posição, maximizada ou em tela cheia: a próxima
+  abertura começa onde a anterior terminou, no mesmo monitor se ele ainda estiver lá, em vez de a
+  1400×900 no meio da tela toda vez. Fica registrado quando a janela vai para a bandeja e quando o
+  app é fechado.
+
 ### Alterado
 
 - **Clicar no projeto em que você já está leva ao orquestrador dele.** O primeiro clique continua
