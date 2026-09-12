@@ -2,7 +2,7 @@
   "name": "ainess",
   "private": true,
   "license": "MIT",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "type": "module",
   "bin": {
     "ainess": "bin/ainess.js"

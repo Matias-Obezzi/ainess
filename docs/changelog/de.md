@@ -2,7 +2,7 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## Unveröffentlicht
+## 0.17.0 — 2026-09-11
 
 ### Neu
 
