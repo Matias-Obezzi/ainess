@@ -16,7 +16,9 @@ incluidos. Lo único que se escribe suelto son las líneas de log, y esas van en
 grepea y se pega en un issue, traducirlo lo vuelve inútil para todos salvo uno.
 `scripts/check-hardcoded-strings.mjs` corre dentro de `npm test` y falla si aparece una nueva.
 
-Comandos: `npx tsc --noEmit` (front), `npm test` (unit, vitest), `cd src-tauri && cargo check` (back), `npm run build:cli` (CLI), `npm run tauri dev` (app), `npm run tauri build` (instalador).
+Comandos: `npx tsc --noEmit` (front), `npm test` (unit, vitest), `npm run e2e` (pantalla, Playwright sobre el
+workspace de demo; solo local, nunca en CI — deja capturas en `e2e/shots/`), `cd src-tauri && cargo check`
+(back), `npm run build:cli` (CLI), `npm run tauri dev` (app), `npm run tauri build` (instalador).
 
 ## Handoff a Antigravity
 

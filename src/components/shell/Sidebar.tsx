@@ -256,6 +256,7 @@ export function Sidebar() {
               <ContextMenu>
                 <ContextMenuTrigger asChild>
                   <div
+                    data-testid="sidebar-project"
                     className={`group flex flex-col rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
                     // First click lands where the project was left; a click on the project that is
                     // already open is a way back to its orchestrator from wherever it was left in.

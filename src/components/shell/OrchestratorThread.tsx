@@ -13,6 +13,7 @@ import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
+import { cn } from "@/lib/utils";
 import { RunActivity, useActivityCount, useRunTranscript } from "@/components/shell/RunActivity";
 import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
@@ -301,7 +302,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
         <div className="flex flex-col items-end gap-1">
           {/* Shown as you wrote it — and when you wrote a list, a link or a block of code, as
               those: the box helps you write them, so the thread has to draw them. */}
-          <div className="rounded-xl px-3.5 py-2 max-w-[85%] text-sm whitespace-pre-wrap break-words bg-muted">
+          <div data-testid="user-bubble" className={cn("rounded-xl px-3.5 py-2 max-w-[85%] text-sm break-words bg-muted", !hasMarkdown(run.prompt) && "whitespace-pre-wrap")}>
             {hasMarkdown(run.prompt) ? <Markdown text={run.prompt} /> : run.prompt}
           </div>
           <span className="text-[11px] text-muted-foreground">

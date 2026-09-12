@@ -926,6 +926,7 @@ export function Composer() {
             <div
               ref={highlightRef}
               aria-hidden
+              data-testid="composer-layer"
               className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-foreground md:text-sm pr-12"
             >
               {/* The trailing newline the textarea counts is inside `renderComposerText`, so the
@@ -936,12 +937,16 @@ export function Composer() {
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
               ref={textareaRef}
+              data-testid="composer-input"
               value={text}
               onChange={e => { setText(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
               onKeyDown={handleKeyDown}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
+              // Code is not prose: with a fence in the box the red squiggles go, for the whole box —
+              // the browser cannot be told which lines to leave alone.
+              spellCheck={fenceHighlightRegions.length === 0}
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
