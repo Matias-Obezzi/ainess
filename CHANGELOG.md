@@ -4,6 +4,25 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Changed
+
+- **Clicking the project you are already in takes you to its orchestrator.** The first click still
+  opens a project where you left it — the board, the hierarchy, a chat. A second click on the same
+  project, which used to do nothing, now goes to the orchestrator thread: the one place there was
+  no shortcut back to.
+
+### Fixed
+
+- **No toasts for the project you are looking at.** A toast saying an agent delegated, or that a
+  task finished, in the very thread where that just appeared is a box over the thing it repeats.
+  They are held back while the window is in front and the project is on screen, and still shown
+  when the window is in the background — which is when they are the only way to find out.
+- **Dismissing a toast no longer closes the dialog behind it.** The toaster lives outside every
+  dialog by construction, and the dialog took any pointer-down outside itself as a reason to close.
+  A toast is not outside; it is on top.
+
 ## 0.16.0 — 2026-09-11
 
 ### Added

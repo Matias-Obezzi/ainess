@@ -2,6 +2,26 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Geändert
+
+- **Ein Klick auf das Projekt, in dem Sie schon sind, führt zu seinem Orchestrator.** Der erste
+  Klick öffnet ein Projekt weiterhin dort, wo Sie es verlassen haben — Board, Hierarchie, ein Chat.
+  Ein zweiter Klick auf dasselbe Projekt, der bisher nichts tat, führt jetzt zum Verlauf des
+  Orchestrators: dem einen Ort, zu dem es keinen Weg zurück gab.
+
+### Behoben
+
+- **Keine Toasts für das Projekt, das Sie gerade ansehen.** Ein Toast, dass ein Agent delegiert
+  hat oder eine Aufgabe fertig ist, im selben Verlauf, in dem das gerade erschienen ist, ist ein
+  Kasten über dem, was er wiederholt. Sie werden zurückgehalten, solange das Fenster vorne und das
+  Projekt auf dem Bildschirm ist, und weiterhin gezeigt, wenn das Fenster im Hintergrund ist — dann
+  sind sie der einzige Weg, es zu erfahren.
+- **Einen Toast zu schließen schließt nicht mehr den Dialog dahinter.** Der Toaster liegt
+  konstruktionsbedingt außerhalb jedes Dialogs, und der Dialog nahm jeden Klick außerhalb seiner
+  selbst als Grund, sich zu schließen. Ein Toast ist nicht außerhalb; er ist obenauf.
+
 ## 0.16.0 — 2026-09-11
 
 ### Neu

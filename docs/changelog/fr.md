@@ -2,6 +2,25 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Modifié
+
+- **Cliquer sur le projet où vous êtes déjà mène à son orchestrateur.** Le premier clic ouvre
+  toujours un projet là où vous l'aviez laissé — le tableau, la hiérarchie, un chat. Un second clic
+  sur le même projet, qui ne faisait rien, mène désormais au fil de l'orchestrateur : le seul
+  endroit vers lequel il n'y avait pas de raccourci.
+
+### Corrigé
+
+- **Plus de toasts pour le projet que vous regardez.** Un toast disant qu'un agent a délégué, ou
+  qu'une tâche est terminée, dans le fil même où cela vient d'apparaître est une boîte par-dessus ce
+  qu'elle répète. Ils sont retenus tant que la fenêtre est au premier plan et le projet à l'écran,
+  et toujours affichés quand la fenêtre est en arrière-plan — le seul moment où ils servent.
+- **Fermer un toast ne ferme plus le dialogue derrière lui.** Le toaster vit hors de tout dialogue
+  par construction, et le dialogue prenait tout clic hors de lui-même comme raison de se fermer. Un
+  toast n'est pas dehors ; il est dessus.
+
 ## 0.16.0 — 2026-09-11
 
 ### Nouveau

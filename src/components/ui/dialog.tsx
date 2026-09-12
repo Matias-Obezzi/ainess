@@ -35,10 +35,17 @@ function DialogOverlay({
   )
 }
 
+/** Whether a pointer event landed on a toast, which sits outside every dialog and is not "outside". */
+function onToast(event: { target: EventTarget | null }): boolean {
+  const target = event.target
+  return target instanceof Element && target.closest('[data-uiness-toaster]') !== null
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -48,6 +55,16 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        // Radix closes the dialog on any pointer-down outside its content, and the toaster is
+        // outside by construction: it is a portal of its own. Dismissing a toast, or pressing its
+        // action, used to take the dialog underneath it down as well.
+        onInteractOutside={event => {
+          if (onToast(event)) {
+            event.preventDefault()
+            return
+          }
+          onInteractOutside?.(event)
+        }}
         className={cn(
           'fixed top-[calc(50%+var(--titlebar-h)/2)] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg',
           className,

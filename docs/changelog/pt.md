@@ -2,6 +2,25 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Alterado
+
+- **Clicar no projeto em que você já está leva ao orquestrador dele.** O primeiro clique continua
+  abrindo o projeto onde você o deixou — o quadro, a hierarquia, um chat. Um segundo clique no mesmo
+  projeto, que antes não fazia nada, agora vai ao fio do orquestador: o único lugar para o qual não
+  havia atalho de volta.
+
+### Corrigido
+
+- **Sem toasts do projeto que você está olhando.** Um toast dizendo que um agente delegou, ou que
+  uma tarefa terminou, no mesmo fio onde isso acabou de aparecer é uma caixa em cima do que repete.
+  Eles ficam retidos enquanto a janela está à frente e o projeto na tela, e continuam aparecendo
+  quando a janela está ao fundo — que é quando são o único jeito de saber.
+- **Fechar um toast não fecha mais o diálogo atrás dele.** O toaster vive fora de todo diálogo por
+  construção, e o diálogo tomava qualquer clique fora de si como motivo para fechar. Um toast não
+  está fora; está em cima.
+
 ## 0.16.0 — 2026-09-11
 
 ### Novo
