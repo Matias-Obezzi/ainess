@@ -2,7 +2,7 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
-## Não publicado
+## 0.16.0 — 2026-09-11
 
 ### Novo
 
@@ -67,10 +67,6 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   texto, então o inglês em que o código está escrito não é marcado. Há duas linhas permitidas e cada
   uma diz por quê: os valores de papel de um chat são guardados no chat e vão para o prompt do
   agente, então são dados, não rótulos.
-
-## 0.15.1 — 2026-09-11
-
-### Corrigido
 
 - **O chat ficando em branco ao enviar uma mensagem.** Relatado quatro vezes, nunca reproduzido,
   nunca registrado — porque nada estava falhando no sentido em que todos procuravam. Nenhuma exceção

@@ -2,7 +2,7 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## Non publié
+## 0.16.0 — 2026-09-11
 
 ### Nouveau
 
@@ -71,10 +71,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   signalé. Deux lignes sont autorisées et chacune dit pourquoi : les valeurs de rôle d'un chat sont
   enregistrées sur le chat et partent dans la consigne de l'agent, ce sont donc des données, pas des
   libellés.
-
-## 0.15.1 — 2026-09-11
-
-### Corrigé
 
 - **Le chat devenant blanc à l'envoi d'un message.** Signalé quatre fois, jamais reproduit, jamais
   journalisé — parce que rien ne tombait en panne au sens où tout le monde cherchait. Aucune

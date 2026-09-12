@@ -2,7 +2,7 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## Unveröffentlicht
+## 0.16.0 — 2026-09-11
 
 ### Neu
 
@@ -67,10 +67,6 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Spanisch und nicht Text, also wird das Englisch, in dem der Quelltext geschrieben ist, nicht
   gemeldet. Zwei Zeilen sind erlaubt, und jede sagt warum: Die Rollenwerte eines Chats werden am Chat
   gespeichert und gehen in den Prompt eines Agenten — sie sind Daten, keine Beschriftungen.
-
-## 0.15.1 — 2026-09-11
-
-### Behoben
 
 - **Der Chat, der beim Senden einer Nachricht leer wird.** Viermal gemeldet, nie reproduziert, nie
   protokolliert — weil nichts kaputtging in dem Sinn, in dem alle gesucht haben. Es wurde keine

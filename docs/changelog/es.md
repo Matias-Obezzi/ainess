@@ -2,7 +2,7 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
-## Sin publicar
+## 0.16.0 — 2026-09-11
 
 ### Nuevo
 
@@ -71,10 +71,6 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   así que el inglés en el que está escrito el código no se marca. Hay dos líneas permitidas y cada
   una dice por qué: los valores de rol de un chat se guardan en el chat y van al prompt del agente,
   así que son datos, no etiquetas.
-
-## 0.15.1 — 2026-09-11
-
-### Arreglado
 
 - **El chat quedándose en blanco al mandar un mensaje.** Reportado cuatro veces, nunca reproducido,
   nunca logueado — porque no estaba fallando nada en el sentido que todos buscábamos. No se tiraba

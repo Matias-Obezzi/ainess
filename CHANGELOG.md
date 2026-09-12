@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## Unreleased
+## 0.16.0 — 2026-09-11
 
 ### Added
 
@@ -71,10 +71,6 @@ let one of them fall behind.
   the English the source is written in is not flagged. Two lines are allowed and each says why — the
   chat role values are stored on the chat and go into an agent's prompt, so they are data, not
   labels.
-
-## 0.15.1 — 2026-09-11
-
-### Fixed
 
 - **The chat going blank when you send a message.** Reported four times, never reproduced, never
   logged — because nothing was going wrong in the sense anyone was looking for. No error was thrown,
