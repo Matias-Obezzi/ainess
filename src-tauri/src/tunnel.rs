@@ -142,7 +142,7 @@ pub async fn tunnel_start(
             *state.url.lock().unwrap() = Some(url.clone());
             *state.provider.lock().unwrap() = Some(provider.clone());
             *state.fixed.lock().unwrap() = has_fixed_url(&provider, domain.as_deref(), tunnel_name.as_deref());
-            logging::append(&app, "info", "tunnel", &format!("túnel activo en {url}"));
+            logging::append(&app, "info", "tunnel", &format!("tunnel up at {url}"));
             Ok(TunnelInfo { url })
         }
         Err(e) => {

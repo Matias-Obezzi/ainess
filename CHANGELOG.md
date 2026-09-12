@@ -15,6 +15,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The Telegram bot token was being written to the log.** Whenever a poll to Telegram failed —
+  every forty-five seconds, for as long as the network was down — the failed URL was logged whole,
+  and Telegram keeps the token in that URL's path: `api.telegram.org/bot<id>:<token>/getUpdates`.
+  The masker knew about `token=`, `Bearer` and `api_key` and not about that shape. It does now, on
+  both sides of the app, and nothing that reaches the log file carries it any more. **If your log
+  files have ever left your machine, revoke the token in BotFather and paste a new one** — the old
+  one is in every `ainess-<date>.log` written before this build.
+
+
 - **A red toast saying "idle" while a planner waited for its implementers.** The text was
   `root agent idle; waiting for 1 background task(s)` — Claude Code, on stderr, saying it is waiting
   on a subtask, which is exactly what it should be doing. Every line a CLI wrote to stderr was

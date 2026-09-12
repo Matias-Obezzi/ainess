@@ -12,6 +12,13 @@
 
 ### 修复
 
+- **Telegram 机器人的令牌被写进了日志。** 每次向 Telegram 的轮询失败——断网期间每四十五秒一次——
+  失败的 URL 都会被整个记下来，而 Telegram 把令牌放在那个 URL 的路径里：
+  `api.telegram.org/bot<id>:<token>/getUpdates`。遮蔽器认识 `token=`、`Bearer` 和 `api_key`，不认识
+  这种形状。现在应用两侧都认识了，到达日志文件的内容里不再带它。**如果你的日志文件曾经离开过你的
+  机器，去 BotFather 撤销令牌并换一个新的**——旧的就在这个版本之前写下的每一个 `ainess-<日期>.log` 里。
+
+
 - **规划者等待实现者的时候，弹出一个写着"idle"的红色 toast。** 文本是
   `root agent idle; waiting for 1 background task(s)`——Claude Code 在 stderr 上说它在等一个子任务，
   这正是它该做的事。CLI 写到 stderr 的每一行都被归为错误，而每个错误都会弹 toast。现在 stderr 的行

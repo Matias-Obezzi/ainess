@@ -13,6 +13,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Le jeton du bot Telegram était écrit dans le journal.** À chaque interrogation de Telegram en
+  échec — toutes les quarante-cinq secondes, tant que le réseau était coupé — l'URL entière était
+  journalisée, et Telegram porte le jeton dans le chemin de cette URL :
+  `api.telegram.org/bot<id>:<token>/getUpdates`. Le masqueur connaissait `token=`, `Bearer` et
+  `api_key`, pas cette forme. Il la connaît désormais, des deux côtés de l'application, et rien de
+  ce qui atteint le fichier journal ne la porte plus. **Si vos fichiers journaux ont déjà quitté
+  votre machine, révoquez le jeton dans BotFather et collez-en un nouveau** — l'ancien est dans
+  chaque `ainess-<date>.log` écrit avant cette version.
+
+
 - **Un toast rouge disant « idle » pendant qu'un planificateur attendait ses implémenteurs.** Le
   texte était `root agent idle; waiting for 1 background task(s)` — Claude Code, sur stderr,
   signalant qu'il attend une sous-tâche, ce qui est exactement ce qu'il doit faire. Chaque ligne

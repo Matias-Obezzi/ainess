@@ -13,6 +13,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Das Telegram-Bot-Token landete im Log.** Wann immer eine Abfrage an Telegram fehlschlug —
+  alle fünfundvierzig Sekunden, solange das Netz weg war — wurde die URL ganz protokolliert, und
+  Telegram führt das Token im Pfad dieser URL: `api.telegram.org/bot<id>:<token>/getUpdates`. Der
+  Maskierer kannte `token=`, `Bearer` und `api_key`, diese Form nicht. Jetzt kennt er sie, auf
+  beiden Seiten der App, und nichts, was die Log-Datei erreicht, trägt es mehr. **Falls Ihre
+  Log-Dateien je Ihren Rechner verlassen haben, widerrufen Sie das Token bei BotFather und tragen
+  Sie ein neues ein** — das alte steht in jeder `ainess-<Datum>.log`, die vor diesem Build
+  geschrieben wurde.
+
+
 - **Ein roter Toast mit „idle", während ein Planer auf seine Implementierer wartete.** Der Text war
   `root agent idle; waiting for 1 background task(s)` — Claude Code, auf stderr, mit dem Hinweis,
   dass es auf eine Teilaufgabe wartet, also genau das tut, was es soll. Jede Zeile, die ein CLI auf
