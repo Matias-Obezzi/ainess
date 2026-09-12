@@ -15,6 +15,14 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A red toast saying "idle" while a planner waited for its implementers.** The text was
+  `root agent idle; waiting for 1 background task(s)` — Claude Code, on stderr, saying it is waiting
+  on a subtask, which is exactly what it should be doing. Every line a CLI wrote to stderr was
+  filed as an error, and every error is toasted. Now a stderr line is kept as what it is: it shows
+  in the run's activity as a plain mono line, and an error the CLI actually names in its structured
+  output is still an error, still red, still toasted.
+
+
 - **No toasts for the project you are looking at.** A toast saying an agent delegated, or that a
   task finished, in the very thread where that just appeared is a box over the thing it repeats.
   They are held back while the window is in front and the project is on screen, and still shown

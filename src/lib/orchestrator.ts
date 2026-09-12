@@ -734,6 +734,10 @@ function handleOutput(e: RunOutputEvent) {
       });
     } else if (ev.type === "error") {
       addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
+    } else if (ev.type === "stderr") {
+      // Kept as what it is. It used to be filed as an error, and every error is toasted, so a CLI
+      // saying it was waiting on a subtask came up as a red box that said "idle".
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "stderr", text: ev.text, runId: e.runId });
     }
   }
 

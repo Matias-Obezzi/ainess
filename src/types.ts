@@ -664,6 +664,14 @@ export type ParsedEvent =
   | { type: "tool"; name: string; detail?: string; input?: unknown; failed?: boolean; error?: string }
   | { type: "result"; text: string; sessionId?: string; usage?: RunUsage }
   | { type: "error"; text: string }
+  /**
+   * A line the CLI wrote to stderr, passed through as it came.
+   *
+   * Not an error: the CLIs use that stream for progress and chatter as much as for failures —
+   * Claude Code prints "root agent idle; waiting for N background task(s)" there while its
+   * subtasks run. An error the app can name comes out of the structured stream as `error`.
+   */
+  | { type: "stderr"; text: string }
   | { type: "raw"; text: string };
 
 // ---- Integrated terminals (see src-tauri/src/pty.rs) ----

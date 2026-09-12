@@ -13,6 +13,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um toast vermelho dizendo "idle" enquanto um planejador esperava os implementadores.** O texto
+  era `root agent idle; waiting for 1 background task(s)` — o Claude Code, no stderr, avisando que
+  espera uma subtarefa, que é exatamente o que ele deve estar fazendo. Cada linha que um CLI
+  escrevia no stderr era guardada como erro, e todo erro vira toast. Agora uma linha de stderr é
+  guardada como o que é: aparece na atividade da execução como uma linha mono comum, e um erro que
+  o CLI de fato nomeia na saída estruturada continua sendo erro, vermelho e com toast.
+
+
 - **Sem toasts do projeto que você está olhando.** Um toast dizendo que um agente delegou, ou que
   uma tarefa terminou, no mesmo fio onde isso acabou de aparecer é uma caixa em cima do que repete.
   Eles ficam retidos enquanto a janela está à frente e o projeto na tela, e continuam aparecendo

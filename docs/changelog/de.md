@@ -13,6 +13,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein roter Toast mit „idle", während ein Planer auf seine Implementierer wartete.** Der Text war
+  `root agent idle; waiting for 1 background task(s)` — Claude Code, auf stderr, mit dem Hinweis,
+  dass es auf eine Teilaufgabe wartet, also genau das tut, was es soll. Jede Zeile, die ein CLI auf
+  stderr schrieb, wurde als Fehler abgelegt, und jeder Fehler wird getoastet. Eine stderr-Zeile
+  bleibt jetzt, was sie ist: eine schlichte Mono-Zeile in der Aktivität des Laufs, während ein
+  Fehler, den das CLI in seiner strukturierten Ausgabe wirklich benennt, ein Fehler bleibt — rot,
+  mit Toast.
+
+
 - **Keine Toasts für das Projekt, das Sie gerade ansehen.** Ein Toast, dass ein Agent delegiert
   hat oder eine Aufgabe fertig ist, im selben Verlauf, in dem das gerade erschienen ist, ist ein
   Kasten über dem, was er wiederholt. Sie werden zurückgehalten, solange das Fenster vorne und das

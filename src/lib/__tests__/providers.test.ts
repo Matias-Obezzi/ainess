@@ -88,7 +88,7 @@ describe("antigravity provider", () => {
     expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"tool","state":"ERROR","tool_name":"write_to_file"}}', "stdout")).toEqual([{ type: "tool", name: "write_to_file", failed: true, error: "" }]);
     const result = p.parseLine('{"event":"result","result":{"conversation_id":"c1","status":"SUCCESS","response":"hecho"}}', "stdout");
     expect(result).toEqual([{ type: "result", text: "hecho", sessionId: "c1" }]);
-    expect(p.parseLine("not json", "stderr")).toEqual([{ type: "error", text: "not json" }]);
+    expect(p.parseLine("not json", "stderr")).toEqual([{ type: "stderr", text: "not json" }]);
     expect(p.parseLine("not json", "stdout")).toEqual([{ type: "raw", text: "not json" }]);
   });
 });
@@ -122,6 +122,27 @@ describe("claude provider", () => {
   // turn resumed on it. Better no session at all: the run starts fresh instead of pointing nowhere.
   it("ignores an init line that brings no session id", () => {
     expect(PROVIDERS.claude.parseLine('{"type":"system","subtype":"init"}', "stdout")).toEqual([]);
+  });
+});
+
+// "root agent idle; waiting for 1 background task(s)" is Claude Code saying, on stderr, that it is
+// waiting on a subtask. It was filed as an error, every error is toasted, and so a red box that said
+// "idle" popped up over a planner that was doing exactly what it should.
+describe("what a CLI writes to stderr", () => {
+  const chatter = "root agent idle; waiting for 1 background task(s) (bounded by --print-timeout)";
+
+  it.each(["claude", "antigravity", "copilot", "opencode", "custom"] as const)("is stderr for %s, not an error", provider => {
+    expect(PROVIDERS[provider].parseLine(chatter, "stderr")).toEqual([{ type: "stderr", text: chatter }]);
+  });
+
+  it("still yields nothing for a blank stderr line where that was the rule", () => {
+    expect(PROVIDERS.copilot.parseLine("   ", "stderr")).toEqual([]);
+  });
+
+  // An error the CLI names in its structured stream is a different thing and keeps its kind.
+  it("keeps a structured error as an error", () => {
+    const line = JSON.stringify({ event: "result", result: { status: "FAILED", error: "quota exhausted" } });
+    expect(PROVIDERS.antigravity.parseLine(line, "stdout")).toContainEqual({ type: "error", text: "quota exhausted" });
   });
 });
 
