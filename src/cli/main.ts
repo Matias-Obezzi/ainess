@@ -26,6 +26,7 @@ import { syncMcpToAntigravity } from "@/lib/mcp-sync";
 import { mcpHeadersFromArgs } from "@/lib/mcp-headers";
 import { nodeI18n } from "@/i18n/node";
 import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
+import { isLiveRun } from "@/lib/run-queue";
 
 /** Writes whatever this process still owes to disk (feed, board and notifications) before it exits. */
 const flushAll = async (): Promise<void> => {
@@ -1033,7 +1034,7 @@ async function main() {
       }
       await new Promise<void>(resolve => {
         const check = () => {
-          const running = Object.values(useAppStore.getState().runs).some(r => r.projectId === projectId && r.status === "running");
+          const running = Object.values(useAppStore.getState().runs).some(r => r.projectId === projectId && isLiveRun(r.status));
           if (!running) resolve(); else setTimeout(check, 500);
         };
         setTimeout(check, 1000);
@@ -1386,7 +1387,7 @@ async function main() {
     if (state.approvals !== prevState.approvals) {
       const s = useAppStore.getState();
       const pending = Object.values(s.approvals).filter(a => a.status === "pending" && a.projectId === projectId);
-      const running = Object.values(s.runs).some(r => r.projectId === projectId && r.status === "running");
+      const running = Object.values(s.runs).some(r => r.projectId === projectId && isLiveRun(r.status));
       if (pending.length > 0 && !running) {
         if (!values.json) {
           console.log(`\n\x1b[33m${t("cli.waitingYourApproval")}\x1b[0m`);

@@ -4,7 +4,7 @@ import type { Approval, VerifyCommand } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
-import { trimMessagesInMemory, trimRunsInMemory, TRIM_MESSAGES_AT } from "@/lib/history";
+import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
 import { truncate } from "@/lib/format";
 import { translateNow, activeLocale } from "@/i18n/useT";
@@ -25,6 +25,7 @@ import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
+import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -315,7 +316,24 @@ function scheduleStreamFlush() {
   }
 }
 
-export function startRun(opts: { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string }): string | undefined {
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string };
+
+/**
+ * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
+ * launch needs it when the turn ahead of them ends. In memory only, like `heldContinuations`: a
+ * queued run on disk belongs to a process that is gone, and `mergeFromDisk` closes it as interrupted.
+ */
+const queuedRunOpts = new Map<string, StartRunOptions>();
+
+/**
+ * Starts a run for an agent, or queues it when the agent is already in a turn of its own.
+ *
+ * One agent is one process. Every path that gives an agent work comes through here — a delegation,
+ * a review, an answer to its question, a retry, a message of yours — so this is the one place the
+ * rule can hold: a busy agent gets a `queued` run, not a second process on the same conversation,
+ * and the end of its current run launches the next (`launchQueuedRuns`). See `lib/run-queue.ts`.
+ */
+export function startRun(opts: StartRunOptions): string | undefined {
   const store = useAppStore.getState();
   const agent = selectAgent(store, opts.agentId);
   const project = store.config.projects.find(p => p.id === opts.projectId);
@@ -386,6 +404,9 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
   }
 
   const runId = crypto.randomUUID();
+  // In a turn of its own right now. The run is written down either way — the parent counts it as
+  // a child it is waiting for, the board gets its card — but it waits for that turn to end.
+  const busy = !!store.runtime[opts.projectId]?.[opts.agentId]?.currentRunId;
   const run: Run = {
     id: runId,
     projectId: opts.projectId,
@@ -393,7 +414,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     parentRunId: opts.parentRunId,
     rootRunId: opts.rootRunId ?? runId,
     prompt: opts.prompt,
-    status: "running",
+    status: busy ? "queued" : "running",
     startedAt: Date.now(),
     output: "",
     rawLines: [],
@@ -414,7 +435,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
         [runId]: run,
         ...(parentRun && opts.parentRunId ? { [opts.parentRunId]: { ...parentRun, childRunIds: [...parentRun.childRunIds, runId] } } : {})
       },
-      runtime: {
+      runtime: busy ? state.runtime : {
         ...state.runtime,
         [opts.projectId]: {
           ...projectRuntime,
@@ -428,6 +449,116 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       }
     };
   });
+
+  if (busy) {
+    queuedRunOpts.set(runId, opts);
+    addMessage({
+      projectId: opts.projectId,
+      fromAgentId: "system",
+      toAgentId: opts.agentId,
+      kind: "system",
+      text: translateNow("run.queuedBehind", { name: agent.name }),
+      runId,
+    });
+    return runId;
+  }
+
+  launchRun(runId, opts);
+  return runId;
+}
+
+/**
+ * Launches the next run waiting for this agent, if it is free. Called wherever a run of the agent
+ * ends — next to `drainContinuations`, and for the same reason.
+ */
+export function launchQueuedRuns(agentId: string, projectId: string): void {
+  const store = useAppStore.getState();
+  if (store.runtime[projectId]?.[agentId]?.currentRunId) return;
+  // In the order the work arrived: the map keeps it, and two runs queued in the same millisecond
+  // have the same `startedAt`. What has no entry there is a run this process cannot launch anyway.
+  const next = [...queuedRunOpts.keys()]
+    .map(id => store.runs[id])
+    .find(r => r && r.status === "queued" && r.agentId === agentId && r.projectId === projectId)
+    ?? nextQueuedRun(store.runs, agentId, projectId);
+  if (!next) return;
+  const opts = queuedRunOpts.get(next.id);
+  queuedRunOpts.delete(next.id);
+  if (!opts) {
+    // Queued by a process that is gone: nothing here knows what it was asked for.
+    finishNeverSpawned(next.id, projectId, agentId, interruptedOutput());
+    return;
+  }
+  useAppStore.setState(state => {
+    const run = state.runs[next.id];
+    if (!run) return state;
+    const projectRuntime = state.runtime[projectId] || {};
+    return {
+      // The clock starts now: what it shows as elapsed is the turn, not the wait.
+      runs: { ...state.runs, [next.id]: { ...run, status: "running", startedAt: Date.now() } },
+      runtime: {
+        ...state.runtime,
+        [projectId]: {
+          ...projectRuntime,
+          [agentId]: {
+            ...(projectRuntime[agentId] ?? { agentId, queuedInstructions: [] }),
+            status: "working",
+            currentRunId: next.id,
+            currentTask: opts.prompt,
+          },
+        },
+      },
+    };
+  });
+  launchRun(next.id, opts);
+}
+
+/**
+ * Closes a queued run that will not be launched: its agent, or the agent whose task it belonged
+ * to, was stopped. Not `onRunFinished`: that one clears the agent's runtime, and the agent may
+ * well be in the middle of the run that is about to be killed.
+ */
+function cancelQueuedRun(runId: string): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  if (!run || run.status !== "queued") return;
+  queuedRunOpts.delete(runId);
+  const agent = selectAgent(store, run.agentId);
+  const output = translateNow("system.stoppedByUser");
+  useAppStore.setState(state => ({
+    runs: { ...state.runs, [runId]: { ...state.runs[runId], status: "killed", output, endedAt: Date.now() } },
+  }));
+  addMessage({
+    projectId: run.projectId,
+    fromAgentId: "system",
+    toAgentId: run.agentId,
+    kind: "system",
+    text: translateNow("run.queuedDropped", { name: agent?.name ?? run.agentId }),
+    runId,
+  });
+  const closed = useAppStore.getState().runs[runId];
+  taskSync.taskOnRunFinished(closed);
+  if (run.kind === "chat") {
+    import("@/lib/chat").then(m => m.onChatRunFinished(runId)).catch(() => {});
+    return;
+  }
+  if (run.parentRunId) {
+    maybeContinueParent(run.parentRunId);
+  } else if (useAppStore.getState().activeTaskRunId[run.projectId] === run.rootRunId) {
+    useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
+    taskFinished(run.projectId, run.rootRunId, false, output);
+  }
+}
+
+/** The part of `startRun` that needs the agent to be free: from here on, a process is coming. */
+function launchRun(runId: string, opts: StartRunOptions): void {
+  const store = useAppStore.getState();
+  const agent = selectAgent(store, opts.agentId);
+  const project = store.config.projects.find(p => p.id === opts.projectId);
+  if (!agent || !project) {
+    // Gone while the run waited its turn: removed from the team, or the project closed.
+    finishNeverSpawned(runId, opts.projectId, opts.agentId, interruptedOutput());
+    return;
+  }
 
   const provider = PROVIDERS[agent.provider];
   // Custom agents bring their own program; every other provider needs a detected binary.
@@ -459,7 +590,7 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
       if (errorRun) taskSync.taskOnRunFinished(errorRun);
       onRunFinished(runId);
     }, 0);
-    return runId;
+    return;
   }
 
   const children = selectChildren(store, opts.projectId, agent.id);
@@ -666,8 +797,6 @@ export function startRun(opts: { agentId: string; projectId: string; prompt: str
     addMessage({ projectId: opts.projectId, fromAgentId: "system", toAgentId: opts.agentId, kind: "error", text: message, runId });
     onRunFinished(runId);
   });
-
-  return runId;
 }
 
 function handleOutput(e: RunOutputEvent) {
@@ -881,6 +1010,7 @@ function onRunFinished(runId: string) {
     });
     // Notify chat module
     import("@/lib/chat").then(m => m.onChatRunFinished(runId)).catch(() => {});
+    launchQueuedRuns(agent.id, run.projectId);
     return;
   }
 
@@ -1119,8 +1249,10 @@ function onRunFinished(runId: string) {
   }
 
   // The task's own thread first: a planner whose implementers came back while it was answering you
-  // owes them a round before it takes anything else.
+  // owes them a round before it takes anything else. Then the runs that waited for this agent to be
+  // free, then what you wrote to it meanwhile.
   drainContinuations(agent.id, run.projectId);
+  launchQueuedRuns(agent.id, run.projectId);
   processQueuedInstructions(agent.id, run.projectId);
 
   // What was said, into the project itself, where the agent can read it next time (and so can you,
@@ -1540,7 +1672,7 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
   // ever arrives, so nothing would move the card. Settle it here instead of parking it in a review
   // nobody is doing.
   const started = useAppStore.getState().runs[reviewRunId];
-  if (started && started.status !== "running") {
+  if (started && isFinishedRun(started.status)) {
     taskSync.taskOnRunFinished(started);
     return;
   }
@@ -1822,7 +1954,7 @@ function stillHasRunningDelegations(agentId: string, projectId: string, exceptRu
   return Object.values(store.runs).some(
     r => r.id !== exceptRunId
       && r.projectId === projectId
-      && r.status === "running"
+      && isLiveRun(r.status)
       && descendsFromAgent(store.runs, r, agentId),
   );
 }
@@ -2115,6 +2247,8 @@ const stoppedBeforeSpawn = new Set<string>();
 export async function stopAgent(agentId: string, projectId: string): Promise<void> {
   flushStream();
   const store = useAppStore.getState();
+  // What was waiting its turn goes first: the end of the run killed below is what would launch it.
+  for (const queued of queuedRunsOf(store.runs, agentId, projectId)) cancelQueuedRun(queued.id);
   const runtime = store.runtime[projectId]?.[agentId];
   if (runtime?.currentRunId) {
     stoppedBeforeSpawn.add(runtime.currentRunId);
@@ -2123,8 +2257,8 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
   }
   // Waiting for children: stop every running run delegated (directly or not) by this agent,
   // and cancel the continuation so the agent does not re-delegate with "[detenido]" results.
-  const descendants = Object.values(store.runs).filter(
-    r => r.projectId === projectId && r.status === "running" && descendsFromAgent(store.runs, r, agentId)
+  const descendants = Object.values(useAppStore.getState().runs).filter(
+    r => r.projectId === projectId && isLiveRun(r.status) && descendsFromAgent(store.runs, r, agentId)
   );
   for (const r of descendants) {
     let cursor = r.parentRunId ? store.runs[r.parentRunId] : undefined;
@@ -2133,7 +2267,9 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
       cursor = cursor.parentRunId ? store.runs[cursor.parentRunId] : undefined;
     }
   }
-  await Promise.all(descendants.map(r => getTransport().killRun(r.id).catch(() => {})));
+  // The ones still waiting for their agent have no process to kill; they are closed here.
+  for (const r of descendants) if (r.status === "queued") cancelQueuedRun(r.id);
+  await Promise.all(descendants.filter(r => r.status === "running").map(r => getTransport().killRun(r.id).catch(() => {})));
   // Delegations still waiting for approval are dropped too; the task ends here.
   const rejected = rejectPendingApprovalsOf(agentId, projectId);
   if (descendants.length === 0) {
@@ -2154,6 +2290,10 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
 export async function stopAll(projectId?: string): Promise<void> {
   flushStream();
   const store = useAppStore.getState();
+  // Queued first, for the same reason as in `stopAgent`.
+  for (const r of Object.values(store.runs)) {
+    if (r.status === "queued" && (!projectId || r.projectId === projectId)) cancelQueuedRun(r.id);
+  }
   if (projectId) {
     const pRuntime = store.runtime[projectId];
     if (pRuntime) {

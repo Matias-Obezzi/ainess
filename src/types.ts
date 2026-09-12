@@ -444,7 +444,11 @@ export interface SpawnedProcess {
   image: string;
 }
 
-export type RunStatus = "running" | "done" | "error" | "killed";
+/**
+ * `queued` is a run that exists but has no process yet: its agent was in a turn of its own when the
+ * work arrived, and one agent is one process (see `lib/run-queue.ts`). It starts when that turn ends.
+ */
+export type RunStatus = "queued" | "running" | "done" | "error" | "killed";
 
 /** What one run consumed, as reported by its CLI. Every field is optional: each one reports less. */
 export interface RunUsage {

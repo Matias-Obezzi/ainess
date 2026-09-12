@@ -15,6 +15,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **Two processes for one agent.** The team is a hierarchy with one of each agent in it, and
+  nothing enforced that. When an implementer finished while the reviewer was still working on the
+  task the planner had given it, the review was started anyway — a second `agy.exe` on the same
+  reviewer, writing the same conversation, for as long as both ran. Now an agent is one process:
+  work that reaches an agent in the middle of a turn — a delegation, a review, an answer to its
+  question, a retry — is written down as a queued run and starts when that turn ends, in the order
+  it arrived. The planner keeps waiting for it, the board card knows about it, and the feed says
+  who it is waiting for. Stopping the agent drops what was queued for it as well.
+
 - **The Telegram bot token was being written to the log.** Whenever a poll to Telegram failed —
   every forty-five seconds, for as long as the network was down — the failed URL was logged whole,
   and Telegram keeps the token in that URL's path: `api.telegram.org/bot<id>:<token>/getUpdates`.

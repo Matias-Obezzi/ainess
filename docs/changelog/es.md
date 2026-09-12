@@ -13,6 +13,16 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Dos procesos para un mismo agente.** El equipo es una jerarquía con un solo ejemplar de cada
+  agente, y nada lo hacía cumplir. Cuando un implementador terminaba mientras el reviewer seguía
+  trabajando en la tarea que le había dado el planner, la revisión arrancaba igual — un segundo
+  `agy.exe` sobre el mismo reviewer, escribiendo la misma conversación, todo el tiempo que ambos
+  corrieran. Ahora un agente es un solo proceso: el trabajo que le llega en medio de un turno — una
+  delegación, una revisión, la respuesta a su pregunta, un reintento — queda anotado como corrida en
+  cola y arranca cuando ese turno termina, en el orden en que llegó. El planner la sigue esperando,
+  la tarjeta del tablero la conoce y el hilo dice a quién está esperando. Detener al agente descarta
+  también lo que tenía en cola.
+
 - **El token del bot de Telegram se estaba escribiendo en el log.** Cada vez que una consulta a
   Telegram fallaba — cada cuarenta y cinco segundos, todo el tiempo que la red estuviera caída — se
   logueaba la URL entera, y Telegram lleva el token en la ruta de esa URL:

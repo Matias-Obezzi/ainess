@@ -27,6 +27,7 @@ import type { TaskPriority, TaskStatus } from "@/types";
 import { Archive, ArchiveRestore, GitPullRequest, Link2, MessagesSquare, Network, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
+import { isFinishedRun } from "@/lib/run-queue";
 
 const UNASSIGNED = "__none__";
 
@@ -313,7 +314,7 @@ export function TaskDetailDialog({
                             <GitPullRequest className="h-3.5 w-3.5" /> {t("pr.open")}
                           </Button>
                         )}
-                        {taskRun && taskRun.status !== "running" && (
+                        {taskRun && isFinishedRun(taskRun.status) && (
                           <Button variant="outline" size="sm" onClick={() => setRetryOpen(true)}>
                             <Sparkles className="h-3.5 w-3.5" /> {t("retry.action")}
                           </Button>

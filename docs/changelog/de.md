@@ -13,6 +13,17 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Zwei Prozesse für denselben Agenten.** Das Team ist eine Hierarchie mit genau einem Exemplar
+  jedes Agenten, und nichts hat das durchgesetzt. Wenn ein Implementierer fertig wurde, während der
+  Reviewer noch an der Aufgabe arbeitete, die ihm der Planer gegeben hatte, wurde die Review
+  trotzdem gestartet — eine zweite `agy.exe` auf demselben Reviewer, die dieselbe Unterhaltung
+  schrieb, solange beide liefen. Jetzt ist ein Agent ein einziger Prozess: Arbeit, die einen
+  Agenten mitten in einem Zug erreicht — eine Delegation, eine Review, die Antwort auf seine Frage,
+  ein neuer Versuch — wird als wartender Lauf notiert und startet, wenn dieser Zug endet, in der
+  Reihenfolge des Eintreffens. Der Planer wartet weiter darauf, die Karte auf dem Board kennt ihn,
+  und der Verlauf sagt, auf wen gewartet wird. Den Agenten zu stoppen verwirft auch, was für ihn
+  wartete.
+
 - **Das Telegram-Bot-Token landete im Log.** Wann immer eine Abfrage an Telegram fehlschlug —
   alle fünfundvierzig Sekunden, solange das Netz weg war — wurde die URL ganz protokolliert, und
   Telegram führt das Token im Pfad dieser URL: `api.telegram.org/bot<id>:<token>/getUpdates`. Der

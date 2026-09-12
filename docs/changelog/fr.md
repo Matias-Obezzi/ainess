@@ -13,6 +13,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Deux processus pour un même agent.** L'équipe est une hiérarchie avec un seul exemplaire de
+  chaque agent, et rien ne le faisait respecter. Quand un implémenteur terminait alors que le
+  reviewer travaillait encore sur la tâche que le planner lui avait confiée, la revue démarrait
+  quand même — un second `agy.exe` sur le même reviewer, écrivant la même conversation, tant que les
+  deux tournaient. Désormais un agent est un seul processus : le travail qui arrive à un agent en
+  plein tour — une délégation, une revue, la réponse à sa question, une nouvelle tentative — est
+  noté comme exécution en attente et démarre quand ce tour se termine, dans l'ordre d'arrivée. Le
+  planner continue de l'attendre, la carte du tableau la connaît et le fil dit qui est attendu.
+  Arrêter l'agent abandonne aussi ce qui attendait pour lui.
+
 - **Le jeton du bot Telegram était écrit dans le journal.** À chaque interrogation de Telegram en
   échec — toutes les quarante-cinq secondes, tant que le réseau était coupé — l'URL entière était
   journalisée, et Telegram porte le jeton dans le chemin de cette URL :

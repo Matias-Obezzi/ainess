@@ -25,6 +25,7 @@ export const zh: Dictionary = {
   "label.runStatus.done": "已完成",
   "label.runStatus.error": "错误",
   "label.runStatus.killed": "已停止",
+  "label.runStatus.queued": "排队中",
 
   // ---- Common words reused all over the UI ----
   "common.cancel": "取消",
@@ -1310,6 +1311,8 @@ export const zh: Dictionary = {
   "quota.noData": "无数据",
   "quota.noQuotaData": "无配额数据",
   "run.stoppedWhilePreparing": "在准备 worktree 时被你停止，尚未启动。",
+  "run.queuedBehind": "{name} 正在处理别的事情：这项工作等它完成后再开始。一个代理只有一个进程。",
+  "run.queuedDropped": "尚未启动就被停止：{name} 被停止时，这项工作还在等待。",
   "quota.detailWithReset": "{detail} · {date} 重置",
   "quota.used": "已用配额：{value}",
   "quota.claude.window5h": "5 小时窗口",
