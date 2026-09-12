@@ -6,7 +6,22 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **`--header` on `ainess mcp add|edit`.** The app has been able to give a hosted MCP server the
+  headers it asks for since 0.14.0; the CLI could not. Now `--header "Name: value"`, repeatable,
+  split on the first colon so a value with colons of its own — a URL, a base64 token — arrives
+  whole. On `edit` new headers join the existing ones, and `--header "Name:"` removes one. A
+  header is a credential, so it never reaches a log or an output: the CLI's own startup line masks
+  the value, and `--json` prints `***` in its place.
+
 ### Fixed
+
+- **The "Add command" button under Verification did nothing.** Since 0.15.0. It handed the row an
+  empty command, the empty command was refused as invalid before the row was created, and the click
+  ended there — the one-click suggestions worked, the button did not. Found by the first component
+  test ever written for this app, on the first day it existed.
+
 
 - **What an agent said while it worked no longer disappears when it stops.** Two people reported
   this from opposite ends — "my answer vanished when it delegated, only the delegation was left" and

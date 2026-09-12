@@ -32,3 +32,30 @@ export function formatHeaders(headers: Record<string, string> | undefined): stri
     .map(([name, value]) => `${name}: ${value}`)
     .join("\n");
 }
+
+/**
+ * Reads `--header "Name: value"` options from CLI arguments and combines them with existing headers.
+ * An empty value (e.g. `--header "Name:"`) deletes that header from the existing set.
+ * Returns `undefined` if the resulting header set is empty.
+ */
+export function mcpHeadersFromArgs(
+  args: string[],
+  existing?: Record<string, string>,
+): Record<string, string> | undefined {
+  const headers: Record<string, string> = { ...existing };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--header" && i + 1 < args.length) {
+      const raw = args[i + 1];
+      i++;
+      const parsed = parseHeaders(raw);
+      for (const [name, value] of Object.entries(parsed)) {
+        if (value === "") {
+          delete headers[name];
+        } else {
+          headers[name] = value;
+        }
+      }
+    }
+  }
+  return Object.keys(headers).length > 0 ? headers : undefined;
+}

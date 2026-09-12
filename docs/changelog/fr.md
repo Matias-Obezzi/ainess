@@ -4,7 +4,24 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **`--header` dans `ainess mcp add|edit`.** L'application sait donner à un serveur MCP hébergé
+  les en-têtes qu'il demande depuis la 0.14.0 ; le CLI ne le pouvait pas. Désormais
+  `--header "Nom: valeur"`, répétable, coupé au premier deux-points pour qu'une valeur ayant ses
+  propres deux-points — une URL, un jeton en base64 — arrive entière. Sur `edit` les nouveaux
+  en-têtes rejoignent les existants, et `--header "Nom:"` en retire un. Un en-tête est un
+  identifiant, donc il n'atteint jamais un journal ni une sortie : la ligne de démarrage du CLI
+  masque la valeur, et `--json` imprime `***` à sa place.
+
 ### Corrigé
+
+- **Le bouton « Ajouter une commande » de la vérification ne faisait rien.** Depuis la 0.15.0. Il
+  donnait à la ligne une commande vide, la commande vide était refusée comme invalide avant que la
+  ligne existe, et le clic s'arrêtait là — les suggestions en un clic marchaient, le bouton non.
+  Trouvé par le premier test de composant jamais écrit pour cette application, le jour de sa
+  création.
+
 
 - **Ce qu'un agent dit pendant qu'il travaille ne disparaît plus quand il s'arrête.** Deux
   personnes l'ont signalé par les deux bouts — « ma réponse a disparu quand il a délégué, il ne

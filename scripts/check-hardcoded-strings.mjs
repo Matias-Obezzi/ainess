@@ -39,8 +39,25 @@ const ONLY_SPANISH_WORDS = [
   "este", "esta", "esto", "estos", "estas", "desde", "hasta", "pero", "porque", "cuando",
   "donde", "cada", "todo", "toda", "todos", "todas", "sin", "más", "ya", "muy", "hay",
   "está", "están", "fue", "tiene", "puede", "debe", "hacer", "usar", "solo", "sólo",
+  // The app's own nouns, which a sentence about it can hardly avoid. "MCP ya existe" and
+  // "Agente no encontrado en este proyecto" slipped past a list of stopwords alone.
+  "agente", "agentes", "proyecto", "proyectos", "encontrado", "encontrada", "existe", "existen",
+  "falta", "faltan", "nombre", "archivo", "carpeta", "corrida", "tarea", "tareas", "equipo",
+  "guardado", "guardada", "agregado", "agregada", "editado", "editada", "eliminado", "eliminada",
 ];
 const WORD_RE = new RegExp(`(^|[^\\p{L}])(${ONLY_SPANISH_WORDS.join("|")})([^\\p{L}]|$)`, "giu");
+
+/**
+ * Words that settle it on their own.
+ *
+ * Two stopwords is the rule for prose, but a CLI speaks in fragments — "No encontrado", "Falta
+ * --url", "Eliminado" — and a fragment has one word that matters and no stopwords at all. These are
+ * not English words in any spelling, so one of them is enough.
+ */
+const STRONG_SPANISH_WORDS = new Set([
+  "encontrado", "encontrada", "eliminado", "eliminada", "agregado", "agregada", "editado", "editada",
+  "falta", "faltan", "uso", "existe", "existen", "guardado", "guardada",
+]);
 
 /**
  * Lines allowed to keep a Spanish literal, as `<path>:<line>` with why.
@@ -72,7 +89,9 @@ function looksSpanish(text) {
     // The regex eats the separator that the next match needs, so step back one.
     WORD_RE.lastIndex--;
   }
-  return found.size >= 2;
+  if (found.size >= 2) return true;
+  for (const word of found) if (STRONG_SPANISH_WORDS.has(word)) return true;
+  return false;
 }
 
 /** Whether the line is inside a comment, where Spanish is nobody's problem. */

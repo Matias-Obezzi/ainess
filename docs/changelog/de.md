@@ -4,7 +4,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **`--header` bei `ainess mcp add|edit`.** Die App kann einem gehosteten MCP-Server seit 0.14.0
+  die Header geben, die er verlangt; das CLI konnte es nicht. Jetzt `--header "Name: Wert"`,
+  wiederholbar, am ersten Doppelpunkt getrennt, damit ein Wert mit eigenen Doppelpunkten — eine
+  URL, ein Base64-Token — ganz ankommt. Bei `edit` kommen neue Header zu den vorhandenen dazu, und
+  `--header "Name:"` entfernt einen. Ein Header ist ein Zugangsdatum, also erreicht er nie ein Log
+  oder eine Ausgabe: Die Startzeile des CLI maskiert den Wert, und `--json` druckt stattdessen `***`.
+
 ### Behoben
+
+- **Der Knopf „Befehl hinzufügen" unter Überprüfung tat nichts.** Seit 0.15.0. Er gab der Zeile
+  einen leeren Befehl, der leere Befehl wurde als ungültig abgewiesen, bevor die Zeile entstand,
+  und der Klick endete dort — die Ein-Klick-Vorschläge gingen, der Knopf nicht. Gefunden vom
+  ersten Komponententest, der je für diese App geschrieben wurde, an seinem ersten Tag.
+
 
 - **Was ein Agent sagt, während er arbeitet, verschwindet nicht mehr, wenn er aufhört.** Zwei
   Leute haben es von entgegengesetzten Enden gemeldet — „meine Antwort war weg, als er delegiert

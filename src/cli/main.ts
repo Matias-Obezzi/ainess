@@ -23,6 +23,7 @@ import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { defaultAgentDescription } from "@/lib/providers";
 import { agentAfterEdit, agentAutoApprove, autoApproveFlag } from "@/lib/team";
 import { syncMcpToAntigravity } from "@/lib/mcp-sync";
+import { mcpHeadersFromArgs } from "@/lib/mcp-headers";
 import { nodeI18n } from "@/i18n/node";
 import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
 
@@ -36,7 +37,15 @@ async function main() {
   setTransport(nodeTransport);
   // Everything the CLI prints (and any crash) also goes to the shared log file.
   installConsoleCapture();
-  log.info("cli", `ainess ${process.argv.slice(2).join(" ")}`);
+  const rawArgs = process.argv.slice(2);
+  const loggedArgs = rawArgs.map((arg, i) => {
+    if (i > 0 && rawArgs[i - 1] === "--header") {
+      const colon = arg.indexOf(":");
+      return colon !== -1 ? `${arg.slice(0, colon)}: ***` : "***";
+    }
+    return arg;
+  });
+  log.info("cli", `ainess ${loggedArgs.join(" ")}`);
   await useAppStore.getState().init();
   const store = useAppStore.getState();
   const { locale, t } = nodeI18n(store.config.language, process.env);
@@ -120,14 +129,14 @@ async function main() {
     } else if (sub === "set") {
       const provider = args[2] as ProviderId;
       const rp = args[3];
-      if (!provider || !rp) error("Uso: ainess detect set <provider> <ruta>");
+      if (!provider || !rp) error(t("cli.usage", { usage: "ainess detect set <provider> <path>" }));
       store.updateConfig({ binaryOverrides: { ...store.config.binaryOverrides, [provider]: rp } });
       await store.detectBinaries();
       print({ ok: true }, "Override seteado.");
       process.exit(0);
     } else if (sub === "clear") {
       const provider = args[2] as ProviderId;
-      if (!provider) error("Uso: ainess detect clear <provider>");
+      if (!provider) error(t("cli.usage", { usage: "ainess detect clear <provider>" }));
       const overrides = { ...store.config.binaryOverrides };
       delete overrides[provider];
       store.updateConfig({ binaryOverrides: overrides });
@@ -206,7 +215,7 @@ async function main() {
         }
       });
       await store.saveConfig();
-      print({ ok: true }, "Perfil guardado.");
+      print({ ok: true }, t("cli.profileSaved"));
       process.exit(0);
     }
   }
@@ -218,7 +227,7 @@ async function main() {
       process.exit(0);
     } else if (sub === "add") {
       const name = args[2];
-      if (!name) error("Falta nombre");
+      if (!name) error(t("cli.nameMissing"));
       const { values } = parseArgs({
         args: args.slice(3),
         options: {
@@ -228,11 +237,11 @@ async function main() {
         },
         strict: false
       });
-      if (!values.prompt) error("Falta --prompt");
+      if (!values.prompt) error(t("cli.flagMissing", { flag: "--prompt" }));
       let agentId: string | undefined = undefined;
       if (values.agent) {
         const a = agentByName(String(values.agent));
-        if (!a) error(`Agente "${values.agent}" no encontrado`);
+        if (!a) error(t("cli.agentNotFound", { name: String(values.agent) }));
         agentId = a.id;
       }
       const p = {
@@ -247,15 +256,15 @@ async function main() {
       if (idx >= 0) presets[idx] = p; else presets.push(p);
       store.updateConfig({ presets });
       await store.saveConfig();
-      print(p, "Orden guardada");
+      print(p, t("cli.presetSaved"));
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
-      if (!name) error("Falta nombre");
+      if (!name) error(t("cli.nameMissing"));
       const presets = (store.config.presets || []).filter(p => p.name !== name);
       store.updateConfig({ presets });
       await store.saveConfig();
-      print({ ok: true }, "Orden eliminada");
+      print({ ok: true }, t("cli.presetRemoved"));
       process.exit(0);
     }
   }
@@ -331,11 +340,11 @@ async function main() {
         allowPositionals: true
       });
       const targetName = (sub === "add" ? values.name : positionals[0]) as string | undefined;
-      if (!targetName) error("Falta nombre");
+      if (!targetName) error(t("cli.nameMissing"));
 
       let agent = projectAgentByName(agentsProjectId, targetName);
       if (sub === "add" && agent) error(t("cli.agentExists"));
-      if (sub === "edit" && !agent) error("Agente no encontrado en este proyecto");
+      if (sub === "edit" && !agent) error(t("cli.agentNotFoundInProject"));
 
       const id = agent ? agent.id : crypto.randomUUID();
       const name = (values.name as string) || (agent ? agent.name : targetName);
@@ -349,7 +358,7 @@ async function main() {
         if (String(values.parent).toLowerCase() === "null" || values.parent === "") parentId = null;
         else {
           const p = projectAgentByName(agentsProjectId, String(values.parent));
-          if (!p) error("Padre no encontrado en este proyecto");
+          if (!p) error(t("cli.parentNotFoundInProject"));
           parentId = p.id;
         }
       }
@@ -398,16 +407,16 @@ async function main() {
       const saved = agentAfterEdit(agent, newAgent);
       store.addAgent(agentsProjectId, saved);
       await store.saveConfig();
-      print(saved, `Agente ${sub === "add" ? "agregado" : "editado"}: ${name}`);
+      print(saved, t(sub === "add" ? "cli.agentAdded" : "cli.agentEdited", { name }));
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
-      if (!name || name.startsWith("-")) error("Falta nombre");
+      if (!name || name.startsWith("-")) error(t("cli.nameMissing"));
       const agent = projectAgentByName(agentsProjectId, name);
-      if (!agent) error("No encontrado en este proyecto");
+      if (!agent) error(t("cli.notFoundInProject"));
       store.removeAgent(agentsProjectId, agent.id);
       await store.saveConfig();
-      print({ id: agent.id }, `Agente eliminado`);
+      print({ id: agent.id }, t("cli.agentRemoved"));
       process.exit(0);
     }
   }
@@ -423,7 +432,7 @@ async function main() {
         if (formations.length === 0) console.log("No hay formaciones guardadas.");
         for (const f of formations) {
           const mark = f.id === live().config.defaultFormationId ? " (predeterminada)" : "";
-          const who = f.agents.map(a => `${a.name} [${a.provider}]`).join(", ") || "sin agentes";
+          const who = f.agents.map(a => `${a.name} [${a.provider}]`).join(", ") || t("cli.noAgents");
           console.log(`- ${f.name}${mark}: ${who}`);
         }
       }
@@ -436,7 +445,7 @@ async function main() {
         strict: false,
       });
       const wanted = fp[0];
-      if (!wanted) error("Uso: ainess formations apply <nombre> [-p proyecto | -w dir]");
+      if (!wanted) error(t("cli.formationsApplyUsage"));
       const formation = live().config.formations.find(f => f.name.toLowerCase() === wanted.toLowerCase());
       if (!formation) error(t("cli.formationNotFound", { name: wanted }));
       const projectId = resolveProjectId(fv.project as string | undefined, fv.workspace as string | undefined);
@@ -446,7 +455,7 @@ async function main() {
       print({ ok: true, added }, t("cli.formationApplied", { name: formation.name, n: added }));
       process.exit(0);
     }
-    error("Uso: ainess formations list | apply <nombre> [-p proyecto | -w dir]");
+    error(t("cli.formationsUsage"));
   }
 
   if (first === "skills") {
@@ -456,7 +465,7 @@ async function main() {
       process.exit(0);
     } else if (sub === "add" || sub === "edit") {
       const targetName = args[2];
-      if (!targetName || targetName.startsWith("-")) error("Falta nombre");
+      if (!targetName || targetName.startsWith("-")) error(t("cli.nameMissing"));
       
       const { values } = parseArgs({
         args: args.slice(3),
@@ -468,8 +477,8 @@ async function main() {
       });
 
       let skill = store.config.skills.find(s => s.name.toLowerCase() === targetName.toLowerCase());
-      if (sub === "add" && skill) error("Skill ya existe");
-      if (sub === "edit" && !skill) error("Skill no encontrado");
+      if (sub === "add" && skill) error(t("cli.skillExists"));
+      if (sub === "edit" && !skill) error(t("cli.skillNotFound"));
 
       const id = skill ? skill.id : crypto.randomUUID();
       let content = skill ? skill.content : "";
@@ -481,7 +490,7 @@ async function main() {
         else {
           enabledFor = String(values.agents).split(",").map((n: string) => {
             const a = agentByName(n);
-            if (!a) error(`Agente ${n} no encontrado`);
+            if (!a) error(t("cli.agentNotFound", { name: n }));
             return a.id;
           });
         }
@@ -502,11 +511,11 @@ async function main() {
     } else if (sub === "remove" || sub === "show") {
       const name = args[2];
       const skill = store.config.skills.find(a => a.name.toLowerCase() === name.toLowerCase());
-      if (!skill) error("No encontrado");
+      if (!skill) error(t("cli.notFound"));
       if (sub === "remove") {
         store.removeSkill(skill.id);
         await store.saveConfig();
-        print({ id: skill.id }, "Eliminado");
+        print({ id: skill.id }, t("cli.removed"));
       } else {
         print(skill, skill.content);
       }
@@ -521,7 +530,7 @@ async function main() {
       process.exit(0);
     } else if (sub === "add") {
       const name = args[2];
-      if (!name || name.startsWith("-")) error("Falta nombre");
+      if (!name || name.startsWith("-")) error(t("cli.nameMissing"));
       
       const { values } = parseArgs({
         args: args.slice(3),
@@ -538,7 +547,7 @@ async function main() {
         },
         strict: false
       });
-      if (!values.event || !values.action) error("Faltan --event y --action");
+      if (!values.event || !values.action) error(t("cli.flagsMissing", { flags: "--event, --action" }));
 
       let action: import("@/types").HookAction | null = null;
       // `parseArgs` hands back `string | boolean`: a flag written with no value arrives as `true`.
@@ -550,22 +559,22 @@ async function main() {
       switch (values.action) {
         case "slack":
         case "discord":
-          if (!text(values.url)) error("Falta --url");
+          if (!text(values.url)) error(t("cli.flagMissing", { flag: "--url" }));
           action = { type: values.action, webhookUrl: text(values.url), template: text(values.template, "{{output}}") };
           break;
         case "webhook":
-          if (!text(values.url)) error("Falta --url");
+          if (!text(values.url)) error(t("cli.flagMissing", { flag: "--url" }));
           action = { type: "webhook", url: text(values.url), bodyTemplate: text(values.template, "{}") };
           break;
         case "command":
-          if (!text(values.program)) error("Falta --program");
+          if (!text(values.program)) error(t("cli.flagMissing", { flag: "--program" }));
           const pArgs = text(values.args).split(" ").filter(Boolean);
           action = { type: "command", program: text(values.program), args: pArgs, cwd: "workspace" };
           break;
         case "instruct":
-          if (!values.agent) error("Falta --agent (el agente a instruir)");
+          if (!values.agent) error(t("cli.instructAgentMissing"));
           const instrAgent = agentByName(String(values.agent));
-          if (!instrAgent) error(`Agente "${values.agent}" no encontrado`);
+          if (!instrAgent) error(t("cli.agentNotFound", { name: String(values.agent) }));
           action = { type: "instruct", agentId: instrAgent.id, template: text(values.template, "{{output}}") };
           break;
         case "notify":
@@ -580,12 +589,12 @@ async function main() {
       const filter: NonNullable<import("@/types").Hook["filter"]> = {};
       if (values["filter-agent"]) {
         const a = agentByName(String(values["filter-agent"]));
-        if (!a) error("Filtro: Agente no encontrado");
+        if (!a) error(t("cli.filterAgentNotFound"));
         filter.agentId = a.id;
       }
       if (values["filter-project"]) {
         const p = store.config.projects.find(x => x.name.toLowerCase() === String(values["filter-project"]).toLowerCase());
-        if (!p) error("Filtro: Proyecto no encontrado");
+        if (!p) error(t("cli.filterProjectNotFound"));
         filter.projectId = p.id;
       }
 
@@ -600,20 +609,20 @@ async function main() {
       
       store.upsertHook(h);
       await store.saveConfig();
-      print(h, "Hook guardado.");
+      print(h, t("cli.hookSaved"));
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
       const h = store.config.hooks?.find(x => x.name === name);
-      if (!h) error("No encontrado");
+      if (!h) error(t("cli.notFound"));
       store.removeHook(h.id);
       await store.saveConfig();
-      print({ ok: true }, "Hook eliminado.");
+      print({ ok: true }, t("cli.hookRemoved"));
       process.exit(0);
     } else if (sub === "enable" || sub === "disable") {
       const name = args[2];
       const h = store.config.hooks?.find(x => x.name === name);
-      if (!h) error("No encontrado");
+      if (!h) error(t("cli.notFound"));
       store.toggleHook(h.id, sub === "enable");
       await store.saveConfig();
       print({ ok: true }, `Hook ${sub === "enable" ? "habilitado" : "deshabilitado"}.`);
@@ -621,7 +630,7 @@ async function main() {
     } else if (sub === "test") {
       const name = args[2];
       const h = store.config.hooks?.find(x => x.name === name);
-      if (!h) error("No encontrado");
+      if (!h) error(t("cli.notFound"));
       await store.testHook(h.id);
       await new Promise(r => setTimeout(r, 500));
       const msgs = useAppStore.getState().messages;
@@ -638,7 +647,10 @@ async function main() {
   if (first === "mcp") {
     const sub = args[1] || "list";
     if (sub === "list") {
-      print(store.config.mcpServers, store.config.mcpServers.map(s => `- ${s.name} (${s.transport})`).join("\n"));
+      const sanitized = store.config.mcpServers.map(s =>
+        s.headers ? { ...s, headers: Object.fromEntries(Object.keys(s.headers).map(k => [k, "***"])) } : s
+      );
+      print(sanitized, store.config.mcpServers.map(s => `- ${s.name} (${s.transport})`).join("\n"));
       process.exit(0);
     } else if (sub === "sync") {
       const res = await syncMcpToAntigravity(store.config.mcpServers);
@@ -646,7 +658,7 @@ async function main() {
       process.exit(res.success ? 0 : 1);
     } else if (sub === "add" || sub === "edit") {
       const targetName = args[2];
-      if (!targetName || targetName.startsWith("-")) error("Falta nombre");
+      if (!targetName || targetName.startsWith("-")) error(t("cli.nameMissing"));
 
       const { values } = parseArgs({
         args: args.slice(3),
@@ -660,8 +672,8 @@ async function main() {
       });
       
       let mcp = store.config.mcpServers.find(s => s.name.toLowerCase() === targetName.toLowerCase());
-      if (sub === "add" && mcp) error("MCP ya existe");
-      if (sub === "edit" && !mcp) error("MCP no encontrado");
+      if (sub === "add" && mcp) error(t("cli.mcpExists"));
+      if (sub === "edit" && !mcp) error(t("cli.mcpNotFound"));
 
       const env: Record<string, string> = mcp?.env || {};
       for (let i = 3; i < args.length; i++) {
@@ -672,19 +684,24 @@ async function main() {
         }
       }
 
+      const headers = mcpHeadersFromArgs(args, mcp?.headers);
+
       let enabledFor: "all" | string[] = mcp ? mcp.enabledFor : "all";
       if (values.agents) {
         if (values.agents === "all") enabledFor = "all";
         else {
           enabledFor = String(values.agents).split(",").map((n: string) => {
             const a = agentByName(n);
-            if (!a) error(`Agente ${n} no encontrado`);
+            if (!a) error(t("cli.agentNotFound", { name: n }));
             return a.id;
           });
         }
       }
 
       const transport = values.url ? "http" : (values.command ? "stdio" : (mcp?.transport || "stdio"));
+      if (transport === "stdio" && (headers || args.includes("--header"))) {
+        error(t("cli.mcpHeadersOnlyHttp"));
+      }
       
       const newMcp: McpServer = {
         id: mcp ? mcp.id : crypto.randomUUID(),
@@ -694,20 +711,27 @@ async function main() {
         args: values.args !== undefined ? String(values.args).split(" ") : mcp?.args,
         url: values.url !== undefined ? String(values.url) : mcp?.url,
         env: Object.keys(env).length > 0 ? env : undefined,
+        headers,
         enabledFor
       };
 
       store.upsertMcpServer(newMcp);
       await store.saveConfig();
-      print(newMcp, `MCP ${sub} ok`);
+      const sanitizedMcp = newMcp.headers
+        ? {
+            ...newMcp,
+            headers: Object.fromEntries(Object.keys(newMcp.headers).map(k => [k, "***"])),
+          }
+        : newMcp;
+      print(sanitizedMcp, `MCP ${sub} ok`);
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
       const mcp = store.config.mcpServers.find(a => a.name.toLowerCase() === name.toLowerCase());
-      if (!mcp) error("No encontrado");
+      if (!mcp) error(t("cli.notFound"));
       store.removeMcpServer(mcp.id);
       await store.saveConfig();
-      print({ id: mcp.id }, "Eliminado");
+      print({ id: mcp.id }, t("cli.removed"));
       process.exit(0);
     }
   }
@@ -739,7 +763,7 @@ async function main() {
         return { project: p.name, workspaceDir: p.workspaceDir, runs: runs.length, running: running.map(r => ({ agent: agentName(r.agentId), task: oneLine(r.prompt, 80) })), last: last ? { agent: agentName(last.agentId), status: last.status, at: last.startedAt } : null };
       });
       if (jsonOutput || hv.json) { console.log(JSON.stringify(report)); process.exit(0); }
-      if (report.length === 0) console.log("No hay proyectos.");
+      if (report.length === 0) console.log(t("cli.noProjects"));
       for (const r of report) {
         console.log(`- ${r.project} (${r.workspaceDir}): ${r.runs} runs guardados`);
         for (const x of r.running) console.log("    " + t("cli.runningPerSave", { agent: x.agent, task: x.task }));
@@ -755,7 +779,7 @@ async function main() {
 
     if (hp[0] === "show") {
       const prefix = hp[1];
-      if (!prefix) error("Uso: ainess history show <runId>");
+      if (!prefix) error(t("cli.usage", { usage: "ainess history show <runId>" }));
       const run = runs.find(r => r.id.startsWith(prefix));
       if (!run) error(t("cli.runNotFound", { prefix }));
       if (jsonOutput || hv.json) { console.log(JSON.stringify(run)); process.exit(0); }
@@ -899,7 +923,7 @@ async function main() {
       }
       process.exit(0);
     }
-    error("Uso: ainess remote url | token [--regenerate]");
+    error(t("cli.usage", { usage: "ainess remote url | token [--regenerate]" }));
   }
 
   if (first === "serve") {
@@ -1022,7 +1046,7 @@ async function main() {
       await flushAll();
       process.exit(0);
     }
-    error("Uso: ainess approvals list | approve <id> [--note] | reject <id> [--note]");
+    error(t("cli.usage", { usage: "ainess approvals list | approve <id> [--note] | reject <id> [--note]" }));
   }
 
   if (first === "projects") {
@@ -1032,22 +1056,22 @@ async function main() {
       process.exit(0);
     } else if (sub === "add") {
       const name = args[2];
-      if (!name || name.startsWith("-")) error("Falta nombre");
+      if (!name || name.startsWith("-")) error(t("cli.nameMissing"));
       const dirIdx = args.indexOf("--dir");
-      if (dirIdx === -1 || !args[dirIdx+1]) error("Falta --dir <carpeta>");
+      if (dirIdx === -1 || !args[dirIdx+1]) error(t("cli.dirMissing"));
       const workspaceDir = path.resolve(args[dirIdx+1]);
-      if (store.config.projects.find(p => p.name.toLowerCase() === name.toLowerCase())) error("Proyecto ya existe");
+      if (store.config.projects.find(p => p.name.toLowerCase() === name.toLowerCase())) error(t("cli.projectExists"));
       store.addProject({ name, workspaceDir });
       await store.saveConfig();
-      print({ name, workspaceDir }, `Proyecto agregado: ${name}`);
+      print({ name, workspaceDir }, t("cli.projectAdded", { name }));
       process.exit(0);
     } else if (sub === "remove") {
       const name = args[2];
       const p = store.config.projects.find(p => p.name.toLowerCase() === name.toLowerCase());
-      if (!p) error("No encontrado");
+      if (!p) error(t("cli.notFound"));
       store.removeProject(p.id);
       await store.saveConfig();
-      print({ id: p.id }, "Proyecto eliminado");
+      print({ id: p.id }, t("cli.projectRemoved"));
       process.exit(0);
     }
   }
@@ -1099,7 +1123,7 @@ async function main() {
   function resolveProjectId(projectName?: string, workspace?: string): string {
     if (projectName) {
       const p = store.config.projects.find(x => x.name.toLowerCase() === projectName.toLowerCase());
-      if (!p) error(`Proyecto "${projectName}" no encontrado.`);
+      if (!p) error(t("cli.projectNotFound", { name: projectName }));
       return p.id;
     }
     const targetDir = workspace ? path.resolve(workspace) : process.cwd();
@@ -1129,7 +1153,7 @@ async function main() {
     // A chat runs inside a project, so its participants come from that project's team.
     const findAgent = (name: string) => {
       const a = projectAgentByName(projectId, name);
-      if (!a) error(`Agente "${name}" no encontrado en este proyecto.`);
+      if (!a) error(t("cli.agentNamedNotFoundInProject", { name }));
       return a;
     };
     store.setCurrentProject(projectId);
@@ -1260,7 +1284,7 @@ async function main() {
 
   if (values.preset) {
     const presetObj = store.config.presets?.find(p => p.name === values.preset);
-    if (!presetObj) error(`Orden predefinida "${values.preset}" no encontrada.`);
+    if (!presetObj) error(t("cli.presetNotFound", { name: String(values.preset) }));
     prompt = presetObj.prompt + (prompt ? "\n" + prompt : "");
     if (!values.agent && presetObj.agentId) {
       const a = agentById(presetObj.agentId);
@@ -1276,14 +1300,14 @@ async function main() {
   }
   
   if (!prompt) {
-    error("Falta el prompt");
+    error(t("cli.promptMissing"));
   }
 
   // The team belongs to the project, so the project is resolved first.
   let projectId = "";
   if (values.project) {
     const p = store.config.projects.find(x => x.name.toLowerCase() === String(values.project).toLowerCase());
-    if (!p) error(`Proyecto "${values.project}" no encontrado.`);
+    if (!p) error(t("cli.projectNotFound", { name: String(values.project) }));
     projectId = p.id;
   } else {
     let targetDir = values.workspace ? path.resolve(String(values.workspace)) : process.cwd();
@@ -1302,7 +1326,7 @@ async function main() {
 
   if (values.agent) {
     const a = projectAgentByName(projectId, String(values.agent));
-    if (!a) error(`Agente "${values.agent}" no encontrado en este proyecto.`);
+    if (!a) error(t("cli.agentNamedNotFoundInProject", { name: String(values.agent) }));
     agentId = a.id;
   } else {
     const planner = roots.find(r => r.role === "planner");

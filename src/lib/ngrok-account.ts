@@ -196,7 +196,7 @@ export async function saveNgrokCredential(ngrokPath: string, kind: "authtoken" |
     log.error("tunnel", `ngrok config ${subcommand} exited with ${res.code}: ${message}`);
     throw new Error(message);
   }
-  log.info("tunnel", `${kind} de ngrok guardado`);
+  log.info("tunnel", `ngrok ${kind} saved`);
 }
 
 /** Reserved domains of the account. Throws a clear error when there is no API key or it is rejected. */
@@ -207,7 +207,7 @@ export async function ngrokReservedDomains(ngrokPath: string): Promise<string[]>
   const yaml = configPath ? await transport.readFileAbs(configPath) : await transport.readHomeFile(NGROK_CONFIG_HOME_PATH);
   const apiKey = ngrokApiKey(yaml);
   if (!apiKey) {
-    throw new Error("Falta la API key de ngrok");
+    throw new Error(translateNow("ngrok.apiKeyMissing"));
   }
 
   const httpRes = await transport.httpGet("https://api.ngrok.com/reserved_domains", {

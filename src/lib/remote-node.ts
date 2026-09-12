@@ -145,7 +145,7 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): P
     json(res, result.error ? 400 : 200, result);
     return;
   }
-  json(res, 404, { error: "No encontrado" });
+  json(res, 404, { error: translateNow("remote.notFound") });
 }
 
 export const nodeRemote: Pick<Transport, "remoteStart" | "remoteStop" | "remoteStatus" | "remotePushState" | "onRemoteCommand"> = {

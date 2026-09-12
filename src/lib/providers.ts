@@ -423,7 +423,7 @@ function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[
  */
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
-  return `## Instrucciones del sistema\n${input.systemPrompt}\n\n## Tarea\n${input.prompt}`;
+  return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
