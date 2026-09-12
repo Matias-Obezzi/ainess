@@ -315,7 +315,7 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
         .await
         .map_err(|e| {
             let msg = if e.kind() == std::io::ErrorKind::AddrInUse { format!("El puerto {port} está ocupado") } else { e.to_string() };
-            logging::append(&inner.app, "error", "remote", &format!("no se pudo escuchar en el puerto {port}: {msg}"));
+            logging::append(&inner.app, "error", "remote", &format!("could not listen on port {port}: {msg}"));
             msg
         })?;
     let task = tauri::async_runtime::spawn(async move {

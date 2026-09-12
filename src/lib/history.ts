@@ -13,6 +13,7 @@ import { interruptedStrings } from "@/i18n/interrupted";
 import { rawLinesOf } from "@/lib/raw-lines";
 import { needsTrim, trimRawLines, trimRunsForDisk } from "@/lib/history-trim";
 import { runtimeAfterInterruption } from "@/lib/interrupted-runtime";
+import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
 
 interface HistoryFile {
   version: 1;
@@ -155,7 +156,7 @@ function scheduleSave(projectId: string): void {
   dirtyProjects.add(projectId);
   if (timers.has(projectId)) return;
   const busy = Object.values(useAppStore.getState().runs).some(
-    r => r.projectId === projectId && r.status === "running",
+    r => r.projectId === projectId && isLiveRun(r.status),
   );
   timers.set(projectId, setTimeout(() => {
     timers.delete(projectId);
@@ -193,7 +194,8 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     const runs = { ...state.runs };
     for (const r of parsed.runs) {
       if (runs[r.id]) continue;
-      if (r.status === "running") {
+      // A queued run belonged to that process too: nobody left knows what it was asked for.
+      if (isLiveRun(r.status)) {
         const closed: Run = { ...r, status: "killed", output: interruptedOutput(), endedAt: now };
         runs[r.id] = closed;
         interrupted.push(closed);
@@ -371,14 +373,14 @@ export function trimMessagesInMemory(messages: CommMessage[]): CommMessage[] {
 export function trimRunsInMemory(runs: Record<string, Run>, projectId: string): Record<string, Run> {
   const mine = Object.values(runs).filter(r => r.projectId === projectId);
   if (mine.length === 0) return runs;
-  const finished = mine.filter(r => r.status !== "running").sort((a, b) => (a.endedAt ?? a.startedAt) - (b.endedAt ?? b.startedAt));
+  const finished = mine.filter(r => isFinishedRun(r.status)).sort((a, b) => (a.endedAt ?? a.startedAt) - (b.endedAt ?? b.startedAt));
   const drop = new Set(finished.slice(0, Math.max(0, finished.length - MAX_RUNS)).map(r => r.id));
 
   let changed = drop.size > 0;
   const out: Record<string, Run> = {};
   for (const [id, run] of Object.entries(runs)) {
     if (drop.has(id)) continue;
-    if (run.projectId === projectId && run.status !== "running" && needsTrim(run.rawLines)) {
+    if (run.projectId === projectId && isFinishedRun(run.status) && needsTrim(run.rawLines)) {
       out[id] = { ...run, rawLines: trimRawLines(run.rawLines) };
       changed = true;
     } else {

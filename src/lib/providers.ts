@@ -205,7 +205,7 @@ export function copilotUsage(obj: unknown): RunUsage | undefined {
 function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   const obj = parseJsonTolerant<ClaudeLine>(line);
   if (!obj) {
-    if (stream === "stderr") return [{ type: "error", text: line }];
+    if (stream === "stderr") return [{ type: "stderr", text: line }];
     return [{ type: "raw", text: line }];
   }
   
@@ -236,7 +236,7 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
 function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   const obj = parseJsonTolerant<AntigravityLine>(line);
   if (!obj) {
-    if (stream === "stderr") return [{ type: "error", text: line }];
+    if (stream === "stderr") return [{ type: "stderr", text: line }];
     return [{ type: "raw", text: line }];
   }
 
@@ -278,7 +278,7 @@ function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): Parsed
 function parseCopilotLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   const obj = parseJsonTolerant<CopilotLine>(line);
   if (!obj || typeof obj.type !== "string") {
-    if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
+    if (stream === "stderr" && line.trim() !== "") return [{ type: "stderr", text: line }];
     return line.trim() ? [{ type: "raw", text: line }] : [];
   }
   if (obj.type === "assistant.message") {
@@ -329,7 +329,7 @@ function copilotFinalOutput(lines: string[]): string {
 function parseOpencodeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   const obj = parseJsonTolerant<OpencodeLine>(line);
   if (!obj || typeof obj.type !== "string") {
-    if (stream === "stderr" && line.trim() !== "") return [{ type: "error", text: line }];
+    if (stream === "stderr" && line.trim() !== "") return [{ type: "stderr", text: line }];
     return line.trim() ? [{ type: "raw", text: line }] : [];
   }
 
@@ -410,7 +410,7 @@ export function opencodeUsage(lines: string[]): RunUsage | undefined {
 
 function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
   if (stream === "stderr" && line.trim() !== "") {
-    return [{ type: "error", text: line }];
+    return [{ type: "stderr", text: line }];
   }
   return [{ type: "text", text: line + "\n" }];
 }

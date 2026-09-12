@@ -25,6 +25,7 @@ export const fr: Dictionary = {
   "label.runStatus.done": "Terminée",
   "label.runStatus.error": "Erreur",
   "label.runStatus.killed": "Arrêtée",
+  "label.runStatus.queued": "En attente",
 
   // ---- Common words reused all over the UI ----
   "common.cancel": "Annuler",
@@ -1310,6 +1311,8 @@ export const fr: Dictionary = {
   "quota.noData": "aucune donnée",
   "quota.noQuotaData": "Pas de données de quota",
   "run.stoppedWhilePreparing": "Tu l'as arrêté pendant la préparation de son worktree : il n'a jamais démarré.",
+  "run.queuedBehind": "{name} est au milieu d'autre chose : ceci attend qu'il termine. Un agent est un seul processus.",
+  "run.queuedDropped": "Arrêtée avant de démarrer : {name} a été arrêté alors que ceci attendait encore.",
   "quota.detailWithReset": "{detail} · renouvelé le {date}",
   "quota.used": "Quota utilisé : {value}",
   "quota.claude.window5h": "Fenêtre de 5 h",

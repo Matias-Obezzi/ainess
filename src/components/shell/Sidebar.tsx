@@ -257,7 +257,9 @@ export function Sidebar() {
                 <ContextMenuTrigger asChild>
                   <div
                     className={`group flex flex-col rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
-                    onClick={() => openProject(p.id)}
+                    // First click lands where the project was left; a click on the project that is
+                    // already open is a way back to its orchestrator from wherever it was left in.
+                    onClick={() => (isOpenProject ? openProject(p.id, null, "chat") : openProject(p.id))}
                     // Right clicking a row selects it first, the way a file explorer does.
                     onContextMenu={() => openProject(p.id)}
                   >

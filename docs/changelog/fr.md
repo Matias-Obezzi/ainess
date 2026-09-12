@@ -2,6 +2,61 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.17.0 — 2026-09-11
+
+### Nouveau
+
+- **La fenêtre revient comme vous l'aviez laissée.** Taille, position, agrandie ou en plein écran :
+  le lancement suivant s'ouvre là où le précédent s'est terminé, sur le même écran s'il est encore
+  là, au lieu de 1400×900 au milieu de l'écran à chaque fois. Noté quand la fenêtre part dans la
+  zone de notification et quand l'application se ferme.
+
+### Modifié
+
+- **Cliquer sur le projet où vous êtes déjà mène à son orchestrateur.** Le premier clic ouvre
+  toujours un projet là où vous l'aviez laissé — le tableau, la hiérarchie, un chat. Un second clic
+  sur le même projet, qui ne faisait rien, mène désormais au fil de l'orchestrateur : le seul
+  endroit vers lequel il n'y avait pas de raccourci.
+
+### Corrigé
+
+- **Deux processus pour un même agent.** L'équipe est une hiérarchie avec un seul exemplaire de
+  chaque agent, et rien ne le faisait respecter. Quand un implémenteur terminait alors que le
+  reviewer travaillait encore sur la tâche que le planner lui avait confiée, la revue démarrait
+  quand même — un second `agy.exe` sur le même reviewer, écrivant la même conversation, tant que les
+  deux tournaient. Désormais un agent est un seul processus : le travail qui arrive à un agent en
+  plein tour — une délégation, une revue, la réponse à sa question, une nouvelle tentative — est
+  noté comme exécution en attente et démarre quand ce tour se termine, dans l'ordre d'arrivée. Le
+  planner continue de l'attendre, la carte du tableau la connaît et le fil dit qui est attendu.
+  Arrêter l'agent abandonne aussi ce qui attendait pour lui.
+
+- **Le jeton du bot Telegram était écrit dans le journal.** À chaque interrogation de Telegram en
+  échec — toutes les quarante-cinq secondes, tant que le réseau était coupé — l'URL entière était
+  journalisée, et Telegram porte le jeton dans le chemin de cette URL :
+  `api.telegram.org/bot<id>:<token>/getUpdates`. Le masqueur connaissait `token=`, `Bearer` et
+  `api_key`, pas cette forme. Il la connaît désormais, des deux côtés de l'application, et rien de
+  ce qui atteint le fichier journal ne la porte plus. **Si vos fichiers journaux ont déjà quitté
+  votre machine, révoquez le jeton dans BotFather et collez-en un nouveau** — l'ancien est dans
+  chaque `ainess-<date>.log` écrit avant cette version.
+
+
+- **Un toast rouge disant « idle » pendant qu'un planificateur attendait ses implémenteurs.** Le
+  texte était `root agent idle; waiting for 1 background task(s)` — Claude Code, sur stderr,
+  signalant qu'il attend une sous-tâche, ce qui est exactement ce qu'il doit faire. Chaque ligne
+  qu'un CLI écrivait sur stderr était classée comme erreur, et chaque erreur fait un toast. Une
+  ligne stderr est désormais gardée pour ce qu'elle est : une ligne mono ordinaire dans l'activité
+  de l'exécution, tandis qu'une erreur que le CLI nomme vraiment dans sa sortie structurée reste
+  une erreur, rouge, avec son toast.
+
+
+- **Plus de toasts pour le projet que vous regardez.** Un toast disant qu'un agent a délégué, ou
+  qu'une tâche est terminée, dans le fil même où cela vient d'apparaître est une boîte par-dessus ce
+  qu'elle répète. Ils sont retenus tant que la fenêtre est au premier plan et le projet à l'écran,
+  et toujours affichés quand la fenêtre est en arrière-plan — le seul moment où ils servent.
+- **Fermer un toast ne ferme plus le dialogue derrière lui.** Le toaster vit hors de tout dialogue
+  par construction, et le dialogue prenait tout clic hors de lui-même comme raison de se fermer. Un
+  toast n'est pas dehors ; il est dessus.
+
 ## 0.16.0 — 2026-09-11
 
 ### Nouveau

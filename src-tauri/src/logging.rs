@@ -148,6 +148,25 @@ pub fn mask_secrets(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         let rest = &lower[i..];
+        // Telegram keeps the bot token in the URL path, `/bot<id>:<token>/method`. A failed poll
+        // logged that URL whole, every forty-five seconds, for as long as the network was down —
+        // the one credential this app is told never to write anywhere, not even cut short.
+        if rest.starts_with("/bot") {
+            let after = &s[i + 4..];
+            let digits = after.bytes().take_while(|b| b.is_ascii_digit()).count();
+            if digits > 0 && after.as_bytes().get(digits) == Some(&b':') {
+                out.push_str("/bot***");
+                i += 4 + digits + 1;
+                while i < bytes.len() {
+                    let c = bytes[i] as char;
+                    if c == '/' || c == '?' || c == '&' || c == '"' || c == '\'' || c == ' ' || c == '\n' || c == '\r' {
+                        break;
+                    }
+                    i += 1;
+                }
+                continue;
+            }
+        }
         if let Some(marker) = ["token=", "\"token\":\"", "token\": \"", "bearer "]
             .iter()
             .find(|m| rest.starts_with(**m))
@@ -250,6 +269,18 @@ mod tests {
         assert_eq!(mask_secrets("Authorization: Bearer secreto"), "Authorization: Bearer ***");
         assert_eq!(mask_secrets("{\"token\":\"abc\"}"), "{\"token\":\"***\"}");
         assert_eq!(mask_secrets("sin secretos"), "sin secretos");
+    }
+
+    // Telegram carries the bot token in the path, and a failed poll logged the URL whole.
+    #[test]
+    fn masks_telegram_bot_tokens_in_paths() {
+        assert_eq!(
+            mask_secrets("GET https://api.telegram.org/bot123456:AAHxyz_ABC-def/getUpdates?offset=0 failed: timeout"),
+            "GET https://api.telegram.org/bot***/getUpdates?offset=0 failed: timeout"
+        );
+        assert_eq!(mask_secrets("ends here /bot42:abcDEF"), "ends here /bot***");
+        // No digits, no colon: not the shape of a bot token.
+        assert_eq!(mask_secrets("/bottle/water /bot/noid"), "/bottle/water /bot/noid");
     }
 
     #[test]

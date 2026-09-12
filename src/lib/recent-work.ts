@@ -6,6 +6,7 @@
 // Pure module over the runs already in the store. `lib/attention` is its sibling and covers the
 // present tense — what is waiting and what is running — which is what the bridge reports.
 import type { Project, Run } from "@/types";
+import { isLiveRun } from "@/lib/run-queue";
 
 /** When a run counts as having happened: its end, or failing that its start. */
 function endOf(run: Run): number {
@@ -38,7 +39,7 @@ export function workSince(runs: Record<string, Run>, projects: Project[], since:
   let failed = 0;
 
   for (const run of Object.values(runs)) {
-    if (run.parentRunId !== null || run.status === "running") continue;
+    if (run.parentRunId !== null || isLiveRun(run.status)) continue;
     if (!alive.has(run.projectId) || endOf(run) < since) continue;
     tasks++;
     if (run.status === "error" || run.status === "killed") failed++;

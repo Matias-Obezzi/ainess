@@ -26,6 +26,7 @@ export const ja: Dictionary = {
   "label.runStatus.done": "完了",
   "label.runStatus.error": "エラー",
   "label.runStatus.killed": "停止済み",
+  "label.runStatus.queued": "待機中",
 
   // ---- Common words reused all over the UI ----
   "common.cancel": "キャンセル",
@@ -1311,6 +1312,8 @@ export const ja: Dictionary = {
   "quota.noData": "データなし",
   "quota.noQuotaData": "クォータ情報がありません",
   "run.stoppedWhilePreparing": "worktree の準備中に停止されたため、開始されませんでした。",
+  "run.queuedBehind": "{name} は別の作業の途中です。これはそれが終わるまで待ちます。1 つのエージェントは 1 つのプロセスです。",
+  "run.queuedDropped": "開始前に停止されました。これが待機中のまま {name} が停止されました。",
   "quota.detailWithReset": "{detail}・{date} に更新",
   "quota.used": "使用したクォータ：{value}",
   "quota.claude.window5h": "5 時間ウィンドウ",

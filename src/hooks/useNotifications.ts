@@ -15,8 +15,14 @@ export function useNotifications() {
 
       const newMessages = freshMessages(messages, lastProcessedId.current);
 
+      // Someone looking at the project's own thread with the window in front is already seeing
+      // what a toast would tell them; the toast only adds a box over the thing it repeats. It still
+      // shows when the window is in the background, which is when it is the only way to find out.
+      const watching = typeof document !== "undefined" && document.hasFocus() && state.screen === "project";
+
       for (const msg of newMessages) {
         if (msg.projectId && msg.projectId !== state.currentProjectId) continue;
+        if (watching && msg.projectId === state.currentProjectId) continue;
         if (msg.kind === "delegation") {
           const someone = translateNow("notify.someone");
           const from = selectAllAgents(state).find(a => a.id === msg.fromAgentId)?.name || someone;

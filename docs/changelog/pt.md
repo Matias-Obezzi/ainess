@@ -2,6 +2,60 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.17.0 — 2026-09-11
+
+### Novo
+
+- **A janela volta como você a deixou.** Tamanho, posição, maximizada ou em tela cheia: a próxima
+  abertura começa onde a anterior terminou, no mesmo monitor se ele ainda estiver lá, em vez de a
+  1400×900 no meio da tela toda vez. Fica registrado quando a janela vai para a bandeja e quando o
+  app é fechado.
+
+### Alterado
+
+- **Clicar no projeto em que você já está leva ao orquestrador dele.** O primeiro clique continua
+  abrindo o projeto onde você o deixou — o quadro, a hierarquia, um chat. Um segundo clique no mesmo
+  projeto, que antes não fazia nada, agora vai ao fio do orquestador: o único lugar para o qual não
+  havia atalho de volta.
+
+### Corrigido
+
+- **Dois processos para um mesmo agente.** A equipe é uma hierarquia com um único exemplar de cada
+  agente, e nada fazia isso valer. Quando um implementador terminava enquanto o reviewer ainda
+  trabalhava na tarefa que o planner lhe dera, a revisão começava mesmo assim — um segundo
+  `agy.exe` sobre o mesmo reviewer, escrevendo a mesma conversa, enquanto os dois rodassem. Agora um
+  agente é um único processo: o trabalho que chega a um agente no meio de um turno — uma delegação,
+  uma revisão, a resposta à sua pergunta, uma nova tentativa — fica registrado como execução na
+  fila e começa quando esse turno termina, na ordem em que chegou. O planner continua esperando por
+  ela, o cartão do quadro sabe dela e o fio diz por quem está esperando. Parar o agente descarta
+  também o que estava na fila dele.
+
+- **O token do bot do Telegram estava sendo escrito no log.** Sempre que uma consulta ao Telegram
+  falhava — a cada quarenta e cinco segundos, enquanto a rede estivesse fora — a URL inteira era
+  registrada, e o Telegram carrega o token no caminho dessa URL:
+  `api.telegram.org/bot<id>:<token>/getUpdates`. O mascarador conhecia `token=`, `Bearer` e
+  `api_key`, e não essa forma. Agora conhece, dos dois lados do app, e nada que chega ao arquivo de
+  log o carrega. **Se seus arquivos de log alguma vez saíram da sua máquina, revogue o token no
+  BotFather e cole um novo** — o antigo está em cada `ainess-<data>.log` escrito antes desta
+  versão.
+
+
+- **Um toast vermelho dizendo "idle" enquanto um planejador esperava os implementadores.** O texto
+  era `root agent idle; waiting for 1 background task(s)` — o Claude Code, no stderr, avisando que
+  espera uma subtarefa, que é exatamente o que ele deve estar fazendo. Cada linha que um CLI
+  escrevia no stderr era guardada como erro, e todo erro vira toast. Agora uma linha de stderr é
+  guardada como o que é: aparece na atividade da execução como uma linha mono comum, e um erro que
+  o CLI de fato nomeia na saída estruturada continua sendo erro, vermelho e com toast.
+
+
+- **Sem toasts do projeto que você está olhando.** Um toast dizendo que um agente delegou, ou que
+  uma tarefa terminou, no mesmo fio onde isso acabou de aparecer é uma caixa em cima do que repete.
+  Eles ficam retidos enquanto a janela está à frente e o projeto na tela, e continuam aparecendo
+  quando a janela está ao fundo — que é quando são o único jeito de saber.
+- **Fechar um toast não fecha mais o diálogo atrás dele.** O toaster vive fora de todo diálogo por
+  construção, e o diálogo tomava qualquer clique fora de si como motivo para fechar. Um toast não
+  está fora; está em cima.
+
 ## 0.16.0 — 2026-09-11
 
 ### Novo

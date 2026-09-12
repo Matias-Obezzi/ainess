@@ -27,6 +27,7 @@ import { hasMarkdown, toPlainText } from "@/lib/text";
 import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
 import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
+import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
 
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
@@ -41,7 +42,7 @@ export function OrchestratorThread() {
   const runs = useAppStore(state => state.runs);
   const historyLoading = useAppStore(state => currentProjectId ? state.historyLoading[currentProjectId] : false);
   const hasRunning = useAppStore(state =>
-    Object.values(state.runs).some(r => r.projectId === currentProjectId && r.status === "running"),
+    Object.values(state.runs).some(r => r.projectId === currentProjectId && isLiveRun(r.status)),
   );
 
   const [limit, setLimit] = useState(20);
@@ -250,7 +251,6 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   );
   const questionIds = useMemo(() => questionIdsStr ? questionIdsStr.split(',') : [], [questionIdsStr]);
 
-  const isRunning = run.status === "running";
   const agent = agents.find(a => a.id === run.agentId);
   const agentName = (id: string) => agents.find(a => a.id === id)?.name ?? pastAgent(t);
   const elapsed = formatElapsed(((run.endedAt ?? Date.now()) - run.startedAt) / 1000);
@@ -291,7 +291,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
     ...(interrupted ? [{ key: "retry", label: t("common.retry"), icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
     // A fresh run with the same prompt, on an agent and model picked in the dialog — unlike the
     // one above, which resumes the run that was cut short, this always starts from zero.
-    ...(!isRunning ? [{ key: "retry-with", label: t("retry.action"), icon: Sparkles, onSelect: () => setRetryOpen(true) } satisfies MenuAction] : []),
+    ...(isFinishedRun(run.status) ? [{ key: "retry-with", label: t("retry.action"), icon: Sparkles, onSelect: () => setRetryOpen(true) } satisfies MenuAction] : []),
   ];
 
   return (
@@ -335,7 +335,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
             </div>
 
             <div className="pl-[18px] flex flex-col gap-2">
-              {isRunning ? (
+              {isLiveRun(run.status) ? (
                 <RunActivity runId={run.id} />
               ) : (
                 <>

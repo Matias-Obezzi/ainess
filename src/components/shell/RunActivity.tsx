@@ -216,8 +216,13 @@ function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId
 
   if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} mode={mode} />;
 
-  if (msg.kind === "error" || msg.kind === "stderr") {
+  if (msg.kind === "error") {
     return <ErrorMessage text={msg.text} className="my-1" />;
+  }
+  // What the CLI wrote to stderr: progress, warnings, the occasional real complaint. Shown as
+  // what it is — a mono line in the activity — rather than dressed as a failure of the app's own.
+  if (msg.kind === "stderr") {
+    return <div className="my-1 font-mono text-[11px] text-muted-foreground break-words">{msg.text}</div>;
   }
 
   return <div className="text-xs text-muted-foreground italic break-words">{msg.text}</div>;

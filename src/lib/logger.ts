@@ -34,6 +34,10 @@ export function getRecentLogs(limit = BUFFER_SIZE): string[] {
  * `authtoken: …`/`authtoken=…` and `api_key: …`/`api_key=…` with `***`. */
 export function maskSecrets(text: string): string {
   return text
+    // Telegram puts the bot token in the path: `api.telegram.org/bot<id>:<token>/getUpdates`. A
+    // failed poll logged its URL whole, every forty-five seconds, for as long as the network was
+    // down — the one credential this app is told never to write anywhere.
+    .replace(/\/bot\d+:[A-Za-z0-9_-]+/g, "/bot***")
     .replace(/(token=)[^&\s"']+/gi, "$1***")
     .replace(/("token"\s*:\s*")[^"]*"/gi, '$1***"')
     .replace(/(Bearer )[^\s"',}\]]+/gi, "$1***")

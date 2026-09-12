@@ -9,6 +9,7 @@
 import { useAppStore, selectProjectAgents } from "@/store";
 import type { Run, Task, TaskStatus } from "@/types";
 import { parseReviewVerdict } from "@/lib/review";
+import { isLiveRun } from "@/lib/run-queue";
 
 export interface BoardFix {
   taskId: string;
@@ -37,7 +38,7 @@ export function boardFixes(tasks: Task[], runs: Record<string, Run>, opts: { has
         continue;
       }
       if (!run.review) continue;
-      if (run.status === "running") continue;
+      if (isLiveRun(run.status)) continue;
       if (run.status === "error" || run.status === "killed") {
         fixes.push({ taskId: task.id, status: "needs-you" });
         continue;
@@ -53,7 +54,7 @@ export function boardFixes(tasks: Task[], runs: Record<string, Run>, opts: { has
       fixes.push({ taskId: task.id, status: "needs-you" });
       continue;
     }
-    if (run.status === "running") continue;
+    if (isLiveRun(run.status)) continue;
     if (run.status === "error" || run.status === "killed") {
       fixes.push({ taskId: task.id, status: "needs-you" });
       continue;

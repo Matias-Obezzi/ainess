@@ -102,9 +102,11 @@ describe("opencode parseLine", () => {
     ]);
   });
 
-  it("keeps what is not JSON, and calls it an error when it came from stderr", () => {
+  // stderr is kept as stderr, not promoted to an error: the CLIs use that stream for progress and
+  // chatter too, and everything filed as an error is toasted.
+  it("keeps what is not JSON, and keeps stderr as stderr", () => {
     expect(spec.parseLine("no soy json", "stdout")).toEqual([{ type: "raw", text: "no soy json" }]);
-    expect(spec.parseLine("algo se rompió", "stderr")).toEqual([{ type: "error", text: "algo se rompió" }]);
+    expect(spec.parseLine("algo se rompió", "stderr")).toEqual([{ type: "stderr", text: "algo se rompió" }]);
     expect(spec.parseLine("   ", "stdout")).toEqual([]);
   });
 });

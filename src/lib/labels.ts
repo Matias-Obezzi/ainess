@@ -2,6 +2,7 @@ import { AgentRole, AgentStatus, MessageKind, RunStatus } from "@/types";
 
 /** How a run's status shows up on the little colored dot. */
 export const runDotStatus: Record<RunStatus, AgentStatus> = {
+  queued: "waiting",
   running: "working",
   done: "idle",
   error: "error",
@@ -41,6 +42,7 @@ export const kindLabelKey: Record<MessageKind, string> = {
 };
 
 export const runStatusLabelKey: Record<RunStatus, string> = {
+  queued: "label.runStatus.queued",
   running: "label.runStatus.running",
   done: "label.runStatus.done",
   error: "label.runStatus.error",

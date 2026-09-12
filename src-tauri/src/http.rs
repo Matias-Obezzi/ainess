@@ -28,7 +28,7 @@ pub async fn http_post(
     }
 
     let res = req.body(body).send().await.map_err(|e| {
-        logging::append(&app, "error", "http", &format!("POST {url} falló: {e}"));
+        logging::append(&app, "error", "http", &format!("POST {url} failed: {e}"));
         e.to_string()
     })?;
 
@@ -58,7 +58,7 @@ pub async fn http_get(
     }
 
     let res = req.send().await.map_err(|e| {
-        logging::append(&app, "error", "http", &format!("GET {url} falló: {e}"));
+        logging::append(&app, "error", "http", &format!("GET {url} failed: {e}"));
         e.to_string()
     })?;
 

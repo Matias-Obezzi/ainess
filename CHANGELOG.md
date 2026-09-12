@@ -4,6 +4,58 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.17.0 — 2026-09-11
+
+### Added
+
+- **The window comes back the way you left it.** Size, position, maximized or full screen: the
+  next launch opens where the last one ended, on the same monitor if it is still there, instead of
+  at 1400×900 in the middle of the screen every time. Written down when the window goes to the tray
+  and when the app quits.
+
+### Changed
+
+- **Clicking the project you are already in takes you to its orchestrator.** The first click still
+  opens a project where you left it — the board, the hierarchy, a chat. A second click on the same
+  project, which used to do nothing, now goes to the orchestrator thread: the one place there was
+  no shortcut back to.
+
+### Fixed
+
+- **Two processes for one agent.** The team is a hierarchy with one of each agent in it, and
+  nothing enforced that. When an implementer finished while the reviewer was still working on the
+  task the planner had given it, the review was started anyway — a second `agy.exe` on the same
+  reviewer, writing the same conversation, for as long as both ran. Now an agent is one process:
+  work that reaches an agent in the middle of a turn — a delegation, a review, an answer to its
+  question, a retry — is written down as a queued run and starts when that turn ends, in the order
+  it arrived. The planner keeps waiting for it, the board card knows about it, and the feed says
+  who it is waiting for. Stopping the agent drops what was queued for it as well.
+
+- **The Telegram bot token was being written to the log.** Whenever a poll to Telegram failed —
+  every forty-five seconds, for as long as the network was down — the failed URL was logged whole,
+  and Telegram keeps the token in that URL's path: `api.telegram.org/bot<id>:<token>/getUpdates`.
+  The masker knew about `token=`, `Bearer` and `api_key` and not about that shape. It does now, on
+  both sides of the app, and nothing that reaches the log file carries it any more. **If your log
+  files have ever left your machine, revoke the token in BotFather and paste a new one** — the old
+  one is in every `ainess-<date>.log` written before this build.
+
+
+- **A red toast saying "idle" while a planner waited for its implementers.** The text was
+  `root agent idle; waiting for 1 background task(s)` — Claude Code, on stderr, saying it is waiting
+  on a subtask, which is exactly what it should be doing. Every line a CLI wrote to stderr was
+  filed as an error, and every error is toasted. Now a stderr line is kept as what it is: it shows
+  in the run's activity as a plain mono line, and an error the CLI actually names in its structured
+  output is still an error, still red, still toasted.
+
+
+- **No toasts for the project you are looking at.** A toast saying an agent delegated, or that a
+  task finished, in the very thread where that just appeared is a box over the thing it repeats.
+  They are held back while the window is in front and the project is on screen, and still shown
+  when the window is in the background — which is when they are the only way to find out.
+- **Dismissing a toast no longer closes the dialog behind it.** The toaster lives outside every
+  dialog by construction, and the dialog took any pointer-down outside itself as a reason to close.
+  A toast is not outside; it is on top.
+
 ## 0.16.0 — 2026-09-11
 
 ### Added

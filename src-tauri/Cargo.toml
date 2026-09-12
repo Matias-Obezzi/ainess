@@ -1,6 +1,6 @@
 [package]
 name = "ainess"
-version = "0.16.0"
+version = "0.17.0"
 description = "Orquestador local de agentes de IA"
 authors = ["you"]
 edition = "2021"
@@ -42,6 +42,7 @@ flate2 = "1.1.10"
 base64 = "0.22"
 tauri-plugin-single-instance = "2.4.4"
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+tauri-plugin-window-state = "2"
 
 
 # Just enough of the Win32 API to take one console for the app and hide it, so that nothing an
