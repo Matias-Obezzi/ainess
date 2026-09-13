@@ -218,7 +218,11 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
     const events: ParsedEvent[] = [];
     for (const item of obj.message.content) {
       if (item.type === "text") {
-        events.push({ type: "text", text: item.text ?? "" });
+        // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
+        // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
+        // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
+        // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
+        events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
       } else if (item.type === "tool_use") {
         const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
         events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });

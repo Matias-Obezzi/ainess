@@ -50,6 +50,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A delegation glued to the sentence before it broke the rest of the answer.** Claude Code
+  prints one text block per stretch of talking, and a turn that talks, works and talks again has
+  two. They were joined with nothing between them, so "…as you asked.```delegate" arrived on one
+  line — and a fence that is not at the start of a line is not a fence: the JSON showed as prose
+  and the closing ``` opened a code block that swallowed everything after it. Blocks are separated
+  by a blank line now, and what was already written down that way is unglued when it is drawn.
 - **"You've hit your session limit" was not read as running out of quota.** That is what Claude
   Code prints when the five-hour window is spent, and it was not on the list — so the run was shown
   as an answer made of that sentence, and an agent set to retry when its quota comes back never

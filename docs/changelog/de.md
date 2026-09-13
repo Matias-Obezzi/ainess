@@ -52,6 +52,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Eine an den vorigen Satz geklebte Delegation brach den Rest der Antwort.** Claude Code gibt
+  pro Redeabschnitt einen Textblock aus, und ein Zug, der redet, arbeitet und wieder redet, hat
+  zwei. Sie wurden ohne etwas dazwischen verbunden, sodass „…wie gewünscht.```delegate“ auf einer
+  Zeile ankam — und ein Zaun, der nicht am Zeilenanfang steht, ist keiner: das JSON erschien als
+  Prosa und das schließende ``` öffnete einen Codeblock, der alles danach verschluckte. Blöcke
+  werden jetzt durch eine Leerzeile getrennt, und was schon so festgehalten wurde, wird beim
+  Zeichnen gelöst.
 - **„You've hit your session limit“ wurde nicht als aufgebrauchtes Kontingent gelesen.** Das
   schreibt Claude Code, wenn das Fünf-Stunden-Fenster verbraucht ist, und es stand nicht auf der
   Liste — also wurde der Lauf als Antwort aus diesem Satz gezeigt, und ein Agent, der bei

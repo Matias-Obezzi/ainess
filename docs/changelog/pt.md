@@ -49,6 +49,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Uma delegação colada à frase anterior quebrava o resto da resposta.** O Claude Code imprime
+  um bloco de texto por trecho em que fala, e um turno que fala, trabalha e volta a falar tem dois.
+  Eram unidos sem nada no meio, então "…como pediu.```delegate" chegava numa linha só — e uma cerca
+  que não está no início da linha não é uma cerca: o JSON aparecia como prosa e o ``` de fecho
+  abria um bloco de código que engolia tudo o que vinha depois. Agora os blocos vão separados por
+  uma linha em branco, e o que já ficou guardado assim é descolado ao desenhar.
 - **"You've hit your session limit" não era lido como ficar sem cota.** É o que o Claude Code
   imprime quando a janela de cinco horas se esgota, e não estava na lista — então a execução
   aparecia como uma resposta feita dessa frase, e um agente configurado para tentar de novo quando

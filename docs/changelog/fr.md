@@ -51,6 +51,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Une délégation collée à la phrase précédente cassait le reste de la réponse.** Claude Code
+  écrit un bloc de texte par passage où il parle, et un tour qui parle, travaille et reparle en a
+  deux. Ils étaient joints sans rien entre eux, donc « …comme demandé.```delegate » arrivait sur une
+  seule ligne — et une clôture qui n'est pas en début de ligne n'en est pas une : le JSON s'affichait
+  en prose et le ``` fermant ouvrait un bloc de code qui avalait tout ce qui suivait. Les blocs
+  sont désormais séparés par une ligne vide, et ce qui a déjà été enregistré ainsi est décollé à
+  l'affichage.
 - **« You've hit your session limit » n'était pas lu comme un quota épuisé.** C'est ce que Claude
   Code écrit quand la fenêtre de cinq heures est consommée, et ce n'était pas dans la liste — donc
   l'exécution s'affichait comme une réponse faite de cette phrase, et un agent réglé pour réessayer
