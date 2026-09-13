@@ -2,6 +2,72 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.18.0 — 2026-09-12
+
+### Nouveau
+
+- **Ouvrir le projet dans votre éditeur.** Le menu contextuel du projet a « Ouvrir dans… » avec
+  chaque éditeur trouvé sur la machine : VS Code, Cursor, Windsurf, Zed, Sublime Text, les IDE
+  JetBrains, Visual Studio. Détectés une fois au démarrage, ouverts sur le dossier du dépôt.
+- **Un dossier de projet avec le dépôt dedans.** Choisissez un dossier fait pour le projet — le
+  dépôt un niveau plus bas, de la place à côté — et l'application y trouve le dépôt : git et les
+  agents y travaillent, les worktrees sont créés à côté dans votre dossier, et `.ainess/`, les
+  pièces jointes et le tableau restent en haut. Signalé dans le dialogue du projet au choix du
+  dossier, et trouvé tout seul pour les projets existants.
+- **Plus de quota, c'est une carte, pas une réponse.** Le « usage limit reached » du fournisseur
+  arrivait comme derniers mots de l'exécution, un paragraphe de remplissage au milieu de la
+  conversation. C'est maintenant une ligne sous ce que l'agent a bel et bien dit : quel
+  fournisseur, quand le quota revient (d'après les chiffres du fournisseur, ou le message),
+  « Réessayer à son retour » — qui met l'exécution en attente du veilleur de quota, quoi qu'en dise
+  le réglage de l'agent — et « Réessayer avec… ». Une fois le travail retenté, par vous ou par le
+  veilleur, la carte se réduit à une ligne discrète.
+- **Une exécution devenue silencieuse le dit.** Un agent bloqué sur une invite à laquelle personne
+  ne répondra ressemble exactement à un agent qui réfléchit. Après trois minutes sans une ligne de
+  sortie, le ticker de l'exécution affiche « rien depuis 3:00 », en ambre, à côté de l'horloge ;
+  après dix, la cloche sonne une fois et un toast nomme l'agent. Mesuré depuis la dernière ligne
+  écrite par le CLI, hors du store, donc sans coût tant que l'agent parle.
+- **Coller du code le met dans un bloc de code.** Plusieurs lignes qui ressemblent à du code —
+  indentées, finissant par des accolades ou des points-virgules, commençant par `import`, `def`,
+  `SELECT` et consorts — atterrissent dans un bloc ``` à elles, sur leurs propres lignes, le curseur
+  après. La prose et les listes restent telles quelles, de même qu'un collage dans un bloc déjà
+  ouvert.
+- **Réessayer depuis l'erreur elle-même.** Quand une exécution finit en erreur, la boîte rouge de
+  l'activité porte maintenant « Réessayer avec… », le même dialogue qui vivait à deux clics dans la
+  carte : un autre agent, un autre modèle, le même prompt.
+- **Le menu de la zone de notification parle la langue de l'application.** « Afficher », « Quitter »
+  et l'infobulle étaient écrits dans le binaire, en espagnol. Ils viennent maintenant des
+  dictionnaires, comme chaque autre phrase, et changent avec la langue choisie.
+- **La zone de saisie aide à écrire du markdown, et le fil l'affiche.** Ctrl+B, Ctrl+I et Ctrl+E
+  mettent la sélection en gras, italique ou code, et à nouveau l'annulent ; Ctrl+Shift+K en fait un
+  lien. Shift+Entrée sur un élément de liste commence le suivant — `-` reste `-`, `3.` devient `4.`,
+  une case cochée revient vide — et sur un élément vide termine la liste. Ce que vous avez envoyé
+  s'affiche ensuite comme vous l'avez écrit : listes, liens et blocs de code dans votre propre bulle,
+  dans le fil et dans les chats, là où c'était le texte brut avec les astérisques dedans.
+- **Un bloc de code dans la zone de saisie en a l'air.** Taper ``` posait un surlignage gris
+  arrondi derrière les lignes, accents graves compris. C'est maintenant une boîte de la largeur de
+  la zone et de la hauteur du code, aux coins droits, avec les lignes de délimitation estompées pour
+  que le code soit ce que l'on voit. Désormais les mots sont dessinés par la couche sous le
+  textarea, ce qui rend cela possible.
+
+### Corrigé
+
+- **Une délégation collée à la phrase précédente cassait le reste de la réponse.** Claude Code
+  écrit un bloc de texte par passage où il parle, et un tour qui parle, travaille et reparle en a
+  deux. Ils étaient joints sans rien entre eux, donc « …comme demandé.```delegate » arrivait sur une
+  seule ligne — et une clôture qui n'est pas en début de ligne n'en est pas une : le JSON s'affichait
+  en prose et le ``` fermant ouvrait un bloc de code qui avalait tout ce qui suivait. Les blocs
+  sont désormais séparés par une ligne vide, et ce qui a déjà été enregistré ainsi est décollé à
+  l'affichage.
+- **« You've hit your session limit » n'était pas lu comme un quota épuisé.** C'est ce que Claude
+  Code écrit quand la fenêtre de cinq heures est consommée, et ce n'était pas dans la liste — donc
+  l'exécution s'affichait comme une réponse faite de cette phrase, et un agent réglé pour réessayer
+  au retour de son quota ne le faisait jamais. C'est dans la liste désormais, pour les variantes
+  session, usage, daily, weekly et monthly.
+- **« Envoyer maintenant » livre votre message d'abord.** Arrêter un agent pour lui remettre un
+  message, alors qu'une exécution attendait aussi son tour pour cet agent, lançait l'exécution en
+  attente et gardait votre message derrière — l'interruption ne servait à rien. Le message passe
+  maintenant en premier.
+
 ## 0.17.0 — 2026-09-11
 
 ### Nouveau

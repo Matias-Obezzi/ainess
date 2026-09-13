@@ -4,6 +4,66 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.18.0 — 2026-09-12
+
+### Added
+
+- **Open the project in your editor.** The project's right-click menu has "Open in…" with every
+  editor found on the machine: VS Code, Cursor, Windsurf, Zed, Sublime Text, the JetBrains IDEs,
+  Visual Studio. Detected once at startup, opened on the repository folder.
+- **A project folder with the repository inside it.** Pick a folder made for the project — the repo
+  one level down, room beside it — and the app finds the repo there: git and the agents work in
+  it, the worktrees are created next to it inside your folder, and `.ainess/`, the attachments and
+  the board stay at the top. Said in the project dialog when a folder is picked, and found on its
+  own for projects that already exist.
+- **Out of quota is a card, not an answer.** The provider's "usage limit reached" used to arrive as
+  the run's final words, a paragraph of boilerplate in the middle of the conversation. It is now a
+  line under what the agent did say: which provider, when the quota is back (from the provider's
+  own numbers, or from the message), "Retry when it is back" — which parks the run for the quota
+  watcher whatever the agent's own setting says — and "Retry with…". Once the work has been tried
+  again, by you or by the watcher, the card collapses to one quiet line.
+- **A run that has gone quiet says so.** An agent stuck on a prompt nobody will answer looks
+  exactly like one thinking hard. After three minutes without a line of output the run's ticker
+  says "no output for 3:00", in amber, next to the clock; after ten the bell rings once and a toast
+  names the agent. Measured from the last line the CLI printed, outside the store, so it costs
+  nothing while the agent is talking.
+- **Pasting code puts it in a code block.** Several lines that read as code — indented, ending in
+  braces or semicolons, starting with `import`, `def`, `SELECT` and the like — land inside a ```
+  fence of their own, on their own lines, with the caret after it. Prose and lists are left alone,
+  and so is a paste inside a fence that is already open.
+- **Retry from the error itself.** When a run ends in an error, the red box in the activity now
+  carries "Retry with…", the same dialog that lived two clicks away inside the task's card: another
+  agent, another model, the same prompt.
+- **The tray menu speaks the app's language.** "Show" and "Quit" and the tooltip were written into
+  the binary, in Spanish. They come from the dictionaries now, like every other sentence, and
+  change with the language setting.
+- **The box helps you write markdown, and the thread draws it.** Ctrl+B, Ctrl+I and Ctrl+E make
+  the selection bold, italic or code, and again to undo it; Ctrl+Shift+K makes it a link. Shift+Enter
+  on a list item starts the next one — `-` stays `-`, `3.` becomes `4.`, a ticked box comes back
+  empty — and on an empty item ends the list. What you sent is then drawn as what you wrote: lists,
+  links and code blocks in your own bubble, in the thread and in the chats, where it used to be the
+  raw text with the asterisks in it.
+- **A code block in the box looks like one.** Typing ``` used to put a rounded grey highlight
+  behind the lines, backticks and all. Now it is a box the width of the composer and as tall as the
+  code, square-cornered, with the fence lines faded out so the code is what you see. The words are
+  drawn by the layer under the textarea from here on, which is what makes that possible.
+
+### Fixed
+
+- **A delegation glued to the sentence before it broke the rest of the answer.** Claude Code
+  prints one text block per stretch of talking, and a turn that talks, works and talks again has
+  two. They were joined with nothing between them, so "…as you asked.```delegate" arrived on one
+  line — and a fence that is not at the start of a line is not a fence: the JSON showed as prose
+  and the closing ``` opened a code block that swallowed everything after it. Blocks are separated
+  by a blank line now, and what was already written down that way is unglued when it is drawn.
+- **"You've hit your session limit" was not read as running out of quota.** That is what Claude
+  Code prints when the five-hour window is spent, and it was not on the list — so the run was shown
+  as an answer made of that sentence, and an agent set to retry when its quota comes back never
+  did. It is on the list now, for the session, usage, daily, weekly and monthly wordings.
+- **"Send it now" delivers your message first.** Stopping an agent to hand it a message, when a
+  run was also waiting its turn for that agent, launched the waiting run and held your message
+  behind it — the interruption was for nothing. The message goes first now.
+
 ## 0.17.0 — 2026-09-11
 
 ### Added

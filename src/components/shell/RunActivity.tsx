@@ -17,11 +17,14 @@ import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
 import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
 import { activityView } from "@/lib/activity-view";
+import { lastOutputAt, silenceMs, STALL_AFTER_MS } from "@/lib/stall";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
-import { ChevronDown, ChevronUp, CornerDownRight, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, CornerDownRight, Info, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -182,6 +185,7 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
           line you were reading does not move out from under the pointer when you click it. */}
       {live && run && (view.current || isRunning) && (
         <ActivityTicker
+          runId={runId}
           step={view.current}
           running={!!isRunning}
           startedAt={run.startedAt}
@@ -216,9 +220,7 @@ function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId
 
   if (msg.kind === "delegation") return <DelegationRow msg={msg} parentRunId={parentRunId} mode={mode} />;
 
-  if (msg.kind === "error") {
-    return <ErrorMessage text={msg.text} className="my-1" />;
-  }
+  if (msg.kind === "error") return <ErrorRow msg={msg} />;
   // What the CLI wrote to stderr: progress, warnings, the occasional real complaint. Shown as
   // what it is — a mono line in the activity — rather than dressed as a failure of the app's own.
   if (msg.kind === "stderr") {
@@ -226,6 +228,30 @@ function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId
   }
 
   return <div className="text-xs text-muted-foreground italic break-words">{msg.text}</div>;
+}
+
+/**
+ * An error, and — when it is the run's last word — the way to try again with another agent or
+ * model, right here. It used to be two clicks away inside the task's dialog, which is a long way
+ * from the red box that says the model ran dry.
+ */
+function ErrorRow({ msg }: { msg: CommMessage }) {
+  const t = useT();
+  const [retryOpen, setRetryOpen] = useState(false);
+  const failed = useAppStore(state => (msg.runId ? state.runs[msg.runId]?.status === "error" : false));
+  return (
+    <div className="my-1 flex flex-col items-start gap-1">
+      <ErrorMessage text={msg.text} className="w-full" />
+      {failed && msg.runId && (
+        <>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setRetryOpen(true)}>
+            <Sparkles className="h-3.5 w-3.5" /> {t("retry.action")}
+          </Button>
+          <RetryRunDialog runId={msg.runId} open={retryOpen} onOpenChange={setRetryOpen} />
+        </>
+      )}
+    </div>
+  );
 }
 
 /** A delegation: who got the task, plus that agent's own activity nested underneath. */
@@ -310,7 +336,8 @@ function TickerLine({ step, running }: { step: CommMessage | null; running: bool
  * question people were asking of a wall of static text. The step on its way out stays mounted for
  * as long as it takes to leave and not a frame longer.
  */
-function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, label }: {
+function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggle, label }: {
+  runId: string;
   step: CommMessage | null;
   running: boolean;
   startedAt: number;
@@ -345,6 +372,10 @@ function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, labe
 
   const Chevron = open ? ChevronDown : ChevronUp;
   const full = step ? (step.meta?.failed && step.meta?.error ? `${step.text}\n\n${step.meta.error}` : step.text) : "";
+  // A run that has printed nothing for a while looks exactly like one thinking hard. Read on the
+  // same tick as the clock, so it appears the second it becomes true.
+  const quietFor = running ? silenceMs(lastOutputAt(runId), startedAt, now) : 0;
+  const quiet = quietFor >= STALL_AFTER_MS;
 
   return (
     <button
@@ -376,6 +407,11 @@ function ActivityTicker({ step, running, startedAt, open, hidden, onToggle, labe
       {!open && hidden > 0 && (
         <span className="shrink-0 text-[10px] tabular-nums">
           {plural(hidden, t("activity.stepsHidden.one", { n: hidden }), t("activity.stepsHidden.other", { n: hidden }))}
+        </span>
+      )}
+      {quiet && (
+        <span className="shrink-0 text-amber-600 dark:text-amber-400">
+          {t("activity.quietFor", { time: formatElapsed(quietFor / 1000) })}
         </span>
       )}
       {running && <span className="shrink-0 tabular-nums">{formatElapsed((now - startedAt) / 1000)}</span>}

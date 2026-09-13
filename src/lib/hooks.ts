@@ -4,6 +4,7 @@ import { useAppStore } from "@/store";
 import { log } from "@/lib/logger";
 import { BOSS_TARGET, bossOf } from "@/lib/team";
 import { translateNow } from "@/i18n/useT";
+import { repoDirOf } from "@/lib/repo-dir";
 
 export interface HookContext {
   project?: Project;
@@ -161,7 +162,7 @@ async function executeHookAction(hook: Hook, vars: Record<string, any>, ctx: Hoo
       // For Windows cmd args logic, if it's cmd, just replace normally and exec will handle.
       let cwd = action.cwd;
       if (cwd === "workspace" && ctx.project) {
-        cwd = ctx.project.workspaceDir;
+        cwd = repoDirOf(ctx.project);
       }
       // Note: we can't use spawnRun directly because we need stdout/stderr to log it as system message.
       // Wait, transport.exec does wait and return stdout/stderr.

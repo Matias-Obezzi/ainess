@@ -331,9 +331,10 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
           </div>
           {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}
           <div
+            data-testid={isUser ? "user-bubble" : undefined}
             className={`text-sm break-words ${
               isUser
-                ? "rounded-xl px-3.5 py-2 max-w-[80%] bg-muted whitespace-pre-wrap"
+                ? `rounded-xl px-3.5 py-2 max-w-[80%] bg-muted ${hasMarkdown(message.text) ? "" : "whitespace-pre-wrap"}`
                 : message.status === "error"
                   ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
                   : "pl-[18px] w-full"
@@ -347,7 +348,8 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             ) : message.status === "error" ? (
               <ErrorMessage text={message.text} />
             ) : isUser ? (
-              message.text
+              // As you wrote it, unless you wrote markdown: a list is a list here too.
+              hasMarkdown(message.text) ? <Markdown text={message.text} /> : message.text
             ) : (
               <Markdown text={message.text} />
             )}

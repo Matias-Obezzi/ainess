@@ -24,6 +24,7 @@ import { disposeTerminal, liveTerminalIds } from "@/lib/terminal-registry";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Pencil, Play, Plus, Settings2, TerminalSquare, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
+import { repoDirOf } from "@/lib/repo-dir";
 
 /** Terminals section of the right dock: tab bar plus the live xterm views. */
 export function TerminalDockSection() {
@@ -47,7 +48,7 @@ export function TerminalDockSection() {
   // What this project's own files say it can run: the `scripts` of a package.json, the targets of a
   // Makefile, cargo's four. Read when the panel opens — the section only mounts then.
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
-  const detected = useProjectCommands(project?.workspaceDir);
+  const detected = useProjectCommands(project ? repoDirOf(project) : undefined);
   const [commandsOpen, setCommandsOpen] = useState(false);
 
   // The user's own first: they were added on purpose, and there are few of them. What a manifest

@@ -487,6 +487,18 @@ export const nodeTransport: Transport = {
     }
   },
 
+  listSubdirs: async (dir: string) => {
+    try {
+      return fs.readdirSync(dir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => path.join(dir, e.name))
+        .sort();
+    } catch {
+      return [];
+    }
+  },
+  detectEditors: async () => [],
+  openInEditor: async () => {},
   filesExistAbs: async (paths: string[]) => paths.filter(p => {
     try {
       return fs.statSync(p).isFile();
@@ -526,6 +538,7 @@ export const nodeTransport: Transport = {
   ...nodeTunnel,
 
   setTrayEnabled: async () => {},
+  configureTray: async () => {},
   requestAttention: async () => {},
 
   logAppend: async (level: string, source: string, message: string) => appendLog(level, source, message),

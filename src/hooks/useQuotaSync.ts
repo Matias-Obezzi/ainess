@@ -39,7 +39,8 @@ function retryParkedRuns(provider: ProviderId, quota: ProviderQuota): void {
     // own now. The park said it would retry, so dropping it says so too rather than going quiet.
     const agent = selectAgent(state, entry.agentId);
     const project = state.config.projects.find(p => p.id === entry.projectId);
-    if (!agent || !(agent.retryOnQuota === true || isAutonomous(project))) {
+    // Asked for from the card under the run, it is retried whatever the checkbox says.
+    if (!agent || !(entry.forced || agent.retryOnQuota === true || isAutonomous(project))) {
       state.dropQuotaWaiting(id);
       if (agent) {
         addMessage({

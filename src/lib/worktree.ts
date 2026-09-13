@@ -180,7 +180,8 @@ export async function ensureWorktree(
   onStep?: WorktreeStep,
   known?: AgentWorktree,
 ): Promise<AgentWorktree> {
-  const workspace = project.workspaceDir;
+  // The repo, which may sit one level under the workspace: the worktree goes beside it.
+  const workspace = project.repoDir || project.workspaceDir;
   if (!workspace) throw new Error(translateNow("worktree.noWorkspace"));
   if (!(await isGitRepo(workspace))) {
     throw new Error(translateNow("worktree.notARepoForCreate"));

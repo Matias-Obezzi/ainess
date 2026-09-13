@@ -1,9 +1,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State,
+    tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager, State, Wry,
 };
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
@@ -13,21 +14,55 @@ pub const WINDOW_STATE_FLAGS: StateFlags = StateFlags::all()
     .difference(StateFlags::VISIBLE)
     .difference(StateFlags::DECORATIONS);
 
+/// The tray's menu items and icon, kept so their words can be changed after they are built.
+struct TrayHandles {
+    show: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
+    icon: TrayIcon<Wry>,
+}
+
 /// Whether closing the main window should hide it to the tray instead of quitting.
 /// Defaults to `true`: the app stays in the background unless the user turns it off.
 pub struct TrayState {
     pub enabled: AtomicBool,
+    /// None until the webview has said what the menu should read (`tray_configure`).
+    handles: Mutex<Option<TrayHandles>>,
 }
 
 impl Default for TrayState {
     fn default() -> Self {
-        Self { enabled: AtomicBool::new(true) }
+        Self { enabled: AtomicBool::new(true), handles: Mutex::new(None) }
     }
 }
 
 #[tauri::command]
 pub fn set_tray_enabled(state: State<TrayState>, enabled: bool) {
     state.enabled.store(enabled, Ordering::Relaxed);
+}
+
+/// The words on the tray menu, in the language the app is showing. Sent by the webview when it
+/// starts and again when the language changes.
+#[derive(serde::Deserialize)]
+pub struct TrayLabels {
+    pub show: String,
+    pub quit: String,
+    pub tooltip: String,
+}
+
+/// Builds the tray the first time it is called, and relabels it every time after. The words are
+/// not written here because there is nothing here that knows the user's language: every sentence
+/// the user reads comes from the dictionaries in `src/i18n`, and these are no exception.
+#[tauri::command]
+pub fn tray_configure(app: AppHandle, state: State<TrayState>, labels: TrayLabels) -> Result<(), String> {
+    let mut guard = state.handles.lock().map_err(|e| e.to_string())?;
+    if let Some(handles) = guard.as_ref() {
+        handles.show.set_text(&labels.show).map_err(|e| e.to_string())?;
+        handles.quit.set_text(&labels.quit).map_err(|e| e.to_string())?;
+        handles.icon.set_tooltip(Some(&labels.tooltip)).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    *guard = Some(build_tray(&app, &labels).map_err(|e| e.to_string())?);
+    Ok(())
 }
 
 /// Flashes the window's taskbar button, and only while the window is not the one in front.
@@ -57,14 +92,14 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
-pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Mostrar AIS", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
+fn build_tray(app: &AppHandle, labels: &TrayLabels) -> tauri::Result<TrayHandles> {
+    let show = MenuItem::with_id(app, "show", &labels.show, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", &labels.quit, true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
-    TrayIconBuilder::with_id("main")
-        .icon(app.default_window_icon().unwrap().clone())
-        .tooltip("AIS - Orquestador de agentes")
+    let icon = TrayIconBuilder::with_id("main")
+        .icon(app.default_window_icon().cloned().ok_or(tauri::Error::WindowNotFound)?)
+        .tooltip(&labels.tooltip)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -85,14 +120,17 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         })
         .build(app)?;
 
-    Ok(())
+    Ok(TrayHandles { show, quit, icon })
 }
 
-/// Closing the window hides it to the tray instead of quitting, unless the user disabled it.
+/// Closing the window hides it to the tray instead of quitting, unless the user disabled it — or
+/// there is no tray yet to find it in again, which is the case until the webview has configured
+/// one. A window hidden with no way back is an app that has to be killed from the task manager.
 pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         let state = window.state::<TrayState>();
-        if state.enabled.load(Ordering::Relaxed) {
+        let has_tray = state.handles.lock().map(|h| h.is_some()).unwrap_or(false);
+        if has_tray && state.enabled.load(Ordering::Relaxed) {
             api.prevent_close();
             // Written down now, while the window is still there to be measured: the plugin saves
             // on exit, and by then the window may have been hidden for hours. A hidden window

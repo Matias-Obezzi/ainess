@@ -99,6 +99,8 @@ export async function recordAntigravityOutcome(model: string | undefined, text: 
 const OUT_OF_QUOTA = [
   /quota (reached|exceeded|exhausted)/i,   // Antigravity
   /usage limit reached/i,                   // Claude Code
+  // Claude Code, the other way it says it: «You've hit your session limit», «…your usage limit».
+  /hit your (session |usage |weekly |daily |monthly )?limit/i,
   /rate.?limit(ed| reached| exceeded)/i,    // several
   /out of (premium )?requests/i,            // Copilot
   /insufficient (quota|credits|balance)/i,  // opencode and the OpenAI-shaped APIs

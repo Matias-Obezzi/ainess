@@ -2,6 +2,7 @@ mod config;
 mod console;
 mod detect;
 mod diagnostics;
+mod editors;
 mod http;
 mod logging;
 mod pty;
@@ -60,7 +61,6 @@ pub fn run() {
                 "app",
                 &format!("ainess {} starting", handle.package_info().version),
             );
-            tray::setup_tray(app)?;
             // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
             // one agent session per account: whatever the last session left behind goes now.
             tunnel::kill_orphan(&handle);
@@ -84,6 +84,9 @@ pub fn run() {
             config::write_file_abs,
             config::write_file_bytes,
             detect::detect_binaries,
+            editors::detect_editors,
+            editors::open_in_editor,
+            config::list_subdirs,
             diagnostics::storage_stat,
             diagnostics::port_available,
             http::http_post,
@@ -103,6 +106,7 @@ pub fn run() {
             remote::remote_push_state,
             remote::remote_reply,
             tray::set_tray_enabled,
+            tray::tray_configure,
             tray::request_attention,
             tunnel::tunnel_start,
             tunnel::tunnel_stop,

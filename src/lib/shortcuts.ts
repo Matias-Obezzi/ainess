@@ -55,6 +55,11 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: "composer.stop", keys: { key: "escape" }, descriptionKey: "shortcuts.composerStop", group: "composer", global: false },
   { id: "composer.previous", keys: { key: "arrowup" }, descriptionKey: "shortcuts.composerPrevious", group: "composer", global: false },
   { id: "composer.next", keys: { key: "arrowdown" }, descriptionKey: "shortcuts.composerNext", group: "composer", global: false },
+  // Ctrl+B is the sidebar's too; with the focus in the box, the box takes it (see `Composer`).
+  { id: "composer.bold", keys: { mod: true, key: "b" }, descriptionKey: "shortcuts.composerBold", group: "composer", global: false },
+  { id: "composer.italic", keys: { mod: true, key: "i" }, descriptionKey: "shortcuts.composerItalic", group: "composer", global: false },
+  { id: "composer.code", keys: { mod: true, key: "e" }, descriptionKey: "shortcuts.composerCode", group: "composer", global: false },
+  { id: "composer.link", keys: { mod: true, shift: true, key: "k" }, descriptionKey: "shortcuts.composerLink", group: "composer", global: false },
   { id: "terminal.copy", keys: { mod: true, shift: true, key: "c" }, descriptionKey: "shortcuts.terminalCopy", group: "terminal", global: false },
   { id: "terminal.paste", keys: { mod: true, shift: true, key: "v" }, descriptionKey: "shortcuts.terminalPaste", group: "terminal", global: false },
 ];

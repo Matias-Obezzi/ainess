@@ -2,6 +2,73 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.18.0 — 2026-09-12
+
+### Neu
+
+- **Das Projekt im eigenen Editor öffnen.** Das Kontextmenü des Projekts hat „Öffnen in…“ mit
+  jedem auf dem Rechner gefundenen Editor: VS Code, Cursor, Windsurf, Zed, Sublime Text, die
+  JetBrains-IDEs, Visual Studio. Einmal beim Start erkannt, auf dem Repository-Ordner geöffnet.
+- **Ein Projektordner mit dem Repository darin.** Wählen Sie einen für das Projekt angelegten
+  Ordner — das Repo eine Ebene tiefer, Platz daneben — und die App findet das Repo dort: Git und
+  die Agenten arbeiten darin, die Worktrees entstehen daneben in Ihrem Ordner, und `.ainess/`, die
+  Anhänge und das Board bleiben oben. Im Projektdialog beim Wählen des Ordners gesagt, und bei
+  bestehenden Projekten von selbst gefunden.
+- **Kein Kontingent ist eine Karte, keine Antwort.** Das „usage limit reached“ des Anbieters kam
+  als letzte Worte des Laufs an, ein Absatz Füllmaterial mitten in der Unterhaltung. Jetzt ist es
+  eine Zeile unter dem, was der Agent tatsächlich sagte: welcher Anbieter, wann das Kontingent
+  zurück ist (aus den Zahlen des Anbieters oder aus der Meldung), „Erneut versuchen, wenn es zurück
+  ist“ — das den Lauf für den Kontingentwächter parkt, was auch immer die Einstellung des Agenten
+  sagt — und „Erneut versuchen mit…“. Sobald die Arbeit erneut versucht wurde, von Ihnen oder vom
+  Wächter, wird die Karte zu einer stillen Zeile.
+- **Ein verstummter Lauf sagt es.** Ein Agent, der an einer Eingabeaufforderung hängt, die
+  niemand beantworten wird, sieht genauso aus wie einer, der angestrengt nachdenkt. Nach drei
+  Minuten ohne eine Zeile Ausgabe steht im Ticker des Laufs „seit 3:00 keine Ausgabe“, in Bernstein,
+  neben der Uhr; nach zehn klingelt die Glocke einmal und ein Toast nennt den Agenten. Gemessen ab
+  der letzten Zeile, die das CLI geschrieben hat, außerhalb des Stores, also kostenlos, solange der
+  Agent redet.
+- **Eingefügter Code landet in einem Codeblock.** Mehrere Zeilen, die wie Code aussehen —
+  eingerückt, mit Klammern oder Semikolons am Ende, beginnend mit `import`, `def`, `SELECT` und
+  dergleichen — kommen in einen eigenen ```-Block auf eigenen Zeilen, den Cursor dahinter. Prosa
+  und Listen bleiben, wie sie sind, ebenso ein Einfügen in einen bereits offenen Block.
+- **Erneut versuchen direkt aus dem Fehler.** Endet ein Lauf mit einem Fehler, trägt der rote
+  Kasten in der Aktivität jetzt „Erneut versuchen mit…“, denselben Dialog, der zwei Klicks tief in
+  der Karte lag: ein anderer Agent, ein anderes Modell, derselbe Prompt.
+- **Das Menü im Infobereich spricht die Sprache der App.** „Anzeigen“, „Beenden“ und der Tooltip
+  standen im Binary, auf Spanisch. Jetzt kommen sie aus den Wörterbüchern wie jeder andere Satz und
+  wechseln mit der eingestellten Sprache.
+- **Das Eingabefeld hilft beim Schreiben von Markdown, und der Verlauf zeichnet es.** Strg+B,
+  Strg+I und Strg+E machen die Auswahl fett, kursiv oder zu Code, und noch einmal machen sie es
+  rückgängig; Strg+Umschalt+K macht daraus einen Link. Umschalt+Eingabe auf einem Listenpunkt
+  beginnt den nächsten — `-` bleibt `-`, `3.` wird `4.`, ein abgehaktes Kästchen kommt leer zurück
+  — und auf einem leeren Punkt beendet es die Liste. Was Sie gesendet haben, wird dann so
+  gezeichnet, wie Sie es geschrieben haben: Listen, Links und Codeblöcke in Ihrer eigenen Blase, im
+  Verlauf und in den Chats, wo es bisher der rohe Text mit den Sternchen darin war.
+- **Ein Codeblock im Eingabefeld sieht aus wie einer.** ``` zu tippen legte eine abgerundete graue
+  Hervorhebung hinter die Zeilen, Backticks eingeschlossen. Jetzt ist es ein Kasten in der Breite
+  des Eingabefelds und so hoch wie der Code, mit geraden Ecken, die Zeilen mit den Backticks
+  abgeblendet, damit der Code das ist, was man sieht. Die Wörter zeichnet von nun an die Ebene unter
+  dem Textfeld, was das erst möglich macht.
+
+### Behoben
+
+- **Eine an den vorigen Satz geklebte Delegation brach den Rest der Antwort.** Claude Code gibt
+  pro Redeabschnitt einen Textblock aus, und ein Zug, der redet, arbeitet und wieder redet, hat
+  zwei. Sie wurden ohne etwas dazwischen verbunden, sodass „…wie gewünscht.```delegate“ auf einer
+  Zeile ankam — und ein Zaun, der nicht am Zeilenanfang steht, ist keiner: das JSON erschien als
+  Prosa und das schließende ``` öffnete einen Codeblock, der alles danach verschluckte. Blöcke
+  werden jetzt durch eine Leerzeile getrennt, und was schon so festgehalten wurde, wird beim
+  Zeichnen gelöst.
+- **„You've hit your session limit“ wurde nicht als aufgebrauchtes Kontingent gelesen.** Das
+  schreibt Claude Code, wenn das Fünf-Stunden-Fenster verbraucht ist, und es stand nicht auf der
+  Liste — also wurde der Lauf als Antwort aus diesem Satz gezeigt, und ein Agent, der bei
+  zurückkehrendem Kontingent erneut versuchen sollte, tat es nie. Jetzt steht es auf der Liste, für
+  die Varianten session, usage, daily, weekly und monthly.
+- **„Jetzt senden“ liefert Ihre Nachricht zuerst.** Einen Agenten anzuhalten, um ihm eine
+  Nachricht zu geben, während für ihn auch ein Lauf auf seinen Zug wartete, startete den wartenden
+  Lauf und hielt Ihre Nachricht dahinter zurück — die Unterbrechung war umsonst. Die Nachricht geht
+  jetzt zuerst.
+
 ## 0.17.0 — 2026-09-11
 
 ### Neu

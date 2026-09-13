@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { AgentDialog } from "@/components/AgentDialog";
 import { pickWorkspaceDir } from "@/lib/pick-dir";
+import { findRepoDir } from "@/lib/repo-dir";
 import { projectNameFromDir } from "@/lib/home-start";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
@@ -31,6 +32,8 @@ export function ProjectDialog({
   const t = useT();
   const [name, setName] = useState("");
   const [workspaceDir, setWorkspaceDir] = useState("");
+  /** The repo under the folder, when it is not the folder itself. Found, not typed. */
+  const [repoDir, setRepoDir] = useState<string | undefined>(undefined);
   const [color, setColor] = useState("#4f8cff");
   const [formationId, setFormationId] = useState<string>(NO_FORMATION);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
@@ -51,6 +54,7 @@ export function ProjectDialog({
     if (editProject) {
       setName(editProject.name);
       setWorkspaceDir(editProject.workspaceDir);
+      setRepoDir(editProject.repoDir);
       setColor(editProject.color || "#4f8cff");
       setDailyUsd(editProject.budget?.dailyUsd ? String(editProject.budget.dailyUsd) : "");
       setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
@@ -101,6 +105,9 @@ export function ProjectDialog({
     const selected = await pickWorkspaceDir();
     if (!selected) return;
     setWorkspaceDir(selected);
+    // Picked a folder with the repo inside it: say so now, and remember where.
+    const found = await findRepoDir(selected);
+    setRepoDir(found && found !== selected ? found : undefined);
     if (!name) {
       const folder = projectNameFromDir(selected);
       if (folder) setName(folder);
@@ -128,10 +135,10 @@ export function ProjectDialog({
     const verifyCommands = verify.filter(c => c.program.trim().length > 0);
 
     if (editProject) {
-      store.updateProject(editProject.id, { name, workspaceDir, color, budget, verify: verifyCommands });
+      store.updateProject(editProject.id, { name, workspaceDir, repoDir, color, budget, verify: verifyCommands });
     } else {
       // What the user left in the list is the team, formation or not.
-      store.addProject({ name, workspaceDir, color, agents, budget, verify: verifyCommands });
+      store.addProject({ name, workspaceDir, repoDir, color, agents, budget, verify: verifyCommands });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
@@ -154,6 +161,11 @@ export function ProjectDialog({
                 <Input value={workspaceDir} readOnly placeholder={t("projectDialog.folderPlaceholder")} />
                 <Button type="button" variant="outline" onClick={handleSelectDir}>{t("projectDialog.browse")}</Button>
               </div>
+              {repoDir && (
+                <p className="text-xs text-muted-foreground">
+                  {t("projectDialog.repoInside", { folder: repoDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? repoDir })}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-2">

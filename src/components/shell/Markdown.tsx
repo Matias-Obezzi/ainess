@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
 import { ChevronDown, ChevronRight, FileText, Share2 } from "lucide-react";
 import { truncate } from "@/lib/format";
+import { unglueFences } from "@/lib/text";
 import { useT } from "@/i18n/useT";
 import { toast } from "@/components/ui/toast";
 
@@ -195,7 +196,7 @@ const plugins = [remarkGfm];
 
 /** Renders `text` as markdown (GFM). Empty text renders nothing. */
 export function Markdown({ text, className }: { text: string; className?: string }) {
-  const content = text ?? "";
+  const content = unglueFences(text ?? "");
   if (!content.trim()) return null;
   return (
     <div className={cn("text-sm leading-relaxed break-words", className)}>

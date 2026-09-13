@@ -34,3 +34,9 @@ dist-remote/
 
 # Per-agent transcripts the app writes as it works: local noise, not part of the project.
 .ainess/history/
+
+# What the screen tests leave behind (npm run e2e): screenshots, traces, reports. Local only.
+e2e/out/
+e2e/shots/
+test-results/
+playwright-report/

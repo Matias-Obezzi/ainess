@@ -26,6 +26,8 @@ import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
 import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
+import { touchRun, forgetStall } from "@/lib/stall";
+import { repoDirOf } from "@/lib/repo-dir";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -82,7 +84,7 @@ function setPreparing(projectId: string, agentId: string, step: string | undefin
  * so every step is told to the runtime and to the feed.
  */
 async function resolveCwd(projectId: string, agent: AgentConfig, project: Project, runId: string): Promise<string> {
-  if (!agent.worktree) return project.workspaceDir;
+  if (!agent.worktree) return repoDirOf(project);
   try {
     const known = useAppStore.getState().worktrees[projectId]?.find(w => w.agentId === agent.id);
     setPreparing(projectId, agent.id, "Preparando el worktree…");
@@ -810,6 +812,7 @@ function handleOutput(e: RunOutputEvent) {
   const events = provider.parseLine(e.line, e.stream);
 
   streamBuffer.pushLine(e.runId, e.line);
+  touchRun(e.runId);
 
   for (const ev of events) {
     if (ev.type === "session") {
@@ -883,6 +886,7 @@ function handleExit(e: RunExitEvent) {
   // here on it belongs to the run: what gets saved, what the raw view of a finished run shows.
   const rawLines = rawLinesOf(e.runId) ?? run.rawLines;
   forgetRawLines(e.runId);
+  forgetStall(e.runId);
 
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
@@ -1252,8 +1256,14 @@ function onRunFinished(runId: string) {
   // owes them a round before it takes anything else. Then the runs that waited for this agent to be
   // free, then what you wrote to it meanwhile.
   drainContinuations(agent.id, run.projectId);
-  launchQueuedRuns(agent.id, run.projectId);
-  processQueuedInstructions(agent.id, run.projectId);
+  if (interruptedForMessage.delete(`${run.projectId}:${agent.id}`)) {
+    // Stopped to deliver a message: that message first, then whatever was queued.
+    processQueuedInstructions(agent.id, run.projectId);
+    launchQueuedRuns(agent.id, run.projectId);
+  } else {
+    launchQueuedRuns(agent.id, run.projectId);
+    processQueuedInstructions(agent.id, run.projectId);
+  }
 
   // What was said, into the project itself, where the agent can read it next time (and so can you,
   // with an editor). Failures and stops are written too: knowing a turn ended badly is the point.
@@ -1723,7 +1733,20 @@ function shouldRetryOnQuota(agent: AgentConfig, project: Project | undefined): b
  * the caller settles it into "needs-you" and the retry opens a fresh one, the same way a retry by
  * hand does.
  */
-function parkQuotaRetry(run: Run, agent: AgentConfig): void {
+/**
+ * "Retry when the quota is back", pressed on the card under a run that died of quota. Parks it
+ * like an unattended project would, and marks it as asked for: the watcher honours that whether
+ * or not the agent's own retry setting is on.
+ */
+export function retryWhenQuotaReturns(runId: string): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  const agent = run ? selectAgent(store, run.agentId) : undefined;
+  if (!run || !agent) return;
+  parkQuotaRetry(run, agent, true);
+}
+
+function parkQuotaRetry(run: Run, agent: AgentConfig, forced = false): void {
   useAppStore.setState(state => {
     // This run may itself be a relaunch of one that was parked before. Same project, same agent,
     // same prompt is the same piece of work coming back for another go, and the count has to follow
@@ -1747,6 +1770,7 @@ function parkQuotaRetry(run: Run, agent: AgentConfig): void {
           model: run.model,
           createdAt: Date.now(),
           attempts,
+          ...(forced ? { forced: true } : {}),
         },
       },
     };
@@ -2052,6 +2076,7 @@ export async function sendNowInterrupting(agentId: string, projectId: string): P
     };
   });
 
+  interruptedForMessage.add(`${projectId}:${agentId}`);
   await stopAgent(agentId, projectId);
 }
 
@@ -2236,6 +2261,12 @@ function drainContinuations(agentId: string, projectId: string): void {
 
 /** Runs whose continuation was cancelled by the user while they waited for children. */
 const cancelledRuns = new Set<string>();
+
+/**
+ * Agents (`project:agent`) stopped by "send it now": the message that cut the turn short goes
+ * before any run that was waiting its turn, or the interruption would have been for nothing.
+ */
+const interruptedForMessage = new Set<string>();
 
 /**
  * Runs the user stopped before anything was spawned, which happens while a worktree is being

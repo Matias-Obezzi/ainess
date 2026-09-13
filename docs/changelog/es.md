@@ -2,6 +2,70 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.18.0 — 2026-09-12
+
+### Nuevo
+
+- **Abrir el proyecto en tu editor.** El menú contextual del proyecto tiene "Abrir en…" con cada
+  editor encontrado en la máquina: VS Code, Cursor, Windsurf, Zed, Sublime Text, los IDE de
+  JetBrains, Visual Studio. Se detectan una vez al arrancar y se abren sobre la carpeta del repo.
+- **Una carpeta de proyecto con el repositorio adentro.** Elegí una carpeta hecha para el proyecto
+  — el repo un nivel más abajo, lugar al lado — y la app encuentra el repo ahí: git y los agentes
+  trabajan en él, los worktrees se crean al lado dentro de tu carpeta, y `.ainess/`, los adjuntos y
+  el tablero quedan arriba. Se avisa en el diálogo del proyecto al elegir la carpeta, y se detecta
+  solo en los proyectos que ya existen.
+- **Quedarse sin cuota es una tarjeta, no una respuesta.** El "usage limit reached" del proveedor
+  llegaba como las últimas palabras de la corrida, un párrafo de relleno en medio de la
+  conversación. Ahora es una línea debajo de lo que el agente sí dijo: qué proveedor, cuándo vuelve
+  la cuota (de los números del proveedor, o del mensaje), "Reintentar cuando vuelva" — que deja la
+  corrida esperando al vigilante de cuota diga lo que diga la opción del agente — y "Reintentar
+  con…". Cuando el trabajo ya se reintentó, por vos o por el vigilante, la tarjeta se reduce a una
+  línea discreta.
+- **Una corrida que se quedó muda lo dice.** Un agente trabado en un prompt que nadie va a
+  responder se ve igual que uno pensando fuerte. Después de tres minutos sin una línea de salida,
+  el ticker de la corrida dice "sin salida hace 3:00", en ámbar, al lado del reloj; a los diez la
+  campana suena una vez y un toast nombra al agente. Se mide desde la última línea que imprimió el
+  CLI, fuera del store, así que no cuesta nada mientras el agente habla.
+- **Pegar código lo mete en un bloque de código.** Varias líneas con pinta de código — indentadas,
+  terminadas en llaves o punto y coma, empezando con `import`, `def`, `SELECT` y similares — caen
+  dentro de un bloque ``` propio, en sus propias líneas, con el cursor después. La prosa y las
+  listas quedan como están, y también lo pegado dentro de un bloque ya abierto.
+- **Reintentar desde el error mismo.** Cuando una corrida termina en error, la caja roja de la
+  actividad ahora lleva "Reintentar con…", el mismo diálogo que vivía a dos clics dentro de la
+  tarjeta: otro agente, otro modelo, el mismo prompt.
+- **El menú de la bandeja habla el idioma de la app.** "Mostrar", "Salir" y el tooltip estaban
+  escritos en el binario, en español. Ahora salen de los diccionarios, como todo lo demás, y
+  cambian con el idioma elegido.
+- **La caja te ayuda a escribir markdown, y el hilo lo dibuja.** Ctrl+B, Ctrl+I y Ctrl+E ponen la
+  selección en negrita, cursiva o código, y de nuevo lo deshacen; Ctrl+Shift+K la convierte en un
+  link. Shift+Enter en un ítem de lista arranca el siguiente — `-` sigue siendo `-`, `3.` pasa a
+  `4.`, una casilla marcada vuelve vacía — y en un ítem vacío cierra la lista. Lo que mandaste se
+  dibuja después como lo escribiste: listas, links y bloques de código en tu propia burbuja, en el
+  hilo y en los chats, donde antes era el texto crudo con los asteriscos adentro.
+- **Un bloque de código en la caja se ve como tal.** Escribir ``` ponía un resaltado gris redondeado
+  detrás de las líneas, comillas incluidas. Ahora es una caja del ancho de la caja de texto y tan
+  alta como el código, de esquinas rectas, con las líneas de las comillas atenuadas para que lo que
+  se vea sea el código. Desde ahora las palabras las dibuja la capa debajo del textarea, que es lo
+  que lo hace posible.
+
+### Arreglado
+
+- **Una delegación pegada a la frase anterior rompía el resto de la respuesta.** Claude Code
+  imprime un bloque de texto por cada tramo en que habla, y un turno que habla, trabaja y vuelve a
+  hablar tiene dos. Se unían sin nada en el medio, así que "…como pediste.```delegate" llegaba en
+  una sola línea — y una valla que no está al principio de la línea no es una valla: el JSON se veía
+  como prosa y el ``` de cierre abría un bloque de código que se tragaba todo lo que seguía. Ahora
+  los bloques van separados por una línea en blanco, y lo que ya quedó guardado así se despega al
+  dibujarlo.
+- **"You've hit your session limit" no se leía como quedarse sin cuota.** Es lo que imprime Claude
+  Code cuando se agota la ventana de cinco horas, y no estaba en la lista — así que la corrida se
+  mostraba como una respuesta hecha de esa frase, y un agente configurado para reintentar cuando
+  vuelva la cuota nunca lo hacía. Ahora está en la lista, para las variantes session, usage, daily,
+  weekly y monthly.
+- **"Enviar ahora" entrega tu mensaje primero.** Detener a un agente para pasarle un mensaje,
+  cuando además había una corrida esperando su turno con ese agente, lanzaba la corrida en espera
+  y dejaba tu mensaje detrás — la interrupción no servía de nada. Ahora el mensaje va primero.
+
 ## 0.17.0 — 2026-09-11
 
 ### Nuevo

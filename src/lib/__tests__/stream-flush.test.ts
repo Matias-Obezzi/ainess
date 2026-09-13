@@ -56,13 +56,15 @@ describe("streamed output", () => {
     spy.mockRestore();
   });
 
-  it("keeps every delta, in order, in one message", () => {
-    for (const t of ["uno ", "dos ", "tres"]) {
+  // Each `assistant` line is a whole block, not a delta, and blocks are paragraphs: a fence at
+  // the start of the second block has to land at the start of a line.
+  it("keeps every block, in order, in one message, a blank line between them", () => {
+    for (const t of ["uno", "dos", "tres"]) {
       emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: t }] } }), stream: "stdout" } as never);
     }
     flushStream();
     const text = useAppStore.getState().messages.find(m => m.id === "text-r1");
-    expect(text?.text).toBe("uno dos tres");
+    expect(text?.text.trim().split("\n\n")).toEqual(["uno", "dos", "tres"]);
   });
 
   it("keeps the raw lines out of the store while the run is alive", () => {

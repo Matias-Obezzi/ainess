@@ -36,3 +36,19 @@ export function toPlainText(text: string): string {
     .replace(/^\s{0,3}(?:[-*_]\s*){3,}$/gm, "") // rules
     .trim();
 }
+
+/**
+ * A ``` fence stuck to the end of the line before it, put on a line of its own.
+ *
+ * Markdown only reads a fence at the start of a line. Text blocks streamed by a CLI were once
+ * joined with nothing between them, so "…as you asked.```delegate" arrived as one line: the JSON
+ * rendered as prose and the closing fence opened a code block that ate the rest of the answer.
+ * The join is fixed at the source; this is for what was already written down that way.
+ */
+export function unglueFences(text: string): string {
+  return text
+    // An opener with a language tag, right after a sentence: a paragraph break before it.
+    .replace(/([^\n`])(```[a-zA-Z][\w-]*[ \t]*(?:\n|$))/g, "$1\n\n$2")
+    // A closer right after the JSON it closes: on its own line.
+    .replace(/([\]}])(```)(?=[ \t]*(?:\n|$))/g, "$1\n$2");
+}

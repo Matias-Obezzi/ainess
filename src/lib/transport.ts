@@ -28,6 +28,12 @@ export interface Transport {
    * `readFileAbs` instead would drag a multi-megabyte lockfile across just to learn its name.
    */
   filesExistAbs(paths: string[]): Promise<string[]>;
+  /** The folders directly inside `path`, as absolute paths. Empty where there is no filesystem. */
+  listSubdirs(path: string): Promise<string[]>;
+  /** The editors installed here. Empty outside the desktop app. */
+  detectEditors(): Promise<import("@/types").EditorInfo[]>;
+  /** Opens a folder in one of those editors, by id. */
+  openInEditor(id: string, path: string): Promise<void>;
 
   /** Writes a file by absolute path, creating its folder. For the `.ainess/` folder of a project. */
   writeFileAbs(path: string, content: string): Promise<void>;
@@ -56,6 +62,12 @@ export interface Transport {
 
   /** Toggles closing the window to the system tray instead of quitting. No-op outside Tauri. */
   setTrayEnabled(enabled: boolean): Promise<void>;
+  /**
+   * Builds the tray, or relabels it, with the menu's words in the app's language. The tray does
+   * not exist until this is called once: its words come from the dictionaries, like every other
+   * sentence the user reads. No-op outside Tauri.
+   */
+  configureTray(labels: { show: string; quit: string; tooltip: string }): Promise<void>;
 
   /**
    * Flashes the window's taskbar button. A no-op while the window is focused — that check lives on

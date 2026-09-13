@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAppStore, selectProject } from "@/store";
+import { repoDirOf } from "@/lib/repo-dir";
 
 /** A branch and its pull requests move slowly; a minute is close enough to live. */
 const REFRESH_MS = 60 * 1000;
@@ -11,7 +12,10 @@ const REFRESH_MS = 60 * 1000;
  */
 export function useRepoSync(): void {
   const projectId = useAppStore(state => state.currentProjectId);
-  const workspaceDir = useAppStore(state => selectProject(state, state.currentProjectId)?.workspaceDir ?? "");
+  const workspaceDir = useAppStore(state => {
+    const project = selectProject(state, state.currentProjectId);
+    return project ? repoDirOf(project) : "";
+  });
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
 
   useEffect(() => {

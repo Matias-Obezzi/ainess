@@ -46,6 +46,21 @@ export const tauriTransport: Transport = {
     }
   },
 
+  listSubdirs: async (path) => {
+    try {
+      return await invoke<string[]>("list_subdirs", { path });
+    } catch {
+      return [];
+    }
+  },
+  detectEditors: async () => {
+    try {
+      return await invoke<import("@/types").EditorInfo[]>("detect_editors");
+    } catch {
+      return [];
+    }
+  },
+  openInEditor: async (id, path) => invoke<void>("open_in_editor", { id, path }),
   filesExistAbs: async (paths) => {
     try {
       return await invoke<string[]>("files_exist_abs", { paths });
@@ -87,6 +102,7 @@ export const tauriTransport: Transport = {
     }),
 
   setTrayEnabled: async (enabled) => invoke<void>("set_tray_enabled", { enabled }),
+  configureTray: async (labels) => invoke<void>("tray_configure", { labels }),
   requestAttention: async () => invoke<void>("request_attention"),
 
   logAppend: async (level, source, message) => {
