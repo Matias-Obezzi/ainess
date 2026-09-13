@@ -19,7 +19,8 @@ import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
 import { toast } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
-import { openFolder } from "@/lib/open-external";
+import { openFolder, openInEditor } from "@/lib/open-external";
+import { repoDirOf } from "@/lib/repo-dir";
 import { confirm } from "@/lib/confirm";
 import { openExternal } from "@/lib/open-external";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,6 +48,7 @@ import { FolderOpen,
   Settings,
   Trash2,
   Users,
+  Code2,
 } from "lucide-react";
 
 /** Straight to the issue templates, opened in the user's own browser. */
@@ -168,6 +170,7 @@ export function Sidebar() {
    * What a project offers. The right click and the three dots are the same menu in two shapes, so
    * they render this same list: the path used to be in one and not the other.
    */
+  const editors = useAppStore(state => state.editors);
   const projectActions = (p: Project): MenuAction[] => [
     { key: "edit", label: t("sidebar.editProject"), icon: Pencil, onSelect: () => editProject(p) },
     { key: "new-chat", label: t("sidebar.newChat"), icon: Plus, onSelect: () => newChat(p.id) },
@@ -179,6 +182,18 @@ export function Sidebar() {
       disabled: !p.workspaceDir,
       separatorBefore: true,
       onSelect: () => void openFolder(p.workspaceDir),
+    },
+    {
+      key: "open-in",
+      label: t("project.openIn"),
+      icon: Code2,
+      disabled: !p.workspaceDir || editors.length === 0,
+      children: editors.map(editor => ({
+        key: `open-in-${editor.id}`,
+        label: editor.label,
+        onSelect: () => void openInEditor(editor, repoDirOf(p)),
+      })),
+      onSelect: () => {},
     },
     {
       key: "copy-path",

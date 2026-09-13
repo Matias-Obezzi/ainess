@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { repoDirOf } from "@/lib/repo-dir";
 
 export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } = {}) {
   const t = useT();
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const project = useAppStore(state => selectProject(state, state.currentProjectId));
   const repoState = useAppStore(state => currentProjectId ? state.repoState[currentProjectId] : undefined);
-  const workspaceDir = project?.workspaceDir || "";
+  const workspaceDir = project ? repoDirOf(project) : "";
   
   const [mode, setMode] = useState<DiffMode>("working");
   const [files, setFiles] = useState<DiffFile[]>([]);

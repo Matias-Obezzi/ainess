@@ -43,7 +43,7 @@ const PATTERNS: Array<{
     // «Individual quota reached … Resets in 130h23m56s.» (Antigravity), «You have exceeded your
     // monthly quota» (Copilot), a 429 from the Gemini API through opencode.
     kind: "quota",
-    test: /quota|rate.?limit|429|too many requests|premium requests|limit reached|resource_exhausted/i,
+    test: /quota|rate.?limit|429|too many requests|premium requests|limit reached|hit your (session |usage |weekly |daily |monthly )?limit|resource_exhausted/i,
     titleKey: "error.quota.title",
     hintKey: "error.quota.hint",
     values: (text) => {

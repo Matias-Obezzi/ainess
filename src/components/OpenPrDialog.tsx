@@ -13,6 +13,7 @@ import { openExternal } from "@/lib/open-external";
 import { openPullRequest, pushBranch, defaultBranch, type PrsUnavailable } from "@/lib/git-repo";
 import { prDraft } from "@/lib/pr-draft";
 import { useT, type TFunction } from "@/i18n/useT";
+import { repoDirOf } from "@/lib/repo-dir";
 
 const DEFAULT_BRANCHES = new Set(["main", "master"]);
 
@@ -31,7 +32,10 @@ export function OpenPrDialog({ projectId, taskId, open, onOpenChange }: {
 }) {
   const t = useT();
   const repo = useAppStore(state => state.repoState[projectId]);
-  const workspaceDir = useAppStore(state => state.config.projects.find(p => p.id === projectId)?.workspaceDir ?? "");
+  const workspaceDir = useAppStore(state => {
+    const project = state.config.projects.find(p => p.id === projectId);
+    return project ? repoDirOf(project) : "";
+  });
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
   const task = useAppStore(state => (taskId ? selectTasks(state, projectId).find(x => x.id === taskId) : undefined));
   const run = useAppStore(state => (task?.runId ? state.runs[task.runId] : undefined));

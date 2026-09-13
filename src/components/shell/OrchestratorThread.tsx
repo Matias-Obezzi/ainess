@@ -10,6 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { RetryRunDialog } from "@/components/RetryRunDialog";
+import { QuotaCard } from "@/components/QuotaCard";
+import { outOfQuota } from "@/lib/quota";
+import { retriedLater } from "@/lib/quota-card";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
@@ -260,6 +263,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   // What the CLI said this run consumed. Empty when it reported nothing: then nothing is shown.
   const usage = runUsageText(run, locale, t);
   const answer = useMemo(() => runAnswer(interrupted ? "" : transcript, output), [interrupted, transcript, output]);
+  // Died of quota: the provider's boilerplate is not the answer, the card under the transcript is.
+  const quotaDead = run.status === "error" && outOfQuota(output);
+  const retried = useAppStore(state => (quotaDead ? retriedLater(state.runs, run) : false));
 
   const retry = () =>
     void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
@@ -377,6 +383,11 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                         {t("common.retry")}
                       </Button>
                     </div>
+                  ) : quotaDead ? (
+                    <>
+                      {answer.transcript && <Markdown text={answer.transcript} />}
+                      <QuotaCard run={run} agent={agent} retried={retried} onRetryWith={() => setRetryOpen(true)} />
+                    </>
                   ) : answer.transcript || answer.final ? (
                     <>
                       {/* What it said while it worked, which `run.output` is only the last line of.

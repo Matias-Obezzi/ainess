@@ -108,6 +108,18 @@ export async function openFolder(path: string): Promise<void> {
   if (!(await revealPath(path))) toast.error(translateNow("project.openFolderFailed"));
 }
 
+/** Opens a folder in one of the editors found on this machine, and says so when it cannot. */
+export async function openInEditor(editor: import("@/types").EditorInfo, path: string): Promise<void> {
+  const { toast } = await import("@/components/ui/toast");
+  const { translateNow } = await import("@/i18n/useT");
+  const { getTransport } = await import("@/lib/transport");
+  try {
+    await getTransport().openInEditor(editor.id, path);
+  } catch {
+    toast.error(translateNow("project.openInFailed", { editor: editor.label }));
+  }
+}
+
 /**
  * Shows a folder (or a file) in the system file manager. Uses `revealItemInDir`, which the
  * opener plugin allows by default: `openPath` would mean widening the plugin's scope to every

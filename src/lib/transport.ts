@@ -28,6 +28,12 @@ export interface Transport {
    * `readFileAbs` instead would drag a multi-megabyte lockfile across just to learn its name.
    */
   filesExistAbs(paths: string[]): Promise<string[]>;
+  /** The folders directly inside `path`, as absolute paths. Empty where there is no filesystem. */
+  listSubdirs(path: string): Promise<string[]>;
+  /** The editors installed here. Empty outside the desktop app. */
+  detectEditors(): Promise<import("@/types").EditorInfo[]>;
+  /** Opens a folder in one of those editors, by id. */
+  openInEditor(id: string, path: string): Promise<void>;
 
   /** Writes a file by absolute path, creating its folder. For the `.ainess/` folder of a project. */
   writeFileAbs(path: string, content: string): Promise<void>;

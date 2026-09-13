@@ -137,6 +137,12 @@ export interface Project {
   id: string;
   name: string;
   workspaceDir: string;
+  /**
+   * The repository, when it is not `workspaceDir` itself but a folder one level under it. Found by
+   * the app, never typed. Git runs there and so do the agents; `.ainess/`, the attachments and the
+   * worktrees stay in the workspace around it. See `lib/repo-dir.ts`.
+   */
+  repoDir?: string;
   color?: string;
   createdAt: number;
   /** The team that works on this project. Empty means the project has no agents yet. */
@@ -598,6 +604,14 @@ export interface BinaryInfo {
 }
 
 export type Binaries = Partial<Record<ProviderId, BinaryInfo | null>>;
+
+/** An editor installed on this machine, as `detect_editors` found it (src-tauri/src/editors.rs). */
+export interface EditorInfo {
+  id: string;
+  /** The product's own name. */
+  label: string;
+  path: string;
+}
 
 export interface ModelInfo {
   id: string;

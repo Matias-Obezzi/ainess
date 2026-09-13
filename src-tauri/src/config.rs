@@ -231,6 +231,24 @@ pub async fn files_exist_abs(paths: Vec<String>) -> Result<Vec<String>, String> 
     .map_err(|e| e.to_string())
 }
 
+/// The folders directly inside `path`, as absolute paths, sorted. For finding a repository one
+/// level under a project's folder; nothing deeper, and nothing read.
+#[tauri::command]
+pub async fn list_subdirs(path: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let entries = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
+        let mut out: Vec<String> = entries
+            .flatten()
+            .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+            .map(|e| e.path().to_string_lossy().into_owned())
+            .collect();
+        out.sort();
+        Ok(out)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     /// The `.ainess/` folder of a project does not exist until the app writes into it.

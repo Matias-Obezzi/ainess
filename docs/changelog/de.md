@@ -6,6 +6,21 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Neu
 
+- **Das Projekt im eigenen Editor öffnen.** Das Kontextmenü des Projekts hat „Öffnen in…“ mit
+  jedem auf dem Rechner gefundenen Editor: VS Code, Cursor, Windsurf, Zed, Sublime Text, die
+  JetBrains-IDEs, Visual Studio. Einmal beim Start erkannt, auf dem Repository-Ordner geöffnet.
+- **Ein Projektordner mit dem Repository darin.** Wählen Sie einen für das Projekt angelegten
+  Ordner — das Repo eine Ebene tiefer, Platz daneben — und die App findet das Repo dort: Git und
+  die Agenten arbeiten darin, die Worktrees entstehen daneben in Ihrem Ordner, und `.ainess/`, die
+  Anhänge und das Board bleiben oben. Im Projektdialog beim Wählen des Ordners gesagt, und bei
+  bestehenden Projekten von selbst gefunden.
+- **Kein Kontingent ist eine Karte, keine Antwort.** Das „usage limit reached“ des Anbieters kam
+  als letzte Worte des Laufs an, ein Absatz Füllmaterial mitten in der Unterhaltung. Jetzt ist es
+  eine Zeile unter dem, was der Agent tatsächlich sagte: welcher Anbieter, wann das Kontingent
+  zurück ist (aus den Zahlen des Anbieters oder aus der Meldung), „Erneut versuchen, wenn es zurück
+  ist“ — das den Lauf für den Kontingentwächter parkt, was auch immer die Einstellung des Agenten
+  sagt — und „Erneut versuchen mit…“. Sobald die Arbeit erneut versucht wurde, von Ihnen oder vom
+  Wächter, wird die Karte zu einer stillen Zeile.
 - **Ein verstummter Lauf sagt es.** Ein Agent, der an einer Eingabeaufforderung hängt, die
   niemand beantworten wird, sieht genauso aus wie einer, der angestrengt nachdenkt. Nach drei
   Minuten ohne eine Zeile Ausgabe steht im Ticker des Laufs „seit 3:00 keine Ausgabe“, in Bernstein,
@@ -37,6 +52,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **„You've hit your session limit“ wurde nicht als aufgebrauchtes Kontingent gelesen.** Das
+  schreibt Claude Code, wenn das Fünf-Stunden-Fenster verbraucht ist, und es stand nicht auf der
+  Liste — also wurde der Lauf als Antwort aus diesem Satz gezeigt, und ein Agent, der bei
+  zurückkehrendem Kontingent erneut versuchen sollte, tat es nie. Jetzt steht es auf der Liste, für
+  die Varianten session, usage, daily, weekly und monthly.
 - **„Jetzt senden“ liefert Ihre Nachricht zuerst.** Einen Agenten anzuhalten, um ihm eine
   Nachricht zu geben, während für ihn auch ein Lauf auf seinen Zug wartete, startete den wartenden
   Lauf und hielt Ihre Nachricht dahinter zurück — die Unterbrechung war umsonst. Die Nachricht geht

@@ -3,6 +3,7 @@ import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { fileChangedInProject } from "@/lib/system-hooks";
 import { log } from "@/lib/logger";
+import { repoDirOf } from "@/lib/repo-dir";
 
 /**
  * Waits for the writes to settle before asking git. An editor saving a file, a `git checkout` or a
@@ -54,7 +55,7 @@ export function useRepoWatch(): void {
       .catch(() => {});
 
     for (const project of watched) {
-      void transport.repoWatchStart(project.id, project.workspaceDir).catch((e: unknown) => {
+      void transport.repoWatchStart(project.id, repoDirOf(project)).catch((e: unknown) => {
         // A folder that is gone, or not a repo: the timer keeps covering it.
         log.debug("repo", `no se pudo observar ${project.name}: ${e instanceof Error ? e.message : String(e)}`);
       });

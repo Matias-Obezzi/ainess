@@ -6,6 +6,21 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Nouveau
 
+- **Ouvrir le projet dans votre éditeur.** Le menu contextuel du projet a « Ouvrir dans… » avec
+  chaque éditeur trouvé sur la machine : VS Code, Cursor, Windsurf, Zed, Sublime Text, les IDE
+  JetBrains, Visual Studio. Détectés une fois au démarrage, ouverts sur le dossier du dépôt.
+- **Un dossier de projet avec le dépôt dedans.** Choisissez un dossier fait pour le projet — le
+  dépôt un niveau plus bas, de la place à côté — et l'application y trouve le dépôt : git et les
+  agents y travaillent, les worktrees sont créés à côté dans votre dossier, et `.ainess/`, les
+  pièces jointes et le tableau restent en haut. Signalé dans le dialogue du projet au choix du
+  dossier, et trouvé tout seul pour les projets existants.
+- **Plus de quota, c'est une carte, pas une réponse.** Le « usage limit reached » du fournisseur
+  arrivait comme derniers mots de l'exécution, un paragraphe de remplissage au milieu de la
+  conversation. C'est maintenant une ligne sous ce que l'agent a bel et bien dit : quel
+  fournisseur, quand le quota revient (d'après les chiffres du fournisseur, ou le message),
+  « Réessayer à son retour » — qui met l'exécution en attente du veilleur de quota, quoi qu'en dise
+  le réglage de l'agent — et « Réessayer avec… ». Une fois le travail retenté, par vous ou par le
+  veilleur, la carte se réduit à une ligne discrète.
 - **Une exécution devenue silencieuse le dit.** Un agent bloqué sur une invite à laquelle personne
   ne répondra ressemble exactement à un agent qui réfléchit. Après trois minutes sans une ligne de
   sortie, le ticker de l'exécution affiche « rien depuis 3:00 », en ambre, à côté de l'horloge ;
@@ -36,6 +51,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **« You've hit your session limit » n'était pas lu comme un quota épuisé.** C'est ce que Claude
+  Code écrit quand la fenêtre de cinq heures est consommée, et ce n'était pas dans la liste — donc
+  l'exécution s'affichait comme une réponse faite de cette phrase, et un agent réglé pour réessayer
+  au retour de son quota ne le faisait jamais. C'est dans la liste désormais, pour les variantes
+  session, usage, daily, weekly et monthly.
 - **« Envoyer maintenant » livre votre message d'abord.** Arrêter un agent pour lui remettre un
   message, alors qu'une exécution attendait aussi son tour pour cet agent, lançait l'exécution en
   attente et gardait votre message derrière — l'interruption ne servait à rien. Le message passe

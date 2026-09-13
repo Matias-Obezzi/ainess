@@ -6,6 +6,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Nuevo
 
+- **Abrir el proyecto en tu editor.** El menú contextual del proyecto tiene "Abrir en…" con cada
+  editor encontrado en la máquina: VS Code, Cursor, Windsurf, Zed, Sublime Text, los IDE de
+  JetBrains, Visual Studio. Se detectan una vez al arrancar y se abren sobre la carpeta del repo.
+- **Una carpeta de proyecto con el repositorio adentro.** Elegí una carpeta hecha para el proyecto
+  — el repo un nivel más abajo, lugar al lado — y la app encuentra el repo ahí: git y los agentes
+  trabajan en él, los worktrees se crean al lado dentro de tu carpeta, y `.ainess/`, los adjuntos y
+  el tablero quedan arriba. Se avisa en el diálogo del proyecto al elegir la carpeta, y se detecta
+  solo en los proyectos que ya existen.
+- **Quedarse sin cuota es una tarjeta, no una respuesta.** El "usage limit reached" del proveedor
+  llegaba como las últimas palabras de la corrida, un párrafo de relleno en medio de la
+  conversación. Ahora es una línea debajo de lo que el agente sí dijo: qué proveedor, cuándo vuelve
+  la cuota (de los números del proveedor, o del mensaje), "Reintentar cuando vuelva" — que deja la
+  corrida esperando al vigilante de cuota diga lo que diga la opción del agente — y "Reintentar
+  con…". Cuando el trabajo ya se reintentó, por vos o por el vigilante, la tarjeta se reduce a una
+  línea discreta.
 - **Una corrida que se quedó muda lo dice.** Un agente trabado en un prompt que nadie va a
   responder se ve igual que uno pensando fuerte. Después de tres minutos sin una línea de salida,
   el ticker de la corrida dice "sin salida hace 3:00", en ámbar, al lado del reloj; a los diez la
@@ -35,6 +50,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **"You've hit your session limit" no se leía como quedarse sin cuota.** Es lo que imprime Claude
+  Code cuando se agota la ventana de cinco horas, y no estaba en la lista — así que la corrida se
+  mostraba como una respuesta hecha de esa frase, y un agente configurado para reintentar cuando
+  vuelva la cuota nunca lo hacía. Ahora está en la lista, para las variantes session, usage, daily,
+  weekly y monthly.
 - **"Enviar ahora" entrega tu mensaje primero.** Detener a un agente para pasarle un mensaje,
   cuando además había una corrida esperando su turno con ese agente, lanzaba la corrida en espera
   y dejaba tu mensaje detrás — la interrupción no servía de nada. Ahora el mensaje va primero.

@@ -2,6 +2,7 @@ mod config;
 mod console;
 mod detect;
 mod diagnostics;
+mod editors;
 mod http;
 mod logging;
 mod pty;
@@ -83,6 +84,9 @@ pub fn run() {
             config::write_file_abs,
             config::write_file_bytes,
             detect::detect_binaries,
+            editors::detect_editors,
+            editors::open_in_editor,
+            config::list_subdirs,
             diagnostics::storage_stat,
             diagnostics::port_available,
             http::http_post,

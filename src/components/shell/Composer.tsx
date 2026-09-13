@@ -20,6 +20,7 @@ import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
 import { continueList, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
@@ -323,7 +324,10 @@ export function Composer() {
     ? allAgents.find(a => a.id === chatAgentId)
     : targetAgent || defaultAgent;
 
-  const workspaceDir = config.projects.find(p => p.id === currentProjectId)?.workspaceDir ?? "";
+  const currentProject = config.projects.find(p => p.id === currentProjectId);
+  // Attachments go with the project; the file list for `@` comes from the repo, which may sit under it.
+  const workspaceDir = currentProject?.workspaceDir ?? "";
+  const repoDir = currentProject ? repoDirOf(currentProject) : "";
 
   /** Adds what was picked or pasted, minus what is too big to travel through the webview. */
   const addFiles = (incoming: FileList | File[]) => {
@@ -427,17 +431,17 @@ export function Composer() {
   // are typing, and a workspace with no git (or no git binary) just offers nothing — not an error.
   const workspaceFilesRef = useRef<string[] | null>(null);
   const [filesTick, bumpFilesTick] = useState(0);
-  useEffect(() => { workspaceFilesRef.current = null; }, [workspaceDir]);
+  useEffect(() => { workspaceFilesRef.current = null; }, [repoDir]);
   useEffect(() => {
-    if (completionReq?.kind !== "file" || workspaceFilesRef.current !== null || !workspaceDir) return;
+    if (completionReq?.kind !== "file" || workspaceFilesRef.current !== null || !repoDir) return;
     let cancelled = false;
-    void getTransport().exec("git", ["ls-files"], workspaceDir, 10).then(res => {
+    void getTransport().exec("git", ["ls-files"], repoDir, 10).then(res => {
       if (cancelled) return;
       workspaceFilesRef.current = res.code === 0 ? res.stdout.split(/\r?\n/).filter(Boolean) : [];
       bumpFilesTick(v => v + 1);
     });
     return () => { cancelled = true; };
-  }, [completionReq?.kind, workspaceDir]);
+  }, [completionReq?.kind, repoDir]);
 
   const menuOptions = useMemo<MenuOption[]>(() => {
     if (!completionReq) return [];

@@ -27,6 +27,7 @@ import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore }
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
 import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
 import { touchRun, forgetStall } from "@/lib/stall";
+import { repoDirOf } from "@/lib/repo-dir";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -83,7 +84,7 @@ function setPreparing(projectId: string, agentId: string, step: string | undefin
  * so every step is told to the runtime and to the feed.
  */
 async function resolveCwd(projectId: string, agent: AgentConfig, project: Project, runId: string): Promise<string> {
-  if (!agent.worktree) return project.workspaceDir;
+  if (!agent.worktree) return repoDirOf(project);
   try {
     const known = useAppStore.getState().worktrees[projectId]?.find(w => w.agentId === agent.id);
     setPreparing(projectId, agent.id, "Preparando el worktree…");
@@ -1732,7 +1733,20 @@ function shouldRetryOnQuota(agent: AgentConfig, project: Project | undefined): b
  * the caller settles it into "needs-you" and the retry opens a fresh one, the same way a retry by
  * hand does.
  */
-function parkQuotaRetry(run: Run, agent: AgentConfig): void {
+/**
+ * "Retry when the quota is back", pressed on the card under a run that died of quota. Parks it
+ * like an unattended project would, and marks it as asked for: the watcher honours that whether
+ * or not the agent's own retry setting is on.
+ */
+export function retryWhenQuotaReturns(runId: string): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  const agent = run ? selectAgent(store, run.agentId) : undefined;
+  if (!run || !agent) return;
+  parkQuotaRetry(run, agent, true);
+}
+
+function parkQuotaRetry(run: Run, agent: AgentConfig, forced = false): void {
   useAppStore.setState(state => {
     // This run may itself be a relaunch of one that was parked before. Same project, same agent,
     // same prompt is the same piece of work coming back for another go, and the count has to follow
@@ -1756,6 +1770,7 @@ function parkQuotaRetry(run: Run, agent: AgentConfig): void {
           model: run.model,
           createdAt: Date.now(),
           attempts,
+          ...(forced ? { forced: true } : {}),
         },
       },
     };

@@ -8,6 +8,20 @@ let one of them fall behind.
 
 ### Added
 
+- **Open the project in your editor.** The project's right-click menu has "Open in…" with every
+  editor found on the machine: VS Code, Cursor, Windsurf, Zed, Sublime Text, the JetBrains IDEs,
+  Visual Studio. Detected once at startup, opened on the repository folder.
+- **A project folder with the repository inside it.** Pick a folder made for the project — the repo
+  one level down, room beside it — and the app finds the repo there: git and the agents work in
+  it, the worktrees are created next to it inside your folder, and `.ainess/`, the attachments and
+  the board stay at the top. Said in the project dialog when a folder is picked, and found on its
+  own for projects that already exist.
+- **Out of quota is a card, not an answer.** The provider's "usage limit reached" used to arrive as
+  the run's final words, a paragraph of boilerplate in the middle of the conversation. It is now a
+  line under what the agent did say: which provider, when the quota is back (from the provider's
+  own numbers, or from the message), "Retry when it is back" — which parks the run for the quota
+  watcher whatever the agent's own setting says — and "Retry with…". Once the work has been tried
+  again, by you or by the watcher, the card collapses to one quiet line.
 - **A run that has gone quiet says so.** An agent stuck on a prompt nobody will answer looks
   exactly like one thinking hard. After three minutes without a line of output the run's ticker
   says "no output for 3:00", in amber, next to the clock; after ten the bell rings once and a toast
@@ -36,6 +50,10 @@ let one of them fall behind.
 
 ### Fixed
 
+- **"You've hit your session limit" was not read as running out of quota.** That is what Claude
+  Code prints when the five-hour window is spent, and it was not on the list — so the run was shown
+  as an answer made of that sentence, and an agent set to retry when its quota comes back never
+  did. It is on the list now, for the session, usage, daily, weekly and monthly wordings.
 - **"Send it now" delivers your message first.** Stopping an agent to hand it a message, when a
   run was also waiting its turn for that agent, launched the waiting run and held your message
   behind it — the interruption was for nothing. The message goes first now.

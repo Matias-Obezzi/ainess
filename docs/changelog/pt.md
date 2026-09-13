@@ -6,6 +6,20 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Novo
 
+- **Abrir o projeto no seu editor.** O menu de contexto do projeto tem "Abrir em…" com cada editor
+  encontrado na máquina: VS Code, Cursor, Windsurf, Zed, Sublime Text, os IDEs da JetBrains, Visual
+  Studio. Detectados uma vez ao iniciar, abertos na pasta do repositório.
+- **Uma pasta de projeto com o repositório dentro.** Escolha uma pasta feita para o projeto — o
+  repo um nível abaixo, espaço ao lado — e o app encontra o repo ali: o git e os agentes trabalham
+  nele, os worktrees são criados ao lado dentro da sua pasta, e `.ainess/`, os anexos e o quadro
+  ficam no topo. Avisado no diálogo do projeto ao escolher a pasta, e encontrado sozinho nos
+  projetos que já existem.
+- **Ficar sem cota é um cartão, não uma resposta.** O "usage limit reached" do provedor chegava
+  como as últimas palavras da execução, um parágrafo de enchimento no meio da conversa. Agora é uma
+  linha abaixo do que o agente de fato disse: qual provedor, quando a cota volta (dos números do
+  provedor, ou da mensagem), "Tentar de novo quando voltar" — que deixa a execução esperando o
+  vigia de cota, diga o que disser a opção do agente — e "Tentar com…". Quando o trabalho já foi
+  tentado de novo, por você ou pelo vigia, o cartão vira uma linha discreta.
 - **Uma execução que ficou muda diz isso.** Um agente travado num prompt que ninguém vai
   responder parece igual a um pensando muito. Depois de três minutos sem uma linha de saída, o
   ticker da execução diz "sem saída há 3:00", em âmbar, ao lado do relógio; aos dez o sino toca uma
@@ -35,6 +49,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **"You've hit your session limit" não era lido como ficar sem cota.** É o que o Claude Code
+  imprime quando a janela de cinco horas se esgota, e não estava na lista — então a execução
+  aparecia como uma resposta feita dessa frase, e um agente configurado para tentar de novo quando
+  a cota voltasse nunca o fazia. Agora está na lista, para as variantes session, usage, daily,
+  weekly e monthly.
 - **"Enviar agora" entrega a sua mensagem primeiro.** Parar um agente para lhe passar uma
   mensagem, quando também havia uma execução esperando a vez com esse agente, lançava a execução em
   espera e deixava a sua mensagem atrás — a interrupção não servia para nada. Agora a mensagem vai

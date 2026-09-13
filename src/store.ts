@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
@@ -18,6 +18,7 @@ import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
+import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
@@ -69,6 +70,8 @@ export interface AppState {
   models: Partial<Record<ProviderId, ModelInfo[]>>;
   /** Last known quota per provider. */
   quota: Partial<Record<ProviderId, ProviderQuota>>;
+  /** The editors on this machine, for "open in…". Detected once at startup. */
+  editors: EditorInfo[];
   /** Last known repository state per project (branch, changes, pull requests). */
   repoState: Record<string, RepoState>;
   /** Git worktrees per project, one per agent that works in its own branch (see src/lib/worktree.ts). */
@@ -86,7 +89,7 @@ export interface AppState {
    * `RetryRunDialog`/`lib/orchestrator.ts#parkQuotaRetry`). Not persisted: a run still parked when
    * the app restarts is simply left failed, same as if nobody had asked for a retry.
    */
-  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number; attempts: number; retrying?: boolean }>;
+  quotaWaiting: Record<string, { agentId: string; projectId: string; provider: ProviderId; prompt: string; model?: string; createdAt: number; attempts: number; retrying?: boolean; forced?: boolean }>;
   dropQuotaWaiting(id: string): void;
   /** Marks a parked run as relaunched: one more attempt spent, and not to be picked up again. */
   markQuotaRetrying(id: string): void;
@@ -844,6 +847,9 @@ function rememberPanels(state: AppState, patch: { comm?: boolean; diff?: boolean
   };
 }
 
+/** Projects whose folder was searched for a repository one level down; asked once each. */
+const repoLookedFor = new Set<string>();
+
 /** The tray menu's words, in the app's language, handed to the side that draws it. */
 function syncTrayLabels(): void {
   void getTransport()
@@ -857,6 +863,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   binaries: {},
   models: {},
   quota: {},
+  editors: [],
   repoState: {},
   worktrees: {},
   autonomousStarted: {},
@@ -1885,8 +1892,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // project at a time is plenty and keeps git from being called three times over.
     const inFlight = repoReads.get(projectId);
     if (inFlight) return inFlight;
-    const read = readRepoState(project.workspaceDir)
-      .then(state => {
+    const read = readRepoState(repoDirOf(project))
+      .then(async state => {
+        // Not a repo at the top: maybe one level down, the first time this is asked. Found, it is
+        // written on the project and read again; not found, the project is simply not on git.
+        if (!state.isRepo && !project.repoDir && !repoLookedFor.has(projectId)) {
+          repoLookedFor.add(projectId);
+          const found = await findRepoDir(project.workspaceDir);
+          if (found && found !== project.workspaceDir) {
+            get().updateProject(projectId, { repoDir: found });
+            state = await readRepoState(found);
+          }
+        }
         set(s => ({ repoState: { ...s.repoState, [projectId]: state } }));
       })
       .catch(() => {
@@ -2511,6 +2528,8 @@ async function runInit(): Promise<void> {
     }
     
     await get().detectBinaries();
+    // Editors only matter on the desktop, and "which" for a dozen names is not free.
+    if (isTauri()) void getTransport().detectEditors().then(editors => set({ editors })).catch(() => {});
     await get().loadQuotaMarks();
     await orchestrator.attachListeners();
 

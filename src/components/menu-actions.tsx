@@ -1,8 +1,8 @@
 // One list of actions, two menus: the three-dot dropdown and the right-click context menu render
 // the same items so they can never drift apart.
 import { Fragment } from "react";
-import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from "@/components/ui/context-menu";
+import { DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 
 export interface MenuAction {
   key: string;
@@ -14,6 +14,8 @@ export interface MenuAction {
   destructive?: boolean;
   /** Draws a separator above this item. */
   separatorBefore?: boolean;
+  /** A submenu instead of an action: `onSelect` is not called for an item with children. */
+  children?: MenuAction[];
 }
 
 /** Renders `actions` as dropdown menu items. */
@@ -25,6 +27,12 @@ export function DropdownActionItems({ actions }: { actions: MenuAction[] }) {
         return (
           <Fragment key={action.key}>
             {action.separatorBefore && <DropdownMenuSeparator />}
+            {action.children ? (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled={action.disabled}>{Icon && <Icon />} {action.label}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent><DropdownActionItems actions={action.children} /></DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ) : (
             <DropdownMenuItem
               disabled={action.disabled}
               variant={action.destructive ? "destructive" : "default"}
@@ -32,6 +40,7 @@ export function DropdownActionItems({ actions }: { actions: MenuAction[] }) {
             >
               {Icon && <Icon />} {action.label}
             </DropdownMenuItem>
+            )}
           </Fragment>
         );
       })}
@@ -48,6 +57,12 @@ export function ContextActionItems({ actions }: { actions: MenuAction[] }) {
         return (
           <Fragment key={action.key}>
             {action.separatorBefore && <ContextMenuSeparator />}
+            {action.children ? (
+              <ContextMenuSub>
+                <ContextMenuSubTrigger disabled={action.disabled}>{Icon && <Icon />} {action.label}</ContextMenuSubTrigger>
+                <ContextMenuSubContent><ContextActionItems actions={action.children} /></ContextMenuSubContent>
+              </ContextMenuSub>
+            ) : (
             <ContextMenuItem
               disabled={action.disabled}
               variant={action.destructive ? "destructive" : "default"}
@@ -55,6 +70,7 @@ export function ContextActionItems({ actions }: { actions: MenuAction[] }) {
             >
               {Icon && <Icon />} {action.label}
             </ContextMenuItem>
+            )}
           </Fragment>
         );
       })}

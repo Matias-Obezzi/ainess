@@ -34,6 +34,7 @@ import {
 } from "@/lib/git-repo";
 import { useT, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
+import { repoDirOf } from "@/lib/repo-dir";
 
 const CHECKS_LABEL_KEY: Record<PullRequestChecks, string> = {
   passing: "git.checks.passing",
@@ -406,7 +407,10 @@ function NewBranchDialog({ projectId, workspaceDir, open, onOpenChange }: {
 export function GitBranchButton({ projectId }: { projectId: string }) {
   const t = useT();
   const repo = useAppStore(state => state.repoState[projectId]);
-  const workspaceDir = useAppStore(state => state.config.projects.find(p => p.id === projectId)?.workspaceDir ?? "");
+  const workspaceDir = useAppStore(state => {
+    const project = state.config.projects.find(p => p.id === projectId);
+    return project ? repoDirOf(project) : "";
+  });
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
   const [refreshing, setRefreshing] = useState(false);
   // The dialog lives outside the popover: opening it closes the popover, which would take a dialog
