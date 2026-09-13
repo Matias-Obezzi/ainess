@@ -47,14 +47,40 @@ test("the suggestion sits on the line of the caret, not under it", async ({ page
   expect(Math.abs(tops!.typed - tops!.ghost)).toBeLessThan(2);
 });
 
+test("the layer's words sit exactly where the textarea puts its own", async ({ page }) => {
+  await openDemo(page, "chat");
+  const { input, layer } = composer(page);
+  await input.click();
+  await input.pressSequentially("hola");
+  const offsets = await page.evaluate(() => {
+    const ta = document.querySelector('[data-testid="composer-input"]') as HTMLTextAreaElement;
+    const ly = document.querySelector('[data-testid="composer-layer"]') as HTMLElement;
+    const cs = getComputedStyle(ta);
+    const box = ta.getBoundingClientRect();
+    // Where the textarea's first glyph starts: inside the border and the padding.
+    const textTop = box.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+    const textLeft = box.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
+    const range = document.createRange();
+    range.setStart(ly.firstChild!, 0);
+    range.setEnd(ly.firstChild!, 1);
+    const glyph = range.getBoundingClientRect();
+    return { dy: glyph.top - textTop, dx: glyph.left - textLeft };
+  });
+  expect(Math.abs(offsets.dy)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(offsets.dx)).toBeLessThanOrEqual(0.5);
+  void layer;
+});
+
 test("words typed right after the backticks are not dimmed as a language tag", async ({ page }) => {
   await openDemo(page, "chat");
   const { input, layer } = composer(page);
   await input.click();
   await input.pressSequentially("```una frase entera");
-  // Only the backticks are the fence's; the sentence is drawn like any other.
-  const dimmed = await layer.locator("span.text-muted-foreground\\/50").allTextContents();
-  expect(dimmed).toEqual(["```"]);
+  // Only the backticks are the fence's — and they are not drawn; the sentence is, like any other.
+  const hidden = await layer.locator("span.text-transparent").allTextContents();
+  expect(hidden).toEqual(["```"]);
+  const dimmed = (await layer.locator("span.text-muted-foreground\\/50").allTextContents()).filter(Boolean);
+  expect(dimmed).toEqual([]);
   await expect(layer).toContainText("una frase entera");
   await snap(page, "composer-opener-sentence", page.locator('[data-testid="composer-layer"]').locator(".."));
 });

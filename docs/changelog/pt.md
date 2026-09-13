@@ -6,6 +6,15 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **As crases de um bloco de código não são desenhadas na caixa.** Digite ``` e a caixa é o que
+  diz "código": as três crases mantêm a largura — o cursor continua passando por elas — mas não
+  aparecem, nem na linha de abertura nem na de fechamento. Uma etiqueta de linguagem sozinha, como
+  ```ts, fica, esmaecida, para se ver o que é o bloco.
+- **As palavras na caixa ficavam um pixel acima e à esquerda do cursor.** A camada que as
+  desenha cobria a caixa da borda do textarea, e o textarea dispõe seu texto dentro da borda de um
+  pixel. A sugestão e o placeholder que se move pareciam um ou dois pixels baixos em relação ao
+  cursor pelo mesmo motivo. Os três ficam agora na posição do próprio texto do textarea, e um
+  teste de tela mede isso.
 - **Duas coisas que a caixa desenhava no lugar errado.** A sugestão cinza depois do que você
   digitou caía na linha abaixo do cursor em vez de ao lado: a camada que desenha as palavras põe
   uma quebra de linha no fim para contar as linhas como o textarea, e a sugestão ficara depois dessa

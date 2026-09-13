@@ -6,6 +6,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Les accents graves d'un bloc de code ne sont pas dessinés dans la zone de saisie.** Tapez
+  ``` et c'est la boîte qui dit « code » : les trois accents gardent leur largeur — le curseur les
+  traverse toujours — mais ne s'affichent pas, ni sur la ligne d'ouverture ni sur celle de
+  fermeture. Un tag de langage seul, comme ```ts, reste, estompé, pour qu'on voie ce qu'est le bloc.
+- **Les mots de la zone étaient un pixel au-dessus et à gauche du curseur.** La couche qui les
+  dessine couvrait la boîte de bordure du textarea, et le textarea dispose son texte à l'intérieur
+  de sa bordure d'un pixel. La suggestion et le placeholder animé paraissaient un ou deux pixels
+  trop bas par rapport au curseur pour la même raison. Les trois sont maintenant à la position du
+  texte du textarea, et un test d'écran le mesure.
 - **Deux choses que la zone de saisie dessinait au mauvais endroit.** La suggestion grise après
   ce que vous tapiez tombait sur la ligne sous le curseur au lieu d'à côté : la couche qui dessine
   les mots met un saut de ligne à sa fin pour compter les lignes comme le textarea, et la

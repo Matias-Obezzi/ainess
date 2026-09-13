@@ -6,6 +6,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die Backticks eines Codeblocks werden im Eingabefeld nicht gezeichnet.** Tippen Sie ``` und
+  der Kasten ist das, was „Code“ sagt: die drei Backticks behalten ihre Breite — der Cursor läuft
+  weiter über sie — werden aber nicht angezeigt, weder in der öffnenden noch in der schließenden
+  Zeile. Ein Sprach-Tag allein, wie ```ts, bleibt, abgeblendet, damit man sieht, was der Block ist.
+- **Die Wörter im Eingabefeld saßen einen Pixel über und links vom Cursor.** Die Ebene, die sie
+  zeichnet, deckte die Rahmenbox des Textfelds ab, und das Textfeld setzt seinen Text innerhalb
+  seines ein Pixel breiten Rahmens. Der Vorschlag und der bewegte Platzhalter wirkten aus demselben
+  Grund ein, zwei Pixel zu tief gegenüber dem Cursor. Alle drei sitzen jetzt an der Textposition
+  des Textfelds, und ein Bildschirmtest misst es.
 - **Zwei Dinge, die das Eingabefeld an der falschen Stelle zeichnete.** Der graue Vorschlag nach
   dem Getippten landete in der Zeile unter dem Cursor statt daneben: die Ebene, die die Wörter
   zeichnet, setzt ans Ende einen Zeilenumbruch, um Zeilen wie das Textfeld zu zählen, und der

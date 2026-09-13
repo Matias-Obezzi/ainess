@@ -8,6 +8,15 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The backticks of a code block are not drawn in the box.** Type ``` and the box is what says
+  "code": the three backticks keep their width — the caret still walks over them — but are not
+  shown, on the opening line or the closing one. A language tag on its own, like ```ts, stays,
+  faded, so you can see what the block is.
+- **The words in the box sat a pixel up and left of the caret.** The layer that draws them
+  covered the textarea's border box, and the textarea lays its text out inside its one-pixel
+  border. The suggestion and the moving placeholder looked a pixel or two low against the caret
+  for the same reason. All three sit on the textarea's own text position now, and a screen test
+  measures it.
 - **Two things the box drew in the wrong place.** The grey suggestion after what you typed landed
   on the line below the caret instead of beside it: the layer that draws the words puts a newline
   at its end to count lines the way the textarea does, and the suggestion had been put after that

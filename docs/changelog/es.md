@@ -6,6 +6,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Las comillas de un bloque de código no se dibujan en la caja.** Escribí ``` y la caja es la
+  que dice "código": las tres comillas conservan su ancho — el cursor sigue pasando por ellas —
+  pero no se muestran, ni en la línea de apertura ni en la de cierre. Una etiqueta de lenguaje
+  sola, como ```ts, se queda, atenuada, para que se vea qué es el bloque.
+- **Las palabras de la caja quedaban un píxel arriba y a la izquierda del cursor.** La capa que
+  las dibuja cubría la caja del borde del textarea, y el textarea acomoda su texto adentro de su
+  borde de un píxel. La sugerencia y el placeholder que se mueve se veían uno o dos píxeles caídos
+  respecto del cursor por lo mismo. Los tres van ahora en la posición del propio texto del
+  textarea, y un test de pantalla lo mide.
 - **Dos cosas que la caja dibujaba en el lugar equivocado.** La sugerencia gris después de lo que
   escribiste caía en la línea de abajo del cursor en vez de al lado: la capa que dibuja las palabras
   pone un salto de línea al final para contar las líneas como el textarea, y la sugerencia había
