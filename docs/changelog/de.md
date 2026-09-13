@@ -4,6 +4,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Themes.** Einstellungen → Darstellung: eine Vorlage als Ausgangspunkt — die Farben der App,
+  eine helle, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — und jede Farbe, die die
+  Komponenten lesen, von Hand änderbar in jeder Schreibweise, die der Browser versteht. Das Theme
+  sind dieselben CSS-Variablen, die das Stylesheet definiert, auf der Wurzel darübergelegt, sodass
+  sonst nichts geändert werden musste, um ihm zu folgen. Kopieren Sie ein Theme als CSS oder fügen
+  Sie `--name: wert;`-Zeilen ein.
+
 ### Behoben
 
 - **Die Backticks eines Codeblocks werden im Eingabefeld nicht gezeichnet.** Tippen Sie ``` und

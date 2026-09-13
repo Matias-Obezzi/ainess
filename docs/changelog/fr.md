@@ -4,6 +4,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **Thèmes.** Réglages → Apparence : un préréglage pour commencer — les couleurs de
+  l'application, une claire, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — et chaque
+  couleur que lisent les composants, modifiable à la main dans toute notation comprise par le
+  navigateur. Le thème, ce sont les mêmes variables CSS que définit la feuille de style, posées sur
+  la racine par-dessus, donc rien d'autre n'a dû changer pour le suivre. Copiez un thème en CSS, ou
+  collez des lignes `--nom: valeur;`.
+
 ### Corrigé
 
 - **Les accents graves d'un bloc de code ne sont pas dessinés dans la zone de saisie.** Tapez

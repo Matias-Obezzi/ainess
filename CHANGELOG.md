@@ -6,6 +6,14 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **Themes.** Settings → Appearance: a preset to start from — the app's own colours, a light one,
+  Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — and every colour the components read,
+  changeable by hand in any notation the browser understands. The theme is the same CSS variables
+  the stylesheet defines, set on the root over it, so nothing else had to change to follow it.
+  Copy a theme out as CSS, or paste `--name: value;` lines in.
+
 ### Fixed
 
 - **The backticks of a code block are not drawn in the box.** Type ``` and the box is what says

@@ -4,6 +4,15 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
+### Nuevo
+
+- **Temas.** Ajustes → Apariencia: un preset para arrancar — los colores propios de la app, uno
+  claro, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — y cada color que leen los
+  componentes, editable a mano en cualquier notación que entienda el navegador. El tema son las
+  mismas variables CSS que define la hoja de estilos, puestas en la raíz por encima de ella, así
+  que nada más tuvo que cambiar para seguirlo. Copiá un tema como CSS, o pegá líneas
+  `--nombre: valor;`.
+
 ### Arreglado
 
 - **Las comillas de un bloque de código no se dibujan en la caja.** Escribí ``` y la caja es la

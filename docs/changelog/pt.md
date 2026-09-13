@@ -4,6 +4,14 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **Temas.** Configurações → Aparência: uma predefinição para começar — as cores do próprio app,
+  uma clara, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — e cada cor que os componentes
+  leem, editável à mão em qualquer notação que o navegador entenda. O tema são as mesmas variáveis
+  CSS que a folha de estilos define, postas na raiz por cima dela, então nada mais precisou mudar
+  para segui-lo. Copie um tema como CSS, ou cole linhas `--nome: valor;`.
+
 ### Corrigido
 
 - **As crases de um bloco de código não são desenhadas na caixa.** Digite ``` e a caixa é o que

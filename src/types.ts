@@ -329,6 +329,16 @@ export interface RemoteConfig {
 /** Minimum level written to the log file (see src/lib/logger.ts). */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
+/**
+ * A theme: new values for the CSS variables every component reads (`--background`, `--primary`…),
+ * set on <html> over the stylesheet's own. `preset` is where it started — a built-in palette, the
+ * app's own colours, or "custom" once a value was changed by hand. See `lib/themes.ts`.
+ */
+export interface ThemeConfig {
+  preset: string;
+  vars: Record<string, string>;
+}
+
 export interface TrayConfig {
   /** Keep the app running in the system tray when the window is closed. */
   enabled: boolean;
@@ -384,6 +394,8 @@ export interface AppConfig {
   approveDelegations: boolean;
   remote: RemoteConfig;
   tray: TrayConfig;
+  /** The colours, when they are not the app's own. */
+  theme?: ThemeConfig;
   messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig; slack?: MessagingChannelConfig };
   projects: Project[];
   /** Saved team templates offered when a project is created. */

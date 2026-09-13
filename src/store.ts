@@ -13,6 +13,7 @@ import * as quota from "@/lib/quota";
 import { autonomousReport } from "@/lib/autonomous";
 import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
+import { applyTheme } from "@/lib/themes";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
@@ -48,7 +49,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -1834,6 +1835,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // The tray menu is drawn by the OS, in whatever words it was given: given again here.
     if (patch.language !== undefined && isTauri()) syncTrayLabels();
     if (patch.logLevel) setLogLevel(patch.logLevel);
+    if ("theme" in patch && typeof document !== "undefined") applyTheme(patch.theme);
     debouncedSave();
   },
 
@@ -2510,6 +2512,7 @@ async function runInit(): Promise<void> {
     });
 
     setLogLevel(config.logLevel ?? "info");
+    if (typeof document !== "undefined") applyTheme(config.theme);
     const agentCount = config.projects.reduce((n, p) => n + p.agents.length, 0);
     log.info("app", `config loaded (${config.projects.length} projects, ${agentCount} agents)`);
 
