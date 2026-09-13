@@ -2,6 +2,18 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Zwei Dinge, die das Eingabefeld an der falschen Stelle zeichnete.** Der graue Vorschlag nach
+  dem Getippten landete in der Zeile unter dem Cursor statt daneben: die Ebene, die die Wörter
+  zeichnet, setzt ans Ende einen Zeilenumbruch, um Zeilen wie das Textfeld zu zählen, und der
+  Vorschlag stand hinter diesem Umbruch. Und ein direkt nach ``` getippter Satz wurde ganz
+  abgeblendet, als wäre er die Sprache des Blocks: jetzt gehören nur die Backticks — und ein kurzes
+  Tag, das die ganze Zeile ist, wie ```ts — zum Zaun; alles andere in der Zeile liest sich wie das,
+  was es ist.
+
 ## 0.18.0 — 2026-09-12
 
 ### Neu

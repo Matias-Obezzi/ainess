@@ -2,6 +2,17 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **Dos cosas que la caja dibujaba en el lugar equivocado.** La sugerencia gris después de lo que
+  escribiste caía en la línea de abajo del cursor en vez de al lado: la capa que dibuja las palabras
+  pone un salto de línea al final para contar las líneas como el textarea, y la sugerencia había
+  quedado después de ese salto. Y una frase escrita justo después de ``` se atenuaba entera, como si
+  fuera el lenguaje del bloque: ahora solo las comillas — y una etiqueta corta que ocupe toda la
+  línea, como ```ts — son de la valla; lo demás en esa línea se lee como lo que es.
+
 ## 0.18.0 — 2026-09-12
 
 ### Nuevo

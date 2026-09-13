@@ -2,6 +2,17 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **Duas coisas que a caixa desenhava no lugar errado.** A sugestão cinza depois do que você
+  digitou caía na linha abaixo do cursor em vez de ao lado: a camada que desenha as palavras põe
+  uma quebra de linha no fim para contar as linhas como o textarea, e a sugestão ficara depois dessa
+  quebra. E uma frase digitada logo após ``` era esmaecida inteira, como se fosse a linguagem do
+  bloco: agora só as crases — e uma etiqueta curta que ocupe a linha toda, como ```ts — são da
+  cerca; o resto nessa linha lê-se como o que é.
+
 ## 0.18.0 — 2026-09-12
 
 ### Novo

@@ -4,6 +4,17 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Fixed
+
+- **Two things the box drew in the wrong place.** The grey suggestion after what you typed landed
+  on the line below the caret instead of beside it: the layer that draws the words puts a newline
+  at its end to count lines the way the textarea does, and the suggestion had been put after that
+  newline. And a sentence typed right after ``` was dimmed whole, as if it were the block's
+  language: only the backticks — and a short tag that is the whole line, like ```ts — are the
+  fence's now; anything else on that line reads like what it is.
+
 ## 0.18.0 — 2026-09-12
 
 ### Added

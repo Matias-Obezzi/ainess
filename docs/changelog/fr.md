@@ -2,6 +2,18 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Deux choses que la zone de saisie dessinait au mauvais endroit.** La suggestion grise après
+  ce que vous tapiez tombait sur la ligne sous le curseur au lieu d'à côté : la couche qui dessine
+  les mots met un saut de ligne à sa fin pour compter les lignes comme le textarea, et la
+  suggestion avait été placée après ce saut. Et une phrase tapée juste après ``` était estompée en
+  entier, comme si c'était le langage du bloc : seuls les accents graves — et un tag court qui
+  occupe toute la ligne, comme ```ts — appartiennent désormais à la clôture ; le reste de la ligne
+  se lit comme ce qu'il est.
+
 ## 0.18.0 — 2026-09-12
 
 ### Nouveau
