@@ -5,6 +5,7 @@ import { log } from "@/lib/logger";
 import { BOSS_TARGET, bossOf } from "@/lib/team";
 import { translateNow } from "@/i18n/useT";
 import { repoDirOf } from "@/lib/repo-dir";
+import { forChat } from "@/lib/chat-text";
 
 export interface HookContext {
   project?: Project;
@@ -59,7 +60,8 @@ export async function emitHookEvent(
       runId: hookCtx.runId || "",
       round: hookCtx.round?.toString() || "",
       prompt: hookCtx.prompt || "",
-      output: hookCtx.output || "",
+      // The blocks the app draws as cards, as words: a chat cannot draw them.
+      output: forChat(hookCtx.output || ""),
       error: hookCtx.error || "",
       taskPrompt: hookCtx.taskPrompt || "",
       toAgent: hookCtx.toAgent || "",

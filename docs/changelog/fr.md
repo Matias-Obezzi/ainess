@@ -15,6 +15,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Une question arrivait sur Telegram sous forme de boîte JSON.** Un hook qui envoie `{{output}}`
+  à un chat envoyait la réponse telle que l'agent l'a écrite, blocs `ask` et `delegate` compris, et
+  Telegram dessinait le bloc comme du code avec un bouton « copier » — la moitié de la réponse
+  destinée à la machine, remise à la personne. Ce qui part vers un chat porte maintenant la question
+  et ses options numérotées à la place du bloc `ask`, et une ligne par tâche — qui, et quoi — à la
+  place du bloc `delegate`. La ligne « tâche terminée » de la cloche se lit de même. Les boutons
+  sous une question sont un message à part et existaient déjà : ils sont envoyés pour une question
+  à réponse unique, jusqu'à dix options.
 - **Les accents graves d'un bloc de code ne sont pas dessinés dans la zone de saisie.** Tapez
   ``` et c'est la boîte qui dit « code » : les trois accents gardent leur largeur — le curseur les
   traverse toujours — mais ne s'affichent pas, ni sur la ligne d'ouverture ni sur celle de

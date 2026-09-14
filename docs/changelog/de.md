@@ -15,6 +15,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Eine Frage kam bei Telegram als JSON-Kasten an.** Ein Hook, der `{{output}}` in einen Chat
+  schickt, schickte die Antwort so, wie der Agent sie schrieb, `ask`- und `delegate`-Blöcke
+  eingeschlossen, und Telegram zeichnete den Block als Code mit „Kopieren“-Knopf — die Hälfte der
+  Antwort, die für die Maschine ist, der Person übergeben. Was in einen Chat geht, trägt jetzt die
+  Frage und ihre nummerierten Optionen anstelle des `ask`-Blocks und eine Zeile pro Aufgabe — wer
+  und was — anstelle des `delegate`-Blocks. Die „Aufgabe erledigt“-Zeile der Glocke liest sich
+  genauso. Die Knöpfe unter einer Frage sind eine eigene Nachricht und gab es schon: sie werden für
+  eine Frage mit einer Antwort gesendet, bis zu zehn Optionen.
 - **Die Backticks eines Codeblocks werden im Eingabefeld nicht gezeichnet.** Tippen Sie ``` und
   der Kasten ist das, was „Code“ sagt: die drei Backticks behalten ihre Breite — der Cursor läuft
   weiter über sie — werden aber nicht angezeigt, weder in der öffnenden noch in der schließenden

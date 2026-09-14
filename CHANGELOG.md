@@ -16,6 +16,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A question reached Telegram as a box of JSON.** A hook that sends `{{output}}` to a chat sent
+  the answer as the agent wrote it, `ask` and `delegate` blocks included, and Telegram drew the
+  block as code with a "copy" button — the machine's half of the answer, handed to the person. What
+  goes to a chat now carries the question and its numbered options in place of the `ask` block,
+  and one line per task — who, and what — in place of the `delegate` block. The bell's "task done"
+  line reads the same way. The buttons under a question are a separate message and were already
+  there: they are sent for a question that takes one answer, up to ten options.
 - **The backticks of a code block are not drawn in the box.** Type ``` and the box is what says
   "code": the three backticks keep their width — the caret still walks over them — but are not
   shown, on the opening line or the closing one. A language tag on its own, like ```ts, stays,

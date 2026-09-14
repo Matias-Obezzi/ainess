@@ -15,6 +15,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Una pregunta llegaba a Telegram como una caja de JSON.** Un hook que manda `{{output}}` a un
+  chat mandaba la respuesta tal como la escribió el agente, bloques `ask` y `delegate` incluidos,
+  y Telegram dibujaba el bloque como código con un botón de "copiar" — la mitad de la respuesta
+  que es para la máquina, entregada a la persona. Lo que va a un chat lleva ahora la pregunta y
+  sus opciones numeradas en lugar del bloque `ask`, y una línea por tarea — quién, y qué — en lugar
+  del bloque `delegate`. La línea de "tarea terminada" de la campana se lee igual. Los botones bajo
+  una pregunta son un mensaje aparte y ya estaban: se mandan para una pregunta de una sola
+  respuesta, hasta diez opciones.
 - **Las comillas de un bloque de código no se dibujan en la caja.** Escribí ``` y la caja es la
   que dice "código": las tres comillas conservan su ancho — el cursor sigue pasando por ellas —
   pero no se muestran, ni en la línea de apertura ni en la de cierre. Una etiqueta de lenguaje
