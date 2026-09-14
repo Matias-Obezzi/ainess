@@ -2,7 +2,7 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## Non publié
+## 0.19.0 — 2026-09-14
 
 ### Nouveau
 
@@ -15,6 +15,7 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **La ligne « Ouvrir dans… » du menu du projet n'avait pas d'espace entre l'icône et le texte.**
 - **Un fichier qu'un agent nomme s'ouvre à côté de la conversation.** `src/lib/foo.ts` entre
   accents graves, un lien `file:`, ou un chemin lâché dans une phrase — « le plan est dans
   .claude/handoff/007-x.md » — est maintenant un bouton. Il ouvre le fichier dans un panneau du dock

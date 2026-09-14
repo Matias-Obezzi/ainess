@@ -2,7 +2,7 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## Unveröffentlicht
+## 0.19.0 — 2026-09-14
 
 ### Neu
 
@@ -15,6 +15,7 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Die Zeile „Öffnen in…“ im Projektmenü hatte keinen Abstand zwischen Symbol und Text.**
 - **Eine Datei, die ein Agent nennt, öffnet sich neben der Unterhaltung.** `src/lib/foo.ts` in
   Backticks, ein `file:`-Link oder ein loser Pfad in einem Satz — „der Plan liegt in
   .claude/handoff/007-x.md“ — ist jetzt ein Knopf. Er öffnet die Datei in einem Bereich des rechten

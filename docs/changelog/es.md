@@ -2,7 +2,7 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
-## Sin publicar
+## 0.19.0 — 2026-09-14
 
 ### Nuevo
 
@@ -15,6 +15,7 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **La fila "Abrir en…" del menú del proyecto no tenía espacio entre el ícono y el texto.**
 - **Un archivo que un agente nombra se abre al lado de la conversación.** `src/lib/foo.ts` entre
   comillas, un link `file:`, o una ruta suelta en una frase — "el plan está en
   .claude/handoff/007-x.md" — ahora es un botón. Abre el archivo en un panel del dock derecho: el

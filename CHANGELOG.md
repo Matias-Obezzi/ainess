@@ -4,7 +4,7 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
-## Unreleased
+## 0.19.0 — 2026-09-14
 
 ### Added
 
@@ -16,6 +16,7 @@ let one of them fall behind.
 
 ### Fixed
 
+- **The "Open in…" row of the project menu had no space between its icon and its label.**
 - **A file an agent names opens beside the conversation.** `src/lib/foo.ts` in backticks, a
   `file:` link, or a path loose in a sentence — "the plan is in .claude/handoff/007-x.md" — is a
   button now. It opens the file in a panel of the right dock: code with its colours, line numbers
