@@ -15,6 +15,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Eine Datei, die ein Agent nennt, öffnet sich neben der Unterhaltung.** `src/lib/foo.ts` in
+  Backticks, ein `file:`-Link oder ein loser Pfad in einem Satz — „der Plan liegt in
+  .claude/handoff/007-x.md“ — ist jetzt ein Knopf. Er öffnet die Datei in einem Bereich des rechten
+  Docks: Code in seinen Farben, mit Zeilennummern und der Zeile markiert, auf die die Erwähnung
+  zeigte (`foo.ts:42`); Markdown als Seite, mit einem Schalter zum Rohtext. Aus dem Bereich heraus:
+  im Ordner zeigen, in einem Ihrer Editoren öffnen, den Pfad kopieren. Ein relativer Pfad wird
+  unter dem Repository und dann unter dem Projektordner gesucht.
 - **Eine Frage mit mehreren Antworten hat auch in den Chats Knöpfe.** Telegram, Discord und Slack
   bekamen so eine Frage nur als Text, weil ein Druck nur eine Antwort sein konnte. Jetzt ist jede
   Option ein Knopf, der sich an- und abhakt, und ein „Senden (n)“-Knopf darunter schickt das

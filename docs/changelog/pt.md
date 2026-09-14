@@ -14,6 +14,12 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Um arquivo que um agente nomeia abre ao lado da conversa.** `src/lib/foo.ts` entre crases, um
+  link `file:`, ou um caminho solto numa frase — "o plano está em .claude/handoff/007-x.md" — agora
+  é um botão. Abre o arquivo num painel do dock direito: o código com suas cores, números de linha e
+  a linha para a qual a menção apontava (`foo.ts:42`) marcada; o markdown como página, com um
+  interruptor para o texto bruto. Do painel: mostrar na pasta, abrir num dos seus editores, copiar
+  o caminho. Um caminho relativo é procurado sob o repositório e depois sob a pasta do projeto.
 - **Uma pergunta com várias respostas também tem botões nos chats.** Telegram, Discord e Slack
   recebiam uma pergunta assim só como texto, porque um toque só podia ser uma resposta. Agora cada
   opção é um botão que se marca e desmarca, e um botão "Enviar (n)" abaixo envia o marcado; os

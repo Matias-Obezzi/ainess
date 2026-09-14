@@ -16,6 +16,12 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A file an agent names opens beside the conversation.** `src/lib/foo.ts` in backticks, a
+  `file:` link, or a path loose in a sentence — "the plan is in .claude/handoff/007-x.md" — is a
+  button now. It opens the file in a panel of the right dock: code with its colours, line numbers
+  and the line the mention pointed at (`foo.ts:42`) marked; markdown as a page, with a switch to
+  the raw text. From the panel: show it in the folder, open it in one of your editors, copy the
+  path. A relative path is looked for under the repository and then under the project folder.
 - **A question with several answers has buttons in the chats too.** Telegram, Discord and Slack
   used to get such a question as text alone, since one press could only ever be one answer. Now
   each option is a button that ticks and unticks itself, and a "Send (n)" button under them sends

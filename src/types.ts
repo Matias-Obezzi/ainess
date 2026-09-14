@@ -808,4 +808,13 @@ export interface Task {
   archived: boolean;
 }
 /** The sections of the right dock. */
-export type DockSectionId = "comm" | "diff" | "term";
+export type DockSectionId = "comm" | "diff" | "term" | "file";
+
+/** A file an agent named, open beside the conversation. Session-only. See `lib/file-preview.ts`. */
+export interface FilePreview {
+  /** The mention as written, for the "not found" line. */
+  ref: string;
+  /** Where it may be, in the order to look: under the repo, then under the project folder. */
+  candidates: string[];
+  line?: number;
+}

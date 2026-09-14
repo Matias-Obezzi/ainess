@@ -12,6 +12,9 @@ import { truncate } from "@/lib/format";
 import { unglueFences } from "@/lib/text";
 import { useT } from "@/i18n/useT";
 import { toast } from "@/components/ui/toast";
+import { PathChip } from "@/components/PathChip";
+import { looksLikePath, splitPaths } from "@/lib/file-preview";
+import { useAppStore } from "@/store";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -81,12 +84,15 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
  */
 function FileLink({ path, children }: { path: string; children: ReactNode }) {
   const t = useT();
+  const openPreview = useAppStore(state => state.openPreview);
   return (
     <button
       type="button"
       title={path}
       className="inline text-left text-primary underline underline-offset-2 break-all"
       onClick={() => {
+        // Opened beside the conversation; the panel is where "show it in the folder" lives now.
+        if (looksLikePath(path)) { openPreview(path); return; }
         void revealPath(path).then(ok => {
           if (!ok) toast.error(t("markdown.revealFailed"));
         });
@@ -109,15 +115,31 @@ function InvalidDelegation({ text }: { text: string }) {
   );
 }
 
+/**
+ * The strings among `children` with the paths in them turned into buttons. Elements — links,
+ * code, emphasis — pass through untouched: they draw their own.
+ */
+function withPathChips(children: ReactNode): ReactNode {
+  const mapOne = (child: ReactNode, key: number): ReactNode => {
+    if (typeof child !== "string") return child;
+    const parts = splitPaths(child);
+    if (!parts.some(p => p.kind === "path")) return child;
+    return parts.map((part, i) => part.kind === "path"
+      ? <PathChip key={`${key}-${i}`} path={part.text} mono={false} />
+      : part.text);
+  };
+  return Array.isArray(children) ? children.map(mapOne) : mapOne(children, 0);
+}
+
 const components: Components = {
-  p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>,
+  p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{withPathChips(children)}</p>,
   h1: ({ children }) => <h1 className="mb-2 mt-3 first:mt-0 text-base font-semibold">{children}</h1>,
   h2: ({ children }) => <h2 className="mb-2 mt-3 first:mt-0 text-sm font-semibold">{children}</h2>,
   h3: ({ children }) => <h3 className="mb-1 mt-2 first:mt-0 text-sm font-semibold">{children}</h3>,
   h4: ({ children }) => <h4 className="mb-1 mt-2 first:mt-0 text-sm font-semibold">{children}</h4>,
   ul: ({ children }) => <ul className="mb-2 list-disc pl-5 space-y-0.5">{children}</ul>,
   ol: ({ children }) => <ol className="mb-2 list-decimal pl-5 space-y-0.5">{children}</ol>,
-  li: ({ children }) => <li className="break-words">{children}</li>,
+  li: ({ children }) => <li className="break-words">{withPathChips(children)}</li>,
   blockquote: ({ children }) => (
     <blockquote className="mb-2 border-l-2 border-border pl-3 text-muted-foreground">{children}</blockquote>
   ),
@@ -147,11 +169,16 @@ const components: Components = {
       </a>
     );
   },
-  code: ({ className, children }) => (
-    <code className={cn("bg-background/60 rounded px-1 py-0.5 font-mono text-[0.9em] break-words", className)}>
-      {children}
-    </code>
-  ),
+  code: ({ className, children }) => {
+    // `src/lib/foo.ts` in backticks is the way an agent names a file: a button, not a word.
+    const text = nodeText(children);
+    if (!className && looksLikePath(text)) return <PathChip path={text.trim()} />;
+    return (
+      <code className={cn("bg-background/60 rounded px-1 py-0.5 font-mono text-[0.9em] break-words", className)}>
+        {children}
+      </code>
+    );
+  },
   // The block renderer owns fenced code: it reads the language off the <code> child, so the
   // inline `code` renderer above never applies inside a block.
   pre: ({ children }) => {

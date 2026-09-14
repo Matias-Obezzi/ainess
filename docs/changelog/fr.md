@@ -15,6 +15,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Un fichier qu'un agent nomme s'ouvre à côté de la conversation.** `src/lib/foo.ts` entre
+  accents graves, un lien `file:`, ou un chemin lâché dans une phrase — « le plan est dans
+  .claude/handoff/007-x.md » — est maintenant un bouton. Il ouvre le fichier dans un panneau du dock
+  de droite : le code avec ses couleurs, des numéros de ligne et la ligne visée par la mention
+  (`foo.ts:42`) marquée ; le markdown comme une page, avec un interrupteur vers le texte brut.
+  Depuis le panneau : l'afficher dans le dossier, l'ouvrir dans un de vos éditeurs, copier le
+  chemin. Un chemin relatif est cherché sous le dépôt puis sous le dossier du projet.
 - **Une question à plusieurs réponses a aussi des boutons dans les chats.** Telegram, Discord et
   Slack recevaient une telle question en texte seul, puisqu'un appui ne pouvait être qu'une seule
   réponse. Chaque option est maintenant un bouton qui se coche et se décoche, et un bouton

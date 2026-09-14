@@ -15,6 +15,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un archivo que un agente nombra se abre al lado de la conversación.** `src/lib/foo.ts` entre
+  comillas, un link `file:`, o una ruta suelta en una frase — "el plan está en
+  .claude/handoff/007-x.md" — ahora es un botón. Abre el archivo en un panel del dock derecho: el
+  código con sus colores, números de línea y la línea a la que apuntaba la mención (`foo.ts:42`)
+  marcada; el markdown como página, con un interruptor al texto crudo. Desde el panel: mostrarlo en
+  la carpeta, abrirlo en uno de tus editores, copiar la ruta. Una ruta relativa se busca bajo el
+  repositorio y después bajo la carpeta del proyecto.
 - **Una pregunta con varias respuestas también tiene botones en los chats.** Telegram, Discord
   y Slack recibían una pregunta así solo como texto, porque una pulsación solo podía ser una
   respuesta. Ahora cada opción es un botón que se marca y desmarca, y un botón "Enviar (n)" debajo
