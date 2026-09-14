@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { messageFrom, envelopeIdOf } from "@/lib/bridge/slack-events";
+import { messageFrom, envelopeIdOf, pressFrom, blocksFor } from "@/lib/bridge/slack-events";
 
 const eventsApi = (overrides: Record<string, unknown> = {}) => ({
   envelope_id: "env-1",
@@ -73,5 +73,33 @@ describe("envelopeIdOf", () => {
     expect(envelopeIdOf(undefined)).toBeNull();
     expect(envelopeIdOf(null)).toBeNull();
     expect(envelopeIdOf("basura")).toBeNull();
+  });
+});
+
+describe("pressFrom", () => {
+  it("fills messageId and messageText from the interactive payload message", () => {
+    const frame = {
+      type: "interactive",
+      envelope_id: "env-1",
+      payload: {
+        type: "block_actions",
+        actions: [{ action_id: "t:3f2a1b2c:0", value: "t:3f2a1b2c:0" }],
+        channel: { id: "C123" },
+        user: { username: "matias" },
+        message: { ts: "1234567890.123456", text: "¿Uso Postgres?" },
+      },
+    };
+    const press = pressFrom(frame);
+    expect(press?.messageId).toBe("1234567890.123456");
+    expect(press?.messageText).toBe("¿Uso Postgres?");
+    expect(press?.action).toBe("t:3f2a1b2c:0");
+  });
+});
+
+describe("blocksFor", () => {
+  it("returns only section block when buttons list is empty", () => {
+    const blocks = blocksFor("¿Uso Postgres?", []) as Array<Record<string, unknown>>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("section");
   });
 });

@@ -8,6 +8,7 @@ import type { SettingsSection } from "@/store";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
+import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
 import { PresetsSection, PresetsSectionActions, PresetsSectionProvider } from "@/components/settings/PresetsSection";
@@ -50,6 +51,7 @@ export type SettingsSectionDef = SettingsSectionMeta & SectionUI;
  */
 const SECTION_UI: Record<SettingsSection, SectionUI> = {
   general:     { component: GeneralSection },
+  appearance:  { component: AppearanceSection },
   agents:      { component: AgentsSection,    actions: AgentsSectionActions,   provider: AgentsSectionProvider },
   profile:     { component: ProfileSection,   actions: ProfileSectionActions,  provider: ProfileSectionProvider },
   presets:     { component: PresetsSection,   actions: PresetsSectionActions,  provider: PresetsSectionProvider },

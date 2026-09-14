@@ -4,7 +4,7 @@
 //
 // `SettingsSection` is imported as a type only (erased at runtime), so importing this module from
 // store.ts does not create a runtime cycle even though store.ts defines SettingsSection.
-import { Settings2, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, MessageCircle, Stethoscope, Info, type LucideIcon } from "lucide-react";
+import { Settings2, Palette, Bot, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, MessageCircle, Stethoscope, Info, type LucideIcon } from "lucide-react";
 import type { SettingsSection } from "@/store";
 
 /** Sidebar groups, in the order they are shown. */
@@ -41,6 +41,7 @@ export const options = (section: SettingsSection, names: string[]) =>
 /** The single source of truth for settings sections order and metadata. */
 export const SETTINGS_SECTIONS_META: SettingsSectionMeta[] = [
   { id: "general",     labelKey: "settings.section.general",     helpKey: "settings.help.general",     group: "general",    optionKeys: options("general",     ["tray", "notifyApprovals", "notifyResults", "sound", "updateCheck", "debugLog", "maxRounds", "autoModel", "approveDelegations", "language", "autoArchive"]), icon: Settings2 },
+  { id: "appearance",  labelKey: "settings.section.appearance",  helpKey: "settings.help.appearance",  group: "general",    optionKeys: options("appearance",  ["preset", "colors", "copyCss", "pasteCss", "reset"]),                                                                              icon: Palette },
   { id: "agents",      labelKey: "settings.section.agents",      helpKey: "settings.help.agents",      group: "agents",     optionKeys: options("agents",      ["installed", "detect", "cliVersion", "quota", "binaryPath", "formations", "newFormation", "defaultFormation"]),                                    icon: Bot },
   { id: "profile",     labelKey: "settings.section.profile",     helpKey: "settings.help.profile",     group: "agents",     optionKeys: options("profile",     ["name", "about", "preferences"]),                                                                                                                icon: User },
   { id: "presets",     labelKey: "settings.section.presets",     helpKey: "settings.help.presets",     group: "automation", optionKeys: options("presets",     ["quickOrders", "newOrder"]),                                                                                                                     icon: ListChecks },

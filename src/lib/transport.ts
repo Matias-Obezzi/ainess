@@ -17,6 +17,8 @@ export interface Transport {
   /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */
   exec(program: string, args: string[], cwd?: string, timeoutSecs?: number): Promise<{ code: number | null, stdout: string, stderr: string }>;
   httpPost(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
+  /** Like `httpPost`, for the APIs that edit with PATCH. Through the same door, for the same CORS reason. */
+  httpPatch(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */
   readHomeFile(relativePath: string): Promise<string | null>;

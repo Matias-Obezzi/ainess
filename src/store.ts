@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
@@ -13,12 +13,14 @@ import * as quota from "@/lib/quota";
 import { autonomousReport } from "@/lib/autonomous";
 import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
+import { applyTheme } from "@/lib/themes";
 import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
 import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
+import { isAbsolutePath, pathRef, resolvePath } from "@/lib/file-preview";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
 import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
@@ -48,7 +50,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -182,6 +184,8 @@ export interface AppState {
   termPanelOpen: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
+  /** The file open beside the conversation, if any. Not persisted. */
+  previewFile: FilePreview | null;
   /** Width in px of the two side panes, as the user dragged them. */
   paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
@@ -213,6 +217,9 @@ export interface AppState {
   toggleCommPanel(open?: boolean): void;
   toggleDiffPanel(open?: boolean): void;
   toggleTermPanel(open?: boolean): void;
+  /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
+  openPreview(ref: string): void;
+  closePreview(): void;
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
@@ -602,7 +609,7 @@ const defaultUiPrefs: UiPrefs = {
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
-  dockSizes: { comm: 1, diff: 1, term: 1 },
+  dockSizes: { comm: 1, diff: 1, term: 1, file: 1 },
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
@@ -689,6 +696,7 @@ function loadUiPrefs(): UiPrefs {
         comm: clampDockSize(saved(parsed.dockSizes, "comm")),
         diff: clampDockSize(saved(parsed.dockSizes, "diff")),
         term: clampDockSize(saved(parsed.dockSizes, "term")),
+        file: clampDockSize(saved(parsed.dockSizes, "file")),
       };
     }
 
@@ -896,7 +904,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   ...(() => {
     const prefs = loadUiPrefs();
     // The saved screen is only restored once the project list is known (see runInit).
-    return { ...prefs, screen: "home" as Screen, settingsOpen: false };
+    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFile: null };
   })(),
 
   openHome: () => {
@@ -982,6 +990,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  openPreview: (ref) => {
+    const state = get();
+    const project = selectProject(state, state.currentProjectId);
+    const { path, line } = pathRef(ref);
+    // Under the repo first, then the project folder: `.claude/handoff/x.md` lives in the second.
+    const bases = project ? [repoDirOf(project), project.workspaceDir] : [];
+    const candidates = isAbsolutePath(path) || bases.length === 0
+      ? [path]
+      : [...new Set(bases.map(base => resolvePath(path, base)))];
+    set({ previewFile: { ref, candidates, line } });
+  },
+  closePreview: () => set({ previewFile: null }),
+
   setPaneWidth: (pane, width) => {
     set(s => ({ paneWidths: { ...s.paneWidths, [pane]: clampPaneWidth(pane, width) } }));
     saveUiPrefs();
@@ -991,7 +1012,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const comm = sizes.comm !== undefined ? clampDockSize(sizes.comm) : s.dockSizes.comm;
       const diff = sizes.diff !== undefined ? clampDockSize(sizes.diff) : s.dockSizes.diff;
       const term = sizes.term !== undefined ? clampDockSize(sizes.term) : s.dockSizes.term;
-      return { dockSizes: { comm, diff, term } };
+      const file = sizes.file !== undefined ? clampDockSize(sizes.file) : s.dockSizes.file;
+      return { dockSizes: { comm, diff, term, file } };
     });
     saveUiPrefs();
   },
@@ -1834,6 +1856,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // The tray menu is drawn by the OS, in whatever words it was given: given again here.
     if (patch.language !== undefined && isTauri()) syncTrayLabels();
     if (patch.logLevel) setLogLevel(patch.logLevel);
+    if ("theme" in patch && typeof document !== "undefined") applyTheme(patch.theme);
     debouncedSave();
   },
 
@@ -2510,6 +2533,7 @@ async function runInit(): Promise<void> {
     });
 
     setLogLevel(config.logLevel ?? "info");
+    if (typeof document !== "undefined") applyTheme(config.theme);
     const agentCount = config.projects.reduce((n, p) => n + p.agents.length, 0);
     log.info("app", `config loaded (${config.projects.length} projects, ${agentCount} agents)`);
 

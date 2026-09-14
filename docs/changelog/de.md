@@ -2,6 +2,57 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.19.0 — 2026-09-14
+
+### Neu
+
+- **Themes.** Einstellungen → Darstellung: eine Vorlage als Ausgangspunkt — die Farben der App,
+  eine helle, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — und jede Farbe, die die
+  Komponenten lesen, von Hand änderbar in jeder Schreibweise, die der Browser versteht. Das Theme
+  sind dieselben CSS-Variablen, die das Stylesheet definiert, auf der Wurzel darübergelegt, sodass
+  sonst nichts geändert werden musste, um ihm zu folgen. Kopieren Sie ein Theme als CSS oder fügen
+  Sie `--name: wert;`-Zeilen ein.
+
+### Behoben
+
+- **Die Zeile „Öffnen in…“ im Projektmenü hatte keinen Abstand zwischen Symbol und Text.**
+- **Eine Datei, die ein Agent nennt, öffnet sich neben der Unterhaltung.** `src/lib/foo.ts` in
+  Backticks, ein `file:`-Link oder ein loser Pfad in einem Satz — „der Plan liegt in
+  .claude/handoff/007-x.md“ — ist jetzt ein Knopf. Er öffnet die Datei in einem Bereich des rechten
+  Docks: Code in seinen Farben, mit Zeilennummern und der Zeile markiert, auf die die Erwähnung
+  zeigte (`foo.ts:42`); Markdown als Seite, mit einem Schalter zum Rohtext. Aus dem Bereich heraus:
+  im Ordner zeigen, in einem Ihrer Editoren öffnen, den Pfad kopieren. Ein relativer Pfad wird
+  unter dem Repository und dann unter dem Projektordner gesucht.
+- **Eine Frage mit mehreren Antworten hat auch in den Chats Knöpfe.** Telegram, Discord und Slack
+  bekamen so eine Frage nur als Text, weil ein Druck nur eine Antwort sein konnte. Jetzt ist jede
+  Option ein Knopf, der sich an- und abhakt, und ein „Senden (n)“-Knopf darunter schickt das
+  Angehakte; die Knöpfe der Nachricht werden bei jedem Druck neu gezeichnet, die Haken stehen also
+  auf der Nachricht selbst. Nach dem Senden verschwinden die Knöpfe.
+- **Eine Frage kam bei Telegram als JSON-Kasten an.** Ein Hook, der `{{output}}` in einen Chat
+  schickt, schickte die Antwort so, wie der Agent sie schrieb, `ask`- und `delegate`-Blöcke
+  eingeschlossen, und Telegram zeichnete den Block als Code mit „Kopieren“-Knopf — die Hälfte der
+  Antwort, die für die Maschine ist, der Person übergeben. Was in einen Chat geht, trägt jetzt die
+  Frage und ihre nummerierten Optionen anstelle des `ask`-Blocks und eine Zeile pro Aufgabe — wer
+  und was — anstelle des `delegate`-Blocks. Die „Aufgabe erledigt“-Zeile der Glocke liest sich
+  genauso. Die Knöpfe unter einer Frage sind eine eigene Nachricht und gab es schon: sie werden für
+  eine Frage mit einer Antwort gesendet, bis zu zehn Optionen.
+- **Die Backticks eines Codeblocks werden im Eingabefeld nicht gezeichnet.** Tippen Sie ``` und
+  der Kasten ist das, was „Code“ sagt: die drei Backticks behalten ihre Breite — der Cursor läuft
+  weiter über sie — werden aber nicht angezeigt, weder in der öffnenden noch in der schließenden
+  Zeile. Ein Sprach-Tag allein, wie ```ts, bleibt, abgeblendet, damit man sieht, was der Block ist.
+- **Die Wörter im Eingabefeld saßen einen Pixel über und links vom Cursor.** Die Ebene, die sie
+  zeichnet, deckte die Rahmenbox des Textfelds ab, und das Textfeld setzt seinen Text innerhalb
+  seines ein Pixel breiten Rahmens. Der Vorschlag und der bewegte Platzhalter wirkten aus demselben
+  Grund ein, zwei Pixel zu tief gegenüber dem Cursor. Alle drei sitzen jetzt an der Textposition
+  des Textfelds, und ein Bildschirmtest misst es.
+- **Zwei Dinge, die das Eingabefeld an der falschen Stelle zeichnete.** Der graue Vorschlag nach
+  dem Getippten landete in der Zeile unter dem Cursor statt daneben: die Ebene, die die Wörter
+  zeichnet, setzt ans Ende einen Zeilenumbruch, um Zeilen wie das Textfeld zu zählen, und der
+  Vorschlag stand hinter diesem Umbruch. Und ein direkt nach ``` getippter Satz wurde ganz
+  abgeblendet, als wäre er die Sprache des Blocks: jetzt gehören nur die Backticks — und ein kurzes
+  Tag, das die ganze Zeile ist, wie ```ts — zum Zaun; alles andere in der Zeile liest sich wie das,
+  was es ist.
+
 ## 0.18.0 — 2026-09-12
 
 ### Neu

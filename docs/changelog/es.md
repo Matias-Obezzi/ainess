@@ -2,6 +2,56 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.19.0 — 2026-09-14
+
+### Nuevo
+
+- **Temas.** Ajustes → Apariencia: un preset para arrancar — los colores propios de la app, uno
+  claro, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — y cada color que leen los
+  componentes, editable a mano en cualquier notación que entienda el navegador. El tema son las
+  mismas variables CSS que define la hoja de estilos, puestas en la raíz por encima de ella, así
+  que nada más tuvo que cambiar para seguirlo. Copiá un tema como CSS, o pegá líneas
+  `--nombre: valor;`.
+
+### Arreglado
+
+- **La fila "Abrir en…" del menú del proyecto no tenía espacio entre el ícono y el texto.**
+- **Un archivo que un agente nombra se abre al lado de la conversación.** `src/lib/foo.ts` entre
+  comillas, un link `file:`, o una ruta suelta en una frase — "el plan está en
+  .claude/handoff/007-x.md" — ahora es un botón. Abre el archivo en un panel del dock derecho: el
+  código con sus colores, números de línea y la línea a la que apuntaba la mención (`foo.ts:42`)
+  marcada; el markdown como página, con un interruptor al texto crudo. Desde el panel: mostrarlo en
+  la carpeta, abrirlo en uno de tus editores, copiar la ruta. Una ruta relativa se busca bajo el
+  repositorio y después bajo la carpeta del proyecto.
+- **Una pregunta con varias respuestas también tiene botones en los chats.** Telegram, Discord
+  y Slack recibían una pregunta así solo como texto, porque una pulsación solo podía ser una
+  respuesta. Ahora cada opción es un botón que se marca y desmarca, y un botón "Enviar (n)" debajo
+  manda lo marcado; los botones del mensaje se redibujan con cada pulsación, así que las marcas
+  están en el mensaje mismo. Una vez enviado, los botones se van.
+- **Una pregunta llegaba a Telegram como una caja de JSON.** Un hook que manda `{{output}}` a un
+  chat mandaba la respuesta tal como la escribió el agente, bloques `ask` y `delegate` incluidos,
+  y Telegram dibujaba el bloque como código con un botón de "copiar" — la mitad de la respuesta
+  que es para la máquina, entregada a la persona. Lo que va a un chat lleva ahora la pregunta y
+  sus opciones numeradas en lugar del bloque `ask`, y una línea por tarea — quién, y qué — en lugar
+  del bloque `delegate`. La línea de "tarea terminada" de la campana se lee igual. Los botones bajo
+  una pregunta son un mensaje aparte y ya estaban: se mandan para una pregunta de una sola
+  respuesta, hasta diez opciones.
+- **Las comillas de un bloque de código no se dibujan en la caja.** Escribí ``` y la caja es la
+  que dice "código": las tres comillas conservan su ancho — el cursor sigue pasando por ellas —
+  pero no se muestran, ni en la línea de apertura ni en la de cierre. Una etiqueta de lenguaje
+  sola, como ```ts, se queda, atenuada, para que se vea qué es el bloque.
+- **Las palabras de la caja quedaban un píxel arriba y a la izquierda del cursor.** La capa que
+  las dibuja cubría la caja del borde del textarea, y el textarea acomoda su texto adentro de su
+  borde de un píxel. La sugerencia y el placeholder que se mueve se veían uno o dos píxeles caídos
+  respecto del cursor por lo mismo. Los tres van ahora en la posición del propio texto del
+  textarea, y un test de pantalla lo mide.
+- **Dos cosas que la caja dibujaba en el lugar equivocado.** La sugerencia gris después de lo que
+  escribiste caía en la línea de abajo del cursor en vez de al lado: la capa que dibuja las palabras
+  pone un salto de línea al final para contar las líneas como el textarea, y la sugerencia había
+  quedado después de ese salto. Y una frase escrita justo después de ``` se atenuaba entera, como si
+  fuera el lenguaje del bloque: ahora solo las comillas — y una etiqueta corta que ocupe toda la
+  línea, como ```ts — son de la valla; lo demás en esa línea se lee como lo que es.
+
 ## 0.18.0 — 2026-09-12
 
 ### Nuevo

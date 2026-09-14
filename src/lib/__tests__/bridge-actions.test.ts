@@ -39,10 +39,14 @@ describe("tokens", () => {
     expect(parseActionToken(actionToken({ kind: "reject", id }))).toEqual({ kind: "reject", id: "3f2a1b2c" });
     expect(parseActionToken(actionToken({ kind: "answer", id, option: 2 })))
       .toEqual({ kind: "answer", id: "3f2a1b2c", option: 2 });
+    expect(parseActionToken(actionToken({ kind: "toggle", id, option: 3 })))
+      .toEqual({ kind: "toggle", id: "3f2a1b2c", option: 3 });
+    expect(parseActionToken(actionToken({ kind: "submit", id })))
+      .toEqual({ kind: "submit", id: "3f2a1b2c" });
   });
 
   it("refuses anything it did not mint", () => {
-    for (const token of ["", "a", "a:", "x:3f2a1b2c", "a:3f2a1b2c:1", "q:3f2a1b2c", "q:zzz:0", "a:../../etc"]) {
+    for (const token of ["", "a", "a:", "x:3f2a1b2c", "a:3f2a1b2c:1", "q:3f2a1b2c", "q:zzz:0", "a:../../etc", "s:3f2a1b2c:extra", "s:3f2a1b2c:0"]) {
       expect({ token, parsed: parseActionToken(token) }).toEqual({ token, parsed: null });
     }
   });
@@ -51,6 +55,9 @@ describe("tokens", () => {
     expect(parseActionToken("q:3f2a1b2c:-1")).toBeNull();
     expect(parseActionToken(`q:3f2a1b2c:${MAX_OPTION_BUTTONS}`)).toBeNull();
     expect(parseActionToken("q:3f2a1b2c:1e3")).toBeNull();
+    expect(parseActionToken("t:3f2a1b2c:-1")).toBeNull();
+    expect(parseActionToken(`t:3f2a1b2c:${MAX_OPTION_BUTTONS}`)).toBeNull();
+    expect(parseActionToken("t:3f2a1b2c:1e3")).toBeNull();
   });
 });
 
@@ -62,12 +69,26 @@ describe("buttons", () => {
   });
 
   it("gives a question one button per option", () => {
-    expect(questionButtons(question()).map(b => b.label)).toEqual(["Postgres", "SQLite"]);
+    const buttons = questionButtons(question());
+    expect(buttons.map(b => b.label)).toEqual(["Postgres", "SQLite"]);
+    expect(buttons.map(b => b.token)).toEqual(["q:3f2a1b2c:0", "q:3f2a1b2c:1"]);
   });
 
-  it("gives none to a question that takes several answers", () => {
-    // One press is one option, which is a different answer from the one being asked for.
-    expect(questionButtons(question({ multiple: true }))).toEqual([]);
+  it("gives a multi-choice question toggle buttons and a submit button with count", () => {
+    const multi = question({ multiple: true, options: ["Postgres", "SQLite", "MySQL"] });
+    const buttons = questionButtons(multi, new Set([1]));
+    expect(buttons).toHaveLength(4);
+    expect(buttons[0]).toEqual({ token: "t:3f2a1b2c:0", label: "☐ Postgres" });
+    expect(buttons[1]).toEqual({ token: "t:3f2a1b2c:1", label: "☑ SQLite" });
+    expect(buttons[2]).toEqual({ token: "t:3f2a1b2c:2", label: "☐ MySQL" });
+    expect(buttons[3]).toMatchObject({ token: "s:3f2a1b2c", style: "primary" });
+    expect(buttons[3].label).toContain("(1)");
+  });
+
+  it("updates send count when more options are selected", () => {
+    const multi = question({ multiple: true, options: ["Postgres", "SQLite"] });
+    const buttons = questionButtons(multi, new Set([0, 1]));
+    expect(buttons[2].label).toContain("(2)");
   });
 
   it("stops at what a message can hold", () => {

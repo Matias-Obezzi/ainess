@@ -4,6 +4,53 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## 0.19.0 — 2026-09-14
+
+### Added
+
+- **Themes.** Settings → Appearance: a preset to start from — the app's own colours, a light one,
+  Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — and every colour the components read,
+  changeable by hand in any notation the browser understands. The theme is the same CSS variables
+  the stylesheet defines, set on the root over it, so nothing else had to change to follow it.
+  Copy a theme out as CSS, or paste `--name: value;` lines in.
+
+### Fixed
+
+- **The "Open in…" row of the project menu had no space between its icon and its label.**
+- **A file an agent names opens beside the conversation.** `src/lib/foo.ts` in backticks, a
+  `file:` link, or a path loose in a sentence — "the plan is in .claude/handoff/007-x.md" — is a
+  button now. It opens the file in a panel of the right dock: code with its colours, line numbers
+  and the line the mention pointed at (`foo.ts:42`) marked; markdown as a page, with a switch to
+  the raw text. From the panel: show it in the folder, open it in one of your editors, copy the
+  path. A relative path is looked for under the repository and then under the project folder.
+- **A question with several answers has buttons in the chats too.** Telegram, Discord and Slack
+  used to get such a question as text alone, since one press could only ever be one answer. Now
+  each option is a button that ticks and unticks itself, and a "Send (n)" button under them sends
+  what is ticked; the message's buttons are redrawn on every press, so the marks are on the message
+  itself. Once sent, the buttons go.
+- **A question reached Telegram as a box of JSON.** A hook that sends `{{output}}` to a chat sent
+  the answer as the agent wrote it, `ask` and `delegate` blocks included, and Telegram drew the
+  block as code with a "copy" button — the machine's half of the answer, handed to the person. What
+  goes to a chat now carries the question and its numbered options in place of the `ask` block,
+  and one line per task — who, and what — in place of the `delegate` block. The bell's "task done"
+  line reads the same way. The buttons under a question are a separate message and were already
+  there: they are sent for a question that takes one answer, up to ten options.
+- **The backticks of a code block are not drawn in the box.** Type ``` and the box is what says
+  "code": the three backticks keep their width — the caret still walks over them — but are not
+  shown, on the opening line or the closing one. A language tag on its own, like ```ts, stays,
+  faded, so you can see what the block is.
+- **The words in the box sat a pixel up and left of the caret.** The layer that draws them
+  covered the textarea's border box, and the textarea lays its text out inside its one-pixel
+  border. The suggestion and the moving placeholder looked a pixel or two low against the caret
+  for the same reason. All three sit on the textarea's own text position now, and a screen test
+  measures it.
+- **Two things the box drew in the wrong place.** The grey suggestion after what you typed landed
+  on the line below the caret instead of beside it: the layer that draws the words puts a newline
+  at its end to count lines the way the textarea does, and the suggestion had been put after that
+  newline. And a sentence typed right after ``` was dimmed whole, as if it were the block's
+  language: only the backticks — and a short tag that is the whole line, like ```ts — are the
+  fence's now; anything else on that line reads like what it is.
+
 ## 0.18.0 — 2026-09-12
 
 ### Added

@@ -29,7 +29,7 @@ export function DropdownActionItems({ actions }: { actions: MenuAction[] }) {
             {action.separatorBefore && <DropdownMenuSeparator />}
             {action.children ? (
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger disabled={action.disabled}>{Icon && <Icon />} {action.label}</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger disabled={action.disabled} className="gap-2">{Icon && <Icon />} {action.label}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent><DropdownActionItems actions={action.children} /></DropdownMenuSubContent>
               </DropdownMenuSub>
             ) : (
@@ -59,7 +59,7 @@ export function ContextActionItems({ actions }: { actions: MenuAction[] }) {
             {action.separatorBefore && <ContextMenuSeparator />}
             {action.children ? (
               <ContextMenuSub>
-                <ContextMenuSubTrigger disabled={action.disabled}>{Icon && <Icon />} {action.label}</ContextMenuSubTrigger>
+                <ContextMenuSubTrigger disabled={action.disabled} className="gap-2">{Icon && <Icon />} {action.label}</ContextMenuSubTrigger>
                 <ContextMenuSubContent><ContextActionItems actions={action.children} /></ContextMenuSubContent>
               </ContextMenuSub>
             ) : (

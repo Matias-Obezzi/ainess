@@ -13,7 +13,8 @@ export default defineConfig({
   workers: 2,
   retries: 0,
   reporter: [["list"]],
-  timeout: 30_000,
+  // A minute: the first time vite serves a screen it transforms it, and two tests may be asking.
+  timeout: 60_000,
   use: {
     baseURL: `http://localhost:${PORT}`,
     channel: "chrome",

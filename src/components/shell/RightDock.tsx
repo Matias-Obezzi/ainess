@@ -4,6 +4,7 @@ import { ResizeHandle } from "./ResizeHandle";
 import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
 import { TerminalDockSection } from "./TerminalDockSection";
+import { FileDockSection } from "./FileDockSection";
 import { useT } from "@/i18n/useT";
 import type { DockSectionId } from "@/types";
 
@@ -17,12 +18,13 @@ export function RightDock() {
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
+  const previewOpen = useAppStore(state => state.previewFile !== null);
   const dockSizes = useAppStore(state => state.dockSizes);
   const width = useAppStore(state => state.paneWidths.dock);
   const setPaneWidth = useAppStore(state => state.setPaneWidth);
   const setDockSizes = useAppStore(state => state.setDockSizes);
   
-  const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null });
+  const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null, file: null });
 
   const onDividerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, idA: DockSectionId, idB: DockSectionId) => {
     e.preventDefault();
@@ -67,6 +69,7 @@ export function RightDock() {
     { id: "comm", component: <CommDockSection />, open: commPanelOpen },
     { id: "diff", component: <DiffDockSection />, open: diffPanelOpen },
     { id: "term", component: <TerminalDockSection />, open: termPanelOpen },
+    { id: "file", component: <FileDockSection />, open: previewOpen },
   ];
   
   const openSections = sections.filter(s => s.open);

@@ -72,7 +72,25 @@ const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-ac
  * exactly where the textarea puts it, and a different font would wrap at a different column and
  * slide every line after it out of place.
  */
-function renderComposerText(text: string, regions: ReturnType<typeof fenceRegions>) {
+/** An opener line: the backticks, a possible language tag, whatever else was typed after. */
+const OPENER_LINE = /^(\s*```)([\w+#.-]*)([\s\S]*)$/;
+/** Longer than any language name: a word this long after the backticks is words, not a tag. */
+const MAX_TAG = 20;
+
+/**
+ * How much of an opener line belongs to the fence: the backticks, and the language tag when
+ * that is all there is on the line — "```ts". A sentence typed right after the backticks, or a
+ * word longer than any language name, is the user's own and is drawn like the rest.
+ */
+function fencePartOf(line: string): { ticks: string; tag: string; rest: string } {
+  const m = OPENER_LINE.exec(line);
+  if (!m) return { ticks: line, tag: "", rest: "" };
+  const [, ticks, tag, after] = m;
+  const tagIsWholeLine = after.trim() === "" && tag.length <= MAX_TAG;
+  return tagIsWholeLine ? { ticks, tag, rest: after } : { ticks, tag: "", rest: tag + after };
+}
+
+function renderComposerText(text: string, regions: ReturnType<typeof fenceRegions>, ghost?: string) {
   const segments = fenceSegments(text, regions);
   const nodes: React.ReactNode[] = [];
   let box: React.ReactNode[] = [];
@@ -89,21 +107,39 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
     box = [];
     boxIndex = -1;
   };
+  const dim = (key: React.Key, body: string) => <span key={key} className="text-muted-foreground/50">{body}</span>;
+  // The backticks themselves are not drawn: the box is what says "code". They keep their width —
+  // the caret still walks over them — so the letters stay where the textarea puts them.
+  const hidden = (key: React.Key, body: string) => <span key={key} className="text-transparent">{body}</span>;
   segments.forEach((segment, i) => {
+    const isLast = i === segments.length - 1;
+    // The last segment carries the newline the layer appends so its line count matches the
+    // textarea's. The suggestion has to go *before* it — on the caret's line — so it is peeled off
+    // here and put back after the suggestion.
+    const body = isLast && segment.text.endsWith("\n") ? segment.text.slice(0, -1) : segment.text;
+    const tail: React.ReactNode[] = isLast
+      ? [ghost ? <span key="ghost" className="text-muted-foreground/70">{ghost}</span> : null, "\n"]
+      : [];
     if (segment.kind === "plain") {
       flush();
-      nodes.push(segment.text);
+      nodes.push(body, ...tail);
       return;
     }
     if (segment.fence !== boxIndex) {
       flush();
       boxIndex = segment.fence ?? i;
     }
-    box.push(
-      segment.kind === "body"
-        ? segment.text
-        : <span key={i} className="text-muted-foreground/50">{segment.text}</span>,
-    );
+    if (segment.kind === "body") {
+      box.push(body, ...tail);
+    } else if (segment.kind === "opener") {
+      // Only the backticks and the language are the fence's; whatever else was typed on that line
+      // is the user's own words and reads like them. Dimming the whole line made "```" followed by
+      // a sentence look as if the sentence had been swallowed.
+      const { ticks, tag, rest } = fencePartOf(body);
+      box.push(hidden(`${i}-ticks`, ticks), dim(`${i}-tag`, tag), rest, ...tail);
+    } else {
+      box.push(hidden(i, body), ...tail);
+    }
   });
   flush();
   return nodes;
@@ -931,12 +967,13 @@ export function Composer() {
               ref={highlightRef}
               aria-hidden
               data-testid="composer-layer"
-              className="pointer-events-none absolute inset-0 min-h-[60px] max-h-[200px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-foreground md:text-sm pr-12"
+              // `inset-px`, not `inset-0`: the textarea has a one-pixel border and lays its text out
+              // inside it. On the border box the layer's words sat a pixel up and left of the caret.
+              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-foreground md:text-sm pr-12"
             >
-              {/* The trailing newline the textarea counts is inside `renderComposerText`, so the
-                  suggestion after it lands on the line the caret is on. */}
-              {renderComposerText(text, fenceHighlightRegions)}
-              {ghost && <span className="text-muted-foreground/70">{ghost.text}</span>}
+              {/* The suggestion travels inside: it has to sit before the trailing newline the layer
+                  appends, on the line the caret is on, whatever that line is part of. */}
+              {renderComposerText(text, fenceHighlightRegions, ghost?.text)}
             </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
@@ -963,7 +1000,8 @@ export function Composer() {
             {rotating && !text && !ghost && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
+                // Where the textarea draws its own placeholder: padding plus the one-pixel border.
+                className="pointer-events-none absolute left-[calc(0.75rem+1px)] top-[calc(0.5rem+1px)] max-w-[calc(100%-4rem)] truncate text-sm text-muted-foreground"
               >
                 <Typewriter words={rotatingHints} typeSpeed={45} deleteSpeed={20} pause={3000} cursor={false} />
               </span>

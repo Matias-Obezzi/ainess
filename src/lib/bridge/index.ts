@@ -67,6 +67,8 @@ export function resolveId(prefix: string, ids: string[]): { id?: string; ambiguo
 const providers = new Map<BridgeProviderId, BridgeProvider>();
 /** The project each chat is talking about, until it says otherwise. Lives with the session. */
 const chatProject = new Map<string, string>();
+/** Selected option indices for multi-choice questions, keyed by full question id. */
+const questionSelections = new Map<string, Set<number>>();
 /**
  * Which channel each chat arrived on, so the per-channel default project can be found without
  * `runCommand` itself having to know channels exist — it only ever gets a chat id.
@@ -129,8 +131,39 @@ function tasksText(projectId: string | undefined): string {
     .join("\n");
 }
 
-/** One message, already known to come from someone allowed. Always answers something. */
-async function runCommand(command: BridgeCommand, chatId: string): Promise<string> {
+async function updateMessageButtons(
+  provider: BridgeProvider | undefined,
+  chatId: string,
+  incoming: IncomingMessage | undefined,
+  buttons: BridgeButton[],
+): Promise<void> {
+  const canEdit = provider?.editButtons && incoming?.messageId && (provider.id !== "slack" || incoming.messageText);
+  if (canEdit) {
+    try {
+      await provider.editButtons!(chatId, incoming.messageId!, buttons, incoming.messageText);
+      return;
+    } catch (e) {
+      log.warn("bridge", `failed to edit message buttons: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  if (provider) {
+    try {
+      await provider.send(chatId, translateNow("bridge.reply.pickMore"), buttons);
+    } catch (e) {
+      log.warn("bridge", `failed to send updated buttons: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+}
+
+/** One message, already known to come from someone allowed. Returns empty string when no reply should be sent. */
+async function runCommand(
+  command: BridgeCommand,
+  messageOrChatId: IncomingMessage | string,
+  providerArg?: BridgeProvider,
+): Promise<string> {
+  const chatId = typeof messageOrChatId === "string" ? messageOrChatId : messageOrChatId.chatId;
+  const incoming = typeof messageOrChatId === "string" ? undefined : messageOrChatId;
+  const provider = providerArg ?? (chatChannel.get(chatId) ? providers.get(chatChannel.get(chatId)!) : undefined);
   const s = useAppStore.getState();
   const projectId = projectFor(chatId);
   const projectName = s.config.projects.find(p => p.id === projectId)?.name ?? "";
@@ -203,6 +236,54 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
       if (result.error) return translateNow("bridge.reply.error", { error: String(result.error) });
       return translateNow("bridge.reply.answered");
     }
+
+    case "toggle": {
+      const question = s.questions[command.id];
+      if (!question || question.status !== "pending") {
+        questionSelections.delete(command.id);
+        return translateNow("bridge.reply.actionGone");
+      }
+      let selected = questionSelections.get(command.id);
+      if (!selected) {
+        selected = new Set<number>();
+        questionSelections.set(command.id, selected);
+      }
+      if (selected.has(command.option)) {
+        selected.delete(command.option);
+      } else {
+        selected.add(command.option);
+      }
+      const buttons = questionButtons(question, selected);
+      await updateMessageButtons(provider, chatId, incoming, buttons);
+      return "";
+    }
+
+    case "submit": {
+      const question = s.questions[command.id];
+      if (!question || question.status !== "pending") {
+        questionSelections.delete(command.id);
+        return translateNow("bridge.reply.actionGone");
+      }
+      const selected = questionSelections.get(command.id);
+      if (!selected || selected.size === 0) {
+        return translateNow("bridge.reply.pickOne");
+      }
+      const chosenLabels = question.options.filter((_, i) => selected.has(i));
+      const result = await handleRemoteCommand("answer", {
+        questionId: command.id,
+        answer: chosenLabels,
+      });
+      if (result.error) return translateNow("bridge.reply.error", { error: String(result.error) });
+      questionSelections.delete(command.id);
+      if (provider?.editButtons && incoming?.messageId && (provider.id !== "slack" || incoming.messageText)) {
+        try {
+          await provider.editButtons(chatId, incoming.messageId, [], incoming.messageText);
+        } catch (e) {
+          log.warn("bridge", `failed to clear message buttons: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      return translateNow("bridge.reply.answered");
+    }
   }
 }
 
@@ -214,6 +295,12 @@ async function runCommand(command: BridgeCommand, chatId: string): Promise<strin
  * minted, or one for an approval that has since been decided, resolves to nothing.
  */
 export function commandForPress(token: string, s: AppState): BridgeCommand | null {
+  for (const [qid] of questionSelections) {
+    if (s.questions[qid]?.status !== "pending") {
+      questionSelections.delete(qid);
+    }
+  }
+
   const action = parseActionToken(token);
   if (!action) return null;
 
@@ -222,8 +309,19 @@ export function commandForPress(token: string, s: AppState): BridgeCommand | nul
   }
 
   const question = Object.values(s.questions).find(q => q.status === "pending" && short(q.id) === action.id);
-  const option = question?.options[action.option];
-  if (!question || option === undefined) return null;
+  if (!question) return null;
+
+  if (action.kind === "toggle") {
+    if (action.option >= question.options.length) return null;
+    return { kind: "toggle", id: question.id, option: action.option };
+  }
+
+  if (action.kind === "submit") {
+    return { kind: "submit", id: question.id };
+  }
+
+  const option = question.options[action.option];
+  if (option === undefined) return null;
   return { kind: "answer", id: question.id, text: option };
 }
 
@@ -248,8 +346,10 @@ async function onMessage(provider: BridgeProvider, message: IncomingMessage): Pr
     } else {
       command = parseBridgeCommand(message.text);
     }
-    const reply = await runCommand(command, message.chatId);
-    await provider.send(message.chatId, reply);
+    const reply = await runCommand(command, message, provider);
+    if (reply) {
+      await provider.send(message.chatId, reply);
+    }
   } catch (e) {
     // Through the sanitiser, both here and on the way back out. A failure to send can carry the
     // URL it failed on, and Telegram's carries the token inside it — a log or a chat reply is the

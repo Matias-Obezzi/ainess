@@ -28,6 +28,7 @@ import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
 import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
 import { touchRun, forgetStall } from "@/lib/stall";
 import { repoDirOf } from "@/lib/repo-dir";
+import { forChat } from "@/lib/chat-text";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -972,7 +973,7 @@ function notifyTaskOutcome(run: Run, failed: boolean) {
   const agent = selectAgent(store, run.agentId);
   const project = store.config.projects.find(p => p.id === run.projectId);
   const name = agent?.name ?? translateNow("notify.anAgent");
-  const body = truncate(run.output ?? "", 140);
+  const body = truncate(forChat(run.output ?? ""), 140);
   const key = failed
     ? (project ? "notify.agentFailedIn" : "notify.agentFailed")
     : (project ? "notify.agentDoneIn" : "notify.agentDone");

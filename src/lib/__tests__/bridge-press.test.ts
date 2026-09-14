@@ -40,18 +40,33 @@ describe("commandForPress", () => {
     expect(commandForPress("r:9c8d7e6f", state())).toEqual({ kind: "reject", id: "9c8d7e6f" });
   });
 
+  it("turns a toggle press into the toggle command with the question's full id and option index", () => {
+    expect(commandForPress("t:3f2a1b2c:1", state()))
+      .toEqual({ kind: "toggle", id: QUESTION_ID, option: 1 });
+  });
+
+  it("turns a submit press into the submit command with the question's full id", () => {
+    expect(commandForPress("s:3f2a1b2c", state()))
+      .toEqual({ kind: "submit", id: QUESTION_ID });
+  });
+
   it("refuses a press for a question that is already answered", () => {
     useAppStore.setState({ questions: { [QUESTION_ID]: question({ status: "answered" }) } } as never);
     expect(commandForPress("q:3f2a1b2c:0", state())).toBeNull();
+    expect(commandForPress("t:3f2a1b2c:0", state())).toBeNull();
+    expect(commandForPress("s:3f2a1b2c", state())).toBeNull();
   });
 
   it("refuses a press naming a question that does not exist", () => {
     expect(commandForPress("q:deadbeef:0", state())).toBeNull();
+    expect(commandForPress("t:deadbeef:0", state())).toBeNull();
+    expect(commandForPress("s:deadbeef", state())).toBeNull();
   });
 
   it("refuses an option the question does not have", () => {
     // The list is read here, not sent over the wire: an index past its end names nothing.
     expect(commandForPress("q:3f2a1b2c:5", state())).toBeNull();
+    expect(commandForPress("t:3f2a1b2c:5", state())).toBeNull();
   });
 
   it("refuses a token the app never minted", () => {
@@ -80,8 +95,10 @@ describe("buttonsFor", () => {
     expect(buttonsFor(notification({ questionId: QUESTION_ID }), state())).toBeUndefined();
   });
 
-  it("puts none under a question that takes several answers", () => {
+  it("puts buttons under a question that takes several answers", () => {
     useAppStore.setState({ questions: { [QUESTION_ID]: question({ multiple: true }) } } as never);
-    expect(buttonsFor(notification({ questionId: QUESTION_ID }), state())).toBeUndefined();
+    const buttons = buttonsFor(notification({ questionId: QUESTION_ID }), state());
+    expect(buttons).toBeDefined();
+    expect(buttons).toHaveLength(3);
   });
 });

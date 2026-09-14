@@ -13,6 +13,7 @@
 // Pure module: no platform, no store. `parseActionToken` is the one that has to be careful, because
 // what it parses arrives from outside.
 import type { AgentQuestion } from "@/types";
+import { translateNow } from "@/i18n/useT";
 
 /** One button as the providers want it: a label to show and a token to send back. */
 export interface BridgeButton {
@@ -26,7 +27,9 @@ export interface BridgeButton {
 export type BridgeAction =
   | { kind: "approve"; id: string }
   | { kind: "reject"; id: string }
-  | { kind: "answer"; id: string; option: number };
+  | { kind: "answer"; id: string; option: number }
+  | { kind: "toggle"; id: string; option: number }
+  | { kind: "submit"; id: string };
 
 /**
  * How many options get a button.
@@ -52,6 +55,8 @@ function label(text: string): string {
 
 export function actionToken(action: BridgeAction): string {
   if (action.kind === "answer") return `q:${shortId(action.id)}:${action.option}`;
+  if (action.kind === "toggle") return `t:${shortId(action.id)}:${action.option}`;
+  if (action.kind === "submit") return `s:${shortId(action.id)}`;
   return `${action.kind === "approve" ? "a" : "r"}:${shortId(action.id)}`;
 }
 
@@ -68,10 +73,11 @@ export function parseActionToken(token: string): BridgeAction | null {
 
   if (parts[0] === "a" && parts.length === 2) return { kind: "approve", id };
   if (parts[0] === "r" && parts.length === 2) return { kind: "reject", id };
-  if (parts[0] === "q" && parts.length === 3) {
+  if (parts[0] === "s" && parts.length === 2) return { kind: "submit", id };
+  if ((parts[0] === "q" || parts[0] === "t") && parts.length === 3) {
     const option = Number(parts[2]);
     if (!Number.isInteger(option) || option < 0 || option >= MAX_OPTION_BUTTONS) return null;
-    return { kind: "answer", id, option };
+    return parts[0] === "q" ? { kind: "answer", id, option } : { kind: "toggle", id, option };
   }
   return null;
 }
@@ -85,15 +91,34 @@ export function approvalButtons(approvalId: string, labels: { approve: string; r
 }
 
 /**
- * One button per option of a question.
- *
- * Nothing for a question that takes several answers: a button is one press and one press would
- * resume the run with a single option, which is a different answer from the one being asked for.
- * Those stay typed, and the message says so.
+ * One button per option of a question, or checkboxes and submit for multi-choice questions.
  */
-export function questionButtons(question: Pick<AgentQuestion, "id" | "options" | "multiple">): BridgeButton[] {
-  if (question.multiple) return [];
-  return question.options
+export function questionButtons(
+  question: Pick<AgentQuestion, "id" | "options" | "multiple">,
+  selected?: ReadonlySet<number>,
+): BridgeButton[] {
+  if (!question.multiple) {
+    return question.options
+      .slice(0, MAX_OPTION_BUTTONS)
+      .map((option, i) => ({ token: actionToken({ kind: "answer", id: question.id, option: i }), label: label(option) }));
+  }
+
+  const count = selected?.size ?? 0;
+  const buttons: BridgeButton[] = question.options
     .slice(0, MAX_OPTION_BUTTONS)
-    .map((option, i) => ({ token: actionToken({ kind: "answer", id: question.id, option: i }), label: label(option) }));
+    .map((option, i) => {
+      const mark = selected?.has(i) ? "☑" : "☐";
+      return {
+        token: actionToken({ kind: "toggle", id: question.id, option: i }),
+        label: `${mark} ${label(option)}`,
+      };
+    });
+
+  buttons.push({
+    token: actionToken({ kind: "submit", id: question.id }),
+    label: translateNow("bridge.button.send", { n: count }),
+    style: "primary",
+  });
+
+  return buttons;
 }

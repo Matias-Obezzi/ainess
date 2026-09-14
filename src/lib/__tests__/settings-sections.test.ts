@@ -10,6 +10,7 @@ import { SETTINGS_SECTIONS } from "@/components/settings/SettingsDialog";
 /** Every section the app has, in the order they are shown. Adding one is a deliberate act. */
 const EXPECTED_IDS = [
   "general",
+  "appearance",
   "agents",
   "profile",
   "presets",

@@ -2,6 +2,53 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.19.0 — 2026-09-14
+
+### Novo
+
+- **Temas.** Configurações → Aparência: uma predefinição para começar — as cores do próprio app,
+  uma clara, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — e cada cor que os componentes
+  leem, editável à mão em qualquer notação que o navegador entenda. O tema são as mesmas variáveis
+  CSS que a folha de estilos define, postas na raiz por cima dela, então nada mais precisou mudar
+  para segui-lo. Copie um tema como CSS, ou cole linhas `--nome: valor;`.
+
+### Corrigido
+
+- **A linha "Abrir em…" do menu do projeto não tinha espaço entre o ícone e o texto.**
+- **Um arquivo que um agente nomeia abre ao lado da conversa.** `src/lib/foo.ts` entre crases, um
+  link `file:`, ou um caminho solto numa frase — "o plano está em .claude/handoff/007-x.md" — agora
+  é um botão. Abre o arquivo num painel do dock direito: o código com suas cores, números de linha e
+  a linha para a qual a menção apontava (`foo.ts:42`) marcada; o markdown como página, com um
+  interruptor para o texto bruto. Do painel: mostrar na pasta, abrir num dos seus editores, copiar
+  o caminho. Um caminho relativo é procurado sob o repositório e depois sob a pasta do projeto.
+- **Uma pergunta com várias respostas também tem botões nos chats.** Telegram, Discord e Slack
+  recebiam uma pergunta assim só como texto, porque um toque só podia ser uma resposta. Agora cada
+  opção é um botão que se marca e desmarca, e um botão "Enviar (n)" abaixo envia o marcado; os
+  botões da mensagem são redesenhados a cada toque, então as marcas estão na própria mensagem.
+  Uma vez enviado, os botões somem.
+- **Uma pergunta chegava ao Telegram como uma caixa de JSON.** Um hook que manda `{{output}}` a
+  um chat mandava a resposta tal como o agente a escreveu, blocos `ask` e `delegate` incluídos, e o
+  Telegram desenhava o bloco como código com um botão de "copiar" — a metade da resposta que é da
+  máquina, entregue à pessoa. O que vai a um chat leva agora a pergunta e as suas opções numeradas
+  no lugar do bloco `ask`, e uma linha por tarefa — quem, e o quê — no lugar do bloco `delegate`. A
+  linha de "tarefa concluída" do sino lê-se igual. Os botões sob uma pergunta são uma mensagem à
+  parte e já existiam: são enviados para uma pergunta de resposta única, até dez opções.
+- **As crases de um bloco de código não são desenhadas na caixa.** Digite ``` e a caixa é o que
+  diz "código": as três crases mantêm a largura — o cursor continua passando por elas — mas não
+  aparecem, nem na linha de abertura nem na de fechamento. Uma etiqueta de linguagem sozinha, como
+  ```ts, fica, esmaecida, para se ver o que é o bloco.
+- **As palavras na caixa ficavam um pixel acima e à esquerda do cursor.** A camada que as
+  desenha cobria a caixa da borda do textarea, e o textarea dispõe seu texto dentro da borda de um
+  pixel. A sugestão e o placeholder que se move pareciam um ou dois pixels baixos em relação ao
+  cursor pelo mesmo motivo. Os três ficam agora na posição do próprio texto do textarea, e um
+  teste de tela mede isso.
+- **Duas coisas que a caixa desenhava no lugar errado.** A sugestão cinza depois do que você
+  digitou caía na linha abaixo do cursor em vez de ao lado: a camada que desenha as palavras põe
+  uma quebra de linha no fim para contar as linhas como o textarea, e a sugestão ficara depois dessa
+  quebra. E uma frase digitada logo após ``` era esmaecida inteira, como se fosse a linguagem do
+  bloco: agora só as crases — e uma etiqueta curta que ocupe a linha toda, como ```ts — são da
+  cerca; o resto nessa linha lê-se como o que é.
+
 ## 0.18.0 — 2026-09-12
 
 ### Novo

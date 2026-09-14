@@ -26,6 +26,8 @@ export const tauriTransport: Transport = {
     invoke<{ code: number | null; stdout: string; stderr: string }>("exec_capture", { program, args, cwd, timeoutSecs }),
   httpPost: async (url, body, headers) =>
     invoke<{ status: number; body: string }>("http_post", { url, body, headers }),
+  httpPatch: async (url, body, headers) =>
+    invoke<{ status: number; body: string }>("http_patch", { url, body, headers }),
   httpGet: async (url, headers) =>
     invoke<{ status: number; body: string }>("http_get", { url, headers }),
   readHomeFile: async (relativePath) => {

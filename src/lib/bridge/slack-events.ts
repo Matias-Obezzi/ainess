@@ -14,6 +14,11 @@ interface SlackAction {
   value?: string;
 }
 
+interface SlackPayloadMessage {
+  ts?: string;
+  text?: string;
+}
+
 interface SocketModeFrame {
   type?: string;
   envelope_id?: string;
@@ -23,6 +28,7 @@ interface SocketModeFrame {
     actions?: SlackAction[];
     channel?: { id?: string };
     user?: { username?: string; name?: string };
+    message?: SlackPayloadMessage;
   };
 }
 
@@ -74,11 +80,20 @@ export function pressFrom(frame: unknown): IncomingMessage | null {
   const channel = payload.channel?.id;
   if (typeof channel !== "string" || channel.length === 0) return null;
 
+  const messageId = typeof payload.message?.ts === "string" && payload.message.ts.length > 0
+    ? payload.message.ts
+    : undefined;
+  const messageText = typeof payload.message?.text === "string" && payload.message.text.length > 0
+    ? payload.message.text
+    : undefined;
+
   return {
     chatId: channel,
     text: token,
     from: payload.user?.username ?? payload.user?.name,
     action: token,
+    ...(messageId ? { messageId } : {}),
+    ...(messageText ? { messageText } : {}),
   };
 }
 
@@ -89,9 +104,11 @@ export function pressFrom(frame: unknown): IncomingMessage | null {
  * never name the same choice.
  */
 export function blocksFor(text: string, buttons: BridgeButton[]): unknown[] {
-  return [
+  const blocks: unknown[] = [
     { type: "section", text: { type: "mrkdwn", text } },
-    {
+  ];
+  if (buttons.length > 0) {
+    blocks.push({
       type: "actions",
       elements: buttons.map(b => ({
         type: "button",
@@ -100,6 +117,7 @@ export function blocksFor(text: string, buttons: BridgeButton[]): unknown[] {
         value: b.token,
         ...(b.style === "primary" ? { style: "primary" } : b.style === "danger" ? { style: "danger" } : {}),
       })),
-    },
-  ];
+    });
+  }
+  return blocks;
 }

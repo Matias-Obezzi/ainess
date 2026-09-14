@@ -2,6 +2,57 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.19.0 — 2026-09-14
+
+### Nouveau
+
+- **Thèmes.** Réglages → Apparence : un préréglage pour commencer — les couleurs de
+  l'application, une claire, Nord, Dracula, Catppuccin Mocha, Gruvbox, Solarized — et chaque
+  couleur que lisent les composants, modifiable à la main dans toute notation comprise par le
+  navigateur. Le thème, ce sont les mêmes variables CSS que définit la feuille de style, posées sur
+  la racine par-dessus, donc rien d'autre n'a dû changer pour le suivre. Copiez un thème en CSS, ou
+  collez des lignes `--nom: valeur;`.
+
+### Corrigé
+
+- **La ligne « Ouvrir dans… » du menu du projet n'avait pas d'espace entre l'icône et le texte.**
+- **Un fichier qu'un agent nomme s'ouvre à côté de la conversation.** `src/lib/foo.ts` entre
+  accents graves, un lien `file:`, ou un chemin lâché dans une phrase — « le plan est dans
+  .claude/handoff/007-x.md » — est maintenant un bouton. Il ouvre le fichier dans un panneau du dock
+  de droite : le code avec ses couleurs, des numéros de ligne et la ligne visée par la mention
+  (`foo.ts:42`) marquée ; le markdown comme une page, avec un interrupteur vers le texte brut.
+  Depuis le panneau : l'afficher dans le dossier, l'ouvrir dans un de vos éditeurs, copier le
+  chemin. Un chemin relatif est cherché sous le dépôt puis sous le dossier du projet.
+- **Une question à plusieurs réponses a aussi des boutons dans les chats.** Telegram, Discord et
+  Slack recevaient une telle question en texte seul, puisqu'un appui ne pouvait être qu'une seule
+  réponse. Chaque option est maintenant un bouton qui se coche et se décoche, et un bouton
+  « Envoyer (n) » dessous envoie ce qui est coché ; les boutons du message sont redessinés à chaque
+  appui, les coches sont donc sur le message lui-même. Une fois envoyé, les boutons disparaissent.
+- **Une question arrivait sur Telegram sous forme de boîte JSON.** Un hook qui envoie `{{output}}`
+  à un chat envoyait la réponse telle que l'agent l'a écrite, blocs `ask` et `delegate` compris, et
+  Telegram dessinait le bloc comme du code avec un bouton « copier » — la moitié de la réponse
+  destinée à la machine, remise à la personne. Ce qui part vers un chat porte maintenant la question
+  et ses options numérotées à la place du bloc `ask`, et une ligne par tâche — qui, et quoi — à la
+  place du bloc `delegate`. La ligne « tâche terminée » de la cloche se lit de même. Les boutons
+  sous une question sont un message à part et existaient déjà : ils sont envoyés pour une question
+  à réponse unique, jusqu'à dix options.
+- **Les accents graves d'un bloc de code ne sont pas dessinés dans la zone de saisie.** Tapez
+  ``` et c'est la boîte qui dit « code » : les trois accents gardent leur largeur — le curseur les
+  traverse toujours — mais ne s'affichent pas, ni sur la ligne d'ouverture ni sur celle de
+  fermeture. Un tag de langage seul, comme ```ts, reste, estompé, pour qu'on voie ce qu'est le bloc.
+- **Les mots de la zone étaient un pixel au-dessus et à gauche du curseur.** La couche qui les
+  dessine couvrait la boîte de bordure du textarea, et le textarea dispose son texte à l'intérieur
+  de sa bordure d'un pixel. La suggestion et le placeholder animé paraissaient un ou deux pixels
+  trop bas par rapport au curseur pour la même raison. Les trois sont maintenant à la position du
+  texte du textarea, et un test d'écran le mesure.
+- **Deux choses que la zone de saisie dessinait au mauvais endroit.** La suggestion grise après
+  ce que vous tapiez tombait sur la ligne sous le curseur au lieu d'à côté : la couche qui dessine
+  les mots met un saut de ligne à sa fin pour compter les lignes comme le textarea, et la
+  suggestion avait été placée après ce saut. Et une phrase tapée juste après ``` était estompée en
+  entier, comme si c'était le langage du bloc : seuls les accents graves — et un tag court qui
+  occupe toute la ligne, comme ```ts — appartiennent désormais à la clôture ; le reste de la ligne
+  se lit comme ce qu'il est.
+
 ## 0.18.0 — 2026-09-12
 
 ### Nouveau

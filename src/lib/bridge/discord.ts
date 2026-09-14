@@ -165,4 +165,16 @@ export class DiscordProvider implements BridgeProvider {
     });
     if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
   }
+
+  async editButtons(chatId: string, messageId: string, buttons: BridgeButton[]): Promise<void> {
+    const url = `https://discord.com/api/v10/channels/${chatId}/messages/${messageId}`;
+    const components = buttons.length > 0 ? componentsFor(buttons) : [];
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bot ${this.token}`,
+    };
+    const body = JSON.stringify({ components });
+    const res = await getTransport().httpPatch(url, body, headers);
+    if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
+  }
 }
