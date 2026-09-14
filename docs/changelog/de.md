@@ -15,6 +15,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Eine Frage mit mehreren Antworten hat auch in den Chats Knöpfe.** Telegram, Discord und Slack
+  bekamen so eine Frage nur als Text, weil ein Druck nur eine Antwort sein konnte. Jetzt ist jede
+  Option ein Knopf, der sich an- und abhakt, und ein „Senden (n)“-Knopf darunter schickt das
+  Angehakte; die Knöpfe der Nachricht werden bei jedem Druck neu gezeichnet, die Haken stehen also
+  auf der Nachricht selbst. Nach dem Senden verschwinden die Knöpfe.
 - **Eine Frage kam bei Telegram als JSON-Kasten an.** Ein Hook, der `{{output}}` in einen Chat
   schickt, schickte die Antwort so, wie der Agent sie schrieb, `ask`- und `delegate`-Blöcke
   eingeschlossen, und Telegram zeichnete den Block als Code mit „Kopieren“-Knopf — die Hälfte der

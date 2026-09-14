@@ -1857,6 +1857,9 @@ export const zh: Dictionary = {
   "bridge.notify.howToAnswer": "回复 /answer，后面跟上你的答复。",
   "bridge.notify.orWrite": "点一个选项，或者直接写下你想回答的内容。",
   "bridge.reply.actionGone": "这个按钮已经没用了：它问的事情已经解决了。",
+  "bridge.button.send": "发送（{n}）",
+  "bridge.reply.pickOne": "请先至少选一项",
+  "bridge.reply.pickMore": "目前已选：",
   "install.notDetected": "已安装，但 CLI 仍未出现。请重启应用并重新检测。",
 
   "ngrok.notDetected": "winget 已完成，但 ngrok 仍未出现。请重启应用并重试。",

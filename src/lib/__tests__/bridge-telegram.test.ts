@@ -39,4 +39,27 @@ describe("updatesFrom", () => {
     expect(parsed.messages).toEqual([]);
     expect(parsed.nextOffset).toBe(4);
   });
+
+  it("fills messageId on a button press", () => {
+    const parsed = updatesFrom(body([
+      {
+        update_id: 15,
+        callback_query: {
+          id: "cb-1",
+          data: "t:3f2a1b2c:0",
+          from: { username: "matias" },
+          message: { chat: { id: 42 }, message_id: 999 },
+        },
+      },
+    ]));
+    expect(parsed.messages).toEqual([
+      {
+        chatId: "42",
+        text: "t:3f2a1b2c:0",
+        from: "matias",
+        action: "t:3f2a1b2c:0",
+        messageId: "999",
+      },
+    ]);
+  });
 });

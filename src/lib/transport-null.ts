@@ -17,6 +17,7 @@ export const nullTransport: Transport = {
   readTextFile: async () => null,
   exec: async (_program, _args, _cwd) => ({ code: null, stdout: "", stderr: "" }),
   httpPost: async () => { throw new Error("null transport"); },
+  httpPatch: async () => { throw new Error("null transport"); },
   httpGet: async () => ({ status: 0, body: "" }),
   readHomeFile: async () => null,
   writeFileAbs: async () => {},

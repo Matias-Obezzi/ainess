@@ -1857,6 +1857,9 @@ export const fr: Dictionary = {
   "bridge.notify.howToAnswer": "Réponds /answer suivi de ta réponse.",
   "bridge.notify.orWrite": "Touchez une option, ou écrivez la réponse que vous voulez.",
   "bridge.reply.actionGone": "Ce bouton ne sert plus à rien : ce qu'il demandait est réglé.",
+  "bridge.button.send": "Envoyer ({n})",
+  "bridge.reply.pickOne": "Cochez au moins une option d'abord",
+  "bridge.reply.pickMore": "Vos choix jusqu'ici :",
   "install.notDetected": "Installé, mais le CLI n'est pas encore apparu. Redémarre l'application et détecte à nouveau.",
 
   "ngrok.notDetected": "winget a terminé mais ngrok n'est toujours pas apparu. Redémarre l'application et réessaie.",

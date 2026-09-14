@@ -30,6 +30,7 @@ interface InteractionData {
   type?: number;
   channel_id?: string;
   data?: { custom_id?: string; component_type?: number };
+  message?: { id?: string };
   member?: { user?: { username?: string } };
   user?: { username?: string };
 }
@@ -100,12 +101,17 @@ export function pressFrom(frame: unknown): DiscordPress | null {
   if (typeof data.channel_id !== "string" || data.channel_id.length === 0) return null;
   if (typeof data.id !== "string" || typeof data.token !== "string") return null;
 
+  const messageId = typeof data.message?.id === "string" && data.message.id.length > 0
+    ? data.message.id
+    : undefined;
+
   return {
     message: {
       chatId: data.channel_id,
       text: token,
       from: data.member?.user?.username ?? data.user?.username,
       action: token,
+      ...(messageId ? { messageId } : {}),
     },
     interactionId: data.id,
     interactionToken: data.token,

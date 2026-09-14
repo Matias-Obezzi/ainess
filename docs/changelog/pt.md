@@ -14,6 +14,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Uma pergunta com várias respostas também tem botões nos chats.** Telegram, Discord e Slack
+  recebiam uma pergunta assim só como texto, porque um toque só podia ser uma resposta. Agora cada
+  opção é um botão que se marca e desmarca, e um botão "Enviar (n)" abaixo envia o marcado; os
+  botões da mensagem são redesenhados a cada toque, então as marcas estão na própria mensagem.
+  Uma vez enviado, os botões somem.
 - **Uma pergunta chegava ao Telegram como uma caixa de JSON.** Um hook que manda `{{output}}` a
   um chat mandava a resposta tal como o agente a escreveu, blocos `ask` e `delegate` incluídos, e o
   Telegram desenhava o bloco como código com um botão de "copiar" — a metade da resposta que é da

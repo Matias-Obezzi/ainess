@@ -1859,6 +1859,9 @@ export const en: Dictionary = {
   "bridge.notify.howToAnswer": "Reply /answer and whatever your answer is.",
   "bridge.notify.orWrite": "Tap an option, or write whatever you want to answer.",
   "bridge.reply.actionGone": "That button is no longer good for anything: what it asked about is settled.",
+  "bridge.button.send": "Send ({n})",
+  "bridge.reply.pickOne": "Pick at least one option first",
+  "bridge.reply.pickMore": "Your picks so far:",
   "install.notDetected": "Installed, but the CLI hasn't appeared yet. Restart the app and detect again.",
 
   "ngrok.notDetected": "winget finished but ngrok still hasn't appeared. Restart the app and try again.",

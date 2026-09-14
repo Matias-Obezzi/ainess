@@ -21,6 +21,10 @@ export interface IncomingMessage {
    * `parseActionToken`, not by the platform.
    */
   action?: string;
+  /** The message the press came from, to redraw its buttons. */
+  messageId?: string;
+  /** The text of the message the press came from, to redraw its buttons. */
+  messageText?: string;
 }
 
 /**
@@ -33,6 +37,8 @@ export interface BridgeProvider {
   stop(): Promise<void>;
   /** `buttons` is a request, not a promise: a platform that cannot draw them still sends the text. */
   send(chatId: string, text: string, buttons?: BridgeButton[]): Promise<void>;
+  /** Replaces the buttons of an already-sent message; an empty list removes them. */
+  editButtons?(chatId: string, messageId: string, buttons: BridgeButton[], text?: string): Promise<void>;
 }
 
 export type { BridgeButton };

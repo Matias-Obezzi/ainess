@@ -90,6 +90,7 @@ pub fn run() {
             diagnostics::storage_stat,
             diagnostics::port_available,
             http::http_post,
+            http::http_patch,
             http::http_get,
             logging::log_append,
             logging::logs_dir,

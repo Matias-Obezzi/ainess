@@ -16,6 +16,11 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A question with several answers has buttons in the chats too.** Telegram, Discord and Slack
+  used to get such a question as text alone, since one press could only ever be one answer. Now
+  each option is a button that ticks and unticks itself, and a "Send (n)" button under them sends
+  what is ticked; the message's buttons are redrawn on every press, so the marks are on the message
+  itself. Once sent, the buttons go.
 - **A question reached Telegram as a box of JSON.** A hook that sends `{{output}}` to a chat sent
   the answer as the agent wrote it, `ask` and `delegate` blocks included, and Telegram drew the
   block as code with a "copy" button — the machine's half of the answer, handed to the person. What

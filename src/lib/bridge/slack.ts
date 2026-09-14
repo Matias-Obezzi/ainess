@@ -130,4 +130,24 @@ export class SlackProvider implements BridgeProvider {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
   }
+
+  async editButtons(chatId: string, messageId: string, buttons: BridgeButton[], text?: string): Promise<void> {
+    if (!text) throw new Error("missing message text for Slack edit");
+    const clipped = text.length > 40000 ? text.slice(0, 39999) + "…" : text;
+    const blocks = blocksFor(clipped, buttons);
+    const res = await getTransport().httpPost(
+      "https://slack.com/api/chat.update",
+      JSON.stringify({ channel: chatId, ts: messageId, text: clipped, blocks }),
+      { "Content-Type": "application/json", Authorization: `Bearer ${this.botToken}` },
+    );
+    let data: { ok?: boolean; error?: string };
+    try {
+      data = JSON.parse(res.body);
+    } catch {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    if (res.status < 200 || res.status >= 300 || !data.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+  }
 }

@@ -35,11 +35,15 @@ export function updatesFrom(body: string): TelegramUpdates {
       // was checked against when it went out.
       const press = update.callback_query;
       if (press && typeof press.data === "string" && press.message?.chat?.id) {
+        const messageId = press.message.message_id !== undefined && press.message.message_id !== null
+          ? String(press.message.message_id)
+          : undefined;
         messages.push({
           chatId: String(press.message.chat.id),
           text: press.data,
           from: press.from?.username,
           action: press.data,
+          ...(messageId !== undefined ? { messageId } : {}),
         });
         if (typeof press.id === "string") callbackIds.push(press.id);
       }
@@ -136,5 +140,18 @@ export class TelegramProvider implements BridgeProvider {
     const headers = { "Content-Type": "application/json" };
     const first = await getTransport().httpPost(url, body(true), headers);
     if (first.status !== 200) await getTransport().httpPost(url, body(false), headers);
+  }
+
+  async editButtons(chatId: string, messageId: string, buttons: BridgeButton[]): Promise<void> {
+    const url = `https://api.telegram.org/bot${this.token}/editMessageReplyMarkup`;
+    const replyMarkup = buttons.length > 0 ? inlineKeyboard(buttons) : { inline_keyboard: [] };
+    const body = JSON.stringify({
+      chat_id: chatId,
+      message_id: Number(messageId) || messageId,
+      reply_markup: replyMarkup,
+    });
+    const headers = { "Content-Type": "application/json" };
+    const res = await getTransport().httpPost(url, body, headers);
+    if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
   }
 }

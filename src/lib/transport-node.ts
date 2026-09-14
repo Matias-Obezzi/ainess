@@ -454,6 +454,11 @@ export const nodeTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
 
+  httpPatch: async (url: string, body: string, headers: Record<string, string>) => {
+    const res = await fetch(url, { method: "PATCH", body, headers });
+    return { status: res.status, body: await res.text() };
+  },
+
   httpGet: async (url: string, headers: Record<string, string>) => {
     const res = await fetch(url, { method: "GET", headers });
     return { status: res.status, body: await res.text() };

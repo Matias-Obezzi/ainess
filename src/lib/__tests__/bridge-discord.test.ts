@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { messageFrom } from "@/lib/bridge/discord-events";
+import { messageFrom, pressFrom } from "@/lib/bridge/discord-events";
 
 const messageCreate = (overrides: Record<string, unknown> = {}) => ({
   op: 0,
@@ -48,5 +48,26 @@ describe("messageFrom", () => {
     expect(messageFrom({ op: 0, t: "MESSAGE_CREATE", d: null })).toBeNull();
     expect(messageFrom({ op: 0, t: "MESSAGE_CREATE", d: "basura" })).toBeNull();
     expect(messageFrom({ op: 0, t: "MESSAGE_CREATE", d: { content: "hola" } })).toBeNull();
+  });
+});
+
+describe("pressFrom", () => {
+  it("fills messageId from the interaction message", () => {
+    const frame = {
+      op: 0,
+      t: "INTERACTION_CREATE",
+      d: {
+        id: "i-1",
+        token: "tok-1",
+        type: 3,
+        channel_id: "555",
+        data: { custom_id: "t:3f2a1b2c:0" },
+        message: { id: "msg-999" },
+        user: { username: "matias" },
+      },
+    };
+    const press = pressFrom(frame);
+    expect(press?.message.messageId).toBe("msg-999");
+    expect(press?.message.action).toBe("t:3f2a1b2c:0");
   });
 });

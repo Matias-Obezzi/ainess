@@ -5,6 +5,8 @@ export type BridgeCommand =
   | { kind: "approve"; id: string; note?: string }
   | { kind: "reject"; id: string; note?: string }
   | { kind: "answer"; id?: string; text: string }
+  | { kind: "toggle"; id: string; option: number }
+  | { kind: "submit"; id: string }
   | { kind: "stop" }
   | { kind: "project"; name?: string }
   | { kind: "help" }

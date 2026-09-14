@@ -15,6 +15,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Une question à plusieurs réponses a aussi des boutons dans les chats.** Telegram, Discord et
+  Slack recevaient une telle question en texte seul, puisqu'un appui ne pouvait être qu'une seule
+  réponse. Chaque option est maintenant un bouton qui se coche et se décoche, et un bouton
+  « Envoyer (n) » dessous envoie ce qui est coché ; les boutons du message sont redessinés à chaque
+  appui, les coches sont donc sur le message lui-même. Une fois envoyé, les boutons disparaissent.
 - **Une question arrivait sur Telegram sous forme de boîte JSON.** Un hook qui envoie `{{output}}`
   à un chat envoyait la réponse telle que l'agent l'a écrite, blocs `ask` et `delegate` compris, et
   Telegram dessinait le bloc comme du code avec un bouton « copier » — la moitié de la réponse
