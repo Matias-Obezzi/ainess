@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
@@ -114,8 +114,10 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
   segments.forEach((segment, i) => {
     const isLast = i === segments.length - 1;
     // The last segment carries the newline the layer appends so its line count matches the
-    // textarea's. The suggestion has to go *before* it — on the caret's line — so it is peeled off
-    // here and put back after the suggestion.
+    // textarea's: a textarea keeps a last, empty line when its value ends in a newline, and
+    // `pre-wrap` drops a break that ends the block, so without this one the layer is a line short
+    // of the box exactly when the box has one to spare. The suggestion has to go *before* it — on
+    // the caret's line — so it is peeled off here and put back after the suggestion.
     const body = isLast && segment.text.endsWith("\n") ? segment.text.slice(0, -1) : segment.text;
     const tail: React.ReactNode[] = isLast
       ? [
@@ -854,6 +856,56 @@ export function Composer() {
   // An empty box draws its placeholder where the layer behind it draws the grey suggestion, so both
   // of them landed in the same line of space and neither could be read. See `ghostTakesPlaceholder`.
   const ghostInstead = ghostTakesPlaceholder(text, ghost);
+
+  /**
+   * The layer, put back where the box on top of it is. Two things, both of which used to be left
+   * to something else noticing:
+   *
+   * The scroll position. `onScroll` is a single moment, and not the only one that matters: the
+   * event can arrive before the layer has been painted at its new height, and the assignment is
+   * then clamped to the old, shorter maximum and stays a line off until the next scroll by hand.
+   *
+   * The room the scrollbar takes. Where the system draws one that takes room instead of floating
+   * over the text — Windows, unless it is set to hide them — the box loses that room from every
+   * line and wraps earlier. The layer draws no scrollbar of its own (`overflow-hidden`), so it
+   * would keep the wider line and every word after the first wrap would slide away from the caret
+   * that belongs to it. It is given the same room instead, measured off the box rather than
+   * guessed at: zero where scrollbars float, whatever the system says where they do not.
+   */
+  const followBox = useCallback(() => {
+    const box = textareaRef.current;
+    const layer = highlightRef.current;
+    if (!box || !layer) return;
+    const gutter = box.offsetWidth - box.clientWidth - box.clientLeft * 2;
+    const top = box.scrollTop;
+    const padding = gutter > 0 ? `calc(3rem + ${gutter}px)` : "";
+    if (layer.style.paddingRight !== padding) layer.style.paddingRight = padding;
+    if (layer.scrollTop !== top) layer.scrollTop = top;
+  }, []);
+
+  // After every render, and before the browser paints: with `useEffect` the line the two disagree
+  // on is on screen for a frame.
+  useLayoutEffect(followBox);
+
+  /**
+   * The box's ref, and the watch kept on its size. A scrollbar can appear without anything being
+   * typed — a window made narrower rewraps the text until it no longer fits — and nothing redraws
+   * the composer then, so the two would stay a scrollbar apart until the next keystroke.
+   *
+   * A callback ref rather than an effect: the box is not always on screen, a question asked in the
+   * composer takes its place, and the watch has to go out and come back with it.
+   */
+  const attachBox = useCallback((box: HTMLTextAreaElement | null) => {
+    textareaRef.current = box;
+    if (!box) return;
+    const observer = new ResizeObserver(followBox);
+    observer.observe(box);
+    return () => {
+      observer.disconnect();
+      textareaRef.current = null;
+    };
+  }, [followBox]);
+
   const rotatingHints = useMemo(() => [
     t("composer.placeholder.team"),
     t("composer.placeholder.rotate1"),
@@ -976,7 +1028,14 @@ export function Composer() {
               data-testid="composer-layer"
               // `inset-px`, not `inset-0`: the textarea has a one-pixel border and lays its text out
               // inside it. On the border box the layer's words sat a pixel up and left of the caret.
-              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
+              //
+              // `overflow-hidden`, not `auto`: the box on top is the one that scrolls and the one
+              // that draws the scrollbar. The layer is scrolled to follow it (see `followBox`) and
+              // has no business growing a second scrollbar of its own — it can be a line taller
+              // than the box, the grey suggestion is drawn here and nowhere else, and that line
+              // was enough to give it a scrollbar the box did not have, take the room from its own
+              // lines, and slide every word away from the caret.
+              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] box-border overflow-hidden font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
             >
               {/* The suggestion travels inside: it has to sit before the trailing newline the layer
                   appends, on the line the caret is on, whatever that line is part of. */}
@@ -984,7 +1043,7 @@ export function Composer() {
             </div>
             {/* `field-sizing-content` (from the base Textarea) grows the box between these bounds. */}
             <Textarea
-              ref={textareaRef}
+              ref={attachBox}
               data-testid="composer-input"
               value={text}
               onChange={e => { setText(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
@@ -995,6 +1054,8 @@ export function Composer() {
               // Code is not prose: with a fence in the box the red squiggles go, for the whole box —
               // the browser cannot be told which lines to leave alone.
               spellCheck={fenceHighlightRegions.length === 0}
+              // Half of the scroll sync — the half that answers the wheel and the scrollbar. The
+              // other half is the layout effect above, for the scrolling the box does by itself.
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
