@@ -329,6 +329,27 @@ export type StartRunOptions = { agentId: string; projectId: string; prompt: stri
 const queuedRunOpts = new Map<string, StartRunOptions>();
 
 /**
+ * Whether the agent is in a turn right now.
+ *
+ * Not the same question as "does it have a `currentRunId`": that id can outlive the run it points
+ * at. A restart restores the agent `stopped` on the run it was cut off in (`interrupted-runtime.ts`)
+ * so the hierarchy can show what it was doing, and that run is already `killed`. Reading the id
+ * alone left the agent busy forever — every new run was queued behind a turn that had ended before
+ * the app started, and nothing was ever going to launch it.
+ */
+export function isAgentBusy(state: AppState, projectId: string, agentId: string): boolean {
+  const rt = state.runtime[projectId]?.[agentId];
+  if (!rt?.currentRunId) return false;
+  const run = state.runs[rt.currentRunId];
+  // The run is not in memory: its project has not been read off disk yet, so the id says nothing
+  // about whether a process is alive. The runtime's own status is the only evidence left, and it is
+  // the safe way round — `working` holds the new run back rather than opening a second process on
+  // one conversation, and `stopped` / `idle` / `error` all mean the turn is over.
+  if (!run) return rt.status === "working";
+  return isLiveRun(run.status);
+}
+
+/**
  * Starts a run for an agent, or queues it when the agent is already in a turn of its own.
  *
  * One agent is one process. Every path that gives an agent work comes through here — a delegation,
@@ -409,7 +430,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
   const runId = crypto.randomUUID();
   // In a turn of its own right now. The run is written down either way — the parent counts it as
   // a child it is waiting for, the board gets its card — but it waits for that turn to end.
-  const busy = !!store.runtime[opts.projectId]?.[opts.agentId]?.currentRunId;
+  const busy = isAgentBusy(store, opts.projectId, opts.agentId);
   const run: Run = {
     id: runId,
     projectId: opts.projectId,
@@ -476,7 +497,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
  */
 export function launchQueuedRuns(agentId: string, projectId: string): void {
   const store = useAppStore.getState();
-  if (store.runtime[projectId]?.[agentId]?.currentRunId) return;
+  if (isAgentBusy(store, projectId, agentId)) return;
   // In the order the work arrived: the map keeps it, and two runs queued in the same millisecond
   // have the same `startedAt`. What has no entry there is a run this process cannot launch anyway.
   const next = [...queuedRunOpts.keys()]
@@ -984,6 +1005,7 @@ function notifyTaskOutcome(run: Run, failed: boolean) {
     projectId: run.projectId,
     agentId: run.agentId,
     runId: run.id,
+    chatId: run.chatId,
   });
 }
 
@@ -996,6 +1018,14 @@ function onRunFinished(runId: string) {
 
   // Chat runs bypass normal delegation logic
   if (run.kind === "chat") {
+    const project = store.config.projects.find(p => p.id === run.projectId);
+    const chatQuotaDead = run.status === "error" && outOfQuota(run.output);
+    if (chatQuotaDead && shouldRetryOnQuota(agent, project)) {
+      parkQuotaRetry(run, agent);
+    } else if (!chatQuotaDead) {
+      store.clearQuotaWaitingFor(run.projectId, agent.id, run.prompt);
+    }
+
     useAppStore.setState(state => {
       const pRuntime = state.runtime[run.projectId] || {};
       return {
@@ -1455,6 +1485,7 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     runId: run.id,
     // The oldest of the turn, which is the one the composer and the bridge both offer first.
     questionId: first.id,
+    chatId: run.chatId,
   });
   return true;
 }
@@ -1804,7 +1835,7 @@ function maybeContinueParent(parentRunId: string) {
     // of one agent means two writers on one CLI session, and the second one resumes a conversation
     // the first is still writing. So the results wait for that turn to end, and `drainContinuations`
     // brings them back. Nothing is lost: the children's output is read from the runs, not from here.
-    if (store.runtime[parentRun.projectId]?.[parentRun.agentId]?.currentRunId) {
+    if (isAgentBusy(store, parentRun.projectId, parentRun.agentId)) {
       heldContinuations.add(parentRunId);
       return;
     }
@@ -2282,10 +2313,27 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
   // What was waiting its turn goes first: the end of the run killed below is what would launch it.
   for (const queued of queuedRunsOf(store.runs, agentId, projectId)) cancelQueuedRun(queued.id);
   const runtime = store.runtime[projectId]?.[agentId];
-  if (runtime?.currentRunId) {
+  if (isAgentBusy(store, projectId, agentId) && runtime?.currentRunId) {
     stoppedBeforeSpawn.add(runtime.currentRunId);
     await getTransport().killRun(runtime.currentRunId);
     return;
+  }
+  if (runtime?.currentRunId) {
+    // The id points at a run that is already over — a turn cut short by a restart comes back
+    // `stopped` on the run it died in. There is no process to kill, and killing nothing used to
+    // leave the agent stuck on that id. Clearing it is the whole job here; what follows still runs,
+    // because an agent whose own turn is dead can still be waiting on children.
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[projectId] || {};
+      const current = pRuntime[agentId];
+      if (!current) return state;
+      return {
+        runtime: {
+          ...state.runtime,
+          [projectId]: { ...pRuntime, [agentId]: { ...current, status: "idle", currentRunId: undefined, currentTask: undefined } },
+        },
+      };
+    });
   }
   // Waiting for children: stop every running run delegated (directly or not) by this agent,
   // and cancel the continuation so the agent does not re-delegate with "[detenido]" results.

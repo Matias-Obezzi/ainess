@@ -98,11 +98,14 @@ export async function recordAntigravityOutcome(model: string | undefined, text: 
  */
 const OUT_OF_QUOTA = [
   /quota (reached|exceeded|exhausted)/i,   // Antigravity
+  /exceeded (your )?(current )?quota/i,    // Claude / OpenAI APIs
   /usage limit reached/i,                   // Claude Code
   // Claude Code, the other way it says it: «You've hit your session limit», «…your usage limit».
   /hit your (session |usage |weekly |daily |monthly )?limit/i,
+  /out of (tokens|credits|(premium )?requests)/i, // Claude / Copilot
+  /token limit/i,                          // Claude / LLM token limits
+  /credit balance is too low/i,             // Anthropic / Claude API
   /rate.?limit(ed| reached| exceeded)/i,    // several
-  /out of (premium )?requests/i,            // Copilot
   /insufficient (quota|credits|balance)/i,  // opencode and the OpenAI-shaped APIs
 ];
 

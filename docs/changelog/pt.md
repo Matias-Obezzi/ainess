@@ -2,6 +2,46 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Novo
+
+- **Ctrl+F busca dentro das conversas.** Um atalho novo. Abre a busca mostrando só mensagens — até
+  quarenta, em vez das oito por grupo de sempre — com o seu próprio texto de ajuda e o seu próprio
+  jeito de dizer que não achou nada. Ao escolher um resultado, abre o chat ou o fio do projeto onde
+  ela está, desce até essa mensagem e a mensagem acende por um instante para o olho encontrá-la.
+- **Ficar sem cota também é um cartão nos chats.** Antes isso era coisa do fio do projeto: um chat
+  cujo agente ficava sem tokens mostrava o erro cru. Agora mostra o mesmo cartão, com quando a cota
+  volta e se o trabalho já foi tentado de novo, e pelo menu da mensagem dá para retomar com outro
+  modelo.
+- **Continuar sozinho quando os tokens voltam, também nos chats.** Se o projeto tiver isso ligado,
+  um chat que morreu por cota fica esperando e retoma sozinho assim que a cota está de volta.
+- **Cada projeto tem o seu mascote.** Aparece nos fios vazios, onde antes ficava o ícone cinza. O
+  rosto sai do próprio projeto — o corpo, os olhos, o que ele usa na cabeça, a sua cor e um
+  distintivo com o provedor de quem responde primeiro — então cada projeto tem o seu e sempre o
+  mesmo; renomear o projeto não o troca. Ele flutua e pisca devagar, e fica parado para quem pediu
+  menos movimento.
+- **O contador de agentes trabalhando abre a lista.** No rodapé da barra lateral: quem está
+  trabalhando, em quê e em qual projeto. Um clique em um deles leva você até lá.
+
+### Corrigido
+
+- **Os agentes não ficam mais travados depois de reiniciar.** Se o app ou o computador fechavam no
+  meio de um turno, ao voltar o agente ficava marcado como ocupado para sempre: tudo o que se pedia
+  a ele entrava na fila atrás de um turno que tinha terminado antes de o app abrir, com a mensagem
+  de que ele está no meio de outra coisa, e nunca começava. Agora um turno terminado deixa de
+  contar como ocupado, e parar esse agente o libera em vez de tentar matar um processo que já não
+  existe.
+- **Uma notificação leva você ao chat de onde ela saiu.** Não só ao projeto: abre a conversa de que
+  o aviso falava.
+- **O texto do compositor e o cursor não discordam mais sobre onde a linha quebra.** A camada que
+  desenha as palavras e o campo onde se escreve usam agora exatamente a mesma tipografia, o mesmo
+  espaçamento e as mesmas regras de quebra, então o cursor cai onde estão as letras.
+- **"Abrir em…" não está mais lá quando não há nenhum editor instalado.** Antes sobrava uma linha
+  morta no menu do projeto.
+- **"Trabalhando" conta só quem está trabalhando.** Um agente esperando uma resposta sua era
+  contado como se estivesse trabalhando, tanto na barra lateral quanto na visão do celular.
+
 ## 0.19.0 — 2026-09-14
 
 ### Novo

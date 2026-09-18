@@ -157,7 +157,7 @@ export function NotificationBell() {
   const goTo = (item: AppNotification) => {
     markNotificationRead(item.id);
     toggleNotifications(false);
-    if (item.projectId) openProject(item.projectId);
+    if (item.projectId) openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : undefined);
     if (item.runId) setDetailRunId(item.runId);
   };
 

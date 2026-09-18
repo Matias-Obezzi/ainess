@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { ProjectMascot } from "@/components/ProjectMascot";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
@@ -48,6 +49,7 @@ export function OrchestratorThread() {
   const hasRunning = useAppStore(state =>
     Object.values(state.runs).some(r => r.projectId === currentProjectId && isLiveRun(r.status)),
   );
+  const focusedMessageId = useAppStore(state => state.focusedMessageId);
 
   const [limit, setLimit] = useState(20);
 
@@ -59,6 +61,10 @@ export function OrchestratorThread() {
   // gave no sign of it.
   const runtime = useAppStore(state => currentProjectId ? state.runtime[currentProjectId] : undefined);
   const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  // Only for the mascot on the empty thread: it needs the project's colour and the face of whoever
+  // would answer first.
+  const project = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId));
+  const planner = agents.find(a => a.role === "planner");
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   // A block per agent: what is waiting for one of them goes over as a single message, and what is
@@ -83,7 +89,14 @@ export function OrchestratorThread() {
     [runs, currentProjectId],
   );
 
-  const { shown: shownRuns, hidden: hiddenRuns } = windowOf(rootRuns, limit);
+  // Only the tail of the feed is drawn, so a turn the search palette points at can sit outside the
+  // window — and what is not in the DOM cannot be scrolled to. The window is stretched back just
+  // far enough to reach it, which is the whole point of the jump; "show older" is left with
+  // whatever is still hidden behind it.
+  const focusedAt = focusedMessageId ? rootRuns.findIndex(r => r.id === focusedMessageId) : -1;
+  const reach = focusedAt >= 0 ? Math.max(limit, rootRuns.length - focusedAt) : limit;
+
+  const { shown: shownRuns, hidden: hiddenRuns } = windowOf(rootRuns, reach);
 
   const prevScrollHeightRef = useRef<number | null>(null);
 
@@ -108,12 +121,31 @@ export function OrchestratorThread() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevCount = useRef(rootRuns.length);
 
-  // Opening a project (or finishing its first load) lands on the newest turn, not the oldest.
+  // The bubble clears `focusedMessageId` when its flash ends, and that must not read as "a project
+  // was just opened": the turn it took you to stays where it is. Holds the project the jump
+  // happened in, so moving to another one still lands on its newest turn.
+  const jumpedIn = useRef<string | null>(null);
+
+  // Opening a project (or finishing its first load) lands on the newest turn, not the oldest,
+  // unless a specific turn was requested by the search palette.
   useEffect(() => {
     if (historyLoading) return;
+    if (focusedMessageId) {
+      const el = scrollRef.current?.querySelector<HTMLElement>(`[data-message-id="${focusedMessageId}"]`);
+      if (el) {
+        jumpedIn.current = currentProjectId;
+        setStickToBottom(false);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+    if (jumpedIn.current !== null && jumpedIn.current === currentProjectId) {
+      jumpedIn.current = null;
+      return;
+    }
     const id = requestAnimationFrame(() => stick(scrollRef.current));
     return () => cancelAnimationFrame(id);
-  }, [currentProjectId, historyLoading]);
+  }, [currentProjectId, historyLoading, focusedMessageId]);
 
   useEffect(() => {
     if (rootRuns.length > prevCount.current) {
@@ -193,6 +225,7 @@ export function OrchestratorThread() {
         ) : rootRuns.length === 0 && queued.length === 0 ? (
           <EmptyState
             icon={MessagesSquare}
+            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} size={128} className="mb-2" />}
             title={t("thread.empty.title")}
             description={t("thread.empty.body")}
             className="h-full"
@@ -242,6 +275,22 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const [retryOpen, setRetryOpen] = useState(false);
   const steps = useActivityCount(run.id);
   const transcript = useRunTranscript(run.id);
+
+  // Arrived here from the search palette: the turn lights up for a moment so the eye finds it.
+  const focusedMessageId = useAppStore(state => state.focusedMessageId);
+  const focusMessage = useAppStore(state => state.focusMessage);
+  const [flashing, setFlashing] = useState(false);
+
+  useEffect(() => {
+    if (focusedMessageId === run.id) {
+      setFlashing(true);
+      const timer = setTimeout(() => {
+        setFlashing(false);
+        focusMessage(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [focusedMessageId, run.id, focusMessage]);
 
   // A pending question is answered from the composer, which takes over the input box for it;
   // showing it here too would let it be answered twice. An answered question stays, since the
@@ -302,7 +351,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div data-message-id={run.id} className={cn("flex flex-col gap-3 transition-colors rounded-lg", flashing && "animate-flash-highlight p-1")}>
       {/* A round > 0 run is an automatic continuation, not something the user typed. */}
       {run.round === 0 && (
         <div className="flex flex-col items-end gap-1">

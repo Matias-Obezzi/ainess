@@ -214,16 +214,46 @@
   to { transform: translateY(-100%); opacity: 0; }
 }
 
+@keyframes flash-highlight {
+  0% { background-color: color-mix(in oklab, var(--primary) 28%, transparent); }
+  50% { background-color: color-mix(in oklab, var(--primary) 28%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* The project's mascot (components/ProjectMascot.tsx), in the empty threads. Two animations rather
+   than one: the float is what makes it look alive at a glance, and the blink is what keeps it from
+   looking like a sticker being waved. Both are pure CSS — an empty screen is not worth a frame
+   loop — and each instance offsets them, so two mascots on screen never move in step. */
+@keyframes mascot-float {
+  from { transform: translateY(3px); }
+  to { transform: translateY(-3px); }
+}
+
+/* Long stretches of nothing and one short shut: a blink every five seconds reads as breathing,
+   a blink on every beat reads as a tic. */
+@keyframes mascot-blink {
+  0% { transform: scaleY(1); }
+  92% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+  100% { transform: scaleY(1); }
+}
+
 @layer utilities {
   .animate-breathe { animation: ainess-breathe 2.4s ease-in-out infinite; }
+  .animate-mascot-float { animation: mascot-float 4s ease-in-out infinite alternate; }
+  .animate-mascot-blink { animation: mascot-blink 5s linear infinite; }
   .animate-step-in { animation: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-step-out { animation: step-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-flash-highlight { animation: flash-highlight 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   /* Someone who asked for less movement gets none. The step still changes; it just changes
      without sliding, and the one on its way out is gone rather than fading. */
   @media (prefers-reduced-motion: reduce) {
     .animate-breathe { animation: none; }
     .animate-step-in { animation: none; }
     .animate-step-out { animation: none; opacity: 0; }
+    .animate-flash-highlight { animation: none; }
+    .animate-mascot-float { animation: none; }
+    .animate-mascot-blink { animation: none; }
   }
 }
 

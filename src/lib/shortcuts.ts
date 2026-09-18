@@ -30,7 +30,7 @@ export interface ShortcutKeys {
 }
 
 /** Ids of the shortcuts `App.tsx` dispatches itself. */
-export type GlobalShortcutId = "settings" | "palette" | "sidebar" | "terminals" | "shortcuts";
+export type GlobalShortcutId = "settings" | "palette" | "find" | "sidebar" | "terminals" | "shortcuts";
 
 export interface ShortcutDef {
   id: string;
@@ -44,6 +44,7 @@ export interface ShortcutDef {
 
 export const SHORTCUTS: ShortcutDef[] = [
   { id: "palette", keys: { mod: true, key: "k" }, descriptionKey: "shortcuts.palette", group: "general", global: true },
+  { id: "find", keys: { mod: true, key: "f" }, descriptionKey: "shortcuts.find", group: "general", global: true },
   { id: "settings", keys: { mod: true, key: "," }, descriptionKey: "shortcuts.settings", group: "general", global: true },
   { id: "shortcuts", keys: { mod: true, key: "/" }, descriptionKey: "shortcuts.shortcuts", group: "general", global: true },
   { id: "sidebar", keys: { mod: true, key: "b" }, descriptionKey: "shortcuts.sidebar", group: "general", global: true },

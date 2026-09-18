@@ -2,6 +2,50 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Neu
+
+- **Strg+F sucht in den Unterhaltungen.** Ein neues Tastenkürzel. Es öffnet die Suche mit
+  Nachrichten allein — bis zu vierzig davon statt der üblichen acht pro Gruppe — mit eigenem
+  Hinweistext und einer eigenen Art zu sagen, dass nichts gefunden wurde. Wählen Sie ein Ergebnis,
+  und der Chat oder der Projektfaden, in dem es steht, öffnet sich, scrollt bis zu dieser Nachricht,
+  und die Nachricht leuchtet einen Moment auf, damit das Auge sie findet.
+- **Aufgebrauchtes Kontingent ist auch in den Chats eine Karte.** Das war bisher Sache des
+  Projektfadens: Ein Chat, dessen Agent keine Tokens mehr hatte, zeigte den rohen Fehler. Jetzt
+  zeigt er dieselbe Karte, mit dem Zeitpunkt der Rückkehr des Kontingents und ob die Arbeit schon
+  erneut versucht wurde, und über das Menü der Nachricht lässt sie sich mit einem anderen Modell
+  wiederholen.
+- **Von selbst weitermachen, wenn die Tokens zurück sind — auch in den Chats.** Ist es im Projekt
+  eingeschaltet, wartet ein am Kontingent gestorbener Chat und läuft von allein weiter, sobald das
+  Kontingent wieder da ist.
+- **Jedes Projekt hat sein Maskottchen.** Es sitzt in den leeren Fäden, wo vorher das graue Symbol
+  war. Das Gesicht kommt aus dem Projekt selbst — sein Körper, seine Augen, was es auf dem Kopf
+  trägt, seine Farbe und ein Abzeichen mit dem Anbieter dessen, der zuerst antwortet — jedes Projekt
+  hat also ein eigenes, und immer dasselbe; das Projekt umzubenennen ändert es nicht. Es schwebt und
+  blinzelt langsam und hält still für alle, die um weniger Bewegung gebeten haben.
+- **Der Zähler der arbeitenden Agenten öffnet die Liste.** Im Fuß der Seitenleiste: wer arbeitet,
+  woran und in welchem Projekt. Ein Klick auf einen bringt Sie dorthin.
+
+### Behoben
+
+- **Agenten bleiben nach einem Neustart nicht mehr hängen.** Ging die App oder der Rechner mitten
+  in einem Zug aus, kam der Agent für immer als beschäftigt markiert zurück: Alles, worum man ihn
+  bat, stellte sich hinter einen Zug, der schon beendet war, bevor die App überhaupt startete, mit
+  der Meldung, er sei gerade mit etwas anderem beschäftigt — und es ging nie los. Ein beendeter Zug
+  zählt jetzt nicht mehr als beschäftigt, und einen solchen Agenten zu stoppen gibt ihn frei,
+  anstatt einen Prozess zu beenden, den es nicht mehr gibt.
+- **Eine Benachrichtigung bringt Sie in den Chat, aus dem sie kam.** Nicht nur ins Projekt: Sie
+  öffnet die Unterhaltung, von der die Meldung handelte.
+- **Die Wörter im Feld und der Cursor sind sich einig, wo die Zeile umbricht.** Die Schicht, die
+  die Wörter zeichnet, und das Feld, in das Sie schreiben, verwenden jetzt genau dieselbe Schrift,
+  denselben Abstand und dieselben Umbruchregeln, sodass der Cursor dort landet, wo die Buchstaben
+  stehen.
+- **„Öffnen in…“ erscheint nicht mehr, wenn kein Editor installiert ist.** Vorher blieb eine tote
+  Zeile im Projektmenü zurück.
+- **„Arbeitet“ zählt nur die, die arbeiten.** Ein Agent, der auf eine Antwort von Ihnen wartet,
+  wurde als arbeitend gezählt, in der Seitenleiste wie in der Ansicht des Telefons.
+
 ## 0.19.0 — 2026-09-14
 
 ### Neu

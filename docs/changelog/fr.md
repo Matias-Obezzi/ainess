@@ -2,6 +2,48 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Nouveau
+
+- **Ctrl+F cherche à l'intérieur des conversations.** Un nouveau raccourci. Il ouvre la recherche
+  en ne montrant que des messages — jusqu'à quarante, au lieu des huit par groupe habituels — avec
+  son propre texte d'aide et sa propre façon de dire qu'il n'a rien trouvé. Choisissez un résultat
+  et le chat ou le fil du projet où il se trouve s'ouvre, descend jusqu'à ce message, et le message
+  s'éclaire un instant pour que l'œil le retrouve.
+- **Le quota épuisé est aussi une carte dans les chats.** C'était l'affaire du fil du projet
+  seulement : un chat dont l'agent n'avait plus de jetons affichait l'erreur brute. Il affiche
+  maintenant la même carte, avec le retour du quota et si le travail a déjà été relancé, et le menu
+  du message permet de réessayer avec un autre modèle.
+- **Reprendre tout seul au retour des jetons, dans les chats aussi.** Si le projet l'a activé, un
+  chat mort faute de quota attend, et repart de lui-même dès que le quota est revenu.
+- **Chaque projet a sa mascotte.** Elle occupe les fils vides, là où se trouvait l'icône grise. Le
+  visage sort du projet lui-même — son corps, ses yeux, ce qu'il porte sur la tête, sa couleur, et
+  un écusson avec le fournisseur de celui qui répond en premier — chaque projet a donc la sienne, et
+  toujours la même ; le renommer n'y change rien. Elle flotte et cligne des yeux lentement, et reste
+  immobile pour qui a demandé moins de mouvement.
+- **Le compteur d'agents au travail ouvre la liste.** Au pied de la barre latérale : qui travaille,
+  à quoi, et dans quel projet. Un clic sur l'un d'eux vous y emmène.
+
+### Corrigé
+
+- **Les agents ne restent plus bloqués après un redémarrage.** Si l'application ou la machine
+  s'arrêtait au milieu d'un tour, l'agent revenait marqué occupé pour de bon : tout ce qu'on lui
+  demandait faisait la queue derrière un tour terminé avant même le démarrage de l'application, avec
+  le message qu'il est occupé à autre chose, et rien ne repartait jamais. Un tour terminé ne compte
+  plus comme occupé, et arrêter un tel agent le libère au lieu d'essayer de tuer un processus qui
+  n'existe plus.
+- **Une notification vous emmène au chat d'où elle vient.** Pas au projet seulement : elle ouvre la
+  conversation dont parlait l'avis.
+- **Les mots de la boîte et le curseur ne sont plus en désaccord sur l'endroit où la ligne se
+  coupe.** La couche qui dessine les mots et le champ où l'on écrit utilisent désormais exactement
+  la même typographie, le même espacement et les mêmes règles de coupure, si bien que le curseur
+  tombe là où sont les lettres.
+- **« Ouvrir dans… » n'apparaît plus quand aucun éditeur n'est installé.** Il restait une ligne
+  morte dans le menu du projet.
+- **« Au travail » ne compte que ceux qui travaillent.** Un agent qui attend une réponse de votre
+  part était compté comme s'il travaillait, dans la barre latérale comme dans la vue du téléphone.
+
 ## 0.19.0 — 2026-09-14
 
 ### Nouveau

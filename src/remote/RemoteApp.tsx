@@ -255,7 +255,7 @@ function HomeView() {
           <EmptyState icon={FolderOpen} title={t("home.empty.title")} description={t("phone.createOnDesktop")} />
         ) : (
           projects.map(project => {
-            const working = Object.values(runtime[project.id] ?? {}).filter(r => r.status === "working" || r.status === "waiting").length;
+            const working = Object.values(runtime[project.id] ?? {}).filter(r => r.status === "working").length;
             const last = Object.values(runs)
               .filter(r => r.projectId === project.id && r.parentRunId === null && r.kind !== "chat")
               .sort((a, b) => b.startedAt - a.startedAt)[0];

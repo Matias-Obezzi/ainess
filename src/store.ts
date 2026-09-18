@@ -204,6 +204,10 @@ export interface AppState {
   shortcutsOpen: boolean;
   /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
   focusedTaskId: string | null;
+  /** Message the chat/thread should scroll to and highlight (set by the search palette). Not persisted. */
+  focusedMessageId: string | null;
+  /** Initial group filter for search palette (e.g. "messages"). Not persisted. */
+  searchInitialGroup: "messages" | null;
   openHome(): void;
   /** `chatId` null = orchestrator thread; undefined = keep the current chat if it belongs to the project. */
   /**
@@ -224,10 +228,12 @@ export interface AppState {
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
   toggleSidebar(open?: boolean): void;
-  toggleSearch(open?: boolean): void;
+  toggleSearch(open?: boolean, initialGroup?: "messages" | null): void;
   toggleShortcuts(open?: boolean): void;
   /** Asks the task board to open (or close, with null) one task's detail. */
   focusTask(taskId: string | null): void;
+  /** Asks the thread to scroll to and highlight one message. */
+  focusMessage(messageId: string | null): void;
   goBack(): void;
   goForward(): void;
 
@@ -898,6 +904,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   searchOpen: false,
   shortcutsOpen: false,
   focusedTaskId: null,
+  focusedMessageId: null,
+  searchInitialGroup: null,
   terminals: [],
   shells: [],
 
@@ -1028,8 +1036,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  toggleSearch: (open) => {
-    set(s => ({ searchOpen: open ?? !s.searchOpen }));
+  toggleSearch: (open, initialGroup) => {
+    set(s => {
+      const nextOpen = open ?? !s.searchOpen;
+      return {
+        searchOpen: nextOpen,
+        searchInitialGroup: nextOpen ? (initialGroup ?? null) : null,
+      };
+    });
   },
 
   toggleShortcuts: (open) => {
@@ -1038,6 +1052,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   focusTask: (taskId) => {
     set({ focusedTaskId: taskId });
+  },
+
+  focusMessage: (messageId) => {
+    set({ focusedMessageId: messageId });
   },
 
   goBack: () => {
@@ -2706,14 +2724,14 @@ export function selectRunningCount(state: AppState, projectId?: string): number 
     const projectRuntime = state.runtime[projectId];
     if (!projectRuntime) return 0;
     for (const r of Object.values(projectRuntime)) {
-      if (r.status === "working" || r.status === "waiting") count++;
+      if (r.status === "working") count++;
     }
     return count;
   }
   // Count across all projects
   for (const pr of Object.values(state.runtime)) {
     for (const r of Object.values(pr)) {
-      if (r.status === "working" || r.status === "waiting") count++;
+      if (r.status === "working") count++;
     }
   }
   return count;

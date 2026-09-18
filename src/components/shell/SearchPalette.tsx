@@ -32,6 +32,9 @@ interface Result {
 /** Per group cap, so an empty query still shows a useful preview instead of everything. */
 const PER_GROUP = 8;
 
+/** Searching inside the conversations shows nothing else, so the eight-per-group cap is wasted. */
+const MESSAGES_ONLY = 40;
+
 /** Lands on the project's board with one task's detail open. */
 function openTaskOnBoard(projectId: string, taskId: string): void {
   const state = useAppStore.getState();
@@ -50,6 +53,7 @@ function openProjectFeed(projectId: string): void {
 export function SearchPalette() {
   const t = useT();
   const searchOpen = useAppStore(state => state.searchOpen);
+  const searchInitialGroup = useAppStore(state => state.searchInitialGroup);
   const toggleSearch = useAppStore(state => state.toggleSearch);
   const projects = useAppStore(state => state.config.projects);
   const chats = useAppStore(state => state.config.chats);
@@ -60,7 +64,11 @@ export function SearchPalette() {
   const openSettings = useAppStore(state => state.openSettings);
   const addTask = useAppStore(state => state.addTask);
   const focusTask = useAppStore(state => state.focusTask);
+  const focusMessage = useAppStore(state => state.focusMessage);
   const toggleShortcuts = useAppStore(state => state.toggleShortcuts);
+
+  /** Ctrl+F opens the palette on the conversations alone: only messages, and more of them. */
+  const messagesOnly = searchInitialGroup === "messages";
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -173,7 +181,9 @@ export function SearchPalette() {
     // second while an agent talks. A snapshot taken as you type is what you are looking at anyway.
     const feed = searchOpen ? useAppStore.getState() : undefined;
     const chatSources = feed ? chats.map(c => ({ id: c.id, messages: feed.chatMessages[c.id] ?? [] })) : [];
-    const messageHits = feed ? searchMessages(query, { messages: feed.messages, chats: chatSources }, PER_GROUP) : [];
+    const messageHits = feed
+      ? searchMessages(query, { messages: feed.messages, chats: chatSources }, messagesOnly ? MESSAGES_ONLY : PER_GROUP)
+      : [];
     for (const hit of messageHits) {
       const who = hit.from === "user" ? t("common.you") : (agents.find(a => a.id === hit.from)?.name ?? hit.from);
       const source = hit.source;
@@ -193,21 +203,28 @@ export function SearchPalette() {
         label: hit.excerpt,
         hint,
         icon: MessageCircle,
+        // The thread is asked for the message before it is opened, so that it mounts already
+        // knowing which one to scroll to. The project feed draws runs and not single messages,
+        // so there the run that produced it is what can actually be reached.
         run: () => {
           if (source.kind === "chat") {
+            focusMessage(hit.id);
             const chat = chats.find(c => c.id === source.chatId);
             if (chat) {
               openProject(chat.projectId, chat.id);
+              useAppStore.getState().setProjectMode("chat");
             }
           } else {
+            focusMessage(source.runId ?? hit.id);
             openProjectFeed(source.projectId);
           }
         },
       });
     }
 
-    return out;
-  }, [query, projects, chats, agents, tasks, currentProjectId, searchOpen, openProject, openSettings, addTask, focusTask, toggleShortcuts, t]);
+    // Ctrl+F is "search in the conversations": the projects and the settings are not an answer to it.
+    return messagesOnly ? out.filter(r => r.group === "messages") : out;
+  }, [query, projects, chats, agents, tasks, currentProjectId, searchOpen, messagesOnly, openProject, openSettings, addTask, focusTask, focusMessage, toggleShortcuts, t]);
 
   // The query shrinks the list, so keep the cursor inside it.
   useEffect(() => {
@@ -253,7 +270,7 @@ export function SearchPalette() {
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder={t("search.placeholder")}
+            placeholder={messagesOnly ? t("search.placeholderMessages") : t("search.placeholder")}
             className="border-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
           />
         </div>
@@ -261,7 +278,9 @@ export function SearchPalette() {
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
           {results.length === 0 && (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              {t("search.noResults", { query: query.trim() })}
+              {messagesOnly
+                ? t("search.noMessages", { query: query.trim() })
+                : t("search.noResults", { query: query.trim() })}
             </div>
           )}
           {results.map((r, i) => {

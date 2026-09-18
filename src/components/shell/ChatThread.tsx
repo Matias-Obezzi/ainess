@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { ProjectMascot } from "@/components/ProjectMascot";
 import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { useAppStore, selectAllAgents } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
@@ -21,11 +22,16 @@ import { plural } from "@/i18n";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
+import { cn } from "@/lib/utils";
 import { createTaskFromMessage } from "@/lib/task-from-message";
 import { rewindRemoves } from "@/lib/chat-rewind";
 import { EditMessageDialog } from "@/components/EditMessageDialog";
+import { QuotaCard } from "@/components/QuotaCard";
+import { RetryRunDialog } from "@/components/RetryRunDialog";
+import { outOfQuota } from "@/lib/quota";
+import { retriedLater } from "@/lib/quota-card";
 import type { ChatMessage } from "@/types";
-import { ArrowDown, Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, PencilLine, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, Copy, FileCode, FileText, ListTodo, MessageSquare, Pencil, PencilLine, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 /** One chat's message thread. The chat list lives in the sidebar and the input in the Composer. */
 export function ChatThread({ chatId }: { chatId: string }) {
@@ -37,6 +43,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const loadChatMessages = useAppStore(state => state.loadChatMessages);
   const removeChat = useAppStore(state => state.removeChat);
   const openProject = useAppStore(state => state.openProject);
+  const focusedMessageId = useAppStore(state => state.focusedMessageId);
 
   const [editOpen, setEditOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -48,6 +55,12 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
   const chat = chats.find(c => c.id === chatId);
   const messages: ChatMessage[] = chatMessages[chatId] || [];
+
+  // For the mascot on the empty thread. The badge shows whoever is on the other side of this chat;
+  // a shared chat with several participants falls back to the project's planner.
+  const project = useAppStore(state => state.config.projects.find(p => p.id === chats.find(c => c.id === chatId)?.projectId));
+  const chatAgent = chat?.participants.length === 1 ? agents.find(a => a.id === chat.participants[0].agentId) : undefined;
+  const mascotProvider = chatAgent?.provider ?? project?.agents.find(a => a.role === "planner")?.provider;
 
   // Sent while the chat was mid-answer: it waits its turn, and says so.
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);
@@ -69,12 +82,31 @@ export function ChatThread({ chatId }: { chatId: string }) {
     void loadChatMessages(chatId);
   }, [chatId, loadChatMessages]);
 
-  // Opening a chat (or finishing its load) lands on the last message, instantly.
+  // The bubble clears `focusedMessageId` when its flash ends, and that must not read as "a chat
+  // was just opened": the message it took you to stays where it is. Holds the chat the jump
+  // happened in, so moving to another conversation still lands on its last message.
+  const jumpedIn = useRef<string | null>(null);
+
+  // Opening a chat (or finishing its load) lands on the last message, instantly,
+  // unless a specific message was requested by the search palette.
   useEffect(() => {
     if (chatLoading) return;
+    if (focusedMessageId) {
+      const el = scrollRef.current?.querySelector<HTMLElement>(`[data-message-id="${focusedMessageId}"]`);
+      if (el) {
+        jumpedIn.current = chatId;
+        setStickToBottom(false);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+    if (jumpedIn.current === chatId) {
+      jumpedIn.current = null;
+      return;
+    }
     const id = requestAnimationFrame(() => stick(scrollRef.current));
     return () => cancelAnimationFrame(id);
-  }, [chatId, chatLoading]);
+  }, [chatId, chatLoading, focusedMessageId, messages.length]);
 
   // Another conversation is another bottom: what the last one had counted, and how many messages it
   // had, mean nothing here.
@@ -186,6 +218,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
           ) : messages.length === 0 ? (
             <EmptyState
               icon={MessageSquare}
+              visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={mascotProvider} size={104} className="mb-2" />}
               title={t("chat.empty.title")}
               description={t("chat.empty.body")}
             />
@@ -229,10 +262,29 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
   const name = isUser ? t("chat.you") : (agent?.name || message.from);
   const color = agent?.color || "#888";
   const isPending = message.status === "pending";
-  // A pending bubble left behind by a closed app has no run to stream from.
-  const hasRun = useAppStore(state => (message.runId ? !!state.runs[message.runId] : false));
+  const run = useAppStore(state => (message.runId ? state.runs[message.runId] : undefined));
+  const hasRun = !!run;
+  const focusedMessageId = useAppStore(state => state.focusedMessageId);
+  const focusMessage = useAppStore(state => state.focusMessage);
+  const [flashing, setFlashing] = useState(false);
+
+  useEffect(() => {
+    if (focusedMessageId === message.id) {
+      setFlashing(true);
+      const timer = setTimeout(() => {
+        setFlashing(false);
+        focusMessage(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [focusedMessageId, message.id, focusMessage]);
+
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [retryOpen, setRetryOpen] = useState(false);
+
+  const quotaDead = !isUser && message.status === "error" && (outOfQuota(message.text) || (run?.status === "error" && outOfQuota(run.output || "")));
+  const retried = useAppStore(state => (quotaDead && run ? retriedLater(state.runs, run) : false));
 
   const rewindChat = useAppStore(state => state.rewindChat);
   // How much a rewind would take with it. Reverting to the last message removes nothing, and a menu
@@ -308,6 +360,9 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
           } satisfies MenuAction,
         ]
       : []),
+    ...(quotaDead && run
+      ? [{ key: "retry-with", label: t("retry.action"), icon: Sparkles, onSelect: () => setRetryOpen(true) } satisfies MenuAction]
+      : []),
     {
       key: "rewind",
       label: t("message.rewind"),
@@ -322,7 +377,7 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+        <div data-message-id={message.id} className={cn("flex flex-col transition-colors rounded-lg", isUser ? "items-end" : "items-start", flashing && "animate-flash-highlight p-1")}>
           <div className="flex items-center gap-1.5 mb-1">
             {!isUser && (agent ? <AgentAvatar provider={agent.provider} color={color} size={22} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />)}
             <span className="text-xs font-medium">{name}</span>
@@ -332,19 +387,24 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
           {/* The user's turn is a bubble; the agent's answer reads like a document under its name. */}
           <div
             data-testid={isUser ? "user-bubble" : undefined}
-            className={`text-sm break-words ${
+            className={cn(
+              "text-sm break-words",
               isUser
                 ? `rounded-xl px-3.5 py-2 max-w-[80%] bg-muted ${hasMarkdown(message.text) ? "" : "whitespace-pre-wrap"}`
-                : message.status === "error"
-                  ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
-                  : "pl-[18px] w-full"
-            }`}
+                : quotaDead
+                  ? "pl-[18px] w-full"
+                  : message.status === "error"
+                    ? "rounded-lg px-3 py-2 max-w-[90%] bg-destructive/10 text-destructive border border-destructive/20 whitespace-pre-wrap"
+                    : "pl-[18px] w-full"
+            )}
           >
             {isPending ? (
               // Live: what the agent is writing plus every tool it uses, with its own footer.
               message.runId && hasRun
                 ? <RunActivity runId={message.runId} />
                 : <span className="text-muted-foreground">…</span>
+            ) : quotaDead && run ? (
+              <QuotaCard run={run} agent={agent} retried={retried} onRetryWith={() => setRetryOpen(true)} />
             ) : message.status === "error" ? (
               <ErrorMessage text={message.text} />
             ) : isUser ? (
@@ -355,6 +415,7 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             )}
           </div>
           <RunDetailDialog runId={message.runId || null} open={detailOpen} onOpenChange={setDetailOpen} />
+          {run && <RetryRunDialog runId={run.id} open={retryOpen} onOpenChange={setRetryOpen} />}
           {isUser && <EditMessageDialog message={message} open={editOpen} onOpenChange={setEditOpen} />}
         </div>
       </ContextMenuTrigger>

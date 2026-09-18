@@ -4,6 +4,47 @@ What changed in each release, for the people who use it. This is the English one
 it to English readers; the other languages are in `docs/changelog/`, and the release check will not
 let one of them fall behind.
 
+## Unreleased
+
+### Added
+
+- **Ctrl+F searches inside the conversations.** A new shortcut. It opens the search showing
+  messages alone — up to forty of them, instead of the usual eight per group — with a hint of its
+  own and its own way of saying it found nothing. Pick a result and the chat or the project thread
+  it lives in opens, scrolls down to that message, and the message lights up for a moment so the
+  eye can find it.
+- **Running out of quota is a card in the chats too.** It used to be the project thread's alone: a
+  chat whose agent ran out of tokens showed the raw error. It now shows the same card, with when
+  the quota comes back and whether the work has been tried again, and the message's menu can retry
+  it with another model.
+- **Carrying on by itself when the tokens come back, in the chats too.** If the project has it
+  switched on, a chat that died of quota waits instead, and picks up on its own the moment the
+  quota is there again.
+- **Every project has its mascot.** It sits in the empty threads, where the grey icon used to be.
+  The face comes out of the project itself — its body, its eyes, what it wears on its head, its
+  colour, and a badge with the provider of whoever answers first — so every project has one of its
+  own, and always the same one; renaming the project does not change it. It floats and blinks
+  slowly, and holds still for anyone who asked for less movement.
+- **The count of working agents opens the list.** In the foot of the sidebar: who is working, on
+  what, and in which project. Click one and you are there.
+
+### Fixed
+
+- **Agents no longer stay stuck after a restart.** If the app or the machine went down in the
+  middle of a turn, the agent came back marked busy for good: everything asked of it queued behind
+  a turn that had finished before the app even started, with the message that it is in the middle
+  of something else, and it never got going. A turn that has ended no longer counts as busy, and
+  stopping such an agent frees it instead of trying to kill a process that is not there any more.
+- **A notification takes you to the chat it came from.** Not to the project alone: it opens the
+  conversation the notice was about.
+- **The words in the box and the caret no longer disagree about where the line breaks.** The layer
+  that draws the words and the field you type in now use exactly the same typeface, the same
+  spacing and the same breaking rules, so the caret falls where the letters are.
+- **"Open in…" is not there when no editor is installed.** It used to leave a dead row in the
+  project menu.
+- **"Working" counts only those who are working.** An agent waiting on an answer from you was
+  counted as working, both in the sidebar and in the phone's view.
+
 ## 0.19.0 — 2026-09-14
 
 ### Added

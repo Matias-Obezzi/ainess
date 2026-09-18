@@ -10,6 +10,10 @@ describe("outOfQuota", () => {
     expect(outOfQuota("You are out of premium requests for this month")).toBe(true);
     expect(outOfQuota("429: rate limit exceeded")).toBe(true);
     expect(outOfQuota("insufficient credits on this account")).toBe(true);
+    expect(outOfQuota("You are out of tokens")).toBe(true);
+    expect(outOfQuota("token limit reached for this period")).toBe(true);
+    expect(outOfQuota("You have exceeded your current quota")).toBe(true);
+    expect(outOfQuota("Your credit balance is too low to continue")).toBe(true);
   });
 
   it("does not read an ordinary failure as one", () => {

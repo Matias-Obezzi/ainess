@@ -773,6 +773,7 @@ export interface AppNotification {
    * enough to read and not enough to answer without going and finding it.
    */
   questionId?: string;
+  chatId?: string;
 }
 
 // ---- Tasks (per project board + dependency graph, see src/lib/tasks.ts) ----

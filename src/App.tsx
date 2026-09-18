@@ -111,6 +111,9 @@ export default function App() {
         case "palette":
           state.toggleSearch();
           break;
+        case "find":
+          state.toggleSearch(true, "messages");
+          break;
         case "sidebar":
           state.toggleSidebar();
           break;

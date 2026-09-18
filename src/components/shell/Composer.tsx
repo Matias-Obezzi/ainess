@@ -118,7 +118,14 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
     // here and put back after the suggestion.
     const body = isLast && segment.text.endsWith("\n") ? segment.text.slice(0, -1) : segment.text;
     const tail: React.ReactNode[] = isLast
-      ? [ghost ? <span key="ghost" className="text-muted-foreground/70">{ghost}</span> : null, "\n"]
+      ? [
+          ghost ? (
+            <span key="ghost" className="inline text-muted-foreground/70 pointer-events-none select-none break-words [overflow-wrap:break-word]">
+              {ghost}
+            </span>
+          ) : null,
+          "\n",
+        ]
       : [];
     if (segment.kind === "plain") {
       flush();
@@ -969,7 +976,7 @@ export function Composer() {
               data-testid="composer-layer"
               // `inset-px`, not `inset-0`: the textarea has a one-pixel border and lays its text out
               // inside it. On the border box the layer's words sat a pixel up and left of the caret.
-              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-base text-foreground md:text-sm pr-12"
+              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
             >
               {/* The suggestion travels inside: it has to sit before the trailing newline the layer
                   appends, on the line the caret is on, whatever that line is part of. */}
@@ -993,7 +1000,7 @@ export function Composer() {
               aria-label={placeholder}
               rows={2}
               // Transparent text, a caret and a selection: the layer underneath draws the words.
-              className="relative resize-none min-h-[60px] max-h-[200px] overflow-y-auto bg-transparent pr-12 text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent"
+              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}

@@ -3,6 +3,9 @@ import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AgentAvatar } from "@/components/ProviderLogo";
+import { StatusDot } from "@/components/StatusDot";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +32,7 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { pendingApprovals } from "@/lib/approvals";
 import { isAutonomous } from "@/lib/autonomous";
-import type { Chat, Project } from "@/types";
+import type { Chat, Project, ProviderId, AgentRole } from "@/types";
 import { FolderOpen,
   Bot,
   Bug,
@@ -60,6 +63,7 @@ export function Sidebar() {
   const projects = useAppStore(state => state.config.projects);
   const chats = useAppStore(state => state.config.chats);
   const runtime = useAppStore(state => state.runtime);
+  const runs = useAppStore(state => state.runs);
   const approvals = useAppStore(state => state.approvals);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
@@ -98,7 +102,7 @@ export function Sidebar() {
     const counts: Record<string, number> = {};
     for (const [projectId, agents] of Object.entries(runtime)) {
       let n = 0;
-      for (const r of Object.values(agents)) if (r.status === "working" || r.status === "waiting") n++;
+      for (const r of Object.values(agents)) if (r.status === "working") n++;
       counts[projectId] = n;
     }
     return counts;
@@ -108,6 +112,46 @@ export function Sidebar() {
     () => Object.values(runningByProject).reduce((a, b) => a + b, 0),
     [runningByProject],
   );
+
+  const activeAgentsList = useMemo(() => {
+    const list: Array<{
+      projectId: string;
+      projectName: string;
+      projectColor?: string;
+      agentId: string;
+      agentName: string;
+      provider: ProviderId;
+      color?: string;
+      role: AgentRole;
+      currentTask?: string;
+      chatId?: string;
+    }> = [];
+
+    for (const [projectId, agents] of Object.entries(runtime)) {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) continue;
+      for (const [agentId, rt] of Object.entries(agents)) {
+        if (rt.status !== "working") continue;
+        const agent = project.agents.find(a => a.id === agentId);
+        const run = rt.currentRunId ? runs[rt.currentRunId] : undefined;
+        const taskOrPrompt = rt.currentTask || run?.prompt || rt.preparing;
+        list.push({
+          projectId,
+          projectName: project.name,
+          projectColor: project.color,
+          agentId,
+          agentName: agent?.name ?? agentId,
+          provider: agent?.provider ?? "claude",
+          color: agent?.color,
+          role: agent?.role ?? "implementer",
+          currentTask: taskOrPrompt,
+          chatId: run?.chatId,
+        });
+      }
+    }
+    return list;
+  }, [runtime, projects, runs]);
+
   const pendingCount = useMemo(
     () => pendingApprovals(approvals, projects).length,
     [approvals, projects],
@@ -183,18 +227,22 @@ export function Sidebar() {
       separatorBefore: true,
       onSelect: () => void openFolder(p.workspaceDir),
     },
-    {
-      key: "open-in",
-      label: t("project.openIn"),
-      icon: Code2,
-      disabled: !p.workspaceDir || editors.length === 0,
-      children: editors.map(editor => ({
-        key: `open-in-${editor.id}`,
-        label: editor.label,
-        onSelect: () => void openInEditor(editor, repoDirOf(p)),
-      })),
-      onSelect: () => {},
-    },
+      ...(editors.length > 0
+        ? [
+            {
+              key: "open-in",
+              label: t("project.openIn"),
+              icon: Code2,
+              disabled: !p.workspaceDir,
+              children: editors.map(editor => ({
+                key: `open-in-${editor.id}`,
+                label: editor.label,
+                onSelect: () => void openInEditor(editor, repoDirOf(p)),
+              })),
+              onSelect: () => {},
+            },
+          ]
+        : []),
     {
       key: "copy-path",
       label: t("sidebar.copyPath"),
@@ -421,7 +469,68 @@ export function Sidebar() {
 
       <div className="border-t border-border p-2 flex flex-col gap-1.5">
         <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-          <span>{t("sidebar.working", { n: totalRunning })}</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                aria-label={t("sidebar.working", { n: totalRunning })}
+              >
+                <StatusDot status={totalRunning > 0 ? "working" : "idle"} />
+                <span className="tabular-nums font-medium">{t("sidebar.working", { n: totalRunning })}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" side="top" className="w-80 p-3">
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                <span className="text-xs font-semibold">{t("sidebar.activeAgents")}</span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {totalRunning}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-col gap-2 max-h-72 overflow-y-auto">
+                {activeAgentsList.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">
+                    {t("sidebar.noActiveAgents")}
+                  </p>
+                ) : (
+                  activeAgentsList.map(item => (
+                    <button
+                      key={`${item.projectId}-${item.agentId}`}
+                      type="button"
+                      className="flex items-start gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-accent cursor-pointer group"
+                      onClick={() => openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : "tasks")}
+                    >
+                      <AgentAvatar
+                        provider={item.provider}
+                        color={item.color}
+                        size={26}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-xs font-medium text-foreground">
+                            {item.agentName}
+                          </span>
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.projectColor || "#4f8cff" }}
+                          />
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {item.projectName}
+                          </span>
+                        </div>
+                        {item.currentTask && (
+                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                            {item.currentTask}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           {pendingCount > 0 && (
             <Badge
               className="ml-auto cursor-pointer bg-amber-500 text-black hover:bg-amber-500"
