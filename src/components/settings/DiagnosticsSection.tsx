@@ -58,7 +58,7 @@ export function DiagnosticsSection() {
   };
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" disabled={running} onClick={() => void run()}>
           {running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
