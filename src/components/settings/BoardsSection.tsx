@@ -26,8 +26,10 @@ export function BoardsSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("settings.section.boards")}</CardTitle>
-        <CardDescription>{t("settings.help.boards")}</CardDescription>
+        {/* The block, not the section: the dialog's own header already shows the section name and
+            its help right above this card, and repeating them here said the same thing twice. */}
+        <CardTitle>{t("boards.github.title")}</CardTitle>
+        <CardDescription>{t("boards.github.description")}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">

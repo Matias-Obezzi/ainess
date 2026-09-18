@@ -31,6 +31,12 @@ const seenProjects = new Set<string>();
 
 export const taskFilePath = (projectId: string) => `tasks/${projectId}.json`;
 
+/** The mirrored card of a remote board, when the file holds a whole one. */
+function sanitizeExternal(raw: Task["external"]): Task["external"] {
+  if (!raw || typeof raw.provider !== "string" || typeof raw.id !== "string" || !raw.id) return undefined;
+  return { provider: raw.provider, id: raw.id, url: typeof raw.url === "string" ? raw.url : undefined };
+}
+
 /** Drops anything a hand-edited (or older) file could hold that the board cannot render. */
 function sanitize(raw: unknown, projectId: string): Task[] {
   if (!Array.isArray(raw)) return [];
@@ -46,6 +52,10 @@ function sanitize(raw: unknown, projectId: string): Task[] {
       projectId,
       status: VALID_STATUSES.includes(t.status as TaskStatus) ? t.status : "backlog",
       dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn.filter(d => typeof d === "string") : [],
+      // Which card on a remote board this one mirrors survives the round trip: without it the next
+      // save would take it for a card the remote never saw and open a duplicate of it there. Half
+      // of one (a provider with no id) is worse than none, so it is kept only whole.
+      external: sanitizeExternal(t.external),
     }));
   }
   // A dependency on a task that is no longer in the file would block its column forever.

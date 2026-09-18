@@ -144,6 +144,12 @@ export interface BoardSource {
   provider: BoardProviderId;
   /** Provider-specific handle: a GitHub project number, a Trello board id. `local` has none. */
   externalId?: string;
+  /** Owner and number of the board on the platform: `github.com/orgs/<owner>/projects/<number>`. */
+  owner?: string;
+  number?: number;
+  /** Which option of the platform's status field each of our columns is. Without it the provider
+   *  cannot be used: guessing would file cards under the wrong column in silence. */
+  columns?: Partial<Record<TaskStatus, string>>;
 }
 
 export interface Project {
@@ -832,6 +838,8 @@ export interface Task {
   /** Position inside its column. */
   order: number;
   archived: boolean;
+  /** The card this one mirrors on a remote board, when the project's board is not local. */
+  external?: { provider: BoardProviderId; id: string; url?: string };
 }
 /** The sections of the right dock. */
 export type DockSectionId = "comm" | "diff" | "term" | "file";

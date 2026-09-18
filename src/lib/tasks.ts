@@ -39,6 +39,10 @@ export function createTask(partial: Partial<Task> & { projectId: string }): Task
     updatedAt: partial.updatedAt ?? now,
     order: partial.order ?? 0,
     archived: partial.archived ?? false,
+    // The card on a remote board this one mirrors. Rebuilt from the file like everything else:
+    // dropping it here would make every load look like a card the remote board never saw, and the
+    // next save would open a duplicate of it on the other side.
+    external: partial.external,
   };
 }
 

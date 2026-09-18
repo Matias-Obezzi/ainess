@@ -7,6 +7,7 @@
 // the orchestrator needs to know when a save happens.
 import { useAppStore } from "@/store";
 import { boardProviderFor } from "@/lib/board/registry";
+import type { BoardProvider } from "@/lib/board/provider";
 import { forgetLocalBoard, trimTasks } from "@/lib/board/local";
 import { writeProjectFolder } from "@/lib/project-folder";
 import type { Task } from "@/types";
@@ -18,6 +19,9 @@ const SAVE_DELAY_MS = 500;
 const loadedProjects = new Set<string>();
 const dirtyProjects = new Set<string>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
+/** How to stop watching each project whose provider watches. A local board has nobody else
+ *  writing to it and never lands here. */
+const watchers = new Map<string, () => void>();
 let subscribed = false;
 
 /** The project a board belongs to, or undefined while it is being created or already deleted. */
@@ -77,9 +81,10 @@ export async function saveTasks(projectId: string): Promise<void> {
 /** Read a project's tasks from its board into the store. Safe to call repeatedly. */
 export async function loadTasks(projectId: string): Promise<void> {
   if (loadedProjects.has(projectId)) return;
+  const provider = boardProviderFor(projectOf(projectId));
   let tasks: Task[] = [];
   try {
-    tasks = await boardProviderFor(projectOf(projectId)).load(projectId);
+    tasks = await provider.load(projectId);
   } catch {
     tasks = [];
   }
@@ -92,6 +97,41 @@ export async function loadTasks(projectId: string): Promise<void> {
     const merged = [...tasks.filter(t => !known.has(t.id)), ...inMemory];
     return { tasks: { ...state.tasks, [projectId]: merged } };
   });
+  startWatching(projectId, provider);
+}
+
+/**
+ * Folds a board somebody else moved into the one in memory.
+ *
+ * Two things have to survive at once. A card that is not in what the board sent stays exactly where
+ * it is — that is the card the orchestrator opened one second ago, and the card a delegation made,
+ * which never travels to a remote board at all. And a card that *is* in both keeps everything the
+ * remote board has no idea about: who is on it, the run behind it, the branch, what it waits for.
+ * Only the four things a collaborator can actually change over there — the title, the detail, the
+ * column and where the card lives — come from the other side.
+ */
+function foldRemote(inMemory: Task[], incoming: Task[]): Task[] {
+  const byId = new Map(incoming.map(t => [t.id, t]));
+  const merged = inMemory.map(mine => {
+    const theirs = byId.get(mine.id);
+    if (!theirs) return mine;
+    byId.delete(mine.id);
+    if (theirs.title === mine.title && theirs.detail === mine.detail && theirs.status === mine.status) return mine;
+    return { ...mine, title: theirs.title, detail: theirs.detail, status: theirs.status, external: theirs.external, updatedAt: theirs.updatedAt };
+  });
+  // Whatever is left is a card opened on the other side since the last read.
+  return [...byId.values(), ...merged];
+}
+
+/** Starts polling the board when its provider is one that can change without us. */
+function startWatching(projectId: string, provider: BoardProvider): void {
+  if (!provider.watch || watchers.has(projectId)) return;
+  const stop = provider.watch(projectId, incoming => {
+    useAppStore.setState(state => ({
+      tasks: { ...state.tasks, [projectId]: foldRemote(state.tasks[projectId] ?? [], incoming) },
+    }));
+  });
+  watchers.set(projectId, stop);
 }
 
 /** Write every pending project now (call before a CLI process exits). */
@@ -109,5 +149,9 @@ export function forgetTasks(projectId: string): void {
   dirtyProjects.delete(projectId);
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }
+  // A poll left running against a deleted project would keep spending the token, and would put its
+  // cards back into a store that no longer has anywhere to show them.
+  const stop = watchers.get(projectId);
+  if (stop) { stop(); watchers.delete(projectId); }
   forgetLocalBoard(projectId);
 }

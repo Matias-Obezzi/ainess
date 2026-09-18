@@ -1,5 +1,6 @@
 // The catalogue of board providers: what the picker in the project dialog offers, and how a
 // project's saved choice turns into something that actually reads and writes.
+import { githubProjectsBoardProvider } from "@/lib/board/github-projects";
 import { localBoardProvider } from "@/lib/board/local";
 import type { BoardProvider } from "@/lib/board/provider";
 import type { BoardProviderId, Project } from "@/types";
@@ -14,7 +15,7 @@ export interface BoardProviderMeta {
 /** Every provider the app knows about, in the order the picker shows them. */
 export const BOARD_PROVIDERS: BoardProviderMeta[] = [
   { id: "local", labelKey: "board.provider.local", available: true },
-  { id: "github-projects", labelKey: "board.provider.github-projects", available: false },
+  { id: "github-projects", labelKey: "board.provider.github-projects", available: true },
   { id: "trello", labelKey: "board.provider.trello", available: false },
   { id: "jira", labelKey: "board.provider.jira", available: false },
 ];
@@ -22,6 +23,7 @@ export const BOARD_PROVIDERS: BoardProviderMeta[] = [
 /** The ones that can read and write. An id missing here is declared and not yet built. */
 const IMPLEMENTED: Partial<Record<BoardProviderId, BoardProvider>> = {
   local: localBoardProvider,
+  "github-projects": githubProjectsBoardProvider,
 };
 
 /**

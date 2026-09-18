@@ -1,8 +1,17 @@
 # Tableros remotos — diseño de la segunda tanda
 
 La primera tanda dejó el seam: `src/lib/board/` con `BoardProvider`, el registro, el proveedor
-local y el selector en `ProjectDialog`. Sólo `local` está implementado. Esto es lo que hay que
-resolver antes de escribir el primer proveedor remoto, para no redescubrirlo.
+local y el selector en `ProjectDialog`. Esto es lo que hay que resolver antes de escribir el
+primer proveedor remoto, para no redescubrirlo.
+
+## Estado
+
+Hecho: los puntos 1 a 7 de abajo, y GitHub Projects entero — cliente, proveedor, `watch` por
+polling, credencial en Configuración → Tableros y mapeo de columnas en el diálogo del proyecto.
+
+Falta: **probarlo de punta a punta contra un tablero real** (nunca corrió contra la API viva: lo
+que se verificó fue el esquema publicado, más el comportamiento de un scope faltante y la
+validación de la consulta de items); después Trello, después Jira; y webhooks en lugar de polling.
 
 ## Lo que ya está decidido
 
