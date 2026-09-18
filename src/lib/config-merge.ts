@@ -36,5 +36,10 @@ export function mergeConfig(disk: AppConfig | null, mem: AppConfig, base: AppCon
   if (disk.messaging || mem.messaging) {
     out.messaging = { ...disk.messaging, ...mem.messaging };
   }
+  // Same reason as `messaging`: a process that loaded before the token was typed would otherwise
+  // wipe it the next time it saves, because it has no `boards` of its own to write.
+  if (disk.boards || mem.boards) {
+    out.boards = { ...disk.boards, ...mem.boards };
+  }
   return out;
 }

@@ -4,7 +4,7 @@
 // hundred items of the first page, and a client that stops there loses cards silently, which is the
 // worst way this can fail. The other is the error `kind`: the provider decides between "set up your
 // token" and "GitHub is down" by reading it, so every mapping gets a sample response of its own.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   GhBoardError,
   addDraftItem,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/board/github-client";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
+import { useAppStore } from "@/store";
 
 interface Post {
   url: string;
@@ -105,6 +106,16 @@ async function kindOf(run: () => Promise<unknown>): Promise<string> {
   } catch (e) {
     if (e instanceof GhBoardError) return e.kind;
     throw e;
+  }
+  throw new Error("expected the call to throw");
+}
+
+/** The message a call threw, so a test can assert no secret found its way into it. */
+async function messageOf(run: () => Promise<unknown>): Promise<string> {
+  try {
+    await run();
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
   }
   throw new Error("expected the call to throw");
 }
@@ -354,6 +365,104 @@ describe("what went wrong, as a kind", () => {
       await resolveProject(ref);
     } catch (e) {
       expect((e as Error).message).not.toContain("ghp_secret");
+    }
+  });
+});
+
+/**
+ * Where the token comes from. The CLI is the fallback and not the source: `gh` is not installed on
+ * most machines, so a token typed in Configuración has to be enough on its own — and has to take
+ * effect the moment it changes, which is the whole reason only the CLI's token is cached.
+ */
+describe("the token, and where it comes from", () => {
+  const ref = { owner: "acme", number: 3 };
+
+  const setConfigToken = (token: string | undefined) => {
+    const { config } = useAppStore.getState();
+    useAppStore.setState({ config: { ...config, boards: token === undefined ? undefined : { github: { token } } } });
+  };
+
+  afterEach(() => {
+    setConfigToken(undefined);
+  });
+
+  it("uses the token from the config and never spawns gh", async () => {
+    setConfigToken("github_pat_configured");
+    const { posts, calls } = transport([orgReply]);
+    await resolveProject(ref);
+    expect(calls.token).toBe(0);
+    expect(posts[0].headers.Authorization).toBe("Bearer github_pat_configured");
+  });
+
+  it("trims what was typed and ignores a field with only spaces in it", async () => {
+    setConfigToken("  github_pat_padded  ");
+    const { posts, calls } = transport([orgReply]);
+    await resolveProject(ref);
+    expect(calls.token).toBe(0);
+    expect(posts[0].headers.Authorization).toBe("Bearer github_pat_padded");
+  });
+
+  it("falls back to gh auth token when the config has none", async () => {
+    setConfigToken("");
+    const { posts, calls } = transport([orgReply]);
+    await resolveProject(ref);
+    expect(calls.token).toBe(1);
+    expect(posts[0].headers.Authorization).toBe("Bearer ghp_secret");
+  });
+
+  it("picks up a token changed in Configuración on the very next call", async () => {
+    setConfigToken("github_pat_first");
+    const { posts } = transport([orgReply]);
+    await resolveProject(ref);
+    setConfigToken("github_pat_second");
+    await resolveProject(ref);
+    expect(posts.map(p => p.headers.Authorization)).toEqual([
+      "Bearer github_pat_first",
+      "Bearer github_pat_second",
+    ]);
+  });
+
+  it("goes back to the CLI when the field is emptied again", async () => {
+    setConfigToken("github_pat_first");
+    const { posts, calls } = transport([orgReply]);
+    await resolveProject(ref);
+    setConfigToken("");
+    await resolveProject(ref);
+    expect(calls.token).toBe(1);
+    expect(posts[1].headers.Authorization).toBe("Bearer ghp_secret");
+  });
+
+  it("no-token when neither the config nor a logged-in gh has one", async () => {
+    setConfigToken("");
+    transport([orgReply], { code: 0, stdout: "", stderr: "" });
+    expect(await kindOf(() => resolveProject(ref))).toBe("no-token");
+  });
+
+  it("no-cli when there is no config token and gh is not installed either", async () => {
+    setConfigToken("");
+    transport([orgReply], { code: 127, stdout: "", stderr: "bash: gh: command not found" });
+    expect(await kindOf(() => resolveProject(ref))).toBe("no-cli");
+  });
+
+  it("never puts the configured token in the message it throws", async () => {
+    setConfigToken("github_pat_configured");
+    transport([{ status: 401, body: JSON.stringify({ message: "Bad credentials" }) }]);
+    const message = await messageOf(() => resolveProject(ref));
+    expect(message).not.toContain("github_pat_configured");
+  });
+
+  it("keeps the configured token out of every error the client can raise", async () => {
+    setConfigToken("github_pat_configured");
+    const failures: Array<() => { status: number; body: string }> = [
+      () => ({ status: 403, body: JSON.stringify({ message: "Resource not accessible by integration" }) }),
+      () => ({ status: 429, body: "" }),
+      () => ({ status: 500, body: "" }),
+      () => ({ status: 200, body: "<html>captive portal</html>" }),
+      () => graphQlErrors([{ type: "INSUFFICIENT_SCOPES", message: "token has not been granted the required scopes" }]),
+    ];
+    for (const reply of failures) {
+      transport([reply]);
+      expect(await messageOf(() => resolveProject(ref))).not.toContain("github_pat_configured");
     }
   });
 });

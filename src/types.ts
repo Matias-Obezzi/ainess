@@ -416,6 +416,12 @@ export interface AppConfig {
   /** The colours, when they are not the app's own. */
   theme?: ThemeConfig;
   messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig; slack?: MessagingChannelConfig };
+  /** Credentials for the board platforms a project can point at. See `lib/board/`. */
+  boards?: {
+    /** Personal access token for GitHub Projects. Needs the `project` scope (`read:project` is
+     *  enough to look but not to move a card). Empty or missing falls back to `gh auth token`. */
+    github?: { token: string };
+  };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];

@@ -1,14 +1,16 @@
 // Everything this app knows about talking to GitHub Projects v2, and nothing about boards.
 //
 // It lives next to the provider rather than inside it because the two fail in completely different
-// ways and are worth testing apart: this file is about a CLI that may not be installed, a token
-// that may not carry the right scope, pagination and rate limits, while the provider above it is
-// about columns, merges and `Task`. With the seam on top, every one of those cases would need a
-// project, a store and a board to reproduce; here a fake transport and a JSON string are enough.
+// ways and are worth testing apart: this file is about a token that may be missing or may not carry
+// the right scope — the one from Configuración, or else whatever the `gh` CLI has, when it is even
+// installed — plus pagination and rate limits, while the provider above it is about columns, merges
+// and `Task`. With the seam on top, every one of those cases would need a project, a store and a
+// board to reproduce; here a fake transport and a JSON string are enough.
 //
 // Nothing here is user-facing text: the messages are English log lines, which is what CLAUDE.md
 // says belongs in the source. The provider turns a `kind` into a translated sentence, not a string.
 import { getTransport } from "@/lib/transport";
+import { useAppStore } from "@/store";
 
 const GRAPHQL_URL = "https://api.github.com/graphql";
 
@@ -92,12 +94,21 @@ export interface GhItem {
 /**
  * Asked of `gh` once and kept: the board polls, and spawning a process per request would cost more
  * than the request. Never logged, never put in an error message.
+ *
+ * Only the CLI's token is cached, never the one from Configuración. Reading the store is a field
+ * lookup, so there is nothing to save by remembering it — and remembering it would mean the board
+ * kept using the old token until a restart every time somebody edits the field.
  */
 let cachedToken: string | null = null;
 
 /** Forgets the token. For the tests, and for whoever re-authenticates without restarting. */
 export function clearGhTokenCache(): void {
   cachedToken = null;
+}
+
+/** The token typed in Configuración → Tableros, when there is one. */
+function configuredToken(): string {
+  return useAppStore.getState().config.boards?.github?.token?.trim() || "";
 }
 
 /** Whether what `gh` printed on stderr reads as "that program is not here". */
@@ -113,7 +124,15 @@ function describe(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+/**
+ * The token every request goes out with: the one from Configuración first, and only if there is
+ * none of those, whatever `gh auth token` prints. The CLI is the fallback and not the source —
+ * plenty of machines never installed it — so a configured token means `gh` is never spawned at all.
+ */
 async function ghToken(): Promise<string> {
+  const configured = configuredToken();
+  if (configured) return configured;
+
   if (cachedToken) return cachedToken;
 
   let result: { code: number | null; stdout: string; stderr: string };

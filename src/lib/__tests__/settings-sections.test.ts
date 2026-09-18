@@ -1,5 +1,5 @@
 // Tests for B-12: the single list of settings sections.
-// Verifies that SETTINGS_SECTIONS_META has the expected twelve ids without duplicates,
+// Verifies that SETTINGS_SECTIONS_META has the expected fourteen ids without duplicates,
 // and that SettingsDialog's SECTION_UI map covers all of them.
 import { describe, it, expect } from "vitest";
 import { SETTINGS_SECTIONS_META, ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
@@ -19,6 +19,7 @@ const EXPECTED_IDS = [
   "hooks",
   "context",
   "remote",
+  "boards",
   "messaging",
   "diagnostics",
   "about",

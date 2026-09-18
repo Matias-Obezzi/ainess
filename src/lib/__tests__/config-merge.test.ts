@@ -48,4 +48,18 @@ describe("mergeConfig", () => {
       discord: { enabled: false, token: "b", allowedChatIds: [], projectId: null },
     });
   });
+
+  it("keeps a board token another process wrote while this one had none", () => {
+    const base = cfg({});
+    const mem = cfg({});
+    const disk = cfg({ boards: { github: { token: "github_pat_written_elsewhere" } } });
+    expect(mergeConfig(disk, mem, base).boards).toEqual({ github: { token: "github_pat_written_elsewhere" } });
+  });
+
+  it("lets this process's board token win over the one on disk", () => {
+    const base = cfg({});
+    const mem = cfg({ boards: { github: { token: "github_pat_mine" } } });
+    const disk = cfg({ boards: { github: { token: "github_pat_older" } } });
+    expect(mergeConfig(disk, mem, base).boards).toEqual({ github: { token: "github_pat_mine" } });
+  });
 });
