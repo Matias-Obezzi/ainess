@@ -133,6 +133,19 @@ export interface Budget {
   onReached: "warn" | "block";
 }
 
+/**
+ * Where a project's board lives. Only `local` is implemented today; the others are declared so the
+ * seam and the picker are real and a provider can be added without reshaping anything. See
+ * `lib/board/`.
+ */
+export type BoardProviderId = "local" | "github-projects" | "trello" | "jira";
+
+export interface BoardSource {
+  provider: BoardProviderId;
+  /** Provider-specific handle: a GitHub project number, a Trello board id. `local` has none. */
+  externalId?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -149,6 +162,12 @@ export interface Project {
   agents: AgentConfig[];
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
+  /**
+   * Where this project's board comes from. `undefined` means local — the file on this machine,
+   * which is what every project had before there was anything else to pick, so nothing has to be
+   * migrated for it and `AppConfig.version` stays where it is. See `lib/board/`.
+   */
+  board?: BoardSource;
   /**
    * What this project calls "done": run after an agent finishes delegated work, in the folder it
    * worked in. Missing or empty means nothing is checked, which is how it behaved before.

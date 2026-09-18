@@ -1288,6 +1288,15 @@ export const zh: Dictionary = {
   "projectDialog.team": "项目团队",
   "projectDialog.noAgentsHint": "项目一开始没有智能体；之后可以在层级视图里组建团队。",
 
+  // ---- Board provider ----
+  "board.source": "看板",
+  "board.source.hint": "这个项目的看板从哪里来。本地看板是这台机器上的一个文件；其余的还在路上。",
+  "board.provider.local": "在这台机器上",
+  "board.provider.github-projects": "GitHub Projects",
+  "board.provider.trello": "Trello",
+  "board.provider.jira": "Jira",
+  "board.provider.soon": "即将推出",
+
   // ---- Run detail dialog ----
   "runDetail.notFound": "找不到这次运行",
   "runDetail.title": "运行详情",

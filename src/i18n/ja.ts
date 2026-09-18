@@ -1289,6 +1289,15 @@ export const ja: Dictionary = {
   "projectDialog.team": "プロジェクトのチーム",
   "projectDialog.noAgentsHint": "プロジェクトはエージェントなしで始まります。チームは後で階層から編成できます。",
 
+  // ---- Board provider ----
+  "board.source": "ボード",
+  "board.source.hint": "このプロジェクトのボードがどこにあるか。ローカルのボードはこのマシン上のファイルです。ほかは準備中です。",
+  "board.provider.local": "このマシン上",
+  "board.provider.github-projects": "GitHub Projects",
+  "board.provider.trello": "Trello",
+  "board.provider.jira": "Jira",
+  "board.provider.soon": "近日対応",
+
   // ---- Run detail dialog ----
   "runDetail.notFound": "実行が見つかりません",
   "runDetail.title": "実行の詳細",

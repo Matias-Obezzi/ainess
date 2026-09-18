@@ -1288,6 +1288,15 @@ export const fr: Dictionary = {
   "projectDialog.team": "Équipe du projet",
   "projectDialog.noAgentsHint": "Le projet démarre sans agents ; tu peux monter l'équipe plus tard depuis la hiérarchie.",
 
+  // ---- Board provider ----
+  "board.source": "Tableau",
+  "board.source.hint": "D'où vient le tableau de ce projet. Le tableau local est un fichier sur cette machine ; les autres arrivent.",
+  "board.provider.local": "Sur cette machine",
+  "board.provider.github-projects": "GitHub Projects",
+  "board.provider.trello": "Trello",
+  "board.provider.jira": "Jira",
+  "board.provider.soon": "bientôt",
+
   // ---- Run detail dialog ----
   "runDetail.notFound": "Exécution introuvable",
   "runDetail.title": "Détail de l'exécution",

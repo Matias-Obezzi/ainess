@@ -1,29 +1,25 @@
-// Per-project persistence of the task board. Files live at <configDir>/tasks/<projectId>.json and
-// are written with a debounce from a single store subscription, the same shape as src/lib/history.ts,
-// so neither the board nor the orchestrator needs to know when a save happens.
+// Per-project persistence of the task board: when a save happens, what it is allowed to drop and
+// who gets told. *Where* the cards actually live is the board provider's business — today always
+// the local file at <configDir>/tasks/<projectId>.json, see src/lib/board/. The write is debounced
+// from a single store subscription, the same shape as src/lib/history.ts, so neither the board nor
+// the orchestrator needs to know when a save happens.
 import { useAppStore } from "@/store";
-import { writeProjectFolder } from "@/lib/project-folder";
-import { getTransport } from "@/lib/transport";
-import { createTask } from "@/lib/tasks";
-import type { Task, TaskStatus } from "@/types";
+import { boardProviderFor } from "@/lib/board/registry";
+import { forgetLocalBoard, trimTasks } from "@/lib/board/local";
+import type { Task } from "@/types";
 
-interface TaskFile {
-  version: 1;
-  tasks: Task[];
-}
+export { trimTasks };
 
-/** Hard cap per project; over it, the oldest archived tasks are dropped first. */
-const MAX_TASKS = 500;
 const SAVE_DELAY_MS = 500;
-
-const VALID_STATUSES: TaskStatus[] = ["backlog", "working", "needs-you", "in-review", "ready", "done"];
 
 const loadedProjects = new Set<string>();
 const dirtyProjects = new Set<string>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 let subscribed = false;
 
-const filePath = (projectId: string) => `tasks/${projectId}.json`;
+/** The project a board belongs to, or undefined while it is being created or already deleted. */
+const projectOf = (projectId: string) =>
+  useAppStore.getState().config.projects.find(p => p.id === projectId);
 
 /** Subscribe once to the store and persist whichever project's tasks changed. */
 export function attachTaskPersistence(): void {
@@ -47,104 +43,31 @@ function scheduleSave(projectId: string): void {
   }, SAVE_DELAY_MS));
 }
 
-/** Drops anything a hand-edited (or older) file could hold that the board cannot render. */
-function sanitize(raw: unknown, projectId: string): Task[] {
-  if (!Array.isArray(raw)) return [];
-  const seen = new Set<string>();
-  const out: Task[] = [];
-  for (const item of raw) {
-    const t = item as Partial<Task>;
-    if (!t || typeof t.id !== "string" || typeof t.title !== "string") continue;
-    if (seen.has(t.id)) continue;
-    seen.add(t.id);
-    out.push(createTask({
-      ...t,
-      projectId,
-      status: VALID_STATUSES.includes(t.status as TaskStatus) ? t.status : "backlog",
-      dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn.filter(d => typeof d === "string") : [],
-    }));
-  }
-  // A dependency on a task that is no longer in the file would block its column forever.
-  const ids = new Set(out.map(t => t.id));
-  return out.map(t => (t.dependsOn.every(d => ids.has(d)) ? t : { ...t, dependsOn: t.dependsOn.filter(d => ids.has(d)) }));
-}
-
-/** Over the cap, archived tasks go first (oldest first), then the oldest of the rest. */
-export function trimTasks(tasks: Task[]): Task[] {
-  if (tasks.length <= MAX_TASKS) return tasks;
-  const doomed = new Set<string>();
-  const byAge = [...tasks].sort((a, b) => a.updatedAt - b.updatedAt);
-  for (const t of byAge) {
-    if (tasks.length - doomed.size <= MAX_TASKS) break;
-    if (t.archived) doomed.add(t.id);
-  }
-  for (const t of byAge) {
-    if (tasks.length - doomed.size <= MAX_TASKS) break;
-    doomed.add(t.id);
-  }
-  return tasks
-    .filter(t => !doomed.has(t.id))
-    .map(t => (t.dependsOn.some(d => doomed.has(d)) ? { ...t, dependsOn: t.dependsOn.filter(d => !doomed.has(d)) } : t));
-}
-
 export async function saveTasks(projectId: string): Promise<void> {
   dirtyProjects.delete(projectId);
   const state = useAppStore.getState();
-  if (!state.config.projects.some(p => p.id === projectId)) return;
-  const mine = trimTasks(state.tasks[projectId] ?? []);
-  const file: TaskFile = { version: 1, tasks: await mergeWithDisk(projectId, mine) };
-  try {
-    await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
-  } catch { /* the null transport (browser preview) cannot write; ignore */ }
-
-  // And the copy the agents can read, in the project's own folder.
   const project = state.config.projects.find(p => p.id === projectId);
-  if (project) await writeProjectFolder(project, file.tasks, project.agents);
-}
-
-/**
- * The app and a `ainess` process can have the same board open. Writing our copy flat would drop what
- * the other one added, so the file is re-read first: cards only we know about are kept, cards only
- * it knows about come along, and for the ones both have the newer `updatedAt` wins.
- */
-async function mergeWithDisk(projectId: string, mine: Task[]): Promise<Task[]> {
-  let onDisk: Task[] = [];
+  if (!project) return;
+  const mine = trimTasks(state.tasks[projectId] ?? []);
   try {
-    const raw = await getTransport().readTextFile(filePath(projectId));
-    if (raw) onDisk = sanitize((JSON.parse(raw) as Partial<TaskFile>)?.tasks, projectId);
+    await boardProviderFor(project).save(projectId, mine);
   } catch {
-    return mine;
+    // A board that refuses the write is a stale board, never a stopped app: the cards stay in
+    // memory and the next change schedules another save.
   }
-  if (onDisk.length === 0) return mine;
-
-  const byId = new Map(mine.map(t => [t.id, t]));
-  for (const task of onDisk) {
-    const ours = byId.get(task.id);
-    // A card we deleted in this process is gone on purpose: `loadTasks` already put the file's
-    // cards in memory, so anything missing here was removed rather than never seen.
-    if (!ours) {
-      if (!loadedProjects.has(projectId)) byId.set(task.id, task);
-      continue;
-    }
-    if (task.updatedAt > ours.updatedAt) byId.set(task.id, task);
-  }
-  return trimTasks([...byId.values()]);
 }
 
-/** Read a project's tasks from disk into the store. Safe to call repeatedly. */
+/** Read a project's tasks from its board into the store. Safe to call repeatedly. */
 export async function loadTasks(projectId: string): Promise<void> {
   if (loadedProjects.has(projectId)) return;
-  let raw: string | null = null;
-  try { raw = await getTransport().readTextFile(filePath(projectId)); } catch { raw = null; }
   let tasks: Task[] = [];
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<TaskFile>;
-      tasks = sanitize(parsed?.tasks, projectId);
-    } catch { tasks = []; }
+  try {
+    tasks = await boardProviderFor(projectOf(projectId)).load(projectId);
+  } catch {
+    tasks = [];
   }
   loadedProjects.add(projectId);
-  // Anything the orchestrator created while the file was being read stays: disk only fills the gaps.
+  // Anything the orchestrator created while the board was being read stays: it only fills the gaps.
   useAppStore.setState(state => {
     const inMemory = state.tasks[projectId] ?? [];
     if (inMemory.length === 0) return { tasks: { ...state.tasks, [projectId]: tasks } };
@@ -163,11 +86,11 @@ export async function flushTasks(): Promise<void> {
   await Promise.all(pending.map(saveTasks));
 }
 
-/** Called when a project is deleted: forget it and empty its file. */
+/** Called when a project is deleted: forget it and empty its board. */
 export function forgetTasks(projectId: string): void {
   loadedProjects.delete(projectId);
   dirtyProjects.delete(projectId);
   const t = timers.get(projectId);
   if (t) { clearTimeout(t); timers.delete(projectId); }
-  void getTransport().deleteFile(filePath(projectId)).catch(() => {});
+  forgetLocalBoard(projectId);
 }

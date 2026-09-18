@@ -11,9 +11,10 @@ import { findRepoDir } from "@/lib/repo-dir";
 import { projectNameFromDir } from "@/lib/home-start";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
+import { BOARD_PROVIDERS } from "@/lib/board/registry";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
-import { AgentConfig, Project, Budget, VerifyCommand } from "@/types";
+import { AgentConfig, Project, Budget, BoardProviderId, VerifyCommand } from "@/types";
 import { VerifySection } from "@/components/VerifySection";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -43,6 +44,7 @@ export function ProjectDialog({
   const [monthlyUsd, setMonthlyUsd] = useState("");
   const [onReached, setOnReached] = useState<"warn" | "block">("warn");
   const [perRunUsd, setPerRunUsd] = useState("");
+  const [boardProvider, setBoardProvider] = useState<BoardProviderId>("local");
   const [verify, setVerify] = useState<VerifyCommand[]>([]);
   const store = useAppStore();
   const formations = useAppStore(state => state.config.formations);
@@ -60,6 +62,7 @@ export function ProjectDialog({
       setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
       setOnReached(editProject.budget?.onReached ?? "warn");
       setPerRunUsd(editProject.budget?.perRunUsd ? String(editProject.budget.perRunUsd) : "");
+      setBoardProvider(editProject.board?.provider ?? "local");
       setVerify(editProject.verify ?? []);
       // The team of an existing project is managed from its hierarchy, not from here.
       setFormationId(NO_FORMATION);
@@ -134,11 +137,15 @@ export function ProjectDialog({
     // time and block every card, so it does not travel.
     const verifyCommands = verify.filter(c => c.program.trim().length > 0);
 
+    // Local is the default and what `undefined` already means, so it is not written down: a
+    // project nobody configured keeps a config with nothing to migrate later.
+    const board = boardProvider === "local" ? undefined : { provider: boardProvider };
+
     if (editProject) {
-      store.updateProject(editProject.id, { name, workspaceDir, repoDir, color, budget, verify: verifyCommands });
+      store.updateProject(editProject.id, { name, workspaceDir, repoDir, color, budget, board, verify: verifyCommands });
     } else {
       // What the user left in the list is the team, formation or not.
-      store.addProject({ name, workspaceDir, repoDir, color, agents, budget, verify: verifyCommands });
+      store.addProject({ name, workspaceDir, repoDir, color, agents, budget, board, verify: verifyCommands });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
@@ -230,6 +237,23 @@ export function ProjectDialog({
               </Select>
               <p className="text-xs text-muted-foreground">{t("budget.hint")}</p>
               <p className="text-xs text-muted-foreground">{t("budget.perRunHint")}</p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>{t("board.source")}</Label>
+              <Select value={boardProvider} onValueChange={(v: BoardProviderId) => setBoardProvider(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOARD_PROVIDERS.map(meta => (
+                    <SelectItem key={meta.id} value={meta.id} disabled={!meta.available}>
+                      {meta.available ? t(meta.labelKey) : `${t(meta.labelKey)} (${t("board.provider.soon")})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("board.source.hint")}</p>
             </div>
 
             <VerifySection workspaceDir={workspaceDir} commands={verify} onChange={setVerify} />
