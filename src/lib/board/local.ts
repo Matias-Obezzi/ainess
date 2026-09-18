@@ -1,12 +1,11 @@
-// The board a project keeps on this machine: <configDir>/tasks/<projectId>.json, plus the copy of
-// it the agents can read in the project's own folder. This is the only provider implemented today
-// and the fallback for every other one (see ./registry.ts).
+// The board a project keeps on this machine: <configDir>/tasks/<projectId>.json. This is the only
+// provider implemented today and the fallback for every other one (see ./registry.ts). The copy the
+// agents read in the project's own folder is not written here: it is the projection of whichever
+// board the project uses, so it belongs to src/lib/task-store.ts.
 //
 // Everything that touches the file lives here; src/lib/task-store.ts keeps what is proper to
 // persistence and not to a provider: the store subscription, the debounce, which projects are
 // loaded and which are dirty.
-import { useAppStore } from "@/store";
-import { writeProjectFolder } from "@/lib/project-folder";
 import { getTransport } from "@/lib/transport";
 import { createTask } from "@/lib/tasks";
 import type { BoardProvider } from "@/lib/board/provider";
@@ -122,15 +121,13 @@ export const localBoardProvider: BoardProvider = {
     return tasks;
   },
 
-  async save(projectId: string, tasks: Task[]): Promise<void> {
+  async save(projectId: string, tasks: Task[]): Promise<Task[]> {
     const file: TaskFile = { version: 1, tasks: await mergeWithDisk(projectId, tasks) };
     try {
       await getTransport().writeTextFile(taskFilePath(projectId), JSON.stringify(file));
     } catch { /* the null transport (browser preview) cannot write; ignore */ }
-
-    // And the copy the agents can read, in the project's own folder.
-    const project = useAppStore.getState().config.projects.find(p => p.id === projectId);
-    if (project) await writeProjectFolder(project, file.tasks, project.agents);
+    // The merged list, not the one that came in: another process may have added cards.
+    return file.tasks;
   },
 };
 
