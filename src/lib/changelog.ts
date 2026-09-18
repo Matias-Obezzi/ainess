@@ -12,9 +12,17 @@ const translated = import.meta.glob("../../docs/changelog/*.md", {
   import: "default",
 }) as Record<string, string>;
 
-/** The file, minus its own heading: the dialog already has a title. */
+/**
+ * The file, minus its own heading (the dialog already has a title) and minus the HTML comment
+ * under it. That comment is a note to whoever keeps the file: it talks about the repo, not to the
+ * reader, so it never belongs in the dialog. The renderer drops it too, but dropping it here also
+ * keeps it out of anything else that reads this string.
+ */
 function body(text: string): string {
-  return text.replace(/^#[^\n]*\n/, "").trim();
+  return text
+    .replace(/^#[^\n]*\n/, "")
+    .replace(/^\s*<!--[\s\S]*?-->/, "")
+    .trim();
 }
 
 export function changelogFor(language: Language): string {

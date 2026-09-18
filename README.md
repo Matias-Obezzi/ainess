@@ -149,6 +149,11 @@ state, history and chats. They live in the sidebar, which marks the ones with so
 new project starts from a **formation**: a team you saved once and apply to the next project, with
 its skills and MCP servers.
 
+**A creature of its own.** Every project has one, and it sits in the threads that are still empty.
+The face comes out of the project itself, so each project has its own and always the same one, and
+renaming it does not change the face. It floats and blinks slowly, and holds still for anyone who
+asked their system for less movement.
+
 **Tasks.** Opening a project lands on its board: six columns from backlog to done, drag and drop,
 right-click actions and an archive at the bottom.
 
@@ -211,16 +216,27 @@ conversation where several answer in turn, each with a role for that chat.
 the GitHub API, opencode per linked account, Antigravity inferred from its own "quota reached"
 errors — and shows it as a ring next to each agent and under the input.
 
+When an agent runs out, in the project thread and in a chat alike, the error arrives as a card that
+says when the quota comes back and whether the work has already been tried again, and from there you
+can run it again with another model. If the project has it switched on, the work carries on by
+itself the moment the quota is there again.
+
 ![What is installed on this machine](docs/screenshots/settings-agents.png)
 
 **Notifications.** A bell in the window bar keeps the history of what happened and what needs you:
 approvals waiting, tasks finished or failed, runs cut short by a restart, a tunnel that fell, a new
-version. Each row takes you to where it happened.
+version. Each row takes you to where it happened — a notice that came out of a chat opens that
+chat, not the project alone.
 
 **Repo state.** For a project that is a git repo, the sidebar shows the branch, uncommitted changes
 and how far ahead or behind the remote it is, and the header opens the open pull requests with their
 CI and review state. It follows the folder through filesystem events, not a timer. It reads; it
 never writes.
+
+**Search.** Ctrl+K opens one box over everything you have: projects, tasks, chats, agents and the
+settings themselves. Ctrl+F opens the same box over the conversations alone, where it shows nothing
+but messages. Picking a result opens the chat or the project thread the message lives in, scrolls
+down to it, and lights it up for a moment so the eye can find it.
 
 **Right click.** Contextual menus everywhere they mean something: projects, chats, agent nodes,
 messages, terminal tabs, approvals. Where there is nothing to do, nothing opens.
