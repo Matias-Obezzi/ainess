@@ -1736,6 +1736,7 @@ export const zh: Dictionary = {
   "prompt.skills.intro": "它们写在仓库里。工作涉及哪一个就打开哪一个，不必全部读完。",
   "prompt.skills.header": "## 技能",
   "prompt.history": "你和这个团队之前的对话在项目里的 `{file}`。只有当前的任务需要时才打开它。",
+  "prompt.files.paths": "提到文件时，要写出从项目根目录开始的路径（`src/lib/foo.ts`），不要只写文件名：应用会把路径变成用户可以点开的链接，而单独的文件名找不到。",
   "prompt.ask.header": "## 当需要用户来决定时",
   "prompt.ask.intro": "如果缺少一个不该由你来做的决定，不要猜：用这样的代码块把它问出来，并在那里结束你的回答。",
   "prompt.ask.schema": "{\"question\":\"简短具体的问题\",\"options\":[\"选项 1\",\"选项 2\"],\"multiple\":false}",

@@ -66,6 +66,13 @@ describe("buildSystemPrompt in chat mode", () => {
     expect(prompt).toContain("Tabs");
   });
 
+  // An agent in a chat names files as much as one working a card does, and the answer is drawn
+  // the same way: a path becomes something to click, a bare name becomes a dead one.
+  it("asks for the path from the project root, here as anywhere else", () => {
+    const prompt = buildSystemPrompt(planner, [], { chat: { role: "planner", others: [] }, sharedContext: "", skills: [] });
+    expect(prompt).toContain("write its path from the project root");
+  });
+
   it("ends with the agent's own systemPrompt when it has one", () => {
     const prompt = buildSystemPrompt(planner, [], { chat: { role: "planner", others: [] }, sharedContext: "", skills: [] });
     expect(prompt.endsWith("Sos groso.")).toBe(true);

@@ -1010,6 +1010,15 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     }
   }
 
+  // A named file is a link in the app: `file-preview` turns a path into something the user can
+  // click and read. It looks for it under the repo and under the project's folder, and a bare
+  // "Composer.tsx" is under neither, so the click opens a panel that says the file was not found.
+  // Here rather than in one of the branches above: the roles and the chats all name files, and
+  // both of them end up in these last lines. A resumed session is already past this — it read it
+  // on the turn that opened it and the CLI carries it forward — which the early returns above
+  // take care of.
+  prompt += (prompt ? "\n\n" : "") + t("prompt.files.paths");
+
   // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {

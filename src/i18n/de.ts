@@ -1736,6 +1736,7 @@ export const de: Dictionary = {
   "prompt.skills.intro": "Sie stehen im Repo. Öffne die passende, wenn die Arbeit davon handelt; man muss nicht alle lesen.",
   "prompt.skills.header": "## Skills",
   "prompt.history": "Worüber du mit diesem Team gesprochen hast, steht in `{file}` im Projekt. Öffne es nur, wenn das, was jetzt verlangt wird, davon abhängt.",
+  "prompt.files.paths": "Wenn du eine Datei nennst, schreib ihren Pfad ab der Projektwurzel (`src/lib/foo.ts`), nie den bloßen Namen: Die App macht aus einem Pfad einen Link, den die Person öffnen kann, und ein Name für sich allein lässt sich nicht finden.",
   "prompt.ask.header": "## Wenn der Benutzer entscheiden soll",
   "prompt.ask.intro": "Fehlt dir eine Entscheidung, die nicht deine ist, rate nicht: Frag danach mit einem solchen Block und beende deine Antwort dort.",
   "prompt.ask.schema": "{\"question\":\"die Frage, kurz und konkret\",\"options\":[\"Option 1\",\"Option 2\"],\"multiple\":false}",
