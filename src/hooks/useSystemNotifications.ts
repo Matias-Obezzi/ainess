@@ -4,7 +4,7 @@ import { isTauri } from "@/lib/tauri";
 import { log } from "@/lib/logger";
 import { translateNow } from "@/i18n/useT";
 import { pendingApprovals } from "@/lib/approvals";
-import { freshMessages, sessionStartedAt } from "@/lib/notifications";
+import { freshMessages, messageCursor, sessionStartedAt, type MessageCursor } from "@/lib/notifications";
 
 /** Truncates to `max` chars, adding an ellipsis when it cuts the text short. */
 function truncate(text: string, max: number): string {
@@ -47,8 +47,9 @@ async function notify(title: string, body: string): Promise<void> {
  * regardless of whether the window is visible, so the user never misses an approval request.
  */
 export function useSystemNotifications() {
-  const lastMessageId = useRef<string | null>(null);
+  const cursor = useRef<MessageCursor>(null);
   const knownPendingApprovals = useRef<Set<string>>(new Set());
+  const last = useRef<{ messages: unknown; approvals: unknown; config: unknown }>({ messages: null, approvals: null, config: null });
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -56,6 +57,13 @@ export function useSystemNotifications() {
     return useAppStore.subscribe((state) => {
       const { config } = state;
       if (!config.tray) return;
+
+      // The subscription has no selector, so it runs on every store write — hundreds a second
+      // while an agent streams — and both halves below walk every project. These three are all it
+      // reads; when none of them moved there is nothing to say.
+      const seen = last.current;
+      if (state.messages === seen.messages && state.approvals === seen.approvals && config === seen.config) return;
+      last.current = { messages: state.messages, approvals: state.approvals, config };
 
       // New pending approvals: diff against what we've already seen. One asked for in an earlier
       // session is not new — the badge and the bell already carry it — and it only reaches this
@@ -75,7 +83,7 @@ export function useSystemNotifications() {
       if (config.tray.notifyResults) {
         const messages = state.messages;
         if (messages.length > 0) {
-          const newMessages = freshMessages(messages, lastMessageId.current);
+          const newMessages = freshMessages(messages, cursor.current);
           for (const msg of newMessages) {
             if (msg.kind !== "result" || msg.toAgentId !== "user") continue;
             const project = state.config.projects.find(p => p.id === msg.projectId);
@@ -84,7 +92,7 @@ export function useSystemNotifications() {
             const body = `${prefix ? `${prefix}: ` : ""}${truncate(msg.text, 150)}`;
             void notify(translateNow("notify.taskDoneTitle"), body);
           }
-          lastMessageId.current = messages[messages.length - 1].id;
+          cursor.current = messageCursor(messages);
         }
       }
     });

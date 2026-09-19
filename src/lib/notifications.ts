@@ -82,7 +82,19 @@ export function dismissNotification(list: AppNotification[], id: string): AppNot
 export const sessionStartedAt = Date.now();
 
 /**
- * The messages worth announcing: the ones after the last one seen that also happened in this
+ * Where the last announcement got to. A plain id is not enough: the live text of a run is written
+ * as `text-<runId>` at the tail of the feed and deleted when the run ends, so a cursor pointing
+ * at it pointed at nothing — `findIndex` gave -1 and the whole session was announced again. A
+ * timestamp is not deleted along with the message that carried it.
+ *
+ * `ids` are the messages already announced at exactly `ts`. Two messages can share a millisecond,
+ * and neither `> ts` (loses the second one) nor `>= ts` (repeats the first) is right on its own;
+ * naming the ones already covered at that boundary settles it.
+ */
+export type MessageCursor = { ts: number; ids: string[] } | null;
+
+/**
+ * The messages worth announcing: the ones the cursor does not cover that also happened in this
  * session. The cursor alone is not enough — it starts empty, so the whole restored feed read as
  * new and reopening the app fired a toast (and a system notification) for every task that had
  * ever finished. History arrives asynchronously, project by project, well after the first
@@ -90,9 +102,24 @@ export const sessionStartedAt = Date.now();
  */
 export function freshMessages<T extends { id: string; ts: number }>(
   messages: T[],
-  lastSeenId: string | null,
+  cursor: MessageCursor,
   since: number = sessionStartedAt,
 ): T[] {
-  const lastIdx = lastSeenId ? messages.findIndex(m => m.id === lastSeenId) : -1;
-  return messages.slice(lastIdx + 1).filter(m => m.ts >= since);
+  return messages.filter(
+    m => m.ts >= since && (!cursor || m.ts > cursor.ts || (m.ts === cursor.ts && !cursor.ids.includes(m.id))),
+  );
+}
+
+/**
+ * The cursor that covers everything in `messages`. It follows the feed, not only what was
+ * announced, so a message restored from disk after this one is never revisited. The feed is kept
+ * sorted by `ts` (see `lib/history`), so the newest is at the tail and the walk back stops at
+ * the first older one.
+ */
+export function messageCursor<T extends { id: string; ts: number }>(messages: T[]): MessageCursor {
+  const last = messages[messages.length - 1];
+  if (!last) return null;
+  const ids: string[] = [];
+  for (let i = messages.length - 1; i >= 0 && messages[i].ts === last.ts; i--) ids.push(messages[i].id);
+  return { ts: last.ts, ids };
 }

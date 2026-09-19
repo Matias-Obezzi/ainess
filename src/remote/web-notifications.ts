@@ -12,7 +12,7 @@
 import { useEffect, useRef } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { pendingApprovals } from "@/lib/approvals";
-import { freshMessages, sessionStartedAt } from "@/lib/notifications";
+import { freshMessages, messageCursor, sessionStartedAt, type MessageCursor } from "@/lib/notifications";
 import { translateNow } from "@/i18n/useT";
 
 export type NotificationState = "unsupported" | "insecure" | "default" | "granted" | "denied";
@@ -87,7 +87,7 @@ function truncate(text: string, max: number): string {
  * you are looking at: with it in front, the screen already says it.
  */
 export function useWebNotifications(): void {
-  const lastMessageId = useRef<string | null>(null);
+  const cursor = useRef<MessageCursor>(null);
   const knownApprovals = useRef<Set<string>>(new Set());
   const knownQuestions = useRef<Set<string>>(new Set());
 
@@ -119,7 +119,7 @@ export function useWebNotifications(): void {
       // And what came back finished.
       const messages = state.messages;
       if (messages.length > 0) {
-        for (const msg of freshMessages(messages, lastMessageId.current)) {
+        for (const msg of freshMessages(messages, cursor.current)) {
           if (msg.kind !== "result" || msg.toAgentId !== "user" || !hidden) continue;
           const project = state.config.projects.find(p => p.id === msg.projectId);
           const agent = selectAllAgents(state).find(a => a.id === msg.fromAgentId);
@@ -130,7 +130,7 @@ export function useWebNotifications(): void {
             `result-${msg.id}`,
           );
         }
-        lastMessageId.current = messages[messages.length - 1].id;
+        cursor.current = messageCursor(messages);
       }
     });
   }, []);
