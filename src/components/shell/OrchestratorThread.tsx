@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
+import { mascotMood } from "@/lib/mascot";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
@@ -65,6 +66,14 @@ export function OrchestratorThread() {
   // would answer first.
   const project = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId));
   const planner = agents.find(a => a.role === "planner");
+  // And, when it is set to stay on screen, what it acts out: the planner is who answers first, so
+  // it is the one the creature stands for.
+  const mascotAlways = useAppStore(state => state.config.mascotAlways ?? false);
+  const plannerId = planner?.id;
+  const plannerOutOfTokens = useAppStore(state =>
+    Object.values(state.quotaWaiting).some(w => w.projectId === currentProjectId && w.agentId === plannerId),
+  );
+  const mood = plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined;
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   // A block per agent: what is waiting for one of them goes over as a single message, and what is
@@ -225,7 +234,7 @@ export function OrchestratorThread() {
         ) : rootRuns.length === 0 && queued.length === 0 ? (
           <EmptyState
             icon={MessagesSquare}
-            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} size={128} className="mb-2" />}
+            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
             title={t("thread.empty.title")}
             description={t("thread.empty.body")}
             className="h-full"
@@ -245,6 +254,19 @@ export function OrchestratorThread() {
           </div>
         )}
       </div>
+
+      {/* Set to stay, it watches from the corner of a thread that already has something in it. On
+          the left, because the button back to the bottom owns the other corner. */}
+      {mascotAlways && project && !historyLoading && (rootRuns.length > 0 || queued.length > 0) && (
+        <ProjectMascot
+          projectId={project.id}
+          projectName={project.name}
+          color={project.color}
+          mood={mood}
+          size={56}
+          className="pointer-events-none absolute bottom-2 left-3 opacity-90"
+        />
+      )}
 
       {!stickToBottom && newCount > 0 && (
         <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>

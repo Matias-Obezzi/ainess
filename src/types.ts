@@ -458,6 +458,12 @@ export interface AppConfig {
   autoArchiveDoneDays: number | null;
   /** The sound every notification makes, in the window and from the tray (see lib/sound.ts). */
   notificationSound?: SoundSettings;
+  /**
+   * Keep the project mascot in the corner of a conversation that already has messages in it,
+   * acting out whatever its agent is doing. Missing (the default) leaves it where it has always
+   * been: the empty thread and nowhere else.
+   */
+  mascotAlways?: boolean;
 }
 
 export interface AgentRuntime {

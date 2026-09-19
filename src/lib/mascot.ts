@@ -1,3 +1,5 @@
+import type { AgentStatus } from "@/types";
+
 // Every project gets its own creature, and it gets it without anyone drawing one: the traits are
 // derived from the project's identity, so the same project always shows the same face and two
 // projects side by side almost never show the same one.
@@ -47,4 +49,23 @@ export function mascotTraits(seed: string): MascotTraits {
     crown: ((h >>> 6) % 4) as 0 | 1 | 2 | 3,
     hue: (h >>> 9) % 360,
   };
+}
+
+/** What the creature is doing, one step coarser than `AgentStatus`: four things read at a glance. */
+export type MascotMood = "working" | "waiting" | "quota" | "idle";
+
+/**
+ * The mood of the agent the mascot stands for. Takes what was already read out of the store rather
+ * than the store itself, so it stays as testable as the rest of this file.
+ *
+ * Out of tokens wins over everything: an agent parked waiting for its quota back still carries
+ * whatever status it had when it stopped, and that status is the less useful of the two.
+ */
+export function mascotMood(runtime: { status: AgentStatus } | undefined, outOfTokens: boolean): MascotMood {
+  if (outOfTokens) return "quota";
+  if (runtime?.status === "working") return "working";
+  if (runtime?.status === "waiting") return "waiting";
+  // `stopped` and `error` included: neither is worth its own animation, and both mean the same to
+  // someone looking at a corner of the screen — nothing is happening.
+  return "idle";
 }

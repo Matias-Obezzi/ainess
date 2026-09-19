@@ -2,7 +2,8 @@
 // it has to be a different one per project. Both of those are properties of the hash, not of the
 // SVG, so they get pinned down here.
 import { describe, it, expect } from "vitest";
-import { mascotHash, mascotTraits } from "@/lib/mascot";
+import { mascotHash, mascotTraits, mascotMood } from "@/lib/mascot";
+import type { AgentStatus } from "@/types";
 
 const SEEDS = Array.from({ length: 36 }, (_, i) => `4f9a1c${i.toString(16).padStart(2, "0")}-b2d3-4e5f-8a90-${i}beefcafe01`);
 
@@ -50,5 +51,26 @@ describe("mascotTraits", () => {
 
   it("separates seeds that differ by one character", () => {
     expect(mascotTraits("project-a")).not.toEqual(mascotTraits("project-b"));
+  });
+});
+
+describe("mascotMood", () => {
+  const at = (status: AgentStatus) => ({ status });
+
+  it("puts having no tokens left over anything the agent was doing", () => {
+    expect(mascotMood(at("working"), true)).toBe("quota");
+    expect(mascotMood(undefined, true)).toBe("quota");
+  });
+
+  it("follows the agent while it has tokens", () => {
+    expect(mascotMood(at("working"), false)).toBe("working");
+    expect(mascotMood(at("waiting"), false)).toBe("waiting");
+  });
+
+  it("treats everything else as nothing happening", () => {
+    for (const status of ["idle", "stopped", "error"] as AgentStatus[]) {
+      expect(mascotMood(at(status), false)).toBe("idle");
+    }
+    expect(mascotMood(undefined, false)).toBe("idle");
   });
 });

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +27,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 export function AppearanceSection() {
   const t = useT();
   const theme = useAppStore(state => state.config.theme ?? DEFAULT_THEME);
+  const mascotAlways = useAppStore(state => state.config.mascotAlways ?? false);
   const updateConfig = useAppStore(state => state.updateConfig);
   const [pasted, setPasted] = useState("");
 
@@ -105,6 +107,16 @@ export function AppearanceSection() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center gap-2">
+          <Switch checked={mascotAlways} onCheckedChange={checked => updateConfig({ mascotAlways: checked })} />
+          <div className="flex flex-col">
+            <label className="text-sm font-semibold">{t("settings.option.appearance.mascotAlways")}</label>
+            <span className="text-sm text-muted-foreground">{t("appearance.mascotAlwaysHint")}</span>
+          </div>
         </CardContent>
       </Card>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
+import { mascotMood } from "@/lib/mascot";
 import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { useAppStore, selectAllAgents } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
@@ -56,11 +57,21 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const chat = chats.find(c => c.id === chatId);
   const messages: ChatMessage[] = chatMessages[chatId] || [];
 
-  // For the mascot on the empty thread. The badge shows whoever is on the other side of this chat;
-  // a shared chat with several participants falls back to the project's planner.
+  // For the mascot. The badge shows whoever is on the other side of this chat; a shared chat with
+  // several participants falls back to the project's planner.
   const project = useAppStore(state => state.config.projects.find(p => p.id === chats.find(c => c.id === chatId)?.projectId));
   const chatAgent = chat?.participants.length === 1 ? agents.find(a => a.id === chat.participants[0].agentId) : undefined;
-  const mascotProvider = chatAgent?.provider ?? project?.agents.find(a => a.role === "planner")?.provider;
+  const mascotAgent = chatAgent ?? project?.agents.find(a => a.role === "planner");
+  const mascotProvider = mascotAgent?.provider;
+  // And what it acts out, when the setting keeps it on screen: whoever is on the other side.
+  const mascotAlways = useAppStore(state => state.config.mascotAlways ?? false);
+  const mascotRuntime = useAppStore(state =>
+    project && mascotAgent ? state.runtime[project.id]?.[mascotAgent.id] : undefined,
+  );
+  const mascotOutOfTokens = useAppStore(state =>
+    Object.values(state.quotaWaiting).some(w => w.projectId === project?.id && w.agentId === mascotAgent?.id),
+  );
+  const mood = mascotAgent ? mascotMood(mascotRuntime, mascotOutOfTokens) : undefined;
 
   // Sent while the chat was mid-answer: it waits its turn, and says so.
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);
@@ -218,7 +229,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
           ) : messages.length === 0 ? (
             <EmptyState
               icon={MessageSquare}
-              visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={mascotProvider} size={104} className="mb-2" />}
+              visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={mascotProvider} mood={mood} size={104} className="mb-2" />}
               title={t("chat.empty.title")}
               description={t("chat.empty.body")}
             />
@@ -234,6 +245,19 @@ export function ChatThread({ chatId }: { chatId: string }) {
       {editOpen && (
         <ChatDialog key={chatId} open={editOpen} onOpenChange={setEditOpen} editChatId={chatId} />
       )}
+      {/* Set to stay, it watches from the corner of a chat that already has something in it. On
+          the left, because the button back to the bottom owns the other corner. */}
+      {mascotAlways && project && messages.length > 0 && (
+        <ProjectMascot
+          projectId={project.id}
+          projectName={project.name}
+          color={project.color}
+          mood={mood}
+          size={56}
+          className="pointer-events-none absolute bottom-2 left-3 opacity-90"
+        />
+      )}
+
       {!stickToBottom && newCount > 0 && (
         <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
           <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
