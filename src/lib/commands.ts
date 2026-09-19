@@ -4,6 +4,10 @@
 // /compact de Claude" is a message. That rule is the reason nothing here needs escaping — anything
 // with a space, a second line or a word before the slash goes to the agent untouched.
 import { useAppStore, selectProjectAgents } from "@/store";
+import { startRun } from "@/lib/orchestrator";
+import { hasHistoryFile, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
+import { FOLDER } from "@/lib/project-folder";
+import { translateNow } from "@/i18n/useT";
 
 export type CommandId = "compact" | "cost" | "tasks" | "chat" | "diff" | "stop" | "clear";
 
@@ -46,16 +50,42 @@ export function parseCommand(text: string): ChatCommand | undefined {
 }
 
 /**
- * Every agent of the project forgets its session. What was said is not lost: the app has been
- * writing each turn to `.ainess/history/`, and the next run is told where that file is (see
- * `buildSystemPrompt`), so the agent reads back only what the new work needs instead of dragging
- * the whole transcript into every turn.
+ * Every agent of the project summarises its own history file and then forgets its session.
  *
- * Returns how many agents were compacted, so the caller can say so.
+ * The order is the whole point. The agent is asked to compact `.ainess/history/<agent>.md` while
+ * its session is still open — it remembers the work and can write the summary for almost nothing —
+ * and only when that run ends is the session dropped (in `onRunFinished`, where a compaction run
+ * is also kept off the board, out of the history it just rewrote and out of the user's results).
+ * The other way round the agent would have to read the whole file back just to shorten it.
+ *
+ * An agent with no file yet has nothing to summarise, so its session goes right away, which is all
+ * `/compact` ever did. Same for a run that could not be started at all: letting go of the session
+ * is the floor of this command, never the part that gets skipped.
+ *
+ * Returns how many agents were *asked* to compact — the work is asynchronous from here on.
  */
 export function compactProject(projectId: string): number {
   const store = useAppStore.getState();
   const agents = selectProjectAgents(store, projectId);
-  for (const agent of agents) store.resetSession(agent.id, projectId);
-  return agents.length;
+  let asked = 0;
+  for (const agent of agents) {
+    if (!hasHistoryFile(store.runs, projectId, agent.id)) {
+      store.resetSession(agent.id, projectId);
+      continue;
+    }
+    // `resume: true`: the session it is about to lose is exactly what makes this turn cheap.
+    // A busy agent queues it like any other run (see `startRun`).
+    const runId = startRun({
+      agentId: agent.id,
+      projectId,
+      prompt: translateNow("prompt.compact", { file: `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` }),
+      parentRunId: null,
+      round: 0,
+      resume: true,
+      kind: "compact",
+    });
+    if (runId) asked++;
+    else store.resetSession(agent.id, projectId);
+  }
+  return asked;
 }

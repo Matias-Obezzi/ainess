@@ -566,8 +566,12 @@ export interface Run {
     failed?: { label: string; code: number | null; output: string };
     ranAt: number;
   };
-  /** "task" (default) or "chat" — chat runs skip delegation parsing. */
-  kind?: "task" | "chat";
+  /**
+   * "task" (default), "chat" — chat runs skip delegation parsing — or "compact": the maintenance
+   * turn `/compact` asks for, which rewrites the agent's own history file. Not work: no card, no
+   * result to the user, and not written to the history it has just replaced.
+   */
+  kind?: "task" | "chat" | "compact";
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */

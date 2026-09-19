@@ -319,7 +319,7 @@ function scheduleStreamFlush() {
   }
 }
 
-export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string };
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string };
 
 /**
  * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
@@ -659,8 +659,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     };
   });
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
-  const hasPast = Object.values(store.runs).some(r =>
-    r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
+  const hasPast = hasHistoryFile(store.runs, opts.projectId, agent.id);
 
   const thisRoot = opts.rootRunId ?? runId;
   const projectRuntime = store.runtime[opts.projectId] || {};
@@ -1046,6 +1045,34 @@ function onRunFinished(runId: string) {
     // Notify chat module
     import("@/lib/chat").then(m => m.onChatRunFinished(runId)).catch(() => {});
     launchQueuedRuns(agent.id, run.projectId);
+    return;
+  }
+
+  // `/compact`: maintenance, not work. The agent has just rewritten its own history file, so none
+  // of what closes a real turn applies — no card on the board, no `result` message to the user
+  // (one notification per agent is nobody's idea of a compaction), and above all no `recordTurn`
+  // at the end of this function, which would append this very turn on top of the summary the
+  // agent just wrote. What it does owe is the session reset it was started for, and it happens
+  // here rather than in `compactProject` because the summary needed that session alive to be
+  // written cheaply: ask first, drop the session after. A failed compaction still drops it —
+  // letting go of the session is the floor of what `/compact` has always done.
+  if (run.kind === "compact") {
+    const compactStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[run.projectId] || {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [run.projectId]: {
+            ...pRuntime,
+            [agent.id]: { ...pRuntime[agent.id], status: compactStatus, currentRunId: undefined, currentTask: undefined },
+          },
+        },
+      };
+    });
+    store.resetSession(agent.id, run.projectId);
+    launchQueuedRuns(agent.id, run.projectId);
+    processQueuedInstructions(agent.id, run.projectId);
     return;
   }
 
@@ -2065,7 +2092,7 @@ export function processQueuedInstructions(agentId: string, projectId: string) {
 
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { httpMcpEnv } from "@/lib/mcp-env";
-import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
+import { recordTurn, hasHistoryFile, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
