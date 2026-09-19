@@ -7,6 +7,7 @@ import { log } from "@/lib/logger";
 import type { AgentConfig, AgentQuestion, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { pendingApprovals } from "@/lib/approvals";
+import { isForUser } from "@/lib/pending-question";
 import { resolveLanguage, type Language } from "@/i18n";
 import { translateNow } from "@/i18n/useT";
 
@@ -139,7 +140,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     runtime,
     messages: s.messages.slice(-limits.messages).map(m => ({ ...m, text: clip(m.text, MAX_MESSAGE_CHARS) })),
     approvals: pendingApprovals(s.approvals, s.config.projects),
-    questions: Object.values(s.questions).filter(q => q.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
+    questions: Object.values(s.questions).filter(q => q.status === "pending" && isForUser(q)).sort((a, b) => a.createdAt - b.createdAt),
     runs,
     chats: s.config.chats,
     chatMessages,
@@ -241,9 +242,12 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         const answer = Array.isArray(payload.answer)
           ? (payload.answer as unknown[]).filter((a): a is string => typeof a === "string" && a.trim().length > 0)
           : [];
-        if (!id || !s.questions[id]) return { error: translateNow("remote.err.noQuestion") };
+        const target = id ? s.questions[id] : undefined;
+        // A question waiting on its planner is not on offer here either: the phone never saw it,
+        // and a hand-written command should not be able to answer it behind the planners back.
+        if (!target || !isForUser(target)) return { error: translateNow("remote.err.noQuestion") };
         if (answer.length === 0) return { error: translateNow("remote.err.missingAnswer") };
-        s.answerQuestion(id, answer);
+        s.answerQuestion(target.id, answer);
         return { ok: true };
       }
       case "approve": {

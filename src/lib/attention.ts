@@ -1,5 +1,6 @@
 import type { Approval, AgentQuestion, Task, Project, AgentRuntime, Run } from "@/types";
 import { pendingApprovals } from "@/lib/approvals";
+import { isForUser } from "@/lib/pending-question";
 
 export type AttentionKind = "approval" | "question" | "task";
 
@@ -52,9 +53,10 @@ export function attentionItems(input: {
     });
   }
 
-  // Unanswered questions
+  // Unanswered questions — the user's own. One a child routed to its planner is not waiting on
+  // anybody here, and this list is what the bell, Home and `/status` all call "needs you".
   for (const q of Object.values(questions)) {
-    if (q.status === "pending" && liveProjectIds.has(q.projectId)) {
+    if (q.status === "pending" && isForUser(q) && liveProjectIds.has(q.projectId)) {
       items.push({
         id: `question:${q.id}`,
         kind: "question",

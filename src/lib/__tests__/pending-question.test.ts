@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { questionsForComposer } from "../pending-question";
+import { isForUser, questionsForComposer } from "../pending-question";
 import type { AgentQuestion, Run } from "@/types";
 
 describe("questionsForComposer", () => {
@@ -74,6 +74,15 @@ describe("questionsForComposer", () => {
     const result = questionsForComposer({ q1, q2, q3 }, runs, opts);
     expect(result?.group.map(q => q.id)).toEqual(["q2", "q1", "q3"]);
     expect(result?.pending).toBe(3);
+  });
+
+  it("ignores a question that is on its way to a planner", () => {
+    // Its own planner is writing the answer. Offering it here would have it answered twice, and
+    // the bell, the bridge and the phone all go through `isForUser` for the same reason.
+    const routed = { ...baseQuestion, toAgentId: "a0" };
+    expect(isForUser(routed)).toBe(false);
+    expect(isForUser(baseQuestion)).toBe(true);
+    expect(questionsForComposer({ q1: routed }, { r1: baseRun }, { projectId: "p1", chatId: null, chatAgentIds: [] })).toBeNull();
   });
 
   it("leaves another run's questions for their own turn", () => {

@@ -8,6 +8,7 @@ import { useAppStore, selectProjectAgents, type AppState } from "@/store";
 import { handleRemoteCommand } from "@/lib/remote";
 import { attentionItems, workingItems } from "@/lib/attention";
 import { pendingApprovals } from "@/lib/approvals";
+import { isForUser } from "@/lib/pending-question";
 import { translateNow } from "@/i18n/useT";
 import { truncate } from "@/lib/format";
 import { log } from "@/lib/logger";
@@ -226,7 +227,9 @@ async function runCommand(
     }
 
     case "answer": {
-      const pending = Object.values(s.questions).filter(q => q.status === "pending");
+      // The user's own, only: a question on its way to a planner never reached this channel and
+      // answering it here would have it answered twice.
+      const pending = Object.values(s.questions).filter(q => q.status === "pending" && isForUser(q));
       if (pending.length === 0) return translateNow("bridge.reply.error", { error: translateNow("remote.err.noQuestion") });
       // With one question open, naming it is ceremony: what was written is the answer.
       let id = command.id ? resolveId(command.id, pending.map(q => q.id)).id : undefined;
@@ -239,7 +242,7 @@ async function runCommand(
 
     case "toggle": {
       const question = s.questions[command.id];
-      if (!question || question.status !== "pending") {
+      if (!question || question.status !== "pending" || !isForUser(question)) {
         questionSelections.delete(command.id);
         return translateNow("bridge.reply.actionGone");
       }
@@ -260,7 +263,7 @@ async function runCommand(
 
     case "submit": {
       const question = s.questions[command.id];
-      if (!question || question.status !== "pending") {
+      if (!question || question.status !== "pending" || !isForUser(question)) {
         questionSelections.delete(command.id);
         return translateNow("bridge.reply.actionGone");
       }
@@ -296,7 +299,8 @@ async function runCommand(
  */
 export function commandForPress(token: string, s: AppState): BridgeCommand | null {
   for (const [qid] of questionSelections) {
-    if (s.questions[qid]?.status !== "pending") {
+    const open = s.questions[qid];
+    if (!open || open.status !== "pending" || !isForUser(open)) {
       questionSelections.delete(qid);
     }
   }
@@ -308,7 +312,7 @@ export function commandForPress(token: string, s: AppState): BridgeCommand | nul
     return { kind: action.kind, id: action.id };
   }
 
-  const question = Object.values(s.questions).find(q => q.status === "pending" && short(q.id) === action.id);
+  const question = Object.values(s.questions).find(q => q.status === "pending" && isForUser(q) && short(q.id) === action.id);
   if (!question) return null;
 
   if (action.kind === "toggle") {
@@ -448,7 +452,7 @@ export function buttonsFor(n: AppNotification, s: AppState): BridgeButton[] | un
   }
   if (n.kind === "question" && n.questionId) {
     const question = s.questions[n.questionId];
-    if (!question || question.status !== "pending") return undefined;
+    if (!question || question.status !== "pending" || !isForUser(question)) return undefined;
     const buttons = questionButtons(question);
     return buttons.length > 0 ? buttons : undefined;
   }

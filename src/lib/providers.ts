@@ -793,17 +793,25 @@ function delegateSection(autoModel: boolean): string {
   ].join("\n");
 }
 
-/** How any agent asks the user for a decision. Every turn, for the same reason. */
-function askSection(): string {
+/**
+ * How any agent asks for a decision it should not be taking. Every turn, for the same reason.
+ *
+ * `hasParent` adds the other destination: an agent handed a plan with a hole in it can ask whoever
+ * wrote the plan instead of the user, who did not write it. Only for agents that have a planner —
+ * telling a planner it can ask its planner is telling it about somebody who is not there.
+ */
+function askSection(hasParent: boolean): string {
   const t = translateNow;
-  return [
+  const lines = [
     t("prompt.ask.header"),
     t("prompt.ask.intro"),
     "```ask",
     t("prompt.ask.schema"),
     "```",
     t("prompt.ask.rules"),
-  ].join("\n");
+  ];
+  if (hasParent) lines.push(t("prompt.ask.toPlanner"));
+  return lines.join("\n");
 }
 
 function noteSection(): string {
@@ -875,7 +883,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
 
   if (extras?.chat) {
     if (extras.resuming) {
-      if (agent.role !== "custom") prompt += (prompt ? "\n\n" : "") + askSection();
+      if (agent.role !== "custom") prompt += (prompt ? "\n\n" : "") + askSection(!!agent.parentId);
       return prompt;
     }
     prompt += t("prompt.chat.role", { role: extras.chat.role });
@@ -919,7 +927,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       const mates = extras.teammates ? teammatesSection(extras.teammates) : "";
       if (mates) parts.push(mates);
       if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
-      if (agent.role !== "custom") parts.push(askSection());
+      if (agent.role !== "custom") parts.push(askSection(!!agent.parentId));
       if (extras.canNote) {
         parts.push(noteSection());
         parts.push(resultSection());
@@ -1022,7 +1030,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {
-    prompt += (prompt ? "\n\n" : "") + askSection();
+    prompt += (prompt ? "\n\n" : "") + askSection(!!agent.parentId);
   }
   
   if (extras?.canNote) {
@@ -1044,6 +1052,12 @@ export interface ParsedQuestion {
   options: string[];
   multiple: boolean;
   allowOther: boolean;
+  /**
+   * The block asked for its planner (`"to": "planner"`) rather than for the user. A wish, not a
+   * destination: whether it is honoured depends on the run having a parent that is still around —
+   * see `askQuestions`.
+   */
+  toPlanner: boolean;
 }
 
 /**
@@ -1076,6 +1090,9 @@ export function parseQuestions(text: string): ParsedQuestion[] {
         // Letting the user write their own is the default: an agent's options are a guess at what
         // the answer might be, never the whole of it.
         allowOther: obj.allowOther !== false,
+        // Read as tolerantly as the rest: anything that is not the one word we know about — a
+        // missing field, a typo, an agent's name — means the user, which is the old behaviour.
+        toPlanner: obj.to === "planner",
       });
     } catch {
       // A malformed block is not worth stopping a run over.

@@ -1756,6 +1756,8 @@ export const es: Dictionary = {
   "prompt.ask.intro": "Si te falta una decisión que no te corresponde tomar, no adivines: pedila con un bloque así y terminá tu respuesta ahí.",
   "prompt.ask.schema": "{\"question\":\"la pregunta, corta y concreta\",\"options\":[\"opción 1\",\"opción 2\"],\"multiple\":false}",
   "prompt.ask.rules": "Van al menos dos opciones; `multiple` en true si se pueden elegir varias. El usuario también puede escribir una respuesta propia, así que no agregues una opción para eso. Cuando responda, seguís vos en la misma conversación.",
+  "prompt.ask.toPlanner": "Dos destinatarios. Lo que falta sobre **el plan que te dieron** — un paso que contradice a otro, un archivo que no está, una decisión que quien lo escribió no tomó — vuelve a quien lo escribió: agregá `\"to\":\"planner\"` al bloque y te contesta él, sin meter al usuario. Una decisión que es **del usuario** — qué construir, qué resignar, cuánto gastar — va sin `to` y se la hacés al usuario. Ante la duda: si tu planner puede contestarla leyendo el plan, preguntale a tu planner.",
+  "prompt.answerForChild": "{name} frenó con una pregunta sobre el trabajo que le pasaste y está esperando tu respuesta:\n\n{question}\n\nLas opciones que ofreció:\n- {options}\n\nContestá en una o dos líneas, eligiendo una de las opciones o con tus propias palabras. Sólo la respuesta: nada de bloques de delegación, nada de bloques de tarea, y ninguna pregunta tuya.",
   "prompt.note.header": "## Para avisar algo sin terminar",
   "prompt.note.intro": "Si te trabás, si algo te va a llevar mucho más de lo esperado, o si encontrás algo que tu planificador debería saber ya, dejá un bloque así en tu respuesta y seguí trabajando.",
   "prompt.note.example": "esto llevó más de lo previsto",

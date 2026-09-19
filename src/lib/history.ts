@@ -217,6 +217,17 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         changed = true;
       }
     }
+    // A planner was halfway through answering one of its children when that process went away. The
+    // run is closed above and nobody is going to write the answer now, so the question goes back to
+    // being the user's — otherwise the agent that asked waits forever on a run that no longer runs.
+    for (const r of interrupted) {
+      if (r.kind !== "answer" || !r.answersQuestionId) continue;
+      const waiting = questions[r.answersQuestionId];
+      if (!waiting || waiting.status !== "pending" || !waiting.toAgentId) continue;
+      const { toAgentId: _routed, ...forUser } = waiting;
+      questions[waiting.id] = forUser;
+      changed = true;
+    }
     const approvals = { ...state.approvals };
     for (const a of parsed.approvals ?? []) {
       const mine = approvals[a.id];

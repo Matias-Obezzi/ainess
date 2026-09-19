@@ -313,6 +313,17 @@ export interface AgentQuestion {
   multiple: boolean;
   /** Whether an answer of the user's own is allowed on top of the options. */
   allowOther: boolean;
+  /**
+   * The agent that owes the answer, when it is not the user's to give.
+   *
+   * Absent means the user, which is what every question has been until now. It is set when a child
+   * asked its planner with `"to": "planner"` and that planner is there to answer (see
+   * `askQuestions`): the question is then hidden from the user everywhere (`isForUser`) until the
+   * answer comes back. Every way that can fall through — the run never started, it died, it came
+   * back empty — clears this field again: a question nobody is going to answer is worse than one
+   * the user has to.
+   */
+  toAgentId?: string;
   createdAt: number;
   status: "pending" | "answered";
   /** What was chosen (or written), once it was. */
@@ -567,11 +578,14 @@ export interface Run {
     ranAt: number;
   };
   /**
-   * "task" (default), "chat" — chat runs skip delegation parsing — or "compact": the maintenance
-   * turn `/compact` asks for, which rewrites the agent's own history file. Not work: no card, no
-   * result to the user, and not written to the history it has just replaced.
+   * "task" (default), "chat" — chat runs skip delegation parsing — "compact": the maintenance turn
+   * `/compact` asks for, which rewrites the agent's own history file, or "answer": the turn a
+   * planner spends answering a question one of its own children asked. Neither of the last two is
+   * work — no card, no result to the user, nothing written to the history.
    */
-  kind?: "task" | "chat" | "compact";
+  kind?: "task" | "chat" | "compact" | "answer";
+  /** Only on `kind: "answer"`: the question the run was started to answer. */
+  answersQuestionId?: string;
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */

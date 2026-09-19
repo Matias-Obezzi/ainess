@@ -1756,6 +1756,8 @@ export const en: Dictionary = {
   "prompt.ask.intro": "If a decision that is not yours to make is missing, do not guess: ask for it with a block like this one and end your answer there.",
   "prompt.ask.schema": "{\"question\":\"the question, short and concrete\",\"options\":[\"option 1\",\"option 2\"],\"multiple\":false}",
   "prompt.ask.rules": "At least two options; `multiple` true when several can be chosen. The user can also write an answer of their own, so do not add an option for that. When they answer, you carry on in the same conversation.",
+  "prompt.ask.toPlanner": "Two destinations. What is missing about **the plan you were given** — a step that contradicts another, a file that is not there, a decision whoever wrote it never took — goes back to whoever wrote it: add `\"to\":\"planner\"` to the block and they answer, without the user being pulled into it. A decision that is **the user's** — what to build, what to give up, what to spend — carries no `to` and goes to the user. When in doubt: if your planner could answer it from the plan, ask your planner.",
+  "prompt.answerForChild": "{name} has stopped on a question about the work you handed it, and is waiting for your answer:\n\n{question}\n\nThe options it offered:\n- {options}\n\nAnswer in a line or two, picking one of the options or in your own words. The answer alone: no delegation blocks, no task blocks, and no questions of your own.",
   "prompt.note.header": "## Saying something before you are done",
   "prompt.note.intro": "If you get stuck, if something is going to take much longer than expected, or if you find something your planner should know now, leave a block like this in your answer and keep working.",
   "prompt.note.example": "this is taking longer than expected",

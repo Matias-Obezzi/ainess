@@ -7,6 +7,15 @@ describe("attention", () => {
   const p2: Project = { id: "p2", name: "P2", workspaceDir: "", createdAt: 0, agents: [] };
 
   describe("attentionItems", () => {
+    it("deja afuera la pregunta que un hijo le hizo a su planner", () => {
+      // No es del usuario mientras su planner la esté contestando, y esta lista es lo que la
+      // campana, Home y `/status` llaman "te necesita".
+      const questions: Record<string, AgentQuestion> = {
+        q1: { id: "q1", projectId: "p1", agentId: "ag1", runId: "", rootRunId: "", round: 0, question: "Q1", options: [], multiple: false, allowOther: false, createdAt: 30, status: "pending", toAgentId: "ag0" },
+      };
+      expect(attentionItems({ approvals: {}, questions, tasks: {}, projects: [p1] })).toHaveLength(0);
+    });
+
     it("junta las tres fuentes y las ordena por fecha, la más reciente primero", () => {
       const approvals: Record<string, Approval> = {
         a1: { id: "a1", projectId: "p1", kind: "delegation", agentId: "ag1", summary: "App1", payload: {} as any, createdAt: 10, status: "pending" },

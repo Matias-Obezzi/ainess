@@ -34,6 +34,7 @@ import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
 import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
 import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
+import { isForUser } from "@/lib/pending-question";
 import { useCurrentProjectId } from "./project-pane";
 
 /** While something streams in, follow the bottom at most this often. */
@@ -344,7 +345,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   // read-only line it renders is the only record in the thread that it was ever asked.
   const questionIdsStr = useAppStore(state =>
     Object.values(state.questions)
-      .filter(q => q.runId === run.id && q.status !== "pending")
+      .filter(q => q.runId === run.id && q.status !== "pending" && isForUser(q))
       .sort((a, b) => a.createdAt - b.createdAt)
       .map(q => q.id)
       .join(',')
