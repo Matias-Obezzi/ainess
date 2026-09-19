@@ -838,7 +838,14 @@ function resultSection(): string {
   ].join("\n");
 }
 
-function taskSection(card?: { id: string; title: string; status: TaskStatus }): string {
+/**
+ * The ```task block, and for a planner the one rule about when to use it on somebody else's card.
+ *
+ * Naming another card is only in the planner's copy on purpose: it is the one holding the whole
+ * board, and the only one that can tell that something written down weeks ago is already fixed.
+ * Notes piled up in the backlog because the prompt said how to move a card and never said when.
+ */
+function taskSection(card?: { id: string; title: string; status: TaskStatus }, isPlanner = false): string {
   const t = translateNow;
   const lines = [
     t("prompt.task.header"),
@@ -858,6 +865,7 @@ function taskSection(card?: { id: string; title: string; status: TaskStatus }): 
     }));
   }
   lines.push(t("prompt.task.rules"));
+  if (isPlanner) lines.push(t("prompt.task.board"));
   return lines.join("\n");
 }
 
@@ -931,7 +939,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       if (extras.canNote) {
         parts.push(noteSection());
         parts.push(resultSection());
-        parts.push(taskSection(extras.card));
+        parts.push(taskSection(extras.card, agent.role === "planner"));
       }
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
@@ -1036,7 +1044,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   if (extras?.canNote) {
     prompt += (prompt ? "\n\n" : "") + noteSection();
     prompt += (prompt ? "\n\n" : "") + resultSection();
-    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card);
+    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card, agent.role === "planner");
   }
 
   if (agent.systemPrompt) {
@@ -1205,13 +1213,15 @@ export function parseResult(text: string): ParsedResult | null {
 /** One entry of a ```task block. Same bargain as the stream lines: declared, and still checked. */
 interface TaskOpLine {
   new?: unknown;
+  id?: unknown;
   detail?: unknown;
   priority?: unknown;
   status?: unknown;
 }
 
 export type ParsedTaskOp =
-  | { kind: "update"; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
+  /** Without an `id` it is the agent's own card; with one, the card of the board it names. */
+  | { kind: "update"; id?: string; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
   | { kind: "create"; title: string; detail?: string; priority?: "low" | "normal" | "high" };
 
 const VALID_TASK_UPDATE_STATUSES = new Set(["working", "needs-you", "in-review", "ready"]);
@@ -1250,6 +1260,9 @@ export function parseTaskOps(text: string): ParsedTaskOp[] {
             ...(priority ? { priority } : {}),
           });
         } else {
+          // The id only says *which* card; it buys no extra status. "done" stays out either way:
+          // `ready` is the last state an agent sets and the user is the one who closes a card.
+          const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : undefined;
           const validStatus = typeof item.status === "string" && VALID_TASK_UPDATE_STATUSES.has(item.status)
             ? (item.status as "working" | "needs-you" | "in-review" | "ready")
             : undefined;
@@ -1257,6 +1270,7 @@ export function parseTaskOps(text: string): ParsedTaskOp[] {
           if (validStatus || detail) {
             ops.push({
               kind: "update",
+              ...(id ? { id } : {}),
               ...(validStatus ? { status: validStatus } : {}),
               ...(detail ? { detail } : {}),
             });
