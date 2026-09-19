@@ -57,14 +57,19 @@ test("the layer's words sit exactly where the textarea puts its own", async ({ p
     const ly = document.querySelector('[data-testid="composer-layer"]') as HTMLElement;
     const cs = getComputedStyle(ta);
     const box = ta.getBoundingClientRect();
-    // Where the textarea's first glyph starts: inside the border and the padding.
-    const textTop = box.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+    // Where the textarea's first line box starts: inside the border and the padding.
+    const lineTop = box.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
     const textLeft = box.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
     const range = document.createRange();
     range.setStart(ly.firstChild!, 0);
     range.setEnd(ly.firstChild!, 1);
     const glyph = range.getBoundingClientRect();
-    return { dy: glyph.top - textTop, dx: glyph.left - textLeft };
+    // A Range's rect is the glyph's font box, not the line box it sits in: with `leading-normal`
+    // the line is 21px and the font box 19px, so half the leading — one pixel — sits above the
+    // glyph. Comparing that font box against the textarea's line box read as the layer being a
+    // pixel low when the two content boxes start on the very same y. Take the leading off first.
+    const halfLeading = (parseFloat(getComputedStyle(ly).lineHeight) - glyph.height) / 2;
+    return { dy: glyph.top - halfLeading - lineTop, dx: glyph.left - textLeft };
   });
   expect(Math.abs(offsets.dy)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(offsets.dx)).toBeLessThanOrEqual(0.5);
