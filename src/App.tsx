@@ -10,7 +10,7 @@ import { TitleBar } from "@/components/shell/TitleBar";
 import { SearchPalette } from "@/components/shell/SearchPalette";
 import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
 import { HomeScreen } from "@/components/shell/HomeScreen";
-import { ProjectScreen } from "@/components/shell/ProjectScreen";
+import { ProjectPanes } from "@/components/shell/ProjectPanes";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
@@ -152,7 +152,7 @@ export default function App() {
               <HomeScreen />
             </>
           )}
-          {screen === "project" && <ProjectScreen />}
+          {screen === "project" && <ProjectPanes />}
         </main>
 
         {(commPanelOpen || diffPanelOpen || termPanelOpen || previewOpen) && screen === "project" && <RightDock />}

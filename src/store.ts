@@ -27,6 +27,7 @@ import { ALL_SETTINGS_SECTION_IDS } from "@/components/settings/sections";
 import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
+import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 
 /** The channels the messaging config actually has a slot for today. */
@@ -68,6 +69,15 @@ export interface AppState {
   messages: CommMessage[];
   activeTaskRunId: Record<string, string | null>;
   currentProjectId: string | null;
+  /**
+   * The projects on screen, left to right, one pane each (persisted with the rest of the layout).
+   *
+   * `currentProjectId` is the pane with the focus and is always one of these — every write goes
+   * through `setCurrentProject`, which puts the project in a pane if it was not in one. How many
+   * of them actually fit is the shell's business (see `lib/project-panes.ts`); the ones that do
+   * not fit stay here, they are not closed.
+   */
+  openProjects: string[];
   /** Models available per provider (fetched or fixed list). */
   models: Partial<Record<ProviderId, ModelInfo[]>>;
   /** Last known quota per provider. */
@@ -215,6 +225,15 @@ export interface AppState {
    * the way it was left, which is what clicking the project's own name means.
    */
   openProject(projectId: string, chatId?: string | null, mode?: ProjectMode): void;
+  /**
+   * Opens a project beside the ones already on screen instead of over the focused pane. Already
+   * showing, or no room left for one more, and it just takes the focus.
+   */
+  openProjectInPane(projectId: string): void;
+  /** Closes one pane. The last one never closes: the screen would have nothing on it. */
+  closeProjectPane(projectId: string): void;
+  /** Moves the focus to a pane that is already on screen. */
+  focusProjectPane(projectId: string): void;
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
   /**
@@ -252,7 +271,8 @@ export interface AppState {
   activeTerminalIds: Record<string, string | null>;
   /** Shells detected on this machine, loaded once at startup (desktop app only). */
   shells: ShellInfo[];
-  openTerminal(opts?: { shellId?: string; cwd?: string; command?: string; title?: string }): void;
+  /** `projectId` is the pane the terminal belongs to; without one it is the focused project. */
+  openTerminal(opts?: { shellId?: string; cwd?: string; command?: string; title?: string; projectId?: string | null }): void;
   closeTerminal(id: string): void;
   setActiveTerminal(id: string): void;
   renameTerminal(id: string, title: string): void;
@@ -507,6 +527,7 @@ function runtimeFor(agents: AgentConfig[]): Record<string, AgentRuntime> {
 interface UiPrefs {
   screen: Screen;
   projectMode: ProjectMode;
+  openProjects: string[];
   projectModes: Record<string, ProjectMode>;
   projectChats: Record<string, string | null>;
   projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
@@ -614,6 +635,7 @@ const UI_PREFS_LEGACY_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
   screen: "home",
   projectMode: "tasks",
+  openProjects: [],
   projectModes: {},
   projectChats: {},
   projectPanels: {},
@@ -637,6 +659,12 @@ function sanitizeProjectModes(value: unknown): Record<string, ProjectMode> {
     Object.entries(value as Record<string, unknown>)
       .filter(([, mode]) => VALID_PROJECT_MODES.includes(mode as ProjectMode)),
   ) as Record<string, ProjectMode>;
+}
+
+/** The panes a past build left: ids only, each one once. Whether they still exist is runInit's. */
+function sanitizeOpenProjects(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((id): id is string => typeof id === "string" && id !== ""))];
 }
 
 function sanitizeProjectChats(value: unknown): Record<string, string | null> {
@@ -718,6 +746,7 @@ function loadUiPrefs(): UiPrefs {
       },
       screen: parsed.screen === "project" ? "project" : "home",
       projectMode: VALID_PROJECT_MODES.includes(parsed.projectMode as ProjectMode) ? (parsed.projectMode as ProjectMode) : "tasks",
+      openProjects: sanitizeOpenProjects(parsed.openProjects),
       projectModes: sanitizeProjectModes(parsed.projectModes),
       projectChats: sanitizeProjectChats(parsed.projectChats),
       projectPanels: sanitizeProjectPanels(parsed.projectPanels),
@@ -742,6 +771,7 @@ function saveUiPrefs(): void {
     const prefs: UiPrefs = {
       screen: s.screen,
       projectMode: s.projectMode,
+      openProjects: s.openProjects,
       projectModes: s.projectModes,
       projectChats: s.projectChats,
       projectPanels: s.projectPanels,
@@ -869,6 +899,24 @@ function rememberPanels(
   };
 }
 
+/**
+ * The panes after the focus moved to `next`.
+ *
+ * Already on screen and nothing moves — the pane it is in simply takes the focus. Not on screen
+ * and it replaces the pane that had the focus, which is what opening a project has always done:
+ * the sidebar, the palette and the notifications go on meaning "show me this one here". Opening
+ * one *beside* the others is `openProjectInPane`, and it is a separate thing to ask for.
+ */
+function withFocusedPane(open: string[], focused: string | null, next: string | null): string[] {
+  if (!next) return open;
+  if (open.includes(next)) return open;
+  const at = focused ? open.indexOf(focused) : -1;
+  if (at === -1) return [...open, next];
+  const out = [...open];
+  out[at] = next;
+  return out;
+}
+
 /** Projects whose folder was searched for a repository one level down; asked once each. */
 const repoLookedFor = new Set<string>();
 
@@ -968,6 +1016,42 @@ export const useAppStore = create<AppState>()((set, get) => ({
     });
     pushNav({ screen: "project", projectId, chatId: nextChatId, projectMode: nextMode });
     if (nextChatId) void state.loadChatMessages(nextChatId);
+    saveUiPrefs();
+  },
+
+  openProjectInPane: (projectId) => {
+    const state = get();
+    // Already showing, or the screen is full: there is nothing to add, so this is just a focus.
+    if (!state.openProjects.includes(projectId) && state.openProjects.length < MAX_PROJECT_PANES) {
+      // Before `openProject`, so `setCurrentProject` finds it already in a pane of its own and
+      // leaves the pane the user was standing in alone.
+      set({ openProjects: [...state.openProjects, projectId] });
+    }
+    get().openProject(projectId);
+  },
+
+  closeProjectPane: (projectId) => {
+    const state = get();
+    const at = state.openProjects.indexOf(projectId);
+    // The last pane does not close: the project screen would be an empty column.
+    if (at === -1 || state.openProjects.length <= 1) return;
+    const openProjects = state.openProjects.filter(id => id !== projectId);
+    set({ openProjects });
+    if (state.currentProjectId === projectId) {
+      // The pane that slid into the closed one's place, or the last one when it was the rightmost.
+      get().setCurrentProject(openProjects[Math.min(at, openProjects.length - 1)]);
+    }
+    saveUiPrefs();
+  },
+
+  focusProjectPane: (projectId) => {
+    const state = get();
+    if (state.currentProjectId === projectId || !state.openProjects.includes(projectId)) return;
+    state.setCurrentProject(projectId);
+    // The focused pane's scalars are what the dock, the palette and the back arrow read.
+    const chatId = selectProjectChatId(state, projectId);
+    set({ currentChatId: chatId, projectMode: selectProjectMode(state, projectId) });
+    if (chatId) void state.loadChatMessages(chatId);
     saveUiPrefs();
   },
 
@@ -1238,7 +1322,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       return;
     }
     const shell = (opts?.shellId && shells.find(sh => sh.id === opts.shellId)) || shells[0];
-    const project = selectProject(state, state.currentProjectId);
+    const projectId = opts?.projectId !== undefined ? opts.projectId : state.currentProjectId;
+    const project = selectProject(state, projectId);
     const cwd = opts?.cwd ?? project?.workspaceDir ?? "";
     // Titles are numbered per shell so two PowerShells are still telling apart. A tab opened to run
     // something is named after it instead: "PowerShell 3" says nothing about which one is the dev
@@ -1250,14 +1335,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       shellId: shell.id,
       shellPath: shell.path,
       cwd,
-      projectId: state.currentProjectId,
+      projectId,
       ...(opts?.command ? { command: opts.command } : {}),
       exited: null,
     };
     set(s => ({
       terminals: [...s.terminals, terminal],
-      activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
-      ...rememberPanels(s, "term", true),
+      activeTerminalIds: { ...s.activeTerminalIds, [projectId ?? "home"]: terminal.id },
+      ...rememberPanels(s, "term", true, projectId),
     }));
     saveUiPrefs();
     log.info("terminal", `new terminal ${terminal.title} (${shell.path}) in ${cwd || "home"}`);
@@ -1445,6 +1530,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
       const wasCurrent = state.currentProjectId === id;
       const chatGone = state.currentChatId ? goneChats.has(state.currentChatId) : false;
+      // Its pane goes with it. If it was the focused one and another project is still on screen,
+      // that pane takes the focus rather than dropping the user out to the home screen.
+      const openProjects = state.openProjects.filter(p => p !== id);
+      const nextProjectId = wasCurrent ? openProjects[0] ?? null : state.currentProjectId;
       const newActiveTerminalIds = { ...state.activeTerminalIds };
       delete newActiveTerminalIds[id];
 
@@ -1479,10 +1568,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
         // where they now appear — on the home screen, which is where a terminal with no project is.
         terminals: state.terminals.map(t => (t.projectId === id ? { ...t, projectId: null } : t)),
         activeTerminalIds: newActiveTerminalIds,
-        currentProjectId: wasCurrent ? null : state.currentProjectId,
-        currentChatId: wasCurrent || chatGone ? null : state.currentChatId,
-        // Losing the open project drops the user back to the home screen.
-        screen: wasCurrent && state.screen === "project" ? ("home" as Screen) : state.screen,
+        openProjects,
+        currentProjectId: nextProjectId,
+        currentChatId: wasCurrent
+          ? (nextProjectId ? newProjectChats[nextProjectId] ?? null : null)
+          : (chatGone ? null : state.currentChatId),
+        // Losing the last open project drops the user back to the home screen.
+        screen: wasCurrent && !nextProjectId && state.screen === "project" ? ("home" as Screen) : state.screen,
       };
     });
     saveUiPrefs();
@@ -1496,6 +1588,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const saved = id ? state.projectPanels[id] : undefined;
       return {
         currentProjectId: id,
+        // Every way of reaching a project — the sidebar, the palette, a notification, the back
+        // arrow — ends here, so this is the one place that has to make sure it has a pane.
+        openProjects: withFocusedPane(state.openProjects, state.currentProjectId, id),
         config: { ...state.config, lastProjectId: id },
         commPanelOpen: saved?.comm ?? false,
         diffPanelOpen: saved?.diff ?? false,
@@ -1509,6 +1604,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         .then(() => reconcileProject(id))
         .catch(() => {});
     }
+    // The panes are part of the layout now, and this is the one place they change on their own.
+    saveUiPrefs();
     debouncedSave();
   },
 
@@ -2529,6 +2626,12 @@ async function runInit(): Promise<void> {
     const prefs = loadUiPrefs();
     const lastProjectValid = !!config.lastProjectId && config.projects.some(p => p.id === config.lastProjectId);
     const screen: Screen = lastProjectValid ? "project" : "home";
+    // The panes come back as they were left, minus every project that has been deleted since.
+    // Empty — an older build, a cleared preference, a list of ids that are all gone — and the
+    // focused project is the one pane, which is the shape the app had before panes existed.
+    const startProjectId = lastProjectValid ? config.lastProjectId : null;
+    const openProjects = prefs.openProjects.filter(id => config.projects.some(p => p.id === id));
+    if (startProjectId && !openProjects.includes(startProjectId)) openProjects.unshift(startProjectId);
     // Reopening the app is reopening that project, so it lands where that project was left.
     const startMode: ProjectMode = (lastProjectValid && config.lastProjectId
       ? prefs.projectModes[config.lastProjectId]
@@ -2550,7 +2653,8 @@ async function runInit(): Promise<void> {
     set({
       config,
       runtime,
-      currentProjectId: lastProjectValid ? config.lastProjectId : null,
+      currentProjectId: startProjectId,
+      openProjects: openProjects.slice(0, MAX_PROJECT_PANES),
       currentChatId: finalChatId,
       screen,
       projectMode: startMode,

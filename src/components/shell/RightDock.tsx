@@ -5,6 +5,7 @@ import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
 import { TerminalDockSection } from "./TerminalDockSection";
 import { FileDockSection } from "./FileDockSection";
+import { ProjectPaneProvider } from "./project-pane";
 import { useT } from "@/i18n/useT";
 import type { DockSectionId } from "@/types";
 
@@ -12,9 +13,15 @@ import type { DockSectionId } from "@/types";
  * Right dock: Communication on top, Diff in the middle, Terminals below.
  * Shows only the open sections. Between consecutive open sections, a draggable
  * divider splits the flex weights (dockSizes).
+ *
+ * There is one dock however many project panes are on screen, and it follows the pane with the
+ * focus: a dock per column fits in no window. It is drawn outside the panes, so it says which
+ * project it is showing out loud rather than landing on the focused one through the fallback in
+ * `useCurrentProjectId` — the same value, reached on purpose.
  */
 export function RightDock() {
   const t = useT();
+  const focusedProjectId = useAppStore(state => state.currentProjectId);
   const commPanelOpen = useAppStore(state => state.commPanelOpen);
   const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
   const termPanelOpen = useAppStore(state => state.termPanelOpen);
@@ -75,7 +82,7 @@ export function RightDock() {
   const openSections = sections.filter(s => s.open);
 
   return (
-    <>
+    <ProjectPaneProvider value={focusedProjectId}>
     {/* Narrow windows float the dock over the content, where a divider would have nothing to push. */}
     <ResizeHandle
       side="right"
@@ -117,6 +124,6 @@ export function RightDock() {
         </div>
       ) : null}
     </aside>
-    </>
+    </ProjectPaneProvider>
   );
 }

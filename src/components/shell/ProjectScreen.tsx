@@ -11,16 +11,17 @@ import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
 import { useT } from "@/i18n/useT";
-import { MessagesSquare, TerminalSquare, FileDiff } from "lucide-react";
+import { MessagesSquare, TerminalSquare, FileDiff, X } from "lucide-react";
 import { ProjectPaneProvider } from "./project-pane";
 
 /**
  * The working screen for one project: top bar, task board / thread / hierarchy, and the composer.
  *
- * `projectId` is the project this pane shows. Without it — which is how the shell renders it
- * today, one pane filling the window — the pane is whichever project has the focus.
+ * `projectId` is the project this pane shows. Without it — one pane filling the window — the pane
+ * is whichever project has the focus. `onClose` is given only when there is more than one pane:
+ * closing the only one would leave the screen empty.
  */
-export function ProjectScreen({ projectId }: { projectId?: string }) {
+export function ProjectScreen({ projectId, onClose }: { projectId?: string; onClose?: () => void }) {
   const t = useT();
   const focusedId = useAppStore(state => state.currentProjectId);
   const paneId = projectId ?? focusedId;
@@ -105,12 +106,24 @@ export function ProjectScreen({ projectId }: { projectId?: string }) {
               const store = useAppStore.getState();
               const projectTerminals = store.terminals.filter(t => t.projectId === paneId);
               if (!wasOpen && projectTerminals.length === 0) {
-                store.openTerminal();
+                store.openTerminal({ projectId: paneId });
               }
             }}
           >
             <TerminalSquare className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.terminal")}</span>
           </Button>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              data-testid="close-pane"
+              title={t("projectScreen.closePane")}
+              onClick={onClose}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 

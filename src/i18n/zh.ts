@@ -68,6 +68,7 @@ export const zh: Dictionary = {
   "sidebar.chatOptions": "聊天选项",
   "sidebar.orchestrator": "编排器",
   "sidebar.newChat": "新建聊天",
+  "sidebar.openInNewPane": "在新面板中打开",
   "sidebar.editProject": "编辑项目",
   "sidebar.newConversation": "新建对话",
   "sidebar.newConversationDone": "新建对话：下一条指令将不带任何上下文开始",
@@ -142,6 +143,7 @@ export const zh: Dictionary = {
   "projectScreen.diff": "Diff",
   "projectScreen.toggleTerminals": "显示或隐藏终端（Ctrl+`）",
   "projectScreen.terminal": "终端",
+  "projectScreen.closePane": "关闭此面板",
 
   // ---- Composer ----
   "composer.theChat": "该聊天",

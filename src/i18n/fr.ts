@@ -68,6 +68,7 @@ export const fr: Dictionary = {
   "sidebar.chatOptions": "Options du chat",
   "sidebar.orchestrator": "Orchestrateur",
   "sidebar.newChat": "Nouveau chat",
+  "sidebar.openInNewPane": "Ouvrir dans un nouveau panneau",
   "sidebar.editProject": "Modifier le projet",
   "sidebar.newConversation": "Nouvelle conversation",
   "sidebar.newConversationDone": "Nouvelle conversation : la prochaine consigne démarre sans contexte antérieur",
@@ -142,6 +143,7 @@ export const fr: Dictionary = {
   "projectScreen.diff": "Diff",
   "projectScreen.toggleTerminals": "Afficher ou masquer les terminaux (Ctrl+`)",
   "projectScreen.terminal": "Terminal",
+  "projectScreen.closePane": "Fermer ce panneau",
 
   // ---- Composer ----
   "composer.theChat": "le chat",

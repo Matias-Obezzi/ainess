@@ -69,6 +69,7 @@ export const ja: Dictionary = {
   "sidebar.chatOptions": "チャットのオプション",
   "sidebar.orchestrator": "オーケストレーター",
   "sidebar.newChat": "新しいチャット",
+  "sidebar.openInNewPane": "新しいペインで開く",
   "sidebar.editProject": "プロジェクトを編集",
   "sidebar.newConversation": "新しい会話",
   "sidebar.newConversationDone": "新しい会話を開始しました。次のメッセージは以前の文脈なしで始まります",
@@ -143,6 +144,7 @@ export const ja: Dictionary = {
   "projectScreen.diff": "Diff",
   "projectScreen.toggleTerminals": "ターミナルの表示を切り替えます (Ctrl+`)",
   "projectScreen.terminal": "ターミナル",
+  "projectScreen.closePane": "このペインを閉じる",
 
   // ---- Composer ----
   "composer.theChat": "このチャット",
