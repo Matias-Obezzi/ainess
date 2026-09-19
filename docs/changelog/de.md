@@ -2,6 +2,56 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.21.0 — 2026-09-19
+
+### Neu
+
+- **Mehrere Projekte gleichzeitig auf dem Bildschirm.** So viele, wie in die Breite des Fensters
+  passen, in gleich breiten Spalten, bis zu vier. Jedes Panel hat seinen eigenen Faden, sein eigenes
+  Eingabefeld und seine eigene Leiste, und geschrieben wird an das jeweils gemeinte. Ein neues
+  öffnet sich über das Projektmenü in der Seitenleiste und schließt sich über das X seiner Leiste.
+  Was nicht mehr hineinpasst, wird nicht geschlossen: Es kommt zurück, sobald das Fenster breiter
+  wird.
+- **Das Board eines Projekts kann aus GitHub Projects kommen.** In den Projekteinstellungen wählt
+  man die Plattform, zeigt über Eigentümer und Nummer auf das Board dort drüben und sagt, welche
+  Spalte von dort welcher von hier entspricht. Der Token steht in Einstellungen → Boards und braucht
+  den Scope `project`. Es wandern nur die Wurzelkarten, und auf der anderen Seite wird nie etwas
+  gelöscht. Trello und Jira sind angelegt und funktionieren noch nicht.
+- **Jede Karte sagt, was sie gekostet hat** und wie viel Maschinenzeit sie gebraucht hat — die ganze
+  Familie ihrer Läufe zusammengerechnet. Bisher waren die Kosten nur pro Projekt zu sehen.
+- **Jede Karte zeigt, in welchem Commit ihre Arbeit gelandet ist.** Sie meldet es; sie verschiebt
+  die Karte nicht von selbst.
+- **Das Maskottchen tut, was sein Agent tut.** Unter Erscheinungsbild lässt es sich dauerhaft in die
+  Ecke der Unterhaltung setzen, nicht nur in einen leeren Faden. Es hämmert, während es arbeitet,
+  schaut auf die Uhr und wippt mit dem Fuß, während es auf Sie wartet, schläft, wenn nichts ansteht,
+  verblasst, wenn die Tokens aus sind, und hat Kreuze in den Augen, wenn etwas schiefgegangen ist.
+- **Eine Datei, die ohne ihren Ordner genannt wird, wird im Repository gesucht.** Sagt ein Agent
+  bloß `Composer.tsx`, wird sie jetzt gefunden: Eine einzelne öffnet sich, und gibt es mehrere,
+  werden sie zur Auswahl aufgelistet.
+- **Zurück ganz nach unten.** Die Schaltfläche zur neuesten Nachricht ist da, sobald Sie nach oben
+  gescrollt sind, und nicht erst, wenn etwas Neues gekommen ist. Und was Sie schreiben, nimmt Sie
+  mit nach unten: Zurückzulesen ist für das, was der Agent sagt, nicht für den eigenen Zug.
+
+### Behoben
+
+- **Eine fertige Aufgabe wird einmal gemeldet.** Beim Streaming steht die laufende Antwort so lange
+  im Faden, bis der Lauf zu Ende ist, und mit ihrem Verschwinden verloren die Benachrichtigungen den
+  Überblick und meldeten alle Ergebnisse der Sitzung auf einen Schlag noch einmal.
+- **Das Board hält Arbeit fest, nicht das Gespräch drumherum.** Eine Nachricht, die während einer
+  laufenden Aufgabe abgeschickt wird, führt diese Karte weiter, statt eine neue aufzumachen, sodass
+  „mach weiter“ oder „ja, los“ nicht mehr je eine Karte hinterlassen. Und wer delegiert, kann dem
+  Delegierten einen Titel geben, statt dass die Karte nach der ersten Zeile der Anfrage heißt.
+- **Agenten nennen Dateien mit ihrem Pfad ab der Projektwurzel**, und genau das macht den Link
+  aufrufbar.
+- **Der Cursor landet auf dem Buchstaben, zu dem er gehört, auch wenn das Textfeld gescrollt ist.**
+  Die Schicht, die die Wörter zeichnet, konnte eine eigene Bildlaufleiste bekommen und in jeder
+  Zeile Breite verlieren, und alles nach dem ersten Umbruch verschob sich gegenüber dem Cursor.
+- **Über und Diagnose nehmen die volle Breite** des Einstellungsdialogs ein, statt links eingezwängt
+  zu bleiben.
+- **Der Kopf des Repositorys liest git dort, wo das Repository liegt.** Bei einem Projekt, dessen
+  Repo einen Ordner tiefer liegt, aktualisierte sich der Zustand nicht mit den Änderungen auf der
+  Platte und wurde nur vom langsamen Zeitgeber aufgefrischt.
+
 ## 0.20.0 — 2026-09-17
 
 ### Neu

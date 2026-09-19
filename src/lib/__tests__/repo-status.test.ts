@@ -38,23 +38,30 @@ function config(): Record<string, unknown> {
   };
 }
 
-async function boot() {
+async function boot(projectPatch: Record<string, unknown> = {}) {
   vi.resetModules();
   const ran: string[][] = [];
+  // Where each git subcommand was run, which is the whole point when the repo is not the workspace.
+  const cwds: Record<string, string> = {};
   const { setTransport } = await import("@/lib/transport");
   setTransport({
     ...nullTransport,
-    loadConfig: async () => structuredClone(config()) as unknown as AppConfig,
+    loadConfig: async () => {
+      const cfg = structuredClone(config());
+      Object.assign((cfg.projects as Record<string, unknown>[])[0], projectPatch);
+      return cfg as unknown as AppConfig;
+    },
     saveConfig: async () => {},
-    exec: async (program: string, args: string[]) => {
+    exec: async (program: string, args: string[], cwd?: string) => {
       ran.push([program, ...args]);
+      cwds[args[0]] = cwd ?? "";
       if (args[0] === "status") return { code: 0, stdout: STATUS, stderr: "" };
       return { code: 1, stdout: "", stderr: "" };
     },
   });
   const store = await import("@/store");
   await store.useAppStore.getState().init();
-  return { store, ran };
+  return { store, ran, cwds };
 }
 
 beforeEach(() => { vi.resetModules(); });
@@ -83,6 +90,14 @@ describe("refreshRepoStatus", () => {
     const state = store.useAppStore.getState().repoState.p1;
     expect(state.pullRequests).toHaveLength(1);
     expect(state.status?.branch).toBe("feat/watcher");
+  });
+
+  it("reads the working tree in the repo, not in the workspace above it", async () => {
+    const { store, cwds } = await boot({ repoDir: "C:\\uno\\app" });
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+
+    expect(cwds.status).toBe("C:\\uno\\app");
+    expect(store.useAppStore.getState().repoState.p1.status?.branch).toBe("feat/watcher");
   });
 
   it("leaves what it has alone when git says nothing", async () => {

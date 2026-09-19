@@ -193,3 +193,45 @@ export function parseBranches(stdout: string): { local: string[]; remote: string
   const short = (name: string) => name.slice(name.indexOf("/") + 1);
   return { local, remote: remote.filter(name => !local.includes(short(name))) };
 }
+
+/** One line of `git log`: the commit and the first line of its message. */
+export interface GitCommit {
+  sha: string;
+  subject: string;
+}
+
+/**
+ * Parses `git log --format=%H %s`, newest commit first.
+ *
+ * Not `--oneline`: that abbreviates the sha, and what a run keeps (`Run.baseSha`) is the full one
+ * `git rev-parse HEAD` printed, so lining the two up would mean guessing how many characters git
+ * chose to print today. Anything that is not a sha followed by a subject — a warning, a blank
+ * line, whatever else ended up on the stream — is dropped.
+ */
+export function parseGitLog(stdout: string): GitCommit[] {
+  const commits: GitCommit[] = [];
+  for (const raw of stdout.split("\n")) {
+    const line = raw.replace(/\r$/, "").trim();
+    const match = line.match(/^([0-9a-f]{7,40})(?:\s+(.*))?$/i);
+    if (!match) continue;
+    commits.push({ sha: match[1], subject: (match[2] ?? "").trim() });
+  }
+  return commits;
+}
+
+/**
+ * The commits made on top of `baseSha`, newest first — or `null` when the log cannot answer.
+ *
+ * Takes an already-read log instead of running `git log <baseSha>..HEAD` itself, because the
+ * question is asked once per card and a board of twenty cards cannot mean twenty git processes.
+ * One log per project is read and every card is answered from it here.
+ *
+ * "Not known" (`null`) and "nothing was committed" (`[]`) are different answers and stay
+ * different: a base that is not in the log at all — rebased away, made on another branch, older
+ * than the log reaches — leaves the card saying nothing, never saying the work went uncommitted.
+ */
+export function commitsAfter(log: GitCommit[], baseSha: string): GitCommit[] | null {
+  if (!baseSha) return null;
+  const at = log.findIndex(commit => commit.sha === baseSha);
+  return at < 0 ? null : log.slice(0, at);
+}

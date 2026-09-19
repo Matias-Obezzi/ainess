@@ -4,17 +4,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { edgeScrollStep } from "@/lib/edge-scroll";
-import { useAppStore, selectTasks } from "@/store";
+import { useAppStore, selectProject, selectTasks } from "@/store";
+import { repoDirOf } from "@/lib/repo-dir";
+import type { GitCommit } from "@/lib/git";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, sortColumn, TASK_STATUSES, type TaskFilter } from "@/lib/tasks";
+import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, sortColumn, taskCommit, taskCost, TASK_STATUSES, type TaskFilter } from "@/lib/tasks";
+import { formatTaskCost } from "@/lib/usage";
 import { TaskCard, TaskContextMenu } from "./TaskCard";
 import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/types";
 import { ChevronDown, ChevronRight, ListTodo } from "lucide-react";
-import { useT } from "@/i18n/useT";
+import { useLocale, useT } from "@/i18n/useT";
 
 interface DropTarget {
   status: TaskStatus;
@@ -40,8 +43,15 @@ export function TaskBoard({
   onNewTask(status?: TaskStatus): void;
 }) {
   const t = useT();
+  const locale = useLocale();
   const tasks = useAppStore(state => selectTasks(state, projectId));
+  const runs = useAppStore(state => state.runs);
   const moveTask = useAppStore(state => state.moveTask);
+  const repoCommits = useAppStore(state => state.repoState[projectId]?.commits);
+  const repoDir = useAppStore(state => {
+    const project = selectProject(state, projectId);
+    return project ? repoDirOf(project) : "";
+  });
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<DropTarget | null>(null);
@@ -70,6 +80,29 @@ export function TaskBoard({
     }
     return map;
   }, [tasks]);
+  // Same idea for what each card cost: one pass here instead of walking the family per card. The
+  // line is handed down already written, so a card whose figures did not move stays memoized
+  // while its neighbour's run streams.
+  const costs = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      const line = formatTaskCost(taskCost(tasks, runs, task.id), locale);
+      if (line) map.set(task.id, line);
+    }
+    return map;
+  }, [tasks, runs, locale]);
+  // And what got committed after each card's run started. The log behind this was read once for
+  // the whole project — when it opened and on every change the repo watcher saw — so this pass is
+  // an array walk, not twenty git processes. See `taskCommit`.
+  const commits = useMemo(() => {
+    const map = new Map<string, GitCommit>();
+    if (!repoCommits) return map;
+    for (const task of tasks) {
+      const commit = taskCommit(task, runs, repoCommits, repoDir);
+      if (commit) map.set(task.id, commit);
+    }
+    return map;
+  }, [tasks, runs, repoCommits, repoDir]);
 
   /**
    * Holding a card near an edge scrolls: sideways for the columns off screen, and down the column
@@ -202,6 +235,8 @@ export function TaskBoard({
                     <TaskCard
                       task={task}
                       blocked={blocked.get(task.id) ?? 0}
+                      cost={costs.get(task.id)}
+                      commit={commits.get(task.id)}
                       dragging={dragId === task.id}
                       onOpen={onOpenTask}
                       onDragStart={onDragStart}

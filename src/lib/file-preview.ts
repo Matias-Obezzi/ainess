@@ -101,3 +101,30 @@ export function languageOf(path: string): string {
 
 /** Past this a file is a log, not a document: only the head is shown. */
 export const MAX_PREVIEW_BYTES = 512 * 1024;
+
+/**
+ * Whether a mention nobody could place on disk is worth looking for in the repo.
+ *
+ * An agent that writes `Composer.tsx` and nothing else names a file the reader knows and the app
+ * does not: there is no folder to join it to, so every candidate is a guess at the root and every
+ * guess misses. A path with a separator in it was already said in full — if it is not there, it is
+ * not there, and asking git about it would only be a process spawned for nothing.
+ */
+export function shouldSearchRepo(path: string): boolean {
+  return path.length > 0 && !/[\\/]/.test(path);
+}
+
+/**
+ * The files `git ls-files` listed whose own name is `name`, repo-relative and in git's order.
+ *
+ * Case-insensitive: the mention is typed by hand as often as copied, and on Windows the file the
+ * reader means is the same file either way.
+ */
+export function matchTrackedByName(lsFilesOutput: string, name: string): string[] {
+  const wanted = baseName(name).toLowerCase();
+  if (!wanted) return [];
+  return lsFilesOutput
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && baseName(line).toLowerCase() === wanted);
+}

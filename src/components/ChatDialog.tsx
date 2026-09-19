@@ -9,6 +9,7 @@ import { Plus, Trash2 } from "lucide-react";
 import type { ChatParticipant } from "@/types";
 import { PROVIDERS } from "@/lib/providers";
 import { useT } from "@/i18n/useT";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 interface Props {
   open: boolean;
@@ -38,9 +39,9 @@ const OTHER_MODEL = "__other_model__";
 
 export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
   const t = useT();
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   const models = useAppStore(state => state.models);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   const chats = useAppStore(state => state.config.chats);
   const createChat = useAppStore(state => state.createChat);
   const updateChat = useAppStore(state => state.updateChat);

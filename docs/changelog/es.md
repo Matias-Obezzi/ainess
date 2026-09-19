@@ -2,6 +2,53 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.21.0 — 2026-09-19
+
+### Nuevo
+
+- **Varios proyectos en pantalla a la vez.** Tantos como entren a lo ancho de la ventana, en
+  columnas parejas, hasta cuatro. Cada panel tiene su propio hilo, su compositor y su barra, y se le
+  escribe al suyo. Se abre uno nuevo desde el menú del proyecto en la barra lateral y se cierra con
+  la X de su barra. Los que no entran no se cierran: vuelven al ensanchar la ventana.
+- **El tablero de un proyecto puede venir de GitHub Projects.** En los ajustes del proyecto se elige
+  la plataforma, se apunta al tablero por su dueño y su número, y se dice qué columna de allá es
+  cada una de las de acá. El token va en Configuración → Tableros y necesita el scope `project`.
+  Sólo viajan las tarjetas raíz, y nunca se borra nada del otro lado. Trello y Jira están declarados
+  y todavía no andan.
+- **Cada tarjeta dice lo que costó** y cuánto tiempo de máquina llevó, sumando toda su familia de
+  corridas. Antes el gasto sólo se veía por proyecto.
+- **Cada tarjeta muestra en qué commit terminó su trabajo.** Informa, no mueve la tarjeta sola.
+- **La mascota hace lo que hace su agente.** En Apariencia se puede elegir tenerla siempre en la
+  esquina de la conversación, y no sólo en un hilo vacío. Martilla mientras trabaja, mira el reloj y
+  golpea el pie mientras te espera, duerme cuando no hay nada, se despinta cuando se queda sin
+  tokens, y queda con los ojos en equis cuando algo falló.
+- **Un archivo nombrado sin su carpeta se busca en el repositorio.** Si un agente dice
+  `Composer.tsx` a secas, ahora se encuentra: uno solo se abre, y si hay varios se listan para
+  elegir.
+- **Volver abajo del todo.** El botón para ir al mensaje más nuevo aparece siempre que hayas subido,
+  no sólo cuando llegó algo nuevo. Y lo que vos escribís te lleva con él: leer para atrás es para lo
+  que dice el agente, no para tu propio turno.
+
+### Arreglado
+
+- **Una tarea terminada se anuncia una vez.** Con el streaming, la respuesta en vivo vive en el hilo
+  hasta que termina la corrida, y al desaparecer las notificaciones perdían la cuenta y volvían a
+  anunciar todos los resultados de la sesión de golpe.
+- **El tablero guarda trabajo, no la conversación alrededor.** Un mensaje enviado mientras una tarea
+  sigue en curso continúa esa tarjeta en vez de abrir otra, así que «continuá» o «dale» ya no dejan
+  una tarjeta cada uno. Y quien delega puede ponerle título a lo que delega, en vez de que la
+  tarjeta se llame como la primera línea del pedido.
+- **Los agentes nombran los archivos con su ruta desde la raíz del proyecto**, que es lo que hace
+  que el enlace se pueda abrir.
+- **El cursor cae sobre la letra que le toca cuando el cuadro de texto tiene scroll.** La capa que
+  dibuja las palabras podía sacar su propia barra de scroll y perder ancho en cada línea, y todo lo
+  que seguía al primer corte se corría respecto del cursor.
+- **Acerca de y Diagnóstico ocupan todo el ancho** del diálogo de Configuración, en vez de quedar
+  encajonados a la izquierda.
+- **El encabezado del repositorio lee git donde está el repositorio.** En un proyecto cuyo repo vive
+  una carpeta más abajo, el estado no se actualizaba con los cambios en disco y sólo se refrescaba
+  con el temporizador lento.
+
 ## 0.20.0 — 2026-09-17
 
 ### Nuevo

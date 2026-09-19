@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/useT";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /** One agent's quota inside the popover. */
 function QuotaRow({ agent }: { agent: AgentConfig }) {
@@ -44,7 +45,8 @@ function QuotaRow({ agent }: { agent: AgentConfig }) {
 /** Trigger + breakdown. `agent` is who the composer is talking to right now. */
 export function QuotaIndicator({ agent, className }: { agent: AgentConfig; className?: string }) {
   const t = useT();
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const currentProjectId = useCurrentProjectId();
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   const autoModel = useAppStore(state => state.config.autoModel);
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const quota = useAgentQuota(agent);

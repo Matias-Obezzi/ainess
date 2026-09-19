@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store";
 import { useT } from "@/i18n/useT";
 import { DiffPanel } from "@/components/DiffPanel";
+import { useCurrentProjectId } from "./project-pane";
 
 export function DiffDockSection() {
   const t = useT();
   const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
+  const projectId = useCurrentProjectId();
 
   return (
     <div className="flex h-full flex-col">
@@ -19,7 +21,7 @@ export function DiffDockSection() {
           variant="ghost"
           size="icon"
           className="h-6 w-6 rounded-md hover:bg-muted"
-          onClick={() => toggleDiffPanel(false)}
+          onClick={() => toggleDiffPanel(false, projectId)}
         >
           <X className="h-4 w-4 text-muted-foreground" />
         </Button>

@@ -2,18 +2,23 @@ import { useEffect, useRef } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { toast } from "@/components/ui/toast";
 import { translateNow } from "@/i18n/useT";
-import { freshMessages } from "@/lib/notifications";
+import { freshMessages, messageCursor, type MessageCursor } from "@/lib/notifications";
 
 /** Toasts for what happens while the user is watching. History is not news: see `freshMessages`. */
 export function useNotifications() {
-  const lastProcessedId = useRef<string | null>(null);
+  const cursor = useRef<MessageCursor>(null);
+  const lastMessages = useRef<unknown>(null);
 
   useEffect(() => {
     return useAppStore.subscribe((state) => {
       const messages = state.messages;
+      // The subscription has no selector, so it runs on every store write — hundreds a second
+      // while an agent streams. Nothing here depends on anything but the feed.
+      if (messages === lastMessages.current) return;
+      lastMessages.current = messages;
       if (messages.length === 0) return;
 
-      const newMessages = freshMessages(messages, lastProcessedId.current);
+      const newMessages = freshMessages(messages, cursor.current);
 
       // Someone looking at the project's own thread with the window in front is already seeing
       // what a toast would tell them; the toast only adds a box over the thing it repeats. It still
@@ -35,9 +40,7 @@ export function useNotifications() {
         }
       }
       
-      // The cursor follows the feed, not only what was announced, so a message restored from disk
-      // after this one is never revisited.
-      lastProcessedId.current = messages[messages.length - 1].id;
+      cursor.current = messageCursor(messages);
     });
   }, []);
 }

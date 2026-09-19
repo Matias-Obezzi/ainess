@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { ProviderLogo } from "@/components/ProviderLogo";
-import { mascotHash, mascotTraits } from "@/lib/mascot";
+import { mascotHash, mascotTraits, type MascotMood } from "@/lib/mascot";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import type { ProviderId } from "@/types";
@@ -14,6 +14,11 @@ interface Props {
   color?: string;
   /** The planner's provider, drawn as a small badge on the corner. */
   provider?: ProviderId;
+  /**
+   * What the agent behind it is doing, from `lib/mascot.ts#mascotMood`. Without one the creature
+   * is decoration: it floats and blinks and nothing more.
+   */
+  mood?: MascotMood;
   size?: number;
   className?: string;
 }
@@ -25,7 +30,7 @@ interface Props {
  * It breathes and blinks through CSS alone (see `.animate-mascot-float` / `.animate-mascot-blink`
  * in `index.css`); nothing here runs per frame.
  */
-export function ProjectMascot({ projectId, projectName, color, provider, size = 128, className }: Props) {
+export function ProjectMascot({ projectId, projectName, color, provider, mood, size = 128, className }: Props) {
   const t = useT();
   const { body, eyes, crown, hue } = mascotTraits(projectId);
   const hash = mascotHash(projectId);
@@ -40,11 +45,29 @@ export function ProjectMascot({ projectId, projectName, color, provider, size = 
   const fill = `url(#${gradId})`;
 
   // Two mascots on the same screen must not breathe in step, or the pair reads as one animation.
-  const drift = { animationDelay: `${hash % 1200}ms` };
+  // Out of tokens is the one mood that is not movement: the colour drains out of the whole
+  // creature, props included, which is what tells it apart from sleeping at the size this is drawn.
+  const drift = {
+    animationDelay: `${hash % 1200}ms`,
+    ...(mood === "quota" ? { filter: "grayscale(0.85)", opacity: 0.68 } : null),
+  };
   const blinkDelay = { animationDelay: `${hash % 3100}ms`, transformOrigin: "center", transformBox: "fill-box" as const };
+  // The whole creature leans into the swing while working and sags while it has no tokens left;
+  // the other two moods only add props, so the body keeps floating as it always did.
+  const bodyAnim = mood === "working" ? "animate-mascot-work"
+    : mood === "quota" ? "animate-mascot-deflate"
+    : mood === "error" ? "animate-mascot-shiver"
+    : undefined;
+  const bodyStyle = {
+    animationDelay: `${hash % 700}ms`,
+    // Both of those turn on the feet rather than the middle: a creature that rotates around its
+    // navel reads as a sticker being spun.
+    transformOrigin: "50% 100%",
+    transformBox: "fill-box" as const,
+  };
 
   return (
-    <div className={cn("relative inline-block shrink-0", className)} style={{ width: size, height: size }}>
+    <div data-testid="mascot" className={cn("relative inline-block shrink-0", className)} style={{ width: size, height: size }}>
       <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={t("mascot.alt", { name: projectName })}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -55,11 +78,27 @@ export function ProjectMascot({ projectId, projectName, color, provider, size = 
         {/* The ground stays put while the creature floats above it. */}
         <ellipse cx="50" cy="95" rx="22" ry="3.5" style={{ fill: `color-mix(in oklab, ${shade} 30%, transparent)` }} />
         <g className="animate-mascot-float" style={drift}>
-          <Crown variant={crown} fill={fill} stroke={base} />
-          <Body variant={body} fill={fill} />
-          <g className="animate-mascot-blink" style={blinkDelay}>
-            <Eyes variant={eyes} sclera={sclera} pupil={pupil} />
+          {mood === "waiting" && <Feet base={base} />}
+          <g className={bodyAnim} style={bodyStyle}>
+            <Crown variant={crown} fill={fill} stroke={base} />
+            <Body variant={body} fill={fill} />
+            {/* Asleep the eyes stay shut and broken they are crossed out, so in neither case is
+                there anything left to blink. */}
+            {mood === "idle" ? (
+              <ClosedEyes pupil={pupil} />
+            ) : mood === "error" ? (
+              <CrossedEyes pupil={pupil} />
+            ) : (
+              <g className="animate-mascot-blink" style={blinkDelay}>
+                <Eyes variant={eyes} sclera={sclera} pupil={pupil} />
+              </g>
+            )}
           </g>
+          {mood === "working" && <Hammer base={base} light={light} />}
+          {mood === "waiting" && <Clock base={base} light={light} />}
+          {mood === "idle" && <Snores base={base} delay={hash % 900} />}
+          {mood === "quota" && <EmptyCoin base={base} />}
+          {mood === "error" && <Alarm base={base} light={light} />}
         </g>
       </svg>
       {provider && (
@@ -155,4 +194,103 @@ function Crown({ variant, fill, stroke }: { variant: 0 | 1 | 2 | 3; fill: string
   }
   // A bare head is a variant too, not a missing one.
   return null;
+}
+
+/**
+ * Working: a hammer that swings from the handle and lands on nothing in particular.
+ *
+ * Every prop a mood adds is drawn outside the body, straight over the conversation, so it is in the
+ * project colour and not in the near-black the face is drawn in: that one disappears against a dark
+ * thread, which is where the hammer went the first time.
+ */
+function Hammer({ base, light }: { base: string; light: string }) {
+  return (
+    <g className="animate-mascot-hammer" style={{ transformOrigin: "50% 100%", transformBox: "fill-box" }}>
+      <rect x="83" y="50" width="4" height="30" rx="2" style={{ fill: light }} />
+      <rect x="74" y="42" width="19" height="11" rx="3" style={{ fill: base }} />
+    </g>
+  );
+}
+
+/** Waiting: a look at the clock every few seconds, over a foot that never stops. */
+function Clock({ base, light }: { base: string; light: string }) {
+  return (
+    <g className="animate-mascot-clock">
+      <circle cx="84" cy="70" r="9" style={{ fill: light, stroke: base, strokeWidth: 2.6 }} />
+      <path d="M84 70 L84 64 M84 70 L88 72" fill="none" strokeWidth="2.2" strokeLinecap="round" style={{ stroke: base }} />
+    </g>
+  );
+}
+
+function Feet({ base }: { base: string }) {
+  return (
+    <g style={{ fill: base }}>
+      <ellipse cx="38" cy="94" rx="7" ry="3" />
+      <ellipse className="animate-mascot-tap" cx="62" cy="94" rx="7" ry="3" />
+    </g>
+  );
+}
+
+/** Asleep: two shut lids, drawn where the eyes would have been. */
+function ClosedEyes({ pupil }: { pupil: string }) {
+  return (
+    <g fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: pupil }}>
+      <path d="M32 58 Q39 64 46 58" />
+      <path d="M54 58 Q61 64 68 58" />
+    </g>
+  );
+}
+
+/** Broken: two eyes crossed out, the one face nobody reads as asleep or as looking at anything. */
+function CrossedEyes({ pupil }: { pupil: string }) {
+  return (
+    <g fill="none" strokeWidth="3.2" strokeLinecap="round" style={{ stroke: pupil }}>
+      <path d="M34 53 L45 64 M45 53 L34 64" />
+      <path d="M55 53 L66 64 M66 53 L55 64" />
+    </g>
+  );
+}
+
+/** Broken: the warning sign beside it, so the mood reads even in a frame with no movement. */
+function Alarm({ base, light }: { base: string; light: string }) {
+  return (
+    <g>
+      <path d="M82 58 L93 78 L71 78 Z" strokeWidth="2.6" strokeLinejoin="round" style={{ fill: light, stroke: base }} />
+      <path d="M82 65 L82 71" fill="none" strokeWidth="2.8" strokeLinecap="round" style={{ stroke: base }} />
+      <circle cx="82" cy="74.6" r="1.6" style={{ fill: base }} />
+    </g>
+  );
+}
+
+/** Three z's on their way up and out. The delays are what keeps them from leaving as one block. */
+function Snores({ base, delay }: { base: string; delay: number }) {
+  return (
+    <g fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: base }}>
+      {[0, 1, 2].map(i => (
+        <g key={i} transform={`translate(${68 + i * 3} ${34 - i * 7}) scale(${1 - i * 0.18})`}>
+          <path
+            className="animate-mascot-sleep"
+            style={{ animationDelay: `${delay + i * 900}ms`, transformOrigin: "center", transformBox: "fill-box" }}
+            d="M0 0 H8 L0 8 H8"
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** Out of tokens: a coin with nothing on it, turning over next to a creature that has deflated. */
+function EmptyCoin({ base }: { base: string }) {
+  return (
+    <circle
+      className="animate-mascot-coin"
+      cx="82"
+      cy="72"
+      r="8"
+      fill="none"
+      strokeWidth="3"
+      strokeDasharray="4 3"
+      style={{ stroke: base, transformOrigin: "center", transformBox: "fill-box" }}
+    />
+  );
 }

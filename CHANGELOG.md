@@ -6,6 +6,55 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.21.0 — 2026-09-19
+
+### Added
+
+- **Several projects on screen at once.** As many as fit across the width of the window, in even
+  columns, up to four. Each panel has its own thread, its own composer and its own bar, and you
+  write to the one you mean. A new one opens from the project's menu in the sidebar and closes with
+  the X on its bar. The ones that no longer fit are not closed: they come back when the window is
+  widened.
+- **A project's board can come from GitHub Projects.** In the project's settings you pick the
+  platform, point at the board over there by its owner and its number, and say which column there
+  is each of the ones here. The token goes in Settings → Boards and needs the `project` scope. Only
+  the root cards travel, and nothing on the other side is ever deleted. Trello and Jira are
+  declared and do not work yet.
+- **Every card says what it cost** and how much machine time it took, adding up its whole family of
+  runs. Until now the spending was only visible per project.
+- **Every card shows the commit its work ended up in.** It tells you; it does not move the card by
+  itself.
+- **The mascot does what its agent does.** In Appearance you can keep it in the corner of the
+  conversation for good, and not only in an empty thread. It hammers away while it works, looks at
+  the clock and taps its foot while it waits for you, sleeps when there is nothing on, goes pale
+  when it runs out of tokens, and ends up with crosses for eyes when something failed.
+- **A file named without its folder is looked for in the repository.** If an agent says
+  `Composer.tsx` and nothing more, it is found now: a single one opens, and if there are several
+  they are listed to choose from.
+- **Back down to the bottom.** The button that takes you to the newest message is there whenever
+  you have scrolled up, not only when something new has arrived. And what you write takes you down
+  with it: reading back is for what the agent says, not for your own turn.
+
+### Fixed
+
+- **A finished task is announced once.** With streaming, the live answer stays in the thread until
+  the run ends, and as it disappeared the notifications lost count and announced every result of
+  the session all over again in one go.
+- **The board keeps work, not the conversation around it.** A message sent while a task is still
+  under way carries that card on instead of opening another, so "carry on" or "go ahead" no longer
+  leave a card each. And whoever delegates can put a title on what they delegate, instead of the
+  card being named after the first line of the request.
+- **Agents name files with their path from the root of the project**, which is what makes the link
+  openable.
+- **The caret falls on the letter it belongs to when the text box has scrolled.** The layer that
+  draws the words could grow a scrollbar of its own and lose width on every line, and everything
+  after the first break shifted away from the caret.
+- **About and Diagnostics take the full width** of the Settings dialog, instead of staying boxed in
+  on the left.
+- **The repository header reads git where the repository is.** In a project whose repo lives a
+  folder further down, the state did not update with the changes on disk and was only refreshed by
+  the slow timer.
+
 ## 0.20.0 — 2026-09-17
 
 ### Added

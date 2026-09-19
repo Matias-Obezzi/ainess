@@ -19,17 +19,18 @@ import { confirm, confirmDelete } from "@/lib/confirm";
 import { revealPath } from "@/lib/open-external";
 import { hasUncommittedChanges, mergeWorktree, removeWorktree } from "@/lib/worktree";
 import { useT } from "@/i18n/useT";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /** `null` while it is being read, `undefined` when it could not be read at all. */
 type DirtyMap = Record<string, boolean | null | undefined>;
 
 export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
-  const projectId = useAppStore(state => state.currentProjectId);
-  const project = useAppStore(state => selectProject(state, state.currentProjectId));
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
-  const worktrees = useAppStore(state => selectProjectWorktrees(state, state.currentProjectId));
-  const repoBranch = useAppStore(state => (state.currentProjectId ? state.repoState[state.currentProjectId]?.status?.branch : null));
+  const projectId = useCurrentProjectId();
+  const project = useAppStore(state => selectProject(state, projectId));
+  const agents = useAppStore(state => selectProjectAgents(state, projectId));
+  const worktrees = useAppStore(state => selectProjectWorktrees(state, projectId));
+  const repoBranch = useAppStore(state => (projectId ? state.repoState[projectId]?.status?.branch : null));
   const forgetWorktree = useAppStore(state => state.forgetWorktree);
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
 

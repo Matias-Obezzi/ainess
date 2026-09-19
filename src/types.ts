@@ -133,6 +133,25 @@ export interface Budget {
   onReached: "warn" | "block";
 }
 
+/**
+ * Where a project's board lives. Only `local` is implemented today; the others are declared so the
+ * seam and the picker are real and a provider can be added without reshaping anything. See
+ * `lib/board/`.
+ */
+export type BoardProviderId = "local" | "github-projects" | "trello" | "jira";
+
+export interface BoardSource {
+  provider: BoardProviderId;
+  /** Provider-specific handle: a GitHub project number, a Trello board id. `local` has none. */
+  externalId?: string;
+  /** Owner and number of the board on the platform: `github.com/orgs/<owner>/projects/<number>`. */
+  owner?: string;
+  number?: number;
+  /** Which option of the platform's status field each of our columns is. Without it the provider
+   *  cannot be used: guessing would file cards under the wrong column in silence. */
+  columns?: Partial<Record<TaskStatus, string>>;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -149,6 +168,12 @@ export interface Project {
   agents: AgentConfig[];
   /** Spending limits for runs in this project. Warns or blocks when reached. */
   budget?: Budget;
+  /**
+   * Where this project's board comes from. `undefined` means local — the file on this machine,
+   * which is what every project had before there was anything else to pick, so nothing has to be
+   * migrated for it and `AppConfig.version` stays where it is. See `lib/board/`.
+   */
+  board?: BoardSource;
   /**
    * What this project calls "done": run after an agent finishes delegated work, in the folder it
    * worked in. Missing or empty means nothing is checked, which is how it behaved before.
@@ -397,6 +422,12 @@ export interface AppConfig {
   /** The colours, when they are not the app's own. */
   theme?: ThemeConfig;
   messaging?: { telegram?: MessagingChannelConfig; discord?: MessagingChannelConfig; slack?: MessagingChannelConfig };
+  /** Credentials for the board platforms a project can point at. See `lib/board/`. */
+  boards?: {
+    /** Personal access token for GitHub Projects. Needs the `project` scope (`read:project` is
+     *  enough to look but not to move a card). Empty or missing falls back to `gh auth token`. */
+    github?: { token: string };
+  };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
   formations: Formation[];
@@ -427,6 +458,12 @@ export interface AppConfig {
   autoArchiveDoneDays: number | null;
   /** The sound every notification makes, in the window and from the tray (see lib/sound.ts). */
   notificationSound?: SoundSettings;
+  /**
+   * Keep the project mascot in the corner of a conversation that already has messages in it,
+   * acting out whatever its agent is doing. Missing (the default) leaves it where it has always
+   * been: the empty thread and nowhere else.
+   */
+  mascotAlways?: boolean;
 }
 
 export interface AgentRuntime {
@@ -572,6 +609,8 @@ export interface Delegation {
   model?: string;
   /** Card of the board this delegation picks up, when the planner is working off it. */
   taskId?: string;
+  /** What the card should be called: only the planner knows what the instruction is about. */
+  title?: string;
 }
 
 export interface ChatParticipant {
@@ -807,6 +846,8 @@ export interface Task {
   /** Position inside its column. */
   order: number;
   archived: boolean;
+  /** The card this one mirrors on a remote board, when the project's board is not local. */
+  external?: { provider: BoardProviderId; id: string; url?: string };
 }
 /** The sections of the right dock. */
 export type DockSectionId = "comm" | "diff" | "term" | "file";

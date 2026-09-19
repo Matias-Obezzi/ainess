@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseBranches, parseGitStatus, parsePullRequests } from "@/lib/git";
+import { commitsAfter, parseBranches, parseGitLog, parseGitStatus, parsePullRequests } from "@/lib/git";
 
 describe("parseGitStatus", () => {
   it("reads the branch, its upstream and how far ahead or behind it is", () => {
@@ -190,5 +190,72 @@ describe("parseBranches", () => {
   it("survives an empty answer and \rLF", () => {
     expect(parseBranches("")).toEqual({ local: [], remote: [] });
     expect(parseBranches("refs/heads/main\r\n").local).toEqual(["main"]);
+  });
+});
+
+/** A believable 40-character sha, since that is what `git rev-parse HEAD` writes into `baseSha`. */
+const sha = (head: string) => head.padEnd(40, "0");
+const NEW = sha("aaaaaaa1");
+const MID = sha("bbbbbbb2");
+const BASE = sha("ccccccc3");
+const GONE = sha("ddddddd4");
+
+describe("parseGitLog", () => {
+  it("gives nothing for an empty log", () => {
+    expect(parseGitLog("")).toEqual([]);
+    expect(parseGitLog("\n\n")).toEqual([]);
+  });
+
+  it("reads one commit", () => {
+    expect(parseGitLog(`${NEW} feat: a card says what it cost\n`)).toEqual([
+      { sha: NEW, subject: "feat: a card says what it cost" },
+    ]);
+  });
+
+  it("keeps several in the order git printed them, newest first", () => {
+    const stdout = [`${NEW} feat: the newest one`, `${MID} fix: the one before it`, `${BASE} chore: the oldest`, ""].join("\n");
+    expect(parseGitLog(stdout).map(c => c.subject)).toEqual([
+      "feat: the newest one",
+      "fix: the one before it",
+      "chore: the oldest",
+    ]);
+  });
+
+  it("drops whatever is not a commit line and keeps a commit with no subject", () => {
+    const stdout = [
+      "warning: some git noise on the way out",
+      `${NEW} feat: real`,
+      "   ",
+      "not-a-sha at all",
+      MID,
+    ].join("\n");
+    expect(parseGitLog(stdout)).toEqual([
+      { sha: NEW, subject: "feat: real" },
+      { sha: MID, subject: "" },
+    ]);
+  });
+});
+
+describe("commitsAfter", () => {
+  const log = parseGitLog(
+    [`${NEW} feat: the newest one`, `${MID} fix: the one before it`, `${BASE} chore: the base`].join("\n"),
+  );
+
+  it("gives the commits made on top of the base, newest first", () => {
+    expect(commitsAfter(log, BASE)?.map(c => c.sha)).toEqual([NEW, MID]);
+  });
+
+  it("gives an empty list when the base is still the last commit", () => {
+    expect(commitsAfter(log, NEW)).toEqual([]);
+  });
+
+  // The whole point of the null: a base that was rebased away, made on another branch, or is older
+  // than the log reaches is "not known", and must never read as "nothing was committed".
+  it("tells a base git no longer knows apart from a base with no commits on top", () => {
+    expect(commitsAfter(log, GONE)).toBeNull();
+    expect(commitsAfter(log, "")).toBeNull();
+    expect(commitsAfter([], BASE)).toBeNull();
+    // ...which is a different answer from the empty list a base still at HEAD gives.
+    expect(commitsAfter(log, NEW)).not.toBeNull();
   });
 });

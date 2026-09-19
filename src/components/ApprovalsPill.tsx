@@ -14,12 +14,13 @@ import { pendingApprovals } from "@/lib/approvals";
 import { plural } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 export function ApprovalsPill({ className }: { className?: string }) {
   const t = useT();
   const approvals = useAppStore(state => state.approvals);
   const projects = useAppStore(state => state.config.projects);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
 
   const pending = useMemo(
     () => pendingApprovals(approvals, projects, currentProjectId),

@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
+import { mascotMood } from "@/lib/mascot";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
@@ -33,6 +34,7 @@ import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
 import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
 import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
+import { useCurrentProjectId } from "./project-pane";
 
 /** While something streams in, follow the bottom at most this often. */
 const FOLLOW_INTERVAL_MS = 150;
@@ -43,7 +45,7 @@ const pastAgent = (t: TFunction) => t("home.formerAgent");
 
 export function OrchestratorThread() {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   const runs = useAppStore(state => state.runs);
   const historyLoading = useAppStore(state => currentProjectId ? state.historyLoading[currentProjectId] : false);
   const hasRunning = useAppStore(state =>
@@ -60,11 +62,19 @@ export function OrchestratorThread() {
   // Written while an agent was working: it has not been handed over yet, and until now the thread
   // gave no sign of it.
   const runtime = useAppStore(state => currentProjectId ? state.runtime[currentProjectId] : undefined);
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   // Only for the mascot on the empty thread: it needs the project's colour and the face of whoever
   // would answer first.
-  const project = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId));
+  const project = useAppStore(state => state.config.projects.find(p => p.id === currentProjectId));
   const planner = agents.find(a => a.role === "planner");
+  // And, when it is set to stay on screen, what it acts out: the planner is who answers first, so
+  // it is the one the creature stands for.
+  const mascotAlways = useAppStore(state => state.config.mascotAlways ?? false);
+  const plannerId = planner?.id;
+  const plannerOutOfTokens = useAppStore(state =>
+    Object.values(state.quotaWaiting).some(w => w.projectId === currentProjectId && w.agentId === plannerId),
+  );
+  const mood = plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined;
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   // A block per agent: what is waiting for one of them goes over as a single message, and what is
@@ -147,13 +157,32 @@ export function OrchestratorThread() {
     return () => cancelAnimationFrame(id);
   }, [currentProjectId, historyLoading, focusedMessageId]);
 
+  // Which project the count above belongs to: another project is another bottom, and its turns are
+  // not turns arriving here.
+  const countedIn = useRef(currentProjectId);
+
   useEffect(() => {
+    if (countedIn.current !== currentProjectId) {
+      countedIn.current = currentProjectId;
+      prevCount.current = rootRuns.length;
+      return;
+    }
     if (rootRuns.length > prevCount.current) {
-      if (stickToBottom) stick(scrollRef.current);
+      // A turn of your own lands at the bottom, so that is where you are taken. A round > 0 run is
+      // an automatic continuation, not something the user typed, and reading back through those is
+      // exactly what must keep working. Not while the search palette is taking you somewhere: that
+      // jump owns the scroll until its flash ends.
+      const mine = !focusedMessageId && rootRuns[rootRuns.length - 1]?.round === 0;
+      if (mine) {
+        setStickToBottom(true);
+        setNewCount(0);
+      }
+      if (stickToBottom || mine) stick(scrollRef.current, mine ? "smooth" : "auto");
       else setNewCount(n => n + (rootRuns.length - prevCount.current));
     }
     prevCount.current = rootRuns.length;
-  }, [rootRuns.length, stickToBottom]);
+  // `focusedMessageId` is read above but not watched: a flash ending is not a turn arriving.
+  }, [rootRuns.length, currentProjectId, stickToBottom]);
 
   // A run streams dozens of deltas per second: follow the bottom on a timer (and inside a frame)
   // instead of scrolling on every one of them.
@@ -225,7 +254,7 @@ export function OrchestratorThread() {
         ) : rootRuns.length === 0 && queued.length === 0 ? (
           <EmptyState
             icon={MessagesSquare}
-            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} size={128} className="mb-2" />}
+            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
             title={t("thread.empty.title")}
             description={t("thread.empty.body")}
             className="h-full"
@@ -246,9 +275,27 @@ export function OrchestratorThread() {
         )}
       </div>
 
-      {!stickToBottom && newCount > 0 && (
-        <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
-          <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
+      {/* Set to stay, it watches from the corner of a thread that already has something in it. On
+          the left, because the button back to the bottom owns the other corner. */}
+      {mascotAlways && project && !historyLoading && (rootRuns.length > 0 || queued.length > 0) && (
+        <ProjectMascot
+          projectId={project.id}
+          projectName={project.name}
+          color={project.color}
+          mood={mood}
+          size={56}
+          className="pointer-events-none absolute bottom-2 left-3 opacity-90"
+        />
+      )}
+
+      {/* Read back far enough and the way down is gone exactly when it is needed, so it shows for
+          as long as you are not at the bottom. What it says is the only thing the count changes. */}
+      {!stickToBottom && (
+        <Button data-testid="to-bottom" size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
+          <ArrowDown className="h-4 w-4" />
+          {newCount > 0
+            ? plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))
+            : t("thread.toLatest")}
         </Button>
       )}
     </div>

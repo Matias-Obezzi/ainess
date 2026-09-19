@@ -11,10 +11,18 @@ import { findRepoDir } from "@/lib/repo-dir";
 import { projectNameFromDir } from "@/lib/home-start";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
+import { BOARD_PROVIDERS } from "@/lib/board/registry";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
-import { AgentConfig, Project, Budget, VerifyCommand } from "@/types";
+import { AgentConfig, Project, Budget, BoardProviderId, VerifyCommand } from "@/types";
 import { VerifySection } from "@/components/VerifySection";
+import {
+  BoardSourceFields,
+  EMPTY_BOARD_SOURCE,
+  boardNumber,
+  isBoardSourceComplete,
+  type BoardSourceDraft,
+} from "@/components/BoardSourceFields";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 /** Value of the formation select when the project starts with no agents at all. */
@@ -43,6 +51,8 @@ export function ProjectDialog({
   const [monthlyUsd, setMonthlyUsd] = useState("");
   const [onReached, setOnReached] = useState<"warn" | "block">("warn");
   const [perRunUsd, setPerRunUsd] = useState("");
+  const [boardProvider, setBoardProvider] = useState<BoardProviderId>("local");
+  const [boardSource, setBoardSource] = useState<BoardSourceDraft>(EMPTY_BOARD_SOURCE);
   const [verify, setVerify] = useState<VerifyCommand[]>([]);
   const store = useAppStore();
   const formations = useAppStore(state => state.config.formations);
@@ -60,6 +70,12 @@ export function ProjectDialog({
       setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
       setOnReached(editProject.budget?.onReached ?? "warn");
       setPerRunUsd(editProject.budget?.perRunUsd ? String(editProject.budget.perRunUsd) : "");
+      setBoardProvider(editProject.board?.provider ?? "local");
+      setBoardSource({
+        owner: editProject.board?.owner ?? "",
+        number: editProject.board?.number ? String(editProject.board.number) : "",
+        columns: editProject.board?.columns ?? {},
+      });
       setVerify(editProject.verify ?? []);
       // The team of an existing project is managed from its hierarchy, not from here.
       setFormationId(NO_FORMATION);
@@ -73,6 +89,10 @@ export function ProjectDialog({
     setMonthlyUsd("");
     setOnReached("warn");
     setPerRunUsd("");
+    // The board too: without this, opening "new project" right after editing one that lives on
+    // GitHub would offer that project's provider and its owner/number as if they were defaults.
+    setBoardProvider("local");
+    setBoardSource(EMPTY_BOARD_SOURCE);
     setVerify([]);
     const initial = defaultFormationId && formations.some(f => f.id === defaultFormationId) ? defaultFormationId : NO_FORMATION;
     setFormationId(initial);
@@ -114,8 +134,11 @@ export function ProjectDialog({
     }
   };
 
+  /** A remote board needs to be addressable and fully mapped before it can be written down. */
+  const boardReady = isBoardSourceComplete(boardProvider, boardSource);
+
   const handleSave = () => {
-    if (!name || !workspaceDir) return;
+    if (!name || !workspaceDir || !boardReady) return;
 
     const dUsd = parseFloat(dailyUsd);
     const mUsd = parseFloat(monthlyUsd);
@@ -134,11 +157,20 @@ export function ProjectDialog({
     // time and block every card, so it does not travel.
     const verifyCommands = verify.filter(c => c.program.trim().length > 0);
 
+    // Local is the default and what `undefined` already means, so it is not written down: a
+    // project nobody configured keeps a config with nothing to migrate later.
+    const board = boardProvider === "local" ? undefined : {
+      provider: boardProvider,
+      owner: boardSource.owner.trim(),
+      number: boardNumber(boardSource),
+      columns: boardSource.columns,
+    };
+
     if (editProject) {
-      store.updateProject(editProject.id, { name, workspaceDir, repoDir, color, budget, verify: verifyCommands });
+      store.updateProject(editProject.id, { name, workspaceDir, repoDir, color, budget, board, verify: verifyCommands });
     } else {
       // What the user left in the list is the team, formation or not.
-      store.addProject({ name, workspaceDir, repoDir, color, agents, budget, verify: verifyCommands });
+      store.addProject({ name, workspaceDir, repoDir, color, agents, budget, board, verify: verifyCommands });
       const newP = useAppStore.getState().config.projects.find(p => p.name === name && p.workspaceDir === workspaceDir);
       if (newP) store.setCurrentProject(newP.id);
     }
@@ -232,6 +264,24 @@ export function ProjectDialog({
               <p className="text-xs text-muted-foreground">{t("budget.perRunHint")}</p>
             </div>
 
+            <div className="grid gap-2">
+              <Label>{t("board.source")}</Label>
+              <Select value={boardProvider} onValueChange={(v: BoardProviderId) => setBoardProvider(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOARD_PROVIDERS.map(meta => (
+                    <SelectItem key={meta.id} value={meta.id} disabled={!meta.available}>
+                      {meta.available ? t(meta.labelKey) : `${t(meta.labelKey)} (${t("board.provider.soon")})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("board.source.hint")}</p>
+              <BoardSourceFields provider={boardProvider} value={boardSource} onChange={setBoardSource} />
+            </div>
+
             <VerifySection workspaceDir={workspaceDir} commands={verify} onChange={setVerify} />
 
             {/* Only when creating: an existing project's team is managed from its hierarchy. */}
@@ -322,7 +372,7 @@ export function ProjectDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          <Button onClick={handleSave} disabled={!name || !workspaceDir}>{t("common.save")}</Button>
+          <Button onClick={handleSave} disabled={!name || !workspaceDir || !boardReady}>{t("common.save")}</Button>
         </DialogFooter>
 
         <AgentDialog

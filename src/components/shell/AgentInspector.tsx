@@ -16,6 +16,7 @@ import { worktreeBranch } from "@/lib/worktree";
 import { formatClock, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Copy, FileText, MessageCircle, MessageSquareText, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
+import { useCurrentProjectId } from "./project-pane";
 
 const RECENT_RUNS = 3;
 
@@ -24,9 +25,10 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
   const locale = useLocale();
   const actions = useAgentActions(agent);
   const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
-  const worktree = useAppStore(state => selectWorktree(state, state.currentProjectId, agent.id));
+  const currentProjectId = useCurrentProjectId();
+  const worktree = useAppStore(state => selectWorktree(state, currentProjectId, agent.id));
   const preparing = useAppStore(state =>
-    state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id]?.preparing : undefined
+    currentProjectId ? state.runtime[currentProjectId]?.[agent.id]?.preparing : undefined
   );
   const branch = agent.worktree ? worktree?.branch ?? worktreeBranch(agent.name) : null;
   const [detailRunId, setDetailRunId] = useState<string | null>(null);

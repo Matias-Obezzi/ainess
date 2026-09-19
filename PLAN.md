@@ -272,6 +272,58 @@ interface AppState {
 export const useAppStore = create<AppState>()(…)
 ```
 
+## Tablero: proveedor por proyecto (src/lib/board/)
+
+El tablero de un proyecto es una **vista del trabajo, nunca una traba**: el orquestador delega,
+corre y responde sin preguntarle nada a esta capa, así que un proveedor remoto que no contesta deja
+el tablero viejo pero no puede impedir que un agente trabaje. De dónde salen las tarjetas es lo
+único que cambia de un proveedor a otro.
+
+```ts
+export type BoardProviderId = "local" | "github-projects" | "trello" | "jira";
+
+export interface BoardSource {
+  provider: BoardProviderId;
+  externalId?: string;   // el número de un proyecto de GitHub, el id de un tablero de Trello
+}
+
+export interface BoardProvider {
+  readonly id: BoardProviderId;
+  load(projectId: string): Promise<Task[]>;
+  save(projectId: string, tasks: Task[]): Promise<Task[]>;  // el tablero como quedó
+  watch?(projectId: string, onChange: (tasks: Task[]) => void): () => void;
+}
+```
+
+- `Project.board` es opcional y **`undefined` significa local**: es lo que tenían todos los
+  proyectos antes de que hubiera algo más para elegir, así que no hace falta migrar nada ni tocar
+  `AppConfig.version`.
+- `BOARD_PROVIDERS` (src/lib/board/registry.ts) es el catálogo que muestra el selector:
+  `{ id, labelKey, available }` por proveedor, en el orden en que se ofrecen.
+- `boardProviderFor(project)` devuelve **siempre un proveedor que funciona**. Si no hay proyecto,
+  si `board` está vacío, si nombra un proveedor que este build no conoce (config editada a mano, o
+  archivo escrito por una versión más nueva) o si nombra uno declarado y todavía no construido,
+  cae al local: un tablero que no carga porque la config nombra algo que esta versión no sabe hacer
+  es peor que un tablero local.
+- `save` recibe la lista entera y **devuelve el tablero como quedó**, que no siempre es lo que
+  entró: quien guarda no sabe qué hay del otro lado, y otro proceso —u otra persona, en un tablero
+  remoto— puede haber agregado o movido tarjetas. El local (src/lib/board/local.ts) escribe
+  `<configDir>/tasks/<projectId>.json` —releyendo antes el archivo para no pisar lo que otro
+  proceso `ainess` agregó— y devuelve la lista mergeada; un remoto va a diferenciar contra lo
+  último que vio y mandar solo lo que se movió. `watch` es opcional porque en un tablero local no
+  hay nadie más escribiendo.
+- src/lib/task-store.ts se queda con lo propio de la persistencia (la suscripción al store, el
+  debounce, qué proyectos están cargados y sucios) y pasa por `boardProviderFor` para leer y
+  escribir.
+- La carpeta `.ainess/` del proyecto (`BOARD.md`, `AGENTS.md`, `README.md`) **no la escribe el
+  proveedor**: es la proyección local del tablero, venga de donde venga, y la escribe `saveTasks`
+  con la lista que devolvió `save`. `BOARD.md` es lo que los agentes leen en su prompt, así que no
+  puede depender de dónde viva el tablero. Las dos escrituras van en try/catch separados: un
+  tablero que rechaza el guardado no puede dejar a los agentes sin tablero, ni al revés.
+- **Hoy el único implementado es el local.** Los tres remotos están declarados y se muestran
+  deshabilitados en el selector ("próximamente"): el seam y la elección son reales, y agregar un
+  proveedor no obliga a reacomodar nada alrededor.
+
 ## Agentes por proyecto y formaciones (config version 10)
 
 Los agentes **no** son una lista global: cada proyecto lleva su propio equipo en `Project.agents`,

@@ -238,10 +238,73 @@
   100% { transform: scaleY(1); }
 }
 
+/* The five moods the mascot takes from its agent (see `lib/mascot.ts#mascotMood`). Each one is a
+   silhouette read from across the room rather than a detail: swinging, tapping a foot, asleep,
+   deflated, shivering. */
+@keyframes mascot-work {
+  0%, 100% { transform: rotate(-3deg); }
+  55% { transform: rotate(3deg); }
+}
+
+/* Slow up, fast down, then a beat of nothing: a swing that hits rather than a pendulum. */
+@keyframes mascot-hammer {
+  0% { transform: rotate(4deg); }
+  45% { transform: rotate(-58deg); }
+  60% { transform: rotate(6deg); }
+  100% { transform: rotate(4deg); }
+}
+
+/* Same shape as the blink: long stretches of nothing and one short look at the clock. */
+@keyframes mascot-clock {
+  0%, 80% { transform: translateY(16px); opacity: 0; }
+  86%, 96% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(16px); opacity: 0; }
+}
+
+@keyframes mascot-tap {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}
+
+@keyframes mascot-sleep {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: translate(7px, -18px) scale(1.1); opacity: 0; }
+}
+
+/* Out of tokens: the creature lets the air out and pulls it back in, going nowhere. */
+@keyframes mascot-deflate {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.05, 0.88); }
+}
+
+@keyframes mascot-coin {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.08); }
+}
+
+/* Broken: a short shudder and then a long stretch of being stuck. Sideways rather than a rotation,
+   which is what keeps it from reading as the swing of working. */
+@keyframes mascot-shiver {
+  0%, 16%, 100% { transform: translateX(0); }
+  3% { transform: translateX(-2.5px); }
+  6% { transform: translateX(2.5px); }
+  9% { transform: translateX(-2px); }
+  13% { transform: translateX(1.5px); }
+}
+
 @layer utilities {
   .animate-breathe { animation: ainess-breathe 2.4s ease-in-out infinite; }
   .animate-mascot-float { animation: mascot-float 4s ease-in-out infinite alternate; }
   .animate-mascot-blink { animation: mascot-blink 5s linear infinite; }
+  .animate-mascot-work { animation: mascot-work 0.9s ease-in-out infinite; }
+  .animate-mascot-hammer { animation: mascot-hammer 0.9s ease-in-out infinite; }
+  .animate-mascot-clock { animation: mascot-clock 6s ease-in-out infinite; }
+  .animate-mascot-tap { animation: mascot-tap 0.3s ease-in-out infinite; }
+  .animate-mascot-sleep { animation: mascot-sleep 3.2s ease-out infinite; }
+  .animate-mascot-deflate { animation: mascot-deflate 2.6s ease-in-out infinite; }
+  .animate-mascot-coin { animation: mascot-coin 2.2s linear infinite; }
+  .animate-mascot-shiver { animation: mascot-shiver 2.8s ease-in-out infinite; }
   .animate-step-in { animation: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-step-out { animation: step-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-flash-highlight { animation: flash-highlight 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -254,6 +317,14 @@
     .animate-flash-highlight { animation: none; }
     .animate-mascot-float { animation: none; }
     .animate-mascot-blink { animation: none; }
+    .animate-mascot-work { animation: none; }
+    .animate-mascot-hammer { animation: none; }
+    .animate-mascot-clock { animation: none; }
+    .animate-mascot-tap { animation: none; }
+    .animate-mascot-sleep { animation: none; }
+    .animate-mascot-deflate { animation: none; }
+    .animate-mascot-coin { animation: none; }
+    .animate-mascot-shiver { animation: none; }
   }
 }
 

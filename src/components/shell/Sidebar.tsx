@@ -26,6 +26,7 @@ import { openFolder, openInEditor } from "@/lib/open-external";
 import { repoDirOf } from "@/lib/repo-dir";
 import { confirm } from "@/lib/confirm";
 import { openExternal } from "@/lib/open-external";
+import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isChatActive } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
@@ -52,6 +53,7 @@ import { FolderOpen,
   Trash2,
   Users,
   Code2,
+  Columns2,
 } from "lucide-react";
 
 /** Straight to the issue templates, opened in the user's own browser. */
@@ -79,6 +81,8 @@ export function Sidebar() {
   const [resizing, setResizing] = useState(false);
   const openHome = useAppStore(state => state.openHome);
   const openProject = useAppStore(state => state.openProject);
+  const openProjects = useAppStore(state => state.openProjects);
+  const openProjectInPane = useAppStore(state => state.openProjectInPane);
   const openSettings = useAppStore(state => state.openSettings);
   const toggleSidebarProject = useAppStore(state => state.toggleSidebarProject);
   const setCurrentProject = useAppStore(state => state.setCurrentProject);
@@ -218,6 +222,14 @@ export function Sidebar() {
   const projectActions = (p: Project): MenuAction[] => [
     { key: "edit", label: t("sidebar.editProject"), icon: Pencil, onSelect: () => editProject(p) },
     { key: "new-chat", label: t("sidebar.newChat"), icon: Plus, onSelect: () => newChat(p.id) },
+    {
+      key: "open-in-pane",
+      label: t("sidebar.openInNewPane"),
+      icon: Columns2,
+      // Already on screen, or no room left for another column: there would be nothing to do.
+      disabled: openProjects.includes(p.id) || openProjects.length >= MAX_PROJECT_PANES,
+      onSelect: () => openProjectInPane(p.id),
+    },
     { key: "new-conversation", label: t("sidebar.newConversation"), icon: RotateCcw, onSelect: () => newConversation(p.id) },
     {
       key: "open-folder",
@@ -324,8 +336,11 @@ export function Sidebar() {
                     // First click lands where the project was left; a click on the project that is
                     // already open is a way back to its orchestrator from wherever it was left in.
                     onClick={() => (isOpenProject ? openProject(p.id, null, "chat") : openProject(p.id))}
-                    // Right clicking a row selects it first, the way a file explorer does.
-                    onContextMenu={() => openProject(p.id)}
+                    // Right clicking used to open the project first, "the way a file explorer
+                    // selects a row". It never needed to — every action below is handed the
+                    // project it belongs to — and "open in a new pane" is the one it made
+                    // impossible: the menu opened with the project already in the pane you were
+                    // standing in, so the row that would have put it beside it was greyed out.
                   >
                     <div className="flex items-center gap-1">
                       <button

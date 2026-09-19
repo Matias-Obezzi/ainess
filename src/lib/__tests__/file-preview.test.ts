@@ -1,6 +1,6 @@
 // A file an agent named: recognised where it is mentioned, placed on disk, drawn as what it is.
 import { describe, it, expect } from "vitest";
-import { baseName, isMarkdownPath, languageOf, looksLikePath, pathRef, resolvePath, splitPaths } from "@/lib/file-preview";
+import { baseName, isMarkdownPath, languageOf, looksLikePath, matchTrackedByName, pathRef, resolvePath, shouldSearchRepo, splitPaths } from "@/lib/file-preview";
 
 describe("looksLikePath", () => {
   it("knows a path inside backticks when it sees one", () => {
@@ -57,5 +57,37 @@ describe("what a file is", () => {
     expect(isMarkdownPath("docs/a.ts")).toBe(false);
     expect(baseName("C:\\p\\a.md")).toBe("a.md");
     expect(baseName("/p/a.md/")).toBe("a.md");
+  });
+});
+
+describe("looking a bare name up in the repo", () => {
+  it("only bothers git when the mention has no folder on it", () => {
+    for (const p of ["Composer.tsx", "README.md", "mod.rs"]) expect(shouldSearchRepo(p), p).toBe(true);
+    // Said in full already: if it is not there, git is not going to change that.
+    for (const p of ["src/Composer.tsx", "src\\Composer.tsx", "./a.ts", "/etc/hosts", "C:\\p\\a.ts", ""]) {
+      expect(shouldSearchRepo(p), p).toBe(false);
+    }
+  });
+
+  const LS_FILES = [
+    "src/components/shell/Composer.tsx",
+    "src/components/ui/textarea.tsx",
+    "e2e/composer-wrap.spec.ts",
+    "src-tauri/src/lib.rs",
+    "docs/COMPOSER.TSX",
+    "",
+  ].join("\n");
+
+  it("keeps the files whose own name matches, and nothing whose path merely contains it", () => {
+    // Two, because `docs/COMPOSER.TSX` is the same name to anyone typing it by hand.
+    expect(matchTrackedByName(LS_FILES, "Composer.tsx")).toEqual(["src/components/shell/Composer.tsx", "docs/COMPOSER.TSX"]);
+    expect(matchTrackedByName(LS_FILES, "lib.rs")).toEqual(["src-tauri/src/lib.rs"]);
+    expect(matchTrackedByName(LS_FILES, "nowhere.ts")).toEqual([]);
+    expect(matchTrackedByName("", "a.ts")).toEqual([]);
+    expect(matchTrackedByName(LS_FILES, "")).toEqual([]);
+  });
+
+  it("does not mind how git ended its lines", () => {
+    expect(matchTrackedByName("src/a.ts\r\nsrc/b.ts\r\n", "b.ts")).toEqual(["src/b.ts"]);
   });
 });

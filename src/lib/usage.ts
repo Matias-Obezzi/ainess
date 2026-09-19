@@ -5,6 +5,7 @@
 // This is *spending history*, not quota: `src/lib/quota.ts` answers "how much is left", this one
 // answers "how much was used".
 import type { Run, RunUsage } from "@/types";
+import { formatElapsed } from "@/lib/format";
 
 export interface UsageTotals {
   costUsd: number;
@@ -145,6 +146,21 @@ const DEFAULT_LABELS: UsageLabels = { tokens: "tokens", premiumRequests: "premiu
  * One short line for a card: "US$ 0,42 · 1,2k tokens · 3 premium". Empty when nothing was
  * reported, so the caller can simply not render it.
  */
+/**
+ * What a card cost, in one line: "US$ 0,42 · 1:23". Empty when the card has no run at all, so the
+ * caller can simply not render it.
+ *
+ * The zero is not hidden: a provider that reports no dollars did run, and showing nothing there
+ * would read as "this card was free" instead of "this CLI does not say". Structural shape rather
+ * than `TaskCost` from src/lib/tasks.ts, which imports this module.
+ */
+export function formatTaskCost(cost: { usd: number; ms: number; runs: number }, locale: string): string {
+  if (cost.runs === 0) return "";
+  const parts = [formatCost(cost.usd, locale)];
+  if (cost.ms > 0) parts.push(formatElapsed(cost.ms / 1000));
+  return parts.join(" · ");
+}
+
 export function formatUsage(totals: UsageTotals, locale: string, labels: UsageLabels = DEFAULT_LABELS): string {
   const parts: string[] = [];
   if (totals.costUsd > 0) parts.push(formatCost(totals.costUsd, locale));

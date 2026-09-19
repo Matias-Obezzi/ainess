@@ -1138,7 +1138,7 @@ function onRunFinished(runId: string) {
             if (needsApproval && !isAutonomous(project)) {
               // Gate: the child only runs once the user approves (app, CLI or phone).
               const approval = requestApproval({ kind: "delegation", agentId: agent.id, toAgentId: childAgent.id, summary, payload });
-              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId });
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, approvalId: approval.id, taskId: task.taskId, title: task.title });
             } else {
               // Autonomous mode skips the wait, but the decision still gets written down — see
               // `autonomousReport`, which is how the user finds out in the morning what ran without them.
@@ -1151,7 +1151,7 @@ function onRunFinished(runId: string) {
                 addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "error", text: translateNow("delegation.couldNotStart", { name: childAgent.name }), runId });
                 continue;
               }
-              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId });
+              taskSync.taskForDelegation({ projectId: run.projectId, agentId: childAgent.id, task: task.task, rootRunId: run.rootRunId, runId: childRunId, taskId: task.taskId, title: task.title });
             }
             startedCount++;
           }
@@ -2072,10 +2072,13 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });
   // A follow-up prompt continues the agent's conversation in this project (session resume), so
   // "vamos por la B" still means something. "Nueva conversación" resets the session explicitly.
+  // Read before it is overwritten: a message sent while a request is still in flight is more of
+  // that request, and belongs to its card instead of opening another (see `taskForPrompt`).
+  const liveRootRunId = useAppStore.getState().activeTaskRunId[projectId];
   const runId = startRun({ agentId: targetAgentId, projectId, prompt: text, parentRunId: null, round: 0, model: opts?.model, resume: true });
   if (runId) {
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [projectId]: runId } }));
-    taskSync.taskForPrompt({ projectId, agentId: targetAgentId, runId, prompt: text });
+    taskSync.taskForPrompt({ projectId, agentId: targetAgentId, runId, prompt: text, liveRootRunId });
     const store = useAppStore.getState();
     const project = store.config.projects.find(p => p.id === projectId);
     const agent = selectAgent(store, targetAgentId);

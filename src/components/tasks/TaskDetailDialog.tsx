@@ -1,7 +1,8 @@
 // Everything about one task that does not fit on its card: the long detail, who is on it, what it
 // waits for and the run that carried it out. The board and the graph both open this one dialog.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
+import { useAppStore, selectProject, selectTasks, selectProjectAgents } from "@/store";
+import { repoDirOf } from "@/lib/repo-dir";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Markdown } from "@/components/shell/Markdown";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
@@ -19,7 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { blockedBy, hasCycle, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { blockedBy, hasCycle, taskCommit, taskCost, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { formatCompact, formatTaskCost } from "@/lib/usage";
 import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,12 @@ export function TaskDetailDialog({
   const archiveTask = useAppStore(state => state.archiveTask);
   const linkTaskDependency = useAppStore(state => state.linkTaskDependency);
   const unlinkTaskDependency = useAppStore(state => state.unlinkTaskDependency);
+  // Read for the whole project by the repo watcher, never here: opening a card runs no git.
+  const repoCommits = useAppStore(state => state.repoState[projectId]?.commits);
+  const repoDir = useAppStore(state => {
+    const project = selectProject(state, projectId);
+    return project ? repoDirOf(project) : "";
+  });
 
   const task = taskId ? tasks.find(t => t.id === taskId) : undefined;
   const [title, setTitle] = useState("");
@@ -75,6 +83,24 @@ export function TaskDetailDialog({
   const taskRun = task?.runId ? runs[task.runId] : undefined;
   // What the run of this task consumed, when its CLI said anything at all.
   const usage = runUsageText(taskRun, locale, t);
+  // The same thing for the whole card: its run, its family's and everything they delegated to,
+  // broken down into what it cost, how long it took and how many runs make up the figure.
+  const cost = useMemo(() => (taskId ? taskCost(tasks, runs, taskId) : null), [tasks, runs, taskId]);
+  const costLine =
+    cost && cost.runs > 0
+      ? [
+          formatTaskCost(cost, locale),
+          cost.tokens > 0 ? `${formatCompact(cost.tokens, locale)} ${t("usage.tokens")}` : "",
+          plural(cost.runs, t("usage.runs.one", { n: cost.runs }), t("usage.runs.other", { n: cost.runs })),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
+  // What landed in git after its run started — shown, not acted on: the card stays where it is.
+  const commit = useMemo(
+    () => (task ? taskCommit(task, runs, repoCommits, repoDir) : null),
+    [task, runs, repoCommits, repoDir]
+  );
   const missing = useMemo(() => (task ? blockedBy(task, tasks) : []), [task, tasks]);
   const dependencies = useMemo(
     () => (task ? task.dependsOn.map(id => tasks.find(t => t.id === id)).filter(t => t !== undefined) : []),
@@ -133,6 +159,13 @@ export function TaskDetailDialog({
                     </span>
                   )}
                   <span>{t("tasks.updated", { when: formatTimeAgo(task.updatedAt, Date.now(), locale) })}</span>
+                  {costLine && <span>{t("usage.taskCost")}: {costLine}</span>}
+                  {commit && (
+                    <span className="inline-flex min-w-0 items-center gap-1.5" title={t("tasks.commitAfter")}>
+                      <span className="font-mono">{commit.sha.slice(0, 7)}</span>
+                      <span className="truncate">{commit.subject}</span>
+                    </span>
+                  )}
                   {task.archived && <Badge variant="outline">{t("tasks.archived")}</Badge>}
                 </DialogDescription>
               </DialogHeader>

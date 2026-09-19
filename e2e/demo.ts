@@ -29,6 +29,23 @@ export async function freeTheTeam(page: Page): Promise<void> {
   });
 }
 
+/**
+ * Ends every run still going. The thread follows its own tail while something streams, and a test
+ * about reading back through an idle thread cannot race that timer for the scroll position.
+ */
+export async function quietTheThread(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    type Run = { status: string; endedAt?: number };
+    type Store = { getState(): { runs: Record<string, Run> }; setState(patch: object): void };
+    const store = (window as unknown as { __ainess: Store }).__ainess;
+    const runs = Object.fromEntries(
+      Object.entries(store.getState().runs).map(([id, run]) =>
+        [id, run.status === "running" ? { ...run, status: "done", endedAt: Date.now() } : run]),
+    );
+    store.setState({ runs });
+  });
+}
+
 /** The composer's textarea and the layer under it that draws the words. */
 export function composer(page: Page): { input: Locator; layer: Locator } {
   return {

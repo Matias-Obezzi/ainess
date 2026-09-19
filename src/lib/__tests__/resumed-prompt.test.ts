@@ -70,6 +70,15 @@ describe("a resumed turn", () => {
     expect(prompt).toContain("Obrero");
   });
 
+  // How to name a file is instruction, not state: it was read on the turn that opened the session
+  // and the CLI carries it forward. `src/lib/foo.ts` is the example the rule carries in every
+  // language, which is what makes it safe to look for here, where no dictionary is loaded.
+  it("does not repeat how to name a file, which the first turn already said", () => {
+    const first = buildSystemPrompt(worker, [], extras);
+    expect(first).toContain("src/lib/foo.ts");
+    expect(buildSystemPrompt(worker, [], { ...extras, resuming: true })).not.toContain("src/lib/foo.ts");
+  });
+
   it("leaves the agent's own extra instructions out: they were sent on the first turn", () => {
     const custom = agent({ systemPrompt: "Escribí siempre en verso." });
     expect(buildSystemPrompt(custom, [worker], { ...extras, resuming: true })).not.toContain("verso");

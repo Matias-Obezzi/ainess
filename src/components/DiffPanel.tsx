@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { repoDirOf } from "@/lib/repo-dir";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } = {}) {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
-  const project = useAppStore(state => selectProject(state, state.currentProjectId));
+  const currentProjectId = useCurrentProjectId();
+  const project = useAppStore(state => selectProject(state, currentProjectId));
   const repoState = useAppStore(state => currentProjectId ? state.repoState[currentProjectId] : undefined);
   const workspaceDir = project ? repoDirOf(project) : "";
   

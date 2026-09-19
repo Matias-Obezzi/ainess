@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/useT";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 interface Props {
   agentId: string;
@@ -16,7 +17,7 @@ export function InstructDialog({ agentId, open, onOpenChange, isWorking }: Props
   const t = useT();
   const [text, setText] = useState("");
   const instructAgent = useAppStore(state => state.instructAgent);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
 
   const handleSend = () => {
     if (!text.trim() || !currentProjectId) return;
