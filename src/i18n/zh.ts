@@ -1362,6 +1362,7 @@ export const zh: Dictionary = {
   "file.reveal": "在文件夹中显示",
   "file.loading": "读取中…",
   "file.missing": "未找到：{path}",
+  "file.several": "仓库里有多个 {name}。是哪一个？",
   "file.truncated": "文件很长：只显示开头。",
   "dock.file.title": "文件",
   "chatText.question": "❓ {question}",

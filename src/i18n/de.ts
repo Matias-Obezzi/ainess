@@ -1362,6 +1362,7 @@ export const de: Dictionary = {
   "file.reveal": "Im Ordner zeigen",
   "file.loading": "Lese…",
   "file.missing": "Nicht gefunden: {path}",
+  "file.several": "Es gibt mehr als eine {name} im Repository. Welche?",
   "file.truncated": "Lange Datei: nur der Anfang wird gezeigt.",
   "dock.file.title": "Datei",
   "chatText.question": "❓ {question}",

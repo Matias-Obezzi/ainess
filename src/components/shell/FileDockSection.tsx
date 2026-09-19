@@ -5,18 +5,22 @@ import { Code2, Copy, FolderOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Markdown } from "@/components/shell/Markdown";
-import { useAppStore } from "@/store";
+import { PathChip } from "@/components/PathChip";
+import { useAppStore, selectProject } from "@/store";
 import { useT } from "@/i18n/useT";
 import { getTransport } from "@/lib/transport";
 import { copyText } from "@/lib/clipboard";
 import { openInEditor, revealPath } from "@/lib/open-external";
 import { toast } from "@/components/ui/toast";
-import { baseName, isMarkdownPath, languageOf, MAX_PREVIEW_BYTES } from "@/lib/file-preview";
+import { baseName, isMarkdownPath, languageOf, matchTrackedByName, MAX_PREVIEW_BYTES, pathRef, shouldSearchRepo } from "@/lib/file-preview";
+import { repoDirOf } from "@/lib/repo-dir";
 import { cn } from "@/lib/utils";
 
 type Loaded =
   | { state: "loading" }
   | { state: "missing" }
+  /** The repo tracks more than one file by that name, and only the reader knows which one. */
+  | { state: "choices"; paths: string[] }
   | { state: "ready"; path: string; text: string; truncated: boolean };
 
 /** Dark or light, from the theme in use: the highlighter's palette has to match the page's. */
@@ -29,6 +33,16 @@ function pageIsDark(): boolean {
   probe.remove();
   const [r, g, b] = rgb;
   return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128;
+}
+
+/**
+ * The files the repo tracks under `name`, repo-relative. Empty when git has nothing to say —
+ * not a repo, no git on the machine, no match — which is the same as not having looked.
+ */
+async function searchRepo(transport: ReturnType<typeof getTransport>, repoDir: string, name: string): Promise<string[]> {
+  const res = await transport.exec("git", ["ls-files"], repoDir).catch(() => null);
+  if (!res || res.code !== 0) return [];
+  return matchTrackedByName(res.stdout, name);
 }
 
 /** Code as shiki draws it, or the text escaped in a plain <pre> while shiki loads or when it cannot. */
@@ -79,6 +93,10 @@ export function FileDockSection() {
   const preview = useAppStore(state => state.previewFile);
   const closePreview = useAppStore(state => state.closePreview);
   const editors = useAppStore(state => state.editors);
+  const repoDir = useAppStore(state => {
+    const project = selectProject(state, state.currentProjectId);
+    return project ? repoDirOf(project) : "";
+  });
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [raw, setRaw] = useState(false);
 
@@ -94,14 +112,32 @@ export function FileDockSection() {
       const text = path ? await transport.readFileAbs(path).catch(() => null) : null;
       if (!alive) return;
       if (!path || text === null) {
-        setLoaded({ state: "missing" });
+        // Only now, and only for a name with no folder on it: an agent that wrote `Composer.tsx`
+        // named a file the repo knows where to find even though the app does not. One `git
+        // ls-files` answers it. Anything else — a path that simply is not there, a project that is
+        // not a git repo — stays the "not found" it already was; this is a convenience for repos,
+        // not a promise, and it costs nothing on the paths that resolved.
+        const ref = pathRef(preview.ref).path;
+        const found = repoDir && shouldSearchRepo(ref) ? await searchRepo(transport, repoDir, ref) : [];
+        if (!alive) return;
+        if (found.length === 1) {
+          const only = `${repoDir.replace(/[\\/]+$/, "")}/${found[0]}`;
+          const body = await transport.readFileAbs(only).catch(() => null);
+          if (!alive) return;
+          if (body !== null) {
+            const cut = body.length > MAX_PREVIEW_BYTES;
+            setLoaded({ state: "ready", path: only, text: cut ? body.slice(0, MAX_PREVIEW_BYTES) : body, truncated: cut });
+            return;
+          }
+        }
+        setLoaded(found.length > 1 ? { state: "choices", paths: found } : { state: "missing" });
         return;
       }
       const truncated = text.length > MAX_PREVIEW_BYTES;
       setLoaded({ state: "ready", path, text: truncated ? text.slice(0, MAX_PREVIEW_BYTES) : text, truncated });
     })();
     return () => { alive = false; };
-  }, [preview]);
+  }, [preview, repoDir]);
 
   if (!preview) return null;
   const path = loaded.state === "ready" ? loaded.path : preview.candidates[0];
@@ -149,6 +185,14 @@ export function FileDockSection() {
       <div className="min-h-0 flex-1">
         {loaded.state === "loading" && <div className="p-3 text-xs text-muted-foreground">{t("file.loading")}</div>}
         {loaded.state === "missing" && <div className="p-3 text-xs text-muted-foreground">{t("file.missing", { path: preview.ref })}</div>}
+        {loaded.state === "choices" && (
+          // The chips are the same button the mention itself was: pressing one reopens this panel
+          // on a path that now has its folder, and it resolves like any other.
+          <div className="flex h-full flex-col gap-1 overflow-auto p-3">
+            <p className="text-xs text-muted-foreground">{t("file.several", { name: baseName(pathRef(preview.ref).path) })}</p>
+            {loaded.paths.map(p => <div key={p}><PathChip path={p} /></div>)}
+          </div>
+        )}
         {loaded.state === "ready" && (
           <div className="flex h-full flex-col">
             {loaded.truncated && <div className="shrink-0 border-b border-border px-3 py-1 text-[11px] text-muted-foreground">{t("file.truncated")}</div>}

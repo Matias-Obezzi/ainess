@@ -1363,6 +1363,7 @@ export const ja: Dictionary = {
   "file.reveal": "フォルダーで表示",
   "file.loading": "読み込み中…",
   "file.missing": "見つかりません: {path}",
+  "file.several": "リポジトリに {name} が複数あります。どれですか？",
   "file.truncated": "長いファイルです。先頭のみ表示しています。",
   "dock.file.title": "ファイル",
   "chatText.question": "❓ {question}",
