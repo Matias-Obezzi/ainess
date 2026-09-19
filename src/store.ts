@@ -2077,17 +2077,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
       readRepoStatus(repoDirOf(project)).catch(() => null),
       readRecentCommits(repoDirOf(project)).catch(() => null),
     ]);
-    if (!status) return;
+    if (!status && !commits) return;
     set(s => {
       const before = s.repoState[projectId];
-      // A log git could not read leaves the one already there alone: "not known" must not erase
-      // an answer that was known a moment ago.
-      const kept = commits ? { commits } : {};
+      // Each half lands on its own. What git could not read leaves what is already there alone —
+      // "not known" must not erase an answer that was known a moment ago — and a status git
+      // choked on is no reason to throw away the commits it read fine in the same breath.
+      const read = { ...(status ? { status } : {}), ...(commits ? { commits } : {}) };
       // Nothing read the whole state yet: this half is still better than an empty header, and the
-      // pull requests fill in on the next slow pass.
+      // pull requests fill in on the next slow pass. `isRepo: true` is the honest reading even
+      // when only one half arrived: git ran in that folder and answered, which a folder outside a
+      // repository cannot do — it exits 128 and both halves come back null, and then we are not
+      // here at all.
       const next: RepoState = before
-        ? { ...before, status, ...kept, fetchedAt: Date.now() }
-        : { isRepo: true, status, pullRequests: [], ...kept, fetchedAt: Date.now() };
+        ? { ...before, ...read, fetchedAt: Date.now() }
+        : { isRepo: true, status: null, pullRequests: [], ...read, fetchedAt: Date.now() };
       return { repoState: { ...s.repoState, [projectId]: next } };
     });
   },

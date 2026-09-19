@@ -64,6 +64,27 @@ async function boot(projectPatch: Record<string, unknown> = {}) {
   return { store, ran, cwds };
 }
 
+const LOG = "6ab9c2f0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6 the one commit\n";
+
+/** A store whose git answers the status, the log, both or neither — one knob per half. */
+async function bootHalves(ok: { status: boolean; log: boolean }) {
+  vi.resetModules();
+  const { setTransport } = await import("@/lib/transport");
+  setTransport({
+    ...nullTransport,
+    loadConfig: async () => structuredClone(config()) as unknown as AppConfig,
+    saveConfig: async () => {},
+    exec: async (_program: string, args: string[]) => {
+      const good = args[0] === "status" ? ok.status : args[0] === "log" ? ok.log : false;
+      if (!good) return { code: 128, stdout: "", stderr: "not a git repository" };
+      return { code: 0, stdout: args[0] === "status" ? STATUS : LOG, stderr: "" };
+    },
+  });
+  const store = await import("@/store");
+  await store.useAppStore.getState().init();
+  return store;
+}
+
 beforeEach(() => { vi.resetModules(); });
 
 describe("refreshRepoStatus", () => {
@@ -101,17 +122,64 @@ describe("refreshRepoStatus", () => {
   });
 
   it("leaves what it has alone when git says nothing", async () => {
-    vi.resetModules();
-    const { setTransport } = await import("@/lib/transport");
-    setTransport({
-      ...nullTransport,
-      loadConfig: async () => structuredClone(config()) as unknown as AppConfig,
-      saveConfig: async () => {},
-      exec: async () => ({ code: 128, stdout: "", stderr: "not a git repository" }),
-    });
-    const store = await import("@/store");
-    await store.useAppStore.getState().init();
+    const store = await bootHalves({ status: false, log: false });
     await store.useAppStore.getState().refreshRepoStatus("p1");
     expect(store.useAppStore.getState().repoState.p1).toBeUndefined();
+  });
+});
+
+// The two halves are read in one `Promise.all`, and git can fail on either. Whichever one came
+// back has to land: dropping the commits because the status failed threw away a read that had
+// just succeeded, and the board went back to not knowing whether a run's work was committed.
+describe("refreshRepoStatus, one half at a time", () => {
+  /** A state already on screen, so "kept" and "never read" can be told apart. */
+  function seed(store: typeof import("@/store"), status: unknown, commits: unknown) {
+    store.useAppStore.setState(s => ({
+      repoState: {
+        ...s.repoState,
+        p1: { isRepo: true, status, pullRequests: [], commits, fetchedAt: 1 } as never,
+      },
+    }));
+  }
+
+  it("keeps both when git reads both", async () => {
+    const store = await bootHalves({ status: true, log: true });
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+
+    const state = store.useAppStore.getState().repoState.p1;
+    expect(state.status?.branch).toBe("feat/watcher");
+    expect(state.commits?.map(c => c.subject)).toEqual(["the one commit"]);
+  });
+
+  it("keeps the commits it read when the status failed", async () => {
+    const store = await bootHalves({ status: false, log: true });
+    seed(store, { branch: "old" }, undefined);
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+
+    const state = store.useAppStore.getState().repoState.p1;
+    expect(state.commits?.map(c => c.subject)).toEqual(["the one commit"]);
+    // The status that was there is still there: unreadable is not the same as gone.
+    expect(state.status?.branch).toBe("old");
+  });
+
+  it("keeps the commits it had when the log failed", async () => {
+    const store = await bootHalves({ status: true, log: false });
+    seed(store, null, [{ hash: "abc", subject: "an older commit" }]);
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+
+    const state = store.useAppStore.getState().repoState.p1;
+    expect(state.status?.branch).toBe("feat/watcher");
+    expect(state.commits?.map(c => c.subject)).toEqual(["an older commit"]);
+  });
+
+  it("writes a state with no status when only the log read, on a project never read before", async () => {
+    const store = await bootHalves({ status: false, log: true });
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+
+    const state = store.useAppStore.getState().repoState.p1;
+    // git answered about the folder, so it is a repo; the branch fills in on the next pass.
+    expect(state.isRepo).toBe(true);
+    expect(state.status).toBeNull();
+    expect(state.commits).toHaveLength(1);
   });
 });

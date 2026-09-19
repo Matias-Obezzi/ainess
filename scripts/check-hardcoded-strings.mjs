@@ -60,18 +60,25 @@ const STRONG_SPANISH_WORDS = new Set([
 ]);
 
 /**
- * Lines allowed to keep a Spanish literal, as `<path>:<line>` with why.
+ * Spanish literals allowed to stay in the source: the file, the exact text, and why.
  *
- * An entry here is a promise that no user ever reads that string as a sentence. The reason goes
- * next to it, so the next person does not have to work out whether it was a decision or an escape.
+ * By content and not by line number. An entry pinned to a line breaks `npm test` the next time
+ * somebody adds an import above it, for a reason that has nothing to do with the change — a trap,
+ * not a check. An entry here is a promise that no user ever reads that string as a sentence, and
+ * the reason goes next to it so the next person does not have to work out whether it was a
+ * decision or an escape. The file is part of the key: the same words somewhere else are news.
  */
-const ALLOWED = new Map([
-  // Not labels: these are the values that land in an agent's system prompt ("tu rol es …") and are
-  // stored on the chat. The label the user picks from is translated separately, through
-  // `CHAT_ROLE_KEY` right below them. Changing the value would change saved data, not a translation.
-  ["src/components/ChatDialog.tsx:24", "role values stored on the chat, not labels"],
-  ["src/components/ChatDialog.tsx:29", "the map from those values to their label keys"],
-]);
+const ALLOWED = [
+  {
+    file: "src/components/ChatDialog.tsx",
+    text: "revisor de código",
+    // Not a label: this is the value that lands in an agent's system prompt ("tu rol es …") and is
+    // stored on the chat, both in the list of roles and as the key of the map to the label key
+    // right below it. The label the user picks from is translated through that map. Changing the
+    // value would change saved data, not a translation.
+    why: "role value stored on the chat, not a label",
+  },
+];
 
 const STRING = /(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g;
 
@@ -99,12 +106,13 @@ function isComment(line) {
   return /^\s*(\/\/|\*|\/\*)/.test(line);
 }
 
-function scan(dir, out) {
+/** Fills `out` with the offending literals and `used` with the allowlist entries that matched. */
+function scan(dir, out, used) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (SKIP_DIRS.has(entry.name)) continue;
-      scan(full, out);
+      scan(full, out, used);
       continue;
     }
     if (!/\.(ts|tsx)$/.test(entry.name)) continue;
@@ -116,25 +124,36 @@ function scan(dir, out) {
       let m;
       while ((m = STRING.exec(line))) {
         if (!looksSpanish(m[2])) continue;
-        const at = `${rel}:${i + 1}`;
-        if (ALLOWED.has(at)) continue;
-        out.push({ at, text: m[2].slice(0, 100) });
+        const allowed = ALLOWED.find(a => a.file === rel && a.text === m[2]);
+        if (allowed) {
+          used.add(allowed);
+          continue;
+        }
+        out.push({ at: `${rel}:${i + 1}`, text: m[2].slice(0, 100) });
       }
     });
   }
 }
 
-const found = [];
-scan(path.join(root, "src"), found);
+function collect() {
+  const out = [];
+  const used = new Set();
+  scan(path.join(root, "src"), out, used);
+  return { out, used };
+}
 
 /** Exported so the test can assert on it without shelling out. */
 export function hardcodedSpanish() {
-  const out = [];
-  scan(path.join(root, "src"), out);
-  return out;
+  return collect().out;
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("check-hardcoded-strings.mjs")) {
+  const { out: found, used } = collect();
+  // An allowlist entry that matches nothing is a permission for a string that is no longer there:
+  // said out loud so it gets deleted, not failed on — the source is fine, the list is just stale.
+  for (const entry of ALLOWED) {
+    if (!used.has(entry)) console.warn(`stale allowlist entry: ${entry.file}  "${entry.text}"  (${entry.why})`);
+  }
   if (found.length === 0) {
     console.log("No hardcoded Spanish outside the dictionaries.");
     process.exit(0);
