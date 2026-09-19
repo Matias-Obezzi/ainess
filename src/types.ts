@@ -438,6 +438,9 @@ export interface AppConfig {
     /** Personal access token for GitHub Projects. Needs the `project` scope (`read:project` is
      *  enough to look but not to move a card). Empty or missing falls back to `gh auth token`. */
     github?: { token: string };
+    /** Trello asks for two separate things: the API key of the app and a token of the user.
+     *  Both are needed; neither alone opens a board. Missing either falls back to nothing. */
+    trello?: { key: string; token: string };
   };
   projects: Project[];
   /** Saved team templates offered when a project is created. */

@@ -91,6 +91,7 @@ pub fn run() {
             diagnostics::port_available,
             http::http_post,
             http::http_patch,
+            http::http_put,
             http::http_get,
             logging::log_append,
             logging::logs_dir,

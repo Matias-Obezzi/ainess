@@ -19,6 +19,8 @@ export interface Transport {
   httpPost(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Like `httpPost`, for the APIs that edit with PATCH. Through the same door, for the same CORS reason. */
   httpPatch(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
+  /** Like `httpPost`, for the APIs that write with PUT (Trello moves a card). Same door, same CORS reason. */
+  httpPut(url: string, body: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */
   readHomeFile(relativePath: string): Promise<string | null>;

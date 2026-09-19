@@ -29,6 +29,10 @@ export const remoteTransport: Transport = {
     const res = await fetch(url, { method: "PATCH", headers, body });
     return { status: res.status, body: await res.text() };
   },
+  httpPut: async (url, body, headers) => {
+    const res = await fetch(url, { method: "PUT", headers, body });
+    return { status: res.status, body: await res.text() };
+  },
   httpGet: async (url, headers) => {
     const res = await fetch(url, { headers });
     return { status: res.status, body: await res.text() };
