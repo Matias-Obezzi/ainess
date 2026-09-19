@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/toast";
 import { PathChip } from "@/components/PathChip";
 import { looksLikePath, splitPaths } from "@/lib/file-preview";
 import { useAppStore } from "@/store";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -85,6 +86,7 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
 function FileLink({ path, children }: { path: string; children: ReactNode }) {
   const t = useT();
   const openPreview = useAppStore(state => state.openPreview);
+  const projectId = useCurrentProjectId();
   return (
     <button
       type="button"
@@ -92,7 +94,7 @@ function FileLink({ path, children }: { path: string; children: ReactNode }) {
       className="inline text-left text-primary underline underline-offset-2 break-all"
       onClick={() => {
         // Opened beside the conversation; the panel is where "show it in the folder" lives now.
-        if (looksLikePath(path)) { openPreview(path); return; }
+        if (looksLikePath(path)) { openPreview(path, projectId); return; }
         void revealPath(path).then(ok => {
           if (!ok) toast.error(t("markdown.revealFailed"));
         });

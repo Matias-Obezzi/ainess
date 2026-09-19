@@ -30,6 +30,45 @@ async function readyTheSecondProject(page: Page): Promise<void> {
   }, LANDING);
 }
 
+/** The two panes, with the second project ready to be used. */
+async function twoPanes(page: Page) {
+  const panes = page.getByTestId("project-pane");
+  await expect(panes).toHaveCount(1);
+  await page.getByTestId("sidebar-project").nth(1).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Open in a new pane" }).click();
+  await expect(panes).toHaveCount(2);
+  return panes;
+}
+
+test("each pane keeps its own dock, and its buttons say so", async ({ page }) => {
+  await openDemo(page, "chat");
+  const panes = await twoPanes(page);
+  // The label collapses to its icon in a column this wide; the title is what stays.
+  const commButton = (i: number) => panes.nth(i).getByTitle("Show or hide the communication panel");
+  const dock = (i: number) => panes.nth(i).getByTestId("right-dock");
+
+  await commButton(0).click();
+  await expect(dock(0)).toBeVisible();
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "true");
+
+  // The bug: the dock followed the focus, so opening one in the second pane closed the first
+  // one's — and left both buttons lit over a dock that was not there.
+  await commButton(1).click();
+  await expect(dock(0)).toBeVisible();
+  await expect(dock(1)).toBeVisible();
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "true");
+  await expect(commButton(1)).toHaveAttribute("aria-pressed", "true");
+  await snap(page, "panes-two-docks");
+
+  // Closing one leaves the other exactly where it was.
+  await commButton(0).click();
+  await expect(dock(0)).toHaveCount(0);
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "false");
+  await expect(dock(1)).toBeVisible();
+  await expect(commButton(1)).toHaveAttribute("aria-pressed", "true");
+  await snap(page, "panes-one-dock-left");
+});
+
 test("a second project opens beside the first, writes to itself, and closes again", async ({ page }) => {
   await openDemo(page, "chat");
   const panes = page.getByTestId("project-pane");

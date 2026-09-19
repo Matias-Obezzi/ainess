@@ -12,7 +12,6 @@ import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
 import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectPanes } from "@/components/shell/ProjectPanes";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
@@ -32,10 +31,6 @@ export default function App() {
   const init = useAppStore(state => state.init);
   const loaded = useAppStore(state => state.loaded);
   const screen = useAppStore(state => state.screen);
-  const commPanelOpen = useAppStore(state => state.commPanelOpen);
-  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
-  const termPanelOpen = useAppStore(state => state.termPanelOpen);
-  const previewOpen = useAppStore(state => state.previewFile !== null);
 
   useEffect(() => {
     void init();
@@ -154,8 +149,6 @@ export default function App() {
           )}
           {screen === "project" && <ProjectPanes />}
         </main>
-
-        {(commPanelOpen || diffPanelOpen || termPanelOpen || previewOpen) && screen === "project" && <RightDock />}
       </div>
 
       <SettingsDialog />

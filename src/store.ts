@@ -182,9 +182,10 @@ export interface AppState {
    * bring this one's dock along. The terminal panel made that plain: it stayed open over a project
    * with no terminals in it, showing an empty panel above an empty tab bar.
    *
-   * The three flags below stay as "what is showing right now" — every reader wants that, not a map
-   * lookup — and this is where they are put away and taken out again, the shape `projectModes`
-   * already has for the view.
+   * The three flags below stay as "what is showing right now" for the focused project — the
+   * keyboard shortcuts and the saved prefs want that, not a map lookup — and this is where they
+   * are put away and taken out again, the shape `projectModes` already has for the view. Nothing
+   * on screen reads them any more: each pane draws its own dock off its own entry in the map.
    */
   projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
@@ -194,8 +195,8 @@ export interface AppState {
   termPanelOpen: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
-  /** The file open beside the conversation, if any. Not persisted. */
-  previewFile: FilePreview | null;
+  /** projectId -> the file open beside that project's conversation. Not persisted. */
+  previewFiles: Record<string, FilePreview>;
   /** Width in px of the two side panes, as the user dragged them. */
   paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
@@ -245,8 +246,8 @@ export interface AppState {
   toggleDiffPanel(open?: boolean, projectId?: string | null): void;
   toggleTermPanel(open?: boolean, projectId?: string | null): void;
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
-  openPreview(ref: string): void;
-  closePreview(): void;
+  openPreview(ref: string, projectId?: string | null): void;
+  closePreview(projectId?: string | null): void;
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
@@ -968,7 +969,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   ...(() => {
     const prefs = loadUiPrefs();
     // The saved screen is only restored once the project list is known (see runInit).
-    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFile: null };
+    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFiles: {} };
   })(),
 
   openHome: () => {
@@ -1048,7 +1049,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     if (state.currentProjectId === projectId || !state.openProjects.includes(projectId)) return;
     state.setCurrentProject(projectId);
-    // The focused pane's scalars are what the dock, the palette and the back arrow read.
+    // The focused pane's scalars are what the palette and the back arrow read.
     const chatId = selectProjectChatId(state, projectId);
     set({ currentChatId: chatId, projectMode: selectProjectMode(state, projectId) });
     if (chatId) void state.loadChatMessages(chatId);
@@ -1096,18 +1097,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  openPreview: (ref) => {
+  openPreview: (ref, projectId) => {
     const state = get();
-    const project = selectProject(state, state.currentProjectId);
+    // The dock lives inside the pane that opened it, so the file does too: a path clicked in one
+    // project's thread has no business landing in the pane next to it.
+    const target = projectId ?? state.currentProjectId;
+    if (!target) return;
+    const project = selectProject(state, target);
     const { path, line } = pathRef(ref);
     // Under the repo first, then the project folder: `.claude/handoff/x.md` lives in the second.
     const bases = project ? [repoDirOf(project), project.workspaceDir] : [];
     const candidates = isAbsolutePath(path) || bases.length === 0
       ? [path]
       : [...new Set(bases.map(base => resolvePath(path, base)))];
-    set({ previewFile: { ref, candidates, line } });
+    set(s => ({ previewFiles: { ...s.previewFiles, [target]: { ref, candidates, line } } }));
   },
-  closePreview: () => set({ previewFile: null }),
+  closePreview: (projectId) => {
+    const target = projectId ?? get().currentProjectId;
+    if (!target) return;
+    set(s => {
+      const next = { ...s.previewFiles };
+      delete next[target];
+      return { previewFiles: next };
+    });
+  },
 
   setPaneWidth: (pane, width) => {
     set(s => ({ paneWidths: { ...s.paneWidths, [pane]: clampPaneWidth(pane, width) } }));
@@ -2930,6 +2943,11 @@ export function selectProjectPanels(
 }
 
 const NO_PANELS = { comm: false, diff: false, term: false };
+
+/** The file one project has open beside its conversation, if any. */
+export function selectPreviewFile(state: AppState, projectId: string | null | undefined): FilePreview | null {
+  return (projectId ? state.previewFiles[projectId] : undefined) ?? null;
+}
 
 /**
  * One dock section of one project. A boolean, not the object above: a selector that builds a fresh
