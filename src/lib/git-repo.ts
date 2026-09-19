@@ -3,7 +3,15 @@
 // and create one. Reading never writes; the writing ones are only ever called from a button.
 // Parsing lives in `src/lib/git.ts`.
 import { getTransport } from "@/lib/transport";
-import { parseBranches, parseGitStatus, parsePullRequests, type GitStatus, type PullRequest } from "@/lib/git";
+import {
+  parseBranches,
+  parseGitLog,
+  parseGitStatus,
+  parsePullRequests,
+  type GitCommit,
+  type GitStatus,
+  type PullRequest,
+} from "@/lib/git";
 import { translateNow } from "@/i18n/useT";
 
 /** Why the pull request list is empty even though the folder is a repo. */
@@ -16,6 +24,12 @@ export interface RepoState {
   pullRequests: PullRequest[];
   /** Why there are no PRs: no `gh`, no session, or no GitHub remote. */
   prsUnavailable?: PrsUnavailable;
+  /**
+   * The repo's recent commits, newest first, so a card can say whether its run's work ended up
+   * committed. Absent when nothing has read them yet or git could not answer — which is not the
+   * same as an empty list, and the board keeps the two apart.
+   */
+  commits?: GitCommit[];
   fetchedAt: number;
 }
 
@@ -67,6 +81,28 @@ async function readPullRequests(
 }
 
 /**
+ * How far back the log is read. One command has to answer every card on the board, and a card
+ * whose run is older than this reaches simply says nothing — a bounded read beats walking the
+ * whole history of a repo with a hundred thousand commits.
+ */
+const LOG_LIMIT = 200;
+
+/**
+ * The repo's recent commits, newest first. Read once per project and compared in memory
+ * (`commitsAfter`), because the question — did this run's work get committed? — is asked once per
+ * card, and a board of twenty cards cannot mean twenty git processes.
+ *
+ * Null when the folder is not a repo, has no commits yet, or git failed. That is "not known", and
+ * the caller must not turn it into "nothing was committed".
+ */
+export async function readRecentCommits(repoDir: string): Promise<GitCommit[] | null> {
+  if (!repoDir) return null;
+  const result = await run("git", ["log", "--format=%H %s", "-n", String(LOG_LIMIT)], repoDir);
+  if (!result || result.code !== 0) return null;
+  return parseGitLog(result.stdout);
+}
+
+/**
  * Reads everything the sidebar and the project header show about a repo. Never throws: a folder
  * that is not a repo, a machine without git, or the browser preview (where `exec` answers nothing)
  * all come back as `isRepo: false`.
@@ -82,12 +118,15 @@ export async function readRepoState(workspaceDir: string): Promise<RepoState> {
   const statusResult = await run("git", ["status", "--porcelain=v2", "--branch"], workspaceDir);
   const status = statusResult && statusResult.code === 0 ? parseGitStatus(statusResult.stdout) : null;
 
+  const commits = await readRecentCommits(workspaceDir);
+
   const { pullRequests, reason } = await readPullRequests(workspaceDir);
 
   return {
     isRepo: true,
     status,
     pullRequests,
+    ...(commits ? { commits } : {}),
     ...(reason ? { prsUnavailable: reason } : {}),
     fetchedAt: Date.now(),
   };

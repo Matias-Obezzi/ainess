@@ -11,7 +11,7 @@ import { reconcileProject } from "@/lib/task-reconcile";
 import * as remote from "@/lib/remote";
 import * as quota from "@/lib/quota";
 import { autonomousReport } from "@/lib/autonomous";
-import { readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
+import { readRecentCommits, readRepoState, readRepoStatus, type RepoState } from "@/lib/git-repo";
 import { setLogLevel, log } from "@/lib/logger";
 import { applyTheme } from "@/lib/themes";
 import { forgetPty } from "@/lib/pty-bus";
@@ -1960,15 +1960,24 @@ export const useAppStore = create<AppState>()((set, get) => ({
   refreshRepoStatus: async (projectId) => {
     const project = selectProject(get(), projectId);
     if (!project?.workspaceDir) return;
-    const status = await readRepoStatus(project.workspaceDir).catch(() => null);
+    // The log comes along for the ride: a commit is exactly the kind of change the watcher fires
+    // on, and it is what the board reads to tell a card whether its run's work landed. One read
+    // per project, not per card.
+    const [status, commits] = await Promise.all([
+      readRepoStatus(project.workspaceDir).catch(() => null),
+      readRecentCommits(repoDirOf(project)).catch(() => null),
+    ]);
     if (!status) return;
     set(s => {
       const before = s.repoState[projectId];
+      // A log git could not read leaves the one already there alone: "not known" must not erase
+      // an answer that was known a moment ago.
+      const kept = commits ? { commits } : {};
       // Nothing read the whole state yet: this half is still better than an empty header, and the
       // pull requests fill in on the next slow pass.
       const next: RepoState = before
-        ? { ...before, status, fetchedAt: Date.now() }
-        : { isRepo: true, status, pullRequests: [], fetchedAt: Date.now() };
+        ? { ...before, status, ...kept, fetchedAt: Date.now() }
+        : { isRepo: true, status, pullRequests: [], ...kept, fetchedAt: Date.now() };
       return { repoState: { ...s.repoState, [projectId]: next } };
     });
   },

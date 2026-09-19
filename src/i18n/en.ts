@@ -1489,6 +1489,7 @@ export const en: Dictionary = {
   "tasks.detailLess": "Show less",
   "tasks.column": "Column",
   "tasks.status": "Status",
+  "tasks.commitAfter": "First commit after the run started",
   "tasks.updated": "Updated {when}",
   "tasks.dependsOn": "Depends on",
   "tasks.noDependencies": "Doesn't depend on anything.",

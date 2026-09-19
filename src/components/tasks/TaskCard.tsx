@@ -21,6 +21,7 @@ import { formatTimeAgo } from "@/lib/format";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
 import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
+import type { GitCommit } from "@/lib/git";
 import type { Task, TaskPriority } from "@/types";
 import { Archive, ArchiveRestore, Ban, ChevronsUp, MessagesSquare, Trash2 } from "lucide-react";
 import { useT, useLocale } from "@/i18n/useT";
@@ -34,6 +35,12 @@ interface Props {
    * has no run yet, and then nothing is drawn: an empty line on every fresh card would be noise.
    */
   cost?: string;
+  /**
+   * The first commit made after this card's run started, when the board could tell (`taskCommit`).
+   * Undefined whenever it could not, and then nothing is drawn: a card that says nothing about git
+   * is honest, one that names the wrong commit is not.
+   */
+  commit?: GitCommit;
   dragging: boolean;
   onOpen(id: string): void;
   onDragStart(e: DragEvent<HTMLElement>, task: Task): void;
@@ -41,7 +48,7 @@ interface Props {
   onDragEnd(): void;
 }
 
-export const TaskCard = memo(function TaskCard({ task, blocked, cost, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
+export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
   const t = useT();
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
@@ -95,6 +102,13 @@ export const TaskCard = memo(function TaskCard({ task, blocked, cost, dragging, 
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
           <span className="truncate">{t(meta.labelKey)}</span>
+          {/* What was committed after its run started — the sha alone, the message on hover. The
+              card is not moved by it: it says what git did, it does not decide where the card goes. */}
+          {commit && (
+            <span className="shrink-0 font-mono" title={commit.subject}>
+              {commit.sha.slice(0, 7)}
+            </span>
+          )}
           <span className="ml-auto shrink-0">{formatTimeAgo(task.updatedAt, Date.now(), locale)}</span>
           {/* The way to where this card came from — where a delegation is answered. The click is
               the button's: opening the detail from here would bury the shortcut. */}

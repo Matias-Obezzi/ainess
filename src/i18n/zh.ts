@@ -1488,6 +1488,7 @@ export const zh: Dictionary = {
   "tasks.detailLess": "收起",
   "tasks.column": "列",
   "tasks.status": "状态",
+  "tasks.commitAfter": "运行开始后的第一个提交",
   "tasks.updated": "更新于 {when}",
   "tasks.dependsOn": "依赖于",
   "tasks.noDependencies": "不依赖任何任务。",

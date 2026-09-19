@@ -14,11 +14,12 @@ import {
   sortColumn,
   TASK_GAP_X,
   TASK_NODE_WIDTH,
+  taskCommit,
   taskTitleFromText,
   tasksToAutoArchive,
   unlinkDependency,
 } from "@/lib/tasks";
-import type { Task, TaskStatus } from "@/types";
+import type { Run, Task, TaskStatus } from "@/types";
 
 const task = (id: string, over: Partial<Task> = {}): Task =>
   createTask({ id, projectId: "p", title: id, ...over });
@@ -360,5 +361,57 @@ describe("layoutTaskGraph", () => {
 
   it("returns nothing for an empty board", () => {
     expect(layoutTaskGraph([])).toEqual({});
+  });
+});
+
+describe("taskCommit", () => {
+  const sha = (head: string) => head.padEnd(40, "0");
+  const HEAD_SHA = sha("aaaaaaa1");
+  const MID = sha("bbbbbbb2");
+  const BASE = sha("ccccccc3");
+  const REPO = "C:/dev/ainess";
+
+  const log = [
+    { sha: HEAD_SHA, subject: "feat: the newest one" },
+    { sha: MID, subject: "fix: the first one after the run started" },
+    { sha: BASE, subject: "chore: where the run began" },
+  ];
+
+  const withRun = (over: Partial<Run>): { task: Task; runs: Record<string, Run> } => {
+    const run = { id: "r1", cwd: REPO, baseSha: BASE, ...over } as Run;
+    return { task: task("t1", { runId: "r1" }), runs: { r1: run } };
+  };
+
+  it("names the first commit made after the run started, not the newest", () => {
+    const { task: t, runs } = withRun({});
+    expect(taskCommit(t, runs, log, REPO)?.subject).toBe("fix: the first one after the run started");
+  });
+
+  it("says nothing when the run committed nothing", () => {
+    const { task: t, runs } = withRun({ baseSha: HEAD_SHA });
+    expect(taskCommit(t, runs, log, REPO)).toBeNull();
+  });
+
+  // A worktree run commits on its own branch: this log is another branch's, so any commit in it
+  // would be the wrong one. Excluded on purpose — see `taskCommit`.
+  it("says nothing for a run that happened in the agent's own worktree", () => {
+    const { task: t, runs } = withRun({ cwd: "C:/dev/ainess-wt-x" });
+    expect(taskCommit(t, runs, log, REPO)).toBeNull();
+  });
+
+  it("does not mistake the same folder written two ways for a worktree", () => {
+    const { task: t, runs } = withRun({ cwd: "C:\\dev\\Ainess\\" });
+    expect(taskCommit(t, runs, log, REPO)).not.toBeNull();
+  });
+
+  it("says nothing for an old run with no base, a card with no run, or a log nobody read", () => {
+    expect(taskCommit(withRun({ baseSha: undefined }).task, withRun({ baseSha: undefined }).runs, log, REPO)).toBeNull();
+    expect(taskCommit(task("t1"), {}, log, REPO)).toBeNull();
+    expect(taskCommit(withRun({}).task, withRun({}).runs, undefined, REPO)).toBeNull();
+  });
+
+  it("says nothing when git no longer knows the base, instead of claiming nothing was committed", () => {
+    const { task: t, runs } = withRun({ baseSha: sha("ddddddd4") });
+    expect(taskCommit(t, runs, log, REPO)).toBeNull();
   });
 });

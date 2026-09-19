@@ -3,6 +3,8 @@
 // (see src/lib/__tests__/tasks.test.ts). Persistence lives in src/lib/task-store.ts.
 import type { Run, Task, TaskPriority, TaskStatus } from "@/types";
 import { totalsOf, totalTokens } from "@/lib/usage";
+import { commitsAfter, type GitCommit } from "@/lib/git";
+import { samePath } from "@/lib/worktree";
 import { translateNow } from "@/i18n/useT";
 
 /** Columns of the board, left to right. */
@@ -184,6 +186,33 @@ export function taskCost(tasks: Task[], runs: Record<string, Run>, taskId: strin
   // A run still going has no end yet, so it adds nothing to the clock until it finishes.
   const ms = found.reduce((sum, run) => sum + ((run.endedAt ?? run.startedAt) - run.startedAt), 0);
   return { usd: totals.costUsd, tokens: totalTokens(totals), ms, runs: totals.runs };
+}
+
+/**
+ * The first commit made after this card's run started, or null when there is none to show.
+ *
+ * The card never moves for this: git is asked what happened, not where the work belongs. A card
+ * that died of quota with its work landing by some other route would be closed by a reading of the
+ * log, and that the attempt failed is exactly what would be lost.
+ *
+ * Null is every case the board cannot answer honestly, and they all look the same on screen —
+ * nothing: a card with no run, a run from before `baseSha` was recorded, a base git no longer
+ * knows (rebased, branch gone), a repo it could not read. A run that happened in its agent's own
+ * worktree is excluded too: it committed on another branch, so its commit is not in this log, and
+ * showing this branch's commit for it would name the wrong one — worse than naming none.
+ */
+export function taskCommit(
+  task: Task,
+  runs: Record<string, Run>,
+  commits: GitCommit[] | undefined,
+  repoDir: string,
+): GitCommit | null {
+  const run = task.runId ? runs[task.runId] : undefined;
+  if (!run?.baseSha || !commits) return null;
+  if (run.cwd && repoDir && !samePath(run.cwd, repoDir)) return null;
+  const after = commitsAfter(commits, run.baseSha);
+  // Newest first, so the first commit made after the run started is the last one of the list.
+  return after && after.length > 0 ? after[after.length - 1] : null;
 }
 
 /** True when every dependency of `task` is already ready or done. */

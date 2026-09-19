@@ -1489,6 +1489,7 @@ export const ja: Dictionary = {
   "tasks.detailLess": "折りたたむ",
   "tasks.column": "カラム",
   "tasks.status": "状態",
+  "tasks.commitAfter": "実行開始後の最初のコミット",
   "tasks.updated": "更新: {when}",
   "tasks.dependsOn": "依存先",
   "tasks.noDependencies": "依存関係はありません。",
