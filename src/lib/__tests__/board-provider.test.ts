@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { BOARD_PROVIDERS, boardProviderFor } from "@/lib/board/registry";
 import { localBoardProvider } from "@/lib/board/local";
 import { githubProjectsBoardProvider } from "@/lib/board/github-projects";
+import { trelloBoardProvider } from "@/lib/board/trello";
 import type { Project } from "@/types";
 
 function makeProject(over: Partial<Project> = {}): Project {
@@ -33,7 +34,6 @@ describe("boardProviderFor", () => {
   });
 
   it("falls back to local for a provider that is declared but not built yet", () => {
-    expect(boardProviderFor(makeProject({ board: { provider: "trello" } }))).toBe(localBoardProvider);
     expect(boardProviderFor(makeProject({ board: { provider: "jira" } }))).toBe(localBoardProvider);
   });
 
@@ -47,6 +47,12 @@ describe("boardProviderFor", () => {
     expect(provider).not.toBe(localBoardProvider);
   });
 
+  it("uses the Trello provider once the project picked it", () => {
+    const provider = boardProviderFor(makeProject({ board: { provider: "trello" } }));
+    expect(provider).toBe(trelloBoardProvider);
+    expect(provider).not.toBe(localBoardProvider);
+  });
+
   it("falls back to local for a provider this build has never heard of", () => {
     const project = makeProject({ board: { provider: "algo-que-no-existe" } as never });
     expect(boardProviderFor(project)).toBe(localBoardProvider);
@@ -54,9 +60,9 @@ describe("boardProviderFor", () => {
 });
 
 describe("BOARD_PROVIDERS", () => {
-  it("offers the two providers that are built, in the order the picker shows them", () => {
+  it("offers the providers that are built, in the order the picker shows them", () => {
     const available = BOARD_PROVIDERS.filter(p => p.available);
-    expect(available.map(p => p.id)).toEqual(["local", "github-projects"]);
+    expect(available.map(p => p.id)).toEqual(["local", "github-projects", "trello"]);
   });
 
   it("declares the four ids once each, with a label key for every one", () => {

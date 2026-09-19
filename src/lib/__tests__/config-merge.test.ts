@@ -56,6 +56,19 @@ describe("mergeConfig", () => {
     expect(mergeConfig(disk, mem, base).boards).toEqual({ github: { token: "github_pat_written_elsewhere" } });
   });
 
+  // The two platforms are separate keys under `boards`, so a process that only ever touched
+  // Trello cannot wipe the GitHub token somebody else wrote, and the other way round. What does
+  // travel as one thing is the Trello pair: whoever writes the key has to write the token too.
+  it("keeps each platform's credentials when another process wrote the other one", () => {
+    const base = cfg({});
+    const mem = cfg({ boards: { trello: { key: "k", token: "t" } } });
+    const disk = cfg({ boards: { github: { token: "github_pat_written_elsewhere" } } });
+    expect(mergeConfig(disk, mem, base).boards).toEqual({
+      github: { token: "github_pat_written_elsewhere" },
+      trello: { key: "k", token: "t" },
+    });
+  });
+
   it("lets this process's board token win over the one on disk", () => {
     const base = cfg({});
     const mem = cfg({ boards: { github: { token: "github_pat_mine" } } });

@@ -19,6 +19,7 @@ import { VerifySection } from "@/components/VerifySection";
 import {
   BoardSourceFields,
   EMPTY_BOARD_SOURCE,
+  boardExternalId,
   boardNumber,
   isBoardSourceComplete,
   type BoardSourceDraft,
@@ -74,6 +75,7 @@ export function ProjectDialog({
       setBoardSource({
         owner: editProject.board?.owner ?? "",
         number: editProject.board?.number ? String(editProject.board.number) : "",
+        externalId: editProject.board?.externalId ?? "",
         columns: editProject.board?.columns ?? {},
       });
       setVerify(editProject.verify ?? []);
@@ -161,8 +163,9 @@ export function ProjectDialog({
     // project nobody configured keeps a config with nothing to migrate later.
     const board = boardProvider === "local" ? undefined : {
       provider: boardProvider,
-      owner: boardSource.owner.trim(),
+      owner: boardSource.owner.trim() || undefined,
       number: boardNumber(boardSource),
+      externalId: boardExternalId(boardSource) || undefined,
       columns: boardSource.columns,
     };
 
