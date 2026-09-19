@@ -204,8 +204,8 @@ export interface AppState {
   settingsSection: SettingsSection;
   /** projectId -> collapsed in the sidebar. */
   sidebarCollapsed: Record<string, boolean>;
-  /** Whether the main sidebar rail is expanded (persisted). */
-  sidebarOpen: boolean;
+  /** Whether the main sidebar rail is expanded, a strip of avatars, or gone (persisted). */
+  sidebarMode: SidebarMode;
   /** Back/forward stack of visited views. Not persisted. */
   navHistory: NavEntry[];
   navIndex: number;
@@ -251,7 +251,9 @@ export interface AppState {
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
-  toggleSidebar(open?: boolean): void;
+  setSidebarMode(mode: SidebarMode): void;
+  /** One step along `SIDEBAR_CYCLE`: what the title bar button and Ctrl+B both do. */
+  cycleSidebar(): void;
   toggleSearch(open?: boolean, initialGroup?: "messages" | null): void;
   toggleShortcuts(open?: boolean): void;
   /** Asks the task board to open (or close, with null) one task's detail. */
@@ -539,7 +541,7 @@ interface UiPrefs {
   paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
-  sidebarOpen: boolean;
+  sidebarMode: SidebarMode;
   activeTerminalIds: Record<string, string | null>;
 }
 
@@ -631,6 +633,28 @@ export function clampPaneWidth(pane: PaneId, value: unknown): number {
   return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
 }
 
+/**
+ * The three shapes of the left rail: the menu as it always was, a strip of project avatars that
+ * opens over the content on hover, and gone. `SIDEBAR_CYCLE` is the order the title bar button and
+ * Ctrl+B walk, and it is the whole of what either of them does: one step forward, always.
+ */
+export type SidebarMode = "expanded" | "collapsed" | "hidden";
+export const SIDEBAR_CYCLE: SidebarMode[] = ["expanded", "collapsed", "hidden"];
+
+/** The next mode Ctrl+B lands on. */
+export function nextSidebarMode(mode: SidebarMode): SidebarMode {
+  return SIDEBAR_CYCLE[(SIDEBAR_CYCLE.indexOf(mode) + 1) % SIDEBAR_CYCLE.length];
+}
+
+/**
+ * The mode a preferences file holds. Builds before the strip knew only open and closed, so a
+ * `sidebarOpen: false` from one of those means hidden and anything else means the menu as it was.
+ */
+export function sanitizeSidebarMode(mode: unknown, legacyOpen: unknown): SidebarMode {
+  if (SIDEBAR_CYCLE.includes(mode as SidebarMode)) return mode as SidebarMode;
+  return legacyOpen === false ? "hidden" : "expanded";
+}
+
 const UI_PREFS_KEY = "ainess.ui";
 const UI_PREFS_LEGACY_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
@@ -647,7 +671,7 @@ const defaultUiPrefs: UiPrefs = {
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
-  sidebarOpen: true,
+  sidebarMode: "expanded",
   activeTerminalIds: {},
 };
 
@@ -757,7 +781,7 @@ function loadUiPrefs(): UiPrefs {
       dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: sanitizeBoolMap(parsed.sidebarCollapsed),
-      sidebarOpen: parsed.sidebarOpen !== false,
+      sidebarMode: sanitizeSidebarMode(parsed.sidebarMode, parsed.sidebarOpen),
       activeTerminalIds: sanitizeActiveTerminalIds(parsed.activeTerminalIds),
     };
   } catch {
@@ -783,7 +807,7 @@ function saveUiPrefs(): void {
       paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
-      sidebarOpen: s.sidebarOpen,
+      sidebarMode: s.sidebarMode,
       activeTerminalIds: s.activeTerminalIds,
     };
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
@@ -1026,7 +1050,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (!state.openProjects.includes(projectId) && state.openProjects.length < MAX_PROJECT_PANES) {
       // Before `openProject`, so `setCurrentProject` finds it already in a pane of its own and
       // leaves the pane the user was standing in alone.
-      set({ openProjects: [...state.openProjects, projectId] });
+      const openProjects = [...state.openProjects, projectId];
+      // The first split is where the menu stops paying for itself: two projects need the width
+      // more than the tree does. A default, not a rule — only on the step from one pane to two, so
+      // a user who opens the menu again keeps it open however many panes they go on to open.
+      const splitting = state.openProjects.length === 1 && state.sidebarMode === "expanded";
+      set(splitting ? { openProjects, sidebarMode: "collapsed" } : { openProjects });
     }
     get().openProject(projectId);
   },
@@ -1142,8 +1171,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  toggleSidebar: (open) => {
-    set(s => ({ sidebarOpen: open ?? !s.sidebarOpen }));
+  setSidebarMode: (mode) => {
+    set({ sidebarMode: mode });
+    saveUiPrefs();
+  },
+
+  cycleSidebar: () => {
+    set(s => ({ sidebarMode: nextSidebarMode(s.sidebarMode) }));
     saveUiPrefs();
   },
 
@@ -2685,7 +2719,7 @@ async function runInit(): Promise<void> {
       paneWidths: prefs.paneWidths,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
-      sidebarOpen: prefs.sidebarOpen,
+      sidebarMode: prefs.sidebarMode,
       navHistory: [{
         screen,
         projectId: lastProjectValid ? config.lastProjectId : null,

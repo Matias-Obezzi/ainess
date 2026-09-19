@@ -165,8 +165,15 @@ function WindowControls() {
 /** Custom title bar: drag region, sidebar toggle, search, back/forward and the window controls. */
 export function TitleBar() {
   const t = useT();
-  const sidebarOpen = useAppStore(state => state.sidebarOpen);
-  const toggleSidebar = useAppStore(state => state.toggleSidebar);
+  const sidebarMode = useAppStore(state => state.sidebarMode);
+  const cycleSidebar = useAppStore(state => state.cycleSidebar);
+  // One button, one direction: expanded → the strip of avatars → gone → expanded. The label is
+  // what the next press does, so it is a promise and not a state read.
+  const sidebarLabel = t(
+    sidebarMode === "expanded" ? "titlebar.collapseSidebar"
+    : sidebarMode === "collapsed" ? "titlebar.hideSidebar"
+    : "titlebar.showSidebar",
+  );
   const toggleSearch = useAppStore(state => state.toggleSearch);
   const goBack = useAppStore(state => state.goBack);
   const goForward = useAppStore(state => state.goForward);
@@ -185,13 +192,13 @@ export function TitleBar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label={sidebarOpen ? t("titlebar.hideSidebar") : t("titlebar.showSidebar")}
-              onClick={() => toggleSidebar()}
+              aria-label={sidebarLabel}
+              onClick={() => cycleSidebar()}
             >
               <PanelLeft className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">{sidebarOpen ? t("titlebar.hideSidebar") : t("titlebar.showSidebar")}</TooltipContent>
+          <TooltipContent side="bottom">{sidebarLabel}</TooltipContent>
         </Tooltip>
 
         <Tooltip>

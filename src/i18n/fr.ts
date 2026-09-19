@@ -101,6 +101,7 @@ export const fr: Dictionary = {
   "titlebar.restore": "Restaurer",
   "titlebar.hideSidebar": "Masquer la barre latérale",
   "titlebar.showSidebar": "Afficher la barre latérale",
+  "titlebar.collapseSidebar": "Réduire la barre latérale",
   "titlebar.searchHint": "Rechercher (Ctrl+K)",
   "titlebar.forward": "Avancer",
 
@@ -304,7 +305,7 @@ export const fr: Dictionary = {
   "shortcuts.find": "Rechercher des messages de chat",
   "shortcuts.settings": "Ouvrir les paramètres",
   "shortcuts.shortcuts": "Afficher cette liste de raccourcis",
-  "shortcuts.sidebar": "Afficher ou masquer la barre latérale",
+  "shortcuts.sidebar": "Barre latérale : déployée, réduite ou masquée",
   "shortcuts.terminals": "Afficher ou masquer les terminaux",
   "shortcuts.composerSend": "Envoyer le message",
   "shortcuts.composerNewline": "Saut de ligne ; sur un élément de liste, l'élément suivant",

@@ -101,14 +101,16 @@ test("a second project opens beside the first, writes to itself, and closes agai
 
   // A window too narrow for two columns shows one — the one with the focus, which is the second
   // project here. The first is not closed: it comes back when there is room for it again.
-  await page.setViewportSize({ width: 900, height: 900 });
+  // The widths here count the menu as the 52px strip the split collapsed it to: 820 - 52 is under
+  // two panes of 420, and 900 - 52 is just over.
+  await page.setViewportSize({ width: 820, height: 900 });
   await expect(panes).toHaveCount(1);
   await expect(panes.nth(0)).toHaveAttribute("data-project-id", LANDING);
   await expect(page.getByTestId("close-pane")).toHaveCount(0);
   await snap(page, "panes-too-narrow-for-two");
 
   // Just wide enough for two of the narrowest pane: what 420px each actually looks like.
-  await page.setViewportSize({ width: 1140, height: 900 });
+  await page.setViewportSize({ width: 900, height: 900 });
   await expect(panes).toHaveCount(2);
   await snap(page, "panes-two-narrow");
 

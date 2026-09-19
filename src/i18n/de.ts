@@ -101,6 +101,7 @@ export const de: Dictionary = {
   "titlebar.restore": "Wiederherstellen",
   "titlebar.hideSidebar": "Seitenleiste ausblenden",
   "titlebar.showSidebar": "Seitenleiste einblenden",
+  "titlebar.collapseSidebar": "Seitenleiste einklappen",
   "titlebar.searchHint": "Suchen (Strg+K)",
   "titlebar.forward": "Vorwärts",
 
@@ -304,7 +305,7 @@ export const de: Dictionary = {
   "shortcuts.find": "Chat-Nachrichten suchen",
   "shortcuts.settings": "Einstellungen öffnen",
   "shortcuts.shortcuts": "Diese Kürzelliste anzeigen",
-  "shortcuts.sidebar": "Seitenleiste ein- oder ausblenden",
+  "shortcuts.sidebar": "Seitenleiste: ausgeklappt, eingeklappt oder ausgeblendet",
   "shortcuts.terminals": "Terminals ein- oder ausblenden",
   "shortcuts.composerSend": "Nachricht senden",
   "shortcuts.composerNewline": "Zeilenumbruch; auf einem Listenpunkt der nächste Punkt",

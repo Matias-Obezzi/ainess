@@ -102,6 +102,7 @@ export const ja: Dictionary = {
   "titlebar.restore": "元に戻す",
   "titlebar.hideSidebar": "サイドバーを隠す",
   "titlebar.showSidebar": "サイドバーを表示",
+  "titlebar.collapseSidebar": "サイドバーを折りたたむ",
   "titlebar.searchHint": "検索 (Ctrl+K)",
   "titlebar.forward": "進む",
 
@@ -305,7 +306,7 @@ export const ja: Dictionary = {
   "shortcuts.find": "チャットメッセージを検索",
   "shortcuts.settings": "設定を開く",
   "shortcuts.shortcuts": "このショートカット一覧を表示",
-  "shortcuts.sidebar": "サイドバーの表示を切り替える",
+  "shortcuts.sidebar": "サイドバー: 展開・折りたたみ・非表示",
   "shortcuts.terminals": "ターミナルの表示を切り替える",
   "shortcuts.composerSend": "メッセージを送信",
   "shortcuts.composerNewline": "改行。リスト項目の上では次の項目",

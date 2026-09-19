@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { ProjectAvatar } from "@/components/ProjectAvatar";
 import { StatusDot } from "@/components/StatusDot";
 import {
   DropdownMenu,
@@ -56,6 +57,15 @@ import { FolderOpen,
   Columns2,
 } from "lucide-react";
 
+/** The collapsed strip: one avatar wide, plus the room a focus ring needs around it. */
+const RAIL_WIDTH = 52;
+
+/** Long enough that crossing the strip on the way somewhere else does not open the panel. */
+const OPEN_DELAY = 120;
+
+/** Long enough to forgive the pixel of nothing between the strip and the panel beside it. */
+const CLOSE_DELAY = 200;
+
 /** Straight to the issue templates, opened in the user's own browser. */
 const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues/new/choose";
 
@@ -74,7 +84,7 @@ export function Sidebar() {
   const projectMode = useAppStore(state => state.projectMode);
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
-  const sidebarOpen = useAppStore(state => state.sidebarOpen);
+  const mode = useAppStore(state => state.sidebarMode);
   const width = useAppStore(state => state.paneWidths.sidebar);
   const setPaneWidth = useAppStore(state => state.setPaneWidth);
   // While the divider is held the width follows the pointer, so the open/close animation is off.
@@ -272,6 +282,46 @@ export function Sidebar() {
     },
   ];
 
+  /**
+   * The strip opens the menu over the content, and closes again on the way out. Both ends wait a
+   * moment: the panel sits right against the strip, and a pointer crossing that seam or the corner
+   * of it must not make the menu blink.
+   */
+  const [flyout, setFlyout] = useState(false);
+  const timer = useRef<number | null>(null);
+  const pending = useRef<boolean | null>(null);
+
+  const schedule = useCallback((open: boolean) => {
+    // Already on its way there: a second ask must not restart the clock, or a pointer moving
+    // across the strip would push the opening back forever.
+    if (pending.current === open) return;
+    if (timer.current !== null) clearTimeout(timer.current);
+    pending.current = open;
+    const run = () => {
+      // A menu or a dialog opened from inside the panel takes the pointer off the page behind it,
+      // which reads exactly like leaving. Closing under it would unmount the button it hangs from.
+      if (!open && typeof document !== "undefined" && document.body.style.pointerEvents === "none") {
+        timer.current = window.setTimeout(run, CLOSE_DELAY);
+        return;
+      }
+      timer.current = null;
+      pending.current = null;
+      setFlyout(open);
+    };
+    timer.current = window.setTimeout(run, open ? OPEN_DELAY : CLOSE_DELAY);
+  }, []);
+
+  const collapsed = mode === "collapsed";
+  // Expanded or gone, there is nothing floating; and a timer must not outlive the component.
+  useEffect(() => {
+    if (collapsed) return;
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+    setFlyout(false);
+  }, [collapsed]);
+  useEffect(() => () => { if (timer.current !== null) clearTimeout(timer.current); }, []);
+
   const chatActions = (chat: Chat, projectId: string): MenuAction[] => [
     {
       key: "open",
@@ -290,18 +340,11 @@ export function Sidebar() {
     },
   ];
 
-  return (
+  // The menu itself, drawn the same whether it is the rail in place or the panel floating over
+  // the content. The dialogs are deliberately not part of it: the floating panel is unmounted the
+  // moment the pointer leaves, and a dialog opened from it has to outlive that.
+  const panel = (
     <>
-    <aside
-      className={`shrink-0 overflow-hidden bg-card ${resizing ? "" : "transition-[width] duration-200"} ${
-        sidebarOpen ? "border-r border-border" : ""
-      }`}
-      style={{ width: sidebarOpen ? width : 0 }}
-      aria-hidden={!sidebarOpen}
-    >
-      {/* The inner column keeps its width while the outer one animates to zero, so closing
-          slides the menu out instead of squeezing it. */}
-      <div className="h-full flex flex-col" style={{ width }}>
       <div className="p-3 flex flex-col gap-2 border-b border-border">
         <Button
           variant={screen === "home" ? "secondary" : "ghost"}
@@ -321,7 +364,7 @@ export function Sidebar() {
           <div className="text-xs text-muted-foreground text-center py-6">{t("sidebar.noProjects")}</div>
         )}
         {projects.map(p => {
-          const collapsed = !!sidebarCollapsed[p.id];
+          const folded = !!sidebarCollapsed[p.id];
           const running = runningByProject[p.id] ?? 0;
           const projectChats = chats.filter(c => c.projectId === p.id);
           const isOpenProject = currentProjectId === p.id && screen === "project";
@@ -342,23 +385,14 @@ export function Sidebar() {
                     // impossible: the menu opened with the project already in the pane you were
                     // standing in, so the row that would have put it beside it was greyed out.
                   >
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="p-0.5 text-muted-foreground hover:text-foreground"
-                        title={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleSidebarProject(p.id);
-                        }}
-                      >
-                        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      </button>
-                      {/* Working shows in the dot itself: the orange count next to the name read
+                    <div className="flex items-center gap-2">
+                      {/* Working shows in the avatar itself: the orange count next to the name read
                           like something waiting for an answer. */}
-                      <div
-                        className={`w-2 h-2 rounded-full shrink-0 ${running > 0 ? "animate-breathe" : ""}`}
-                        style={{ backgroundColor: p.color || "#4f8cff" }}
+                      <ProjectAvatar
+                        name={p.name}
+                        color={p.color}
+                        size={22}
+                        className={running > 0 ? "animate-breathe" : ""}
                         title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
                       />
                       <span className="truncate flex-1 font-medium">{p.name}</span>
@@ -372,6 +406,17 @@ export function Sidebar() {
                           <title>{t("autonomous.mode")}</title>
                         </Moon>
                       )}
+                      <button
+                        type="button"
+                        className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                        title={folded ? t("sidebar.expand") : t("sidebar.collapse")}
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleSidebarProject(p.id);
+                        }}
+                      >
+                        {folded ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -396,7 +441,7 @@ export function Sidebar() {
                 </ContextMenuContent>
               </ContextMenu>
 
-              {!collapsed && (
+              {!folded && (
                 <div className="ml-4 mt-0.5 mb-1 flex flex-col gap-0.5">
                   {/* The project's three views. They were a segmented control in the top bar, which
                       is the one place that has to hold the project name, the branch, the spend and
@@ -581,24 +626,88 @@ export function Sidebar() {
           </Tooltip>
         </div>
       </div>
+    </>
+  );
 
-      <ProjectDialog
-        isOpen={projectDialogOpen}
-        onOpenChange={setProjectDialogOpen}
-        editProject={editingProject}
-      />
-      {/* Remounted per target so ChatDialog picks up the right initial state. */}
-      {chatDialogOpen && (
-        <ChatDialog
-          key={editingChatId ?? "new"}
-          open={chatDialogOpen}
-          onOpenChange={setChatDialogOpen}
-          editChatId={editingChatId}
-        />
+  return (
+    <>
+    <aside
+      data-testid="sidebar"
+      data-mode={mode}
+      className={`relative shrink-0 bg-card ${collapsed ? "overflow-visible" : "overflow-hidden"} ${
+        resizing ? "" : "transition-[width] duration-200"
+      } ${mode === "hidden" ? "" : "border-r border-border"}`}
+      style={{ width: mode === "expanded" ? width : collapsed ? RAIL_WIDTH : 0 }}
+      aria-hidden={mode === "hidden"}
+      onMouseEnter={() => collapsed && schedule(true)}
+      onMouseLeave={() => collapsed && schedule(false)}
+      // Reaching the strip with the keyboard opens the panel too, and it stays open for as long as
+      // the focus is anywhere inside it: the pointer is not the only way in.
+      onFocusCapture={() => {
+        if (!collapsed) return;
+        if (timer.current !== null) clearTimeout(timer.current);
+        timer.current = null;
+        pending.current = null;
+        setFlyout(true);
+      }}
+      onBlurCapture={e => {
+        if (collapsed && !e.currentTarget.contains(e.relatedTarget as Node | null)) schedule(false);
+      }}
+    >
+      {collapsed ? (
+        <>
+          {/* The strip: the projects and nothing else, since the panel beside it holds the rest. */}
+          <div data-testid="sidebar-rail" className="h-full w-full flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-2">
+            {projects.map(p => {
+              const here = currentProjectId === p.id && screen === "project";
+              return (
+                <Tooltip key={p.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={p.name}
+                      onClick={() => openProject(p.id)}
+                      className={`rounded-full p-0.5 ring-offset-1 ring-offset-card transition-shadow ${
+                        here ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-primary"
+                      }`}
+                    >
+                      <ProjectAvatar
+                        name={p.name}
+                        color={p.color}
+                        size={30}
+                        className={(runningByProject[p.id] ?? 0) > 0 ? "animate-breathe" : ""}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  {/* The panel says the same names in full, so the tooltip steps aside once it
+                      is up — unmounted rather than closed, since a tooltip that starts taking its
+                      open state from a prop halfway through complains, and rightly. */}
+                  {!flyout && <TooltipContent side="right">{p.name}</TooltipContent>}
+                </Tooltip>
+              );
+            })}
+          </div>
+          {flyout && (
+            // Beside the strip, not over it: the avatars stay visible and keep their focus ring,
+            // and nothing to the right of the menu is pushed or measured again.
+            <div
+              data-testid="sidebar-flyout"
+              className="absolute inset-y-0 left-full z-50 flex flex-col border-r border-border bg-card shadow-2xl"
+              style={{ width }}
+            >
+              {panel}
+            </div>
+          )}
+        </>
+      ) : (
+        // The inner column keeps its width while the outer one animates to zero, so closing
+        // slides the menu out instead of squeezing it.
+        <div className="h-full flex flex-col" style={{ width }}>
+          {panel}
+        </div>
       )}
-      </div>
     </aside>
-    {sidebarOpen && (
+    {mode === "expanded" && (
       <ResizeHandle
         side="left"
         width={width}
@@ -606,6 +715,21 @@ export function Sidebar() {
         max={PANE_MAX_WIDTH.sidebar}
         onResize={w => setPaneWidth("sidebar", w)}
         onResizingChange={setResizing}
+      />
+    )}
+
+    <ProjectDialog
+      isOpen={projectDialogOpen}
+      onOpenChange={setProjectDialogOpen}
+      editProject={editingProject}
+    />
+    {/* Remounted per target so ChatDialog picks up the right initial state. */}
+    {chatDialogOpen && (
+      <ChatDialog
+        key={editingChatId ?? "new"}
+        open={chatDialogOpen}
+        onOpenChange={setChatDialogOpen}
+        editChatId={editingChatId}
       />
     )}
     </>

@@ -101,6 +101,7 @@ export const zh: Dictionary = {
   "titlebar.restore": "还原",
   "titlebar.hideSidebar": "隐藏侧边栏",
   "titlebar.showSidebar": "显示侧边栏",
+  "titlebar.collapseSidebar": "折叠侧边栏",
   "titlebar.searchHint": "搜索（Ctrl+K）",
   "titlebar.forward": "前进",
 
@@ -304,7 +305,7 @@ export const zh: Dictionary = {
   "shortcuts.find": "搜索聊天消息",
   "shortcuts.settings": "打开设置",
   "shortcuts.shortcuts": "显示这份快捷键列表",
-  "shortcuts.sidebar": "显示或隐藏侧边栏",
+  "shortcuts.sidebar": "侧边栏：展开、折叠或隐藏",
   "shortcuts.terminals": "显示或隐藏终端",
   "shortcuts.composerSend": "发送消息",
   "shortcuts.composerNewline": "换行；在列表项上则是下一项",

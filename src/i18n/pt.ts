@@ -101,6 +101,7 @@ export const pt: Dictionary = {
   "titlebar.restore": "Restaurar",
   "titlebar.hideSidebar": "Ocultar barra lateral",
   "titlebar.showSidebar": "Mostrar barra lateral",
+  "titlebar.collapseSidebar": "Recolher barra lateral",
   "titlebar.searchHint": "Buscar (Ctrl+K)",
   "titlebar.forward": "Avançar",
 
@@ -304,7 +305,7 @@ export const pt: Dictionary = {
   "shortcuts.find": "Buscar mensagens de chat",
   "shortcuts.settings": "Abrir Configurações",
   "shortcuts.shortcuts": "Ver esta lista de atalhos",
-  "shortcuts.sidebar": "Mostrar ou ocultar a barra lateral",
+  "shortcuts.sidebar": "Barra lateral: expandida, recolhida ou oculta",
   "shortcuts.terminals": "Mostrar ou ocultar os terminais",
   "shortcuts.composerSend": "Enviar a mensagem",
   "shortcuts.composerNewline": "Quebra de linha; num item de lista, o item seguinte",

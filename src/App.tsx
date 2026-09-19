@@ -110,7 +110,7 @@ export default function App() {
           state.toggleSearch(true, "messages");
           break;
         case "sidebar":
-          state.toggleSidebar();
+          state.cycleSidebar();
           break;
         case "shortcuts":
           state.toggleShortcuts();
