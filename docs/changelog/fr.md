@@ -2,6 +2,56 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.21.0 — 2026-09-19
+
+### Nouveau
+
+- **Plusieurs projets à l'écran en même temps.** Autant qu'il en tient dans la largeur de la
+  fenêtre, en colonnes égales, jusqu'à quatre. Chaque panneau a son fil, son champ de saisie et sa
+  barre, et vous écrivez à celui que vous visez. On en ouvre un depuis le menu du projet dans la
+  barre latérale, et on le ferme par le X de sa barre. Ceux qui ne tiennent plus ne sont pas
+  fermés : ils reviennent quand la fenêtre s'élargit.
+- **Le tableau d'un projet peut venir de GitHub Projects.** Dans les réglages du projet, on choisit
+  la plateforme, on désigne le tableau de là-bas par son propriétaire et son numéro, et on dit
+  quelle colonne de là-bas est chacune de celles d'ici. Le jeton se met dans Paramètres → Tableaux
+  et demande la portée `project`. Seules les cartes racines voyagent, et rien n'est jamais
+  supprimé de l'autre côté. Trello et Jira sont annoncés et ne fonctionnent pas encore.
+- **Chaque carte dit ce qu'elle a coûté** et combien de temps de machine elle a pris, en
+  additionnant toute sa famille d'exécutions. La dépense ne se voyait jusqu'ici que par projet.
+- **Chaque carte montre dans quel commit son travail a fini.** Elle l'indique ; elle ne déplace pas
+  la carte toute seule.
+- **La mascotte fait ce que fait son agent.** Dans Apparence, on peut la garder en permanence dans
+  le coin de la conversation, et pas seulement dans un fil vide. Elle donne des coups de marteau
+  pendant qu'elle travaille, regarde l'horloge et tape du pied pendant qu'elle vous attend, dort
+  quand il n'y a rien, se décolore quand elle n'a plus de jetons, et se retrouve les yeux en croix
+  quand quelque chose a échoué.
+- **Un fichier nommé sans son dossier est cherché dans le dépôt.** Si un agent dit `Composer.tsx`
+  tout court, on le trouve désormais : s'il n'y en a qu'un il s'ouvre, et s'il y en a plusieurs ils
+  sont listés pour choisir.
+- **Redescendre tout en bas.** Le bouton qui mène au message le plus récent est là dès que vous êtes
+  remonté, et pas seulement quand quelque chose de nouveau est arrivé. Et ce que vous écrivez vous
+  emmène avec lui : remonter le fil, c'est pour ce que dit l'agent, pas pour votre propre tour.
+
+### Corrigé
+
+- **Une tâche terminée est annoncée une fois.** Avec le flux, la réponse en direct reste dans le fil
+  jusqu'à la fin de l'exécution, et en disparaissant elle faisait perdre le compte aux
+  notifications, qui réannonçaient d'un coup tous les résultats de la session.
+- **Le tableau garde le travail, pas la conversation autour.** Un message envoyé pendant qu'une
+  tâche est encore en cours poursuit cette carte au lieu d'en ouvrir une autre, si bien que
+  « continue » ou « vas-y » ne laissent plus une carte chacun. Et celui qui délègue peut donner un
+  titre à ce qu'il délègue, au lieu que la carte porte le nom de la première ligne de la demande.
+- **Les agents nomment les fichiers avec leur chemin depuis la racine du projet**, et c'est ce qui
+  rend le lien ouvrable.
+- **Le curseur tombe sur la lettre qui lui revient quand la boîte de texte a défilé.** La couche qui
+  dessine les mots pouvait se doter de sa propre barre de défilement et perdre de la largeur à
+  chaque ligne, et tout ce qui suivait la première coupure se décalait par rapport au curseur.
+- **À propos et Diagnostic occupent toute la largeur** de la fenêtre des Paramètres, au lieu de
+  rester coincés à gauche.
+- **L'en-tête du dépôt lit git là où se trouve le dépôt.** Dans un projet dont le dépôt vit un
+  dossier plus bas, l'état ne se mettait pas à jour avec les changements sur le disque et n'était
+  rafraîchi que par la minuterie lente.
+
 ## 0.20.0 — 2026-09-17
 
 ### Nouveau

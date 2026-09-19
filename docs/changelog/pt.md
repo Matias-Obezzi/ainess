@@ -2,6 +2,54 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.21.0 — 2026-09-19
+
+### Novo
+
+- **Vários projetos na tela ao mesmo tempo.** Quantos couberem na largura da janela, em colunas
+  iguais, até quatro. Cada painel tem o seu próprio fio, o seu compositor e a sua barra, e você
+  escreve para o seu. Um novo se abre pelo menu do projeto na barra lateral e se fecha pelo X da sua
+  barra. Os que não cabem não são fechados: voltam quando a janela é alargada.
+- **O quadro de um projeto pode vir do GitHub Projects.** Nos ajustes do projeto escolhe-se a
+  plataforma, aponta-se para o quadro de lá pelo dono e pelo número dele, e diz-se qual coluna de lá
+  é cada uma das de cá. O token fica em Configurações → Quadros e precisa do escopo `project`. Só
+  os cartões raiz viajam, e nada é apagado do outro lado. Trello e Jira estão declarados e ainda não
+  funcionam.
+- **Cada cartão diz quanto custou** e quanto tempo de máquina levou, somando toda a sua família de
+  execuções. Antes o gasto só aparecia por projeto.
+- **Cada cartão mostra em qual commit o seu trabalho terminou.** Ele informa; não mexe no cartão
+  sozinho.
+- **O mascote faz o que o agente dele faz.** Em Aparência dá para tê-lo sempre no canto da conversa,
+  e não só num fio vazio. Ele martela enquanto trabalha, olha o relógio e bate o pé enquanto espera
+  por você, dorme quando não há nada, perde a cor quando fica sem tokens, e fica com os olhos em xis
+  quando algo falhou.
+- **Um arquivo citado sem a pasta é procurado no repositório.** Se um agente diz só
+  `Composer.tsx`, agora ele é encontrado: um só abre, e se houver vários eles são listados para
+  escolher.
+- **Voltar lá para baixo.** O botão para ir até a mensagem mais nova aparece sempre que você tiver
+  subido, não só quando chegou algo novo. E o que você escreve leva você junto: ler para trás é para
+  o que o agente diz, não para o seu próprio turno.
+
+### Corrigido
+
+- **Uma tarefa terminada é anunciada uma vez.** Com o streaming, a resposta ao vivo fica no fio até
+  a execução acabar, e ao desaparecer as notificações perdiam a conta e anunciavam de novo, de uma
+  vez, todos os resultados da sessão.
+- **O quadro guarda trabalho, não a conversa em volta.** Uma mensagem enviada enquanto uma tarefa
+  ainda corre continua aquele cartão em vez de abrir outro, então «continue» ou «pode ir» não deixam
+  mais um cartão cada. E quem delega pode dar um título ao que delega, em vez de o cartão se chamar
+  como a primeira linha do pedido.
+- **Os agentes citam os arquivos com o caminho a partir da raiz do projeto**, que é o que faz o link
+  poder ser aberto.
+- **O cursor cai sobre a letra certa quando a caixa de texto tem rolagem.** A camada que desenha as
+  palavras podia criar a sua própria barra de rolagem e perder largura em cada linha, e tudo o que
+  vinha depois da primeira quebra saía do lugar em relação ao cursor.
+- **Sobre e Diagnóstico ocupam toda a largura** do diálogo de Configurações, em vez de ficarem
+  espremidos à esquerda.
+- **O cabeçalho do repositório lê o git onde o repositório está.** Num projeto cujo repo mora uma
+  pasta abaixo, o estado não se atualizava com as mudanças em disco e só era renovado pelo
+  temporizador lento.
+
 ## 0.20.0 — 2026-09-17
 
 ### Novo
