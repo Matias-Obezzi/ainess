@@ -9,7 +9,7 @@ import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { attachListeners } from "@/lib/orchestrator";
-import { compactProject } from "@/lib/commands";
+import { clearSessions, compactProject } from "@/lib/commands";
 import type { Run, RunExitEvent } from "@/types";
 
 vi.mock("@/lib/hooks", () => ({ emitHookEvent: async () => {} }));
@@ -113,5 +113,22 @@ describe("a compaction run", () => {
     const run = compactRuns().find(r => r.agentId === "a1")!;
     emitExit!({ runId: run.id, code: 0, killed: false } as never);
     expect(useAppStore.getState().messages.some(m => m.kind === "result")).toBe(false);
+  });
+});
+
+// `/clear` is the same command without the summary: every agent lets go of its session where it
+// stands, nothing is written and nothing runs.
+describe("clearSessions", () => {
+  it("drops the session of every agent of the project and says how many", () => {
+    expect(clearSessions("p1")).toBe(2);
+    expect(sessionOf("a1")).toBeUndefined();
+    expect(sessionOf("a2")).toBeUndefined();
+  });
+
+  it("starts no run, not even for the agent that has a history file", () => {
+    const before = runs().length;
+    clearSessions("p1");
+    expect(runs()).toHaveLength(before);
+    expect(compactRuns()).toHaveLength(0);
   });
 });

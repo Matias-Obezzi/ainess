@@ -26,8 +26,10 @@ describe("matchCommands", () => {
   });
 
   it("narrows by prefix", () => {
+    expect(matchCommands("c").map(c => c.id)).toEqual(["compact", "clear", "cost", "chat"]);
     expect(matchCommands("co").map(c => c.id)).toEqual(["compact", "cost"]);
     expect(matchCommands("cos").map(c => c.id)).toEqual(["cost"]);
+    expect(matchCommands("w").map(c => c.id)).toEqual(["wipe"]);
     expect(matchCommands("zz")).toEqual([]);
   });
 });
@@ -36,6 +38,9 @@ describe("parseCommand", () => {
   it("only recognises a command that exists", () => {
     expect(parseCommand("/compact")?.id).toBe("compact");
     expect(parseCommand("  /cost  ")?.id).toBe("cost");
+    // The two that used to be one command: `/clear` lets the agents go, `/wipe` deletes the record.
+    expect(parseCommand("/clear")?.id).toBe("clear");
+    expect(parseCommand("/wipe")?.id).toBe("wipe");
     expect(parseCommand("/comp")).toBeUndefined();
     expect(parseCommand("/nope")).toBeUndefined();
     expect(parseCommand("hola")).toBeUndefined();

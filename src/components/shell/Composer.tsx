@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PROVIDERS } from "@/lib/providers";
 import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
-import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
+import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
@@ -25,6 +25,7 @@ import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
@@ -579,8 +580,8 @@ export function Composer() {
     setText("");
     setHistoryIndex(null);
     if (command.id === "compact") {
-      const count = compactProject(currentProjectId);
-      toast.success(t("command.compact.done", { count }));
+      const n = compactProject(currentProjectId);
+      toast.success(plural(n, t("command.compact.done.one", { n }), t("command.compact.done.other", { n })));
     } else if (command.id === "cost") {
       setUsageOpen(true);
     } else if (command.id === "tasks") {
@@ -592,7 +593,11 @@ export function Composer() {
     } else if (command.id === "stop") {
       handleStop();
     } else if (command.id === "clear") {
-      // Same guard as the trash can in the communication panel: clearing it is not undoable.
+      // Nothing is deleted — the history files stay where they are — so nothing is asked first.
+      const n = clearSessions(currentProjectId);
+      toast.success(plural(n, t("command.clear.done.one", { n }), t("command.clear.done.other", { n })));
+    } else if (command.id === "wipe") {
+      // Same guard as the trash can in the communication panel: wiping it is not undoable.
       void (async () => {
         const ok = await confirm({ title: t("comm.clear.title"), description: t("comm.clear.body"), destructive: true, confirmText: t("common.delete") });
         if (ok) clearMessages(currentProjectId);
