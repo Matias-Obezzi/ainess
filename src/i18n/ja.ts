@@ -215,6 +215,7 @@ export const ja: Dictionary = {
   "thread.empty.body": "下にチームにやってほしいことを書いてください。プランナー(Claude)が分析し、実装担当に委任して、ここで返答します。例:「認証モジュールにテストを追加して、失敗した箇所を修正して」",
   "thread.newMessages.one": "{n} 件の新しいメッセージ",
   "thread.newMessages.other": "{n} 件の新しいメッセージ",
+  "thread.toLatest": "最新",
   "thread.round": "ラウンド {n}",
   "thread.rawOutput": "生の出力を見る",
   "thread.activity.one": "アクティビティ ({n} ステップ・{elapsed})",

@@ -214,6 +214,7 @@ export const zh: Dictionary = {
   "thread.empty.body": "在下面写下你想让团队做什么。规划者（Claude）会分析、委派给实现者，并在这里回复你。例如：「给认证模块加测试，并修好所有失败的用例。」",
   "thread.newMessages.one": "{n} 条新消息",
   "thread.newMessages.other": "{n} 条新消息",
+  "thread.toLatest": "最新",
   "thread.round": "第 {n} 轮",
   "thread.rawOutput": "查看原始输出",
   "thread.activity.one": "活动（{n} 步 · {elapsed}）",

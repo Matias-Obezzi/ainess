@@ -217,10 +217,14 @@ export interface AppState {
   openProject(projectId: string, chatId?: string | null, mode?: ProjectMode): void;
   openSettings(section?: SettingsSection): void;
   closeSettings(): void;
-  setProjectMode(mode: ProjectMode): void;
-  toggleCommPanel(open?: boolean): void;
-  toggleDiffPanel(open?: boolean): void;
-  toggleTermPanel(open?: boolean): void;
+  /**
+   * The four writers below take the pane they belong to. Left out — which is every caller the app
+   * had before panes — it is the focused project, and they behave exactly as they always did.
+   */
+  setProjectMode(mode: ProjectMode, projectId?: string | null): void;
+  toggleCommPanel(open?: boolean, projectId?: string | null): void;
+  toggleDiffPanel(open?: boolean, projectId?: string | null): void;
+  toggleTermPanel(open?: boolean, projectId?: string | null): void;
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
   openPreview(ref: string): void;
   closePreview(): void;
@@ -394,7 +398,8 @@ export interface AppState {
   createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
   updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
   removeChat(id: string): void;
-  setCurrentChat(id: string | null): void;
+  /** Opens a chat (null = the orchestrator thread) in a pane; without one, in the focused project. */
+  setCurrentChat(id: string | null, projectId?: string | null): void;
   sendChatMessage(chatId: string, text: string): Promise<void>;
   /** Cuts a conversation back to one of its messages; see `lib/chat-rewind.ts`. */
   rewindChat(chatId: string, messageId: string, inclusive: boolean): Promise<void>;
@@ -835,29 +840,32 @@ function sanitizeProjectPanels(raw: unknown): Record<string, { comm: boolean; di
   return out;
 }
 
-/** The open project's three flags with `patch` applied. Untouched when no project is open. */
-function panelsWith(
-  state: Pick<AppState, "currentProjectId" | "projectPanels" | "commPanelOpen" | "diffPanelOpen" | "termPanelOpen">,
-  patch: { comm?: boolean; diff?: boolean; term?: boolean },
-): AppState["projectPanels"] {
-  if (!state.currentProjectId) return state.projectPanels;
-  return {
-    ...state.projectPanels,
-    [state.currentProjectId]: {
-      comm: patch.comm ?? state.commPanelOpen,
-      diff: patch.diff ?? state.diffPanelOpen,
-      term: patch.term ?? state.termPanelOpen,
-    },
-  };
-}
+/** The three dock sections a project remembers (the file preview is not one of them). */
+type DockPanelId = keyof AppState["projectPanels"][string];
 
-/** Toggling a panel: what shows now, and what this project should show when you come back to it. */
-function rememberPanels(state: AppState, patch: { comm?: boolean; diff?: boolean; term?: boolean }): Partial<AppState> {
+/** The store key each dock section keeps its "showing right now" flag under. */
+const PANEL_FLAGS = { comm: "commPanelOpen", diff: "diffPanelOpen", term: "termPanelOpen" } as const;
+
+/**
+ * Toggling a panel: what shows now, and what this project should show when you come back to it.
+ *
+ * `projectId` is the pane whose dock was clicked; without one it is the focused project, which is
+ * every caller that existed before panes. Only the focused project moves the three flags — they
+ * are its copy of the map, and another pane's dock has no business touching them.
+ */
+function rememberPanels(
+  state: AppState,
+  key: DockPanelId,
+  open: boolean | undefined,
+  projectId?: string | null,
+): Partial<AppState> {
+  const target = projectId ?? state.currentProjectId;
+  const focused = target === state.currentProjectId;
+  const current = selectProjectPanels(state, target);
+  const next = { ...current, [key]: open ?? !current[key] };
   return {
-    ...(patch.comm !== undefined ? { commPanelOpen: patch.comm } : {}),
-    ...(patch.diff !== undefined ? { diffPanelOpen: patch.diff } : {}),
-    ...(patch.term !== undefined ? { termPanelOpen: patch.term } : {}),
-    projectPanels: panelsWith(state, patch),
+    ...(focused ? { [PANEL_FLAGS[key]]: next[key] } : {}),
+    projectPanels: target ? { ...state.projectPanels, [target]: next } : state.projectPanels,
   };
 }
 
@@ -972,29 +980,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ settingsOpen: false });
   },
 
-  setProjectMode: (mode) => {
+  setProjectMode: (mode, projectId) => {
     const state = get();
+    const target = projectId ?? state.currentProjectId;
+    const focused = target === state.currentProjectId;
     set(s => ({
-      projectMode: mode,
+      // The scalar and the back/forward stack are the focused pane's; another pane changing its
+      // own view is not a navigation the user can go back to.
+      ...(focused ? { projectMode: mode } : {}),
       // What this project is showing from now on, for when you come back to it.
-      projectModes: s.currentProjectId ? { ...s.projectModes, [s.currentProjectId]: mode } : s.projectModes,
+      projectModes: target ? { ...s.projectModes, [target]: mode } : s.projectModes,
     }));
-    pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
+    if (focused) {
+      pushNav({ screen: state.screen, projectId: state.currentProjectId, chatId: state.currentChatId, projectMode: mode });
+    }
     saveUiPrefs();
   },
 
-  toggleCommPanel: (open) => {
-    set(s => rememberPanels(s, { comm: open ?? !s.commPanelOpen }));
+  toggleCommPanel: (open, projectId) => {
+    set(s => rememberPanels(s, "comm", open, projectId));
     saveUiPrefs();
   },
 
-  toggleDiffPanel: (open) => {
-    set(s => rememberPanels(s, { diff: open ?? !s.diffPanelOpen }));
+  toggleDiffPanel: (open, projectId) => {
+    set(s => rememberPanels(s, "diff", open, projectId));
     saveUiPrefs();
   },
 
-  toggleTermPanel: (open) => {
-    set(s => rememberPanels(s, { term: open ?? !s.termPanelOpen }));
+  toggleTermPanel: (open, projectId) => {
+    set(s => rememberPanels(s, "term", open, projectId));
     saveUiPrefs();
   },
 
@@ -1243,8 +1257,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(s => ({
       terminals: [...s.terminals, terminal],
       activeTerminalIds: { ...s.activeTerminalIds, [state.currentProjectId ?? "home"]: terminal.id },
-      termPanelOpen: true,
-      projectPanels: panelsWith(s, { term: true }),
+      ...rememberPanels(s, "term", true),
     }));
     saveUiPrefs();
     log.info("terminal", `new terminal ${terminal.title} (${shell.path}) in ${cwd || "home"}`);
@@ -2197,14 +2210,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  setCurrentChat: (id) => {
+  setCurrentChat: (id, projectId) => {
     const state = get();
-    if (state.currentChatId === id) return;
+    const target = projectId ?? state.currentProjectId;
+    const focused = target === state.currentProjectId;
+    if ((focused ? state.currentChatId : selectProjectChatId(state, target)) === id) return;
     set({
-      currentChatId: id,
-      ...(state.currentProjectId ? { projectChats: { ...state.projectChats, [state.currentProjectId]: id } } : {})
+      ...(focused ? { currentChatId: id } : {}),
+      ...(target ? { projectChats: { ...state.projectChats, [target]: id } } : {})
     });
-    if (state.screen === "project" && state.currentProjectId) {
+    if (focused && state.screen === "project" && state.currentProjectId) {
       pushNav({ screen: "project", projectId: state.currentProjectId, chatId: id, projectMode: state.projectMode });
     }
     saveUiPrefs();
@@ -2769,6 +2784,55 @@ export function selectWorktree(state: AppState, projectId: string | null | undef
 export function selectProject(state: AppState, id: string | null | undefined): Project | undefined {
   if (!id) return undefined;
   return state.config.projects.find(p => p.id === id);
+}
+
+// ---- One pane's view of one project ----
+//
+// The maps are the truth for every project; the three scalars (`projectMode`, `currentChatId` and
+// the panel flags) are the focused project's copy of them, which is why each selector falls back
+// to the scalar for the focused project: a build whose saved prefs predate the maps restores the
+// scalars and nothing else (see runInit), and that is the one moment the two can disagree.
+
+/** The view a project is on: its board, its hierarchy or its conversation. */
+export function selectProjectMode(state: AppState, projectId: string | null | undefined): ProjectMode {
+  if (!projectId) return state.projectMode;
+  return state.projectModes[projectId]
+    ?? (projectId === state.currentProjectId ? state.projectMode : "tasks");
+}
+
+/** The chat a project is left in, or null for its orchestrator thread. */
+export function selectProjectChatId(state: AppState, projectId: string | null | undefined): string | null {
+  if (!projectId) return state.currentChatId;
+  const remembered = state.projectChats[projectId];
+  if (remembered !== undefined) return remembered;
+  return projectId === state.currentProjectId ? state.currentChatId : null;
+}
+
+/** Which of the three dock sections a project has open. */
+export function selectProjectPanels(
+  state: AppState,
+  projectId: string | null | undefined,
+): { comm: boolean; diff: boolean; term: boolean } {
+  const saved = projectId ? state.projectPanels[projectId] : undefined;
+  if (saved) return saved;
+  if (!projectId || projectId === state.currentProjectId) {
+    return { comm: state.commPanelOpen, diff: state.diffPanelOpen, term: state.termPanelOpen };
+  }
+  return NO_PANELS;
+}
+
+const NO_PANELS = { comm: false, diff: false, term: false };
+
+/**
+ * One dock section of one project. A boolean, not the object above: a selector that builds a fresh
+ * object every call makes `useAppStore` re-render forever.
+ */
+export function selectPanelOpen(
+  state: AppState,
+  projectId: string | null | undefined,
+  panel: DockPanelId,
+): boolean {
+  return selectProjectPanels(state, projectId)[panel];
 }
 
 // Dev-only hook so the app can be driven from a debugger / e2e script.

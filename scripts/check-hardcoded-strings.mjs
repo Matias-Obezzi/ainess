@@ -69,8 +69,8 @@ const ALLOWED = new Map([
   // Not labels: these are the values that land in an agent's system prompt ("tu rol es …") and are
   // stored on the chat. The label the user picks from is translated separately, through
   // `CHAT_ROLE_KEY` right below them. Changing the value would change saved data, not a translation.
-  ["src/components/ChatDialog.tsx:23", "role values stored on the chat, not labels"],
-  ["src/components/ChatDialog.tsx:28", "the map from those values to their label keys"],
+  ["src/components/ChatDialog.tsx:24", "role values stored on the chat, not labels"],
+  ["src/components/ChatDialog.tsx:29", "the map from those values to their label keys"],
 ]);
 
 const STRING = /(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g;

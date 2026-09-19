@@ -129,7 +129,17 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
-      if (stickToBottom) {
+      // What you just wrote lands at the bottom, so that is where you are taken — reading back is
+      // for what the agent says, not for your own turn. `from === "user"` is how the bubble tells
+      // the two apart. Only once the thread has something in it: the first batch of a chat being
+      // loaded is not a message arriving, and neither is the jump the search palette is making,
+      // which owns the scroll until its flash ends.
+      const mine = prevMessagesLength.current > 0 && !focusedMessageId && messages[messages.length - 1]?.from === "user";
+      if (mine) {
+        setStickToBottom(true);
+        setNewCount(0);
+      }
+      if (stickToBottom || mine) {
         stick(scrollRef.current, "smooth");
       } else {
         setNewCount(n => n + (messages.length - prevMessagesLength.current));
@@ -139,6 +149,8 @@ export function ChatThread({ chatId }: { chatId: string }) {
       stick(scrollRef.current, "smooth");
     }
     prevMessagesLength.current = messages.length;
+  // `focusedMessageId` is read above but not watched: a flash ending is not a message arriving, and
+  // re-running here would undo the jump the palette just made.
   }, [messages.length, messages[messages.length - 1]?.text, stickToBottom]);
 
   // While an agent answers, its activity grows inside the bubble: follow the bottom on a timer
@@ -258,9 +270,14 @@ export function ChatThread({ chatId }: { chatId: string }) {
         />
       )}
 
-      {!stickToBottom && newCount > 0 && (
-        <Button size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
-          <ArrowDown className="h-4 w-4" /> {plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))}
+      {/* Read back far enough and the way down is gone exactly when it is needed, so it shows for
+          as long as you are not at the bottom. What it says is the only thing the count changes. */}
+      {!stickToBottom && (
+        <Button data-testid="to-bottom" size="sm" className="absolute bottom-4 right-4 rounded-full shadow-md z-10 gap-2" onClick={scrollToBottom}>
+          <ArrowDown className="h-4 w-4" />
+          {newCount > 0
+            ? plural(newCount, t("thread.newMessages.one", { n: newCount }), t("thread.newMessages.other", { n: newCount }))
+            : t("thread.toLatest")}
         </Button>
       )}
     </div>

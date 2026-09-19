@@ -37,6 +37,7 @@ import {
   Trash2
 } from "lucide-react";
 import { useAgentActions, AgentActionDialogs, AgentContextMenu, type AgentActions } from "./agent-actions";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 const HANDLE_STYLE = {
   width: 8,
@@ -90,7 +91,7 @@ function useBusyElsewhere(agentId: string): string[] {
   const t = useT();
   const runtime = useAppStore(state => state.runtime);
   const projects = useAppStore(state => state.config.projects);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   return useMemo(() => {
     const names: string[] = [];
     for (const [projectId, projectRuntime] of Object.entries(runtime)) {
@@ -151,17 +152,18 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
   const { agent } = data;
   const t = useT();
   const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
+  const currentProjectId = useCurrentProjectId();
   const runStartedAt = useAppStore(state => {
-    const projectId = state.currentProjectId;
+    const projectId = currentProjectId;
     if (!projectId) return undefined;
     const runId = state.runtime[projectId]?.[agent.id]?.currentRunId;
     return runId ? state.runs[runId]?.startedAt : undefined;
   });
 
   // The branch it works on, once it has a worktree; before the first run, the one it will get.
-  const worktree = useAppStore(state => selectWorktree(state, state.currentProjectId, agent.id));
+  const worktree = useAppStore(state => selectWorktree(state, currentProjectId, agent.id));
   const preparing = useAppStore(state =>
-    state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id]?.preparing : undefined
+    currentProjectId ? state.runtime[currentProjectId]?.[agent.id]?.preparing : undefined
   );
   const branch = agent.worktree ? worktree?.branch ?? worktreeBranch(agent.name) : null;
 

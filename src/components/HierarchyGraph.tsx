@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/useT";
 import { Bookmark, Crosshair, GitBranch, Maximize2, Network, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import type { AgentStatus } from "@/types";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 const nodeTypes = { agent: AgentNode };
 
@@ -133,11 +134,11 @@ export function HierarchyGraph() {
 
 function HierarchyBoard() {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const currentProjectId = useCurrentProjectId();
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   const runtime = useAppStore(state => state.runtime);
-  const projectName = useAppStore(state => state.config.projects.find(p => p.id === state.currentProjectId)?.name);
-  const worktrees = useAppStore(state => selectProjectWorktrees(state, state.currentProjectId));
+  const projectName = useAppStore(state => state.config.projects.find(p => p.id === currentProjectId)?.name);
+  const worktrees = useAppStore(state => selectProjectWorktrees(state, currentProjectId));
 
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);

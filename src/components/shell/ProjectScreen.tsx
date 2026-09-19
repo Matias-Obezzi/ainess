@@ -1,5 +1,5 @@
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useAppStore, selectProject } from "@/store";
+import { useAppStore, selectProject, selectProjectMode, selectProjectChatId, selectPanelOpen } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GitBranchButton } from "@/components/GitStatus";
@@ -12,19 +12,27 @@ import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
 import { useT } from "@/i18n/useT";
 import { MessagesSquare, TerminalSquare, FileDiff } from "lucide-react";
+import { ProjectPaneProvider } from "./project-pane";
 
-/** The working screen for one project: top bar, task board / thread / hierarchy, and the composer. */
-export function ProjectScreen() {
+/**
+ * The working screen for one project: top bar, task board / thread / hierarchy, and the composer.
+ *
+ * `projectId` is the project this pane shows. Without it — which is how the shell renders it
+ * today, one pane filling the window — the pane is whichever project has the focus.
+ */
+export function ProjectScreen({ projectId }: { projectId?: string }) {
   const t = useT();
-  const currentChatId = useAppStore(state => state.currentChatId);
-  const projectMode = useAppStore(state => state.projectMode);
-  const commPanelOpen = useAppStore(state => state.commPanelOpen);
-  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
+  const focusedId = useAppStore(state => state.currentProjectId);
+  const paneId = projectId ?? focusedId;
+  const currentChatId = useAppStore(state => selectProjectChatId(state, paneId));
+  const projectMode = useAppStore(state => selectProjectMode(state, paneId));
+  const commPanelOpen = useAppStore(state => selectPanelOpen(state, paneId, "comm"));
+  const diffPanelOpen = useAppStore(state => selectPanelOpen(state, paneId, "diff"));
+  const termPanelOpen = useAppStore(state => selectPanelOpen(state, paneId, "term"));
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
   const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
-  const termPanelOpen = useAppStore(state => state.termPanelOpen);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
-  const project = useAppStore(state => selectProject(state, state.currentProjectId));
+  const project = useAppStore(state => selectProject(state, paneId));
 
   if (!project) {
     return (
@@ -36,6 +44,7 @@ export function ProjectScreen() {
   }
 
   return (
+    <ProjectPaneProvider value={project.id}>
     <div className="flex-1 min-h-0 flex flex-col">
       {/* A container, not the window: what is left for this bar depends on the sidebar and the
           right dock as much as on the window's own width. Below each threshold the labels drop to
@@ -70,7 +79,7 @@ export function ProjectScreen() {
             size="sm"
             className="h-7"
             title={t("projectScreen.toggleComm")}
-            onClick={() => toggleCommPanel()}
+            onClick={() => toggleCommPanel(undefined, paneId)}
           >
             {/* What this panel holds is what the agents said to each other. A panel icon described
                 where it opens, which is the least interesting thing about it. */}
@@ -81,7 +90,7 @@ export function ProjectScreen() {
             size="sm"
             className="h-7"
             title={t("projectScreen.toggleDiff")}
-            onClick={() => toggleDiffPanel()}
+            onClick={() => toggleDiffPanel(undefined, paneId)}
           >
             <FileDiff className="h-3.5 w-3.5" /> <span className="hidden @5xl:inline">{t("projectScreen.diff")}</span>
           </Button>
@@ -92,10 +101,9 @@ export function ProjectScreen() {
             title={t("projectScreen.toggleTerminals")}
             onClick={() => {
               const wasOpen = termPanelOpen;
-              toggleTermPanel();
+              toggleTermPanel(undefined, paneId);
               const store = useAppStore.getState();
-              const currentProjectId = store.currentProjectId;
-              const projectTerminals = store.terminals.filter(t => t.projectId === currentProjectId);
+              const projectTerminals = store.terminals.filter(t => t.projectId === paneId);
               if (!wasOpen && projectTerminals.length === 0) {
                 store.openTerminal();
               }
@@ -130,5 +138,6 @@ export function ProjectScreen() {
         </ErrorBoundary>
       )}
     </div>
+    </ProjectPaneProvider>
   );
 }

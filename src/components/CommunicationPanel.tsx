@@ -13,6 +13,7 @@ import { kindLabelKey } from "@/lib/labels";
 import { confirm } from "@/lib/confirm";
 import { useT } from "@/i18n/useT";
 import { ArrowDown, Radio, Trash2 } from "lucide-react";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /**
  * Every kind the filter can turn off, the user's own first.
@@ -25,7 +26,7 @@ const allKinds: MessageKind[] = ["user", "instruction", "text", "tool", "delegat
 
 export function CommunicationPanel() {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   // Select the stable array and filter in useMemo: a selector that returns a fresh
   // array on every call makes useSyncExternalStore re-render forever.
   const allMessages = useAppStore(state => state.messages);
@@ -35,7 +36,7 @@ export function CommunicationPanel() {
       : [],
     [allMessages, currentProjectId],
   );
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   const clearMessages = useAppStore(state => state.clearMessages);
   
   const [filterAgent, setFilterAgent] = useState<string>("all");

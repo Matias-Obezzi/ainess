@@ -18,6 +18,7 @@ import { truncate } from "@/lib/format";
 import type { Approval } from "@/types";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /** "1 line" / "12 lines": how much of the task is folded away. */
 function linesLabel(t: TFunction, prompt: string): string {
@@ -38,7 +39,7 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
   const approvals = useAppStore(state => state.approvals);
   const agents = useAppStore(selectAllAgents);
   const projects = useAppStore(state => state.config.projects);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   const approve = useAppStore(state => state.approve);
   const reject = useAppStore(state => state.reject);
   const [notes, setNotes] = useState<Record<string, string>>({});

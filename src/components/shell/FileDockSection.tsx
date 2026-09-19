@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/toast";
 import { baseName, isMarkdownPath, languageOf, matchTrackedByName, MAX_PREVIEW_BYTES, pathRef, shouldSearchRepo } from "@/lib/file-preview";
 import { repoDirOf } from "@/lib/repo-dir";
 import { cn } from "@/lib/utils";
+import { useCurrentProjectId } from "./project-pane";
 
 type Loaded =
   | { state: "loading" }
@@ -93,8 +94,9 @@ export function FileDockSection() {
   const preview = useAppStore(state => state.previewFile);
   const closePreview = useAppStore(state => state.closePreview);
   const editors = useAppStore(state => state.editors);
+  const projectId = useCurrentProjectId();
   const repoDir = useAppStore(state => {
-    const project = selectProject(state, state.currentProjectId);
+    const project = selectProject(state, projectId);
     return project ? repoDirOf(project) : "";
   });
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });

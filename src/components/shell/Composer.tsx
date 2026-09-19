@@ -5,7 +5,7 @@ import { isRemoteBuild } from "@/lib/platform";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
-import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { useAppStore, selectAllAgents, selectProjectAgents, selectProjectChatId } from "@/store";
 import { instructAgent } from "@/lib/orchestrator";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +40,7 @@ import {
   isImage,
   saveAttachments,
 } from "@/lib/attachments";
+import { useCurrentProjectId } from "./project-pane";
 
 /** Prompts sent in this session, newest last. Kept out of the store: it is UI-only scratch. */
 const sentHistory: string[] = [];
@@ -198,13 +199,13 @@ function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
 export function Composer() {
   const t = useT();
   const config = useAppStore(state => state.config);
-  const agents = useAppStore(state => selectProjectAgents(state, state.currentProjectId));
+  const currentProjectId = useCurrentProjectId();
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   // A chat can name an agent of another project, so its ring looks the roster up everywhere.
   const allAgents = useAppStore(selectAllAgents);
   const binaries = useAppStore(state => state.binaries);
   const runtime = useAppStore(state => state.runtime);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
-  const currentChatId = useAppStore(state => state.currentChatId);
+  const currentChatId = useAppStore(state => selectProjectChatId(state, currentProjectId));
   const submitPrompt = useAppStore(state => state.submitPrompt);
   const sendChatMessage = useAppStore(state => state.sendChatMessage);
   const stopChat = useAppStore(state => state.stopChat);
@@ -583,11 +584,11 @@ export function Composer() {
     } else if (command.id === "cost") {
       setUsageOpen(true);
     } else if (command.id === "tasks") {
-      setProjectMode("tasks");
+      setProjectMode("tasks", currentProjectId);
     } else if (command.id === "chat") {
-      setProjectMode("chat");
+      setProjectMode("chat", currentProjectId);
     } else if (command.id === "diff") {
-      toggleDiffPanel(true);
+      toggleDiffPanel(true, currentProjectId);
     } else if (command.id === "stop") {
       handleStop();
     } else if (command.id === "clear") {

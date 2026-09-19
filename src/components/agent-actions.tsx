@@ -11,6 +11,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/component
 import { AgentDialog } from "./AgentDialog";
 import { InstructDialog } from "./InstructDialog";
 import { RunDetailDialog } from "./RunDetailDialog";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 export interface AgentActions {
   status: AgentStatus;
@@ -45,9 +46,9 @@ export interface AgentActions {
 
 export function useAgentActions(agent: AgentConfig): AgentActions {
   const t = useT();
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   const runtime = useAppStore(state =>
-    state.currentProjectId ? state.runtime[state.currentProjectId]?.[agent.id] : undefined
+    currentProjectId ? state.runtime[currentProjectId]?.[agent.id] : undefined
   );
   const allRuns = useAppStore(state => state.runs);
   const stopAgent = useAppStore(state => state.stopAgent);
@@ -90,7 +91,7 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
           participants: [{ agentId: agent.id, role: "asistente" }]
         });
     state.openProject(currentProjectId, chatId);
-    state.setProjectMode("chat");
+    state.setProjectMode("chat", currentProjectId);
   };
 
   return {

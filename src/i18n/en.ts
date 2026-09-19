@@ -215,6 +215,7 @@ export const en: Dictionary = {
   "thread.empty.body": "Write below what you want the team to do. The planner (Claude) analyzes it, delegates to the implementers, and replies here. Example: \"Add tests for the auth module and fix whatever fails.\"",
   "thread.newMessages.one": "{n} new message",
   "thread.newMessages.other": "{n} new messages",
+  "thread.toLatest": "Latest",
   "thread.round": "Round {n}",
   "thread.rawOutput": "View raw output",
   "thread.activity.one": "Activity ({n} step · {elapsed})",

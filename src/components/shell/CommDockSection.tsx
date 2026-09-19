@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CommunicationPanel } from "@/components/CommunicationPanel";
 import { X } from "lucide-react";
 import { useT } from "@/i18n/useT";
+import { useCurrentProjectId } from "./project-pane";
 
 /**
  * Communication section of the right dock: the raw agent-to-agent feed.
@@ -11,6 +12,7 @@ import { useT } from "@/i18n/useT";
 export function CommDockSection() {
   const t = useT();
   const toggleCommPanel = useAppStore(state => state.toggleCommPanel);
+  const projectId = useCurrentProjectId();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -24,7 +26,7 @@ export function CommDockSection() {
           size="icon"
           className="h-7 w-7 ml-auto shrink-0"
           title={t("common.close")}
-          onClick={() => toggleCommPanel(false)}
+          onClick={() => toggleCommPanel(false, projectId)}
         >
           <X className="h-4 w-4" />
         </Button>

@@ -19,6 +19,7 @@ import { roleLabelKey } from "@/lib/labels";
 import { useT, type TFunction } from "@/i18n/useT";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2 } from "lucide-react";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 interface Props {
   open: boolean;
@@ -147,7 +148,7 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
 export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, agents: rosterProp, onSave }: Props) {
   const t = useT();
   const config = useAppStore(state => state.config);
-  const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentProjectId = useCurrentProjectId();
   const targetProjectId = projectId !== undefined ? projectId : currentProjectId;
   const projectAgents = useAppStore(state => selectProjectAgents(state, targetProjectId));
   const roster = rosterProp ?? projectAgents;

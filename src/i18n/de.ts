@@ -214,6 +214,7 @@ export const de: Dictionary = {
   "thread.empty.body": "Schreib unten, was das Team tun soll. Der Planer (Claude) analysiert das, delegiert an die Umsetzer und antwortet dir hier. Beispiel: „Schreib Tests für das Auth-Modul und repariere, was fehlschlägt.“",
   "thread.newMessages.one": "{n} neue Nachricht",
   "thread.newMessages.other": "{n} neue Nachrichten",
+  "thread.toLatest": "Neuestes",
   "thread.round": "Runde {n}",
   "thread.rawOutput": "Rohausgabe ansehen",
   "thread.activity.one": "Aktivität ({n} Schritt · {elapsed})",
