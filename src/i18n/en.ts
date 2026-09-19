@@ -1614,6 +1614,7 @@ export const en: Dictionary = {
   "usage.empty.title": "Nobody has reported any spending yet",
   "usage.empty.body": "Claude Code reports the cost in dollars of every run and Copilot counts premium requests. As soon as one of them works on this project, the spending shows up here.",
   "usage.runUsage": "Consumption",
+  "usage.taskCost": "Task cost",
 
   // ---- Budget ----
   "budget.title": "Spending limit",

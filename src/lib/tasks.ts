@@ -1,7 +1,8 @@
 // Pure task logic: creation defaults, column ordering, dependency checks and the layered layout
 // used by the dependency graph. Nothing here touches the store or the disk, so it is all testable
 // (see src/lib/__tests__/tasks.test.ts). Persistence lives in src/lib/task-store.ts.
-import type { Task, TaskPriority, TaskStatus } from "@/types";
+import type { Run, Task, TaskPriority, TaskStatus } from "@/types";
+import { totalsOf, totalTokens } from "@/lib/usage";
 import { translateNow } from "@/i18n/useT";
 
 /** Columns of the board, left to right. */
@@ -141,6 +142,48 @@ export function taskFamily(tasks: Task[], id: string): Task[] {
   }
 
   return tasks.filter(task => family.has(task.id));
+}
+
+/** What one card of the board ended up costing. Nothing here is estimated; see `taskCost`. */
+export interface TaskCost {
+  usd: number;
+  tokens: number;
+  /**
+   * The runs added up one by one. Two runs that overlapped are counted twice on purpose: this is
+   * how much machine time the card took, not how long the user waited for it. The wait is already
+   * on the card as "updated", and adding the runs up is what stays comparable between a card done
+   * in one go and one done by three agents at the same time.
+   */
+  ms: number;
+  runs: number;
+}
+
+/**
+ * What `taskId` spent: its own run, the runs of every card in its family (`taskFamily`) and
+ * whatever those runs delegated to. A run reached by two paths is counted once.
+ *
+ * Nothing is estimated. A provider that reports no dollars adds runs and zero dollars, the same
+ * convention as the usage panel — see src/lib/usage.ts.
+ */
+export function taskCost(tasks: Task[], runs: Record<string, Run>, taskId: string): TaskCost {
+  const seen = new Set<string>();
+  // Children of a delegation that never got a card of their own still belong to this card's cost.
+  const pending = taskFamily(tasks, taskId)
+    .map(member => member.runId)
+    .filter((id): id is string => id !== undefined);
+  while (pending.length > 0) {
+    const id = pending.pop() as string;
+    const run = runs[id];
+    if (!run || seen.has(id)) continue;
+    seen.add(id);
+    pending.push(...run.childRunIds);
+  }
+
+  const found = [...seen].map(id => runs[id]);
+  const totals = totalsOf(found);
+  // A run still going has no end yet, so it adds nothing to the clock until it finishes.
+  const ms = found.reduce((sum, run) => sum + ((run.endedAt ?? run.startedAt) - run.startedAt), 0);
+  return { usd: totals.costUsd, tokens: totalTokens(totals), ms, runs: totals.runs };
 }
 
 /** True when every dependency of `task` is already ready or done. */

@@ -8,13 +8,14 @@ import { useAppStore, selectTasks } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, sortColumn, TASK_STATUSES, type TaskFilter } from "@/lib/tasks";
+import { blockedBy, EMPTY_TASK_FILTER, filterTasks, isFiltering, sortColumn, taskCost, TASK_STATUSES, type TaskFilter } from "@/lib/tasks";
+import { formatTaskCost } from "@/lib/usage";
 import { TaskCard, TaskContextMenu } from "./TaskCard";
 import { taskStatusMeta } from "./task-meta";
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/types";
 import { ChevronDown, ChevronRight, ListTodo } from "lucide-react";
-import { useT } from "@/i18n/useT";
+import { useLocale, useT } from "@/i18n/useT";
 
 interface DropTarget {
   status: TaskStatus;
@@ -40,7 +41,9 @@ export function TaskBoard({
   onNewTask(status?: TaskStatus): void;
 }) {
   const t = useT();
+  const locale = useLocale();
   const tasks = useAppStore(state => selectTasks(state, projectId));
+  const runs = useAppStore(state => state.runs);
   const moveTask = useAppStore(state => state.moveTask);
 
   const [dragId, setDragId] = useState<string | null>(null);
@@ -70,6 +73,17 @@ export function TaskBoard({
     }
     return map;
   }, [tasks]);
+  // Same idea for what each card cost: one pass here instead of walking the family per card. The
+  // line is handed down already written, so a card whose figures did not move stays memoized
+  // while its neighbour's run streams.
+  const costs = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      const line = formatTaskCost(taskCost(tasks, runs, task.id), locale);
+      if (line) map.set(task.id, line);
+    }
+    return map;
+  }, [tasks, runs, locale]);
 
   /**
    * Holding a card near an edge scrolls: sideways for the columns off screen, and down the column
@@ -202,6 +216,7 @@ export function TaskBoard({
                     <TaskCard
                       task={task}
                       blocked={blocked.get(task.id) ?? 0}
+                      cost={costs.get(task.id)}
                       dragging={dragId === task.id}
                       onOpen={onOpenTask}
                       onDragStart={onDragStart}

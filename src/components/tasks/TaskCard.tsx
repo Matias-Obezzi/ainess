@@ -29,6 +29,11 @@ interface Props {
   task: Task;
   /** How many of its dependencies have not finished yet. */
   blocked: number;
+  /**
+   * What this card and its family cost, already written out (`formatTaskCost`). Undefined when it
+   * has no run yet, and then nothing is drawn: an empty line on every fresh card would be noise.
+   */
+  cost?: string;
   dragging: boolean;
   onOpen(id: string): void;
   onDragStart(e: DragEvent<HTMLElement>, task: Task): void;
@@ -36,7 +41,7 @@ interface Props {
   onDragEnd(): void;
 }
 
-export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
+export const TaskCard = memo(function TaskCard({ task, blocked, cost, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
   const t = useT();
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
@@ -108,6 +113,14 @@ export const TaskCard = memo(function TaskCard({ task, blocked, dragging, onOpen
             </button>
           )}
         </div>
+
+        {/* At the foot, under the status row: what this one cost, so an expensive card is not
+            indistinguishable from a two-cent one. */}
+        {cost && (
+          <p className="mt-1 truncate text-[11px] text-muted-foreground" title={t("usage.taskCost")}>
+            {cost}
+          </p>
+        )}
 
         {blocked > 0 && (
           <Badge variant="outline" className="mt-2 border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400">

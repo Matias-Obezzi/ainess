@@ -1613,6 +1613,7 @@ export const pt: Dictionary = {
   "usage.empty.title": "Ninguém informou quanto gastou ainda",
   "usage.empty.body": "O Claude Code informa o custo em dólares de cada execução e o Copilot conta os pedidos premium. Assim que um deles trabalhar neste projeto, o gasto aparece aqui.",
   "usage.runUsage": "Consumo",
+  "usage.taskCost": "Custo da tarefa",
 
   // ---- Budget ----
   "budget.title": "Limite de gastos",

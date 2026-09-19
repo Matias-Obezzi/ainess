@@ -19,7 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { confirmDelete } from "@/lib/confirm";
 import { formatTimeAgo } from "@/lib/format";
-import { blockedBy, hasCycle, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { blockedBy, hasCycle, taskCost, taskFamily, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/tasks";
+import { formatCompact, formatTaskCost } from "@/lib/usage";
 import { goToTaskOrigin, hasOrigin, taskPriorityLabelKey, taskStatusMeta } from "./task-meta";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,19 @@ export function TaskDetailDialog({
   const taskRun = task?.runId ? runs[task.runId] : undefined;
   // What the run of this task consumed, when its CLI said anything at all.
   const usage = runUsageText(taskRun, locale, t);
+  // The same thing for the whole card: its run, its family's and everything they delegated to,
+  // broken down into what it cost, how long it took and how many runs make up the figure.
+  const cost = useMemo(() => (taskId ? taskCost(tasks, runs, taskId) : null), [tasks, runs, taskId]);
+  const costLine =
+    cost && cost.runs > 0
+      ? [
+          formatTaskCost(cost, locale),
+          cost.tokens > 0 ? `${formatCompact(cost.tokens, locale)} ${t("usage.tokens")}` : "",
+          plural(cost.runs, t("usage.runs.one", { n: cost.runs }), t("usage.runs.other", { n: cost.runs })),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
   const missing = useMemo(() => (task ? blockedBy(task, tasks) : []), [task, tasks]);
   const dependencies = useMemo(
     () => (task ? task.dependsOn.map(id => tasks.find(t => t.id === id)).filter(t => t !== undefined) : []),
@@ -133,6 +147,7 @@ export function TaskDetailDialog({
                     </span>
                   )}
                   <span>{t("tasks.updated", { when: formatTimeAgo(task.updatedAt, Date.now(), locale) })}</span>
+                  {costLine && <span>{t("usage.taskCost")}: {costLine}</span>}
                   {task.archived && <Badge variant="outline">{t("tasks.archived")}</Badge>}
                 </DialogDescription>
               </DialogHeader>
