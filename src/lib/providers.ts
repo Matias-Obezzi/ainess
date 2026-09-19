@@ -826,6 +826,24 @@ function noteSection(): string {
   ].join("\n");
 }
 
+/**
+ * The ```suggest block: the reply the user is most likely about to type, offered in grey.
+ *
+ * For every agent, chats included — a chat is where the next thing the user will say is most often
+ * obvious, and where typing it out is the whole cost of the turn.
+ */
+function suggestSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.suggest.header"),
+    t("prompt.suggest.intro"),
+    "```suggest",
+    t("prompt.suggest.example"),
+    "```",
+    t("prompt.suggest.rules"),
+  ].join("\n");
+}
+
 function resultSection(): string {
   const t = translateNow;
   return [
@@ -1041,6 +1059,8 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     prompt += (prompt ? "\n\n" : "") + askSection(!!agent.parentId);
   }
   
+  prompt += (prompt ? "\n\n" : "") + suggestSection();
+
   if (extras?.canNote) {
     prompt += (prompt ? "\n\n" : "") + noteSection();
     prompt += (prompt ? "\n\n" : "") + resultSection();
@@ -1165,6 +1185,30 @@ export function parseNotes(text: string): string[] {
     if (note) out.push(note);
   }
   return out;
+}
+
+/** Longer than this and it is not a reply anyone was about to type; the block is ignored. */
+const MAX_SUGGESTION = 200;
+
+/**
+ * The `suggest` block of an answer: what the user would most likely write back.
+ *
+ * Plain text like `note`, and read the same way, with two differences. The last block wins — the
+ * same rule `result` follows, because the last one was written knowing the whole answer — and only
+ * its first non-empty line is kept: this ends up as grey text inside the box, where a paragraph
+ * could not be shown even if one were meant.
+ *
+ * It is a suggestion and nothing else: it never sends, and it is not even typed until Tab.
+ */
+export function parseSuggestion(text: string): string | undefined {
+  const regex = /```suggest[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let found: string | undefined;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const line = match[1].split("\n").map(l => l.trim()).find(Boolean);
+    if (line && line.length <= MAX_SUGGESTION) found = line;
+  }
+  return found;
 }
 
 export interface ParsedResult {

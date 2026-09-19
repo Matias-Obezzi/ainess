@@ -197,6 +197,9 @@ const components: Components = {
     // An `ask` block is drawn as the question itself, right under this answer (`InlineQuestion`),
     // so printing its JSON here says the same thing twice — the second time unreadably.
     if (lang === "ask") return null;
+    // A `suggest` block is the reply the box offers in grey (`ghostFor`), not something the agent
+    // said: printing it here would show the user their own answer before they gave it.
+    if (lang === "suggest") return null;
     return (
       <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
         <code>{text}</code>

@@ -1,21 +1,26 @@
 // What the box offers to write for you, in grey, for Tab to accept.
 //
-// Two different things wear the same clothes here, and it is worth keeping them apart.
+// Three different things wear the same clothes here, and it is worth keeping them apart.
 //
-// With the box empty, this is not a prediction at all: if the agent's last message ends in a
-// yes/no question, the useful answer is yes, and offering it saves the round trip of typing it. An
-// agent that uses an `ask` block gets a proper list of options (see InlineQuestion) — this is the
-// net for the ones that ask in prose instead.
+// With the box empty, the agent's own `suggest` block wins when it wrote one: it is the model that
+// just read the whole conversation saying what you would probably answer, in your voice, and
+// nothing here can compete with that.
+//
+// Failing that, and still with the box empty, this is not a prediction at all: if the agent's last
+// message ends in a yes/no question, the useful answer is yes, and offering it saves the round trip
+// of typing it. An agent that uses an `ask` block gets a proper list of options (see
+// InlineQuestion) — this is the net for the ones that ask in prose instead.
 //
 // Once you have started typing, it is a completion over your own past messages in this same
 // conversation: what you already wrote here, offered again from its first characters. Nothing is
 // invented and nothing leaves the machine; a message from another project never appears in this
 // one, the same rule the shared context follows.
 //
-// Pure module: no store, no React. What it cannot do is understand the conversation — that needs a
-// model, and there is none running locally.
+// Pure module: no store, no React. Understanding the conversation needs a model, and there is none
+// running locally — so the model that does run, the agent, is asked to leave its answer behind
+// (`parseSuggestion`), and this only decides when to show it.
 
-export type GhostSource = "reply" | "history";
+export type GhostSource = "agent" | "reply" | "history";
 
 export interface Ghost {
   /** What to append to what is typed. */
@@ -114,7 +119,7 @@ export function ghostTakesPlaceholder(text: string, ghost: Ghost | null): boolea
 /**
  * What to show in grey right now, or nothing.
  *
- * The empty box is the only place the suggested reply appears: once you are writing, you have said
+ * The empty box is the only place a suggested reply appears: once you are writing, you have said
  * what you think of the question and putting a "yes" after your words would be nonsense.
  */
 export function ghostFor(opts: {
@@ -122,12 +127,25 @@ export function ghostFor(opts: {
   text: string;
   /** The agent's last message in this conversation, if there is one. */
   lastAgentMessage?: string;
+  /** What that message's `suggest` block offered to write back, if it wrote one. */
+  suggestion?: string;
+  /**
+   * That agent already has a question on screen with its own options.
+   *
+   * Then nothing is offered: `InlineQuestion` is the better answer to the same moment, and two
+   * things competing for one reply is worse than either of them alone.
+   */
+  hasPendingQuestion?: boolean;
   /** The user's own past messages here, newest first. */
   past: string[];
   /** The affirmative reply, in the user's language. */
   affirmative: string;
 }): Ghost | null {
   if (!opts.text.trim()) {
+    if (opts.hasPendingQuestion) return null;
+    // The model that read the conversation beats the heuristic that only read the last line.
+    const suggestion = opts.suggestion?.trim();
+    if (suggestion) return { text: suggestion, source: "agent" };
     const question = opts.lastAgentMessage ? trailingQuestion(opts.lastAgentMessage) : null;
     if (question && isClosedQuestion(question)) return { text: opts.affirmative, source: "reply" };
     return null;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNotes, parseResult, buildSystemPrompt } from '../providers';
+import { parseNotes, parseResult, parseSuggestion, buildSystemPrompt } from '../providers';
 
 describe('agent-blocks', () => {
   describe('parseNotes', () => {
@@ -61,6 +61,34 @@ describe('agent-blocks', () => {
     });
   });
 
+  describe('parseSuggestion', () => {
+    it('returns undefined when there is no block', () => {
+      expect(parseSuggestion('hello world')).toBeUndefined();
+    });
+
+    it('reads the suggested reply', () => {
+      const text = 'Listo, quedó andando.\n\n```suggest\nsí, dale\n```';
+      expect(parseSuggestion(text)).toBe('sí, dale');
+    });
+
+    it('ignores an empty block', () => {
+      expect(parseSuggestion('```suggest\n   \n```')).toBeUndefined();
+    });
+
+    it('keeps only the first line when several arrive', () => {
+      expect(parseSuggestion('```suggest\nsí, dale\ny después corré los tests\n```')).toBe('sí, dale');
+    });
+
+    it('takes the last block when there is more than one', () => {
+      // The last one was written knowing the whole answer, same rule `result` follows.
+      expect(parseSuggestion('```suggest\nprimera\n```\ntexto\n```suggest\núltima\n```')).toBe('última');
+    });
+
+    it('drops one too long to be something anybody was about to type', () => {
+      expect(parseSuggestion('```suggest\n' + 'a'.repeat(300) + '\n```')).toBeUndefined();
+    });
+  });
+
   describe('buildSystemPrompt', () => {
     const fakeAgent = { id: '1', name: 'Agent', provider: 'custom' as any, role: 'implementer' as any, autoApprove: false, parentId: null };
 
@@ -74,6 +102,20 @@ describe('agent-blocks', () => {
       const prompt = buildSystemPrompt(fakeAgent, [], { skills: [], canNote: false, sharedContext: '' });
       expect(prompt).not.toContain('```note');
       expect(prompt).not.toContain('```result');
+    });
+
+    it('includes the suggested reply for every agent, canNote or not', () => {
+      for (const canNote of [true, false]) {
+        const prompt = buildSystemPrompt(fakeAgent, [], { skills: [], canNote, sharedContext: '' });
+        expect({ canNote, has: prompt.includes('```suggest') }).toEqual({ canNote, has: true });
+      }
+    });
+
+    it('includes the suggested reply in a chat, which is where it is worth most', () => {
+      const prompt = buildSystemPrompt(fakeAgent, [], {
+        skills: [], sharedContext: '', chat: { role: 'implementer', others: [] },
+      });
+      expect(prompt).toContain('```suggest');
     });
 
     it('includes note and result in resuming state', () => {
