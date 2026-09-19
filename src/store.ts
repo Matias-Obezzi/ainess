@@ -1964,7 +1964,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // on, and it is what the board reads to tell a card whether its run's work landed. One read
     // per project, not per card.
     const [status, commits] = await Promise.all([
-      readRepoStatus(project.workspaceDir).catch(() => null),
+      readRepoStatus(repoDirOf(project)).catch(() => null),
       readRecentCommits(repoDirOf(project)).catch(() => null),
     ]);
     if (!status) return;
