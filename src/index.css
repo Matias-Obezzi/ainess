@@ -238,9 +238,9 @@
   100% { transform: scaleY(1); }
 }
 
-/* The four moods the mascot takes from its agent (see `lib/mascot.ts#mascotMood`). Each one is a
+/* The five moods the mascot takes from its agent (see `lib/mascot.ts#mascotMood`). Each one is a
    silhouette read from across the room rather than a detail: swinging, tapping a foot, asleep,
-   deflated. */
+   deflated, shivering. */
 @keyframes mascot-work {
   0%, 100% { transform: rotate(-3deg); }
   55% { transform: rotate(3deg); }
@@ -283,6 +283,16 @@
   50% { transform: scaleX(0.08); }
 }
 
+/* Broken: a short shudder and then a long stretch of being stuck. Sideways rather than a rotation,
+   which is what keeps it from reading as the swing of working. */
+@keyframes mascot-shiver {
+  0%, 16%, 100% { transform: translateX(0); }
+  3% { transform: translateX(-2.5px); }
+  6% { transform: translateX(2.5px); }
+  9% { transform: translateX(-2px); }
+  13% { transform: translateX(1.5px); }
+}
+
 @layer utilities {
   .animate-breathe { animation: ainess-breathe 2.4s ease-in-out infinite; }
   .animate-mascot-float { animation: mascot-float 4s ease-in-out infinite alternate; }
@@ -294,6 +304,7 @@
   .animate-mascot-sleep { animation: mascot-sleep 3.2s ease-out infinite; }
   .animate-mascot-deflate { animation: mascot-deflate 2.6s ease-in-out infinite; }
   .animate-mascot-coin { animation: mascot-coin 2.2s linear infinite; }
+  .animate-mascot-shiver { animation: mascot-shiver 2.8s ease-in-out infinite; }
   .animate-step-in { animation: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-step-out { animation: step-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-flash-highlight { animation: flash-highlight 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -313,6 +324,7 @@
     .animate-mascot-sleep { animation: none; }
     .animate-mascot-deflate { animation: none; }
     .animate-mascot-coin { animation: none; }
+    .animate-mascot-shiver { animation: none; }
   }
 }
 

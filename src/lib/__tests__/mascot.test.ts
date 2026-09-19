@@ -59,16 +59,19 @@ describe("mascotMood", () => {
 
   it("puts having no tokens left over anything the agent was doing", () => {
     expect(mascotMood(at("working"), true)).toBe("quota");
+    expect(mascotMood(at("error"), true)).toBe("quota");
     expect(mascotMood(undefined, true)).toBe("quota");
   });
 
   it("follows the agent while it has tokens", () => {
     expect(mascotMood(at("working"), false)).toBe("working");
     expect(mascotMood(at("waiting"), false)).toBe("waiting");
+    expect(mascotMood(at("error"), false)).toBe("error");
   });
 
   it("treats everything else as nothing happening", () => {
-    for (const status of ["idle", "stopped", "error"] as AgentStatus[]) {
+    // `stopped` on purpose: stopped by hand is not broken, so it sleeps rather than showing a bang.
+    for (const status of ["idle", "stopped"] as AgentStatus[]) {
       expect(mascotMood(at(status), false)).toBe("idle");
     }
     expect(mascotMood(undefined, false)).toBe("idle");

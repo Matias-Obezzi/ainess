@@ -54,7 +54,10 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
   const blinkDelay = { animationDelay: `${hash % 3100}ms`, transformOrigin: "center", transformBox: "fill-box" as const };
   // The whole creature leans into the swing while working and sags while it has no tokens left;
   // the other two moods only add props, so the body keeps floating as it always did.
-  const bodyAnim = mood === "working" ? "animate-mascot-work" : mood === "quota" ? "animate-mascot-deflate" : undefined;
+  const bodyAnim = mood === "working" ? "animate-mascot-work"
+    : mood === "quota" ? "animate-mascot-deflate"
+    : mood === "error" ? "animate-mascot-shiver"
+    : undefined;
   const bodyStyle = {
     animationDelay: `${hash % 700}ms`,
     // Both of those turn on the feet rather than the middle: a creature that rotates around its
@@ -79,9 +82,12 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
           <g className={bodyAnim} style={bodyStyle}>
             <Crown variant={crown} fill={fill} stroke={base} />
             <Body variant={body} fill={fill} />
-            {/* Asleep the eyes stay shut, so there is nothing left to blink. */}
+            {/* Asleep the eyes stay shut and broken they are crossed out, so in neither case is
+                there anything left to blink. */}
             {mood === "idle" ? (
               <ClosedEyes pupil={pupil} />
+            ) : mood === "error" ? (
+              <CrossedEyes pupil={pupil} />
             ) : (
               <g className="animate-mascot-blink" style={blinkDelay}>
                 <Eyes variant={eyes} sclera={sclera} pupil={pupil} />
@@ -92,6 +98,7 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
           {mood === "waiting" && <Clock base={base} light={light} />}
           {mood === "idle" && <Snores base={base} delay={hash % 900} />}
           {mood === "quota" && <EmptyCoin base={base} />}
+          {mood === "error" && <Alarm base={base} light={light} />}
         </g>
       </svg>
       {provider && (
@@ -230,6 +237,27 @@ function ClosedEyes({ pupil }: { pupil: string }) {
     <g fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: pupil }}>
       <path d="M32 58 Q39 64 46 58" />
       <path d="M54 58 Q61 64 68 58" />
+    </g>
+  );
+}
+
+/** Broken: two eyes crossed out, the one face nobody reads as asleep or as looking at anything. */
+function CrossedEyes({ pupil }: { pupil: string }) {
+  return (
+    <g fill="none" strokeWidth="3.2" strokeLinecap="round" style={{ stroke: pupil }}>
+      <path d="M34 53 L45 64 M45 53 L34 64" />
+      <path d="M55 53 L66 64 M66 53 L55 64" />
+    </g>
+  );
+}
+
+/** Broken: the warning sign beside it, so the mood reads even in a frame with no movement. */
+function Alarm({ base, light }: { base: string; light: string }) {
+  return (
+    <g>
+      <path d="M82 58 L93 78 L71 78 Z" strokeWidth="2.6" strokeLinejoin="round" style={{ fill: light, stroke: base }} />
+      <path d="M82 65 L82 71" fill="none" strokeWidth="2.8" strokeLinecap="round" style={{ stroke: base }} />
+      <circle cx="82" cy="74.6" r="1.6" style={{ fill: base }} />
     </g>
   );
 }

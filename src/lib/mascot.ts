@@ -51,21 +51,23 @@ export function mascotTraits(seed: string): MascotTraits {
   };
 }
 
-/** What the creature is doing, one step coarser than `AgentStatus`: four things read at a glance. */
-export type MascotMood = "working" | "waiting" | "quota" | "idle";
+/** What the creature is doing, one step coarser than `AgentStatus`: five things read at a glance. */
+export type MascotMood = "working" | "waiting" | "quota" | "error" | "idle";
 
 /**
  * The mood of the agent the mascot stands for. Takes what was already read out of the store rather
  * than the store itself, so it stays as testable as the rest of this file.
  *
  * Out of tokens wins over everything: an agent parked waiting for its quota back still carries
- * whatever status it had when it stopped, and that status is the less useful of the two.
+ * whatever status it had when it stopped, and that status is the less useful of the two. Broken
+ * comes right after, for the mirror of that reason: it beats whatever the agent was doing.
  */
 export function mascotMood(runtime: { status: AgentStatus } | undefined, outOfTokens: boolean): MascotMood {
   if (outOfTokens) return "quota";
+  if (runtime?.status === "error") return "error";
   if (runtime?.status === "working") return "working";
   if (runtime?.status === "waiting") return "waiting";
-  // `stopped` and `error` included: neither is worth its own animation, and both mean the same to
-  // someone looking at a corner of the screen — nothing is happening.
+  // `stopped` stays here: stopped by hand is not broken, and to someone looking at a corner of the
+  // screen it means the same as idle — nothing is happening.
   return "idle";
 }
