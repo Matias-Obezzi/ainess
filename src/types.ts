@@ -609,6 +609,8 @@ export interface Delegation {
   model?: string;
   /** Card of the board this delegation picks up, when the planner is working off it. */
   taskId?: string;
+  /** What the card should be called: only the planner knows what the instruction is about. */
+  title?: string;
 }
 
 export interface ChatParticipant {

@@ -62,9 +62,37 @@ function guard(fn: () => void): void {
   }
 }
 
-/** The user sent a prompt to the orchestrator: that whole task gets a card. */
-export function taskForPrompt(opts: { projectId: string; agentId: string; runId: string; prompt: string }): void {
+/**
+ * The user sent a prompt to the orchestrator: that whole task gets a card.
+ *
+ * Unless one of its own is already open. "continua", "reintenta", "mandale nomas" are not new work,
+ * and the board filled up with a card per message. The signal is structural, never the words: the
+ * project's request in flight is `activeTaskRunId`, set when a prompt is submitted and cleared only
+ * when that whole request ends (see orchestrator.ts), so the caller hands over the one it is about
+ * to replace. `cardForNextRun` is the same lineage lookup an agent's own prompt uses, and answers
+ * with nothing when the lineage has more than one card of that agent — then a new card is honest.
+ */
+export function taskForPrompt(opts: {
+  projectId: string;
+  agentId: string;
+  runId: string;
+  prompt: string;
+  /** The request that was already in flight when this one was sent, if any. */
+  liveRootRunId?: string | null;
+}): void {
   guard(() => {
+    const open = opts.liveRootRunId
+      ? cardForNextRun({ projectId: opts.projectId, agentId: opts.agentId, rootRunId: opts.liveRootRunId })
+      : undefined;
+    if (open) {
+      useAppStore.getState().updateTask(open.id, {
+        status: "working",
+        runId: opts.runId,
+        // "continua, pero primero arreglá X" is work: it stays readable on the card.
+        detail: [open.detail, opts.prompt].filter(Boolean).join("\n\n"),
+      });
+      return;
+    }
     useAppStore.getState().addTask(opts.projectId, {
       title: titleFrom(opts.prompt),
       detail: opts.prompt,
@@ -88,6 +116,8 @@ export function taskForDelegation(opts: {
   approvalId?: string;
   /** Short id of the card the planner picked off the board, when it was working off one. */
   taskId?: string;
+  /** What the planner called this piece of work, when it bothered to say. */
+  title?: string;
 }): void {
   guard(() => {
     const store = useAppStore.getState();
@@ -120,7 +150,9 @@ export function taskForDelegation(opts: {
     }
 
     store.addTask(opts.projectId, {
-      title: titleFrom(opts.task),
+      // The planner is the only one who knows what the instruction is about; its first line is a
+      // preamble as often as not ("Proyecto: C:\\…"), which is how four cards ended up identical.
+      title: truncate(opts.title ?? "", 120) || titleFrom(opts.task),
       detail: opts.task,
       status,
       agentId: opts.agentId,

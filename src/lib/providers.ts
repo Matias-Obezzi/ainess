@@ -1104,11 +1104,15 @@ export function parseDelegations(text: string): Delegation[] {
             // The id of a card the planner read off the board: this delegation is that task
             // moving, not a new one (see `taskForDelegation`).
             const taskId = typeof t.taskId === "string" && t.taskId.trim() ? t.taskId.trim() : undefined;
+            // Optional: without it the card is titled off the instruction's first line, which is
+            // a preamble often enough that four delegations came out with the same title.
+            const title = typeof t.title === "string" && t.title.trim() ? t.title.trim() : undefined;
             delegations.push({
               agent: t.agent,
               task: t.task,
               ...(model ? { model } : {}),
               ...(taskId ? { taskId } : {}),
+              ...(title ? { title } : {}),
             });
           }
         }

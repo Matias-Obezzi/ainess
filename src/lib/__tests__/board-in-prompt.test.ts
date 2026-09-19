@@ -3,7 +3,7 @@
 // itself, which opened one more card saying the same thing — four times over, in the report.
 import { describe, it, expect, beforeEach } from "vitest";
 import { boardSection, buildSystemPrompt, parseDelegations, shortTaskId } from "@/lib/providers";
-import { taskForDelegation } from "@/lib/task-sync";
+import { taskForDelegation, taskForPrompt } from "@/lib/task-sync";
 import { createTask } from "@/lib/tasks";
 import { useAppStore } from "@/store";
 import type { AgentConfig, Run, Task } from "@/types";
@@ -147,5 +147,67 @@ describe("a delegation that names a card", () => {
       '```delegate\n{"tasks":[{"agent":"Obrero","task":"seguir con esto","taskId":"a1b2c3d4"}]}\n```',
     );
     expect(delegation).toMatchObject({ agent: "Obrero", task: "seguir con esto", taskId: "a1b2c3d4" });
+  });
+});
+
+// Of ~22 cards on the real board, four were work: the rest were "como viene?", "continua",
+// "mandale nomas" — one card per message — and four delegations all titled with the same preamble
+// line. Neither is fixed by reading the words: a message is the same work because the work is
+// still running, and only the planner knows what it just handed down.
+describe("a message sent while the request is still running", () => {
+  it("moves the card that is already open instead of adding one", () => {
+    const open = task({ title: "Revisá las tareas y ponete a trabajar", detail: rootRun.prompt, status: "working", runId: rootRun.id });
+    seed([open]);
+
+    taskForPrompt({ projectId: project, agentId: planner.id, runId: "run-2", prompt: "continua", liveRootRunId: rootRun.id });
+
+    const tasks = useAppStore.getState().tasks[project];
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({ id: open.id, status: "working", runId: "run-2" });
+    // The message is not thrown away: "continua, pero primero arreglá X" has to stay readable.
+    expect(tasks[0].detail).toBe(`${rootRun.prompt}\n\ncontinua`);
+  });
+
+  it("opens a card when nothing of the project is in flight", () => {
+    seed([task({ title: "Algo viejo", status: "ready", runId: rootRun.id })]);
+
+    taskForPrompt({ projectId: project, agentId: planner.id, runId: "run-2", prompt: "arreglá el parser", liveRootRunId: null });
+
+    const tasks = useAppStore.getState().tasks[project];
+    expect(tasks).toHaveLength(2);
+    expect(tasks.map(t => t.title)).toContain("arreglá el parser");
+  });
+});
+
+describe("a delegation that says what it is", () => {
+  it("reads the title out of the delegate block, and tolerates it missing", () => {
+    const [titled] = parseDelegations(
+      '```delegate\n{"tasks":[{"agent":"Obrero","task":"Proyecto: el de siempre. Migrar el parser.","title":"Migrar el parser de diffs"}]}\n```',
+    );
+    expect(titled.title).toBe("Migrar el parser de diffs");
+    const [untitled] = parseDelegations('```delegate\n{"tasks":[{"agent":"Obrero","task":"hacelo"}]}\n```');
+    expect(untitled.title).toBeUndefined();
+  });
+
+  it("names the card with the planner's title", () => {
+    seed([]);
+
+    taskForDelegation({
+      projectId: project, agentId: worker.id, task: "Proyecto: C:\\p (Tauri 2 + React…)\n\nMigrar el parser.",
+      rootRunId: rootRun.id, runId: "run-child", title: "Migrar el parser de diffs",
+    });
+
+    expect(useAppStore.getState().tasks[project][0].title).toBe("Migrar el parser de diffs");
+  });
+
+  it("falls back to the first line when the planner did not say", () => {
+    seed([]);
+
+    taskForDelegation({
+      projectId: project, agentId: worker.id, task: "Proyecto: C:\\p (Tauri 2 + React…)\n\nMigrar el parser.",
+      rootRunId: rootRun.id, runId: "run-child",
+    });
+
+    expect(useAppStore.getState().tasks[project][0].title).toBe("Proyecto: C:\\p (Tauri 2 + React…)");
   });
 });
