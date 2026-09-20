@@ -49,6 +49,12 @@ tauri-plugin-window-state = "2"
 # agent starts underneath us ever asks Windows for a visible one of its own (see src/console.rs).
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_WindowsAndMessaging"] }
+# The webview has shortcuts of its own (Ctrl+J, F5, Ctrl+P...) that land on top of the app. They are
+# turned off through ICoreWebView2Settings3, reached from the controller Tauri hands over in
+# `with_webview` (see src/webview.rs). Both versions are the ones wry already links against: with
+# any other one the COM types stop being the same types and nothing compiles.
+webview2-com = "0.38"
+windows-core = "0.61"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

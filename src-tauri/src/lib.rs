@@ -12,6 +12,7 @@ mod repo_watch;
 mod runner;
 mod tray;
 mod tunnel;
+mod webview;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -71,6 +72,9 @@ pub fn run() {
             // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
             // one agent session per account: whatever the last session left behind goes now.
             tunnel::kill_orphan(&handle);
+            // The window is a WebView2 and its own shortcuts land on top of the app: Ctrl+J opens
+            // Edge's downloads, F5 reloads, Ctrl+P prints. They go off here (see src/webview.rs).
+            webview::disable_browser_shortcuts(&handle);
             Ok(())
         })
         .on_window_event(tray::on_window_event)
