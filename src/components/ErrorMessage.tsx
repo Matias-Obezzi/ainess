@@ -36,7 +36,7 @@ export function ErrorMessage({ text, className }: { text: string; className?: st
   const hasDetail = !unknown || explained.raw.length > summary.length;
 
   return (
-    <div className={cn("rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs", className)}>
+    <div className={cn("rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs select-text", className)}>
       <div className="flex items-start gap-1.5">
         <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1">

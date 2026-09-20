@@ -231,7 +231,7 @@ export function Markdown({ text, className }: { text: string; className?: string
   const content = unglueFences(text ?? "");
   if (!content.trim()) return null;
   return (
-    <div className={cn("text-sm leading-relaxed break-words", className)}>
+    <div className={cn("text-sm leading-relaxed break-words select-text", className)}>
       <ReactMarkdown remarkPlugins={plugins} components={components} urlTransform={urlTransform}>
         {content}
       </ReactMarkdown>

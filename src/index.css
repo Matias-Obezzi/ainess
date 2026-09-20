@@ -177,6 +177,37 @@
   button:disabled { cursor: not-allowed; }
 }
 
+/* A window, not a page.
+ *
+ * The shell — the bar, the sidebar, the labels, the buttons, the badges — is chrome: dragging
+ * across it should move nothing and select nothing, the way it does in any desktop app. Content is
+ * the exception and it is the important one: what an agent wrote, code, a diff and anything being
+ * typed stay selectable and copyable. Off here, back on below, never the other way round: a rule
+ * that forgets a corner of the shell is a cosmetic miss, one that forgets a corner of the content
+ * takes away copying the answer.
+ *
+ * `select-text` is Tailwind's own utility, so a component opts in by wearing the class. */
+@layer base {
+  body { user-select: none; -webkit-user-select: none; cursor: default; }
+
+  /* Content. `pre` and `code` are here rather than on each component because every block of code
+     in the app is one of them, the ones not written yet included. */
+  input,
+  textarea,
+  [contenteditable]:not([contenteditable="false"]),
+  pre,
+  code,
+  .select-text { user-select: text; -webkit-user-select: text; cursor: auto; }
+
+  /* A scroll that reaches its end stops there: it does not carry on into the pane behind it, and
+     it does not rubber-band. Only scroll containers are affected, so the `*` costs nothing. */
+  * { overscroll-behavior: none; }
+
+  /* Dragging a picture out of the window is a page's gesture. Nothing here is draggable on
+     purpose except the task cards and the terminal tabs, and those are not images. */
+  img { -webkit-user-drag: none; }
+}
+
 /* A project with agents working: its dot breathes instead of wearing a count, which read as
    something waiting for you. Slow on purpose — it says "busy", not "come here". */
 @keyframes ainess-breathe {

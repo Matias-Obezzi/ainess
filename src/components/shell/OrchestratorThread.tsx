@@ -250,7 +250,7 @@ export function OrchestratorThread() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 select-text">
         {historyLoading ? (
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             <RunBubbleSkeleton />

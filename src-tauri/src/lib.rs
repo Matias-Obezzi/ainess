@@ -72,9 +72,10 @@ pub fn run() {
             // A tunnel outlives an app that was killed instead of closed, and ngrok only allows
             // one agent session per account: whatever the last session left behind goes now.
             tunnel::kill_orphan(&handle);
-            // The window is a WebView2 and its own shortcuts land on top of the app: Ctrl+J opens
-            // Edge's downloads, F5 reloads, Ctrl+P prints. They go off here (see src/webview.rs).
-            webview::disable_browser_shortcuts(&handle);
+            // The window is a WebView2, and a WebView2 behaves like Edge until it is told not
+            // to: Ctrl+J opens the downloads, F5 reloads, Ctrl+wheel zooms, two fingers on the
+            // touchpad go back. All of that goes off here (see src/webview.rs).
+            webview::tame_the_browser(&handle);
             Ok(())
         })
         .on_window_event(tray::on_window_event)

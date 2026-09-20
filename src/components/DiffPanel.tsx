@@ -173,7 +173,7 @@ export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } 
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 select-text">
         {isEmpty ? (
           <EmptyState
             icon={GitCompare}
