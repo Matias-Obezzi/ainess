@@ -6,6 +6,69 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.22.0 — 2026-09-20
+
+### Added
+
+- **`/compact` asks each agent to summarise its own history first.** Previously, compacting only
+  cleared session IDs, leaving `.ainess/history/<agent>.md` files to grow for the life of the
+  project. Now, before losing its session, each agent rewrites its own file to keep past decisions
+  and current state while dropping turn-by-turn chatter.
+- **A project's board can be a Trello board.** In the project settings you can now point to a Trello
+  board by pasting its URL and mapping its lists to your project columns. The API key and token go
+  in Settings → Boards. Like GitHub Projects, only root cards travel, remote cards are never
+  deleted, and a failed sync leaves the local board alone.
+- **The sidebar collapses to a rail of initials and stands on its own.** The sidebar can now
+  collapse into a rail of project avatars displaying initials with high-contrast colors. The rail
+  works on its own without hovering flyouts: click a project avatar to open its menu, or press
+  Ctrl+B to cycle between expanded, rail, and hidden views.
+- **The window behaves like a native desktop app instead of a browser.** Browser-native shortcuts
+  and behaviors that conflicted with the app — including Ctrl+P (printing), Ctrl+J (downloads), F5
+  (reloading), F12 (devtools), Ctrl+wheel zoom, swipe navigation, and accidental image dragging —
+  are disabled. A custom right-click context menu brings back cut, copy, paste, and select all
+  across text fields and terminal panes.
+- **The ports left listening, and a way to free them.** When dev servers or processes remain running
+  after an agent finishes, a counter beside the working agents count shows the open ports. Clicking
+  it lists each port, process, and command line, with a button to terminate the process tree after
+  asking for confirmation.
+- **An agent can suggest the reply you were about to write.** When an agent finishes a turn
+  expecting a typical follow-up, it can suggest a reply in your voice (such as agreeing to carry on)
+  as grey text in the composer, accepted with Tab.
+- **Retrying a run takes its place instead of adding a turn.** Clicking retry no longer appends a
+  duplicate prompt at the bottom of the conversation. The new attempt takes the place of the old one
+  in both the thread and the board, while the failed attempt remains inspectable. Retrying an
+  already successful run now asks first.
+- **An implementer can ask the planner instead of the user.** When an implementer finds an ambiguity
+  in an assigned plan, it can route its question directly to the planner that handed the work down
+  rather than asking you. If the planner is unavailable or answers with a question of its own, the
+  question falls back safely to the user. Planners can also update and move existing cards across
+  the board by their short ID.
+
+### Changed
+
+- **Incompatible change: `/clear` starts agents fresh without deleting history, and the destructive
+  reset is now `/wipe`.** In tools like Claude Code, `/clear` starts a fresh conversation; here it
+  used to irreversibly wipe your history — runs, messages, approvals, and questions — while leaving
+  the agent holding everything it already had. Now `/clear` does what you expect: every agent in the
+  project starts over with a fresh session, without deleting anything and leaving your history files
+  intact. If you actually want to erase the project's conversation, runs, and records, use the new
+  `/wipe` command.
+
+### Fixed
+
+- **Reading the repository stopped asking to read it again.** The app kept re-reading the repository
+  on its own until it crashed, and no longer does.
+- **A URL the terminal broke in half still opens whole.** When a long URL wraps across lines in the
+  terminal on Windows, clicking the address opens the complete URL instead of cutting off at the
+  line break.
+- **The pane you are not looking at stops lying about its repo.** In multi-pane view, panes without
+  focus previously froze their branch button and git status until focused again. Every open pane now
+  updates its branch and status automatically.
+- **Each pane keeps its own dock, and its buttons say so.** Opening the communication or file
+  preview dock in one project pane no longer closes or desynchronizes the dock in an adjacent pane.
+- **A card nobody is waiting on leaves "needs you".** Cards parked waiting on user input or review
+  now correctly leave the "needs you" column as soon as their pending approval is settled or their
+  run finishes cleanly.
 ## 0.21.0 — 2026-09-19
 
 ### Added
