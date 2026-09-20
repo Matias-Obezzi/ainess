@@ -3,7 +3,7 @@ import { parseTaskOps, buildSystemPrompt } from "@/lib/providers";
 import { applyTaskOps, cardForNextRun } from "@/lib/task-sync";
 import { translateNow } from "@/i18n/useT";
 import { useAppStore } from "@/store";
-import type { AgentConfig, Run } from "@/types";
+import type { AgentConfig, Run, Task } from "@/types";
 
 describe("task-block", () => {
   describe("parseTaskOps", () => {
@@ -35,12 +35,32 @@ describe("task-block", () => {
       ]);
     });
 
+    it("parses an update that names another card by its short id", () => {
+      const text = '```task\n{"id":"ab12","status":"ready","detail":"ya estaba arreglado"}\n```';
+      expect(parseTaskOps(text)).toEqual([
+        { kind: "update", id: "ab12", status: "ready", detail: "ya estaba arreglado" },
+      ]);
+    });
+
+    it("leaves out the id when there is none, or it is blank", () => {
+      expect(parseTaskOps('```task\n{"status":"ready"}\n```')).toEqual([{ kind: "update", status: "ready" }]);
+      expect(parseTaskOps('```task\n{"id":"  ","status":"ready"}\n```')).toEqual([{ kind: "update", status: "ready" }]);
+      expect(parseTaskOps('```task\n{"id":42,"status":"ready"}\n```')).toEqual([{ kind: "update", status: "ready" }]);
+    });
+
     it("discards status: 'done' but keeps detail from the same block", () => {
       const text = '```task\n{"status":"done","detail":"completado"}\n```';
       expect(parseTaskOps(text)).toEqual([{ kind: "update", detail: "completado" }]);
 
       const textOnlyDone = '```task\n{"status":"done"}\n```';
       expect(parseTaskOps(textOnlyDone)).toEqual([]);
+    });
+
+    it("keeps discarding 'done' when the block names another card", () => {
+      expect(parseTaskOps('```task\n{"id":"ab12","status":"done"}\n```')).toEqual([]);
+      expect(parseTaskOps('```task\n{"id":"ab12","status":"done","detail":"listo"}\n```')).toEqual([
+        { kind: "update", id: "ab12", detail: "listo" },
+      ]);
     });
 
     it("returns an empty array on broken JSON without throwing", () => {
@@ -98,6 +118,20 @@ describe("task-block", () => {
       });
       expect(prompt).toContain(translateNow("prompt.task.header"));
       expect(prompt).toContain("```task");
+    });
+
+    it("tells the planner, and only the planner, when to move another card", () => {
+      const planner: AgentConfig = { ...fakeAgent, role: "planner" };
+      const opts = { skills: [], canNote: true, sharedContext: "" };
+      const plannerPrompt = buildSystemPrompt(planner, [], { ...opts });
+      const implementerPrompt = buildSystemPrompt(fakeAgent, [], { ...opts });
+      expect(plannerPrompt).toContain(translateNow("prompt.task.board"));
+      expect(implementerPrompt).not.toContain(translateNow("prompt.task.board"));
+      // The schema with the optional id only shows up for the one allowed to use it.
+      expect(plannerPrompt).toContain('"id":"ab12"');
+      expect(implementerPrompt).not.toContain('"id":"ab12"');
+      // Also on a resumed session, which rebuilds the block from scratch.
+      expect(buildSystemPrompt(planner, [], { ...opts, resuming: true })).toContain(translateNow("prompt.task.board"));
     });
 
     it("includes card line when card extra is provided", () => {
@@ -182,6 +216,99 @@ describe("task-block", () => {
       const otherRun = { ...run, id: "run-other" };
       const ops = applyTaskOps(otherRun, [{ kind: "update", status: "ready" }]);
       expect(ops).toEqual([]);
+    });
+
+    // Moving somebody else's card is the planner's, and a note that got fixed staying stuck in the
+    // backlog forever is what happens when nobody can.
+    describe("an update that names another card by its short id", () => {
+      const plannerRun = { ...run, id: "run-planner", agentId: "agent-planner" };
+
+      const card = (id: string, extra: Partial<Task> = {}): Task => ({
+        id,
+        projectId: "proj-test",
+        title: `Tarjeta ${id}`,
+        detail: "Detalle ajeno",
+        status: "backlog",
+        dependsOn: [],
+        order: 1,
+        archived: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        ...extra,
+      });
+
+      /** The planner's own card, plus the board notes it might name. */
+      const withPlanner = (extraTasks: Task[] = [card("note-1")], otherProject: Task[] = []) => {
+        const state = useAppStore.getState();
+        const project = state.config.projects[0];
+        useAppStore.setState({
+          config: {
+            ...state.config,
+            projects: [{
+              ...project,
+              agents: [...project.agents, {
+                id: "agent-planner", name: "Planner", role: "planner", provider: "claude", autoApprove: false, parentId: null,
+              }],
+            }],
+          },
+          tasks: {
+            "proj-test": [
+              { ...state.tasks["proj-test"][0], runId: "run-planner" },
+              ...extraTasks,
+            ],
+            ...(otherProject.length ? { "proj-other": otherProject } : {}),
+          },
+        });
+      };
+
+      const boardOf = (projectId = "proj-test") => useAppStore.getState().tasks[projectId];
+
+      it("moves the card it names and leaves its own alone", () => {
+        withPlanner();
+        const ops = applyTaskOps(plannerRun, [{ kind: "update", id: "note-1", status: "ready" }]);
+        expect(ops).toHaveLength(1);
+        expect(boardOf()[1].status).toBe("ready");
+        expect(boardOf()[0].status).toBe("working");
+      });
+
+      // The failure mode this exists to make impossible: the detail landing on the planner's card.
+      it("appends detail to the named card, never to its own", () => {
+        withPlanner();
+        applyTaskOps(plannerRun, [{ kind: "update", id: "note-1", detail: "ya estaba arreglado" }]);
+        expect(boardOf()[1].detail).toBe("Detalle ajeno\n\nya estaba arreglado");
+        expect(boardOf()[0].detail).toBe("Detalle existente");
+      });
+
+      it("ignores an id from anybody but the planner", () => {
+        const ops = applyTaskOps(run, [{ kind: "update", id: "card-1", status: "ready" }]);
+        expect(ops).toEqual([]);
+        expect(boardOf()[0].status).toBe("working");
+      });
+
+      it("ignores an id that matches no card", () => {
+        withPlanner();
+        expect(applyTaskOps(plannerRun, [{ kind: "update", id: "nope", status: "ready" }])).toEqual([]);
+        expect(boardOf()[1].status).toBe("backlog");
+      });
+
+      it("ignores an archived card", () => {
+        withPlanner([card("note-1", { archived: true })]);
+        expect(applyTaskOps(plannerRun, [{ kind: "update", id: "note-1", detail: "x" }])).toEqual([]);
+        expect(boardOf()[1].detail).toBe("Detalle ajeno");
+      });
+
+      it("ignores a card of another project", () => {
+        withPlanner([], [card("note-2", { projectId: "proj-other" })]);
+        expect(applyTaskOps(plannerRun, [{ kind: "update", id: "note-2", status: "ready" }])).toEqual([]);
+        expect(boardOf("proj-other")[0].status).toBe("backlog");
+      });
+
+      it("without an id it is still the planner's own card", () => {
+        withPlanner();
+        expect(applyTaskOps(plannerRun, [{ kind: "update", status: "ready" }])).toHaveLength(1);
+        expect(boardOf()[0].status).toBe("ready");
+        expect(boardOf()[1].status).toBe("backlog");
+      });
     });
 
     it("creates a new backlog task without agentId and with attribution in detail", () => {

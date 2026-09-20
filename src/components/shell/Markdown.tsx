@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/toast";
 import { PathChip } from "@/components/PathChip";
 import { looksLikePath, splitPaths } from "@/lib/file-preview";
 import { useAppStore } from "@/store";
+import { useCurrentProjectId } from "@/components/shell/project-pane";
 
 /** Flattens whatever react-markdown handed us back into plain text. */
 function nodeText(node: ReactNode): string {
@@ -85,6 +86,7 @@ function DelegationCard({ tasks }: { tasks: Delegation[] }) {
 function FileLink({ path, children }: { path: string; children: ReactNode }) {
   const t = useT();
   const openPreview = useAppStore(state => state.openPreview);
+  const projectId = useCurrentProjectId();
   return (
     <button
       type="button"
@@ -92,7 +94,7 @@ function FileLink({ path, children }: { path: string; children: ReactNode }) {
       className="inline text-left text-primary underline underline-offset-2 break-all"
       onClick={() => {
         // Opened beside the conversation; the panel is where "show it in the folder" lives now.
-        if (looksLikePath(path)) { openPreview(path); return; }
+        if (looksLikePath(path)) { openPreview(path, projectId); return; }
         void revealPath(path).then(ok => {
           if (!ok) toast.error(t("markdown.revealFailed"));
         });
@@ -195,6 +197,9 @@ const components: Components = {
     // An `ask` block is drawn as the question itself, right under this answer (`InlineQuestion`),
     // so printing its JSON here says the same thing twice — the second time unreadably.
     if (lang === "ask") return null;
+    // A `suggest` block is the reply the box offers in grey (`ghostFor`), not something the agent
+    // said: printing it here would show the user their own answer before they gave it.
+    if (lang === "suggest") return null;
     return (
       <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
         <code>{text}</code>
@@ -226,7 +231,7 @@ export function Markdown({ text, className }: { text: string; className?: string
   const content = unglueFences(text ?? "");
   if (!content.trim()) return null;
   return (
-    <div className={cn("text-sm leading-relaxed break-words", className)}>
+    <div className={cn("text-sm leading-relaxed break-words select-text", className)}>
       <ReactMarkdown remarkPlugins={plugins} components={components} urlTransform={urlTransform}>
         {content}
       </ReactMarkdown>

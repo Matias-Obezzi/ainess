@@ -42,6 +42,11 @@ function findByShortId(projectId: string, shortId: string): Task | undefined {
   });
 }
 
+/** The role of whoever is running, when the project still has that agent. */
+function roleOf(run: Run): string | undefined {
+  return selectProjectAgents(useAppStore.getState(), run.projectId).find(a => a.id === run.agentId)?.role;
+}
+
 /** Whether a delegation is just the card's own text handed down unchanged. */
 function sameWork(task: Task, text: string): boolean {
   const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -304,7 +309,11 @@ export function applyTaskOps(run: Run, ops: ParsedTaskOp[]): ParsedTaskOp[] {
     const store = useAppStore.getState();
     for (const op of ops) {
       if (op.kind === "update") {
-        const task = findByRun(run.projectId, run.id);
+        // A card named by id is somebody else's, so only the planner may touch one: it is the one
+        // that sees the whole board and knows what is over. An implementer naming an id got the
+        // syntax from nowhere, and the card it would hit is a card nobody asked it to move.
+        if (op.id && roleOf(run) !== "planner") continue;
+        const task = op.id ? findByShortId(run.projectId, op.id) : findByRun(run.projectId, run.id);
         if (!task) continue;
         const patch: Partial<Task> = {};
         if (op.status) {

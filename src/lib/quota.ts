@@ -2,6 +2,7 @@
 // data sources (endpoints, headers, files) this module relies on.
 import { Binaries, ModelInfo, ProviderId, ProviderQuota, QuotaItem } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { execUnlessMissing } from "@/lib/missing-binary";
 import { activeLocale, translateNow } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 
@@ -225,9 +226,11 @@ export function copilotQuotaFromJson(obj: CopilotUserResponse): QuotaItem[] {
 
 async function fetchCopilotQuota(): Promise<ProviderQuota> {
   const fetchedAt = Date.now();
-  const tokenRes = await getTransport().exec("gh", ["auth", "token"]);
-  const token = tokenRes.stdout.trim();
-  if (tokenRes.code !== 0 || !token) {
+  // Null when the GitHub CLI is not installed, which on most machines it is not; asking it again
+  // every minute for the rest of the session only fills the log (see missing-binary.ts).
+  const tokenRes = await execUnlessMissing("gh", ["auth", "token"]);
+  const token = tokenRes?.stdout.trim() ?? "";
+  if (!tokenRes || tokenRes.code !== 0 || !token) {
     return {
       provider: "copilot",
       status: "unavailable",

@@ -575,7 +575,7 @@ fn wait_with_timeout(child: Child, timeout: Duration) -> Result<Output, WaitErro
 
 /// Kills a process tree by pid. The child was moved into the waiting thread, so we
 /// cannot signal it through `Child`: go through the OS, like `kill_child` in tunnel.rs.
-fn kill_tree(pid: u32) {
+pub(crate) fn kill_tree(pid: u32) {
     #[cfg(windows)]
     {
         let _ = windowless("taskkill")

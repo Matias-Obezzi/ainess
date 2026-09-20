@@ -313,6 +313,17 @@ export interface AgentQuestion {
   multiple: boolean;
   /** Whether an answer of the user's own is allowed on top of the options. */
   allowOther: boolean;
+  /**
+   * The agent that owes the answer, when it is not the user's to give.
+   *
+   * Absent means the user, which is what every question has been until now. It is set when a child
+   * asked its planner with `"to": "planner"` and that planner is there to answer (see
+   * `askQuestions`): the question is then hidden from the user everywhere (`isForUser`) until the
+   * answer comes back. Every way that can fall through — the run never started, it died, it came
+   * back empty — clears this field again: a question nobody is going to answer is worse than one
+   * the user has to.
+   */
+  toAgentId?: string;
   createdAt: number;
   status: "pending" | "answered";
   /** What was chosen (or written), once it was. */
@@ -427,6 +438,9 @@ export interface AppConfig {
     /** Personal access token for GitHub Projects. Needs the `project` scope (`read:project` is
      *  enough to look but not to move a card). Empty or missing falls back to `gh auth token`. */
     github?: { token: string };
+    /** Trello asks for two separate things: the API key of the app and a token of the user.
+     *  Both are needed; neither alone opens a board. Missing either falls back to nothing. */
+    trello?: { key: string; token: string };
   };
   projects: Project[];
   /** Saved team templates offered when a project is created. */
@@ -566,14 +580,29 @@ export interface Run {
     failed?: { label: string; code: number | null; output: string };
     ranAt: number;
   };
-  /** "task" (default) or "chat" — chat runs skip delegation parsing. */
-  kind?: "task" | "chat";
+  /**
+   * "task" (default), "chat" — chat runs skip delegation parsing — "compact": the maintenance turn
+   * `/compact` asks for, which rewrites the agent's own history file, or "answer": the turn a
+   * planner spends answering a question one of its own children asked. Neither of the last two is
+   * work — no card, no result to the user, nothing written to the history.
+   */
+  kind?: "task" | "chat" | "compact" | "answer";
+  /** Only on `kind: "answer"`: the question the run was started to answer. */
+  answersQuestionId?: string;
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
   /** Set when this run is a review of another agent's finished run. */
   review?: { ofRunId: string; taskId: string };
+  /**
+   * The run this one was started to replace: another attempt at the same prompt.
+   *
+   * A retry takes the failed run's place rather than queueing behind it, so the thread stops
+   * drawing the run named here and draws this one where that one was (see `lib/retry.ts`). The
+   * replaced run is never deleted — its detail is what says why the first attempt failed.
+   */
+  replacesRunId?: string;
   /** The CLI process behind it, so a crashed app's leftovers can be found on the next launch. */
   process?: SpawnedProcess;
 }
@@ -647,6 +676,26 @@ export interface StorageStat {
   writable: boolean;
   files: number;
   bytes: number;
+}
+
+/**
+ * One TCP port something is listening on here (see `Transport.listeningPorts`).
+ *
+ * `project` and `descendant` are hints, never proof: a dev server an agent left behind is usually
+ * reparented, and then neither of them can say anything. The port, the process and the command
+ * line are always there, and that is what the user decides on.
+ */
+export interface ListeningPort {
+  port: number;
+  pid: number;
+  /** Image name, `node.exe` and the like. Empty when the process was gone by the time we looked. */
+  name: string;
+  /** Its command line, truncated. Null when the system would not hand it over. */
+  command: string | null;
+  /** The workspace folder its working directory falls inside, when one does. */
+  project: string | null;
+  /** Whether this app is still one of its ancestors. */
+  descendant: boolean;
 }
 
 export interface BinaryInfo {

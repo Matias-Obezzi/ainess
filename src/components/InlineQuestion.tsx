@@ -15,6 +15,7 @@ import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { answerOf, EMPTY_CHOICE, pickOption, typeOther, type QuestionChoice } from "@/lib/question-choice";
+import { isForUser } from "@/lib/pending-question";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import type { AgentQuestion } from "@/types";
@@ -23,7 +24,8 @@ import type { AgentQuestion } from "@/types";
 export function InlineQuestion({ questionId, size = "sm" }: { questionId: string; size?: "sm" | "md" }) {
   const question = useAppStore(state => state.questions[questionId]);
   const answerQuestions = useAppStore(state => state.answerQuestions);
-  if (!question) return null;
+  // Not the users to answer while its planner is writing the reply — see `isForUser`.
+  if (!question || !isForUser(question)) return null;
   return <QuestionGroup questions={[question]} size={size} onAnswer={answerQuestions} />;
 }
 

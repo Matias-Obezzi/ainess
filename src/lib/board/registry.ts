@@ -2,6 +2,7 @@
 // project's saved choice turns into something that actually reads and writes.
 import { githubProjectsBoardProvider } from "@/lib/board/github-projects";
 import { localBoardProvider } from "@/lib/board/local";
+import { trelloBoardProvider } from "@/lib/board/trello";
 import type { BoardProvider } from "@/lib/board/provider";
 import type { BoardProviderId, Project } from "@/types";
 
@@ -16,7 +17,7 @@ export interface BoardProviderMeta {
 export const BOARD_PROVIDERS: BoardProviderMeta[] = [
   { id: "local", labelKey: "board.provider.local", available: true },
   { id: "github-projects", labelKey: "board.provider.github-projects", available: true },
-  { id: "trello", labelKey: "board.provider.trello", available: false },
+  { id: "trello", labelKey: "board.provider.trello", available: true },
   { id: "jira", labelKey: "board.provider.jira", available: false },
 ];
 
@@ -24,6 +25,7 @@ export const BOARD_PROVIDERS: BoardProviderMeta[] = [
 const IMPLEMENTED: Partial<Record<BoardProviderId, BoardProvider>> = {
   local: localBoardProvider,
   "github-projects": githubProjectsBoardProvider,
+  trello: trelloBoardProvider,
 };
 
 /**

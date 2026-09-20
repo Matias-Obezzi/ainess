@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { PathChip } from "@/components/PathChip";
-import { useAppStore, selectProject } from "@/store";
+import { useAppStore, selectProject, selectPreviewFile } from "@/store";
 import { useT } from "@/i18n/useT";
 import { getTransport } from "@/lib/transport";
 import { copyText } from "@/lib/clipboard";
@@ -91,10 +91,10 @@ function CodeView({ text, path, line }: { text: string; path: string; line?: num
 
 export function FileDockSection() {
   const t = useT();
-  const preview = useAppStore(state => state.previewFile);
+  const projectId = useCurrentProjectId();
+  const preview = useAppStore(state => selectPreviewFile(state, projectId));
   const closePreview = useAppStore(state => state.closePreview);
   const editors = useAppStore(state => state.editors);
-  const projectId = useCurrentProjectId();
   const repoDir = useAppStore(state => {
     const project = selectProject(state, projectId);
     return project ? repoDirOf(project) : "";
@@ -180,7 +180,7 @@ export function FileDockSection() {
           onClick={() => void copyText(path, t("sidebar.pathCopied"))}>
           <Copy className="h-4 w-4 text-muted-foreground" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-muted" onClick={closePreview} aria-label={t("common.close")}>
+        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-muted" onClick={() => closePreview(projectId)} aria-label={t("common.close")}>
           <X className="h-4 w-4 text-muted-foreground" />
         </Button>
       </div>

@@ -15,6 +15,8 @@ import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { QuotaCard } from "@/components/QuotaCard";
 import { outOfQuota } from "@/lib/quota";
 import { retriedLater } from "@/lib/quota-card";
+import { shownRootRuns } from "@/lib/retry";
+import { retryRun } from "@/lib/orchestrator";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
@@ -34,6 +36,7 @@ import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
 import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
 import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
+import { isForUser } from "@/lib/pending-question";
 import { useCurrentProjectId } from "./project-pane";
 
 /** While something streams in, follow the bottom at most this often. */
@@ -92,10 +95,12 @@ export function OrchestratorThread() {
     }));
   }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
+  // A retried run takes the place of the one it replaced instead of landing at the bottom, and
+  // that one stops being drawn: see `shownRootRuns`.
   const rootRuns = useMemo(
-    () => Object.values(runs)
-      .filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat")
-      .sort((a, b) => a.startedAt - b.startedAt),
+    () => shownRootRuns(
+      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat"),
+    ),
     [runs, currentProjectId],
   );
 
@@ -245,7 +250,7 @@ export function OrchestratorThread() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 select-text">
         {historyLoading ? (
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             <RunBubbleSkeleton />
@@ -344,7 +349,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   // read-only line it renders is the only record in the thread that it was ever asked.
   const questionIdsStr = useAppStore(state =>
     Object.values(state.questions)
-      .filter(q => q.runId === run.id && q.status !== "pending")
+      .filter(q => q.runId === run.id && q.status !== "pending" && isForUser(q))
       .sort((a, b) => a.createdAt - b.createdAt)
       .map(q => q.id)
       .join(',')
@@ -363,8 +368,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const quotaDead = run.status === "error" && outOfQuota(output);
   const retried = useAppStore(state => (quotaDead ? retriedLater(state.runs, run) : false));
 
-  const retry = () =>
-    void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
+  // Same agent, same model, no dialog — and in the place of the run it is retrying, like every
+  // other retry: what the user asked is already above, it does not get written again.
+  const retry = () => retryRun(run.id, { agentId: run.agentId, model: run.model });
 
   const messageActions: MenuAction[] = [
     {

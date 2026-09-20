@@ -9,7 +9,7 @@
 import { getTransport } from "@/lib/transport";
 import { translateNow } from "@/i18n/useT";
 import { filePath } from "@/lib/project-folder";
-import type { AgentConfig, Project } from "@/types";
+import type { AgentConfig, Project, Run } from "@/types";
 
 /** Where the files live inside the folder. */
 export const HISTORY_DIR = "history";
@@ -34,6 +34,16 @@ export function historyFileName(agent: { id: string; name: string }): string {
     .slice(0, 40);
   // Two agents can share a name; the id keeps their files apart.
   return `${clean || "agente"}-${agent.id.slice(0, 8)}.md`;
+}
+
+/**
+ * Whether this agent has a file in this project yet. The app writes one as each turn ends, so an
+ * agent that has never finished a run has nothing there — which is why `launchRun` only points the
+ * system prompt at the file when this is true, and why `/compact` only asks for a summary when
+ * there is something to summarise.
+ */
+export function hasHistoryFile(runs: Record<string, Run>, projectId: string, agentId: string): boolean {
+  return Object.values(runs).some(r => r.agentId === agentId && r.projectId === projectId && r.status === "done");
 }
 
 function clip(text: string): string {

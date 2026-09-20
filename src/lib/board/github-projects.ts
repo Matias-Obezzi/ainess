@@ -18,6 +18,10 @@
 // The columns are mapped by option id in both directions from `BoardSource.columns`; guessing from
 // the option's name would file cards under the wrong column the day somebody renames one, and do it
 // silently, which is the failure nobody notices.
+//
+// The three of them are shared with ./trello.ts, and the parts of them that came out word for word
+// the same — which local card mirrors which remote one, and the polling `watch` — live in
+// ./mirror.ts. The `save` diff does not: it is the same policy written against a different API.
 import { useAppStore } from "@/store";
 import { createTask, TASK_STATUSES } from "@/lib/tasks";
 import {
@@ -30,19 +34,9 @@ import {
   type GhItem,
   type GhProject,
 } from "@/lib/board/github-client";
+import { isRoot, localIdsByExternal, pollWatch } from "@/lib/board/mirror";
 import type { BoardProvider } from "@/lib/board/provider";
 import type { BoardSource, Task, TaskStatus } from "@/types";
-
-/**
- * How often `watch` asks the board whether anything moved.
- *
- * Thirty seconds is the slow end of the range the design settled on (see
- * `.ainess/PLAN-BOARD-REMOTO.md`, point 6): a collaborator moving a card is not something anybody
- * expects to see instantly, and the token this polls with is the same one the rest of the app
- * spends its rate limit on. A board open all day is a hundred and twenty requests an hour at this
- * rate, which is well under the five thousand GitHub gives.
- */
-const POLL_INTERVAL_MS = 30_000;
 
 /** What `BoardSource` looks like once it is complete enough to be used. */
 interface Configured {
@@ -86,26 +80,7 @@ async function readBoard(config: Configured): Promise<{ project: GhProject; item
   return { project, items: items.filter(item => !item.isArchived) };
 }
 
-/** The local id a remote card already has in this project's board, by its remote id. */
-function localIdsByExternal(projectId: string): Map<string, string> {
-  const tasks = useAppStore.getState().tasks[projectId] ?? [];
-  const out = new Map<string, string>();
-  for (const task of tasks) {
-    if (task.external?.provider === PROVIDER_ID && task.external.id) out.set(task.external.id, task.id);
-  }
-  return out;
-}
-
-/**
- * A remote card as a local task.
- *
- * The local id is *reused* when we already know this card, and this is the whole reason the map
- * above exists: every `load` (and `watch` polls one every thirty seconds) would otherwise mint a
- * fresh `crypto.randomUUID()` for the same card, so the board would fill with duplicates, whatever
- * pointed at a task by id — a run, an approval, a dependency — would point at a card that no longer
- * exists, and the file on disk would grow until it hit the cap. The remote id is the identity; the
- * local one only has to stay the same.
- */
+/** A remote card as a local task. The local id is reused when we know it already; see ./mirror.ts. */
 function toTask(item: GhItem, projectId: string, config: Configured, knownIds: Map<string, string>): Task {
   return createTask({
     projectId,
@@ -121,11 +96,6 @@ function toTask(item: GhItem, projectId: string, config: Configured, knownIds: M
   });
 }
 
-/** A card of ours is a root when it waits for nothing. Only those travel; see `save`. */
-function isRoot(task: Task): boolean {
-  return task.dependsOn.length === 0;
-}
-
 /** What the remote card would read like if it were up to date with ours. */
 function bodyOf(task: Task): string {
   return task.detail ?? "";
@@ -137,7 +107,7 @@ export const githubProjectsBoardProvider: BoardProvider = {
   async load(projectId: string): Promise<Task[]> {
     const config = configOf(projectId);
     const { items } = await readBoard(config);
-    const knownIds = localIdsByExternal(projectId);
+    const knownIds = localIdsByExternal(projectId, PROVIDER_ID);
     return items.map(item => toTask(item, projectId, config, knownIds));
   },
 
@@ -219,50 +189,7 @@ export const githubProjectsBoardProvider: BoardProvider = {
     return out;
   },
 
-  /**
-   * Polls the board and says so when it moved. No webhooks yet: polling needs no public endpoint,
-   * no shared secret and no signature check, and it works behind whatever firewall the user is on.
-   */
   watch(projectId: string, onChange: (tasks: Task[]) => void): () => void {
-    // A tick that is still in flight when the next one is due is skipped rather than queued: a slow
-    // or rate-limited board would otherwise pile up requests that all ask the same question.
-    let running = false;
-
-    const timer = setInterval(() => {
-      if (running) return;
-      running = true;
-      void (async () => {
-        try {
-          // Not `this.load`: a caller that pulled `watch` off the object would lose the binding.
-          const tasks = await githubProjectsBoardProvider.load(projectId);
-          if (signature(tasks) !== signature(mirroredInStore(projectId))) onChange(tasks);
-        } catch {
-          // A board that is unreachable, rate-limited or misconfigured leaves the local one exactly
-          // as it is. Handing `onChange` an empty list would wipe the board the user is looking at,
-          // and throwing out of a timer callback is an unhandled rejection nobody can catch.
-        } finally {
-          running = false;
-        }
-      })();
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(timer);
+    return pollWatch(PROVIDER_ID, projectId, p => githubProjectsBoardProvider.load(p), onChange);
   },
 };
-
-/** The cards of the store that mirror a card of this provider — the only ones a poll can compare. */
-function mirroredInStore(projectId: string): Task[] {
-  return (useAppStore.getState().tasks[projectId] ?? []).filter(t => t.external?.provider === PROVIDER_ID);
-}
-
-/**
- * What a poll compares: the remote id, the text and the column of every mirrored card, order
- * independent. Not `updatedAt` — GitHub moves it for things that are not on the board at all (a
- * comment, a label) and the board would look like it changed on every poll.
- */
-function signature(tasks: Task[]): string {
-  return tasks
-    .map(t => `${t.external?.id ?? t.id} ${t.title} ${t.detail ?? ""} ${t.status}`)
-    .sort()
-    .join("");
-}

@@ -101,6 +101,28 @@ describe("ghostFor", () => {
   it("treats a box of only spaces as empty", () => {
     expect(ghostFor({ text: "   ", past: [], lastAgentMessage: "¿Lo arreglo?", affirmative })?.source).toBe("reply");
   });
+
+  it("puts the agent's own suggestion ahead of the guessed yes", () => {
+    // One read the whole conversation; the other read the last line and found a question mark.
+    const ghost = ghostFor({
+      text: "", past: [], lastAgentMessage: "Listo. ¿Lo arreglo?", suggestion: "dale, y corré los tests", affirmative,
+    });
+    expect(ghost).toEqual({ text: "dale, y corré los tests", source: "agent" });
+  });
+
+  it("gives the box back to your own history the moment you type", () => {
+    const ghost = ghostFor({
+      text: "arre", past: ["arreglalo y corré los tests"], suggestion: "dale", affirmative,
+    });
+    expect(ghost).toEqual({ text: "glalo y corré los tests", source: "history" });
+  });
+
+  it("offers nothing while that agent has a question with its own options on screen", () => {
+    // `InlineQuestion` is the better answer to the same moment; two of them is worse than either.
+    expect(ghostFor({
+      text: "", past: [], lastAgentMessage: "Listo. ¿Lo arreglo?", suggestion: "dale", hasPendingQuestion: true, affirmative,
+    })).toBeNull();
+  });
 });
 
 describe("ghostTakesPlaceholder", () => {

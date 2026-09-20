@@ -793,17 +793,25 @@ function delegateSection(autoModel: boolean): string {
   ].join("\n");
 }
 
-/** How any agent asks the user for a decision. Every turn, for the same reason. */
-function askSection(): string {
+/**
+ * How any agent asks for a decision it should not be taking. Every turn, for the same reason.
+ *
+ * `hasParent` adds the other destination: an agent handed a plan with a hole in it can ask whoever
+ * wrote the plan instead of the user, who did not write it. Only for agents that have a planner —
+ * telling a planner it can ask its planner is telling it about somebody who is not there.
+ */
+function askSection(hasParent: boolean): string {
   const t = translateNow;
-  return [
+  const lines = [
     t("prompt.ask.header"),
     t("prompt.ask.intro"),
     "```ask",
     t("prompt.ask.schema"),
     "```",
     t("prompt.ask.rules"),
-  ].join("\n");
+  ];
+  if (hasParent) lines.push(t("prompt.ask.toPlanner"));
+  return lines.join("\n");
 }
 
 function noteSection(): string {
@@ -815,6 +823,24 @@ function noteSection(): string {
     t("prompt.note.example"),
     "```",
     t("prompt.note.rules"),
+  ].join("\n");
+}
+
+/**
+ * The ```suggest block: the reply the user is most likely about to type, offered in grey.
+ *
+ * For every agent, chats included — a chat is where the next thing the user will say is most often
+ * obvious, and where typing it out is the whole cost of the turn.
+ */
+function suggestSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.suggest.header"),
+    t("prompt.suggest.intro"),
+    "```suggest",
+    t("prompt.suggest.example"),
+    "```",
+    t("prompt.suggest.rules"),
   ].join("\n");
 }
 
@@ -830,7 +856,14 @@ function resultSection(): string {
   ].join("\n");
 }
 
-function taskSection(card?: { id: string; title: string; status: TaskStatus }): string {
+/**
+ * The ```task block, and for a planner the one rule about when to use it on somebody else's card.
+ *
+ * Naming another card is only in the planner's copy on purpose: it is the one holding the whole
+ * board, and the only one that can tell that something written down weeks ago is already fixed.
+ * Notes piled up in the backlog because the prompt said how to move a card and never said when.
+ */
+function taskSection(card?: { id: string; title: string; status: TaskStatus }, isPlanner = false): string {
   const t = translateNow;
   const lines = [
     t("prompt.task.header"),
@@ -850,6 +883,7 @@ function taskSection(card?: { id: string; title: string; status: TaskStatus }): 
     }));
   }
   lines.push(t("prompt.task.rules"));
+  if (isPlanner) lines.push(t("prompt.task.board"));
   return lines.join("\n");
 }
 
@@ -875,7 +909,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
 
   if (extras?.chat) {
     if (extras.resuming) {
-      if (agent.role !== "custom") prompt += (prompt ? "\n\n" : "") + askSection();
+      if (agent.role !== "custom") prompt += (prompt ? "\n\n" : "") + askSection(!!agent.parentId);
       return prompt;
     }
     prompt += t("prompt.chat.role", { role: extras.chat.role });
@@ -919,11 +953,11 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       const mates = extras.teammates ? teammatesSection(extras.teammates) : "";
       if (mates) parts.push(mates);
       if (agent.role === "planner" && children.length > 0) parts.push(delegateSection(extras.autoModel === true));
-      if (agent.role !== "custom") parts.push(askSection());
+      if (agent.role !== "custom") parts.push(askSection(!!agent.parentId));
       if (extras.canNote) {
         parts.push(noteSection());
         parts.push(resultSection());
-        parts.push(taskSection(extras.card));
+        parts.push(taskSection(extras.card, agent.role === "planner"));
       }
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
@@ -1022,13 +1056,15 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   // Any role can hit a decision that is not its to make. Without a way to ask, the only ways out
   // were guessing or ending the run with a paragraph and hoping somebody read it.
   if (agent.role !== "custom") {
-    prompt += (prompt ? "\n\n" : "") + askSection();
+    prompt += (prompt ? "\n\n" : "") + askSection(!!agent.parentId);
   }
   
+  prompt += (prompt ? "\n\n" : "") + suggestSection();
+
   if (extras?.canNote) {
     prompt += (prompt ? "\n\n" : "") + noteSection();
     prompt += (prompt ? "\n\n" : "") + resultSection();
-    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card);
+    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card, agent.role === "planner");
   }
 
   if (agent.systemPrompt) {
@@ -1044,6 +1080,12 @@ export interface ParsedQuestion {
   options: string[];
   multiple: boolean;
   allowOther: boolean;
+  /**
+   * The block asked for its planner (`"to": "planner"`) rather than for the user. A wish, not a
+   * destination: whether it is honoured depends on the run having a parent that is still around —
+   * see `askQuestions`.
+   */
+  toPlanner: boolean;
 }
 
 /**
@@ -1076,6 +1118,9 @@ export function parseQuestions(text: string): ParsedQuestion[] {
         // Letting the user write their own is the default: an agent's options are a guess at what
         // the answer might be, never the whole of it.
         allowOther: obj.allowOther !== false,
+        // Read as tolerantly as the rest: anything that is not the one word we know about — a
+        // missing field, a typo, an agent's name — means the user, which is the old behaviour.
+        toPlanner: obj.to === "planner",
       });
     } catch {
       // A malformed block is not worth stopping a run over.
@@ -1142,6 +1187,30 @@ export function parseNotes(text: string): string[] {
   return out;
 }
 
+/** Longer than this and it is not a reply anyone was about to type; the block is ignored. */
+const MAX_SUGGESTION = 200;
+
+/**
+ * The `suggest` block of an answer: what the user would most likely write back.
+ *
+ * Plain text like `note`, and read the same way, with two differences. The last block wins — the
+ * same rule `result` follows, because the last one was written knowing the whole answer — and only
+ * its first non-empty line is kept: this ends up as grey text inside the box, where a paragraph
+ * could not be shown even if one were meant.
+ *
+ * It is a suggestion and nothing else: it never sends, and it is not even typed until Tab.
+ */
+export function parseSuggestion(text: string): string | undefined {
+  const regex = /```suggest[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let found: string | undefined;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const line = match[1].split("\n").map(l => l.trim()).find(Boolean);
+    if (line && line.length <= MAX_SUGGESTION) found = line;
+  }
+  return found;
+}
+
 export interface ParsedResult {
   files: string[];
   verified: string[];
@@ -1188,13 +1257,15 @@ export function parseResult(text: string): ParsedResult | null {
 /** One entry of a ```task block. Same bargain as the stream lines: declared, and still checked. */
 interface TaskOpLine {
   new?: unknown;
+  id?: unknown;
   detail?: unknown;
   priority?: unknown;
   status?: unknown;
 }
 
 export type ParsedTaskOp =
-  | { kind: "update"; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
+  /** Without an `id` it is the agent's own card; with one, the card of the board it names. */
+  | { kind: "update"; id?: string; status?: "working" | "needs-you" | "in-review" | "ready"; detail?: string }
   | { kind: "create"; title: string; detail?: string; priority?: "low" | "normal" | "high" };
 
 const VALID_TASK_UPDATE_STATUSES = new Set(["working", "needs-you", "in-review", "ready"]);
@@ -1233,6 +1304,9 @@ export function parseTaskOps(text: string): ParsedTaskOp[] {
             ...(priority ? { priority } : {}),
           });
         } else {
+          // The id only says *which* card; it buys no extra status. "done" stays out either way:
+          // `ready` is the last state an agent sets and the user is the one who closes a card.
+          const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : undefined;
           const validStatus = typeof item.status === "string" && VALID_TASK_UPDATE_STATUSES.has(item.status)
             ? (item.status as "working" | "needs-you" | "in-review" | "ready")
             : undefined;
@@ -1240,6 +1314,7 @@ export function parseTaskOps(text: string): ParsedTaskOp[] {
           if (validStatus || detail) {
             ops.push({
               kind: "update",
+              ...(id ? { id } : {}),
               ...(validStatus ? { status: validStatus } : {}),
               ...(detail ? { detail } : {}),
             });

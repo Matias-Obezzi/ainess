@@ -26,6 +26,14 @@ describe("parseQuestions", () => {
     expect(q.allowOther).toBe(false);
   });
 
+  it("reads who the question is for, and takes the user when nobody said", () => {
+    const [forPlanner] = parseQuestions(block('{"question":"¿Qué paso vale?","options":["El 3","El 5"],"to":"planner"}'));
+    expect(forPlanner.toPlanner).toBe(true);
+    // Absent, or anything else: the user, which is where every question went before this existed.
+    expect(parseQuestions(block('{"question":"¿Sigo?","options":["Sí","No"]}'))[0].toPlanner).toBe(false);
+    expect(parseQuestions(block('{"question":"¿Sigo?","options":["Sí","No"],"to":"jefe"}'))[0].toPlanner).toBe(false);
+  });
+
   it("drops what is not a question", () => {
     // One option is not a choice, and neither is none.
     expect(parseQuestions(block('{"question":"¿Seguimos?","options":["Sí"]}'))).toEqual([]);
@@ -56,6 +64,14 @@ describe("the system prompt", () => {
     for (const role of ["planner", "implementer", "reviewer"] as const) {
       expect(buildSystemPrompt(agent({ role }), []), role).toContain("```ask");
     }
+  });
+
+  it("tells an agent with a planner that it can ask it, and nobody else", () => {
+    const child = buildSystemPrompt(agent({ parentId: "p1" }), []);
+    expect(child).toContain('"to":"planner"');
+    // A planner has no planner to ask: telling it about one is telling it about somebody who is
+    // not there.
+    expect(buildSystemPrompt(agent({ role: "planner" }), [])).not.toContain('"to":"planner"');
   });
 
   it("leaves a custom agent's prompt to the user", () => {

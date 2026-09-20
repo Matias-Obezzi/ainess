@@ -111,4 +111,59 @@ describe("boardFixes", () => {
         .toEqual([]);
     });
   });
+
+  describe("needs-you recovery", () => {
+    const none = new Set<string>();
+
+    it("moves a card whose run finished and was waiting on nobody", () => {
+      expect(boardFixes([task("t1", "needs-you", "r1")], runs(run("r1", "done")), { hasReviewer: false, pendingApprovalIds: none }))
+        .toEqual([{ taskId: "t1", status: "ready" }]);
+    });
+
+    it("moves a card whose approval was already answered", () => {
+      const board = [task("t1", "needs-you", "r1", { approvalId: "ap-1" })];
+      expect(boardFixes(board, runs(run("r1", "done")), { hasReviewer: false, pendingApprovalIds: none }))
+        .toEqual([{ taskId: "t1", status: "ready" }]);
+    });
+
+    it("leaves a card whose approval is still pending", () => {
+      const board = [task("t1", "needs-you", "r1", { approvalId: "ap-1" })];
+      expect(boardFixes(board, runs(run("r1", "done")), { hasReviewer: false, pendingApprovalIds: new Set(["ap-1"]) }))
+        .toEqual([]);
+    });
+
+    it("leaves a card waiting on an approval when the approvals were not handed in", () => {
+      const board = [task("t1", "needs-you", "r1", { approvalId: "ap-1" })];
+      expect(boardFixes(board, runs(run("r1", "done")), { hasReviewer: false })).toEqual([]);
+    });
+
+    it("leaves a card whose run failed: that is what the column is for", () => {
+      for (const status of ["error", "killed"] as const) {
+        expect(boardFixes([task("t1", "needs-you", "r1")], runs(run("r1", status)), { hasReviewer: false, pendingApprovalIds: none }))
+          .toEqual([]);
+      }
+    });
+
+    it("leaves a card whose run is still going", () => {
+      for (const status of ["running", "queued"] as const) {
+        expect(boardFixes([task("t1", "needs-you", "r1")], runs(run("r1", status)), { hasReviewer: false, pendingApprovalIds: none }))
+          .toEqual([]);
+      }
+    });
+
+    it("leaves a card with no run behind it: a person put it there", () => {
+      expect(boardFixes([task("t1", "needs-you")], {}, { hasReviewer: false, pendingApprovalIds: none })).toEqual([]);
+      // Same when the run it points at is gone: nothing says it stopped needing anybody.
+      expect(boardFixes([task("t1", "needs-you", "gone")], {}, { hasReviewer: false, pendingApprovalIds: none })).toEqual([]);
+    });
+
+    it("sends a finished delegation to review when somebody reviews", () => {
+      const done = runs(run("r1", "done"));
+      expect(boardFixes([task("t1", "needs-you", "r1")], done, { hasReviewer: true, pendingApprovalIds: none }))
+        .toEqual([{ taskId: "t1", status: "in-review" }]);
+      // The user's own request has no parent run: nobody reviews it, it is ready.
+      expect(boardFixes([task("t1", "needs-you", "r1")], runs(run("r1", "done", null)), { hasReviewer: true, pendingApprovalIds: none }))
+        .toEqual([{ taskId: "t1", status: "ready" }]);
+    });
+  });
 });

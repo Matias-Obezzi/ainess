@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { ProjectAvatar } from "@/components/ProjectAvatar";
 import { StatusDot } from "@/components/StatusDot";
+import { ListeningPorts } from "@/components/ListeningPorts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +58,9 @@ import { FolderOpen,
   Columns2,
 } from "lucide-react";
 
+/** The collapsed strip: one avatar wide, plus the room a focus ring needs around it. */
+const RAIL_WIDTH = 52;
+
 /** Straight to the issue templates, opened in the user's own browser. */
 const ISSUES_URL = "https://github.com/Matias-Obezzi/ainess/issues/new/choose";
 
@@ -74,7 +79,7 @@ export function Sidebar() {
   const projectMode = useAppStore(state => state.projectMode);
   const settingsOpen = useAppStore(state => state.settingsOpen);
   const sidebarCollapsed = useAppStore(state => state.sidebarCollapsed);
-  const sidebarOpen = useAppStore(state => state.sidebarOpen);
+  const mode = useAppStore(state => state.sidebarMode);
   const width = useAppStore(state => state.paneWidths.sidebar);
   const setPaneWidth = useAppStore(state => state.setPaneWidth);
   // While the divider is held the width follows the pointer, so the open/close animation is off.
@@ -272,6 +277,19 @@ export function Sidebar() {
     },
   ];
 
+  const collapsed = mode === "collapsed";
+
+  /**
+   * Which project has its menu up on the rail. Hovering used to open the whole sidebar beside the
+   * strip, which drew the projects a second time — once as avatars, once as rows. Now the rail
+   * carries everything the expanded bar does, and a project's rows hang from its own avatar.
+   */
+  const [railMenu, setRailMenu] = useState<string | null>(null);
+  // Nothing to keep open once the rail is gone.
+  useEffect(() => {
+    if (!collapsed) setRailMenu(null);
+  }, [collapsed]);
+
   const chatActions = (chat: Chat, projectId: string): MenuAction[] => [
     {
       key: "open",
@@ -290,18 +308,182 @@ export function Sidebar() {
     },
   ];
 
-  return (
+  /**
+   * What hangs from a project: its three views, its chats and the way to start another. The
+   * expanded bar shows it indented under the row, the rail pops it up beside the avatar — the same
+   * list, written once, because two copies of it is how they end up disagreeing.
+   */
+  const projectRows = (p: Project) => {
+    const isOpenProject = currentProjectId === p.id && screen === "project";
+    return (
+      <>
+        {/* The project's three views. They were a segmented control in the top bar, which is the
+            one place that has to hold the project name, the branch, the spend and every panel
+            toggle — and they are navigation, which is what this rail is for. Each row says which
+            view it opens rather than leaving the mode to whatever the project was last left in. */}
+        {([
+          { mode: "chat", icon: Bot, label: t("sidebar.orchestrator") },
+          { mode: "tasks", icon: ListTodo, label: t("projectScreen.tasks") },
+          { mode: "graph", icon: GitBranch, label: t("projectScreen.hierarchy") },
+        ] as const).map(row => {
+          // A chat of its own is showing: none of the three is where you are, not even the
+          // orchestrator, whose row means "the project's own thread".
+          const here = isOpenProject && currentChatId === null && projectMode === row.mode;
+          const Icon = row.icon;
+          return (
+            <button
+              key={row.mode}
+              type="button"
+              className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs text-left hover:bg-accent ${
+                here ? "bg-accent font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => openProject(p.id, null, row.mode)}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{row.label}</span>
+            </button>
+          );
+        })}
+
+        {chats.filter(c => c.projectId === p.id).map(chat => {
+          const active = isChatActive(chat.id);
+          const selected = currentProjectId === p.id && currentChatId === chat.id && screen === "project";
+          return (
+            <ContextMenu key={chat.id}>
+              <ContextMenuTrigger asChild>
+                <div
+                  className={`group/chat flex items-center gap-2 rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-accent ${
+                    selected ? "bg-accent font-medium" : "text-muted-foreground"
+                  }`}
+                  onClick={() => openProject(p.id, chat.id)}
+                >
+                  {chat.mode === "shared"
+                    ? <Users className="h-3.5 w-3.5 shrink-0" />
+                    : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
+                  <span className="truncate flex-1">{chat.name}</span>
+                  {active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-0.5 opacity-0 group-hover/chat:opacity-100 focus:opacity-100 hover:text-foreground"
+                        title={t("sidebar.chatOptions")}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                      <DropdownActionItems actions={chatActions(chat, p.id)} />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextActionItems actions={chatActions(chat, p.id)} />
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+        })}
+
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground text-left hover:bg-accent hover:text-foreground"
+          onClick={() => newChat(p.id)}
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" /> {t("sidebar.newChat")}
+        </button>
+      </>
+    );
+  };
+
+  /**
+   * Who is working right now. The trigger differs — a labelled row at the foot of the expanded
+   * bar, a dot and a number on the rail — the list behind it does not.
+   */
+  const agentsPopover = (trigger: ReactNode) => (
+    <Popover>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align="start" side="top" className="w-80 p-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+          <span className="text-xs font-semibold">{t("sidebar.activeAgents")}</span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">{totalRunning}</span>
+        </div>
+        <div className="mt-2 flex flex-col gap-2 max-h-72 overflow-y-auto">
+          {activeAgentsList.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2 text-center">
+              {t("sidebar.noActiveAgents")}
+            </p>
+          ) : (
+            activeAgentsList.map(item => (
+              <button
+                key={`${item.projectId}-${item.agentId}`}
+                type="button"
+                className="flex items-start gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-accent cursor-pointer group"
+                onClick={() => openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : "tasks")}
+              >
+                <AgentAvatar
+                  provider={item.provider}
+                  color={item.color}
+                  size={26}
+                  className="mt-0.5 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-xs font-medium text-foreground">
+                      {item.agentName}
+                    </span>
+                    <span
+                      className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: item.projectColor || "#4f8cff" }}
+                    />
+                    <span className="truncate text-[10px] text-muted-foreground">
+                      {item.projectName}
+                    </span>
+                  </div>
+                  {item.currentTask && (
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                      {item.currentTask}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
+  /** One icon on the rail: the tooltip is the only thing that says what it is. */
+  const railButton = (
+    Icon: typeof Home,
+    label: string,
+    onClick: () => void,
+    testId: string,
+    active = false,
+  ) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={active ? "secondary" : "ghost"}
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          aria-label={label}
+          data-testid={testId}
+          onClick={onClick}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+
+  // The expanded shape of the bar. The dialogs are deliberately not part of it: they are rendered
+  // at the root so a dialog opened from a menu outlives whatever closed under it.
+  const panel = (
     <>
-    <aside
-      className={`shrink-0 overflow-hidden bg-card ${resizing ? "" : "transition-[width] duration-200"} ${
-        sidebarOpen ? "border-r border-border" : ""
-      }`}
-      style={{ width: sidebarOpen ? width : 0 }}
-      aria-hidden={!sidebarOpen}
-    >
-      {/* The inner column keeps its width while the outer one animates to zero, so closing
-          slides the menu out instead of squeezing it. */}
-      <div className="h-full flex flex-col" style={{ width }}>
       <div className="p-3 flex flex-col gap-2 border-b border-border">
         <Button
           variant={screen === "home" ? "secondary" : "ghost"}
@@ -321,9 +503,8 @@ export function Sidebar() {
           <div className="text-xs text-muted-foreground text-center py-6">{t("sidebar.noProjects")}</div>
         )}
         {projects.map(p => {
-          const collapsed = !!sidebarCollapsed[p.id];
+          const folded = !!sidebarCollapsed[p.id];
           const running = runningByProject[p.id] ?? 0;
-          const projectChats = chats.filter(c => c.projectId === p.id);
           const isOpenProject = currentProjectId === p.id && screen === "project";
 
           return (
@@ -342,23 +523,14 @@ export function Sidebar() {
                     // impossible: the menu opened with the project already in the pane you were
                     // standing in, so the row that would have put it beside it was greyed out.
                   >
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="p-0.5 text-muted-foreground hover:text-foreground"
-                        title={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleSidebarProject(p.id);
-                        }}
-                      >
-                        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      </button>
-                      {/* Working shows in the dot itself: the orange count next to the name read
+                    <div className="flex items-center gap-2">
+                      {/* Working shows in the avatar itself: the orange count next to the name read
                           like something waiting for an answer. */}
-                      <div
-                        className={`w-2 h-2 rounded-full shrink-0 ${running > 0 ? "animate-breathe" : ""}`}
-                        style={{ backgroundColor: p.color || "#4f8cff" }}
+                      <ProjectAvatar
+                        name={p.name}
+                        color={p.color}
+                        size={22}
+                        className={running > 0 ? "animate-breathe" : ""}
                         title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
                       />
                       <span className="truncate flex-1 font-medium">{p.name}</span>
@@ -372,6 +544,17 @@ export function Sidebar() {
                           <title>{t("autonomous.mode")}</title>
                         </Moon>
                       )}
+                      <button
+                        type="button"
+                        className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                        title={folded ? t("sidebar.expand") : t("sidebar.collapse")}
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleSidebarProject(p.id);
+                        }}
+                      >
+                        {folded ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -396,85 +579,9 @@ export function Sidebar() {
                 </ContextMenuContent>
               </ContextMenu>
 
-              {!collapsed && (
+              {!folded && (
                 <div className="ml-4 mt-0.5 mb-1 flex flex-col gap-0.5">
-                  {/* The project's three views. They were a segmented control in the top bar, which
-                      is the one place that has to hold the project name, the branch, the spend and
-                      every panel toggle — and they are navigation, which is what this rail is for.
-                      Each row says which view it opens rather than leaving the mode to whatever the
-                      project was last left in. */}
-                  {([
-                    { mode: "chat", icon: Bot, label: t("sidebar.orchestrator") },
-                    { mode: "tasks", icon: ListTodo, label: t("projectScreen.tasks") },
-                    { mode: "graph", icon: GitBranch, label: t("projectScreen.hierarchy") },
-                  ] as const).map(row => {
-                    // A chat of its own is showing: none of the three is where you are, not even
-                    // the orchestrator, whose row means "the project's own thread".
-                    const here = isOpenProject && currentChatId === null && projectMode === row.mode;
-                    const Icon = row.icon;
-                    return (
-                      <button
-                        key={row.mode}
-                        type="button"
-                        className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs text-left hover:bg-accent ${
-                          here ? "bg-accent font-medium" : "text-muted-foreground"
-                        }`}
-                        onClick={() => openProject(p.id, null, row.mode)}
-                      >
-                        <Icon className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{row.label}</span>
-                      </button>
-                    );
-                  })}
-
-                  {projectChats.map(chat => {
-                    const active = isChatActive(chat.id);
-                    const selected = currentProjectId === p.id && currentChatId === chat.id && screen === "project";
-                    return (
-                      <ContextMenu key={chat.id}>
-                        <ContextMenuTrigger asChild>
-                          <div
-                            className={`group/chat flex items-center gap-2 rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-accent ${
-                              selected ? "bg-accent font-medium" : "text-muted-foreground"
-                            }`}
-                            onClick={() => openProject(p.id, chat.id)}
-                          >
-                            {chat.mode === "shared"
-                              ? <Users className="h-3.5 w-3.5 shrink-0" />
-                              : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
-                            <span className="truncate flex-1">{chat.name}</span>
-                            {active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="p-0.5 opacity-0 group-hover/chat:opacity-100 focus:opacity-100 hover:text-foreground"
-                                  title={t("sidebar.chatOptions")}
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                                <DropdownActionItems actions={chatActions(chat, p.id)} />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48">
-                          <ContextActionItems actions={chatActions(chat, p.id)} />
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground text-left hover:bg-accent hover:text-foreground"
-                    onClick={() => newChat(p.id)}
-                  >
-                    <Plus className="h-3.5 w-3.5 shrink-0" /> {t("sidebar.newChat")}
-                  </button>
+                  {projectRows(p)}
                 </div>
               )}
             </div>
@@ -484,68 +591,17 @@ export function Sidebar() {
 
       <div className="border-t border-border p-2 flex flex-col gap-1.5">
         <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                aria-label={t("sidebar.working", { n: totalRunning })}
-              >
-                <StatusDot status={totalRunning > 0 ? "working" : "idle"} />
-                <span className="tabular-nums font-medium">{t("sidebar.working", { n: totalRunning })}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" side="top" className="w-80 p-3">
-              <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
-                <span className="text-xs font-semibold">{t("sidebar.activeAgents")}</span>
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {totalRunning}
-                </span>
-              </div>
-              <div className="mt-2 flex flex-col gap-2 max-h-72 overflow-y-auto">
-                {activeAgentsList.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2 text-center">
-                    {t("sidebar.noActiveAgents")}
-                  </p>
-                ) : (
-                  activeAgentsList.map(item => (
-                    <button
-                      key={`${item.projectId}-${item.agentId}`}
-                      type="button"
-                      className="flex items-start gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-accent cursor-pointer group"
-                      onClick={() => openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : "tasks")}
-                    >
-                      <AgentAvatar
-                        provider={item.provider}
-                        color={item.color}
-                        size={26}
-                        className="mt-0.5 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate text-xs font-medium text-foreground">
-                            {item.agentName}
-                          </span>
-                          <span
-                            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: item.projectColor || "#4f8cff" }}
-                          />
-                          <span className="truncate text-[10px] text-muted-foreground">
-                            {item.projectName}
-                          </span>
-                        </div>
-                        {item.currentTask && (
-                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
-                            {item.currentTask}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+          {agentsPopover(
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 -mx-1.5 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+              aria-label={t("sidebar.working", { n: totalRunning })}
+            >
+              <StatusDot status={totalRunning > 0 ? "working" : "idle"} />
+              <span className="tabular-nums font-medium">{t("sidebar.working", { n: totalRunning })}</span>
+            </button>,
+          )}
+          <ListeningPorts />
           {pendingCount > 0 && (
             <Badge
               className="ml-auto cursor-pointer bg-amber-500 text-black hover:bg-amber-500"
@@ -581,24 +637,135 @@ export function Sidebar() {
           </Tooltip>
         </div>
       </div>
+    </>
+  );
 
-      <ProjectDialog
-        isOpen={projectDialogOpen}
-        onOpenChange={setProjectDialogOpen}
-        editProject={editingProject}
-      />
-      {/* Remounted per target so ChatDialog picks up the right initial state. */}
-      {chatDialogOpen && (
-        <ChatDialog
-          key={editingChatId ?? "new"}
-          open={chatDialogOpen}
-          onOpenChange={setChatDialogOpen}
-          editChatId={editingChatId}
-        />
+  return (
+    <>
+    <aside
+      data-testid="sidebar"
+      data-mode={mode}
+      className={`relative shrink-0 bg-card ${collapsed ? "overflow-visible" : "overflow-hidden"} ${
+        resizing ? "" : "transition-[width] duration-200"
+      } ${mode === "hidden" ? "" : "border-r border-border"}`}
+      style={{ width: mode === "expanded" ? width : collapsed ? RAIL_WIDTH : 0 }}
+      aria-hidden={mode === "hidden"}
+    >
+      {collapsed ? (
+        // Everything the expanded bar has, as icons: home and "new project" pinned at the top, the
+        // projects in the middle as the part that scrolls, and the counters and the gear at the
+        // foot. Nothing opens on hover — Ctrl+B is what brings the whole bar back.
+        <div data-testid="sidebar-rail" className="h-full w-full flex flex-col items-center py-2">
+          <div className="shrink-0 w-full flex flex-col items-center gap-1 pb-2 border-b border-border">
+            {railButton(Home, t("sidebar.home"), openHome, "rail-home", screen === "home")}
+            {railButton(Plus, t("sidebar.newProject"), newProject, "rail-new-project")}
+          </div>
+
+          <div className="flex-1 min-h-0 w-full flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-2">
+            {projects.map(p => {
+              const here = currentProjectId === p.id && screen === "project";
+              return (
+                // Left click opens what the expanded bar shows indented under the row; right click
+                // opens the same project menu the row has. Neither is a second version of either.
+                <Popover
+                  key={p.id}
+                  open={railMenu === p.id}
+                  onOpenChange={open => setRailMenu(open ? p.id : null)}
+                >
+                  <ContextMenu>
+                    <Tooltip>
+                      <ContextMenuTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              data-testid="rail-project"
+                              aria-label={p.name}
+                              className={`rounded-full p-0.5 shrink-0 ring-offset-1 ring-offset-card transition-shadow ${
+                                here ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-primary"
+                              }`}
+                            >
+                              <ProjectAvatar
+                                name={p.name}
+                                color={p.color}
+                                size={30}
+                                className={(runningByProject[p.id] ?? 0) > 0 ? "animate-breathe" : ""}
+                              />
+                            </button>
+                          </TooltipTrigger>
+                        </PopoverTrigger>
+                      </ContextMenuTrigger>
+                      {/* The open menu says the name in full, so the tooltip steps aside — unmounted
+                          rather than closed, since a tooltip that starts taking its open state from
+                          a prop halfway through complains, and rightly. */}
+                      {railMenu !== p.id && <TooltipContent side="right">{p.name}</TooltipContent>}
+                    </Tooltip>
+                    <ContextMenuContent className="w-56">
+                      <ContextActionItems actions={projectActions(p)} />
+                    </ContextMenuContent>
+                  </ContextMenu>
+                  <PopoverContent
+                    align="start"
+                    side="right"
+                    className="w-60 p-2"
+                    data-testid="rail-project-menu"
+                  >
+                    <div className="flex items-center gap-2 border-b border-border px-1 pb-2">
+                      <ProjectAvatar name={p.name} color={p.color} size={20} />
+                      <span className="truncate text-sm font-medium">{p.name}</span>
+                    </div>
+                    {/* Anything picked here is a place to go, so the menu has done its job. The
+                        three dots inside a chat row stop the click, and stay open. */}
+                    <div
+                      className="mt-1 flex flex-col gap-0.5"
+                      onClick={() => setRailMenu(null)}
+                    >
+                      {projectRows(p)}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            })}
+          </div>
+
+          <div className="shrink-0 w-full flex flex-col items-center gap-1 pt-2 border-t border-border">
+            {agentsPopover(
+              <button
+                type="button"
+                data-testid="rail-working"
+                title={t("sidebar.working", { n: totalRunning })}
+                aria-label={t("sidebar.working", { n: totalRunning })}
+                className="flex flex-col items-center gap-0.5 rounded px-1 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+              >
+                <StatusDot status={totalRunning > 0 ? "working" : "idle"} />
+                <span className="tabular-nums font-medium">{totalRunning}</span>
+              </button>,
+            )}
+            <div data-testid="rail-ports">
+              <ListeningPorts compact />
+            </div>
+            {pendingCount > 0 && (
+              <Badge
+                className="cursor-pointer bg-amber-500 px-1.5 text-black tabular-nums hover:bg-amber-500"
+                title={t("sidebar.pendingTitle")}
+                onClick={() => currentProjectId && openProject(currentProjectId)}
+              >
+                {pendingCount}
+              </Badge>
+            )}
+            {railButton(Settings, t("sidebar.settings"), () => openSettings(), "rail-settings", settingsOpen)}
+            {railButton(Bug, t("sidebar.reportIssue"), () => void openExternal(ISSUES_URL), "rail-report-issue")}
+          </div>
+        </div>
+      ) : (
+        // The inner column keeps its width while the outer one animates to zero, so closing
+        // slides the menu out instead of squeezing it.
+        <div className="h-full flex flex-col" style={{ width }}>
+          {panel}
+        </div>
       )}
-      </div>
     </aside>
-    {sidebarOpen && (
+    {mode === "expanded" && (
       <ResizeHandle
         side="left"
         width={width}
@@ -606,6 +773,21 @@ export function Sidebar() {
         max={PANE_MAX_WIDTH.sidebar}
         onResize={w => setPaneWidth("sidebar", w)}
         onResizingChange={setResizing}
+      />
+    )}
+
+    <ProjectDialog
+      isOpen={projectDialogOpen}
+      onOpenChange={setProjectDialogOpen}
+      editProject={editingProject}
+    />
+    {/* Remounted per target so ChatDialog picks up the right initial state. */}
+    {chatDialogOpen && (
+      <ChatDialog
+        key={editingChatId ?? "new"}
+        open={chatDialogOpen}
+        onOpenChange={setChatDialogOpen}
+        editChatId={editingChatId}
       />
     )}
     </>

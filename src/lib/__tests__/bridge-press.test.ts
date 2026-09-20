@@ -57,6 +57,15 @@ describe("commandForPress", () => {
     expect(commandForPress("s:3f2a1b2c", state())).toBeNull();
   });
 
+  it("refuses a press for a question its own planner is answering", () => {
+    // It never reached this channel (see `isForUser`), so a token for it is a token the app never
+    // offered — and answering from here would have the planner and Telegram both reply to it.
+    useAppStore.setState({ questions: { [QUESTION_ID]: question({ toAgentId: "a0" }) } } as never);
+    expect(commandForPress("q:3f2a1b2c:0", state())).toBeNull();
+    expect(commandForPress("s:3f2a1b2c", state())).toBeNull();
+    expect(buttonsFor(notification({ questionId: QUESTION_ID }), state())).toBeUndefined();
+  });
+
   it("refuses a press naming a question that does not exist", () => {
     expect(commandForPress("q:deadbeef:0", state())).toBeNull();
     expect(commandForPress("t:deadbeef:0", state())).toBeNull();

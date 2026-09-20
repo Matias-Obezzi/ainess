@@ -9,6 +9,7 @@ const q = (question: string): ParsedQuestion => ({
   options: ["sí", "no"],
   multiple: false,
   allowOther: true,
+  toPlanner: false,
 });
 
 const answered = (question: string, answer = "sí"): AnsweredBefore => ({

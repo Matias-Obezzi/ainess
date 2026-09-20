@@ -116,8 +116,6 @@ export function ApprovalsPanel({ all = false }: { all?: boolean }) {
                   placeholder={t("approvals.notePlaceholder")}
                   value={notes[a.id] ?? ""}
                   onChange={e => setNotes({ ...notes, [a.id]: e.target.value })}
-                  // Inside a field the right click belongs to the browser, for pasting.
-                  onContextMenu={e => e.stopPropagation()}
                 />
                 <Button size="sm" className="h-8" onClick={() => void approve(a.id, notes[a.id] || undefined)}>
                   <Check className="h-4 w-4 mr-1" /> {t("approvals.approve")}

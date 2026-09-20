@@ -9,6 +9,7 @@ import { createTask } from "@/lib/tasks";
 import type { AgentConfig, AgentQuestion, AgentRuntime, Approval, Project, Run, Task } from "@/types";
 import type { DiagnosticResult } from "@/lib/diagnostics";
 import { readWithLegacy } from "@/lib/storage-keys";
+import { isForUser } from "@/lib/pending-question";
 
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
 const TOKEN_KEY = "ainess.remote.token";
@@ -151,7 +152,11 @@ export function hydrate(snapshot: RemoteSnapshot): void {
   for (const approval of snapshot.approvals) approvals[approval.id] = approval;
 
   const questions: Record<string, AgentQuestion> = {};
-  for (const question of snapshot.questions ?? []) questions[question.id] = question;
+  // Filtered at the source too (see `snapshotFor`), and again here: a snapshot from an older host
+  // would otherwise put a question the planner is answering in front of the phone.
+  for (const question of snapshot.questions ?? []) {
+    if (isForUser(question)) questions[question.id] = question;
+  }
 
   // The phone never edits agents, so the fields it does not get can take their safe default.
   const agentsByProject = new Map<string, AgentConfig[]>();

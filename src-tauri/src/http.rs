@@ -74,6 +74,39 @@ pub async fn http_patch(
     })
 }
 
+/// Same as `http_post`, for the APIs that write with PUT (Trello moves a card that way). From the
+/// webview a `fetch` would be stopped by CORS before it left the machine.
+#[tauri::command]
+pub async fn http_put(
+    app: AppHandle,
+    url: String,
+    body: String,
+    headers: HashMap<String, String>,
+) -> Result<HttpResponse, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut req = client.put(&url);
+    for (k, v) in headers {
+        req = req.header(k, v);
+    }
+
+    let res = req.body(body).send().await.map_err(|e| {
+        logging::append(&app, "error", "http", &format!("PUT {url} failed: {e}"));
+        e.to_string()
+    })?;
+
+    let status = res.status().as_u16();
+    let res_body = res.text().await.unwrap_or_default();
+
+    Ok(HttpResponse {
+        status,
+        body: res_body,
+    })
+}
+
 #[tauri::command]
 pub async fn http_get(
     app: AppHandle,

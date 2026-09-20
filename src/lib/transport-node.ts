@@ -459,6 +459,11 @@ export const nodeTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
 
+  httpPut: async (url: string, body: string, headers: Record<string, string>) => {
+    const res = await fetch(url, { method: "PUT", body, headers });
+    return { status: res.status, body: await res.text() };
+  },
+
   httpGet: async (url: string, headers: Record<string, string>) => {
     const res = await fetch(url, { method: "GET", headers });
     return { status: res.status, body: await res.text() };
@@ -538,6 +543,11 @@ export const nodeTransport: Transport = {
     probe.once("listening", () => probe.close(() => resolve(true)));
     probe.listen(port, "0.0.0.0");
   }),
+
+  // Seeing and freeing ports is a sidebar feature, and the CLI has a shell around it that already
+  // does both far better than we would.
+  listeningPorts: async () => [],
+  killPortProcess: async () => { throw new Error(translateNow("ports.desktopOnly")); },
 
   ...nodeRemote,
   ...nodeTunnel,

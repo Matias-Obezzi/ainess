@@ -29,6 +29,7 @@ import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run
 import { touchRun, forgetStall } from "@/lib/stall";
 import { repoDirOf } from "@/lib/repo-dir";
 import { forChat } from "@/lib/chat-text";
+import { isForUser } from "@/lib/pending-question";
 
 const toolFailures = new Map<string, number>();
 /** Auto-answers spent per task (`rootRunId`), against `MAX_AUTO_ANSWERS`. Cleared by `taskFinished`. */
@@ -319,7 +320,7 @@ function scheduleStreamFlush() {
   }
 }
 
-export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: "task" | "chat"; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; sessionId?: string; chatId?: string };
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; sessionId?: string; chatId?: string; replacesRunId?: string };
 
 /**
  * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
@@ -448,6 +449,8 @@ export function startRun(opts: StartRunOptions): string | undefined {
     kind: opts.kind,
     chatId: opts.chatId,
     review: opts.review,
+    answersQuestionId: opts.answersQuestionId,
+    replacesRunId: opts.replacesRunId,
   };
 
   useAppStore.setState(state => {
@@ -561,6 +564,11 @@ function cancelQueuedRun(runId: string): void {
   });
   const closed = useAppStore.getState().runs[runId];
   taskSync.taskOnRunFinished(closed);
+  // Queued behind the planner's own turn, and the planner was stopped: that answer is not coming.
+  if (run.kind === "answer") {
+    questionFallsToUser(run.answersQuestionId ?? "");
+    return;
+  }
   if (run.kind === "chat") {
     import("@/lib/chat").then(m => m.onChatRunFinished(runId)).catch(() => {});
     return;
@@ -659,8 +667,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     };
   });
   // Nothing to read on the very first run of an agent: the file is written as the turns end.
-  const hasPast = Object.values(store.runs).some(r =>
-    r.agentId === agent.id && r.projectId === opts.projectId && r.status === "done");
+  const hasPast = hasHistoryFile(store.runs, opts.projectId, agent.id);
 
   const thisRoot = opts.rootRunId ?? runId;
   const projectRuntime = store.runtime[opts.projectId] || {};
@@ -1049,6 +1056,69 @@ function onRunFinished(runId: string) {
     return;
   }
 
+  // `/compact`: maintenance, not work. The agent has just rewritten its own history file, so none
+  // of what closes a real turn applies — no card on the board, no `result` message to the user
+  // (one notification per agent is nobody's idea of a compaction), and above all no `recordTurn`
+  // at the end of this function, which would append this very turn on top of the summary the
+  // agent just wrote. What it does owe is the session reset it was started for, and it happens
+  // here rather than in `compactProject` because the summary needed that session alive to be
+  // written cheaply: ask first, drop the session after. A failed compaction still drops it —
+  // letting go of the session is the floor of what `/compact` has always done.
+  if (run.kind === "compact") {
+    const compactStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[run.projectId] || {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [run.projectId]: {
+            ...pRuntime,
+            [agent.id]: { ...pRuntime[agent.id], status: compactStatus, currentRunId: undefined, currentTask: undefined },
+          },
+        },
+      };
+    });
+    store.resetSession(agent.id, run.projectId);
+    launchQueuedRuns(agent.id, run.projectId);
+    processQueuedInstructions(agent.id, run.projectId);
+    return;
+  }
+
+  // The turn a planner spent answering a question one of its own children asked. Same treatment as
+  // `/compact` above and for the same reason — it is not work: no card, no `result` to the user, no
+  // `recordTurn` at the end of this function. What it owes is one line, and that line goes straight
+  // back to the agent that is waiting on it.
+  if (run.kind === "answer") {
+    const answerStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
+    useAppStore.setState(state => {
+      const pRuntime = state.runtime[run.projectId] || {};
+      return {
+        runtime: {
+          ...state.runtime,
+          [run.projectId]: {
+            ...pRuntime,
+            [agent.id]: { ...pRuntime[agent.id], status: answerStatus, currentRunId: undefined, currentTask: undefined },
+          },
+        },
+      };
+    });
+    // `forChat` drops the blocks, so what is left is the sentence the child needs.
+    const answer = forChat(run.output ?? "").trim();
+    // No recursion. A planner that answers with an `ask` block of its own is a planner that does
+    // not know either, and routing that one further would build a chain of agents asking each
+    // other with nobody at the end of it. It counts as no answer, which is already handled: the
+    // child's question falls to the user, who is where the chain was heading anyway.
+    const usable = run.status === "done" && answer.length > 0 && parseQuestions(run.output ?? "").length === 0;
+    const questionId = run.answersQuestionId ?? "";
+    // `answerQuestions` marks it and resumes the child in the round it was already in — the same
+    // path a click in the composer takes, nothing here duplicates any of it.
+    if (usable) useAppStore.getState().answerQuestions([{ questionId, answer: [answer] }]);
+    else questionFallsToUser(questionId);
+    launchQueuedRuns(agent.id, run.projectId);
+    processQueuedInstructions(agent.id, run.projectId);
+    return;
+  }
+
   let agentStatus: AgentStatus = run.status === "killed" ? "stopped" : run.status === "error" ? "error" : "idle";
   let waitingForChildren = false;
 
@@ -1431,9 +1501,21 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
   const autonomous = canAutoAnswer(project, autoAnswered);
   const autoAnswer = autonomous ? [translateNow("autonomous.answerPrompt")] : undefined;
 
+  // Who this agent can ask besides the user: the agent behind the run that gave it this work. An
+  // implementer handed a plan with a hole in it was left choosing between following it into the
+  // hole and stopping the user, who did not write the plan — the one who did is right there.
+  // Nothing of this applies while the project runs unattended: `autoAnswer` already resolves every
+  // question of this turn, and a second destination on top of that answers it twice.
+  const parentRun = run.parentRunId ? store.runs[run.parentRunId] : undefined;
+  const planner = parentRun && !autoAnswer ? selectAgent(store, parentRun.agentId) : undefined;
+
   const questions: Record<string, AgentQuestion> = {};
   for (const q of parsed) {
     const id = crypto.randomUUID();
+    // Asking for the planner when there is none — no parent, or an agent that has since been
+    // deleted — is not an error and says nothing to anyone: the question goes to the user, which
+    // is where it went before any of this existed.
+    const toAgentId = q.toPlanner && planner ? planner.id : undefined;
     questions[id] = {
       id,
       projectId: run.projectId,
@@ -1445,6 +1527,7 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       options: q.options,
       multiple: q.multiple,
       allowOther: q.allowOther,
+      ...(toAgentId ? { toAgentId } : {}),
       createdAt: now,
       ...(autoAnswer
         ? { status: "answered" as const, answer: autoAnswer, answeredAt: now, auto: true }
@@ -1453,7 +1536,7 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     addMessage({
       projectId: run.projectId,
       fromAgentId: agent.id,
-      toAgentId: "user",
+      toAgentId: toAgentId ?? "user",
       kind: "system",
       text: q.question,
       runId: run.id,
@@ -1475,7 +1558,35 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     return true;
   }
 
-  const first = Object.values(questions)[0];
+  // One turn asking the planner one thing: a run of its own on that planner, which answers and
+  // hands the answer back (see the `answer` branch of `onRunFinished`). Started right here rather
+  // than deferred like the resumes above: it belongs to a different agent, so it cannot collide
+  // with the `runtime` update the caller still owes this run.
+  for (const question of Object.values(questions)) {
+    if (!question.toAgentId) continue;
+    const started = startRun({
+      agentId: question.toAgentId,
+      projectId: run.projectId,
+      // `resume: true`: the point of asking the planner rather than the user is that the planner
+      // still has the plan in its session. Without it the answer would be a guess with a name on it.
+      resume: true,
+      prompt: translateNow("prompt.answerForChild", {
+        name: agent.name,
+        question: question.question,
+        options: question.options.join("\n- "),
+      }),
+      parentRunId: null,
+      round: 0,
+      kind: "answer",
+      answersQuestionId: question.id,
+    });
+    // Out of budget, no binary, no such project — whatever it was, nobody is writing this answer.
+    if (!started) questionFallsToUser(question.id);
+  }
+
+  const first = Object.values(questions).find(isForUser);
+  // Every question of the turn went to the planner: nothing for the user to be told about yet.
+  if (!first) return true;
   useAppStore.getState().notify({
     kind: "question",
     title: translateNow("notify.asksSomething", { name: agent.name }),
@@ -1488,6 +1599,48 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     chatId: run.chatId,
   });
   return true;
+}
+
+/**
+ * A question that was on its way to a planner, handed back to the user.
+ *
+ * Every way the planner can fail to produce an answer ends here — the run never started, it died,
+ * it was stopped, it came back empty, or it answered with a question of its own. The child is
+ * sitting on a round that only an answer reopens, so the one outcome that cannot be allowed is
+ * nobody having the question: clearing `toAgentId` turns it back into the ordinary question it
+ * would have been, and the user is told about it the same way.
+ */
+function questionFallsToUser(questionId: string): void {
+  const store = useAppStore.getState();
+  const question = store.questions[questionId];
+  if (!question || question.status !== "pending" || !question.toAgentId) return;
+
+  useAppStore.setState(state => {
+    const current = state.questions[questionId];
+    if (!current) return state;
+    const { toAgentId: _routed, ...forUser } = current;
+    return { questions: { ...state.questions, [questionId]: forUser } };
+  });
+
+  const asker = selectAgent(store, question.agentId);
+  addMessage({
+    projectId: question.projectId,
+    fromAgentId: question.agentId,
+    toAgentId: "user",
+    kind: "system",
+    text: question.question,
+    runId: question.runId,
+  });
+  store.notify({
+    kind: "question",
+    title: translateNow("notify.asksSomething", { name: asker?.name ?? translateNow("notify.anAgent") }),
+    body: truncate(question.question, 140),
+    projectId: question.projectId,
+    agentId: question.agentId,
+    runId: question.runId,
+    questionId,
+    chatId: store.runs[question.runId]?.chatId,
+  });
 }
 
 /**
@@ -2065,7 +2218,7 @@ export function processQueuedInstructions(agentId: string, projectId: string) {
 
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { httpMcpEnv } from "@/lib/mcp-env";
-import { recordTurn, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
+import { recordTurn, hasHistoryFile, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
@@ -2085,6 +2238,73 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
     if (project && agent) {
       void emitHookEvent("task.started", {}, { project, agent, runId, prompt: text, taskPrompt: text });
     }
+  }
+}
+
+/**
+ * The same prompt again, in the place of the run that ran it.
+ *
+ * Deliberately not `submitPrompt`: what the user asked is already in the thread, and writing it
+ * there a second time — with the card `taskForPrompt` would open next to it — is precisely what a
+ * retry is not. So no `user` message and no new card: the new run points back at the one it
+ * replaces (`replacesRunId`), `shownRootRuns` stops drawing that one and draws this one where it
+ * was, and the card it was holding moves over.
+ *
+ * Nothing is deleted. The replaced run stays in the store and on disk, and its detail — the only
+ * record of why the first attempt failed — is one click away from the detail of this one.
+ */
+export function retryRun(runId: string, opts: { agentId: string; model?: string }): void {
+  const store = useAppStore.getState();
+  const old = store.runs[runId];
+  if (!old) return;
+
+  // A chat thread draws messages, not runs, so the replacement goes into the failed answer's own
+  // bubble. Only `lib/chat` can do that, and it owns the turn this needs to open.
+  if (old.kind === "chat") {
+    void import("@/lib/chat").then(m => m.retryChatRun(runId, opts)).catch(() => {});
+    return;
+  }
+
+  // A run that is its own root is a whole request of the user's; a round > 0 one is a continuation
+  // inside a request that already has a root, and the retry belongs to that same request.
+  const isRoot = old.rootRunId === old.id;
+  // Read before the new run exists, and for the agent that *held* the card: retrying on another
+  // agent is still the same piece of work, so the card goes with it.
+  const card = isRoot
+    ? taskSync.cardForNextRun({ projectId: old.projectId, agentId: old.agentId, rootRunId: old.rootRunId })
+    : undefined;
+
+  const newRunId = startRun({
+    agentId: opts.agentId,
+    projectId: old.projectId,
+    prompt: old.prompt,
+    parentRunId: null,
+    // A continuation stays drawn as one: the bubble only repeats the user's prompt on round 0.
+    round: old.round,
+    rootRunId: isRoot ? undefined : old.rootRunId,
+    model: opts.model,
+    resume: true,
+    replacesRunId: runId,
+  });
+  if (!newRunId) return;
+
+  if (card) {
+    useAppStore.getState().updateTask(card.id, { status: "working", runId: newRunId, agentId: opts.agentId });
+  }
+  if (isRoot) {
+    // What closes that card when the request ends (`taskOnRootFinished` looks it up by the root run
+    // id). Only when the project has nothing else in flight, or what it had in flight is the very
+    // run being replaced: retrying last week's run must not take the pointer off today's request.
+    const inFlight = useAppStore.getState().activeTaskRunId[old.projectId];
+    if (!inFlight || inFlight === old.rootRunId) {
+      useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [old.projectId]: newRunId } }));
+    }
+  }
+
+  const project = store.config.projects.find(p => p.id === old.projectId);
+  const agent = selectAgent(store, opts.agentId);
+  if (project && agent) {
+    void emitHookEvent("task.started", {}, { project, agent, runId: newRunId, prompt: old.prompt, taskPrompt: old.prompt });
   }
 }
 

@@ -45,6 +45,15 @@ describe("Markdown", () => {
     expect(out).not.toContain("<pre");
   });
 
+  // The reply it holds is the box's grey suggestion, not something the agent said: printed here it
+  // would show the user their own answer before they gave it.
+  it("says nothing for a suggest block", () => {
+    const out = html("Listo, quedó andando.\n\n```suggest\nsí, dale\n```");
+    expect(out).toContain("Listo, quedó andando.");
+    expect(out).not.toContain("sí, dale");
+    expect(out).not.toContain("<pre");
+  });
+
   // react-markdown blanks out a `file:` href on its own, so without `urlTransform` the link comes
   // back empty and this renders as the plain span again — silently, which is how the bug looked.
   it("draws a file: link as a button, never as an href the window can follow", () => {

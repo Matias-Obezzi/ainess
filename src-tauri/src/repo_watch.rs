@@ -55,6 +55,17 @@ fn is_noise(path: &Path) -> bool {
             ".ainess" => true,
             // git writes most of a commit here, and none of it shows up in `git status`.
             "objects" | "lfs" => parent == ".git",
+            // The index, which the reading itself writes. `git status` refreshes the stat cache
+            // whenever a file's mtime moved — which during a run is every single time — and saves
+            // it by writing `.git/index.lock` and renaming it over `.git/index`. Waking on those
+            // meant every read asked for the next one: a loop with nothing to end it, two git
+            // processes a second per project for as long as the app stayed open, and no ceiling on
+            // how many could be waiting at once when something else held the lock.
+            //
+            // What this costs: a `git add` from outside the app also writes the index and nothing
+            // else, so staging a file no longer shows up at once. The minute timer picks it up,
+            // and any actual edit to the working tree brings it along sooner.
+            "index" | "index.lock" => parent == ".git",
             "debug" | "release" => parent == "target",
             // The message buffer of a commit in progress.
             "commit_editmsg" => parent == ".git",
@@ -192,6 +203,10 @@ mod tests {
             "C:/dev/app/src-tauri/target/debug/build/x.rs",
             "C:/dev/app/.next/cache/webpack/a.pack",
             "C:/dev/app/.git/COMMIT_EDITMSG",
+            // The index: `git status` rewrites it on every read whose stat cache went stale, so
+            // waking on it would be waking on our own reading, over and over.
+            "C:/dev/app/.git/index",
+            "C:/dev/app/.git/index.lock",
         ] {
             assert!(is_noise(Path::new(path)), "{path}");
         }
@@ -202,8 +217,10 @@ mod tests {
         for path in [
             "C:/dev/app/src/main.ts",
             "C:/dev/app/.git/HEAD",
-            "C:/dev/app/.git/index",
             "C:/dev/app/.git/refs/heads/main",
+            // Only `.git`'s own index is written by a read: a file called `index` elsewhere is a
+            // file like any other.
+            "C:/dev/app/src/index",
             // Nothing to do with node_modules: only whole segments count.
             "C:/dev/app/src/node_modules_helper.ts",
             // A build folder someone tracks on purpose still counts.

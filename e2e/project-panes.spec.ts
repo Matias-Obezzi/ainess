@@ -30,6 +30,45 @@ async function readyTheSecondProject(page: Page): Promise<void> {
   }, LANDING);
 }
 
+/** The two panes, with the second project ready to be used. */
+async function twoPanes(page: Page) {
+  const panes = page.getByTestId("project-pane");
+  await expect(panes).toHaveCount(1);
+  await page.getByTestId("sidebar-project").nth(1).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Open in a new pane" }).click();
+  await expect(panes).toHaveCount(2);
+  return panes;
+}
+
+test("each pane keeps its own dock, and its buttons say so", async ({ page }) => {
+  await openDemo(page, "chat");
+  const panes = await twoPanes(page);
+  // The label collapses to its icon in a column this wide; the title is what stays.
+  const commButton = (i: number) => panes.nth(i).getByTitle("Show or hide the communication panel");
+  const dock = (i: number) => panes.nth(i).getByTestId("right-dock");
+
+  await commButton(0).click();
+  await expect(dock(0)).toBeVisible();
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "true");
+
+  // The bug: the dock followed the focus, so opening one in the second pane closed the first
+  // one's — and left both buttons lit over a dock that was not there.
+  await commButton(1).click();
+  await expect(dock(0)).toBeVisible();
+  await expect(dock(1)).toBeVisible();
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "true");
+  await expect(commButton(1)).toHaveAttribute("aria-pressed", "true");
+  await snap(page, "panes-two-docks");
+
+  // Closing one leaves the other exactly where it was.
+  await commButton(0).click();
+  await expect(dock(0)).toHaveCount(0);
+  await expect(commButton(0)).toHaveAttribute("aria-pressed", "false");
+  await expect(dock(1)).toBeVisible();
+  await expect(commButton(1)).toHaveAttribute("aria-pressed", "true");
+  await snap(page, "panes-one-dock-left");
+});
+
 test("a second project opens beside the first, writes to itself, and closes again", async ({ page }) => {
   await openDemo(page, "chat");
   const panes = page.getByTestId("project-pane");
@@ -62,14 +101,16 @@ test("a second project opens beside the first, writes to itself, and closes agai
 
   // A window too narrow for two columns shows one — the one with the focus, which is the second
   // project here. The first is not closed: it comes back when there is room for it again.
-  await page.setViewportSize({ width: 900, height: 900 });
+  // The widths here count the menu as the 52px strip the split collapsed it to: 820 - 52 is under
+  // two panes of 420, and 900 - 52 is just over.
+  await page.setViewportSize({ width: 820, height: 900 });
   await expect(panes).toHaveCount(1);
   await expect(panes.nth(0)).toHaveAttribute("data-project-id", LANDING);
   await expect(page.getByTestId("close-pane")).toHaveCount(0);
   await snap(page, "panes-too-narrow-for-two");
 
   // Just wide enough for two of the narrowest pane: what 420px each actually looks like.
-  await page.setViewportSize({ width: 1140, height: 900 });
+  await page.setViewportSize({ width: 900, height: 900 });
   await expect(panes).toHaveCount(2);
   await snap(page, "panes-two-narrow");
 

@@ -12,7 +12,6 @@ import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
 import { HomeScreen } from "@/components/shell/HomeScreen";
 import { ProjectPanes } from "@/components/shell/ProjectPanes";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { RightDock } from "@/components/shell/RightDock";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useRemoteSync } from "@/hooks/useRemoteSync";
 import { useNoDefaultContextMenu } from "@/hooks/useNoDefaultContextMenu";
@@ -23,6 +22,7 @@ import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
 import { useSystemHooks } from "@/hooks/useSystemHooks";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { EditContextMenu } from "@/components/EditContextMenu";
 import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
@@ -32,10 +32,6 @@ export default function App() {
   const init = useAppStore(state => state.init);
   const loaded = useAppStore(state => state.loaded);
   const screen = useAppStore(state => state.screen);
-  const commPanelOpen = useAppStore(state => state.commPanelOpen);
-  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
-  const termPanelOpen = useAppStore(state => state.termPanelOpen);
-  const previewOpen = useAppStore(state => state.previewFile !== null);
 
   useEffect(() => {
     void init();
@@ -115,7 +111,7 @@ export default function App() {
           state.toggleSearch(true, "messages");
           break;
         case "sidebar":
-          state.toggleSidebar();
+          state.cycleSidebar();
           break;
         case "shortcuts":
           state.toggleShortcuts();
@@ -137,6 +133,8 @@ export default function App() {
         <Toaster position="bottom-right" richColors />
         {/* The one dialog every `confirm()` on the desktop opens (src/lib/confirm.ts). */}
         <ConfirmDialogHost />
+        {/* Cut, copy and paste with the mouse, for every field and every terminal at once. */}
+        <EditContextMenu />
         {/* Opens itself once when the version changed under the user, wherever they are. */}
         <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
 
@@ -154,8 +152,6 @@ export default function App() {
           )}
           {screen === "project" && <ProjectPanes />}
         </main>
-
-        {(commPanelOpen || diffPanelOpen || termPanelOpen || previewOpen) && screen === "project" && <RightDock />}
       </div>
 
       <SettingsDialog />

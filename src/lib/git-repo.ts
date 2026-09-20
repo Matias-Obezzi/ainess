@@ -2,7 +2,7 @@
 // requests — and the four things the user can ask of it from the header: pull, push, switch branch
 // and create one. Reading never writes; the writing ones are only ever called from a button.
 // Parsing lives in `src/lib/git.ts`.
-import { getTransport } from "@/lib/transport";
+import { execUnlessMissing, type ExecResult } from "@/lib/missing-binary";
 import {
   parseBranches,
   parseGitLog,
@@ -38,19 +38,15 @@ const TIMEOUT_SECS = 10;
 const PR_LIMIT = 20;
 const PR_FIELDS = "number,title,state,isDraft,headRefName,url,updatedAt,statusCheckRollup,reviewDecision";
 
-interface ExecResult {
-  code: number | null;
-  stdout: string;
-  stderr: string;
-}
-
-/** Runs a command and swallows the failure to spawn it: a missing binary is an answer, not an error. */
+/**
+ * Runs a command and swallows the failure to spawn it: a missing binary is an answer, not an error.
+ *
+ * A program that turned out not to be installed is not spawned again (see missing-binary.ts): the
+ * pull request read below runs every minute for as long as the app is open, and on a machine
+ * without `gh` that was a failed process a minute, forever.
+ */
 async function run(program: string, args: string[], cwd: string, timeoutSecs = TIMEOUT_SECS): Promise<ExecResult | null> {
-  try {
-    return await getTransport().exec(program, args, cwd, timeoutSecs);
-  } catch {
-    return null;
-  }
+  return execUnlessMissing(program, args, cwd, timeoutSecs);
 }
 
 const MISSING_RE = /not found|no such file|not recognized|cannot find|no se pudo ejecutar|executable file/i;

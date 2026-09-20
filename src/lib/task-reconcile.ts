@@ -9,6 +9,7 @@
 import { useAppStore, selectProjectAgents } from "@/store";
 import type { Run, Task, TaskStatus } from "@/types";
 import { parseReviewVerdict } from "@/lib/review";
+import { pendingApprovals } from "@/lib/approvals";
 import { isLiveRun } from "@/lib/run-queue";
 
 export interface BoardFix {
@@ -20,17 +21,37 @@ export interface BoardFix {
 /**
  * The cards whose status the runs contradict.
  *
- * Only "working" is judged: it is the one status the board cannot be left holding on its own. A
- * card parked in any other column is the user's business, and one with no run behind it was put
- * there by hand — neither is this function's to move.
+ * "working", "in-review" and "needs-you" are judged: the statuses the board cannot be left holding
+ * on its own. A card parked in any other column is the user's business, and one with no run behind
+ * it was put there by hand — neither is this function's to move.
+ *
+ * @param opts.pendingApprovalIds the approvals still waiting for an answer. Handed in instead of
+ * read from the store so this stays pure; left out means "not known", and then a card waiting on
+ * an approval stays where it is.
  */
-export function boardFixes(tasks: Task[], runs: Record<string, Run>, opts: { hasReviewer: boolean }): BoardFix[] {
+export function boardFixes(
+  tasks: Task[],
+  runs: Record<string, Run>,
+  opts: { hasReviewer: boolean; pendingApprovalIds?: ReadonlySet<string> },
+): BoardFix[] {
   const fixes: BoardFix[] = [];
   for (const task of tasks) {
     if (task.archived || !task.runId) continue;
-    if (task.status !== "working" && task.status !== "in-review") continue;
+    if (task.status !== "working" && task.status !== "in-review" && task.status !== "needs-you") continue;
 
     const run = runs[task.runId];
+
+    // "Necesita tu atención" only earns its name while everything in it needs somebody, so it is
+    // emptied of exactly the cards that provably need nobody: run finished well, and whatever
+    // approval it was waiting on already answered. A failed run, a live one, a missing one or an
+    // approval still pending all stay. The rule is narrow on purpose — moving one card too few is
+    // dull, moving one too many hides from the user the very thing this column is for.
+    if (task.status === "needs-you") {
+      if (!run || run.status !== "done") continue;
+      if (task.approvalId && (opts.pendingApprovalIds?.has(task.approvalId) ?? true)) continue;
+      fixes.push({ taskId: task.id, status: run.parentRunId && opts.hasReviewer ? "in-review" : "ready" });
+      continue;
+    }
 
     if (task.status === "in-review") {
       if (!run) {
@@ -77,7 +98,8 @@ export function reconcileProject(projectId: string): number {
   const tasks = store.tasks[projectId] ?? [];
   if (tasks.length === 0) return 0;
   const hasReviewer = selectProjectAgents(store, projectId).some(a => a.role === "reviewer");
-  const fixes = boardFixes(tasks, store.runs, { hasReviewer });
+  const pendingApprovalIds = new Set(pendingApprovals(store.approvals, store.config.projects, projectId).map(a => a.id));
+  const fixes = boardFixes(tasks, store.runs, { hasReviewer, pendingApprovalIds });
   for (const fix of fixes) store.updateTask(fix.taskId, { status: fix.status });
   return fixes.length;
 }

@@ -20,6 +20,7 @@ import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
 import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
+import { forgetMissingBinaries } from "@/lib/missing-binary";
 import { isAbsolutePath, pathRef, resolvePath } from "@/lib/file-preview";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
@@ -182,9 +183,10 @@ export interface AppState {
    * bring this one's dock along. The terminal panel made that plain: it stayed open over a project
    * with no terminals in it, showing an empty panel above an empty tab bar.
    *
-   * The three flags below stay as "what is showing right now" — every reader wants that, not a map
-   * lookup — and this is where they are put away and taken out again, the shape `projectModes`
-   * already has for the view.
+   * The three flags below stay as "what is showing right now" for the focused project — the
+   * keyboard shortcuts and the saved prefs want that, not a map lookup — and this is where they
+   * are put away and taken out again, the shape `projectModes` already has for the view. Nothing
+   * on screen reads them any more: each pane draws its own dock off its own entry in the map.
    */
   projectPanels: Record<string, { comm: boolean; diff: boolean; term: boolean }>;
   commPanelOpen: boolean;
@@ -194,8 +196,8 @@ export interface AppState {
   termPanelOpen: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
-  /** The file open beside the conversation, if any. Not persisted. */
-  previewFile: FilePreview | null;
+  /** projectId -> the file open beside that project's conversation. Not persisted. */
+  previewFiles: Record<string, FilePreview>;
   /** Width in px of the two side panes, as the user dragged them. */
   paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
@@ -203,8 +205,8 @@ export interface AppState {
   settingsSection: SettingsSection;
   /** projectId -> collapsed in the sidebar. */
   sidebarCollapsed: Record<string, boolean>;
-  /** Whether the main sidebar rail is expanded (persisted). */
-  sidebarOpen: boolean;
+  /** Whether the main sidebar rail is expanded, a strip of avatars, or gone (persisted). */
+  sidebarMode: SidebarMode;
   /** Back/forward stack of visited views. Not persisted. */
   navHistory: NavEntry[];
   navIndex: number;
@@ -245,12 +247,14 @@ export interface AppState {
   toggleDiffPanel(open?: boolean, projectId?: string | null): void;
   toggleTermPanel(open?: boolean, projectId?: string | null): void;
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
-  openPreview(ref: string): void;
-  closePreview(): void;
+  openPreview(ref: string, projectId?: string | null): void;
+  closePreview(projectId?: string | null): void;
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
-  toggleSidebar(open?: boolean): void;
+  setSidebarMode(mode: SidebarMode): void;
+  /** One step along `SIDEBAR_CYCLE`: what the title bar button and Ctrl+B both do. */
+  cycleSidebar(): void;
   toggleSearch(open?: boolean, initialGroup?: "messages" | null): void;
   toggleShortcuts(open?: boolean): void;
   /** Asks the task board to open (or close, with null) one task's detail. */
@@ -538,7 +542,7 @@ interface UiPrefs {
   paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
   sidebarCollapsed: Record<string, boolean>;
-  sidebarOpen: boolean;
+  sidebarMode: SidebarMode;
   activeTerminalIds: Record<string, string | null>;
 }
 
@@ -630,6 +634,28 @@ export function clampPaneWidth(pane: PaneId, value: unknown): number {
   return Math.min(PANE_MAX_WIDTH[pane], Math.max(PANE_MIN_WIDTH[pane], Math.round(n)));
 }
 
+/**
+ * The three shapes of the left rail: the menu as it always was, a strip of project avatars that
+ * opens over the content on hover, and gone. `SIDEBAR_CYCLE` is the order the title bar button and
+ * Ctrl+B walk, and it is the whole of what either of them does: one step forward, always.
+ */
+export type SidebarMode = "expanded" | "collapsed" | "hidden";
+export const SIDEBAR_CYCLE: SidebarMode[] = ["expanded", "collapsed", "hidden"];
+
+/** The next mode Ctrl+B lands on. */
+export function nextSidebarMode(mode: SidebarMode): SidebarMode {
+  return SIDEBAR_CYCLE[(SIDEBAR_CYCLE.indexOf(mode) + 1) % SIDEBAR_CYCLE.length];
+}
+
+/**
+ * The mode a preferences file holds. Builds before the strip knew only open and closed, so a
+ * `sidebarOpen: false` from one of those means hidden and anything else means the menu as it was.
+ */
+export function sanitizeSidebarMode(mode: unknown, legacyOpen: unknown): SidebarMode {
+  if (SIDEBAR_CYCLE.includes(mode as SidebarMode)) return mode as SidebarMode;
+  return legacyOpen === false ? "hidden" : "expanded";
+}
+
 const UI_PREFS_KEY = "ainess.ui";
 const UI_PREFS_LEGACY_KEY = "ais.ui";
 const defaultUiPrefs: UiPrefs = {
@@ -646,7 +672,7 @@ const defaultUiPrefs: UiPrefs = {
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
-  sidebarOpen: true,
+  sidebarMode: "expanded",
   activeTerminalIds: {},
 };
 
@@ -756,7 +782,7 @@ function loadUiPrefs(): UiPrefs {
       dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: sanitizeBoolMap(parsed.sidebarCollapsed),
-      sidebarOpen: parsed.sidebarOpen !== false,
+      sidebarMode: sanitizeSidebarMode(parsed.sidebarMode, parsed.sidebarOpen),
       activeTerminalIds: sanitizeActiveTerminalIds(parsed.activeTerminalIds),
     };
   } catch {
@@ -782,7 +808,7 @@ function saveUiPrefs(): void {
       paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
       sidebarCollapsed: s.sidebarCollapsed,
-      sidebarOpen: s.sidebarOpen,
+      sidebarMode: s.sidebarMode,
       activeTerminalIds: s.activeTerminalIds,
     };
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
@@ -840,6 +866,46 @@ export const canGoForward = (s: AppState): boolean => s.navIndex < s.navHistory.
 
 /** Repo reads in flight, per project, so the timer and the run-finished trigger never overlap. */
 const repoReads = new Map<string, Promise<void>>();
+
+/**
+ * The same, for the cheap read on the other path. This one is driven by filesystem events, so
+ * during a run it fires far more often than the timer ever does — and every call is two git
+ * processes that can each sit for ten seconds behind an `index.lock` a `git add` outside the app
+ * is holding. Without this, a repo that stops answering does not slow the reads down, it stacks
+ * them: nothing waits for the last one, so they pile up with no ceiling at all.
+ */
+const repoStatusReads = new Map<string, Promise<void>>();
+
+/**
+ * The body of `refreshRepoStatus`, out here so the action is only the guard around it.
+ *
+ * The log comes along for the ride: a commit is exactly the kind of change the watcher fires on,
+ * and it is what the board reads to tell a card whether its run's work landed. One read per
+ * project, not per card.
+ */
+async function readStatusAndCommits(projectId: string, project: Project): Promise<void> {
+  const [status, commits] = await Promise.all([
+    readRepoStatus(repoDirOf(project)).catch(() => null),
+    readRecentCommits(repoDirOf(project)).catch(() => null),
+  ]);
+  if (!status && !commits) return;
+  useAppStore.setState(s => {
+    const before = s.repoState[projectId];
+    // Each half lands on its own. What git could not read leaves what is already there alone —
+    // "not known" must not erase an answer that was known a moment ago — and a status git
+    // choked on is no reason to throw away the commits it read fine in the same breath.
+    const read = { ...(status ? { status } : {}), ...(commits ? { commits } : {}) };
+    // Nothing read the whole state yet: this half is still better than an empty header, and the
+    // pull requests fill in on the next slow pass. `isRepo: true` is the honest reading even
+    // when only one half arrived: git ran in that folder and answered, which a folder outside a
+    // repository cannot do — it exits 128 and both halves come back null, and then we are not
+    // here at all.
+    const next: RepoState = before
+      ? { ...before, ...read, fetchedAt: Date.now() }
+      : { isRepo: true, status: null, pullRequests: [], ...read, fetchedAt: Date.now() };
+    return { repoState: { ...s.repoState, [projectId]: next } };
+  });
+}
 
 /** Which project a task belongs to, plus that project's list: tasks are keyed by project. */
 function findTaskProject(state: AppState, taskId: string): [string, Task[]] | undefined {
@@ -968,7 +1034,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   ...(() => {
     const prefs = loadUiPrefs();
     // The saved screen is only restored once the project list is known (see runInit).
-    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFile: null };
+    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFiles: {} };
   })(),
 
   openHome: () => {
@@ -1025,7 +1091,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (!state.openProjects.includes(projectId) && state.openProjects.length < MAX_PROJECT_PANES) {
       // Before `openProject`, so `setCurrentProject` finds it already in a pane of its own and
       // leaves the pane the user was standing in alone.
-      set({ openProjects: [...state.openProjects, projectId] });
+      const openProjects = [...state.openProjects, projectId];
+      // The first split is where the menu stops paying for itself: two projects need the width
+      // more than the tree does. A default, not a rule — only on the step from one pane to two, so
+      // a user who opens the menu again keeps it open however many panes they go on to open.
+      const splitting = state.openProjects.length === 1 && state.sidebarMode === "expanded";
+      set(splitting ? { openProjects, sidebarMode: "collapsed" } : { openProjects });
     }
     get().openProject(projectId);
   },
@@ -1048,7 +1119,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const state = get();
     if (state.currentProjectId === projectId || !state.openProjects.includes(projectId)) return;
     state.setCurrentProject(projectId);
-    // The focused pane's scalars are what the dock, the palette and the back arrow read.
+    // The focused pane's scalars are what the palette and the back arrow read.
     const chatId = selectProjectChatId(state, projectId);
     set({ currentChatId: chatId, projectMode: selectProjectMode(state, projectId) });
     if (chatId) void state.loadChatMessages(chatId);
@@ -1096,18 +1167,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  openPreview: (ref) => {
+  openPreview: (ref, projectId) => {
     const state = get();
-    const project = selectProject(state, state.currentProjectId);
+    // The dock lives inside the pane that opened it, so the file does too: a path clicked in one
+    // project's thread has no business landing in the pane next to it.
+    const target = projectId ?? state.currentProjectId;
+    if (!target) return;
+    const project = selectProject(state, target);
     const { path, line } = pathRef(ref);
     // Under the repo first, then the project folder: `.claude/handoff/x.md` lives in the second.
     const bases = project ? [repoDirOf(project), project.workspaceDir] : [];
     const candidates = isAbsolutePath(path) || bases.length === 0
       ? [path]
       : [...new Set(bases.map(base => resolvePath(path, base)))];
-    set({ previewFile: { ref, candidates, line } });
+    set(s => ({ previewFiles: { ...s.previewFiles, [target]: { ref, candidates, line } } }));
   },
-  closePreview: () => set({ previewFile: null }),
+  closePreview: (projectId) => {
+    const target = projectId ?? get().currentProjectId;
+    if (!target) return;
+    set(s => {
+      const next = { ...s.previewFiles };
+      delete next[target];
+      return { previewFiles: next };
+    });
+  },
 
   setPaneWidth: (pane, width) => {
     set(s => ({ paneWidths: { ...s.paneWidths, [pane]: clampPaneWidth(pane, width) } }));
@@ -1129,8 +1212,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
-  toggleSidebar: (open) => {
-    set(s => ({ sidebarOpen: open ?? !s.sidebarOpen }));
+  setSidebarMode: (mode) => {
+    set({ sidebarMode: mode });
+    saveUiPrefs();
+  },
+
+  cycleSidebar: () => {
+    set(s => ({ sidebarMode: nextSidebarMode(s.sidebarMode) }));
     saveUiPrefs();
   },
 
@@ -1989,6 +2077,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   detectBinaries: async () => {
+    // "Detectar de nuevo" is the user saying the machine changed, so anything written off as not
+    // installed gets another chance — the overrides read below are part of what may have changed.
+    forgetMissingBinaries();
     const detected = await getTransport().detectBinaries();
     const config = get().config;
     const overrides = config.binaryOverrides || {};
@@ -2070,26 +2161,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   refreshRepoStatus: async (projectId) => {
     const project = selectProject(get(), projectId);
     if (!project?.workspaceDir) return;
-    // The log comes along for the ride: a commit is exactly the kind of change the watcher fires
-    // on, and it is what the board reads to tell a card whether its run's work landed. One read
-    // per project, not per card.
-    const [status, commits] = await Promise.all([
-      readRepoStatus(repoDirOf(project)).catch(() => null),
-      readRecentCommits(repoDirOf(project)).catch(() => null),
-    ]);
-    if (!status) return;
-    set(s => {
-      const before = s.repoState[projectId];
-      // A log git could not read leaves the one already there alone: "not known" must not erase
-      // an answer that was known a moment ago.
-      const kept = commits ? { commits } : {};
-      // Nothing read the whole state yet: this half is still better than an empty header, and the
-      // pull requests fill in on the next slow pass.
-      const next: RepoState = before
-        ? { ...before, status, ...kept, fetchedAt: Date.now() }
-        : { isRepo: true, status, pullRequests: [], ...kept, fetchedAt: Date.now() };
-      return { repoState: { ...s.repoState, [projectId]: next } };
+    // One read per project at a time. The answer of a read already in flight is the answer to the
+    // event that just arrived too — it started after the write that caused it — so a second one
+    // would only be the same two git processes over again.
+    const inFlight = repoStatusReads.get(projectId);
+    if (inFlight) return inFlight;
+    const read = readStatusAndCommits(projectId, project).finally(() => {
+      repoStatusReads.delete(projectId);
     });
+    repoStatusReads.set(projectId, read);
+    return read;
   },
 
   answerQuestion: (questionId, answer) => {
@@ -2668,7 +2749,7 @@ async function runInit(): Promise<void> {
       paneWidths: prefs.paneWidths,
       settingsSection: prefs.settingsSection,
       sidebarCollapsed: prefs.sidebarCollapsed,
-      sidebarOpen: prefs.sidebarOpen,
+      sidebarMode: prefs.sidebarMode,
       navHistory: [{
         screen,
         projectId: lastProjectValid ? config.lastProjectId : null,
@@ -2926,6 +3007,11 @@ export function selectProjectPanels(
 }
 
 const NO_PANELS = { comm: false, diff: false, term: false };
+
+/** The file one project has open beside its conversation, if any. */
+export function selectPreviewFile(state: AppState, projectId: string | null | undefined): FilePreview | null {
+  return (projectId ? state.previewFiles[projectId] : undefined) ?? null;
+}
 
 /**
  * One dock section of one project. A boolean, not the object above: a selector that builds a fresh

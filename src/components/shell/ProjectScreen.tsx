@@ -13,6 +13,7 @@ import { Composer } from "./Composer";
 import { useT } from "@/i18n/useT";
 import { MessagesSquare, TerminalSquare, FileDiff, X } from "lucide-react";
 import { ProjectPaneProvider } from "./project-pane";
+import { RightDock } from "./RightDock";
 
 /**
  * The working screen for one project: top bar, task board / thread / hierarchy, and the composer.
@@ -79,6 +80,9 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
             variant={commPanelOpen ? "secondary" : "ghost"}
             size="sm"
             className="h-7"
+            // Lit or not is a colour; `aria-pressed` is the same thing a screen reader — and a
+            // test about which pane's dock is open — can actually read.
+            aria-pressed={commPanelOpen}
             title={t("projectScreen.toggleComm")}
             onClick={() => toggleCommPanel(undefined, paneId)}
           >
@@ -90,6 +94,7 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
             variant={diffPanelOpen ? "secondary" : "ghost"}
             size="sm"
             className="h-7"
+            aria-pressed={diffPanelOpen}
             title={t("projectScreen.toggleDiff")}
             onClick={() => toggleDiffPanel(undefined, paneId)}
           >
@@ -99,6 +104,7 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
             variant={termPanelOpen ? "secondary" : "ghost"}
             size="sm"
             className="h-7"
+            aria-pressed={termPanelOpen}
             title={t("projectScreen.toggleTerminals")}
             onClick={() => {
               const wasOpen = termPanelOpen;
@@ -129,27 +135,36 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
 
       <AutonomousBanner projectId={project.id} />
 
-      {/* The thread and the box are separate boundaries. A thread that cannot draw one bad message
-          must not take the box down with it: being able to keep typing, or to leave, is the
-          difference between a panel that failed and an app that did. */}
-      <div className="flex-1 min-h-0">
-        <ErrorBoundary where={`thread:${projectMode}`} resetKey={`${project.id}:${currentChatId ?? ""}`}>
-          {projectMode === "tasks"
-            ? <TasksView projectId={project.id} />
-            : projectMode === "graph"
-              ? <HierarchyGraph />
-              : currentChatId
-                ? <ChatThread chatId={currentChatId} />
-                : <OrchestratorThread />}
-        </ErrorBoundary>
-      </div>
+      {/* The dock belongs to this pane, beside this pane's conversation — not to the window. Two
+          projects on screen can each have one open, and the buttons above read the very flags the
+          dock does, so a lit button always has a dock under it. */}
+      <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* The thread and the box are separate boundaries. A thread that cannot draw one bad
+              message must not take the box down with it: being able to keep typing, or to leave,
+              is the difference between a panel that failed and an app that did. */}
+          <div className="flex-1 min-h-0">
+            <ErrorBoundary where={`thread:${projectMode}`} resetKey={`${project.id}:${currentChatId ?? ""}`}>
+              {projectMode === "tasks"
+                ? <TasksView projectId={project.id} />
+                : projectMode === "graph"
+                  ? <HierarchyGraph />
+                  : currentChatId
+                    ? <ChatThread chatId={currentChatId} />
+                    : <OrchestratorThread />}
+            </ErrorBoundary>
+          </div>
 
-      {/* Only the conversation takes a prompt: the board and the hierarchy are not places to type. */}
-      {projectMode === "chat" && (
-        <ErrorBoundary where="composer" resetKey={`${project.id}:${currentChatId ?? ""}`}>
-          <Composer />
-        </ErrorBoundary>
-      )}
+          {/* Only the conversation takes a prompt: the board and the hierarchy are not places to type. */}
+          {projectMode === "chat" && (
+            <ErrorBoundary where="composer" resetKey={`${project.id}:${currentChatId ?? ""}`}>
+              <Composer />
+            </ErrorBoundary>
+          )}
+        </div>
+
+        <RightDock />
+      </div>
     </div>
     </ProjectPaneProvider>
   );

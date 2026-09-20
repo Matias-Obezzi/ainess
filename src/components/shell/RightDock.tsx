@@ -1,35 +1,53 @@
-import React, { useCallback, useRef } from "react";
-import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
+import React, { useCallback, useRef, useState } from "react";
+import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH, selectPanelOpen, selectPreviewFile } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
 import { TerminalDockSection } from "./TerminalDockSection";
 import { FileDockSection } from "./FileDockSection";
-import { ProjectPaneProvider } from "./project-pane";
+import { useCurrentProjectId } from "./project-pane";
 import { useT } from "@/i18n/useT";
 import type { DockSectionId } from "@/types";
+
+/**
+ * The most of its column a dock may take. Inside a pane an absolute width is not a width: the
+ * same 600px is half of one column and all of the next. Below `PANE_MIN_WIDTH.dock` the share
+ * loses — a dock too narrow to read is not a dock.
+ */
+const DOCK_MAX_SHARE = 0.6;
 
 /**
  * Right dock: Communication on top, Diff in the middle, Terminals below.
  * Shows only the open sections. Between consecutive open sections, a draggable
  * divider splits the flex weights (dockSizes).
  *
- * There is one dock however many project panes are on screen, and it follows the pane with the
- * focus: a dock per column fits in no window. It is drawn outside the panes, so it says which
- * project it is showing out loud rather than landing on the focused one through the fallback in
- * `useCurrentProjectId` — the same value, reached on purpose.
+ * One dock per project pane, drawn inside the pane that opened it. It reads the same per-project
+ * flags the buttons in the pane's top bar read, so a button lit and a section drawn cannot drift
+ * apart: they are the same boolean. Two projects side by side each keep their own dock open.
  */
 export function RightDock() {
   const t = useT();
-  const focusedProjectId = useAppStore(state => state.currentProjectId);
-  const commPanelOpen = useAppStore(state => state.commPanelOpen);
-  const diffPanelOpen = useAppStore(state => state.diffPanelOpen);
-  const termPanelOpen = useAppStore(state => state.termPanelOpen);
-  const previewOpen = useAppStore(state => state.previewFile !== null);
+  const projectId = useCurrentProjectId();
+  const commPanelOpen = useAppStore(state => selectPanelOpen(state, projectId, "comm"));
+  const diffPanelOpen = useAppStore(state => selectPanelOpen(state, projectId, "diff"));
+  const termPanelOpen = useAppStore(state => selectPanelOpen(state, projectId, "term"));
+  const previewOpen = useAppStore(state => selectPreviewFile(state, projectId) !== null);
   const dockSizes = useAppStore(state => state.dockSizes);
-  const width = useAppStore(state => state.paneWidths.dock);
+  const savedWidth = useAppStore(state => state.paneWidths.dock);
   const setPaneWidth = useAppStore(state => state.setPaneWidth);
   const setDockSizes = useAppStore(state => state.setDockSizes);
+
+  // The column this dock sits in, measured: it is what the width is a share of. Same callback-ref
+  // observer `ProjectPanes` counts its columns with.
+  const [rowWidth, setRowWidth] = useState(0);
+  const attach = useCallback((el: HTMLElement | null) => {
+    const row = el?.parentElement;
+    if (!row) return;
+    setRowWidth(row.clientWidth);
+    const observer = new ResizeObserver(entries => setRowWidth(entries[0].contentRect.width));
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, []);
   
   const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null, file: null });
 
@@ -80,26 +98,34 @@ export function RightDock() {
   ];
   
   const openSections = sections.filter(s => s.open);
+  if (openSections.length === 0) return null;
+
+  // Dragged wide in one pane and then shown in a narrower one, the dock would eat the thread.
+  const max = rowWidth > 0
+    ? Math.max(PANE_MIN_WIDTH.dock, Math.min(PANE_MAX_WIDTH.dock, rowWidth * DOCK_MAX_SHARE))
+    : PANE_MAX_WIDTH.dock;
+  // The handle drags the clamped value, not the saved one, so it answers the moment you pull back.
+  const width = Math.min(savedWidth, max);
 
   return (
-    <ProjectPaneProvider value={focusedProjectId}>
-    {/* Narrow windows float the dock over the content, where a divider would have nothing to push. */}
+    <>
     <ResizeHandle
       side="right"
       width={width}
       min={PANE_MIN_WIDTH.dock}
-      max={PANE_MAX_WIDTH.dock}
+      max={max}
       onResize={w => setPaneWidth("dock", w)}
-      className="max-[1100px]:hidden"
     />
     <aside
-      className="shrink-0 border-l border-border bg-card flex flex-col max-[1100px]:absolute max-[1100px]:right-0 max-[1100px]:top-12 max-[1100px]:bottom-0 max-[1100px]:z-20 max-[1100px]:shadow-xl"
-      // Dragged wider than the window it later ends up in, the dock would run off the screen.
-      style={{ width, maxWidth: "100vw" }}
+      ref={attach}
+      data-testid="right-dock"
+      data-project-id={projectId ?? undefined}
+      className="shrink-0 border-l border-border bg-card flex flex-col"
+      style={{ width }}
     >
       {openSections.length === 1 ? (
         openSections[0].component
-      ) : openSections.length > 1 ? (
+      ) : (
         <div className="flex h-full min-h-0 flex-col">
           {openSections.map((s, idx) => (
             <React.Fragment key={s.id}>
@@ -122,8 +148,8 @@ export function RightDock() {
             </React.Fragment>
           ))}
         </div>
-      ) : null}
+      )}
     </aside>
-    </ProjectPaneProvider>
+    </>
   );
 }

@@ -12,10 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PROVIDERS } from "@/lib/providers";
+import { PROVIDERS, parseSuggestion } from "@/lib/providers";
 import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { UsageDialog } from "@/components/UsageDialog";
-import { COMMANDS, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
+import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
@@ -25,6 +25,7 @@ import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
+import { plural } from "@/i18n";
 import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
@@ -246,7 +247,13 @@ export function Composer() {
     });
   }, [questions, runs, currentProjectId, currentChatId, chat]);
 
-  /** The user's own messages here, newest first, and the agent's last word. */
+  /**
+   * The user's own messages here, newest first, and the agent's last word.
+   *
+   * The `suggest` block is read off that last word rather than kept anywhere: it belongs to exactly
+   * one message, that message is already in hand in both modes, and a field on `ChatMessage` and
+   * another on `Run` would be two stored copies of something a regex answers here in one line.
+   */
   const conversation = useMemo(() => {
     if (currentChatId) {
       const rows = chatMessages[currentChatId] ?? [];
@@ -257,16 +264,18 @@ export function Composer() {
         if (row.from === "user") mine.push(row.text);
         else if (!lastAgent && row.status !== "pending" && row.text) lastAgent = row.text;
       }
-      return { past: mine, lastAgent };
+      return { past: mine, lastAgent, suggestion: lastAgent ? parseSuggestion(lastAgent) : undefined };
     }
     // The orchestrator's thread: a round-zero run with no parent is a prompt the user typed, and
     // its output is what came back.
     const own = Object.values(runs)
       .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0)
       .sort((a, b) => b.startedAt - a.startedAt);
+    const lastAgent = own.find(r => r.status === "done" && r.output)?.output;
     return {
       past: own.map(r => r.prompt),
-      lastAgent: own.find(r => r.status === "done" && r.output)?.output,
+      lastAgent,
+      suggestion: lastAgent ? parseSuggestion(lastAgent) : undefined,
     };
   }, [currentChatId, chatMessages, runs, currentProjectId]);
 
@@ -534,6 +543,8 @@ export function Composer() {
     return ghostFor({
       text,
       lastAgentMessage: conversation.lastAgent,
+      suggestion: conversation.suggestion,
+      hasPendingQuestion: !!pendingQuestionData,
       past: conversation.past,
       affirmative: t("composer.ghostYes"),
     });
@@ -579,8 +590,8 @@ export function Composer() {
     setText("");
     setHistoryIndex(null);
     if (command.id === "compact") {
-      const count = compactProject(currentProjectId);
-      toast.success(t("command.compact.done", { count }));
+      const n = compactProject(currentProjectId);
+      toast.success(plural(n, t("command.compact.done.one", { n }), t("command.compact.done.other", { n })));
     } else if (command.id === "cost") {
       setUsageOpen(true);
     } else if (command.id === "tasks") {
@@ -592,7 +603,11 @@ export function Composer() {
     } else if (command.id === "stop") {
       handleStop();
     } else if (command.id === "clear") {
-      // Same guard as the trash can in the communication panel: clearing it is not undoable.
+      // Nothing is deleted — the history files stay where they are — so nothing is asked first.
+      const n = clearSessions(currentProjectId);
+      toast.success(plural(n, t("command.clear.done.one", { n }), t("command.clear.done.other", { n })));
+    } else if (command.id === "wipe") {
+      // Same guard as the trash can in the communication panel: wiping it is not undoable.
       void (async () => {
         const ok = await confirm({ title: t("comm.clear.title"), description: t("comm.clear.body"), destructive: true, confirmText: t("common.delete") });
         if (ok) clearMessages(currentProjectId);

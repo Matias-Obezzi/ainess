@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { retryModelFor, retryModels } from "../retry";
-import type { AgentConfig } from "@/types";
+import { retryModelFor, retryModels, shownRootRuns } from "../retry";
+import type { AgentConfig, Run } from "@/types";
 
 function agent(overrides: Partial<AgentConfig> = {}): AgentConfig {
   return {
@@ -66,5 +66,83 @@ describe("retryModelFor", () => {
 
   it("does not break for an agent with no model and no previous model", () => {
     expect(retryModelFor(agent({ provider: "claude", model: undefined }), undefined)).toBeUndefined();
+  });
+});
+
+/**
+ * What the thread draws once a retry can take the place of the run it retries.
+ *
+ * The bug this comes from: retrying went through `submitPrompt`, so the user saw their own request
+ * written a second time and a second bubble under it, at the bottom of the thread, while the run
+ * that had failed stayed where it was. What was asked for is the opposite — the failed run
+ * disappears and the new attempt appears in its place.
+ */
+function run(id: string, startedAt: number, replacesRunId?: string): Run {
+  return {
+    id,
+    projectId: "p1",
+    agentId: "a1",
+    parentRunId: null,
+    rootRunId: id,
+    prompt: "arreglá el parser",
+    status: "done",
+    startedAt,
+    output: "",
+    rawLines: [],
+    childRunIds: [],
+    round: 0,
+    replacesRunId,
+  };
+}
+
+const ids = (runs: Run[]) => runs.map(r => r.id);
+
+describe("shownRootRuns", () => {
+  it("leaves an ordinary thread exactly as it was, oldest first", () => {
+    expect(ids(shownRootRuns([run("c", 3), run("a", 1), run("b", 2)]))).toEqual(["a", "b", "c"]);
+  });
+
+  it("stops drawing the run a retry replaced", () => {
+    const shown = shownRootRuns([run("a", 1), run("b", 2), run("b2", 9, "b")]);
+    expect(ids(shown)).not.toContain("b");
+  });
+
+  it("puts the retry where the run it replaced was, not at the end", () => {
+    // The retry is the newest run of the three by `startedAt`, and still belongs in the middle.
+    const shown = shownRootRuns([run("a", 1), run("b", 2), run("c", 3), run("b2", 9, "b")]);
+    expect(ids(shown)).toEqual(["a", "b2", "c"]);
+  });
+
+  it("keeps the place through a chain of retries", () => {
+    const shown = shownRootRuns([
+      run("a", 1), run("b", 2), run("c", 3),
+      run("b2", 9, "b"), run("b3", 10, "b2"),
+    ]);
+    expect(ids(shown)).toEqual(["a", "b3", "c"]);
+  });
+
+  // The clock on the bubble and the elapsed time are read off `startedAt`, so it has to keep saying
+  // when *this* attempt began — only the order is borrowed from the first one.
+  it("does not touch the runs it hands back", () => {
+    const retry = run("b2", 9, "b");
+    const [shown] = shownRootRuns([run("b", 2), retry]);
+    expect(shown.startedAt).toBe(9);
+    expect(shown).toBe(retry);
+  });
+
+  it("falls back to its own time when the run it replaced is not here any more", () => {
+    // Trimmed off the history file: there is nothing to sit in the place of, so it sits in its own.
+    const shown = shownRootRuns([run("a", 1), run("c", 3), run("b2", 9, "gone")]);
+    expect(ids(shown)).toEqual(["a", "c", "b2"]);
+  });
+
+  it("ends the walk on a chain that points at itself", () => {
+    // Only a corrupt history file can produce this; hanging the whole thread on it is not an option.
+    const shown = shownRootRuns([run("a", 1), run("b", 2, "b")]);
+    expect(ids(shown)).toEqual(["a", "b"]);
+  });
+
+  it("is empty for an empty thread", () => {
+    expect(shownRootRuns([])).toEqual([]);
   });
 });

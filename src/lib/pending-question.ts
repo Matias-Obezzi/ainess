@@ -1,6 +1,19 @@
 import type { AgentQuestion, Run } from "@/types";
 
 /**
+ * Whether this question is the user's to answer.
+ *
+ * Almost always yes: `toAgentId` is only set while a child's question is on its way to the planner
+ * that handed it the plan, and it is cleared the moment that stops being true. One helper rather
+ * than a filter per consumer because there are eight of them — the composer, the thread, the bell,
+ * the bridge, the phone — and a question offered in any one of them while its planner is writing
+ * the answer gets answered twice.
+ */
+export function isForUser(q: AgentQuestion): boolean {
+  return !q.toAgentId;
+}
+
+/**
  * The questions to put in front of the user right now, and how many are waiting in all.
  *
  * A turn that asked three things comes back as three questions, and they are answered together:
@@ -20,6 +33,7 @@ export function questionsForComposer(
 
   const validQuestions = Object.values(questions).filter((q) => {
     if (q.status !== "pending") return false;
+    if (!isForUser(q)) return false;
     if (q.projectId !== opts.projectId) return false;
 
     const run = runs[q.runId];

@@ -12,6 +12,7 @@
 import { useEffect, useRef } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { pendingApprovals } from "@/lib/approvals";
+import { isForUser } from "@/lib/pending-question";
 import { freshMessages, messageCursor, sessionStartedAt, type MessageCursor } from "@/lib/notifications";
 import { translateNow } from "@/i18n/useT";
 
@@ -107,7 +108,7 @@ export function useWebNotifications(): void {
       knownApprovals.current = nowPending;
 
       // A question an agent stopped to ask.
-      const questions = Object.values(state.questions).filter(q => q.status === "pending");
+      const questions = Object.values(state.questions).filter(q => q.status === "pending" && isForUser(q));
       const nowAsked = new Set(questions.map(q => q.id));
       for (const question of questions) {
         if (!knownQuestions.current.has(question.id) && question.createdAt >= sessionStartedAt && hidden) {
