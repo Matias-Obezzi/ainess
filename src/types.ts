@@ -519,6 +519,17 @@ export interface SpawnedProcess {
  */
 export type RunStatus = "queued" | "running" | "done" | "error" | "killed";
 
+/**
+ * Counters for a single model used during a run.
+ * Claude Code reports this in `modelUsage` on the result event.
+ */
+export interface ModelTokenUsage {
+  costUsd?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedInputTokens?: number;
+}
+
 /** What one run consumed, as reported by its CLI. Every field is optional: each one reports less. */
 export interface RunUsage {
   /** Dollars, when the provider reports them (today only Claude Code). */
@@ -526,6 +537,11 @@ export interface RunUsage {
   inputTokens?: number;
   outputTokens?: number;
   cachedInputTokens?: number;
+  /**
+   * Usage broken down per model when the CLI reports it (Claude Code's `modelUsage`).
+   * Keyed by model id (canonical when available, e.g. "claude-opus-5"). A run can touch multiple models.
+   */
+  byModel?: Record<string, ModelTokenUsage>;
   /**
    * Peak conversation size in tokens during the run, re-read on each tool call.
    * Not to be confused with `cachedInputTokens`, which accumulates across the entire run.

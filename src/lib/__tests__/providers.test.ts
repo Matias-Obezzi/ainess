@@ -387,6 +387,80 @@ describe("usage reported by each CLI", () => {
     expect(claudeUsage({ total_cost_usd: "0.1" })).toBeUndefined();
   });
 
+  it("extracts byModel from modelUsage indexed by canonicalModel instead of execution suffix", () => {
+    const raw = {
+      type: "result",
+      total_cost_usd: 0.15231,
+      usage: {
+        input_tokens: 2,
+        output_tokens: 4,
+        cache_read_input_tokens: 15320,
+        cache_creation_input_tokens: 14454,
+      },
+      modelUsage: {
+        "claude-opus-5[1m]": {
+          inputTokens: 2,
+          outputTokens: 4,
+          cacheReadInputTokens: 15320,
+          cacheCreationInputTokens: 14454,
+          costUSD: 0.15231,
+          contextWindow: 1000000,
+          maxOutputTokens: 64000,
+          canonicalModel: "claude-opus-5",
+          provider: "firstParty",
+          costBasis: "list",
+        },
+      },
+    };
+
+    const usage = claudeUsage(raw);
+    expect(usage?.byModel).toBeDefined();
+    expect(usage?.byModel?.["claude-opus-5"]).toEqual({
+      costUsd: 0.15231,
+      inputTokens: 2,
+      outputTokens: 4,
+      cachedInputTokens: 29774,
+    });
+    expect(usage?.byModel?.["claude-opus-5[1m]"]).toBeUndefined();
+  });
+
+  it("falls back to raw key when canonicalModel is not present in modelUsage", () => {
+    const raw = {
+      modelUsage: {
+        "custom-model[test]": {
+          inputTokens: 10,
+          outputTokens: 20,
+          costUSD: 0.05,
+        },
+      },
+    };
+    const usage = claudeUsage(raw);
+    expect(usage?.byModel?.["custom-model[test]"]).toEqual({
+      costUsd: 0.05,
+      inputTokens: 10,
+      outputTokens: 20,
+    });
+  });
+
+  it("leaves byModel undefined when modelUsage is absent or empty without breaking other fields", () => {
+    const withoutModelUsage = {
+      total_cost_usd: 0.1,
+      usage: { output_tokens: 5 },
+    };
+    const parsedWithout = claudeUsage(withoutModelUsage);
+    expect(parsedWithout).toEqual({ costUsd: 0.1, outputTokens: 5 });
+    expect(parsedWithout?.byModel).toBeUndefined();
+
+    const withEmptyModelUsage = {
+      total_cost_usd: 0.1,
+      usage: { output_tokens: 5 },
+      modelUsage: {},
+    };
+    const parsedEmpty = claudeUsage(withEmptyModelUsage);
+    expect(parsedEmpty).toEqual({ costUsd: 0.1, outputTokens: 5 });
+    expect(parsedEmpty?.byModel).toBeUndefined();
+  });
+
   it("reads Antigravity's usage under any of the names its builds have used", () => {
     const line = JSON.stringify({
       event: "result",
