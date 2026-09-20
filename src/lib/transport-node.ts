@@ -544,6 +544,11 @@ export const nodeTransport: Transport = {
     probe.listen(port, "0.0.0.0");
   }),
 
+  // Seeing and freeing ports is a sidebar feature, and the CLI has a shell around it that already
+  // does both far better than we would.
+  listeningPorts: async () => [],
+  killPortProcess: async () => { throw new Error(translateNow("ports.desktopOnly")); },
+
   ...nodeRemote,
   ...nodeTunnel,
 

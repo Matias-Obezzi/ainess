@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectAvatar } from "@/components/ProjectAvatar";
 import { StatusDot } from "@/components/StatusDot";
+import { ListeningPorts } from "@/components/ListeningPorts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -591,6 +592,7 @@ export function Sidebar() {
               </div>
             </PopoverContent>
           </Popover>
+          <ListeningPorts />
           {pendingCount > 0 && (
             <Badge
               className="ml-auto cursor-pointer bg-amber-500 text-black hover:bg-amber-500"

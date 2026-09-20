@@ -5,6 +5,7 @@ mod diagnostics;
 mod editors;
 mod http;
 mod logging;
+mod ports;
 mod pty;
 mod remote;
 mod repo_watch;
@@ -95,6 +96,8 @@ pub fn run() {
             config::list_subdirs,
             diagnostics::storage_stat,
             diagnostics::port_available,
+            ports::listening_ports,
+            ports::kill_port_process,
             http::http_post,
             http::http_patch,
             http::http_put,

@@ -87,6 +87,22 @@ export const zh: Dictionary = {
   "sidebar.settings": "设置",
   "sidebar.reportIssue": "反馈问题",
 
+  // ---- 正在监听的端口（侧边栏） ----
+  "ports.label": "{n} 个端口",
+  "ports.title": "正在监听的端口",
+  "ports.none": "没有任何进程在监听端口",
+  "ports.refresh": "重新读取",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "由 ainess 启动",
+  "ports.inProject": "在 {name} 内",
+  "ports.free": "释放端口 {port}",
+  "ports.freeTitle": "释放端口 {port}？",
+  "ports.freeBody": "将结束 {name}（PID {pid}）以及它在下面打开的一切。如果那是你有意在用的开发服务器，它会停掉。",
+  "ports.freeConfirm": "结束",
+  "ports.freed": "端口 {port} 已释放",
+  "ports.freeFailed": "无法结束 PID {pid}",
+  "ports.desktopOnly": "释放端口只有桌面应用能做",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "远程访问已开启",
   "titlebar.remoteOff": "远程访问已关闭",

@@ -88,6 +88,22 @@ export const es: Dictionary = {
   "sidebar.settings": "Configuración",
   "sidebar.reportIssue": "Reportar un problema",
 
+  // ---- Puertos a la escucha (barra lateral) ----
+  "ports.label": "{n} puertos",
+  "ports.title": "Puertos a la escucha",
+  "ports.none": "No hay nada a la escucha en un puerto",
+  "ports.refresh": "Volver a leer",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "Lo lanzó ainess",
+  "ports.inProject": "En {name}",
+  "ports.free": "Liberar el puerto {port}",
+  "ports.freeTitle": "¿Liberar el puerto {port}?",
+  "ports.freeBody": "Se va a matar a {name} (PID {pid}) y a todo lo que haya abierto debajo. Si es un dev server que estás usando a propósito, se te cae.",
+  "ports.freeConfirm": "Matar",
+  "ports.freed": "Puerto {port} liberado",
+  "ports.freeFailed": "No se pudo matar el PID {pid}",
+  "ports.desktopOnly": "Liberar un puerto es algo que solo hace la app de escritorio",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "Acceso remoto activo",
   "titlebar.remoteOff": "Acceso remoto apagado",

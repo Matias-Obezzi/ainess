@@ -678,6 +678,26 @@ export interface StorageStat {
   bytes: number;
 }
 
+/**
+ * One TCP port something is listening on here (see `Transport.listeningPorts`).
+ *
+ * `project` and `descendant` are hints, never proof: a dev server an agent left behind is usually
+ * reparented, and then neither of them can say anything. The port, the process and the command
+ * line are always there, and that is what the user decides on.
+ */
+export interface ListeningPort {
+  port: number;
+  pid: number;
+  /** Image name, `node.exe` and the like. Empty when the process was gone by the time we looked. */
+  name: string;
+  /** Its command line, truncated. Null when the system would not hand it over. */
+  command: string | null;
+  /** The workspace folder its working directory falls inside, when one does. */
+  project: string | null;
+  /** Whether this app is still one of its ancestors. */
+  descendant: boolean;
+}
+
 export interface BinaryInfo {
   path: string;
   version?: string | null;

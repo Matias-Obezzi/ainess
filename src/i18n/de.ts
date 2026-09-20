@@ -87,6 +87,22 @@ export const de: Dictionary = {
   "sidebar.settings": "Einstellungen",
   "sidebar.reportIssue": "Problem melden",
 
+  // ---- Lauschende Ports (Seitenleiste) ----
+  "ports.label": "{n} Ports",
+  "ports.title": "Lauschende Ports",
+  "ports.none": "Nichts lauscht auf einem Port",
+  "ports.refresh": "Neu einlesen",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "Von ainess gestartet",
+  "ports.inProject": "In {name}",
+  "ports.free": "Port {port} freigeben",
+  "ports.freeTitle": "Port {port} freigeben?",
+  "ports.freeBody": "{name} (PID {pid}) und alles, was darunter geöffnet wurde, wird beendet. Wenn das ein Dev-Server ist, den du absichtlich nutzt, geht er aus.",
+  "ports.freeConfirm": "Beenden",
+  "ports.freed": "Port {port} freigegeben",
+  "ports.freeFailed": "PID {pid} konnte nicht beendet werden",
+  "ports.desktopOnly": "Einen Port freigeben kann nur die Desktop-App",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "Fernzugriff an",
   "titlebar.remoteOff": "Fernzugriff aus",

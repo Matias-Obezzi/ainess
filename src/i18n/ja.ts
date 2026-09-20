@@ -88,6 +88,22 @@ export const ja: Dictionary = {
   "sidebar.settings": "設定",
   "sidebar.reportIssue": "問題を報告",
 
+  // ---- 待ち受け中のポート（サイドバー） ----
+  "ports.label": "{n} ポート",
+  "ports.title": "待ち受け中のポート",
+  "ports.none": "ポートを待ち受けているものはありません",
+  "ports.refresh": "読み直す",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "ainess が起動",
+  "ports.inProject": "{name} 内",
+  "ports.free": "ポート {port} を解放",
+  "ports.freeTitle": "ポート {port} を解放しますか？",
+  "ports.freeBody": "{name}（PID {pid}）と、その下で開かれたものすべてを終了します。意図して使っている開発サーバーなら止まります。",
+  "ports.freeConfirm": "終了する",
+  "ports.freed": "ポート {port} を解放しました",
+  "ports.freeFailed": "PID {pid} を終了できませんでした",
+  "ports.desktopOnly": "ポートの解放はデスクトップアプリだけの機能です",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "リモートアクセス有効",
   "titlebar.remoteOff": "リモートアクセス無効",

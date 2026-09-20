@@ -87,6 +87,22 @@ export const en: Dictionary = {
   "sidebar.settings": "Settings",
   "sidebar.reportIssue": "Report an issue",
 
+  // ---- Listening ports (sidebar) ----
+  "ports.label": "{n} ports",
+  "ports.title": "Listening ports",
+  "ports.none": "Nothing is listening on a port",
+  "ports.refresh": "Read again",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "Started by ainess",
+  "ports.inProject": "In {name}",
+  "ports.free": "Free port {port}",
+  "ports.freeTitle": "Free port {port}?",
+  "ports.freeBody": "{name} (PID {pid}) and everything it opened underneath will be killed. If it is a dev server you are using on purpose, it goes down.",
+  "ports.freeConfirm": "Kill",
+  "ports.freed": "Port {port} freed",
+  "ports.freeFailed": "Could not kill PID {pid}",
+  "ports.desktopOnly": "Freeing a port is something only the desktop app does",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "Remote access on",
   "titlebar.remoteOff": "Remote access off",

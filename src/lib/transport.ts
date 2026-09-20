@@ -54,6 +54,14 @@ export interface Transport {
   storageStat(scope: "logs" | "config", relativePath?: string): Promise<import("@/types").StorageStat | null>;
   /** True when nothing is listening on `port` here. Null when it cannot be checked. */
   portAvailable(port: number): Promise<boolean | null>;
+  /**
+   * Everything listening on a TCP port on this machine. `projectRoots` are the workspace folders,
+   * used only to label a process whose working directory falls inside one. Empty where there is no
+   * way to ask (the browser preview, the phone).
+   */
+  listeningPorts(projectRoots: string[]): Promise<import("@/types").ListeningPort[]>;
+  /** Kills the process holding a port, and its children. Only ever called with the user's yes. */
+  killPortProcess(pid: number): Promise<void>;
 
   // LAN remote access (see src/lib/remote.ts). The server lives in the transport because
   // the orchestrator state lives in this process.

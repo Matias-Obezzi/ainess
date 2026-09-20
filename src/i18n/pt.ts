@@ -87,6 +87,22 @@ export const pt: Dictionary = {
   "sidebar.settings": "Configurações",
   "sidebar.reportIssue": "Reportar um problema",
 
+  // ---- Portas em escuta (barra lateral) ----
+  "ports.label": "{n} portas",
+  "ports.title": "Portas em escuta",
+  "ports.none": "Nada está em escuta numa porta",
+  "ports.refresh": "Ler de novo",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "Iniciado pelo ainess",
+  "ports.inProject": "Em {name}",
+  "ports.free": "Liberar a porta {port}",
+  "ports.freeTitle": "Liberar a porta {port}?",
+  "ports.freeBody": "{name} (PID {pid}) e tudo o que abriu abaixo serão encerrados. Se for um dev server que você usa de propósito, ele cai.",
+  "ports.freeConfirm": "Encerrar",
+  "ports.freed": "Porta {port} liberada",
+  "ports.freeFailed": "Não foi possível encerrar o PID {pid}",
+  "ports.desktopOnly": "Liberar uma porta é algo que só o app de desktop faz",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "Acesso remoto ativo",
   "titlebar.remoteOff": "Acesso remoto desligado",

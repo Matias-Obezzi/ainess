@@ -87,6 +87,14 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
+  listeningPorts: async (projectRoots) => {
+    try {
+      return await invoke<import("@/types").ListeningPort[]>("listening_ports", { roots: projectRoots });
+    } catch {
+      return [];
+    }
+  },
+  killPortProcess: async (pid) => invoke<void>("kill_port_process", { pid }),
 
   // The Rust server (src-tauri/src/remote.rs) bridges HTTP requests to this webview:
   // commands arrive as `remote-command` events and are answered with `remote_reply`.

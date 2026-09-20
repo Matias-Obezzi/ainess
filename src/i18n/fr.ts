@@ -87,6 +87,22 @@ export const fr: Dictionary = {
   "sidebar.settings": "Paramètres",
   "sidebar.reportIssue": "Signaler un problème",
 
+  // ---- Ports en écoute (barre latérale) ----
+  "ports.label": "{n} ports",
+  "ports.title": "Ports en écoute",
+  "ports.none": "Rien n'écoute sur un port",
+  "ports.refresh": "Relire",
+  "ports.pid": "PID {pid}",
+  "ports.descendant": "Lancé par ainess",
+  "ports.inProject": "Dans {name}",
+  "ports.free": "Libérer le port {port}",
+  "ports.freeTitle": "Libérer le port {port} ?",
+  "ports.freeBody": "{name} (PID {pid}) et tout ce qu'il a ouvert en dessous vont être arrêtés. Si c'est un serveur de dev que vous utilisez volontairement, il tombe.",
+  "ports.freeConfirm": "Arrêter",
+  "ports.freed": "Port {port} libéré",
+  "ports.freeFailed": "Impossible d'arrêter le PID {pid}",
+  "ports.desktopOnly": "Libérer un port, seule l'application de bureau le fait",
+
   // ---- Title bar ----
   "titlebar.remoteOn": "Accès distant activé",
   "titlebar.remoteOff": "Accès distant désactivé",
