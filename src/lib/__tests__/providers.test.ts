@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { mergeUsage } from "@/lib/orchestrator";
 import { useAppStore } from "@/store";
 import { es, loadLanguage } from "@/i18n";
 import { en } from "@/i18n/en";
@@ -148,6 +149,67 @@ describe("claude provider", () => {
   // turn resumed on it. Better no session at all: the run starts fresh instead of pointing nowhere.
   it("ignores an init line that brings no session id", () => {
     expect(PROVIDERS.claude.parseLine('{"type":"system","subtype":"init"}', "stdout")).toEqual([]);
+  });
+
+  it("emits contextTokens with the sum of cache and input tokens on assistant line", () => {
+    const line = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "pensando" }],
+        usage: {
+          input_tokens: 12,
+          output_tokens: 1_204,
+          cache_read_input_tokens: 48_233,
+          cache_creation_input_tokens: 1_640,
+        },
+      },
+    });
+    const events = PROVIDERS.claude.parseLine(line, "stdout");
+    expect(events).toEqual([
+      { type: "text", text: "pensando\n\n" },
+      { type: "usage", usage: { contextTokens: 49_885 } },
+    ]);
+  });
+
+  it("defaults missing cache token counters to 0 when computing contextTokens", () => {
+    const line = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "hola" }],
+        usage: {
+          input_tokens: 50,
+          cache_read_input_tokens: 1_000,
+        },
+      },
+    });
+    const events = PROVIDERS.claude.parseLine(line, "stdout");
+    expect(events).toEqual([
+      { type: "text", text: "hola\n\n" },
+      { type: "usage", usage: { contextTokens: 1_050 } },
+    ]);
+  });
+
+  it("does not emit usage when assistant line has no usage or empty usage", () => {
+    const withoutUsage = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "sin uso" }],
+      },
+    });
+    expect(PROVIDERS.claude.parseLine(withoutUsage, "stdout")).toEqual([
+      { type: "text", text: "sin uso\n\n" },
+    ]);
+
+    const emptyUsage = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "uso vacio" }],
+        usage: {},
+      },
+    });
+    expect(PROVIDERS.claude.parseLine(emptyUsage, "stdout")).toEqual([
+      { type: "text", text: "uso vacio\n\n" },
+    ]);
   });
 });
 
@@ -356,6 +418,39 @@ describe("usage reported by each CLI", () => {
       { type: "result", text: "", usage: { durationMs: 92_310, premiumRequests: 3 } },
     ]);
     expect(copilotUsage({ type: "result" })).toBeUndefined();
+  });
+});
+
+describe("mergeUsage", () => {
+  it("keeps the maximum contextTokens between consecutive usages", () => {
+    const first = mergeUsage(undefined, { contextTokens: 100_000 });
+    expect(first).toEqual({ contextTokens: 100_000 });
+
+    const second = mergeUsage(first, { contextTokens: 50_000 });
+    expect(second?.contextTokens).toBe(100_000);
+  });
+
+  it("updates contextTokens when a larger one arrives", () => {
+    const first = { contextTokens: 50_000 };
+    const second = mergeUsage(first, { contextTokens: 120_000 });
+    expect(second?.contextTokens).toBe(120_000);
+  });
+
+  it("preserves contextTokens when result line usage arrives with accumulated totals", () => {
+    const existing = { contextTokens: 100_000 };
+    const resultUsage = {
+      costUsd: 0.3421,
+      inputTokens: 12,
+      outputTokens: 1_204,
+      cachedInputTokens: 49_873,
+      turns: 7,
+      durationMs: 41_562,
+    };
+    const merged = mergeUsage(existing, resultUsage);
+    expect(merged).toEqual({
+      ...resultUsage,
+      contextTokens: 100_000,
+    });
   });
 });
 

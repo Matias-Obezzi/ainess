@@ -526,6 +526,11 @@ export interface RunUsage {
   inputTokens?: number;
   outputTokens?: number;
   cachedInputTokens?: number;
+  /**
+   * Peak conversation size in tokens during the run, re-read on each tool call.
+   * Not to be confused with `cachedInputTokens`, which accumulates across the entire run.
+   */
+  contextTokens?: number;
   /** Model turns inside the run. */
   turns?: number;
   /** Duration reported by the CLI itself, in ms (may differ from ours). */
@@ -781,6 +786,8 @@ export type ParsedEvent =
   | { type: "text"; text: string }
   | { type: "tool"; name: string; detail?: string; input?: unknown; failed?: boolean; error?: string }
   | { type: "result"; text: string; sessionId?: string; usage?: RunUsage }
+  /** Partial usage reported mid-run, not the end of the run. */
+  | { type: "usage"; usage: RunUsage }
   | { type: "error"; text: string }
   /**
    * A line the CLI wrote to stderr, passed through as it came.

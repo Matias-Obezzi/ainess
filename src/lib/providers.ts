@@ -64,7 +64,15 @@ interface ClaudeLine {
   type?: string;
   subtype?: string;
   session_id?: string;
-  message?: { content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }> };
+  message?: {
+    content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }>;
+    usage?: {
+      input_tokens?: unknown;
+      output_tokens?: unknown;
+      cache_read_input_tokens?: unknown;
+      cache_creation_input_tokens?: unknown;
+    };
+  };
   result?: string;
 }
 
@@ -174,6 +182,9 @@ export function claudeUsage(obj: unknown): RunUsage | undefined {
  * Antigravity's `result.usage`. The agy build in use does not document the shape and different
  * versions have named the same counters differently, so every spelling we have seen is accepted
  * and whatever is missing simply stays out.
+ *
+ * Antigravity does not report cache (measured: zero tokens across 13 runs), so `contextTokens`
+ * simply does not exist here and stays undefined.
  */
 export function antigravityUsage(result: unknown): RunUsage | undefined {
   const u = field(result, "usage");
@@ -214,18 +225,30 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
   if (obj.type === "system" && obj.subtype === "init" && obj.session_id) {
     return [{ type: "session", sessionId: obj.session_id }];
   }
-  if (obj.type === "assistant" && obj.message && Array.isArray(obj.message.content)) {
+  if (obj.type === "assistant" && obj.message) {
     const events: ParsedEvent[] = [];
-    for (const item of obj.message.content) {
-      if (item.type === "text") {
-        // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
-        // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
-        // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
-        // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
-        events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
-      } else if (item.type === "tool_use") {
-        const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
-        events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
+    if (Array.isArray(obj.message.content)) {
+      for (const item of obj.message.content) {
+        if (item.type === "text") {
+          // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
+          // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
+          // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
+          // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
+          events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
+        } else if (item.type === "tool_use") {
+          const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
+          events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
+        }
+      }
+    }
+    const u = obj.message.usage;
+    if (isRecord(u)) {
+      const read = num(u.cache_read_input_tokens);
+      const write = num(u.cache_creation_input_tokens);
+      const input = num(u.input_tokens);
+      if (read !== undefined || write !== undefined || input !== undefined) {
+        const contextTokens = (read ?? 0) + (write ?? 0) + (input ?? 0);
+        events.push({ type: "usage", usage: { contextTokens } });
       }
     }
     return events;
