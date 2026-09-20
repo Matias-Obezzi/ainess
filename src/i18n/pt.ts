@@ -1649,6 +1649,7 @@ export const pt: Dictionary = {
   "usage.cost": "Custo",
   "usage.tokensColumn": "Tokens",
   "usage.premiumColumn": "Premium",
+  "usage.conversation": "Conversa",
   "usage.tokens": "tokens",
   "usage.premiumRequests": "premium",
   "usage.none": "Sem dados",

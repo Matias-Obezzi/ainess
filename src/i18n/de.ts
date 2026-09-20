@@ -1649,6 +1649,7 @@ export const de: Dictionary = {
   "usage.cost": "Kosten",
   "usage.tokensColumn": "Tokens",
   "usage.premiumColumn": "Premium",
+  "usage.conversation": "Konversation",
   "usage.tokens": "Tokens",
   "usage.premiumRequests": "Premium",
   "usage.none": "Keine Daten",

@@ -26,6 +26,7 @@ import type { Run } from "@/types";
 import { Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { budgetState } from "@/lib/budget";
+import { COMPACT_AT_TOKENS, sessionWeight } from "@/lib/session-weight";
 
 /** Days of the bar chart. */
 const CHART_DAYS = 14;
@@ -200,12 +201,14 @@ export function UsageDialog({
                       <th className="py-1 pr-2 text-right font-medium">{t("usage.runsColumn")}</th>
                       <th className="py-1 pr-2 text-right font-medium">{t("usage.cost")}</th>
                       <th className="py-1 pr-2 text-right font-medium">{t("usage.tokensColumn")}</th>
-                      <th className="py-1 text-right font-medium">{t("usage.premiumColumn")}</th>
+                      <th className="py-1 pr-2 text-right font-medium">{t("usage.premiumColumn")}</th>
+                      <th className="py-1 text-right font-medium">{t("usage.conversation")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {agentRows.map(([agentId, totals]) => {
                       const agent = agents.find(a => a.id === agentId);
+                      const weight = sessionWeight(runs, agentId);
                       return (
                         <tr key={agentId} className="border-t border-border">
                           <td className="py-1.5 pr-2">
@@ -221,8 +224,13 @@ export function UsageDialog({
                           <td className="py-1.5 pr-2 text-right tabular-nums">
                             {totalTokens(totals) > 0 ? formatCompact(totalTokens(totals), locale) : "—"}
                           </td>
-                          <td className="py-1.5 text-right tabular-nums">
+                          <td className="py-1.5 pr-2 text-right tabular-nums">
                             {totals.premiumRequests > 0 ? formatCompact(totals.premiumRequests, locale) : "—"}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums">
+                            {weight !== undefined
+                              ? `${formatCompact(weight, locale)} / ${formatCompact(COMPACT_AT_TOKENS, locale)}`
+                              : "—"}
                           </td>
                         </tr>
                       );

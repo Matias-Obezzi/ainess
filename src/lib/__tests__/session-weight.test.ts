@@ -3,7 +3,7 @@ import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { attachListeners, startRun } from "@/lib/orchestrator";
-import { COMPACT_AT_TOKENS, shouldCompact } from "@/lib/session-weight";
+import { COMPACT_AT_TOKENS, sessionWeight, shouldCompact } from "@/lib/session-weight";
 import type { Run, RunExitEvent } from "@/types";
 
 vi.mock("@/lib/hooks", () => ({ emitHookEvent: async () => {} }));
@@ -59,6 +59,55 @@ describe("shouldCompact", () => {
     const run = makeRun({ usage: { contextTokens: 50_000 } });
     expect(shouldCompact(run, 40_000)).toBe(true);
     expect(shouldCompact(run, 60_000)).toBe(false);
+  });
+});
+
+describe("sessionWeight", () => {
+  const makeRun = (opts: Partial<Run> = {}): Run => ({
+    id: "r1",
+    projectId: "p1",
+    agentId: "a1",
+    parentRunId: null,
+    rootRunId: "r1",
+    prompt: "do work",
+    status: "done",
+    startedAt: 1,
+    output: "done",
+    rawLines: [],
+    childRunIds: [],
+    round: 0,
+    ...opts,
+  });
+
+  it("returns contextTokens from the most recent run and not the highest (e.g. after compaction)", () => {
+    const oldRun = makeRun({ id: "r1", startedAt: 100, usage: { contextTokens: 400_000 } });
+    const newRun = makeRun({ id: "r2", startedAt: 200, usage: { contextTokens: 20_000 } });
+
+    expect(sessionWeight([oldRun, newRun], "a1")).toBe(20_000);
+    expect(sessionWeight([newRun, oldRun], "a1")).toBe(20_000);
+  });
+
+  it("ignores runs from other agents", () => {
+    const otherRun = makeRun({ id: "r1", agentId: "a2", startedAt: 200, usage: { contextTokens: 50_000 } });
+    const myRun = makeRun({ id: "r2", agentId: "a1", startedAt: 100, usage: { contextTokens: 30_000 } });
+
+    expect(sessionWeight([otherRun, myRun], "a1")).toBe(30_000);
+    expect(sessionWeight([otherRun], "a1")).toBeUndefined();
+  });
+
+  it("returns undefined when no run of the agent has contextTokens", () => {
+    const runWithoutContext = makeRun({ usage: { inputTokens: 100 } });
+    const runWithoutUsage = makeRun();
+
+    expect(sessionWeight([runWithoutContext, runWithoutUsage], "a1")).toBeUndefined();
+    expect(sessionWeight([], "a1")).toBeUndefined();
+  });
+
+  it("skips runs of the agent that lack contextTokens", () => {
+    const oldWithContext = makeRun({ id: "r1", startedAt: 100, usage: { contextTokens: 80_000 } });
+    const newWithoutContext = makeRun({ id: "r2", startedAt: 200, usage: { inputTokens: 50 } });
+
+    expect(sessionWeight([oldWithContext, newWithoutContext], "a1")).toBe(80_000);
   });
 });
 

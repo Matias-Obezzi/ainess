@@ -25,3 +25,26 @@ export function shouldCompact(run: Run, threshold = COMPACT_AT_TOKENS): boolean 
   if (typeof tokens !== "number" || Number.isNaN(tokens)) return false;
   return tokens >= threshold;
 }
+
+/**
+ * Context tokens from the most recent run of this agent that reported them,
+ * or undefined if none did.
+ *
+ * We take the most recent run rather than the all-time maximum: after a compaction,
+ * the session starts fresh and lightweight, and the number has to drop on its own
+ * when that happens. If we took the maximum, an already compacted session would
+ * keep showing the stale peak forever.
+ */
+export function sessionWeight(runs: Run[], agentId: string): number | undefined {
+  let latest: Run | undefined;
+  for (const run of runs) {
+    if (run.agentId !== agentId) continue;
+    const tokens = run.usage?.contextTokens;
+    if (typeof tokens !== "number" || Number.isNaN(tokens)) continue;
+    if (!latest || run.startedAt >= latest.startedAt) {
+      latest = run;
+    }
+  }
+  return latest?.usage?.contextTokens;
+}
+

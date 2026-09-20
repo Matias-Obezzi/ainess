@@ -1650,6 +1650,7 @@ export const ja: Dictionary = {
   "usage.cost": "コスト",
   "usage.tokensColumn": "トークン",
   "usage.premiumColumn": "プレミアム",
+  "usage.conversation": "会話",
   "usage.tokens": "トークン",
   "usage.premiumRequests": "プレミアム",
   "usage.none": "データなし",

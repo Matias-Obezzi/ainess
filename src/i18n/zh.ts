@@ -1649,6 +1649,7 @@ export const zh: Dictionary = {
   "usage.cost": "费用",
   "usage.tokensColumn": "Token",
   "usage.premiumColumn": "高级请求",
+  "usage.conversation": "对话",
   "usage.tokens": "token",
   "usage.premiumRequests": "高级请求",
   "usage.none": "没有数据",
