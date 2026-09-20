@@ -2,6 +2,76 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.22.0 — 2026-09-20
+
+### Nouveau
+
+- **`/compact` demande d'abord à chaque agent de résumer son propre historique.** Auparavant, la
+  compaction se contentait d'effacer les identifiants de session, laissant les fichiers
+  `.ainess/history/<agent>.md` enfler indéfiniment. Désormais, avant de perdre sa session, chaque
+  agent réécrit son fichier pour conserver les décisions et l'état final tout en écartant les
+  bavardages tour par tour, garantissant la légèreté des prochaines exécutions.
+- **Le tableau d'un projet peut être un tableau Trello.** Dans les réglages du projet, il suffit
+  désormais de coller l'URL d'un tableau Trello et d'associer ses listes aux colonnes du projet. La
+  clé d'API et le jeton se configurent dans Paramètres → Tableaux. Tout comme pour GitHub Projects,
+  seules les cartes racines voyagent, rien n'est jamais supprimé sur le tableau distant, et un échec
+  de synchronisation ne modifie pas le tableau local.
+- **La barre latérale se replie en initiales et fonctionne seule.** La barre latérale peut désormais
+  se réduire en un bandeau vertical compact affichant les initiales de chaque projet sur un fond
+  dont le contraste est calculé. Le bandeau fonctionne sans volet flottant au survol : cliquer sur
+  un projet ouvre son menu, et Ctrl+B permet d'alterner entre vue étendue, bandeau et masquée.
+- **La fenêtre se comporte comme une véritable application de bureau plutôt que comme un
+  navigateur.** Les raccourcis et gestes natifs du navigateur qui entraient en conflit avec
+  l'application — notamment Ctrl+P (impression), Ctrl+J (téléchargements), F5 (actualisation), F12
+  (outils de développement), le zoom Ctrl+molette, la navigation tactile et le glissement accidentel
+  d'images — sont désactivés. Un menu contextuel dédié restaure couper, copier, coller et tout
+  sélectionner lors d'un clic droit dans les champs de texte et les terminaux.
+- **Voir les ports restés ouverts, et un moyen de les libérer.** Lorsque des serveurs de
+  développement ou des processus restent actifs après la fin d'une tâche, un compteur à côté des
+  agents au travail indique les ports occupés. Cliquer dessus affiche le port, le processus et la
+  commande, avec un bouton permettant de tuer l'arborescence des processus après confirmation.
+- **Un agent peut suggérer la réponse que vous alliez écrire.** Quand un agent termine son tour en
+  attendant une suite évidente, il peut proposer une réponse rédigée avec vos propres mots (comme
+  confirmer de continuer) en gris dans le champ de saisie, acceptée immédiatement avec Tab.
+- **Relancer une exécution prend sa place au lieu d'ajouter un tour.** Cliquer sur réessayer
+  n'ajoute plus un message en double à la fin du fil. La nouvelle tentative prend la place de
+  l'ancienne dans la conversation et sur le tableau, tandis que le détail de l'échec précédent reste
+  consultable d'un clic. Relancer une exécution qui avait réussi demande désormais confirmation.
+- **Un exécutant peut interroger le planificateur au lieu de l'utilisateur.** Lorsqu'un exécutant
+  relève une ambiguïté dans le plan qui lui a été confié, il peut adresser sa question directement
+  au planificateur à l'origine de la tâche sans déranger l'utilisateur. Si le planificateur n'est
+  pas disponible ou répond par une autre question, celle-ci est automatiquement transmise à
+  l'utilisateur. Les planificateurs peuvent également mettre à jour et déplacer les cartes
+  existantes sur le tableau grâce à leur identifiant court.
+
+### Modifié
+
+- **Changement incompatible : `/clear` réinitialise les agents sans supprimer l'historique, et la
+  réinitialisation destructrice s'appelle désormais `/wipe`.** Dans les outils comme Claude Code,
+  `/clear` démarre une conversation vierge ; ici, il supprimait irréversiblement tout l'historique —
+  exécutions, messages, approbations et questions — tout en laissant les agents conserver leur
+  mémoire antérieure. Désormais, `/clear` se conforme à ce que l'on attend en ligne de commande :
+  chaque agent du projet repart sur une session neuve, sans rien supprimer et en laissant les
+  fichiers d'historique intacts. Pour effacer réellement l'ensemble des conversations, exécutions et
+  données du projet, la commande destructrice est désormais `/wipe`.
+
+### Corrigé
+
+- **La lecture du dépôt ne déclenche plus sa propre relecture en boucle.** L'application continuait
+  de relire le dépôt toute seule jusqu'à planter, et ce n'est plus le cas.
+- **Une URL coupée en deux par le terminal s'ouvre toujours en entier.** Sous Windows, lorsqu'une
+  longue URL passe à la ligne suivante dans le terminal, cliquer sur le lien ouvre l'adresse
+  complète au lieu de s'arrêter au saut de ligne.
+- **Le panneau inactif ne ment plus sur l'état de son dépôt.** En affichage multi-panneaux, les
+  projets qui n'avaient pas le focus cessaient d'actualiser leur branche et leur statut git jusqu'à
+  ce qu'on y revienne. Chaque panneau ouvert synchronise désormais automatiquement sa branche et son
+  état.
+- **Chaque panneau conserve son propre volet, et ses boutons l'indiquent.** Ouvrir le volet de
+  communication ou d'aperçu de fichier dans un projet ne ferme ni ne dérègle plus le volet du
+  panneau voisin.
+- **Une carte que plus personne n'attend quitte « a besoin de vous ».** Les cartes en attente d'une
+  approbation ou d'une relecture quittent désormais correctement la colonne d'attente dès que
+  l'approbation est accordée ou que l'exécution se termine normalement.
 ## 0.21.0 — 2026-09-19
 
 ### Nouveau

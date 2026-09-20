@@ -2,6 +2,78 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.22.0 — 2026-09-20
+
+### Neu
+
+- **`/compact` bittet jeden Agenten, zuerst seinen eigenen Verlauf zusammenzufassen.** Zuvor wurden
+  beim Komprimieren lediglich die Sitzungs-IDs verworfen, sodass die Markdown-Dateien unter
+  `.ainess/history/<agent>.md` über die Projektlaufzeit unbegrenzt anwuchsen. Nun schreibt jeder
+  Agent vor dem Verlust seiner Sitzung seine Datei neu, behält Entscheidungen und Endzustände und
+  streicht das schrittweise Hin und Her.
+- **Das Board eines Projekts kann ein Trello-Board sein.** In den Projekteinstellungen lässt sich
+  nun ein Trello-Board über seine URL einbinden und dessen Listen den Spalten des Projekts zuweisen.
+  API-Schlüssel und Token werden unter Einstellungen → Boards hinterlegt. Wie bei GitHub Projects
+  wandern nur Wurzelkarten, auf der Gegenseite wird nie etwas gelöscht, und schlägt eine
+  Synchronisierung fehl, bleibt das lokale Board unberührt.
+- **Die Seitenleiste klappt auf Initialen zusammen und steht für sich allein.** Die Seitenleiste
+  lässt sich nun zu einer schmalen Leiste aus Projekt-Avataren mit kontrastoptimierten Initialen
+  minimieren. Die Leiste funktioniert eigenständig ohne aufklappende Vorschau beim Drüberfahren: Ein
+  Klick auf das Projekt öffnet sein Menü, und mit Strg+B wechselt man durch die Zustände
+  ausgeklappt, Leiste und verborgen.
+- **Das Fenster verhält sich wie eine native Desktop-Anwendung statt wie ein Browser.**
+  Browser-Standardtastenkürzel und -gesten, die mit der Anwendung kollidierten — darunter Strg+P
+  (Drucken), Strg+J (Downloads), F5 (Neu laden), F12 (Entwicklertools), Strg+Mausrad-Zoom,
+  Wischgesten und versehentliches Bildziehen —, wurden deaktiviert. Ein eigenes Kontextmenü stellt
+  beim Rechtsklick in Textfeldern und Terminals Ausschneiden, Kopieren, Einfügen und Alles auswählen
+  bereit.
+- **Offen gebliebene Ports sehen und freigeben.** Laufen Entwicklungsserver oder Prozesse nach dem
+  Ende eines Agenten weiter, zeigt ein Zähler neben den arbeitenden Agenten die belegten Ports an.
+  Ein Klick darauf listet Port, Prozess und Befehlszeile auf und bietet eine Schaltfläche, um den
+  Prozessbaum nach Rückfrage sauber zu beenden.
+- **Ein Agent kann die Antwort vorschlagen, die Sie gerade schreiben wollten.** Beendet ein Agent
+  seinen Zug und erwartet einen typischen Folgeschritt, kann er einen passenden Textvorschlag (wie
+  eine Bestätigung zum Weitermachen) in grauer Schrift im Eingabefeld anzeigen, der sich direkt mit
+  Tab übernehmen lässt.
+- **Das Wiederholen eines Laufs nimmt dessen Platz ein, statt einen neuen Zug anzuhängen.** Ein
+  Klick auf Wiederholen hängt die Eingabeaufforderung nicht mehr doppelt unten an die Unterhaltung
+  an. Der neue Versuch ersetzt den alten Lauf an Ort und Stelle im Faden sowie auf dem Board,
+  während die Details des vorherigen Fehlschlags mit einem Klick einsehbar bleiben. Das Wiederholen
+  eines erfolgreichen Laufs erfordert nun eine Bestätigung.
+- **Ein Implementierer kann den Planer statt des Nutzers fragen.** Stößt ein Implementierer auf eine
+  Unklarheit im übergebenen Plan, kann er seine Rückfrage direkt an den Planer richten, der die
+  Arbeit delegiert hat, statt den Nutzer zu unterbrechen. Ist der Planer nicht erreichbar oder
+  antwortet selbst mit einer Frage, fällt sie verlässlich an den Nutzer zurück. Planer können
+  bestehende Karten nun zudem über deren Kurz-ID auf dem Board aktualisieren und verschieben.
+
+### Geändert
+
+- **Inkompatible Änderung: `/clear` setzt Agenten zurück, ohne den Verlauf zu löschen, und der
+  destruktive Befehl heißt jetzt `/wipe`.** In Werkzeugen wie Claude Code startet `/clear` eine
+  frische Unterhaltung; hier löschte es bisher unwiderruflich den gesamten Verlauf — Läufe,
+  Nachrichten, Freigaben und Fragen —, während die Agenten ihr gesammeltes Wissen behielten. Jetzt
+  tut `/clear`, was man von CLI-Befehlen erwartet: Jeder Agent im Projekt fängt mit einer frischen
+  Sitzung neu an, ohne Verlauf oder Dateien zu löschen. Wer den Gesprächs- und Ausführungsverlauf
+  eines Projekts wirklich vollständig leeren möchte, nutzt dafür nun den destruktiven Befehl
+  `/wipe`.
+
+### Behoben
+
+- **Das Auslesen des Repositorys stößt sich nicht mehr selbst in einer Schleife an.** Die App las
+  das Repository immer wieder von selbst ein, bis sie abstürzte, und tut dies nun nicht mehr.
+- **Eine im Terminal umbrochene URL öffnet sich weiterhin vollständig.** Wenn eine lange Webadresse
+  im Windows-Terminal auf die nächste Zeile umbricht, öffnet ein Klick darauf nun die vollständige
+  Adresse, statt an der Umbruchstelle abzureißen.
+- **Das nicht fokussierte Panel zeigt keine veralteten Repository-Daten mehr an.** Bei mehreren
+  nebeneinander geöffneten Projekten blieben die Zweiganzeige und der Git-Status inaktiver Panels
+  bisher stehen, bis sie fokussiert wurden. Nun gleicht jedes geöffnete Panel seinen Zweig und
+  Zustand automatisch ab.
+- **Jedes Panel behält sein eigenes Dock und dessen Schaltflächen stimmen überein.** Das Öffnen des
+  Kommunikations- oder Dateivorschau-Docks in einem Panel schließt oder verstellt nicht länger das
+  Dock im Nachbarpanel.
+- **Eine Karte, auf die niemand wartet, verlässt „braucht Sie“.** Karten, die auf Freigaben oder
+  Rückmeldungen warteten, wandern nun zuverlässig aus der Wartespalte, sobald die Freigabe erteilt
+  ist oder der Lauf sauber abgeschlossen wurde.
 ## 0.21.0 — 2026-09-19
 
 ### Neu

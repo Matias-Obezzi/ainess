@@ -2,6 +2,74 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.22.0 — 2026-09-20
+
+### Novo
+
+- **`/compact` pede que cada agente resuma o seu próprio histórico primeiro.** Antes, compactar
+  apenas limpava os identificadores de sessão, deixando os arquivos `.ainess/history/<agente>.md`
+  crescerem durante toda a vida do projeto. Agora, antes de perder a sessão, cada agente reescreve o
+  seu próprio arquivo para preservar decisões e estados, descartando o diálogo turno a turno.
+- **O quadro de um projeto pode ser um quadro do Trello.** Nos ajustes do projeto agora é possível
+  apontar para um quadro do Trello colando a sua URL e mapeando as suas listas para as colunas do
+  projeto. A chave de API e o token ficam em Configurações → Quadros. Assim como no GitHub Projects,
+  apenas os cartões raiz viajam, nada é apagado no quadro remoto e uma sincronização com falha
+  mantém o quadro local intacto.
+- **A barra lateral encolhe para iniciais e funciona sozinha.** A barra lateral agora pode se
+  recolher para uma faixa estreita com as iniciais de cada projeto sobre cores calculadas para alto
+  contraste. A faixa funciona por conta própria sem painéis flutuantes ao passar o cursor: clicar em
+  um projeto abre o seu menu, ou use Ctrl+B para alternar entre expandida, faixa e oculta.
+- **A janela se comporta como um aplicativo de desktop e não como um navegador.** Atalhos e
+  comportamentos nativos do navegador que entravam em conflito com o aplicativo — como Ctrl+P
+  (imprimir), Ctrl+J (downloads), F5 (recarregar), F12 (ferramentas de desenvolvedor), Ctrl+roda do
+  mouse para zoom, navegação por gestos e o arrasto acidental de imagens — foram desativados. Um
+  menu de contexto próprio traz de volta recortar, copiar, colar e selecionar tudo ao clicar com o
+  botão direito em campos de texto e terminais.
+- **As portas deixadas em escuta, e uma forma de liberá-las.** Quando servidores de desenvolvimento
+  ou processos continuam rodando após o término de um agente, um contador ao lado dos agentes
+  trabalhando mostra as portas ocupadas. Clicar nele lista a porta, o processo e a linha de comando,
+  com um botão para encerrar a árvore de processos mediante confirmação.
+- **Um agente pode sugerir a resposta que você estava prestes a escrever.** Quando um agente conclui
+  o seu turno aguardando um próximo passo típico, ele pode sugerir uma resposta na sua própria voz
+  (como confirmar que continue) em texto cinza no compositor, aceita com Tab.
+- **Repetir uma execução assume o lugar dela em vez de adicionar um turno.** Clicar em tentar
+  novamente não adiciona mais uma mensagem duplicada ao final da conversa. A nova tentativa assume o
+  lugar da anterior tanto no fio quanto no quadro, enquanto os detalhes da falha anterior continuam
+  acessíveis com um clique. Repetir uma execução que já havia terminado com sucesso agora pede
+  confirmação.
+- **Um implementador pode perguntar ao planejador em vez de ao usuário.** Quando um implementador
+  encontra uma dúvida no plano recebido, ele pode direcionar a pergunta diretamente ao planejador
+  que delegou a tarefa em vez de interromper o usuário. Se o planejador não estiver disponível ou
+  responder com outra pergunta, a dúvida volta com segurança para o usuário. Os planejadores também
+  podem atualizar e mover cartões existentes no quadro usando o identificador curto.
+
+### Alterado
+
+- **Mudança incompatível: `/clear` reinicia os agentes sem apagar o histórico, e o comando
+  destrutivo agora é `/wipe`.** Em ferramentas como o Claude Code, `/clear` inicia uma conversa
+  limpa; aqui ele apagava de forma irreversível todo o histórico — execuções, mensagens, aprovações
+  e perguntas — enquanto deixava os agentes retendo tudo o que já tinham. Agora o `/clear` faz o que
+  se espera: cada agente do projeto recomeça com uma sessão nova, sem apagar nada e mantendo os
+  arquivos de histórico intactos. Se você quiser realmente apagar toda a conversa, execuções e
+  registros do projeto, o comando destrutivo agora é o `/wipe`.
+
+### Corrigido
+
+- **Ler o repositório parou de pedir para ler de novo.** O app ficava relendo o repositório sozinho
+  até acabar caindo, e já não faz mais isso.
+- **Uma URL que o terminal quebrou ao meio continua abrindo inteira.** Quando um endereço longo se
+  divide em duas linhas no terminal no Windows, clicar no link agora abre a URL completa em vez de
+  cortar na quebra de linha.
+- **O painel que você não está olhando deixa de mentir sobre o repositório.** Com vários painéis
+  abertos ao mesmo tempo, os que não estavam com o foco deixavam de atualizar o botão de ramo e o
+  estado do git até que fossem focados. Agora cada painel aberto sincroniza o seu ramo e estado
+  automaticamente.
+- **Cada painel mantém o seu próprio dock, e os seus botões dizem isso.** Abrir o dock de
+  comunicação ou de pré-visualização de arquivos em um painel não fecha nem descoordena mais o dock
+  do painel ao lado.
+- **Um cartão que ninguém está esperando sai de "precisa de você".** Cartões parados aguardando
+  aprovação ou revisão agora saem corretamente da coluna de espera assim que a aprovação é resolvida
+  ou a execução termina com sucesso.
 ## 0.21.0 — 2026-09-19
 
 ### Novo

@@ -2,6 +2,75 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.22.0 — 2026-09-20
+
+### Nuevo
+
+- **`/compact` le pide a cada agente que resuma su propio historial primero.** Antes, compactar sólo
+  borraba los identificadores de sesión, dejando que los archivos `.ainess/history/<agente>.md`
+  crecieran durante toda la vida del proyecto. Ahora, antes de perder su sesión, cada agente
+  reescribe su propio archivo para conservar decisiones y estados dejando afuera el diálogo paso a
+  paso.
+- **El tablero de un proyecto puede ser un tablero de Trello.** En los ajustes del proyecto ahora se
+  puede apuntar a un tablero de Trello pegando su URL y asociando sus listas con las columnas del
+  proyecto. La clave y el token van en Configuración → Tableros. Igual que con GitHub Projects, sólo
+  viajan las tarjetas raíz, nunca se borra nada en el tablero remoto y una sincronización fallida no
+  altera el tablero local.
+- **La barra lateral se pliega a iniciales y se sostiene sola.** La barra lateral ahora puede
+  replegarse a una tira angosta con las iniciales de cada proyecto sobre colores calculados para
+  asegurar contraste. La tira funciona sola sin paneles emergentes al pasar el cursor: al hacer clic
+  en un proyecto se abre su menú, o se puede usar Ctrl+B para alternar entre expandida, tira y
+  oculta.
+- **La ventana se comporta como una aplicación de escritorio y no como un navegador.** Se
+  desactivaron los atajos y comportamientos propios del navegador que chocaban con la app —como
+  Ctrl+P (imprimir), Ctrl+J (descargas), F5 (recargar), F12 (herramientas de desarrollo), Ctrl+rueda
+  para zoom, navegación por gestos y el arrastre accidental de imágenes—. Un menú contextual propio
+  recupera cortar, copiar, pegar y seleccionar todo al hacer clic derecho en campos de texto y
+  terminales.
+- **Los puertos que quedaron escuchando, y una forma de liberarlos.** Cuando servidores de
+  desarrollo o procesos quedan abiertos después de que un agente termina, un contador al lado de los
+  agentes trabajando muestra los puertos ocupados. Al hacer clic se listan el puerto, el proceso y
+  la línea de comandos, con un botón para cerrar el árbol de procesos previa confirmación.
+- **Un agente puede sugerir la respuesta que estabas por escribir.** Cuando un agente termina su
+  turno esperando una respuesta habitual, puede sugerir un texto en tu propia voz (como confirmar
+  que continúe) en gris dentro del compositor, aceptable con Tab.
+- **Reintentar una corrida ocupa su lugar en vez de sumar un turno.** Hacer clic en reintentar ya no
+  agrega un mensaje duplicado al final de la conversación. El nuevo intento toma el lugar del
+  anterior tanto en el hilo como en el tablero, mientras que el detalle del fallo previo sigue
+  accesible a un clic. Reintentar una corrida que había terminado con éxito ahora pide confirmación.
+- **Un implementador puede preguntarle al planificador en vez de al usuario.** Cuando un
+  implementador encuentra una duda en el plan asignado, puede dirigir su pregunta directamente al
+  planificador que le encargó el trabajo en lugar de consultar al usuario. Si el planificador no
+  está disponible o responde con otra pregunta, la consulta pasa automáticamente al usuario. Los
+  planificadores además pueden actualizar y mover tarjetas existentes en el tablero mediante su
+  identificador corto.
+
+### Cambiado
+
+- **Cambio incompatible: `/clear` reinicia a los agentes sin borrar el historial, y el reinicio
+  destructivo ahora es `/wipe`.** En herramientas como Claude Code, `/clear` empieza una
+  conversación limpia; acá borraba de forma irreversible todo el historial —corridas, mensajes,
+  aprobaciones y preguntas— y dejaba a los agentes cargando todo lo que ya tenían. Ahora `/clear`
+  hace lo que se espera: cada agente del proyecto recomienza con una sesión limpia, sin borrar nada
+  y dejando los archivos de historial intactos. Si lo que querés es borrar por completo la
+  conversación, las corridas y los registros del proyecto, el comando destructivo ahora es `/wipe`.
+
+### Arreglado
+
+- **Leer el repositorio dejó de pedir leerlo otra vez.** La app se quedaba releyendo el repositorio
+  sola hasta terminar cayéndose, y ya no.
+- **Una URL que la terminal cortó al medio se abre entera.** Cuando una dirección larga se divide en
+  dos líneas en la terminal sobre Windows, al hacer clic se abre la URL completa en vez de cortarse
+  en el salto de línea.
+- **El panel que no estás mirando deja de mentir sobre su repositorio.** Con varios paneles abiertos
+  a la vez, los que no tenían el foco dejaban de actualizar su rama y estado de git hasta que
+  volvías a ellos. Ahora cada panel abierto sincroniza su rama y estado automáticamente.
+- **Cada panel conserva su propio dock y sus botones lo reflejan.** Abrir el dock de comunicación o
+  de vista previa de archivos en un proyecto ya no cierra ni descoordina el dock del panel de al
+  lado.
+- **Una tarjeta que nadie está esperando sale de «te necesita».** Las tarjetas que estaban a la
+  espera de una aprobación o revisión ahora salen correctamente de la columna de espera en cuanto la
+  aprobación se resuelve o la corrida termina bien.
 ## 0.21.0 — 2026-09-19
 
 ### Nuevo
