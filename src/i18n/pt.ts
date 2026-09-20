@@ -1867,6 +1867,7 @@ export const pt: Dictionary = {
   "system.approved": "Aprovado: {summary}",
   "system.rejected": "Rejeitado: {summary}",
   "system.modelUnavailable": "O modelo \"{model}\" não está disponível para {name}: será ignorado.",
+  "system.sessionCompacted": "A sessão de {name} foi compactada porque a conversa estava pesada ({tokens} tokens).",
   "system.cliMissing": "CLI do {cli} não encontrado. Instale-o ou configure um comando personalizado.",
   "system.rejectedRun": "[rejeitado por você]",
   "system.rejectedRunWithNote": "[rejeitado por você: {note}]",

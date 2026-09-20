@@ -1868,6 +1868,7 @@ export const ja: Dictionary = {
   "system.approved": "承認済み: {summary}",
   "system.rejected": "拒否されました: {summary}",
   "system.modelUnavailable": "モデル「{model}」は {name} で利用できません: 無視されます。",
+  "system.sessionCompacted": "会話が重くなったため（{tokens} トークン）、{name} のセッションを要約しました。",
   "system.cliMissing": "{cli} CLI が見つかりません。インストールするか、カスタムコマンドを設定してね。",
   "system.rejectedRun": "[あなたが拒否しました]",
   "system.rejectedRunWithNote": "[あなたが拒否しました: {note}]",

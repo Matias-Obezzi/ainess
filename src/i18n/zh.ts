@@ -1867,6 +1867,7 @@ export const zh: Dictionary = {
   "system.approved": "已批准: {summary}",
   "system.rejected": "已拒绝: {summary}",
   "system.modelUnavailable": "模型“{model}”对 {name} 不可用：被忽略。",
+  "system.sessionCompacted": "对话过大（{tokens} tokens），已压缩 {name} 的会话。",
   "system.cliMissing": "未找到 {cli} CLI。请安装它或设置自定义命令。",
   "system.rejectedRun": "[由你拒绝]",
   "system.rejectedRunWithNote": "[由你拒绝：{note}]",

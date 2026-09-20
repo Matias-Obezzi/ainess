@@ -6,8 +6,10 @@ import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/q
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
-import { truncate } from "@/lib/format";
+import { truncate, formatNumber } from "@/lib/format";
 import { translateNow, activeLocale } from "@/i18n/useT";
+import { compactAgent } from "@/lib/commands";
+import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
@@ -1422,6 +1424,24 @@ function onRunFinished(runId: string) {
       ? selectAgent(store, parent.agentId)?.name ?? translateNow("folder.history.fromUser")
       : translateNow("folder.history.fromUser");
     void recordTurn(project, agent, { from, prompt: run.prompt, answer: run.output });
+  }
+
+  // Auto-compaction: when a conversation has grown heavy, compact the agent's session so subsequent
+  // turns do not keep re-reading hundreds of thousands of tokens on every tool call.
+  const hasSession = !!useAppStore.getState().runtime[run.projectId]?.[agent.id]?.sessionId;
+  if (hasSession && shouldCompact(run)) {
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: "system",
+      toAgentId: agent.id,
+      kind: "system",
+      text: translateNow("system.sessionCompacted", {
+        name: agent.name,
+        tokens: formatNumber(run.usage?.contextTokens ?? 0, activeLocale()),
+      }),
+      runId,
+    });
+    compactAgent(run.projectId, agent.id);
   }
 }
 
