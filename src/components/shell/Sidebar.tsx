@@ -647,9 +647,8 @@ export function Sidebar() {
       data-mode={mode}
       className={`relative shrink-0 bg-card ${collapsed ? "overflow-visible" : "overflow-hidden"} ${
         resizing ? "" : "transition-[width] duration-200"
-      } ${mode === "hidden" ? "" : "border-r border-border"}`}
-      style={{ width: mode === "expanded" ? width : collapsed ? RAIL_WIDTH : 0 }}
-      aria-hidden={mode === "hidden"}
+      } border-r border-border`}
+      style={{ width: collapsed ? RAIL_WIDTH : width }}
     >
       {collapsed ? (
         // Everything the expanded bar has, as icons: home and "new project" pinned at the top, the

@@ -635,12 +635,12 @@ export function clampPaneWidth(pane: PaneId, value: unknown): number {
 }
 
 /**
- * The three shapes of the left rail: the menu as it always was, a strip of project avatars that
- * opens over the content on hover, and gone. `SIDEBAR_CYCLE` is the order the title bar button and
- * Ctrl+B walk, and it is the whole of what either of them does: one step forward, always.
+ * The two shapes of the left rail: the menu as it always was, and a strip of project avatars.
+ * `SIDEBAR_CYCLE` is the order the title bar button and Ctrl+B walk, and it is the whole of what
+ * either of them does: one step forward, always.
  */
-export type SidebarMode = "expanded" | "collapsed" | "hidden";
-export const SIDEBAR_CYCLE: SidebarMode[] = ["expanded", "collapsed", "hidden"];
+export type SidebarMode = "expanded" | "collapsed";
+export const SIDEBAR_CYCLE: SidebarMode[] = ["expanded", "collapsed"];
 
 /** The next mode Ctrl+B lands on. */
 export function nextSidebarMode(mode: SidebarMode): SidebarMode {
@@ -648,12 +648,15 @@ export function nextSidebarMode(mode: SidebarMode): SidebarMode {
 }
 
 /**
- * The mode a preferences file holds. Builds before the strip knew only open and closed, so a
- * `sidebarOpen: false` from one of those means hidden and anything else means the menu as it was.
+ * The mode a preferences file holds. Builds with `sidebarMode: "hidden"` (shipped in 0.22.0) or
+ * even older ones with `sidebarOpen: false` map to `"collapsed"`: whoever hid it wanted it out
+ * of the way, the icon strip is as close as it gets while remaining visible, and the button is
+ * there to bring it back. Anything unknown falls back to `"expanded"`.
  */
 export function sanitizeSidebarMode(mode: unknown, legacyOpen: unknown): SidebarMode {
   if (SIDEBAR_CYCLE.includes(mode as SidebarMode)) return mode as SidebarMode;
-  return legacyOpen === false ? "hidden" : "expanded";
+  if (mode === "hidden" || legacyOpen === false) return "collapsed";
+  return "expanded";
 }
 
 const UI_PREFS_KEY = "ainess.ui";
