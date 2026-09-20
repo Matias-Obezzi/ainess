@@ -10,6 +10,7 @@
 // Nothing here is user-facing text: the messages are English log lines, which is what CLAUDE.md
 // says belongs in the source. The provider turns a `kind` into a translated sentence, not a string.
 import { getTransport } from "@/lib/transport";
+import { execUnlessMissing } from "@/lib/missing-binary";
 import { useAppStore } from "@/store";
 
 const GRAPHQL_URL = "https://api.github.com/graphql";
@@ -135,11 +136,10 @@ async function ghToken(): Promise<string> {
 
   if (cachedToken) return cachedToken;
 
-  let result: { code: number | null; stdout: string; stderr: string };
-  try {
-    result = await getTransport().exec("gh", ["auth", "token"]);
-  } catch (e) {
-    throw new GhBoardError("no-cli", `could not run the gh CLI: ${describe(e)}`);
+  // Null once we know the CLI is not installed, so this stops spawning it (see missing-binary.ts).
+  const result = await execUnlessMissing("gh", ["auth", "token"]);
+  if (!result) {
+    throw new GhBoardError("no-cli", "could not run the gh CLI");
   }
 
   // `code: null` is what a transport with no processes behind it answers (the browser preview).

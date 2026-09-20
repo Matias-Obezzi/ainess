@@ -20,6 +20,7 @@ import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { translateNow } from "@/i18n/useT";
 import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
+import { forgetMissingBinaries } from "@/lib/missing-binary";
 import { isAbsolutePath, pathRef, resolvePath } from "@/lib/file-preview";
 import { loadLanguage, resolveLanguage } from "@/i18n";
 // sections.ts only has a type-import back to store, no runtime cycle.
@@ -865,6 +866,46 @@ export const canGoForward = (s: AppState): boolean => s.navIndex < s.navHistory.
 
 /** Repo reads in flight, per project, so the timer and the run-finished trigger never overlap. */
 const repoReads = new Map<string, Promise<void>>();
+
+/**
+ * The same, for the cheap read on the other path. This one is driven by filesystem events, so
+ * during a run it fires far more often than the timer ever does — and every call is two git
+ * processes that can each sit for ten seconds behind an `index.lock` a `git add` outside the app
+ * is holding. Without this, a repo that stops answering does not slow the reads down, it stacks
+ * them: nothing waits for the last one, so they pile up with no ceiling at all.
+ */
+const repoStatusReads = new Map<string, Promise<void>>();
+
+/**
+ * The body of `refreshRepoStatus`, out here so the action is only the guard around it.
+ *
+ * The log comes along for the ride: a commit is exactly the kind of change the watcher fires on,
+ * and it is what the board reads to tell a card whether its run's work landed. One read per
+ * project, not per card.
+ */
+async function readStatusAndCommits(projectId: string, project: Project): Promise<void> {
+  const [status, commits] = await Promise.all([
+    readRepoStatus(repoDirOf(project)).catch(() => null),
+    readRecentCommits(repoDirOf(project)).catch(() => null),
+  ]);
+  if (!status && !commits) return;
+  useAppStore.setState(s => {
+    const before = s.repoState[projectId];
+    // Each half lands on its own. What git could not read leaves what is already there alone —
+    // "not known" must not erase an answer that was known a moment ago — and a status git
+    // choked on is no reason to throw away the commits it read fine in the same breath.
+    const read = { ...(status ? { status } : {}), ...(commits ? { commits } : {}) };
+    // Nothing read the whole state yet: this half is still better than an empty header, and the
+    // pull requests fill in on the next slow pass. `isRepo: true` is the honest reading even
+    // when only one half arrived: git ran in that folder and answered, which a folder outside a
+    // repository cannot do — it exits 128 and both halves come back null, and then we are not
+    // here at all.
+    const next: RepoState = before
+      ? { ...before, ...read, fetchedAt: Date.now() }
+      : { isRepo: true, status: null, pullRequests: [], ...read, fetchedAt: Date.now() };
+    return { repoState: { ...s.repoState, [projectId]: next } };
+  });
+}
 
 /** Which project a task belongs to, plus that project's list: tasks are keyed by project. */
 function findTaskProject(state: AppState, taskId: string): [string, Task[]] | undefined {
@@ -2036,6 +2077,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   detectBinaries: async () => {
+    // "Detectar de nuevo" is the user saying the machine changed, so anything written off as not
+    // installed gets another chance — the overrides read below are part of what may have changed.
+    forgetMissingBinaries();
     const detected = await getTransport().detectBinaries();
     const config = get().config;
     const overrides = config.binaryOverrides || {};
@@ -2117,30 +2161,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   refreshRepoStatus: async (projectId) => {
     const project = selectProject(get(), projectId);
     if (!project?.workspaceDir) return;
-    // The log comes along for the ride: a commit is exactly the kind of change the watcher fires
-    // on, and it is what the board reads to tell a card whether its run's work landed. One read
-    // per project, not per card.
-    const [status, commits] = await Promise.all([
-      readRepoStatus(repoDirOf(project)).catch(() => null),
-      readRecentCommits(repoDirOf(project)).catch(() => null),
-    ]);
-    if (!status && !commits) return;
-    set(s => {
-      const before = s.repoState[projectId];
-      // Each half lands on its own. What git could not read leaves what is already there alone —
-      // "not known" must not erase an answer that was known a moment ago — and a status git
-      // choked on is no reason to throw away the commits it read fine in the same breath.
-      const read = { ...(status ? { status } : {}), ...(commits ? { commits } : {}) };
-      // Nothing read the whole state yet: this half is still better than an empty header, and the
-      // pull requests fill in on the next slow pass. `isRepo: true` is the honest reading even
-      // when only one half arrived: git ran in that folder and answered, which a folder outside a
-      // repository cannot do — it exits 128 and both halves come back null, and then we are not
-      // here at all.
-      const next: RepoState = before
-        ? { ...before, ...read, fetchedAt: Date.now() }
-        : { isRepo: true, status: null, pullRequests: [], ...read, fetchedAt: Date.now() };
-      return { repoState: { ...s.repoState, [projectId]: next } };
+    // One read per project at a time. The answer of a read already in flight is the answer to the
+    // event that just arrived too — it started after the write that caused it — so a second one
+    // would only be the same two git processes over again.
+    const inFlight = repoStatusReads.get(projectId);
+    if (inFlight) return inFlight;
+    const read = readStatusAndCommits(projectId, project).finally(() => {
+      repoStatusReads.delete(projectId);
     });
+    repoStatusReads.set(projectId, read);
+    return read;
   },
 
   answerQuestion: (questionId, answer) => {

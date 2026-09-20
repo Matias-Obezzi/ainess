@@ -126,6 +126,79 @@ describe("refreshRepoStatus", () => {
     await store.useAppStore.getState().refreshRepoStatus("p1");
     expect(store.useAppStore.getState().repoState.p1).toBeUndefined();
   });
+
+  // The filesystem events that drive this arrive far faster than git answers, and every call is
+  // two processes that can each sit for ten seconds behind an `index.lock` someone else is
+  // holding. Starting one per event stacks them with no ceiling; waiting for the one in flight
+  // costs nothing, because it started after the write that caused the event anyway.
+  it("waits for the read in flight instead of starting another", async () => {
+    vi.resetModules();
+    const ran: string[][] = [];
+    let release: (() => void) | undefined;
+    const held = new Promise<void>(resolve => { release = resolve; });
+
+    const { setTransport } = await import("@/lib/transport");
+    setTransport({
+      ...nullTransport,
+      loadConfig: async () => structuredClone(config()) as unknown as AppConfig,
+      saveConfig: async () => {},
+      exec: async (program: string, args: string[]) => {
+        ran.push([program, ...args]);
+        await held;
+        return { code: 0, stdout: args[0] === "status" ? STATUS : LOG, stderr: "" };
+      },
+    });
+    const store = await import("@/store");
+    await store.useAppStore.getState().init();
+    ran.length = 0;
+
+    const reads = [
+      store.useAppStore.getState().refreshRepoStatus("p1"),
+      store.useAppStore.getState().refreshRepoStatus("p1"),
+      store.useAppStore.getState().refreshRepoStatus("p1"),
+    ];
+    // Three events, one read: `git status` and `git log`, once each.
+    expect(ran).toHaveLength(2);
+
+    release!();
+    await Promise.all(reads);
+    expect(ran).toHaveLength(2);
+    expect(store.useAppStore.getState().repoState.p1.status?.branch).toBe("feat/watcher");
+
+    // And the guard lets go afterwards: the next event is read, not swallowed.
+    await store.useAppStore.getState().refreshRepoStatus("p1");
+    expect(ran).toHaveLength(4);
+  });
+
+  it("does not let one project's slow read hold up another's", async () => {
+    vi.resetModules();
+    const ran: string[] = [];
+    const { setTransport } = await import("@/lib/transport");
+    setTransport({
+      ...nullTransport,
+      loadConfig: async () => {
+        const cfg = structuredClone(config());
+        (cfg.projects as Record<string, unknown>[]).push({ id: "p2", name: "Dos", workspaceDir: "C:\\dos", createdAt: 2 });
+        return cfg as unknown as AppConfig;
+      },
+      saveConfig: async () => {},
+      exec: async (_program: string, args: string[], cwd?: string) => {
+        ran.push(`${cwd}:${args[0]}`);
+        return { code: 0, stdout: args[0] === "status" ? STATUS : LOG, stderr: "" };
+      },
+    });
+    const store = await import("@/store");
+    await store.useAppStore.getState().init();
+    ran.length = 0;
+
+    await Promise.all([
+      store.useAppStore.getState().refreshRepoStatus("p1"),
+      store.useAppStore.getState().refreshRepoStatus("p2"),
+    ]);
+
+    expect(ran).toContain("C:\\uno:status");
+    expect(ran).toContain("C:\\dos:status");
+  });
 });
 
 // The two halves are read in one `Promise.all`, and git can fail on either. Whichever one came
