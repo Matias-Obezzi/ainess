@@ -105,3 +105,36 @@ test("the title bar button walks the two shapes", async ({ page }) => {
   await page.getByTestId("sidebar-project").first().hover();
   await expect(page.getByTestId("rail-project-menu")).toHaveCount(0);
 });
+
+test("the project avatar is vertically centered in its row when git status adds a second line", async ({ page }) => {
+  await openDemo(page, "chat");
+
+  await page.evaluate(async () => {
+    const { useAppStore } = await import("/src/store.ts");
+    const state = useAppStore.getState();
+    const firstProject = state.config.projects[0];
+    if (!firstProject) throw new Error("no project in demo");
+    useAppStore.setState({
+      repoState: {
+        ...state.repoState,
+        [firstProject.id]: {
+          isRepo: true,
+          status: { branch: "main", dirty: 0, ahead: 0, behind: 0, upstream: null },
+          pullRequests: [],
+          fetchedAt: Date.now(),
+        },
+      },
+    });
+  });
+
+  const row = page.getByTestId("sidebar-project").first();
+  await expect(row.getByText("main")).toBeVisible();
+
+  const avatar = row.locator(".rounded-full").first();
+  const rowBox = (await row.boundingBox())!;
+  const avatarBox = (await avatar.boundingBox())!;
+  const rowCenterY = rowBox.y + rowBox.height / 2;
+  const avatarCenterY = avatarBox.y + avatarBox.height / 2;
+  expect(Math.abs(rowCenterY - avatarCenterY)).toBeLessThanOrEqual(1);
+});
+

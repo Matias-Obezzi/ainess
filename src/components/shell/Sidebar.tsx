@@ -513,7 +513,7 @@ export function Sidebar() {
                 <ContextMenuTrigger asChild>
                   <div
                     data-testid="sidebar-project"
-                    className={`group flex flex-col rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
+                    className={`group flex items-center gap-2 rounded-md px-1.5 py-1.5 text-sm cursor-pointer hover:bg-accent ${isOpenProject ? "bg-accent/60" : ""}`}
                     // First click lands where the project was left; a click on the project that is
                     // already open is a way back to its orchestrator from wherever it was left in.
                     onClick={() => (isOpenProject ? openProject(p.id, null, "chat") : openProject(p.id))}
@@ -523,55 +523,57 @@ export function Sidebar() {
                     // impossible: the menu opened with the project already in the pane you were
                     // standing in, so the row that would have put it beside it was greyed out.
                   >
-                    <div className="flex items-center gap-2">
-                      {/* Working shows in the avatar itself: the orange count next to the name read
-                          like something waiting for an answer. */}
-                      <ProjectAvatar
-                        name={p.name}
-                        color={p.color}
-                        size={22}
-                        className={running > 0 ? "animate-breathe" : ""}
-                        title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
-                      />
-                      <span className="truncate flex-1 font-medium">{p.name}</span>
-                      {/* A project left running unattended is the one thing about it you want to
-                          know without opening it — the button that turns it on is inside. */}
-                      {isAutonomous(p) && (
-                        <Moon
-                          className="h-3.5 w-3.5 shrink-0 text-amber-500"
-                          aria-label={t("autonomous.mode")}
-                        >
-                          <title>{t("autonomous.mode")}</title>
-                        </Moon>
-                      )}
-                      <button
-                        type="button"
-                        className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
-                        title={folded ? t("sidebar.expand") : t("sidebar.collapse")}
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleSidebarProject(p.id);
-                        }}
-                      >
-                        {folded ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      </button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
-                            title={t("sidebar.projectOptions")}
-                            onClick={e => e.stopPropagation()}
+                    {/* Working shows in the avatar itself: the orange count next to the name read
+                        like something waiting for an answer. */}
+                    <ProjectAvatar
+                      name={p.name}
+                      color={p.color}
+                      size={22}
+                      className={running > 0 ? "animate-breathe" : ""}
+                      title={running > 0 ? t("projectScreen.working", { n: running }) : undefined}
+                    />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate flex-1 font-medium">{p.name}</span>
+                        {/* A project left running unattended is the one thing about it you want to
+                            know without opening it — the button that turns it on is inside. */}
+                        {isAutonomous(p) && (
+                          <Moon
+                            className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                            aria-label={t("autonomous.mode")}
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                          <DropdownActionItems actions={projectActions(p)} />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <title>{t("autonomous.mode")}</title>
+                          </Moon>
+                        )}
+                        <button
+                          type="button"
+                          className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                          title={folded ? t("sidebar.expand") : t("sidebar.collapse")}
+                          onClick={e => {
+                            e.stopPropagation();
+                            toggleSidebarProject(p.id);
+                          }}
+                        >
+                          {folded ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground"
+                              title={t("sidebar.projectOptions")}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                            <DropdownActionItems actions={projectActions(p)} />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <GitStatusLine projectId={p.id} />
                     </div>
-                    <GitStatusLine projectId={p.id} />
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-56">
