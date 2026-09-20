@@ -110,6 +110,32 @@ describe("claude provider", () => {
     expect(cmd.args).not.toContain("--dangerously-skip-permissions");
   });
 
+  it("passes --disallowedTools with Agent and Workflow for an implementer", () => {
+    const cmd = PROVIDERS.claude.buildCommand({
+      agent: agent({ provider: "claude", role: "implementer" }),
+      prompt: "hacé esto",
+      systemPrompt: "SYS",
+      cwd: "C:/ws",
+      binaryPath: "claude.exe",
+    });
+    expect(cmd.args).toContain("--disallowedTools");
+    const disallowed = cmd.args.slice(cmd.args.indexOf("--disallowedTools") + 1);
+    expect(disallowed).toContain("Agent");
+    expect(disallowed).toContain("Workflow");
+  });
+
+  it("does not pass --disallowedTools to planners and keeps their --allowedTools", () => {
+    const cmd = PROVIDERS.claude.buildCommand({
+      agent: agent({ provider: "claude", role: "planner" }),
+      prompt: "planificá",
+      systemPrompt: "SYS",
+      cwd: "C:/ws",
+      binaryPath: "claude.exe",
+    });
+    expect(cmd.args).not.toContain("--disallowedTools");
+    expect(cmd.args).toContain("--allowedTools");
+  });
+
   it("parses stream-json events", () => {
     const p = PROVIDERS.claude;
     expect(p.parseLine('{"type":"system","subtype":"init","session_id":"s1"}', "stdout")).toEqual([{ type: "session", sessionId: "s1" }]);

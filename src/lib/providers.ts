@@ -460,6 +460,13 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         // writes the board and the team into) and need git to check what the implementers left
         // behind and to commit/push: nothing else from the shell.
         args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)");
+      } else {
+        // The project hierarchy decides which agents exist. Any subagent spawned directly by the
+        // CLI sits outside of it — with no board card, no attributed cost, and no way to stop
+        // it from the app. A blacklist lets implementers keep the rest of their tools (and any
+        // tool the CLI introduces) while stripping out subagents. `Task` is kept for older CLI
+        // versions where that was the name for `Agent`.
+        args.push("--disallowedTools", "Agent", "Workflow", "Task");
       }
 
       return {
@@ -481,6 +488,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     promptVia: "arg",
     buildCommand: (input) => {
       const prompt = withSystem(input);
+      // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
       const args = ["-p", prompt, "--output-format", "stream-json", "--print-timeout", "30m"];
       // Without --add-dir agy treats an unregistered cwd as "outside of project" and
       // works in its own scratch folder instead of the workspace.
@@ -527,6 +535,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       const prompt = withSystem(input);
       // -p without --allow-all-tools makes every tool call fail, so it is always on;
       // --yolo additionally lifts the path/URL checks.
+      // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
       const args = ["-p", prompt, "--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
       if (input.agent.autoApprove) args.push("--yolo");
       if (input.agent.model) args.push("--model", input.agent.model);
