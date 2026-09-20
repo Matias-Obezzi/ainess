@@ -952,6 +952,8 @@ export const ja: Dictionary = {
   "agentDialog.providerDefault": "プロバイダーのデフォルト",
   "agentDialog.otherModel": "その他…",
   "agentDialog.otherModelPlaceholder": "例: gemini-3.1-pro-high",
+  "agentDialog.costPerMillion": "{cost} / Mトークン",
+  "agentDialog.listPriceNotice": "CLIから報告された定価です。サブスクリプションやクォータプランの場合、実際の限界費用はゼロになることがあります。",
   "agentDialog.autoApprove": "ツールを自動承認",
   "agentDialog.autoApproveHint": "エージェントは許可を求めずにツールを実行するので、誰も見ていない実行で待ち続けることがありません。",
   "agentDialog.approvalMode": "委任タスクを受け取るときの承認",

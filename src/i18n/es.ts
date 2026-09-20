@@ -952,6 +952,8 @@ export const es: Dictionary = {
   "agentDialog.providerDefault": "Por defecto del proveedor",
   "agentDialog.otherModel": "Otro…",
   "agentDialog.otherModelPlaceholder": "Ej: gemini-3.1-pro-high",
+  "agentDialog.costPerMillion": "{cost} / M tokens",
+  "agentDialog.listPriceNotice": "Precios de lista reportados por el CLI. Con un plan de suscripción o cuota, el costo marginal real puede ser cero.",
   "agentDialog.autoApprove": "Auto-aprobar herramientas",
   "agentDialog.autoApproveHint": "El agente ejecuta sus herramientas sin pedirte permiso, así no se queda esperando en una corrida sin nadie mirando.",
   "agentDialog.approvalMode": "Aprobación para recibir tareas delegadas",

@@ -951,6 +951,8 @@ export const zh: Dictionary = {
   "agentDialog.providerDefault": "提供方默认",
   "agentDialog.otherModel": "其他…",
   "agentDialog.otherModelPlaceholder": "例如：gemini-3.1-pro-high",
+  "agentDialog.costPerMillion": "{cost} / M token",
+  "agentDialog.listPriceNotice": "CLI 报告的公开标价。在订阅或配额计划下，实际边际成本可能为零。",
   "agentDialog.autoApprove": "自动批准工具调用",
   "agentDialog.autoApproveHint": "智能体无需征求你的同意即可运行工具，这样在无人看管的运行中就不会一直等待。",
   "agentDialog.approvalMode": "接收委派任务的批准方式",
