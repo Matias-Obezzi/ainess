@@ -54,6 +54,12 @@ pub fn run() {
         )
         .setup(|app| {
             let handle = app.handle().clone();
+            // First thing in the setup, which is the first moment there is an `AppHandle` to log
+            // with. `panic = "abort"` in the release profile means a panic kills the process on the
+            // spot — no unwinding, no backtrace, nothing written anywhere — and that is why the two
+            // crashes we have seen left no evidence at all. The hook still runs before the abort,
+            // so from here on the log says what panicked and where.
+            install_panic_logging(handle.clone());
             logging::prune_old(&handle);
             logging::append(
                 &handle,
@@ -130,4 +136,35 @@ pub fn run() {
             logging::append(handle, "info", "app", "ainess shutting down");
         }
     });
+}
+
+/// Writes every panic to the log file before the process goes.
+///
+/// The default hook stays underneath — it is what prints the panic to the console, which is still
+/// the fastest way to read one while developing. This only adds the line to the file: the payload
+/// (the message the panic was raised with), where it was raised, and which thread was in it, since
+/// most of what this app does happens off the main one.
+fn install_panic_logging(handle: tauri::AppHandle) {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| (*s).to_string())
+            .or_else(|| info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "<no message>".to_string());
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "<unknown location>".to_string());
+        let thread = std::thread::current();
+        let name = thread.name().unwrap_or("<unnamed>").to_string();
+        logging::append(
+            &handle,
+            "error",
+            "panic",
+            &format!("panic in thread '{name}' at {location}: {payload}"),
+        );
+        default_hook(info);
+    }));
 }

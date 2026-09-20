@@ -595,6 +595,14 @@ export interface Run {
   usage?: RunUsage;
   /** Set when this run is a review of another agent's finished run. */
   review?: { ofRunId: string; taskId: string };
+  /**
+   * The run this one was started to replace: another attempt at the same prompt.
+   *
+   * A retry takes the failed run's place rather than queueing behind it, so the thread stops
+   * drawing the run named here and draws this one where that one was (see `lib/retry.ts`). The
+   * replaced run is never deleted — its detail is what says why the first attempt failed.
+   */
+  replacesRunId?: string;
   /** The CLI process behind it, so a crashed app's leftovers can be found on the next launch. */
   process?: SpawnedProcess;
 }

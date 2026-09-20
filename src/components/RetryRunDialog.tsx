@@ -6,19 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { retryModelFor, retryModels } from "@/lib/retry";
+import { retryRun } from "@/lib/orchestrator";
+import { confirm } from "@/lib/confirm";
 import { truncate } from "@/lib/format";
 import { useT } from "@/i18n/useT";
 
 const DEFAULT_MODEL = "none";
 const OTHER_MODEL = "custom";
 
-/** Reruns a finished run from scratch: same prompt, an agent and model picked here. */
+/** Runs a finished run again — same prompt, an agent and a model picked here — in its place. */
 export function RetryRunDialog({ runId, open, onOpenChange }: { runId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
   const run = useAppStore(state => (runId ? state.runs[runId] : null));
   const project = useAppStore(state => (run ? state.config.projects.find(p => p.id === run.projectId) : undefined));
   const agents = useAppStore(state => selectProjectAgents(state, run?.projectId));
-  const submitPrompt = useAppStore(state => state.submitPrompt);
 
   const [agentId, setAgentId] = useState("");
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -46,14 +47,27 @@ export function RetryRunDialog({ runId, open, onOpenChange }: { runId: string | 
     setCustomModel("");
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!run || !project || !agent) {
       onOpenChange(false);
       return;
     }
     const value = model === DEFAULT_MODEL ? undefined : model === OTHER_MODEL ? customModel : model;
+    const wasDone = run.status === "done";
     onOpenChange(false);
-    void submitPrompt(run.prompt, agent.id, project.id, { model: value });
+    // The retry was made for the run that failed, and there it goes with one click. A run that
+    // ended well is the other case: its work is done, and doing it again can delegate again or
+    // commit again. Asked after the dialog closes, never over it, and never as a deletion — this
+    // adds work, it does not take anything away.
+    if (wasDone) {
+      const ok = await confirm({
+        title: t("retry.done.title"),
+        description: t("retry.done.body", { prompt: truncate(run.prompt, 120) }),
+        confirmText: t("retry.confirm"),
+      });
+      if (!ok) return;
+    }
+    retryRun(run.id, { agentId: agent.id, model: value });
   };
 
   if (!run) return null;
@@ -109,7 +123,7 @@ export function RetryRunDialog({ runId, open, onOpenChange }: { runId: string | 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          <Button onClick={handleConfirm} disabled={!agent || (model === OTHER_MODEL && !customModel.trim())}>
+          <Button onClick={() => void handleConfirm()} disabled={!agent || (model === OTHER_MODEL && !customModel.trim())}>
             {t("retry.confirm")}
           </Button>
         </DialogFooter>

@@ -1347,6 +1347,7 @@ export const zh: Dictionary = {
   "runDetail.finalOutput": "最终输出",
   "runDetail.rawOutput": "原始输出（stdout/stderr）",
   "runDetail.noLogs": "没有日志",
+  "runDetail.previousAttempt": "上一次尝试",
 
   // ---- Retry run dialog ----
   "retry.action": "用…重试",
@@ -1355,6 +1356,8 @@ export const zh: Dictionary = {
   "retry.agent": "智能体",
   "retry.model": "模型",
   "retry.confirm": "重试",
+  "retry.done.title": "这次运行已经成功完成",
+  "retry.done.body": "这项工作已经做完了。再跑一次可能会重复它：再次委派，或再次提交。要重试「{prompt}」吗？",
 
   // ---- Message detail dialog ----
   "messageDetail.title": "消息详情",

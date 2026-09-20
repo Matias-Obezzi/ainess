@@ -16,6 +16,12 @@ const activeTurns = new Map<string, {
   participantIdx: number;
   responses: Array<{ agentId: string; name: string; role: string; text: string }>;
   runId?: string;
+  /**
+   * A second attempt at one answer (see `retryChatRun`), not a turn working its way down the
+   * participants: the ones after it already answered and their bubbles are still on screen, so
+   * this one ends where it started instead of asking them again.
+   */
+  retry?: boolean;
 }>();
 
 /**
@@ -284,6 +290,68 @@ async function startTurn(
   }
 }
 
+/**
+ * Another attempt at one answer, written over the bubble that failed.
+ *
+ * A chat draws messages, so this is where `retryRun`'s idea lands here: the failed message keeps
+ * its id and its place in the thread and goes back to `pending` on the new run, instead of a second
+ * pair of bubbles at the bottom repeating a question the user only asked once. Nothing is added and
+ * nothing is removed — the message the eye is already on is the one that starts working again.
+ *
+ * The prompt is the one the failed run was given, which in a shared chat already carries the
+ * answers of whoever spoke before it.
+ */
+export function retryChatRun(runId: string, opts: { agentId: string; model?: string }): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  const chatId = run?.chatId;
+  if (!run || !chatId) return;
+  const chat = store.config.chats.find(c => c.id === chatId);
+  if (!chat) return;
+  const msgs = store.chatMessages[chatId] ?? [];
+  const idx = msgs.findIndex(m => m.runId === runId);
+  if (idx < 0) return;
+
+  const sessionId = store.chatSessions[chatId]?.[opts.agentId];
+  const turnId = crypto.randomUUID();
+  const newRunId = startRun({
+    agentId: opts.agentId,
+    projectId: chat.projectId,
+    prompt: run.prompt,
+    parentRunId: null,
+    round: 0,
+    resume: !!sessionId,
+    sessionId,
+    chatId,
+    rootRunId: turnId,
+    model: opts.model ?? chat.participants.find(p => p.agentId === opts.agentId)?.model,
+    kind: "chat",
+    systemPromptOverride: sessionId ? "" : buildChatSystemPrompt(chatId, opts.agentId),
+    replacesRunId: runId,
+  });
+  if (!newRunId) return;
+
+  // Back to the empty pending bubble it was before the run that failed — under the agent that is
+  // answering this time, which the retry may have changed. `onChatRunFinished` finds it by exactly
+  // that (agent + pending) and writes the answer into it.
+  useAppStore.setState(state => {
+    const current = state.chatMessages[chatId] ?? [];
+    if (!current[idx]) return state;
+    const next = [...current];
+    next[idx] = { ...next[idx], from: opts.agentId, text: "", status: "pending", runId: newRunId };
+    return { chatMessages: { ...state.chatMessages, [chatId]: next } };
+  });
+  void persistMessages(chatId);
+
+  setTurn(chatId, {
+    turnId,
+    participantIdx: Math.max(0, chat.participants.findIndex(p => p.agentId === opts.agentId)),
+    responses: [],
+    runId: newRunId,
+    retry: true,
+  });
+}
+
 // ---- Called from orchestrator when a chat run finishes ----
 
 export function onChatRunFinished(runId: string): void {
@@ -374,7 +442,7 @@ export function onChatRunFinished(runId: string): void {
   ];
 
   const nextIdx = turn.participantIdx + 1;
-  if (nextIdx < chat.participants.length) {
+  if (!turn.retry && nextIdx < chat.participants.length) {
     // Continue with next participant
     const userMsgs = (store.chatMessages[chatId] || []).filter(m => m.from === "user");
     const lastUserText = userMsgs.length > 0 ? userMsgs[userMsgs.length - 1].text : "";

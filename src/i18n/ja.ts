@@ -1348,6 +1348,7 @@ export const ja: Dictionary = {
   "runDetail.finalOutput": "最終出力",
   "runDetail.rawOutput": "生の出力 (stdout/stderr)",
   "runDetail.noLogs": "ログなし",
+  "runDetail.previousAttempt": "前回の試行",
 
   // ---- Retry run dialog ----
   "retry.action": "別で再試行…",
@@ -1356,6 +1357,8 @@ export const ja: Dictionary = {
   "retry.agent": "エージェント",
   "retry.model": "モデル",
   "retry.confirm": "再試行",
+  "retry.done.title": "この実行はすでに正常に終了しています",
+  "retry.done.body": "その作業はすでに完了しています。もう一度実行すると、委任やコミットが繰り返される可能性があります。「{prompt}」を再試行しますか？",
 
   // ---- Message detail dialog ----
   "messageDetail.title": "メッセージの詳細",

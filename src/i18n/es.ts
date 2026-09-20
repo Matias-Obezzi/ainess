@@ -1348,6 +1348,7 @@ export const es: Dictionary = {
   "runDetail.finalOutput": "Salida final",
   "runDetail.rawOutput": "Salida cruda (stdout/stderr)",
   "runDetail.noLogs": "Sin logs",
+  "runDetail.previousAttempt": "Intento anterior",
 
   // ---- Retry run dialog ----
   "retry.action": "Reintentar con…",
@@ -1356,6 +1357,8 @@ export const es: Dictionary = {
   "retry.agent": "Agente",
   "retry.model": "Modelo",
   "retry.confirm": "Reintentar",
+  "retry.done.title": "Esta corrida ya había terminado bien",
+  "retry.done.body": "Ese trabajo ya se hizo. Volver a correrlo puede repetirlo: delegar de nuevo, o volver a commitear. ¿Reintentar «{prompt}»?",
 
   // ---- Message detail dialog ----
   "messageDetail.title": "Detalle del mensaje",

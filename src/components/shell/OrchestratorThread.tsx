@@ -15,6 +15,8 @@ import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { QuotaCard } from "@/components/QuotaCard";
 import { outOfQuota } from "@/lib/quota";
 import { retriedLater } from "@/lib/quota-card";
+import { shownRootRuns } from "@/lib/retry";
+import { retryRun } from "@/lib/orchestrator";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Markdown } from "@/components/shell/Markdown";
@@ -93,10 +95,12 @@ export function OrchestratorThread() {
     }));
   }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
 
+  // A retried run takes the place of the one it replaced instead of landing at the bottom, and
+  // that one stops being drawn: see `shownRootRuns`.
   const rootRuns = useMemo(
-    () => Object.values(runs)
-      .filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat")
-      .sort((a, b) => a.startedAt - b.startedAt),
+    () => shownRootRuns(
+      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat"),
+    ),
     [runs, currentProjectId],
   );
 
@@ -364,8 +368,9 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const quotaDead = run.status === "error" && outOfQuota(output);
   const retried = useAppStore(state => (quotaDead ? retriedLater(state.runs, run) : false));
 
-  const retry = () =>
-    void useAppStore.getState().submitPrompt(run.prompt, run.agentId, run.projectId, { model: run.model });
+  // Same agent, same model, no dialog — and in the place of the run it is retrying, like every
+  // other retry: what the user asked is already above, it does not get written again.
+  const retry = () => retryRun(run.id, { agentId: run.agentId, model: run.model });
 
   const messageActions: MenuAction[] = [
     {

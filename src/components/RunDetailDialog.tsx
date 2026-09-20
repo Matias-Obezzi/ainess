@@ -18,6 +18,9 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
   const agent = run ? agents.find(a => a.id === run.agentId) : null;
 
   const [promptOpen, setPromptOpen] = useState(false);
+  // The attempt this run replaced. It is no longer drawn in the thread, so this is the only way
+  // left to read why it failed — which is the whole reason a retry never deletes it.
+  const [previousOpen, setPreviousOpen] = useState(false);
 
   if (!run) {
     return (
@@ -46,8 +49,21 @@ export function RunDetailDialog({ runId, open, onOpenChange }: { runId: string |
             <span className="text-xs text-muted-foreground">
               {startStr} - {endStr} ({duration})
             </span>
+            {run.replacesRunId && (
+              <button
+                type="button"
+                className="text-xs underline underline-offset-2 hover:text-foreground"
+                onClick={() => setPreviousOpen(true)}
+              >
+                {t("runDetail.previousAttempt")}
+              </button>
+            )}
           </DialogDescription>
         </DialogHeader>
+        {/* One of these per link, so a run retried three times can be walked all the way back. */}
+        {run.replacesRunId && previousOpen && (
+          <RunDetailDialog runId={run.replacesRunId} open={previousOpen} onOpenChange={setPreviousOpen} />
+        )}
 
         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
           <div>

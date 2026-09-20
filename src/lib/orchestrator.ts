@@ -320,7 +320,7 @@ function scheduleStreamFlush() {
   }
 }
 
-export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; sessionId?: string; chatId?: string };
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; sessionId?: string; chatId?: string; replacesRunId?: string };
 
 /**
  * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
@@ -450,6 +450,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
     chatId: opts.chatId,
     review: opts.review,
     answersQuestionId: opts.answersQuestionId,
+    replacesRunId: opts.replacesRunId,
   };
 
   useAppStore.setState(state => {
@@ -2237,6 +2238,73 @@ export async function submitPrompt(text: string, targetAgentId: string, projectI
     if (project && agent) {
       void emitHookEvent("task.started", {}, { project, agent, runId, prompt: text, taskPrompt: text });
     }
+  }
+}
+
+/**
+ * The same prompt again, in the place of the run that ran it.
+ *
+ * Deliberately not `submitPrompt`: what the user asked is already in the thread, and writing it
+ * there a second time — with the card `taskForPrompt` would open next to it — is precisely what a
+ * retry is not. So no `user` message and no new card: the new run points back at the one it
+ * replaces (`replacesRunId`), `shownRootRuns` stops drawing that one and draws this one where it
+ * was, and the card it was holding moves over.
+ *
+ * Nothing is deleted. The replaced run stays in the store and on disk, and its detail — the only
+ * record of why the first attempt failed — is one click away from the detail of this one.
+ */
+export function retryRun(runId: string, opts: { agentId: string; model?: string }): void {
+  const store = useAppStore.getState();
+  const old = store.runs[runId];
+  if (!old) return;
+
+  // A chat thread draws messages, not runs, so the replacement goes into the failed answer's own
+  // bubble. Only `lib/chat` can do that, and it owns the turn this needs to open.
+  if (old.kind === "chat") {
+    void import("@/lib/chat").then(m => m.retryChatRun(runId, opts)).catch(() => {});
+    return;
+  }
+
+  // A run that is its own root is a whole request of the user's; a round > 0 one is a continuation
+  // inside a request that already has a root, and the retry belongs to that same request.
+  const isRoot = old.rootRunId === old.id;
+  // Read before the new run exists, and for the agent that *held* the card: retrying on another
+  // agent is still the same piece of work, so the card goes with it.
+  const card = isRoot
+    ? taskSync.cardForNextRun({ projectId: old.projectId, agentId: old.agentId, rootRunId: old.rootRunId })
+    : undefined;
+
+  const newRunId = startRun({
+    agentId: opts.agentId,
+    projectId: old.projectId,
+    prompt: old.prompt,
+    parentRunId: null,
+    // A continuation stays drawn as one: the bubble only repeats the user's prompt on round 0.
+    round: old.round,
+    rootRunId: isRoot ? undefined : old.rootRunId,
+    model: opts.model,
+    resume: true,
+    replacesRunId: runId,
+  });
+  if (!newRunId) return;
+
+  if (card) {
+    useAppStore.getState().updateTask(card.id, { status: "working", runId: newRunId, agentId: opts.agentId });
+  }
+  if (isRoot) {
+    // What closes that card when the request ends (`taskOnRootFinished` looks it up by the root run
+    // id). Only when the project has nothing else in flight, or what it had in flight is the very
+    // run being replaced: retrying last week's run must not take the pointer off today's request.
+    const inFlight = useAppStore.getState().activeTaskRunId[old.projectId];
+    if (!inFlight || inFlight === old.rootRunId) {
+      useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [old.projectId]: newRunId } }));
+    }
+  }
+
+  const project = store.config.projects.find(p => p.id === old.projectId);
+  const agent = selectAgent(store, opts.agentId);
+  if (project && agent) {
+    void emitHookEvent("task.started", {}, { project, agent, runId: newRunId, prompt: old.prompt, taskPrompt: old.prompt });
   }
 }
 
