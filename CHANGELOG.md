@@ -6,6 +6,48 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.23.0 — 2026-09-20
+
+### Added
+
+- **A conversation that gets heavy is compacted without being asked.** Each tool call rereads the
+  entire conversation, so an overgrown session is paid many times over. Pruning it previously
+  depended on remembering to run `/compact`. Now, once an agent's context reaches the compaction
+  threshold after a run, the session is compacted automatically and a message in the thread
+  announces it.
+- **The usage table shows how heavy each conversation is.** Because re-reading past context on every
+  tool call is what drives most token costs, the usage dialog now includes a conversation column in
+  the per-agent breakdown. It shows the context tokens from the agent's latest run measured against
+  the compaction threshold, and drops on its own as soon as the session is compacted.
+- **The model picker shows what "default" resolves to and what each model costs.** Choosing a model
+  no longer requires guessing what the provider default actually uses or how expensive each option
+  is. The picker now displays the resolved model name next to the default option once known from past
+  runs, along with the cost per million tokens derived directly from actual usage.
+- **A card waiting its turn says so.** When multiple tasks are assigned to the same agent, later runs
+  queue behind the active one. Cards in the working column now clearly state that they are waiting
+  their turn rather than pretending to work in parallel.
+
+### Changed
+
+- **The sidebar toggles between expanded and icon rail, with no hidden state.** The 0.22.0 release
+  announced that Ctrl+B and the toggle button cycled through three states: expanded, rail, and hidden.
+  Cycling through three states caused unnecessary clicks, so the sidebar now switches directly
+  between the full panel and the icon rail. Any preference saved as hidden in 0.22.0 now opens as the
+  rail instead.
+- **Agents work only with their assigned team.** Agents can no longer launch subagents of their own
+  outside the project hierarchy. Subagents spawned directly by the underlying CLI ran without cards
+  on the board, without tracked costs, and could not be stopped from the interface. Agents now stick
+  strictly to the team configured for the project.
+
+### Fixed
+
+- **The project icon stays centered in its row, with or without git status.** In projects tracked by
+  git, the extra branch line caused the project avatar to align with the top line instead of the
+  entire row. The icon now stays vertically centered regardless of whether git information is shown.
+- **Two-finger horizontal trackpad gestures scroll the board again.** A global bounce-prevention rule
+  accidentally blocked scroll chaining on horizontal gestures across board columns. Lateral trackpad
+  swipes now chain up properly to slide the board sideways, while unwanted bounce remains disabled.
+
 ## 0.22.0 — 2026-09-20
 
 ### Added
