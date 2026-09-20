@@ -45,7 +45,7 @@ test("an answer can be selected with the mouse and the sidebar cannot", async ({
   expect(all).not.toContain(row);
 });
 
-test("right-click opens ours in the shell and the native one in a text field", async ({ page }) => {
+test("right-click opens one of ours, or nothing, but never the browser's", async ({ page }) => {
   await openDemo(page, "chat");
 
   // Ours still opens: turning the browser's menu off is a `preventDefault`, and Radix's trigger
@@ -62,13 +62,15 @@ test("right-click opens ours in the shell and the native one in a text field", a
   });
   expect(swallowed).toBe(true);
 
-  // Except over a field being typed into, where the native menu is the only mouse paste there is.
-  const kept = await page.evaluate(() => {
+  // Over a field being typed into it is swallowed too — not into nothing: cut, copy and paste
+  // take the click from there (e2e/edit-menu.spec.ts).
+  const field = await page.evaluate(() => {
     const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
     document.querySelector("[data-testid='composer-input']")!.dispatchEvent(event);
     return event.defaultPrevented;
   });
-  expect(kept).toBe(false);
+  expect(field).toBe(true);
+  await expect(page.locator("[data-testid='edit-context-menu']")).toBeVisible();
 });
 
 test("a scroll that ends stops, and the box you write in keeps its caret", async ({ page }) => {

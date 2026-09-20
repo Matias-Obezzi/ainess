@@ -33,6 +33,18 @@ export function getTerminal(id: string): TerminalEntry | undefined {
   return entries.get(id);
 }
 
+/** The live terminal `node` was clicked in, for the right-click menu. */
+export function terminalAt(node: Node): { id: string; entry: TerminalEntry } | undefined {
+  for (const [id, entry] of entries) if (entry.host.contains(node)) return { id, entry };
+  return undefined;
+}
+
+/** Puts the clipboard into the PTY: Ctrl+Shift+V and the right-click menu do the same thing. */
+export async function pasteIntoTerminal(id: string): Promise<void> {
+  const text = await navigator.clipboard.readText().catch(() => "");
+  if (text) await getTransport().ptyWrite(id, text).catch(() => {});
+}
+
 /**
  * What kind of PTY is on the other end, for the terminals that run on Windows — or nothing at all
  * anywhere else.
@@ -120,9 +132,7 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
     const key = e.key.toLowerCase();
     if (key === "v") {
       e.preventDefault();
-      void navigator.clipboard.readText().then(text => {
-        if (text) void transport.ptyWrite(id, text).catch(() => {});
-      }).catch(() => {});
+      void pasteIntoTerminal(id);
       return false;
     }
     if (key === "c") {

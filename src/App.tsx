@@ -22,6 +22,7 @@ import { useRepoSync } from "@/hooks/useRepoSync";
 import { useRepoWatch } from "@/hooks/useRepoWatch";
 import { useSystemHooks } from "@/hooks/useSystemHooks";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { EditContextMenu } from "@/components/EditContextMenu";
 import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
@@ -132,6 +133,8 @@ export default function App() {
         <Toaster position="bottom-right" richColors />
         {/* The one dialog every `confirm()` on the desktop opens (src/lib/confirm.ts). */}
         <ConfirmDialogHost />
+        {/* Cut, copy and paste with the mouse, for every field and every terminal at once. */}
+        <EditContextMenu />
         {/* Opens itself once when the version changed under the user, wherever they are. */}
         <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
 

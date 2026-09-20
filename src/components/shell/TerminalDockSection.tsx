@@ -309,8 +309,6 @@ export function TerminalDockSection() {
                         if (e.key === "Enter") commitRename();
                         else if (e.key === "Escape") setRenamingId(null);
                       }}
-                      // Inside a field the right click belongs to the browser, for pasting.
-                      onContextMenu={e => e.stopPropagation()}
                       className="w-24 bg-transparent text-xs outline-none"
                     />
                   ) : (
