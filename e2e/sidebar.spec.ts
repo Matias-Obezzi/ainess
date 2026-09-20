@@ -1,14 +1,14 @@
-// The menu in its three shapes. The one that matters on screen is the middle one: a strip of
-// project avatars that opens the whole menu *over* the content, so nothing to the right of it
-// moves while the pointer is there.
+// The menu in its three shapes. The one that matters on screen is the middle one: a rail of icons
+// that carries everything the expanded bar does — home, new project, the projects, the counters and
+// the gear — and opens nothing by itself. A project's rows hang from its own avatar.
 import { test, expect } from "@playwright/test";
 import { openDemo, snap } from "./demo";
 
-test("a second pane collapses the menu to a strip, and hovering it opens the menu over the content", async ({ page }) => {
+test("the collapsed rail carries the whole bar as icons, and hovering it opens nothing", async ({ page }) => {
   await openDemo(page, "chat");
   const sidebar = page.getByTestId("sidebar");
   const rail = page.getByTestId("sidebar-rail");
-  const flyout = page.getByTestId("sidebar-flyout");
+  const menu = page.getByTestId("rail-project-menu");
   await expect(sidebar).toHaveAttribute("data-mode", "expanded");
 
   // The same two panes the rest of the suite opens, from the project's own right-click menu.
@@ -19,29 +19,72 @@ test("a second pane collapses the menu to a strip, and hovering it opens the men
   // Nobody asked for it: two projects need the width more than the tree does.
   await expect(sidebar).toHaveAttribute("data-mode", "collapsed");
   await expect(rail).toBeVisible();
-  await expect(flyout).toHaveCount(0);
   await snap(page, "sidebar-collapsed-rail");
 
-  // What the strip is: one avatar per project, each one saying its name.
-  const avatars = rail.getByRole("button");
-  await expect(avatars.first()).toHaveAttribute("aria-label", /.+/);
+  // Top to bottom, and in this order: the house, the plus, the projects, the two counters, the
+  // gear. Everything the expanded bar offers has its icon here.
+  const projects = page.getByTestId("rail-project");
+  const projectCount = await projects.count();
+  expect(projectCount).toBeGreaterThan(1);
+  const order = await rail
+    .locator("[data-testid]")
+    .evaluateAll(els => els.map(el => el.getAttribute("data-testid")));
+  expect(order).toEqual([
+    "rail-home",
+    "rail-new-project",
+    ...Array(projectCount).fill("rail-project"),
+    "rail-working",
+    "rail-ports",
+    "rail-settings",
+    "rail-report-issue",
+  ]);
 
+  // Every icon says what it is, since none of them carries a word.
+  await expect(page.getByTestId("rail-home")).toHaveAttribute("aria-label", "Home");
+  await expect(page.getByTestId("rail-new-project")).toHaveAttribute("aria-label", "New project");
+  await expect(page.getByTestId("rail-settings")).toHaveAttribute("aria-label", "Settings");
+  await expect(projects.first()).toHaveAttribute("aria-label", /.+/);
+
+  // Crossing it with the pointer opens nothing, and moves nothing.
   const pane = page.getByTestId("project-pane").first();
   const before = await pane.boundingBox();
   await rail.hover();
-  await expect(flyout).toBeVisible();
-  // The whole point: the panel floats, so the pane underneath is exactly where it was.
+  await projects.first().hover();
+  await expect(menu).toHaveCount(0);
   expect(await pane.boundingBox()).toEqual(before);
-  // And it floats beside the strip rather than on top of it, so the avatars stay reachable.
-  const railBox = await rail.boundingBox();
-  const flyoutBox = await flyout.boundingBox();
-  expect(flyoutBox!.x).toBeGreaterThanOrEqual(railBox!.x + railBox!.width - 1);
-  await snap(page, "sidebar-collapsed-flyout");
+});
 
-  // Away from the menu it goes back to being a strip, and the pane still has not moved.
-  await page.mouse.move(700, 400);
-  await expect(flyout).toHaveCount(0);
-  expect(await pane.boundingBox()).toEqual(before);
+test("a project on the rail opens its own rows on click and its menu on right click", async ({ page }) => {
+  await openDemo(page, "chat");
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.getByTestId("sidebar")).toHaveAttribute("data-mode", "collapsed");
+
+  const menu = page.getByTestId("rail-project-menu");
+  await page.getByTestId("rail-project").first().click();
+  await expect(menu).toBeVisible();
+
+  // What the expanded bar shows indented under the row, and nothing invented for the rail.
+  for (const label of ["Orchestrator", "Tasks", "Hierarchy", "New chat"]) {
+    await expect(menu.getByText(label, { exact: true })).toHaveCount(1);
+  }
+  // Once on screen, not twice: the rail is the only place the projects live now.
+  await expect(page.getByText("Orchestrator", { exact: true })).toHaveCount(1);
+  await snap(page, "sidebar-rail-project-menu");
+
+  // Escape closes it, and a click anywhere else does too.
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await page.getByTestId("rail-project").first().click();
+  await expect(menu).toBeVisible();
+  await page.mouse.click(700, 400);
+  await expect(menu).toHaveCount(0);
+
+  // Right click is the project menu the expanded row already had, unchanged.
+  await page.getByTestId("rail-project").first().click({ button: "right" });
+  const context = page.getByRole("menu").first();
+  await expect(context).toBeVisible();
+  await expect(context.getByRole("menuitem", { name: "Edit project" })).toBeVisible();
+  await expect(context.getByRole("menuitem", { name: "Open in a new pane" })).toBeVisible();
 });
 
 test("the title bar button walks the three shapes", async ({ page }) => {
@@ -58,11 +101,11 @@ test("the title bar button walks the three shapes", async ({ page }) => {
   await expect(page.getByTestId("sidebar-rail")).toHaveCount(0);
   // Hidden means gone: hovering where it was does not bring it back.
   await page.mouse.move(2, 400);
-  await expect(page.getByTestId("sidebar-flyout")).toHaveCount(0);
+  await expect(page.getByTestId("rail-project-menu")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Show sidebar" }).click();
   await expect(sidebar).toHaveAttribute("data-mode", "expanded");
   // Expanded, the menu is the column it always was and the hover does nothing either.
   await page.getByTestId("sidebar-project").first().hover();
-  await expect(page.getByTestId("sidebar-flyout")).toHaveCount(0);
+  await expect(page.getByTestId("rail-project-menu")).toHaveCount(0);
 });

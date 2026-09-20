@@ -26,7 +26,9 @@ function folderName(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
-export function ListeningPorts() {
+/** `compact`: the rail is one avatar wide, so the count goes under the plug and the words into the
+ * tooltip. Same button, same list behind it. */
+export function ListeningPorts({ compact = false }: { compact?: boolean } = {}) {
   const t = useT();
   const projects = useAppStore(s => s.config.projects);
   const [ports, setPorts] = useState<ListeningPort[]>([]);
@@ -87,11 +89,18 @@ export function ListeningPorts() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+          className={`rounded px-1.5 py-0.5 transition-colors hover:bg-accent hover:text-foreground cursor-pointer ${
+            compact
+              ? "flex flex-col items-center gap-0.5 text-[10px] text-muted-foreground"
+              : "inline-flex items-center gap-1.5"
+          }`}
+          title={compact ? t("ports.label", { n: ports.length }) : undefined}
           aria-label={t("ports.label", { n: ports.length })}
         >
           <Plug className="h-3 w-3 shrink-0" />
-          <span className="tabular-nums font-medium">{t("ports.label", { n: ports.length })}</span>
+          <span className="tabular-nums font-medium">
+            {compact ? ports.length : t("ports.label", { n: ports.length })}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-96 p-3">
