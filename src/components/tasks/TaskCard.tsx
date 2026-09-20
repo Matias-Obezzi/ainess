@@ -52,7 +52,9 @@ export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit, dr
   const t = useT();
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
+  const runStatus = useAppStore(state => (task.runId ? state.runs[task.runId]?.status : undefined));
   const meta = taskStatusMeta[task.status];
+  const isQueued = task.status === "working" && runStatus === "queued";
   // A card waiting on the user is usually waiting for a yes, so it says where that yes is given.
   const originLabel = t(task.approvalId ? "tasks.goToApproval" : "tasks.goToChat");
 
@@ -100,8 +102,8 @@ export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit, dr
         )}
 
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
-          <span className="truncate">{t(meta.labelKey)}</span>
+          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isQueued ? "bg-muted-foreground" : meta.dot)} />
+          <span className="truncate">{t(isQueued ? "task.status.queued" : meta.labelKey)}</span>
           {/* What was committed after its run started — the sha alone, the message on hover. The
               card is not moved by it: it says what git did, it does not decide where the card goes. */}
           {commit && (

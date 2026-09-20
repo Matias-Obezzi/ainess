@@ -1490,6 +1490,7 @@ export const pt: Dictionary = {
   "task.status.inReview": "Em revisão",
   "task.status.ready": "Pronto",
   "task.status.done": "Feito",
+  "task.status.queued": "Na fila",
   "task.priority.low": "Baixa",
   "task.priority.normal": "Normal",
   "task.priority.high": "Alta",

@@ -1491,6 +1491,7 @@ export const ja: Dictionary = {
   "task.status.inReview": "レビュー中",
   "task.status.ready": "準備完了",
   "task.status.done": "完了",
+  "task.status.queued": "待機中",
   "task.priority.low": "低",
   "task.priority.normal": "普通",
   "task.priority.high": "高",

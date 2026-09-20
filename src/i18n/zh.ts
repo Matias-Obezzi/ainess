@@ -1490,6 +1490,7 @@ export const zh: Dictionary = {
   "task.status.inReview": "评审中",
   "task.status.ready": "就绪",
   "task.status.done": "已完成",
+  "task.status.queued": "排队中",
   "task.priority.low": "低",
   "task.priority.normal": "普通",
   "task.priority.high": "高",
