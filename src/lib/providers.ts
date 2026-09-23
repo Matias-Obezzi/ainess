@@ -789,6 +789,43 @@ export function defaultAgentDescription(role: AgentRole, provider: ProviderId): 
   });
 }
 
+/**
+ * Checks whether an agent's name matches the default name, label, or suggested
+ * naming pattern of a provider (e.g. "Claude Code", "Claude Code 2", "Claude",
+ * "Antigravity", "Antigravity 3", "GitHub Copilot", "Copilot 2", etc.).
+ */
+export function isDefaultProviderName(name: string, provider: ProviderId): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return true;
+
+  const spec = PROVIDERS[provider];
+  const label = spec?.label ?? provider;
+
+  const candidates = new Set<string>();
+  candidates.add(label.toLowerCase());
+  candidates.add(provider.toLowerCase());
+
+  if (provider === "claude") {
+    candidates.add("claude");
+  } else if (provider === "copilot") {
+    candidates.add("copilot");
+    candidates.add("github copilot");
+  } else if (provider === "gemini") {
+    candidates.add("gemini");
+    candidates.add("gemini cli");
+  } else if (provider === "codex") {
+    candidates.add("codex");
+    candidates.add("codex cli");
+  }
+
+  for (const cand of candidates) {
+    const escaped = cand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`^${escaped}(?:\\s+(?:\\d+|[0-9a-f]{4}))?$`, "i");
+    if (regex.test(trimmed)) return true;
+  }
+  return false;
+}
+
 /** The eight characters of a task id the planner sees and quotes back in a `delegate` block. */
 export function shortTaskId(id: string): string {
   return id.replace(/-/g, "").slice(0, 8);

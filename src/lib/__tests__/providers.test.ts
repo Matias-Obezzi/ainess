@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { PROVIDERS, availableProviders, isDefaultProviderName, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
 import { mergeUsage } from "@/lib/orchestrator";
 import { useAppStore } from "@/store";
 import { es, loadLanguage } from "@/i18n";
@@ -548,5 +548,51 @@ describe("availableProviders", () => {
 
   it("with nothing detected, leaves the custom command", () => {
     expect(availableProviders({})).toEqual(["custom"]);
+  });
+});
+
+describe("isDefaultProviderName", () => {
+  it("matches standard provider labels and IDs", () => {
+    expect(isDefaultProviderName("Claude Code", "claude")).toBe(true);
+    expect(isDefaultProviderName("claude", "claude")).toBe(true);
+    expect(isDefaultProviderName("Antigravity", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("antigravity", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("GitHub Copilot", "copilot")).toBe(true);
+    expect(isDefaultProviderName("Copilot", "copilot")).toBe(true);
+    expect(isDefaultProviderName("OpenCode", "opencode")).toBe(true);
+    expect(isDefaultProviderName("Custom", "custom")).toBe(true);
+  });
+
+  it("matches variations with numbers and hex counters", () => {
+    expect(isDefaultProviderName("Claude Code 2", "claude")).toBe(true);
+    expect(isDefaultProviderName("Claude 3", "claude")).toBe(true);
+    expect(isDefaultProviderName("Antigravity 2", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Antigravity 99", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Antigravity a1b2", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Copilot 4", "copilot")).toBe(true);
+    expect(isDefaultProviderName("OpenCode 5", "opencode")).toBe(true);
+  });
+
+  it("is case-insensitive and trims whitespace", () => {
+    expect(isDefaultProviderName("  claude code  ", "claude")).toBe(true);
+    expect(isDefaultProviderName("ANTIGRAVITY", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("github copilot 2", "copilot")).toBe(true);
+  });
+
+  it("treats empty or whitespace-only name as default", () => {
+    expect(isDefaultProviderName("", "claude")).toBe(true);
+    expect(isDefaultProviderName("   ", "antigravity")).toBe(true);
+  });
+
+  it("rejects custom agent names", () => {
+    expect(isDefaultProviderName("My Worker", "claude")).toBe(false);
+    expect(isDefaultProviderName("Orquestador", "antigravity")).toBe(false);
+    expect(isDefaultProviderName("Architect", "copilot")).toBe(false);
+    expect(isDefaultProviderName("Claude 3 Opus", "claude")).toBe(false);
+  });
+
+  it("rejects names belonging to a different provider", () => {
+    expect(isDefaultProviderName("Antigravity", "claude")).toBe(false);
+    expect(isDefaultProviderName("Claude Code", "antigravity")).toBe(false);
   });
 });
