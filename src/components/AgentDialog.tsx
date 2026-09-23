@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
-import { availableProviders, defaultAgentDescription, PROVIDERS } from "@/lib/providers";
+import { availableProviders, defaultAgentDescription, isDefaultProviderName, PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
@@ -208,7 +208,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       if (agent) {
         setId(agent.id);
         setName(agent.name);
-        setSuggestedName("");
+        const isDefault = isDefaultProviderName(agent.name, agent.provider);
+        setSuggestedName(isDefault ? agent.name : "");
         setProvider(agent.provider);
         setRole(agent.role);
         setParentId(agent.parentId);
@@ -297,8 +298,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const handleProviderChange = (value: ProviderId) => {
     setProvider(value);
-    if (!agent && (name.trim() === "" || name === suggestedName)) {
-      const proposed = nextAgentName(roster, PROVIDERS[value]?.label || value);
+    const shouldUpdateName =
+      name.trim() === "" ||
+      name === suggestedName ||
+      isDefaultProviderName(name, provider);
+
+    if (shouldUpdateName) {
+      const targetRoster = roster.filter(a => a.id !== (agent?.id ?? id));
+      const proposed = nextAgentName(targetRoster, PROVIDERS[value]?.label || value);
       setName(proposed);
       setSuggestedName(proposed);
     }

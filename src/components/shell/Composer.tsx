@@ -297,13 +297,19 @@ export function Composer() {
   const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
+  const prevDefaultAgentIdRef = useRef<string | undefined>(defaultAgent?.id);
 
   // Agents can be created or deleted from Settings; keep the target pointing at something real.
+  // In the orchestrator thread (!chatMode), follow the new orchestrator if targeting the previous one.
   useEffect(() => {
+    const prevDefaultId = prevDefaultAgentIdRef.current;
     if (!agents.some(a => a.id === targetId)) {
       setTargetId(defaultAgent?.id || "");
+    } else if (!chatMode && prevDefaultId !== defaultAgent?.id && (targetId === prevDefaultId || !targetId)) {
+      setTargetId(defaultAgent?.id || "");
     }
-  }, [agents, targetId, defaultAgent?.id]);
+    prevDefaultAgentIdRef.current = defaultAgent?.id;
+  }, [agents, targetId, defaultAgent?.id, chatMode]);
 
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
