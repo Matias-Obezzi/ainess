@@ -1,4 +1,4 @@
-import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, type AppState } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
@@ -1534,9 +1534,23 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       };
       return question;
     });
-    useAppStore.setState(state => ({
-      questions: { ...state.questions, ...Object.fromEntries(items.map(q => [q.id, q])) },
-    }));
+    useAppStore.setState(state => {
+      const questionDrafts = { ...state.questionDrafts };
+      let draftsChanged = false;
+      for (const q of items) {
+        if (q.id in questionDrafts) {
+          delete questionDrafts[q.id];
+          draftsChanged = true;
+        }
+      }
+      if (draftsChanged) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      }
+      return {
+        questions: { ...state.questions, ...Object.fromEntries(items.map(q => [q.id, q])) },
+        ...(draftsChanged ? { questionDrafts } : {}),
+      };
+    });
     // Deferred for the same reason the autonomous path defers: the caller still has this run's own
     // runtime update to make, and it would stomp on the resumed run's `currentRunId`.
     const asked = items.map((question, i) => ({ question, answer: decision.repeat[i].answer }));
@@ -1611,7 +1625,24 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     });
     void emitHookEvent("question.asked", { question: q.question }, ctx);
   }
-  useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
+  useAppStore.setState(state => {
+    let questionDrafts = state.questionDrafts;
+    if (autoAnswer) {
+      const drafts = { ...state.questionDrafts };
+      let changed = false;
+      for (const id of Object.keys(questions)) {
+        if (id in drafts) {
+          delete drafts[id];
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, drafts);
+        questionDrafts = drafts;
+      }
+    }
+    return { questions: { ...state.questions, ...questions }, questionDrafts };
+  });
 
   if (autoAnswer) {
     autoAnswersUsed.set(run.rootRunId, autoAnswered + Object.keys(questions).length);

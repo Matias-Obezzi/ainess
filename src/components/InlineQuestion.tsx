@@ -14,11 +14,12 @@ import { Check, MessageCircleQuestion, Send } from "lucide-react";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { answerOf, EMPTY_CHOICE, pickOption, typeOther, type QuestionChoice } from "@/lib/question-choice";
+import { answerOf, EMPTY_CHOICE, pickOption, typeOther } from "@/lib/question-choice";
 import { isForUser } from "@/lib/pending-question";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import type { AgentQuestion } from "@/types";
+import { useQuestionDrafts } from "@/hooks/useQuestionDrafts";
 
 /** Looks one question up and hands its answer back to the store. */
 export function InlineQuestion({ questionId, size = "sm" }: { questionId: string; size?: "sm" | "md" }) {
@@ -58,13 +59,15 @@ export function QuestionGroup({ questions, size = "sm", onAnswer }: {
   onAnswer: (items: Array<{ questionId: string; answer: string[] }>) => void;
 }) {
   const t = useT();
-  // One set of marks per question. What a second click means, and what happens when an option and
-  // the free text would contradict each other, is decided in `lib/question-choice`.
-  const [choices, setChoices] = useState<Record<string, QuestionChoice>>({});
+  // Marks and free text persist across unmounts and agree across simultaneous instances.
+  // What a second click means, and what happens when an option and the free text would
+  // contradict each other, is decided in `lib/question-choice`.
+  const pending = questions.filter(q => q.status !== "answered");
+  const pendingIds = pending.map(q => q.id);
+  const { choices, setChoice } = useQuestionDrafts(pendingIds);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const isMd = size === "md";
-  const pending = questions.filter(q => q.status !== "answered");
   const question = pending.find(q => q.id === activeId) ?? pending[0];
 
   // Every one of them settled: what is left to show is what was answered, in the order asked.
@@ -81,16 +84,13 @@ export function QuestionGroup({ questions, size = "sm", onAnswer }: {
   }
 
   const choice = choices[question.id] ?? EMPTY_CHOICE;
-  const setChoice = (next: (current: QuestionChoice) => QuestionChoice) =>
-    setChoices(all => ({ ...all, [question.id]: next(all[question.id] ?? EMPTY_CHOICE) }));
-
   const answered = pending.filter(q => answerOf(choices[q.id] ?? EMPTY_CHOICE).length > 0);
   const multiple = question.multiple;
 
   // Marking never sends. A single-answer question used to go the moment you touched an option — one
   // click, no way back, and a click meant for the option below it went to the agent instead. Both
   // kinds wait for the button now, so what is about to be said is on screen before it is said.
-  const pick = (option: string) => setChoice(current => pickOption(current, option, multiple));
+  const pick = (option: string) => setChoice(question.id, current => pickOption(current, option, multiple));
 
   // Nothing goes until every question has an answer: sending a few would leave the rest pending and
   // the run waiting on them, which is the state this whole component exists to get out of.
@@ -205,7 +205,7 @@ export function QuestionGroup({ questions, size = "sm", onAnswer }: {
             className={cn("flex-1", isMd ? "h-9 text-sm" : "h-7 text-xs")}
             placeholder={t("questions.otherPlaceholder")}
             value={choice.other}
-            onChange={e => setChoice(current => typeOther(current, e.target.value, multiple))}
+            onChange={e => setChoice(question.id, current => typeOther(current, e.target.value, multiple))}
             onKeyDown={e => {
               if (e.key === "Enter") send();
             }}

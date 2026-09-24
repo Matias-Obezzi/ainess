@@ -30,6 +30,7 @@ import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
 import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import type { BridgeProviderId } from "@/lib/bridge/types";
+import type { QuestionChoice } from "@/lib/question-choice";
 
 /** The channels the messaging config actually has a slot for today. */
 type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
@@ -137,6 +138,18 @@ export interface AppState {
    */
   composerModels: Record<string, string>;
   setComposerModel(key: string, model: string): void;
+
+  /**
+   * What was marked and typed for pending questions, by question id. Kept across views and navigation
+   * so switching screens, toggling "write instead", or thread scrolling never loses an answer.
+   */
+  questionDrafts: Record<string, QuestionChoice>;
+  setQuestionDraft(questionId: string, choice: QuestionChoice | null): void;
+  /**
+   * Drops the drafts of questions that are settled — and of questions nobody knows, when every
+   * project's history has been read and an unknown id cannot be one still waiting to load.
+   */
+  pruneQuestionDrafts(dropUnknown?: boolean): void;
 
   /**
    * Messages written while a chat was mid-turn, sent when it ends. The orchestrator has had this
@@ -591,6 +604,7 @@ export function flushStringMapSaves(): void {
     saveStringMap(key, pending.value);
   }
   pendingSaves.clear();
+  flushJsonMapSaves();
 }
 
 if (typeof window !== "undefined") {
@@ -620,6 +634,88 @@ export function saveStringMapSoon(storageKey: string, map: Record<string, string
     };
     pendingSaves.set(storageKey, newPending);
   }
+}
+
+export const QUESTION_DRAFTS_KEY = "ainess.questionDrafts";
+
+/**
+ * A map of question id to QuestionChoice JSON objects, kept across views and restarts.
+ */
+function loadJsonMap<T>(storageKey: string): Record<string, T> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, T> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value && typeof value === "object") out[key] = value as T;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveJsonMap<T>(storageKey: string, map: Record<string, T>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(map));
+  } catch {
+    // Private mode or quota: an unsent draft is not worth failing over.
+  }
+}
+
+const pendingJsonSaves = new Map<string, { value: Record<string, unknown>; timer: ReturnType<typeof setTimeout> }>();
+
+/** Flushes all pending JSON map writes to localStorage immediately. */
+export function flushJsonMapSaves(): void {
+  for (const [key, pending] of pendingJsonSaves.entries()) {
+    clearTimeout(pending.timer);
+    saveJsonMap(key, pending.value);
+  }
+  pendingJsonSaves.clear();
+}
+
+/**
+ * Persists JSON maps with a delay, mirroring saveStringMapSoon.
+ */
+export function saveJsonMapSoon<T>(storageKey: string, map: Record<string, T>): void {
+  const pending = pendingJsonSaves.get(storageKey);
+  if (pending) {
+    pending.value = map as Record<string, unknown>;
+  } else {
+    const newPending = {
+      value: map as Record<string, unknown>,
+      timer: setTimeout(() => {
+        pendingJsonSaves.delete(storageKey);
+        saveJsonMap(storageKey, newPending.value);
+      }, 400),
+    };
+    pendingJsonSaves.set(storageKey, newPending);
+  }
+}
+
+/**
+ * The drafts still worth keeping: those of a question that is known and still pending.
+ *
+ * A question nobody has loaded yet is not a question that is gone. History is read per project,
+ * and with many projects only the last one is read at startup, so a draft for a question in
+ * another project has no entry in `questions` until that project is opened. Such drafts stay,
+ * unless `dropUnknown` says every project has been read and an unknown id can only be stale.
+ */
+export function prunedQuestionDrafts(
+  drafts: Record<string, QuestionChoice>,
+  questions: Record<string, AgentQuestion>,
+  dropUnknown: boolean,
+): Record<string, QuestionChoice> {
+  const kept: Record<string, QuestionChoice> = {};
+  for (const [id, draft] of Object.entries(drafts)) {
+    const question = questions[id];
+    if (question ? question.status === "pending" : !dropUnknown) kept[id] = draft;
+  }
+  return kept;
 }
 
 /** The two side panes the user can drag: the menu on the left, the dock on the right. */
@@ -1019,6 +1115,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   historyLoading: {},
   drafts: loadStringMap(DRAFTS_KEY, DRAFTS_LEGACY_KEY),
   composerModels: loadStringMap(COMPOSER_MODELS_KEY, COMPOSER_MODELS_LEGACY_KEY),
+  questionDrafts: loadJsonMap<QuestionChoice>(QUESTION_DRAFTS_KEY),
   chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
@@ -1594,6 +1691,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const newQuestions = Object.fromEntries(
         Object.entries(state.questions).filter(([, q]) => q.projectId !== id),
       );
+      // Told apart while the map still says which project each question belonged to: once they
+      // are out of it, a draft of theirs would look like one for a project not yet loaded.
+      const newQuestionDrafts = Object.fromEntries(
+        Object.entries(state.questionDrafts).filter(([qid]) => state.questions[qid]?.projectId !== id),
+      );
+      if (Object.keys(newQuestionDrafts).length !== Object.keys(state.questionDrafts).length) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, newQuestionDrafts);
+      }
       // Whatever the bell said about this project (or about one of its approvals or runs) goes too.
       const newNotifications = state.notifications.filter(n =>
         n.projectId !== id
@@ -1641,6 +1746,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         tasks: newTasks,
         approvals: newApprovals,
         questions: newQuestions,
+        questionDrafts: newQuestionDrafts,
         notifications: newNotifications,
         chatMessages: dropByChat(state.chatMessages),
         chatSessions: dropByChat(state.chatSessions),
@@ -2190,8 +2296,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const answeredAt = Date.now();
     set(state => {
       const questions = { ...state.questions };
+      const questionDrafts = { ...state.questionDrafts };
+      let draftsChanged = false;
       for (const { question, answer } of pending) {
         questions[question.id] = { ...question, status: "answered", answer, answeredAt };
+      }
+      for (const item of items) {
+        if (item.questionId in questionDrafts) {
+          delete questionDrafts[item.questionId];
+          draftsChanged = true;
+        }
+      }
+      if (draftsChanged) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+        return { questions, questionDrafts };
       }
       return { questions };
     });
@@ -2423,6 +2541,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
     else delete composerModels[key];
     set({ composerModels });
     saveStringMapSoon(COMPOSER_MODELS_KEY, composerModels);
+  },
+
+  setQuestionDraft: (questionId, choice) => {
+    if (!questionId) return;
+    const questionDrafts = { ...get().questionDrafts };
+    if (choice) questionDrafts[questionId] = choice;
+    else delete questionDrafts[questionId];
+    set({ questionDrafts });
+    saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+  },
+
+  pruneQuestionDrafts: (dropUnknown = false) => {
+    set(state => {
+      const questionDrafts = prunedQuestionDrafts(state.questionDrafts, state.questions, dropUnknown);
+      if (Object.keys(questionDrafts).length === Object.keys(state.questionDrafts).length) {
+        return state;
+      }
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      return { questionDrafts };
+    });
   },
 
   queueChatMessage: (chatId, text) => {
@@ -2798,6 +2936,8 @@ async function runInit(): Promise<void> {
     // With the runs in memory, the boards can be put back in step with them.
     for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
+    // An unknown question id only means a stale draft once every project's history is in memory.
+    get().pruneQuestionDrafts(toLoad.length === config.projects.length);
     // Load persisted notifications before marking the store as ready, so the bell
     // shows its badge without a flash of empty state on startup.
     await notificationStore.loadNotifications();

@@ -5,7 +5,7 @@
 // Several processes may write the same file (the app, `ainess run`, `ainess approvals approve`,
 // `ainess serve`), so every save first merges what is on disk, and the app re-syncs the
 // current project periodically to see decisions taken elsewhere.
-import { useAppStore, selectAgent } from "@/store";
+import { useAppStore, selectAgent, prunedQuestionDrafts, saveJsonMapSoon, QUESTION_DRAFTS_KEY } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
@@ -274,7 +274,13 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         }
       }
     }
-    return changed ? { runs, messages, approvals, questions, runtime, worktrees } : state;
+    // Never dropping unknown ids: this file is one project, the drafts are everyone's.
+    const questionDrafts = prunedQuestionDrafts(state.questionDrafts, questions, false);
+    if (Object.keys(questionDrafts).length !== Object.keys(state.questionDrafts).length) {
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      changed = true;
+    }
+    return changed ? { runs, messages, approvals, questions, runtime, worktrees, questionDrafts } : state;
   });
   notifyInterrupted(projectId, interrupted);
 }
@@ -433,12 +439,21 @@ export async function runningRunsOnDisk(projectId: string): Promise<Run[]> {
 /** Drop a project's runs, messages and approvals, in memory and on disk. */
 export async function clearHistory(projectId: string): Promise<void> {
   loadedProjects.add(projectId);
-  useAppStore.setState(state => ({
-    runs: Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== projectId)),
-    messages: state.messages.filter(m => m.projectId !== projectId),
-    approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
-    questions: Object.fromEntries(Object.entries(state.questions).filter(([, q]) => q.projectId !== projectId)),
-  }));
+  useAppStore.setState(state => {
+    const questionDrafts = Object.fromEntries(
+      Object.entries(state.questionDrafts).filter(([id]) => state.questions[id]?.projectId !== projectId),
+    );
+    if (Object.keys(questionDrafts).length !== Object.keys(state.questionDrafts).length) {
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+    }
+    return {
+      runs: Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== projectId)),
+      messages: state.messages.filter(m => m.projectId !== projectId),
+      approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
+      questions: Object.fromEntries(Object.entries(state.questions).filter(([, q]) => q.projectId !== projectId)),
+      questionDrafts,
+    };
+  });
   // Clearing the history is about runs and messages: the worktrees the agents work in stay.
   const file: HistoryFile = {
     version: 1,
