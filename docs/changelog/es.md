@@ -41,6 +41,20 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   un punto de color pelado; ahora muestra el círculo de color con las iniciales del proyecto,
   en la lista y en el encabezado del proyecto, para que ambas superficies se lean como una sola
   app. (#30)
+- **El modelo se puede elegir desde el celular.** El modelo es una de las cosas que más querés
+  cambiar estando lejos de la computadora — se agotó una cuota, una tarea pide el modelo
+  barato — y hasta ahora significaba caminar hasta la PC. En el hilo del proyecto, el celular
+  escondía el selector de modelo detrás de un ícono sin etiqueta: había que adivinar que estaba
+  ahí. Ahora ese botón muestra el nombre del modelo activo, así que de un vistazo, sin tocar
+  nada, sabés con qué modelo va a salir lo que estás por escribir. El campo de texto libre para
+  escribir un modelo a mano («Otro…») ahora entra bien en una pantalla angosta. En un chat uno
+  a uno no se veía con qué modelo corría el agente, ni en el celular ni en el escritorio; ahora
+  se muestra, uno por participante. No se puede cambiar desde ahí a propósito: un chat no lleva
+  modelo propio, corre con el que se eligió al crearlo o, si no, con el del agente, y ése es el
+  mismo orden en que se resuelve al arrancar, así que lo que se lee es lo que se va a ejecutar
+  de verdad. La pestaña de Agentes del celular era de solo lectura. Ahora desde ahí se puede
+  cambiar el modelo por defecto de un agente, con las mismas opciones que ofrece el
+  compositor. (#29)
 
 ### Arreglado
 

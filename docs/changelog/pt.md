@@ -39,6 +39,19 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 - **Os projetos no celular levam o mesmo avatar do desktop.** A lista mostrava um ponto de cor
   sem mais nada; agora mostra o círculo colorido com as iniciais do projeto, na lista e no
   cabeçalho do projeto, para que as duas superfícies pareçam um só app. (#30)
+- **O modelo pode ser escolhido pelo celular.** O modelo é uma das coisas que mais se quer
+  trocar estando longe do computador — uma cota estourou, uma tarefa pede o modelo barato — e
+  até agora isso significava voltar até o PC. No fio do projeto, o celular escondia o seletor de
+  modelo atrás de um ícone sem rótulo: era preciso adivinhar que ele estava ali. Agora esse
+  botão mostra o nome do modelo ativo, então, de relance, sem tocar em nada, você sabe com qual
+  modelo a sua próxima mensagem vai sair. O campo de texto livre para digitar um modelo na mão
+  («Outro…») agora cabe numa tela estreita. Num chat direto, nem o celular nem o desktop
+  mostravam com qual modelo o agente rodava; agora aparece, um por participante. Não dá para
+  trocar de lá de propósito: um chat não carrega modelo próprio, roda com o que foi escolhido ao
+  criá-lo ou, na falta, com o padrão do agente, e essa é a mesma ordem usada para resolver na
+  inicialização, então o que você lê é o que vai de fato rodar. A aba de Agentes do celular era
+  somente leitura. Agora dá para trocar o modelo padrão de um agente por ali, com as mesmas
+  opções que o compositor oferece. (#29)
 
 ### Corrigido
 

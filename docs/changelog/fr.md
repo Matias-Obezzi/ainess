@@ -42,6 +42,21 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   simple point de couleur ; elle montre maintenant le cercle coloré avec les initiales du projet,
   dans la liste et dans l'en-tête du projet, pour que les deux surfaces se lisent comme une
   seule application. (#30)
+- **Le modèle peut être choisi depuis le téléphone.** Le modèle est l'une des choses que l'on a le
+  plus envie de changer quand on est loin de l'ordinateur — un quota épuisé, une tâche qui réclame
+  le modèle pas cher — et jusqu'ici cela voulait dire revenir jusqu'au PC. Dans le fil du projet,
+  le téléphone cachait le sélecteur de modèle derrière une icône sans étiquette : il fallait
+  deviner qu'il était là. Ce bouton affiche maintenant le nom du modèle actif, si bien que d'un
+  coup d'œil, sans rien toucher, vous savez avec quel modèle partira ce que vous êtes en train
+  d'écrire. Le champ de texte libre pour saisir un modèle à la main (« Autre… ») tient désormais
+  aussi sur un écran étroit. Dans une conversation directe, on ne voyait pas avec quel modèle
+  tournait l'agent, ni sur le téléphone ni sur le bureau ; c'est affiché maintenant, un par
+  participant. On ne peut pas le changer depuis là, et c'est voulu : une conversation ne porte pas
+  de modèle à elle, elle tourne avec celui choisi à sa création ou, à défaut, avec celui de
+  l'agent, et c'est le même ordre qui sert à le résoudre au démarrage, donc ce que vous lisez est
+  ce qui va réellement s'exécuter. L'onglet Agents du téléphone était en lecture seule. Vous
+  pouvez maintenant y changer le modèle par défaut d'un agent, avec les mêmes choix que propose le
+  compositeur. (#29)
 
 ### Corrigé
 

@@ -42,6 +42,20 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 - **Projekte auf dem Handy tragen denselben Avatar wie auf dem Desktop.** Die Liste zeigte einen
   bloßen Farbpunkt; jetzt zeigt sie den farbigen Kreis mit den Initialen des Projekts, in der
   Liste und in der Projektkopfzeile, damit beide Oberflächen wie eine App wirken. (#30)
+- **Das Modell lässt sich vom Handy aus wählen.** Das Modell ist eines der Dinge, die man am
+  liebsten ändern möchte, wenn man weit weg vom Rechner ist — ein Kontingent ist aufgebraucht,
+  eine Aufgabe verlangt das billige Modell — und bisher hieß das, zum PC zurückzugehen. Im
+  Projekt-Thread versteckte das Handy die Modellauswahl hinter einem Symbol ohne Beschriftung:
+  man musste erraten, dass sie da ist. Jetzt zeigt dieser Knopf den Namen des aktiven Modells,
+  sodass Sie auf einen Blick, ohne irgendwo zu tippen, wissen, mit welchem Modell Ihre nächste
+  Nachricht laufen wird. Das freie Textfeld, um ein Modell von Hand einzutippen („Anderes…“),
+  passt jetzt auch auf einen schmalen Bildschirm. In einem Einzelchat war weder auf dem Handy
+  noch auf dem Desktop zu sehen, mit welchem Modell der Agent lief; jetzt wird es angezeigt, eines
+  pro Teilnehmer. Ändern lässt es sich dort mit Absicht nicht: ein Chat trägt kein eigenes Modell,
+  er läuft mit dem, das bei seiner Erstellung gewählt wurde, und sonst mit dem des Agenten —
+  dieselbe Reihenfolge, in der es beim Start aufgelöst wird, sodass das, was Sie lesen, auch
+  wirklich läuft. Der Agenten-Tab auf dem Handy war schreibgeschützt. Jetzt können Sie dort das
+  Standardmodell eines Agenten ändern, mit denselben Möglichkeiten, die der Composer bietet. (#29)
 
 ### Behoben
 

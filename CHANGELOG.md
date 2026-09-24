@@ -42,6 +42,19 @@ let one of them fall behind.
 - **Projects on the phone carry the same avatar as on the desktop.** The list showed a bare
   colour dot; it shows the coloured circle with the project's initials now, in the list and in
   the project header, so both surfaces read as one app. (#30)
+- **The model can be picked from the phone.** The model is one of the things you most want to
+  change while away from the computer — a quota ran out, a task calls for the cheap model — and
+  until now that meant walking back to the PC. In the project thread the phone hid the model
+  picker behind an icon with no label: you had to guess it was there. Now that button shows the
+  name of the active model, so at a glance, without tapping anything, you know which model your
+  next message will use. The free-text field for typing a model by hand ("Other…") also fits on
+  a narrow screen now. In a one-on-one chat, neither the phone nor the desktop showed which
+  model the agent was running; now it is displayed, one per participant. You cannot change it
+  from there on purpose: a chat does not carry its own model, it runs with the one chosen when
+  it was created or, failing that, with the agent's default, and that is the same order used to
+  resolve it at startup, so what you read is what will actually run. The Agents tab on the phone
+  was read-only. Now you can change an agent's default model from there, with the same choices
+  the composer offers. (#29)
 
 ### Fixed
 
