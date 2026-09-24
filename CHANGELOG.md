@@ -64,12 +64,19 @@ let one of them fall behind.
   The page now treats every sign of life as connected, drops a stream that has been silent for
   45 seconds, reconnects the moment the tab is back in front or the network returns, and the PC
   resends its latest state to a phone that fell behind. (#26)
-- **A maintenance turn no longer looks like something you wrote.** When an agent compacts its
-  history with /compact, or when a planner answers a question from one of its implementers, the
-  app sends a turn that it wrote itself. That text appeared in the thread right-aligned, styled
-  the same way as a message you typed, and was even offered when pressing the up arrow in the
-  composer as if it were one of your prompts. Those turns are no longer drawn: they were never
-  work and they were never yours. The fix applies to the desktop app and the phone alike.
+- **A compaction is announced in the thread and can be inspected.** When an agent compacts its
+  history — automatically because the conversation grew heavy, or because you ran `/compact` —
+  the app used to draw that turn right-aligned, styled the same way as a message you typed, and
+  even offered it when pressing the up arrow in the composer as if it were one of your prompts.
+  Hiding it entirely was not the answer either: an automatic compaction restarts the agent's
+  session, and with no trace of it happening the thread just silently changed character.
+  Compactions now appear as a quiet maintenance note — one line naming the agent, whether the
+  compaction was automatic or requested, and the time. A "More details" expander shows what the
+  app asked the agent and what the agent answered, and the note also says when a compaction is
+  running, failed or was interrupted. Two things that were never yours remain hidden: the
+  compaction prompt no longer appears under the up arrow in the composer, and a planner's answer
+  to one of its implementers' questions is not drawn either — that is traffic between agents,
+  not something you need to read. Works on desktop and on the phone.
 
 ## 0.23.0 — 2026-09-20
 

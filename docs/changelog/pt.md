@@ -61,13 +61,20 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   página trata qualquer sinal de vida como conexão, descarta um fluxo calado por 45 segundos,
   reconecta assim que a aba volta à frente ou a rede retorna, e o PC reenvia seu último estado a
   um celular que ficou para trás. (#26)
-- **O turno de manutenção não aparece mais como uma mensagem sua.** Quando um agente compacta
-  seu histórico com /compact, ou quando um planejador responde a uma pergunta de um de seus
-  implementadores, o app envia um turno que ele mesmo escreveu. Esse texto aparecia no fio
-  alinhado à direita, com a mesma aparência de uma mensagem digitada por você, e até era
-  oferecido ao pressionar a seta para cima no compositor como se fosse um prompt seu. Agora esses
-  turnos não são desenhados: nunca foram trabalho e nunca foram seus. Vale tanto no app de
-  desktop quanto no celular.
+- **A compactação é anunciada no fio e pode ser inspecionada.** Quando um agente compacta seu
+  histórico — automaticamente porque a conversa ficou pesada, ou porque você executou
+  `/compact` — o app antes desenhava esse turno alinhado à direita, com a mesma aparência de
+  uma mensagem digitada por você, e até o oferecia ao pressionar a seta para cima no compositor
+  como se fosse um prompt seu. Escondê-lo por completo também não era a resposta: uma
+  compactação automática reinicia a sessão do agente, e sem rastro de que tivesse acontecido o
+  fio mudava de caráter em silêncio. Agora a compactação aparece como uma nota de manutenção
+  discreta — uma linha só, nomeando o agente, dizendo se foi automática ou solicitada, e com o
+  horário. Um "Mais detalhes" se expande e mostra o que o app pediu ao agente e o que o agente
+  respondeu; a nota também avisa quando a compactação está em andamento, falhou ou foi
+  interrompida. Duas coisas que nunca foram suas continuam ocultas: o prompt da compactação não
+  aparece mais sob a seta para cima no compositor, e a resposta de um planejador a uma pergunta
+  de um de seus implementadores também não é desenhada — é tráfego entre agentes, não algo que
+  você precise ler. Vale tanto no desktop quanto no celular.
 
 ## 0.23.0 — 2026-09-20
 

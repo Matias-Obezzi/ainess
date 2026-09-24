@@ -64,12 +64,20 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   Ahora la página toma cualquier señal de vida como conexión, descarta un flujo callado 45
   segundos, reconecta apenas la pestaña vuelve al frente o vuelve la red, y la PC reenvía su
   último estado a un celular que quedó atrás. (#26)
-- **El turno de mantenimiento ya no se ve como un mensaje tuyo.** Cuando un agente compacta su
-  historial con /compact, o cuando un planificador contesta una pregunta de uno de sus
-  implementadores, la app manda un turno que ella misma escribió. Ese texto aparecía en el hilo
-  alineado a la derecha, con la misma forma que un mensaje tipeado por vos, y hasta se ofrecía al
-  apretar la flecha arriba en el compositor como si fuera un prompt tuyo. Ahora esos turnos no se
-  dibujan: nunca fueron trabajo y nunca fueron tuyos. Vale igual en la app de escritorio y en el
+- **La compactación se anuncia en el hilo y se puede inspeccionar.** Cuando un agente compacta
+  su historial — automáticamente porque la conversación se puso pesada, o porque ejecutaste
+  `/compact` — la app antes dibujaba ese turno alineado a la derecha, con la misma forma que un
+  mensaje tipeado por vos, y hasta se ofrecía al apretar la flecha arriba en el compositor como
+  si fuera un prompt tuyo. Esconderlo del todo tampoco era la respuesta: una compactación
+  automática le reinicia la sesión al agente, y sin rastro de que hubiera pasado, el hilo
+  cambiaba de carácter en silencio. Ahora la compactación aparece como una nota de
+  mantenimiento discreta — una sola línea que nombra al agente, dice si fue automática o
+  pedida, y lleva la hora. Un «Más detalles» se despliega y muestra lo que la app le pidió al
+  agente y lo que el agente contestó; la nota también avisa cuando la compactación está
+  corriendo, falló o se interrumpió. Dos cosas que nunca fueron tuyas siguen sin dibujarse: el
+  prompt de la compactación ya no aparece bajo la flecha arriba del compositor, y la respuesta
+  de un planificador a una pregunta de uno de sus implementadores tampoco se dibuja — es
+  tráfico entre agentes, no algo que tengas que leer. Vale igual en el escritorio y en el
   celular.
 
 ## 0.23.0 — 2026-09-20

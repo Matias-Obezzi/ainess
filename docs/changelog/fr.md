@@ -67,14 +67,22 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   tout signe de vie comme une connexion, abandonne un flux muet depuis 45 secondes, se reconnecte
   dès que l'onglet revient devant ou que le réseau revient, et le PC renvoie son dernier état à
   un téléphone resté en arrière. (#26)
-- **Le tour de maintenance ne ressemble plus à un message que vous avez écrit.** Quand un agent
-  compacte son historique avec /compact, ou quand un planificateur répond à une question de l'un
-  de ses implémenteurs, l'application envoie un tour qu'elle a rédigé elle-même. Ce texte
-  apparaissait dans le fil aligné à droite, avec la même apparence qu'un message tapé par vous,
-  et était même proposé en appuyant sur la flèche haut dans le compositeur comme s'il s'agissait
-  de l'un de vos prompts. Ces tours ne sont plus affichés : ils n'ont jamais été du travail et
-  n'ont jamais été les vôtres. Le correctif s'applique aussi bien à l'application de bureau qu'au
-  téléphone.
+- **La compaction est annoncée dans le fil et peut être consultée.** Quand un agent compacte
+  son historique — automatiquement parce que la conversation devenait lourde, ou parce que vous
+  avez lancé `/compact` — l'application dessinait ce tour aligné à droite, avec la même
+  apparence qu'un message tapé par vous, et le proposait même en appuyant sur la flèche haut
+  dans le compositeur comme s'il s'agissait de l'un de vos prompts. Le masquer complètement
+  n'était pas non plus la bonne réponse : une compaction automatique redémarre la session de
+  l'agent, et sans trace visible le fil changeait de caractère en silence. La compaction
+  apparaît maintenant comme une note de maintenance discrète — une seule ligne nommant l'agent,
+  indiquant si la compaction était automatique ou demandée, et portant l'heure. Un « Plus de
+  détails » se déplie et montre ce que l'application a demandé à l'agent et ce que l'agent a
+  répondu ; la note indique aussi quand une compaction est en cours, a échoué ou a été
+  interrompue. Deux choses qui n'ont jamais été les vôtres restent masquées : le prompt de
+  compaction n'apparaît plus sous la flèche haut du compositeur, et la réponse d'un
+  planificateur à une question de l'un de ses implémenteurs n'est pas affichée non plus — c'est
+  du trafic entre agents, pas quelque chose que vous avez besoin de lire. Fonctionne aussi bien
+  sur le bureau que sur le téléphone.
 
 ## 0.23.0 — 2026-09-20
 

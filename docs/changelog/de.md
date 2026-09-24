@@ -67,13 +67,22 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   als verbunden, verwirft einen 45 Sekunden stummen Strom, verbindet sich neu, sobald der Tab
   wieder vorne ist oder das Netz zurückkommt, und der PC schickt seinen letzten Stand an ein
   zurückgefallenes Handy erneut. (#26)
-- **Der Wartungszug sieht nicht mehr wie eine eigene Nachricht aus.** Wenn ein Agent seinen
-  Verlauf mit /compact komprimiert oder wenn ein Planer eine Frage eines seiner Implementierer
-  beantwortet, sendet die App einen Zug, den sie selbst verfasst hat. Dieser Text erschien im
-  Thread rechtsbündig, im selben Stil wie eine von Ihnen getippte Nachricht, und wurde sogar beim
-  Drücken der Pfeiltaste nach oben im Composer angeboten, als wäre er einer Ihrer Prompts. Diese
-  Züge werden nicht mehr angezeigt: sie waren nie Arbeit und sie waren nie Ihre. Die Korrektur
-  gilt für die Desktop-App und das Handy gleichermaßen.
+- **Eine Komprimierung wird im Thread angekündigt und kann eingesehen werden.** Wenn ein Agent
+  seinen Verlauf komprimiert — automatisch, weil die Konversation zu umfangreich wurde, oder
+  weil Sie `/compact` ausgeführt haben — zeichnete die App diesen Zug bisher rechtsbündig, im
+  selben Stil wie eine von Ihnen getippte Nachricht, und bot ihn sogar beim Drücken der
+  Pfeiltaste nach oben im Composer an, als wäre er einer Ihrer Prompts. Ihn vollständig zu
+  verstecken war auch nicht die Lösung: eine automatische Komprimierung startet die Sitzung des
+  Agenten neu, und ohne sichtbare Spur veränderte sich der Thread still und leise. Die
+  Komprimierung erscheint nun als dezente Wartungsnotiz — eine einzige Zeile mit dem Namen des
+  Agenten, ob die Komprimierung automatisch oder angefordert war, und der Uhrzeit. Ein
+  „Mehr Details" klappt aus und zeigt, was die App dem Agenten aufgetragen hat und was der
+  Agent geantwortet hat; die Notiz zeigt auch an, wenn eine Komprimierung läuft, fehlgeschlagen
+  ist oder abgebrochen wurde. Zwei Dinge, die nie Ihre waren, bleiben verborgen: der Prompt der
+  Komprimierung erscheint nicht mehr unter der Pfeiltaste nach oben im Composer, und die Antwort
+  eines Planers auf eine Frage eines seiner Implementierer wird ebenfalls nicht angezeigt — das
+  ist Verkehr zwischen Agenten, nichts, das Sie lesen müssten. Gilt für die Desktop-App und das
+  Handy gleichermaßen.
 
 ## 0.23.0 — 2026-09-20
 
