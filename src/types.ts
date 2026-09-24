@@ -423,7 +423,7 @@ export interface MessagingChannelConfig {
 }
 
 export interface AppConfig {
-  version: 13;
+  version: 14;
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -450,6 +450,14 @@ export interface AppConfig {
   lastProjectId: string | null;
   /** Max planner continuation rounds per user task. */
   maxRounds: number;
+  /**
+   * How many runs may hold a CLI process at once, counted across every project.
+   *
+   * A run is a process, and that process runs tests, builds and installs of its own, so the ceiling
+   * is about the machine rather than about any one project. A run over it is queued, never dropped:
+   * it starts on its own as soon as a slot frees. 0 means no ceiling at all.
+   */
+  maxConcurrentRuns: number;
   skills: Skill[];
   mcpServers: McpServer[];
   /**

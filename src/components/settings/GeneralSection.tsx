@@ -16,12 +16,16 @@ const NEVER = "never";
 /** How long a done task can sit on the board before it archives itself. */
 const AUTO_ARCHIVE_DAYS = [7, 14, 30, 90];
 
+/** Highest ceiling the field takes. Past this the number stops meaning anything on real hardware. */
+const MAX_CONCURRENT_RUNS_LIMIT = 32;
+
 /** Language, "Segundo plano", "Orquestación" and how the board tidies itself up. */
 export function GeneralSection() {
   const t = useT();
   const config = useAppStore(state => state.config);
   const updateConfig = useAppStore(state => state.updateConfig);
   const setMaxRounds = useAppStore(state => state.setMaxRounds);
+  const setMaxConcurrentRuns = useAppStore(state => state.setMaxConcurrentRuns);
 
   const [soundOpen, setSoundOpen] = useState(false);
   const [maxRoundsText, setMaxRoundsText] = useState(String(config.maxRounds));
@@ -35,6 +39,21 @@ export function GeneralSection() {
       setMaxRounds(n);
     } else {
       setMaxRoundsText(String(config.maxRounds));
+    }
+  };
+
+  const [maxConcurrentText, setMaxConcurrentText] = useState(String(config.maxConcurrentRuns));
+  useEffect(() => {
+    setMaxConcurrentText(String(config.maxConcurrentRuns));
+  }, [config.maxConcurrentRuns]);
+
+  // 0 is allowed and means no ceiling, which is why this one starts at 0 and `maxRounds` at 1.
+  const commitMaxConcurrentRuns = (value: string) => {
+    const n = parseInt(value, 10);
+    if (Number.isFinite(n) && n >= 0 && n <= MAX_CONCURRENT_RUNS_LIMIT) {
+      setMaxConcurrentRuns(n);
+    } else {
+      setMaxConcurrentText(String(config.maxConcurrentRuns));
     }
   };
 
@@ -174,6 +193,19 @@ export function GeneralSection() {
               onBlur={e => commitMaxRounds(e.target.value)}
             />
             <span className="text-sm text-muted-foreground">{t("settings.general.maxRoundsHint")}</span>
+          </div>
+          <div className="flex flex-col gap-2 pt-2 border-t">
+            <label className="text-sm font-semibold">{t("settings.option.general.maxConcurrentRuns")}</label>
+            <Input
+              type="number"
+              min={0}
+              max={MAX_CONCURRENT_RUNS_LIMIT}
+              className="w-24"
+              value={maxConcurrentText}
+              onChange={e => setMaxConcurrentText(e.target.value)}
+              onBlur={e => commitMaxConcurrentRuns(e.target.value)}
+            />
+            <span className="text-sm text-muted-foreground">{t("settings.general.maxConcurrentRunsHint")}</span>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t">
             <Switch

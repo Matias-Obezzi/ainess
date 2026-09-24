@@ -27,7 +27,7 @@ import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
-import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
+import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf, queuedRunsEverywhere, slotAvailable } from "@/lib/run-queue";
 import { touchRun, forgetStall } from "@/lib/stall";
 import { repoDirOf } from "@/lib/repo-dir";
 import { forChat } from "@/lib/chat-text";
@@ -434,6 +434,19 @@ export function startRun(opts: StartRunOptions): string | undefined {
   // In a turn of its own right now. The run is written down either way — the parent counts it as
   // a child it is waiting for, the board gets its card — but it waits for that turn to end.
   const busy = isAgentBusy(store, opts.projectId, opts.agentId);
+  // The other reason to wait: the machine is already running as many CLIs as it was told to.
+  //
+  // Why this cannot deadlock, which is the thing a concurrency cap gets wrong. The feared shape is
+  // a planner holding a slot while the children it is waiting for sit queued behind that same
+  // slot — with the ceiling at 1, forever. It cannot happen here because an agent waiting for its
+  // own delegations has no process at all: delegations are started from `onRunFinished`, after the
+  // planner's run is already `done` and its process gone, and the planner comes back as a *new*
+  // run in `maybeContinueParent` once the children finish (`waitingForOwnDelegations` describes
+  // exactly that state — `status: "waiting"` with no `currentRunId`). Every wait in this
+  // orchestrator is between runs, never inside one, so a run that occupies a slot is never waiting
+  // on another run to start. What the cap counts is `running` only; `queued` runs hold nothing.
+  const noSlot = !busy && !slotAvailable(store.runs, store.config.maxConcurrentRuns);
+  const waits = busy || noSlot;
   const run: Run = {
     id: runId,
     projectId: opts.projectId,
@@ -441,7 +454,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
     parentRunId: opts.parentRunId,
     rootRunId: opts.rootRunId ?? runId,
     prompt: opts.prompt,
-    status: busy ? "queued" : "running",
+    status: waits ? "queued" : "running",
     startedAt: Date.now(),
     output: "",
     rawLines: [],
@@ -465,7 +478,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
         [runId]: run,
         ...(parentRun && opts.parentRunId ? { [opts.parentRunId]: { ...parentRun, childRunIds: [...parentRun.childRunIds, runId] } } : {})
       },
-      runtime: busy ? state.runtime : {
+      runtime: waits ? state.runtime : {
         ...state.runtime,
         [opts.projectId]: {
           ...projectRuntime,
@@ -480,14 +493,16 @@ export function startRun(opts: StartRunOptions): string | undefined {
     };
   });
 
-  if (busy) {
+  if (waits) {
     queuedRunOpts.set(runId, opts);
     addMessage({
       projectId: opts.projectId,
       fromAgentId: "system",
       toAgentId: opts.agentId,
       kind: "system",
-      text: translateNow("run.queuedBehind", { name: agent.name }),
+      text: busy
+        ? translateNow("run.queuedBehind", { name: agent.name })
+        : translateNow("run.queuedForSlot", { n: store.config.maxConcurrentRuns }),
       runId,
     });
     return runId;
@@ -498,12 +513,23 @@ export function startRun(opts: StartRunOptions): string | undefined {
 }
 
 /**
- * Launches the next run waiting for this agent, if it is free. Called wherever a run of the agent
- * ends — next to `drainContinuations`, and for the same reason.
+ * Launches the next run waiting for this agent, then whatever else was waiting for a slot. Called
+ * wherever a run of the agent ends — next to `drainContinuations`, and for the same reason.
+ *
+ * Two passes because a run that ends frees two different things: this agent, and one of the
+ * machine's slots. The second one belongs to no agent in particular — the run it lets through can
+ * be another agent's, in another project entirely.
  */
 export function launchQueuedRuns(agentId: string, projectId: string): void {
+  launchNextForAgent(agentId, projectId);
+  launchRunsWaitingForSlot();
+}
+
+/** The agent's own queue: its turn ended, so what was waiting behind it goes first. */
+function launchNextForAgent(agentId: string, projectId: string): void {
   const store = useAppStore.getState();
   if (isAgentBusy(store, projectId, agentId)) return;
+  if (!slotAvailable(store.runs, store.config.maxConcurrentRuns)) return;
   // In the order the work arrived: the map keeps it, and two runs queued in the same millisecond
   // have the same `startedAt`. What has no entry there is a run this process cannot launch anyway.
   const next = [...queuedRunOpts.keys()]
@@ -511,20 +537,57 @@ export function launchQueuedRuns(agentId: string, projectId: string): void {
     .find(r => r && r.status === "queued" && r.agentId === agentId && r.projectId === projectId)
     ?? nextQueuedRun(store.runs, agentId, projectId);
   if (!next) return;
-  const opts = queuedRunOpts.get(next.id);
-  queuedRunOpts.delete(next.id);
+  launchQueuedRun(next.id, agentId, projectId);
+}
+
+/** Re-entrancy guard: launching a run can end it (no binary, agent gone) right back into here. */
+let handingOutSlots = false;
+
+/**
+ * Hands the free slots to whatever is queued for one, oldest first, app-wide.
+ *
+ * Exported because the ceiling is also a setting: raising it has to release the queue right then,
+ * and with nothing running there is no run ending to do it (see `setMaxConcurrentRuns`).
+ */
+export function launchRunsWaitingForSlot(): void {
+  if (handingOutSlots) return;
+  handingOutSlots = true;
+  try {
+    // Every id is tried once. A launch normally takes the run out of `queued`, but the paths that
+    // fail before spawning are the ones this has no control over, and a run left queued by one of
+    // them would otherwise be picked again on the next turn of the loop, forever.
+    const tried = new Set<string>();
+    for (;;) {
+      const store = useAppStore.getState();
+      if (!slotAvailable(store.runs, store.config.maxConcurrentRuns)) return;
+      const next = queuedRunsEverywhere(store.runs).find(
+        r => !tried.has(r.id) && queuedRunOpts.has(r.id) && !isAgentBusy(store, r.projectId, r.agentId),
+      );
+      if (!next) return;
+      tried.add(next.id);
+      launchQueuedRun(next.id, next.agentId, next.projectId);
+    }
+  } finally {
+    handingOutSlots = false;
+  }
+}
+
+/** Turns one queued run into a running one and spawns it. Both queues end here. */
+function launchQueuedRun(runId: string, agentId: string, projectId: string): void {
+  const opts = queuedRunOpts.get(runId);
+  queuedRunOpts.delete(runId);
   if (!opts) {
     // Queued by a process that is gone: nothing here knows what it was asked for.
-    finishNeverSpawned(next.id, projectId, agentId, interruptedOutput());
+    finishNeverSpawned(runId, projectId, agentId, interruptedOutput());
     return;
   }
   useAppStore.setState(state => {
-    const run = state.runs[next.id];
+    const run = state.runs[runId];
     if (!run) return state;
     const projectRuntime = state.runtime[projectId] || {};
     return {
       // The clock starts now: what it shows as elapsed is the turn, not the wait.
-      runs: { ...state.runs, [next.id]: { ...run, status: "running", startedAt: Date.now() } },
+      runs: { ...state.runs, [runId]: { ...run, status: "running", startedAt: Date.now() } },
       runtime: {
         ...state.runtime,
         [projectId]: {
@@ -532,14 +595,14 @@ export function launchQueuedRuns(agentId: string, projectId: string): void {
           [agentId]: {
             ...(projectRuntime[agentId] ?? { agentId, queuedInstructions: [] }),
             status: "working",
-            currentRunId: next.id,
+            currentRunId: runId,
             currentTask: opts.prompt,
           },
         },
       },
     };
   });
-  launchRun(next.id, opts);
+  launchRun(runId, opts);
 }
 
 /**
@@ -1354,6 +1417,9 @@ function onRunFinished(runId: string) {
     // message already say what happened, and firing both would read as contradicting itself.
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
     taskFinished(run.projectId, run.rootRunId, true, translateNow("autonomous.quotaParked", { name: agent.name }));
+    // This branch returns before the `launchQueuedRuns` at the end of the function, and the slot
+    // this run held is free all the same: parked is not running.
+    launchRunsWaitingForSlot();
     return;
   }
 

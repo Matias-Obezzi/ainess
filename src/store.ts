@@ -30,6 +30,7 @@ import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
 import { MAX_PROJECT_PANES } from "@/lib/project-panes";
+import { DEFAULT_MAX_CONCURRENT_RUNS } from "@/lib/run-queue";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 import type { QuestionChoice } from "@/lib/question-choice";
 import { PROVIDERS } from "@/lib/providers";
@@ -318,6 +319,8 @@ export interface AppState {
   removeProject(id: string): void;
   setCurrentProject(id: string | null): void;
   setMaxRounds(n: number): void;
+  /** How many runs may hold a CLI process at once, across every project; 0 means no ceiling. */
+  setMaxConcurrentRuns(n: number): void;
   /** Adds an agent to a project's team (replacing the one with the same id, if any). */
   addAgent(projectId: string, agent: AgentConfig): void;
   updateAgent(projectId: string, agentId: string, patch: Partial<AgentConfig>): void;
@@ -469,7 +472,7 @@ export interface AppState {
  */
 function generateSeedConfig(): AppConfig {
   return {
-    version: 13,
+    version: 14,
     language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
@@ -479,6 +482,7 @@ function generateSeedConfig(): AppConfig {
     defaultFormationId: null,
     lastProjectId: null,
     maxRounds: 6,
+    maxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS,
     skills: [],
     mcpServers: [],
     hooks: [],
@@ -1111,7 +1115,7 @@ function syncTrayLabels(): void {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
+  config: { version: 14, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, maxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
   modelsFetchedAt: {},
@@ -1827,6 +1831,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setMaxRounds: (n) => {
     set((state) => ({ config: { ...state.config, maxRounds: n } }));
     debouncedSave();
+  },
+
+  setMaxConcurrentRuns: (n) => {
+    set((state) => ({ config: { ...state.config, maxConcurrentRuns: n } }));
+    debouncedSave();
+    // Raising the ceiling (or taking it off) has to free whatever is queued for a slot now. The
+    // only other thing that hands slots out is a run ending, and with nothing running there is no
+    // run to end: the queue would sit there until something unrelated happened to finish.
+    orchestrator.launchRunsWaitingForSlot();
   },
 
   setAutonomous: (projectId, until) => {
@@ -2932,7 +2945,20 @@ async function runInit(): Promise<void> {
         version: 13,
         sharedContext: "",
         projects: (config.projects ?? []).map(p => ({ ...p, sharedContext: p.sharedContext ?? global })),
-      } as AppConfig;
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 14: a ceiling on how many CLIs hold a process at once.
+    // Left missing the field would read as 0, and 0 is what the setting calls "no ceiling" — an
+    // existing config would silently keep the behaviour the ceiling exists to stop. Everyone who
+    // never chose a number gets the default; whoever did keeps theirs.
+    if ((config.version as number) < 14) {
+      config = {
+        ...config,
+        version: 14,
+        maxConcurrentRuns: config.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS,
+      } as unknown as AppConfig;
       isSeed = true;
     }
 
