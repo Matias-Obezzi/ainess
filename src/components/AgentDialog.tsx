@@ -16,10 +16,12 @@ import { availableProviders, defaultAgentDescription, PROVIDERS } from "@/lib/pr
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
-import { useT, type TFunction } from "@/i18n/useT";
+import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2 } from "lucide-react";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
+import { resolvedModel, costPerMillion } from "@/lib/model-cost";
+import { formatCost, runsOfProject } from "@/lib/usage";
 
 interface Props {
   open: boolean;
@@ -147,11 +149,17 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
 
 export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, agents: rosterProp, onSave }: Props) {
   const t = useT();
+  const locale = useLocale();
   const config = useAppStore(state => state.config);
   const currentProjectId = useCurrentProjectId();
   const targetProjectId = projectId !== undefined ? projectId : currentProjectId;
   const projectAgents = useAppStore(state => selectProjectAgents(state, targetProjectId));
   const roster = rosterProp ?? projectAgents;
+  const allRuns = useAppStore(state => state.runs);
+  const projectRuns = useMemo(
+    () => (targetProjectId ? runsOfProject(allRuns, targetProjectId) : []),
+    [allRuns, targetProjectId],
+  );
   const addAgent = useAppStore(state => state.addAgent);
   const updateAgent = useAppStore(state => state.updateAgent);
   const binaries = useAppStore(state => state.binaries);
@@ -304,7 +312,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     }
   };
 
-  const resolvedModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
+  const effectiveModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
 
   const handleSave = () => {
     const newAgent: AgentConfig = {
@@ -313,7 +321,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       provider,
       role,
       parentId,
-      model: resolvedModel || undefined,
+      model: effectiveModel || undefined,
       autoApprove,
       requireApproval: approvalMode === "inherit" ? undefined : approvalMode === "always",
       worktree: worktree || undefined,
@@ -339,6 +347,25 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const availableModels = models[provider] || PROVIDERS[provider]?.models || [];
   const providerQuota = quotaByProvider[provider];
+
+  const agentResolvedModel = useMemo(() => {
+    if (!id || (agent && provider !== agent.provider)) return undefined;
+    return resolvedModel(projectRuns, id);
+  }, [projectRuns, id, agent, provider]);
+
+  const matchedResolvedModel = useMemo(() => {
+    if (!agentResolvedModel) return undefined;
+    return availableModels.find(m => m.id === agentResolvedModel);
+  }, [agentResolvedModel, availableModels]);
+
+  const defaultModelLabel = matchedResolvedModel ? matchedResolvedModel.label : agentResolvedModel;
+
+  const hasAnyCost = useMemo(() => {
+    return (
+      availableModels.some(m => costPerMillion(projectRuns, m.id) !== undefined) ||
+      (Boolean(otherModel) && costPerMillion(projectRuns, otherModel) !== undefined)
+    );
+  }, [availableModels, projectRuns, otherModel]);
 
   const quotaSuffixFor = (modelId: string): string => {
     if (!providerQuota || providerQuota.status !== "ok") return "";
@@ -484,12 +511,30 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={DEFAULT_MODEL_OPTION}>{t("agentDialog.providerDefault")}</SelectItem>
-                      {availableModels.map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value={DEFAULT_MODEL_OPTION}>
+                        <span>{t("agentDialog.providerDefault")}</span>
+                        {defaultModelLabel && (
+                          <span className="text-muted-foreground font-normal">({defaultModelLabel})</span>
+                        )}
+                      </SelectItem>
+                      {availableModels.map(m => {
+                        const cpm = costPerMillion(projectRuns, m.id);
+                        const costText = cpm !== undefined ? t("agentDialog.costPerMillion", { cost: formatCost(cpm, locale) }) : null;
+                        return (
+                          <SelectItem key={m.id} value={m.id} className="[&>span:last-child]:w-full">
+                            <span className="flex w-full items-center justify-between gap-2">
+                              <span className="truncate">
+                                {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}
+                              </span>
+                              {costText && (
+                                <span className="text-xs text-muted-foreground font-normal shrink-0 ml-auto" title={t("agentDialog.listPriceNotice")}>
+                                  {costText}
+                                </span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                       <SelectItem value={OTHER_MODEL_OPTION}>{t("agentDialog.otherModel")}</SelectItem>
                     </SelectContent>
                   </Select>
@@ -501,6 +546,11 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     onChange={e => setOtherModel(e.target.value)}
                     placeholder={t("agentDialog.otherModelPlaceholder")}
                   />
+                )}
+                {hasAnyCost && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("agentDialog.listPriceNotice")}
+                  </p>
                 )}
               </div>
             </div>

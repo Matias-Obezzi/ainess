@@ -1,4 +1,4 @@
-// The left rail has three shapes now, one shortcut that walks them, and one rule that picks a
+// The left rail has two shapes now, one shortcut that walks them, and one rule that picks a
 // shape for you: the first time two projects are on screen at once, the menu gets out of the way.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useAppStore, nextSidebarMode, sanitizeSidebarMode } from "@/store";
@@ -20,14 +20,13 @@ describe("sidebar mode", () => {
     useAppStore.setState({ sidebarMode: "expanded", openProjects: [], currentProjectId: null });
   });
 
-  it("walks the three shapes in one direction", () => {
+  it("walks the two shapes in one direction", () => {
     expect(nextSidebarMode("expanded")).toBe("collapsed");
-    expect(nextSidebarMode("collapsed")).toBe("hidden");
-    expect(nextSidebarMode("hidden")).toBe("expanded");
+    expect(nextSidebarMode("collapsed")).toBe("expanded");
 
-    // Ctrl+B and the title bar button are both this, so three presses are where you started.
+    // Ctrl+B and the title bar button are both this, so two presses are where you started.
     const start = useAppStore.getState().sidebarMode;
-    for (let i = 0; i < 3; i++) useAppStore.getState().cycleSidebar();
+    for (let i = 0; i < 2; i++) useAppStore.getState().cycleSidebar();
     expect(useAppStore.getState().sidebarMode).toBe(start);
   });
 
@@ -37,7 +36,7 @@ describe("sidebar mode", () => {
     expect(JSON.parse(store.get("ainess.ui") ?? "{}").sidebarMode).toBe("collapsed");
 
     useAppStore.getState().cycleSidebar();
-    expect(JSON.parse(store.get("ainess.ui") ?? "{}").sidebarMode).toBe("hidden");
+    expect(JSON.parse(store.get("ainess.ui") ?? "{}").sidebarMode).toBe("expanded");
     vi.unstubAllGlobals();
   });
 
@@ -60,16 +59,19 @@ describe("sidebar mode", () => {
     expect(useAppStore.getState().sidebarMode).toBe("expanded");
   });
 
-  it("leaves a hidden menu hidden when the screen splits", () => {
-    useAppStore.setState({ sidebarMode: "hidden", openProjects: ["p1"] });
+  it("leaves a collapsed menu collapsed when the screen splits", () => {
+    useAppStore.setState({ sidebarMode: "collapsed", openProjects: ["p1"] });
     useAppStore.getState().openProjectInPane("p2");
-    expect(useAppStore.getState().sidebarMode).toBe("hidden");
+    expect(useAppStore.getState().sidebarMode).toBe("collapsed");
   });
 
-  it("reads back what a past build wrote, three values or two", () => {
+  it("reads back what a past build wrote into the two states that remain", () => {
+    expect(sanitizeSidebarMode("expanded", undefined)).toBe("expanded");
     expect(sanitizeSidebarMode("collapsed", undefined)).toBe("collapsed");
-    // Before the strip existed there were two states, and closed meant gone.
-    expect(sanitizeSidebarMode(undefined, false)).toBe("hidden");
+    // 0.22.0 allowed hiding the rail completely; that now collapses to avatars.
+    expect(sanitizeSidebarMode("hidden", undefined)).toBe("collapsed");
+    // Before the strip existed there were two states, and closed meant gone; now collapsed.
+    expect(sanitizeSidebarMode(undefined, false)).toBe("collapsed");
     expect(sanitizeSidebarMode(undefined, true)).toBe("expanded");
     expect(sanitizeSidebarMode("nonsense", undefined)).toBe("expanded");
     expect(sanitizeSidebarMode(undefined, undefined)).toBe("expanded");

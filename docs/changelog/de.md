@@ -2,6 +2,51 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.23.0 — 2026-09-20
+
+### Neu
+
+- **Eine zu schwer gewordene Unterhaltung wird automatisch komprimiert.** Da jeder Werkzeugaufruf den
+  gesamten Gesprächsverlauf erneut einliest, zahlt man für eine lange Sitzung viele Male doppelt. Das
+  Kürzen hing bisher davon ab, dass man an `/compact` dachte. Sobald der Kontext eines Agenten nach
+  einem Lauf die Komprimierungsschwelle überschreitet, wird die Sitzung nun automatisch komprimiert
+  und eine Nachricht im Verlauf weist darauf hin.
+- **Die Nutzungstabelle zeigt an, wie schwer jede Unterhaltung ist.** Das erneute Einlesen des
+  Verlaufs bei jedem Aufruf verursacht die meisten Tokenkosten; daher enthält die Nutzungstabelle nun
+  eine eigene Spalte für die Unterhaltungsgröße je Agent. Sie stellt die Kontext-Tokens des letzten
+  Laufs der Komprimierungsschwelle gegenüber und sinkt automatisch, sobald die Sitzung komprimiert
+  wurde.
+- **Die Modellauswahl zeigt, worauf „Standard“ verweist und was jedes Modell kostet.** Die Wahl des
+  Modells erfolgt nicht mehr blind. Die Auswahl zeigt nun den aufgelösten Modellnamen neben der
+  Standardoption an, sobald dieser aus früheren Läufen bekannt ist, zusammen mit den Kosten pro
+  Million Tokens, die direkt aus den tatsächlichen Läufen ermittelt werden.
+- **Eine Karte, die auf ihren Zug wartet, zeigt dies deutlich an.** Werden demselben Agenten mehrere
+  Aufgaben zugewiesen, stellen sich nachfolgende Läufe hinter dem aktiven an. Karten in der
+  Arbeitsspalte weisen nun klar darauf hin, dass sie warten, anstatt vorzugeben, parallel zu
+  arbeiten.
+
+### Geändert
+
+- **Die Seitenleiste wechselt zwischen ausgeklappt und Symbolleiste, ohne verborgenen Zustand.** Mit
+  Version 0.22.0 war angekündigt worden, dass Strg+B und die Schaltfläche durch drei Zustände
+  schalten: ausgeklappt, Symbolleiste und verborgen. Drei Zustände führten zu unnötigen Klicks; daher
+  wechselt die Leiste nun direkt zwischen voller Breite und Symbolleiste. Eine unter 0.22.0
+  gespeicherte Einstellung für „verborgen“ öffnet sich nun als Symbolleiste.
+- **Agenten arbeiten ausschließlich mit dem ihnen zugewiesenen Team.** Agenten können keine eigenen
+  Unteragenten mehr außerhalb der Projekthierarchie starten. Von der CLI eigenständig gestartete
+  Unteragenten liefen ohne Karte auf dem Board, ohne zugewiesene Kosten und ließen sich nicht aus der
+  App stoppen. Agenten beschränken sich nun strikt auf das fürs Projekt vorgesehene Team.
+
+### Behoben
+
+- **Das Projektsymbol bleibt in seiner Zeile zentriert, egal ob mit oder ohne Git-Zeile.** Bei
+  Projekten mit Git wuchs die Zeile durch die Branch-Angabe auf zwei Zeilen an, wodurch der Avatar
+  nach oben rutschte. Das Symbol ist nun vertikal über die gesamte Höhe der Zeile zentriert.
+- **Zwei-Finger-Wischen zur Seite auf dem Trackpad scrollt das Board wieder.** Eine globale Regel zur
+  Vermeidung von Prellen verhinderte versehentlich das Weiterleiten horizontaler Gesten an den
+  Spalten. Seitliches Wischen überträgt sich nun wieder zuverlässig auf das Board, um es zur Seite zu
+  bewegen, während unerwünschtes Prellen unterbunden bleibt.
+
 ## 0.22.0 — 2026-09-20
 
 ### Neu

@@ -6,13 +6,15 @@ import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/q
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
 import { ensureWorktree } from "@/lib/worktree";
-import { truncate } from "@/lib/format";
+import { truncate, formatNumber } from "@/lib/format";
 import { translateNow, activeLocale } from "@/i18n/useT";
+import { compactAgent } from "@/lib/commands";
+import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
 import { pickReviewer } from "@/lib/review";
-import { Run, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
@@ -830,6 +832,31 @@ function launchRun(runId: string, opts: StartRunOptions): void {
   });
 }
 
+/**
+ * Merges incoming usage with whatever the run had already recorded.
+ *
+ * `contextTokens` is treated differently from other fields: it is not an accumulated total
+ * like `inputTokens`, `cachedInputTokens`, or `turns`, but a measurement of the conversation's
+ * size/weight at a given moment (what gets re-read on each tool call). Summing it across turns
+ * would yield a meaningless inflated number; it therefore always keeps the MAXIMUM observed
+ * during the run.
+ */
+export function mergeUsage(existing: RunUsage | undefined, incoming: RunUsage | undefined): RunUsage | undefined {
+  if (!incoming) return existing;
+  if (!existing) return incoming;
+
+  const contextTokens =
+    existing.contextTokens !== undefined && incoming.contextTokens !== undefined
+      ? Math.max(existing.contextTokens, incoming.contextTokens)
+      : (incoming.contextTokens ?? existing.contextTokens);
+
+  return {
+    ...existing,
+    ...incoming,
+    ...(contextTokens !== undefined ? { contextTokens } : {}),
+  };
+}
+
 function handleOutput(e: RunOutputEvent) {
   const store = useAppStore.getState();
   const run = store.runs[e.runId];
@@ -883,13 +910,36 @@ function handleOutput(e: RunOutputEvent) {
           meta: { tool: ev.name, summary, input: ev.input },
         });
       }
+    } else if (ev.type === "usage") {
+      useAppStore.setState(state => {
+        const r = state.runs[e.runId];
+        if (!r) return state;
+        const usage = mergeUsage(r.usage, ev.usage);
+        return {
+          runs: {
+            ...state.runs,
+            [e.runId]: {
+              ...r,
+              ...(usage ? { usage } : {}),
+            },
+          },
+        };
+      });
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
         const r = state.runs[e.runId];
         if (!r) return state;
+        const usage = mergeUsage(r.usage, ev.usage);
         return {
           // Copilot's result carries usage but no text: keep whatever answer we already had.
-          runs: { ...state.runs, [e.runId]: { ...r, output: ev.text || r.output, ...(ev.usage ? { usage: ev.usage } : {}) } },
+          runs: {
+            ...state.runs,
+            [e.runId]: {
+              ...r,
+              output: ev.text || r.output,
+              ...(usage ? { usage } : {}),
+            },
+          },
           ...(ev.sessionId ? rememberSession(state, run, ev.sessionId) : {})
         };
       });
@@ -1374,6 +1424,24 @@ function onRunFinished(runId: string) {
       ? selectAgent(store, parent.agentId)?.name ?? translateNow("folder.history.fromUser")
       : translateNow("folder.history.fromUser");
     void recordTurn(project, agent, { from, prompt: run.prompt, answer: run.output });
+  }
+
+  // Auto-compaction: when a conversation has grown heavy, compact the agent's session so subsequent
+  // turns do not keep re-reading hundreds of thousands of tokens on every tool call.
+  const hasSession = !!useAppStore.getState().runtime[run.projectId]?.[agent.id]?.sessionId;
+  if (hasSession && shouldCompact(run)) {
+    addMessage({
+      projectId: run.projectId,
+      fromAgentId: "system",
+      toAgentId: agent.id,
+      kind: "system",
+      text: translateNow("system.sessionCompacted", {
+        name: agent.name,
+        tokens: formatNumber(run.usage?.contextTokens ?? 0, activeLocale()),
+      }),
+      runId,
+    });
+    compactAgent(run.projectId, agent.id);
   }
 }
 

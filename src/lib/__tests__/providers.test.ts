@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { mergeUsage } from "@/lib/orchestrator";
 import { useAppStore } from "@/store";
 import { es, loadLanguage } from "@/i18n";
 import { en } from "@/i18n/en";
@@ -110,6 +111,32 @@ describe("claude provider", () => {
     expect(cmd.args).not.toContain("--dangerously-skip-permissions");
   });
 
+  it("passes --disallowedTools with Agent and Workflow for an implementer", () => {
+    const cmd = PROVIDERS.claude.buildCommand({
+      agent: agent({ provider: "claude", role: "implementer" }),
+      prompt: "hacé esto",
+      systemPrompt: "SYS",
+      cwd: "C:/ws",
+      binaryPath: "claude.exe",
+    });
+    expect(cmd.args).toContain("--disallowedTools");
+    const disallowed = cmd.args.slice(cmd.args.indexOf("--disallowedTools") + 1);
+    expect(disallowed).toContain("Agent");
+    expect(disallowed).toContain("Workflow");
+  });
+
+  it("does not pass --disallowedTools to planners and keeps their --allowedTools", () => {
+    const cmd = PROVIDERS.claude.buildCommand({
+      agent: agent({ provider: "claude", role: "planner" }),
+      prompt: "planificá",
+      systemPrompt: "SYS",
+      cwd: "C:/ws",
+      binaryPath: "claude.exe",
+    });
+    expect(cmd.args).not.toContain("--disallowedTools");
+    expect(cmd.args).toContain("--allowedTools");
+  });
+
   it("parses stream-json events", () => {
     const p = PROVIDERS.claude;
     expect(p.parseLine('{"type":"system","subtype":"init","session_id":"s1"}', "stdout")).toEqual([{ type: "session", sessionId: "s1" }]);
@@ -122,6 +149,67 @@ describe("claude provider", () => {
   // turn resumed on it. Better no session at all: the run starts fresh instead of pointing nowhere.
   it("ignores an init line that brings no session id", () => {
     expect(PROVIDERS.claude.parseLine('{"type":"system","subtype":"init"}', "stdout")).toEqual([]);
+  });
+
+  it("emits contextTokens with the sum of cache and input tokens on assistant line", () => {
+    const line = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "pensando" }],
+        usage: {
+          input_tokens: 12,
+          output_tokens: 1_204,
+          cache_read_input_tokens: 48_233,
+          cache_creation_input_tokens: 1_640,
+        },
+      },
+    });
+    const events = PROVIDERS.claude.parseLine(line, "stdout");
+    expect(events).toEqual([
+      { type: "text", text: "pensando\n\n" },
+      { type: "usage", usage: { contextTokens: 49_885 } },
+    ]);
+  });
+
+  it("defaults missing cache token counters to 0 when computing contextTokens", () => {
+    const line = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "hola" }],
+        usage: {
+          input_tokens: 50,
+          cache_read_input_tokens: 1_000,
+        },
+      },
+    });
+    const events = PROVIDERS.claude.parseLine(line, "stdout");
+    expect(events).toEqual([
+      { type: "text", text: "hola\n\n" },
+      { type: "usage", usage: { contextTokens: 1_050 } },
+    ]);
+  });
+
+  it("does not emit usage when assistant line has no usage or empty usage", () => {
+    const withoutUsage = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "sin uso" }],
+      },
+    });
+    expect(PROVIDERS.claude.parseLine(withoutUsage, "stdout")).toEqual([
+      { type: "text", text: "sin uso\n\n" },
+    ]);
+
+    const emptyUsage = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: "uso vacio" }],
+        usage: {},
+      },
+    });
+    expect(PROVIDERS.claude.parseLine(emptyUsage, "stdout")).toEqual([
+      { type: "text", text: "uso vacio\n\n" },
+    ]);
   });
 });
 
@@ -299,6 +387,80 @@ describe("usage reported by each CLI", () => {
     expect(claudeUsage({ total_cost_usd: "0.1" })).toBeUndefined();
   });
 
+  it("extracts byModel from modelUsage indexed by canonicalModel instead of execution suffix", () => {
+    const raw = {
+      type: "result",
+      total_cost_usd: 0.15231,
+      usage: {
+        input_tokens: 2,
+        output_tokens: 4,
+        cache_read_input_tokens: 15320,
+        cache_creation_input_tokens: 14454,
+      },
+      modelUsage: {
+        "claude-opus-5[1m]": {
+          inputTokens: 2,
+          outputTokens: 4,
+          cacheReadInputTokens: 15320,
+          cacheCreationInputTokens: 14454,
+          costUSD: 0.15231,
+          contextWindow: 1000000,
+          maxOutputTokens: 64000,
+          canonicalModel: "claude-opus-5",
+          provider: "firstParty",
+          costBasis: "list",
+        },
+      },
+    };
+
+    const usage = claudeUsage(raw);
+    expect(usage?.byModel).toBeDefined();
+    expect(usage?.byModel?.["claude-opus-5"]).toEqual({
+      costUsd: 0.15231,
+      inputTokens: 2,
+      outputTokens: 4,
+      cachedInputTokens: 29774,
+    });
+    expect(usage?.byModel?.["claude-opus-5[1m]"]).toBeUndefined();
+  });
+
+  it("falls back to raw key when canonicalModel is not present in modelUsage", () => {
+    const raw = {
+      modelUsage: {
+        "custom-model[test]": {
+          inputTokens: 10,
+          outputTokens: 20,
+          costUSD: 0.05,
+        },
+      },
+    };
+    const usage = claudeUsage(raw);
+    expect(usage?.byModel?.["custom-model[test]"]).toEqual({
+      costUsd: 0.05,
+      inputTokens: 10,
+      outputTokens: 20,
+    });
+  });
+
+  it("leaves byModel undefined when modelUsage is absent or empty without breaking other fields", () => {
+    const withoutModelUsage = {
+      total_cost_usd: 0.1,
+      usage: { output_tokens: 5 },
+    };
+    const parsedWithout = claudeUsage(withoutModelUsage);
+    expect(parsedWithout).toEqual({ costUsd: 0.1, outputTokens: 5 });
+    expect(parsedWithout?.byModel).toBeUndefined();
+
+    const withEmptyModelUsage = {
+      total_cost_usd: 0.1,
+      usage: { output_tokens: 5 },
+      modelUsage: {},
+    };
+    const parsedEmpty = claudeUsage(withEmptyModelUsage);
+    expect(parsedEmpty).toEqual({ costUsd: 0.1, outputTokens: 5 });
+    expect(parsedEmpty?.byModel).toBeUndefined();
+  });
+
   it("reads Antigravity's usage under any of the names its builds have used", () => {
     const line = JSON.stringify({
       event: "result",
@@ -330,6 +492,39 @@ describe("usage reported by each CLI", () => {
       { type: "result", text: "", usage: { durationMs: 92_310, premiumRequests: 3 } },
     ]);
     expect(copilotUsage({ type: "result" })).toBeUndefined();
+  });
+});
+
+describe("mergeUsage", () => {
+  it("keeps the maximum contextTokens between consecutive usages", () => {
+    const first = mergeUsage(undefined, { contextTokens: 100_000 });
+    expect(first).toEqual({ contextTokens: 100_000 });
+
+    const second = mergeUsage(first, { contextTokens: 50_000 });
+    expect(second?.contextTokens).toBe(100_000);
+  });
+
+  it("updates contextTokens when a larger one arrives", () => {
+    const first = { contextTokens: 50_000 };
+    const second = mergeUsage(first, { contextTokens: 120_000 });
+    expect(second?.contextTokens).toBe(120_000);
+  });
+
+  it("preserves contextTokens when result line usage arrives with accumulated totals", () => {
+    const existing = { contextTokens: 100_000 };
+    const resultUsage = {
+      costUsd: 0.3421,
+      inputTokens: 12,
+      outputTokens: 1_204,
+      cachedInputTokens: 49_873,
+      turns: 7,
+      durationMs: 41_562,
+    };
+    const merged = mergeUsage(existing, resultUsage);
+    expect(merged).toEqual({
+      ...resultUsage,
+      contextTokens: 100_000,
+    });
   });
 });
 

@@ -84,3 +84,26 @@ test("a scroll that ends stops, and the box you write in keeps its caret", async
   expect(await page.getByTestId("sidebar").evaluate(el => getComputedStyle(el).userSelect)).toBe("none");
   expect(await page.getByTestId("composer-input").evaluate(el => getComputedStyle(el).userSelect)).toBe("text");
 });
+
+test("a sideways trackpad gesture over a column scrolls the board", async ({ page }) => {
+  await openDemo(page, "board");
+
+  // The board container wraps the columns and must overflow horizontally before the test can
+  // prove anything about lateral scroll chaining.
+  const board = page.locator("div.overflow-x-auto").filter({ has: page.locator("[data-column-scroll]") });
+  const { scrollWidth, clientWidth } = await board.evaluate(el => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+  }));
+  expect(scrollWidth).toBeGreaterThan(clientWidth);
+
+  // The pointer rests on a column — which scrolls vertically, not horizontally. With
+  // overscroll-behavior-x left to chain, the lateral wheel event bubbles up to the board.
+  const column = page.locator("[data-column-scroll]").first();
+  const box = (await column.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(150, 0);
+
+  expect(await board.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+});
+

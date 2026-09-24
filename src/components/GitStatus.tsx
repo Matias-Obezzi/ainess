@@ -154,7 +154,7 @@ export function GitStatusLine({ projectId }: { projectId: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center gap-1 pl-6 pr-1 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1 pr-1 text-[10px] text-muted-foreground">
           <GitBranch className="h-3 w-3 shrink-0" />
           <span className="truncate">{repo.status.branch}</span>
           <Signals repo={repo} className="ml-auto" />

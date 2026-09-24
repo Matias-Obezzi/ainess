@@ -1,4 +1,4 @@
-import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, Task, TaskStatus } from "@/types";
+import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, ModelTokenUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
@@ -64,8 +64,17 @@ interface ClaudeLine {
   type?: string;
   subtype?: string;
   session_id?: string;
-  message?: { content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }> };
+  message?: {
+    content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }>;
+    usage?: {
+      input_tokens?: unknown;
+      output_tokens?: unknown;
+      cache_read_input_tokens?: unknown;
+      cache_creation_input_tokens?: unknown;
+    };
+  };
   result?: string;
+  modelUsage?: unknown;
 }
 
 interface AntigravityLine {
@@ -152,6 +161,57 @@ function compactUsage(usage: RunUsage): RunUsage | undefined {
 }
 
 /**
+ * Parses Claude Code's `modelUsage` block into a map of model id to usage counters.
+ *
+ * Keys in `modelUsage` carry execution suffixes (e.g. `claude-opus-5[1m]`), while the app's
+ * model picker and configs use canonical ids (`claude-opus-5`). We index by `canonicalModel`
+ * when present, falling back to the raw key only if it is missing.
+ */
+function parseModelUsage(raw: unknown): Record<string, ModelTokenUsage> | undefined {
+  if (!isRecord(raw)) return undefined;
+  const result: Record<string, ModelTokenUsage> = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    if (!isRecord(entry)) continue;
+
+    const canonical = typeof entry.canonicalModel === "string" && entry.canonicalModel.trim().length > 0
+      ? entry.canonicalModel.trim()
+      : undefined;
+    const modelId = canonical ?? key;
+
+    const cacheRead = num(entry.cacheReadInputTokens ?? entry.cache_read_input_tokens);
+    const cacheWrite = num(entry.cacheCreationInputTokens ?? entry.cache_creation_input_tokens);
+    const cached = cacheRead === undefined && cacheWrite === undefined ? undefined : (cacheRead ?? 0) + (cacheWrite ?? 0);
+    const cost = num(entry.costUSD ?? entry.costUsd ?? entry.cost_usd);
+    const input = num(entry.inputTokens ?? entry.input_tokens);
+    const output = num(entry.outputTokens ?? entry.output_tokens);
+
+    if (cost === undefined && input === undefined && output === undefined && cached === undefined) {
+      continue;
+    }
+
+    const existing = result[modelId];
+    if (existing) {
+      result[modelId] = {
+        costUsd: cost !== undefined || existing.costUsd !== undefined ? (existing.costUsd ?? 0) + (cost ?? 0) : undefined,
+        inputTokens: input !== undefined || existing.inputTokens !== undefined ? (existing.inputTokens ?? 0) + (input ?? 0) : undefined,
+        outputTokens: output !== undefined || existing.outputTokens !== undefined ? (existing.outputTokens ?? 0) + (output ?? 0) : undefined,
+        cachedInputTokens: cached !== undefined || existing.cachedInputTokens !== undefined ? (existing.cachedInputTokens ?? 0) + (cached ?? 0) : undefined,
+      };
+    } else {
+      result[modelId] = {
+        ...(cost !== undefined ? { costUsd: cost } : {}),
+        ...(input !== undefined ? { inputTokens: input } : {}),
+        ...(output !== undefined ? { outputTokens: output } : {}),
+        ...(cached !== undefined ? { cachedInputTokens: cached } : {}),
+      };
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
  * Claude Code's `result` line: `total_cost_usd`, `num_turns`, `duration_ms` and a `usage` object
  * with the token counts. The two cache counters are added up into one "cached" figure.
  */
@@ -160,11 +220,13 @@ export function claudeUsage(obj: unknown): RunUsage | undefined {
   const cacheRead = num(field(u, "cache_read_input_tokens"));
   const cacheWrite = num(field(u, "cache_creation_input_tokens"));
   const cached = cacheRead === undefined && cacheWrite === undefined ? undefined : (cacheRead ?? 0) + (cacheWrite ?? 0);
+  const byModel = parseModelUsage(field(obj, "modelUsage") ?? field(obj, "model_usage"));
   return compactUsage({
     costUsd: num(field(obj, "total_cost_usd")),
     inputTokens: num(field(u, "input_tokens")),
     outputTokens: num(field(u, "output_tokens")),
     cachedInputTokens: cached,
+    byModel,
     turns: num(field(obj, "num_turns")),
     durationMs: num(field(obj, "duration_ms")),
   });
@@ -174,6 +236,9 @@ export function claudeUsage(obj: unknown): RunUsage | undefined {
  * Antigravity's `result.usage`. The agy build in use does not document the shape and different
  * versions have named the same counters differently, so every spelling we have seen is accepted
  * and whatever is missing simply stays out.
+ *
+ * Antigravity does not report cache (measured: zero tokens across 13 runs), so `contextTokens`
+ * simply does not exist here and stays undefined.
  */
 export function antigravityUsage(result: unknown): RunUsage | undefined {
   const u = field(result, "usage");
@@ -214,18 +279,30 @@ function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent
   if (obj.type === "system" && obj.subtype === "init" && obj.session_id) {
     return [{ type: "session", sessionId: obj.session_id }];
   }
-  if (obj.type === "assistant" && obj.message && Array.isArray(obj.message.content)) {
+  if (obj.type === "assistant" && obj.message) {
     const events: ParsedEvent[] = [];
-    for (const item of obj.message.content) {
-      if (item.type === "text") {
-        // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
-        // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
-        // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
-        // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
-        events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
-      } else if (item.type === "tool_use") {
-        const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
-        events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
+    if (Array.isArray(obj.message.content)) {
+      for (const item of obj.message.content) {
+        if (item.type === "text") {
+          // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
+          // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
+          // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
+          // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
+          events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
+        } else if (item.type === "tool_use") {
+          const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
+          events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
+        }
+      }
+    }
+    const u = obj.message.usage;
+    if (isRecord(u)) {
+      const read = num(u.cache_read_input_tokens);
+      const write = num(u.cache_creation_input_tokens);
+      const input = num(u.input_tokens);
+      if (read !== undefined || write !== undefined || input !== undefined) {
+        const contextTokens = (read ?? 0) + (write ?? 0) + (input ?? 0);
+        events.push({ type: "usage", usage: { contextTokens } });
       }
     }
     return events;
@@ -460,6 +537,13 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         // writes the board and the team into) and need git to check what the implementers left
         // behind and to commit/push: nothing else from the shell.
         args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)");
+      } else {
+        // The project hierarchy decides which agents exist. Any subagent spawned directly by the
+        // CLI sits outside of it — with no board card, no attributed cost, and no way to stop
+        // it from the app. A blacklist lets implementers keep the rest of their tools (and any
+        // tool the CLI introduces) while stripping out subagents. `Task` is kept for older CLI
+        // versions where that was the name for `Agent`.
+        args.push("--disallowedTools", "Agent", "Workflow", "Task");
       }
 
       return {
@@ -481,6 +565,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     promptVia: "arg",
     buildCommand: (input) => {
       const prompt = withSystem(input);
+      // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
       const args = ["-p", prompt, "--output-format", "stream-json", "--print-timeout", "30m"];
       // Without --add-dir agy treats an unregistered cwd as "outside of project" and
       // works in its own scratch folder instead of the workspace.
@@ -527,6 +612,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       const prompt = withSystem(input);
       // -p without --allow-all-tools makes every tool call fail, so it is always on;
       // --yolo additionally lifts the path/URL checks.
+      // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
       const args = ["-p", prompt, "--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
       if (input.agent.autoApprove) args.push("--yolo");
       if (input.agent.model) args.push("--model", input.agent.model);

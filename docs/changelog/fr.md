@@ -2,6 +2,51 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.23.0 — 2026-09-20
+
+### Nouveau
+
+- **Une conversation devenue trop lourde est compactée automatiquement sans rien demander.** Chaque
+  appel d'outil relit l'intégralité de la conversation, ce qui fait payer une longue session de
+  nombreuses fois. Auparavant, l'élagage dépendait de l'exécution de `/compact`. Désormais, dès
+  que le contexte d'un agent atteint le seuil de compactage après une exécution, la session est
+  automatiquement compactée et un message dans le fil le signale.
+- **Le tableau d'utilisation indique le poids de chaque conversation.** Relire le contexte à chaque
+  appel d'outil représente le coût principal en jetons ; le dialogue d'utilisation ajoute donc une
+  colonne conversation au tableau par agent. Elle affiche les jetons de contexte de la dernière
+  exécution face au seuil de compactage, et diminue d'elle-même dès que la session est compactée.
+- **Le sélecteur de modèle précise ce que « par défaut » désigne et le coût de chacun.** Choisir un
+  modèle ne se fait plus à l'aveugle. Le sélecteur affiche désormais le modèle effectif à côté de
+  l'option par défaut dès qu'il est connu grâce aux exécutions précédentes, ainsi que le coût par
+  million de jetons calculé directement d'après l'utilisation réelle.
+- **Une carte en attente de son tour l'indique clairement.** Lorsque plusieurs tâches sont confiées au
+  même agent, les exécutions suivantes patientent dans une file derrière la tâche active. Les cartes
+  de la colonne en cours indiquent désormais qu'elles attendent leur tour au lieu de feindre un
+  travail en parallèle.
+
+### Modifié
+
+- **La barre latérale bascule entre déployée et bandeau d'icônes, sans état masqué.** La version
+  0.22.0 avait annoncé que Ctrl+B et le bouton parcouraient trois états : étendu, bandeau et masqué.
+  Parcourir trois états imposait des clics inutiles, si bien que le bouton bascule désormais
+  directement entre le volet complet et le bandeau d'icônes. Une préférence enregistrée comme masquée
+  en 0.22.0 s'ouvre dorénavant sous forme de bandeau.
+- **Les agents travaillent uniquement avec l'équipe qui leur a été confiée.** Les agents ne peuvent
+  plus lancer de sous-agents de leur propre initiative en dehors de la hiérarchie du projet. Les
+  sous-agents créés par la CLI tournaient sans carte sur le tableau, sans coût attribué et sans
+  possibilité d'interruption depuis l'application. Les agents s'en tiennent désormais strictement à
+  l'équipe configurée pour le projet.
+
+### Corrigé
+
+- **L'icône du projet reste centrée sur sa ligne, avec ou sans statut git.** Dans les projets gérés
+  avec git, la mention de la branche ajoutait une seconde ligne et décalait l'avatar vers le haut.
+  L'icône reste dorénavant parfaitement centrée verticalement par rapport à l'ensemble de la ligne.
+- **Le défilement horizontal à deux doigts sur le pavé tactile déplace à nouveau le tableau.** Une
+  règle globale limitant le rebond bloquait par erreur la transmission du défilement latéral dans les
+  colonnes. Le geste latéral se propage de nouveau jusqu'au conteneur du tableau pour le glisser de
+  côté, tout en évitant les effets de rebond indésirables.
+
 ## 0.22.0 — 2026-09-20
 
 ### Nouveau
