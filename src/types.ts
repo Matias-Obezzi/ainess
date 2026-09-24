@@ -612,6 +612,11 @@ export interface Run {
   kind?: "task" | "chat" | "compact" | "answer";
   /** Only on `kind: "answer"`: the question the run was started to answer. */
   answersQuestionId?: string;
+  /**
+   * Only on `kind: "compact"`: the app started this turn on its own because the session had grown
+   * heavy, not the user typing `/compact`. The thread says so, since nobody asked for it.
+   */
+  auto?: boolean;
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */

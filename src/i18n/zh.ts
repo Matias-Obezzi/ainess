@@ -247,6 +247,14 @@ export const zh: Dictionary = {
   "thread.activity.other": "活动（{n} 步 · {elapsed}）",
   "thread.interrupted": "中断了：智能体还在工作时应用被关掉了。",
   "thread.noOutput": "无输出",
+  "thread.compact.auto": "{name} 自动压缩了历史记录",
+  "thread.compact.done": "{name} 压缩了历史记录",
+  "thread.compact.running": "{name} 正在压缩历史记录",
+  "thread.compact.error": "{name} 的压缩失败了",
+  "thread.compact.killed": "{name} 的压缩被中断了",
+  "thread.compact.details": "更多详情",
+  "thread.compact.asked": "请求的内容",
+  "thread.compact.answered": "回复的内容",
 
   // ---- Live activity of a run ----
   "activity.showAll": "查看全部（还有 {n} 步）",

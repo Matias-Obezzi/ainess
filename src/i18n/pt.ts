@@ -247,6 +247,14 @@ export const pt: Dictionary = {
   "thread.activity.other": "Atividade ({n} passos · {elapsed})",
   "thread.interrupted": "Foi interrompido: o app fechou enquanto o agente trabalhava.",
   "thread.noOutput": "Sem saída",
+  "thread.compact.auto": "{name} compactou o histórico automaticamente",
+  "thread.compact.done": "{name} compactou o histórico",
+  "thread.compact.running": "{name} está compactando o histórico",
+  "thread.compact.error": "A compactação de {name} falhou",
+  "thread.compact.killed": "A compactação de {name} foi interrompida",
+  "thread.compact.details": "Mais detalhes",
+  "thread.compact.asked": "O que foi pedido",
+  "thread.compact.answered": "O que respondeu",
 
   // ---- Live activity of a run ----
   "activity.showAll": "Ver tudo ({n} passos a mais)",

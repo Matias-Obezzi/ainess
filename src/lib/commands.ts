@@ -65,10 +65,13 @@ export function parseCommand(text: string): ChatCommand | undefined {
  * `/compact` ever did. Same for a run that could not be started at all: letting go of the session
  * is the floor of this command, never the part that gets skipped.
  *
+ * `opts.auto` marks the turn as one the app started by itself, because the session had grown
+ * heavy — the thread draws the two differently, since nobody typed this one.
+ *
  * Returns `true` if it asked the agent to compact (asynchronous run started), or `false` if it
  * released the session directly.
  */
-export function compactAgent(projectId: string, agentId: string): boolean {
+export function compactAgent(projectId: string, agentId: string, opts?: { auto?: boolean }): boolean {
   const store = useAppStore.getState();
   const agent = selectAgent(store, agentId);
   if (!agent) return false;
@@ -87,6 +90,7 @@ export function compactAgent(projectId: string, agentId: string): boolean {
     round: 0,
     resume: true,
     kind: "compact",
+    auto: opts?.auto,
   });
   if (runId) return true;
   store.resetSession(agent.id, projectId);
@@ -108,12 +112,12 @@ export function compactAgent(projectId: string, agentId: string): boolean {
  *
  * Returns how many agents were *asked* to compact — the work is asynchronous from here on.
  */
-export function compactProject(projectId: string): number {
+export function compactProject(projectId: string, opts?: { auto?: boolean }): number {
   const store = useAppStore.getState();
   const agents = selectProjectAgents(store, projectId);
   let asked = 0;
   for (const agent of agents) {
-    if (compactAgent(projectId, agent.id)) asked++;
+    if (compactAgent(projectId, agent.id, opts)) asked++;
   }
   return asked;
 }

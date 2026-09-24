@@ -248,6 +248,14 @@ export const ja: Dictionary = {
   "thread.activity.other": "アクティビティ ({n} ステップ・{elapsed})",
   "thread.interrupted": "中断されました。エージェントの作業中にアプリが終了しました。",
   "thread.noOutput": "出力なし",
+  "thread.compact.auto": "{name} が履歴を自動で圧縮しました",
+  "thread.compact.done": "{name} が履歴を圧縮しました",
+  "thread.compact.running": "{name} が履歴を圧縮しています",
+  "thread.compact.error": "{name} の圧縮に失敗しました",
+  "thread.compact.killed": "{name} の圧縮が中断されました",
+  "thread.compact.details": "詳細を見る",
+  "thread.compact.asked": "依頼した内容",
+  "thread.compact.answered": "返ってきた内容",
 
   // ---- Live activity of a run ----
   "activity.showAll": "すべて見る (あと{n}ステップ)",

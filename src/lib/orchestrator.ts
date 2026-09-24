@@ -322,7 +322,7 @@ function scheduleStreamFlush() {
   }
 }
 
-export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; sessionId?: string; chatId?: string; replacesRunId?: string };
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; auto?: boolean; sessionId?: string; chatId?: string; replacesRunId?: string };
 
 /**
  * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
@@ -452,6 +452,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
     chatId: opts.chatId,
     review: opts.review,
     answersQuestionId: opts.answersQuestionId,
+    auto: opts.auto,
     replacesRunId: opts.replacesRunId,
   };
 
@@ -1441,7 +1442,7 @@ function onRunFinished(runId: string) {
       }),
       runId,
     });
-    compactAgent(run.projectId, agent.id);
+    compactAgent(run.projectId, agent.id, { auto: true });
   }
 }
 

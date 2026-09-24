@@ -33,7 +33,7 @@ import {
   type NotificationState,
 } from "./web-notifications";
 import { truncate } from "@/lib/format";
-import { isThreadTurn } from "@/lib/thread-turns";
+import { isTypedPrompt } from "@/lib/thread-turns";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError, runDiagnostics } from "./remote-client";
 import { readRemoteNav, writeRemoteNav, restoreNav, type Tab } from "./remote-nav";
@@ -380,7 +380,7 @@ function HomeView({
               const working = Object.values(projectRuntime).filter(r => r.status === "working").length;
               const waiting = Object.values(projectRuntime).some(r => r.status === "waiting");
               const last = Object.values(runs)
-                .filter(r => r.projectId === project.id && r.parentRunId === null && isThreadTurn(r))
+                .filter(r => r.projectId === project.id && r.parentRunId === null && isTypedPrompt(r))
                 .sort((a, b) => b.startedAt - a.startedAt)[0];
               return (
                 <button key={project.id} type="button" className="w-full text-left" onClick={() => onOpenProject(project.id)}>
@@ -591,7 +591,7 @@ function ConversationsList({
 
   const working = Object.values(runtime ?? {}).filter(r => r.status === "working").length;
   const last = Object.values(runs)
-    .filter(r => r.projectId === projectId && r.parentRunId === null && isThreadTurn(r))
+    .filter(r => r.projectId === projectId && r.parentRunId === null && isTypedPrompt(r))
     .sort((a, b) => b.startedAt - a.startedAt)[0];
   const orchestratorSubtitle = last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : t("phone.noTasksYet");
 

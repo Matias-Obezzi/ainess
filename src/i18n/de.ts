@@ -247,6 +247,14 @@ export const de: Dictionary = {
   "thread.activity.other": "Aktivität ({n} Schritte · {elapsed})",
   "thread.interrupted": "Abgebrochen: die App wurde geschlossen, während der Agent arbeitete.",
   "thread.noOutput": "Keine Ausgabe",
+  "thread.compact.auto": "{name} hat die eigene Historie automatisch verdichtet",
+  "thread.compact.done": "{name} hat die eigene Historie verdichtet",
+  "thread.compact.running": "{name} verdichtet gerade die eigene Historie",
+  "thread.compact.error": "Die Verdichtung von {name} ist fehlgeschlagen",
+  "thread.compact.killed": "Die Verdichtung von {name} wurde abgebrochen",
+  "thread.compact.details": "Mehr Details",
+  "thread.compact.asked": "Was verlangt wurde",
+  "thread.compact.answered": "Was geantwortet wurde",
 
   // ---- Live activity of a run ----
   "activity.showAll": "Alles anzeigen ({n} weitere Schritte)",
