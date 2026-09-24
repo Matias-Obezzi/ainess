@@ -2,6 +2,18 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Ein Wechsel der Engine des Orchestrators lässt ihm nicht mehr den alten Namen.** Ein Agent
+  mit dem Standardnamen seiner Engine („Claude Code“) behielt diesen Namen beim Wechsel des
+  Anbieters, sodass der Chat den Namen einer Engine über dem Symbol einer anderen zeigte und der
+  System-Prompt ihn mit dem falschen ansprach. Ein Standardname folgt jetzt dem Anbieter; ein
+  selbst gewählter Name bleibt. Der Orchestrator-Chat folgt außerdem dem Wurzel-Planer, wenn in
+  der Hierarchie ein anderer Agent befördert wird, statt den Composer auf den vorherigen zeigen
+  zu lassen. (#38)
+
 ## 0.23.0 — 2026-09-20
 
 ### Neu

@@ -2,6 +2,18 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Corrigé
+
+- **Changer le moteur de l'orchestrateur ne lui laisse plus l'ancien nom.** Un agent portant le
+  nom par défaut de son moteur (« Claude Code ») gardait ce nom quand on changeait son
+  fournisseur : la conversation affichait le nom d'un moteur sur l'icône d'un autre et l'invite
+  système l'appelait par le mauvais. Un nom par défaut suit désormais le fournisseur ; un nom que
+  vous avez choisi reste. La conversation de l'orchestrateur suit aussi le planificateur racine
+  quand un autre agent est promu dans la hiérarchie, au lieu de laisser le compositeur pointer
+  sur l'ancien. (#38)
+
 ## 0.23.0 — 2026-09-20
 
 ### Nouveau

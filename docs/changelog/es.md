@@ -2,6 +2,18 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Arreglado
+
+- **Cambiar el motor del orquestador ya no le deja el nombre viejo.** Un agente que se llamaba
+  como su motor por defecto («Claude Code») conservaba ese nombre al cambiarle el proveedor, así
+  que el chat mostraba el nombre de un motor sobre el ícono de otro y el prompt del sistema lo
+  llamaba por el equivocado. Un nombre por defecto ahora sigue al proveedor; un nombre elegido
+  por vos se mantiene. El chat del orquestador también sigue al planificador raíz cuando se
+  asciende a otro agente en la jerarquía, en vez de dejar el compositor apuntando al anterior.
+  (#38)
+
 ## 0.23.0 — 2026-09-20
 
 ### Nuevo

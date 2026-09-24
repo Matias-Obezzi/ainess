@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent, resetStore, act } from "@/test/render";
 import { Composer } from "../shell/Composer";
 import { useAppStore } from "@/store";
@@ -128,7 +128,8 @@ describe("Composer - orchestrator target tracking", () => {
             id: "c1",
             projectId: "p1",
             name: "Chat 1",
-            participants: [{ agentId: "a1" }],
+            mode: "individual" as const,
+            participants: [{ agentId: "a1", role: "engineer" }],
             createdAt: 1000,
           },
         ],

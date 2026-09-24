@@ -2,6 +2,17 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Corrigido
+
+- **Trocar o motor do orquestrador não deixa mais o nome antigo nele.** Um agente chamado pelo
+  nome padrão do seu motor («Claude Code») mantinha esse nome ao trocar de provedor, então o chat
+  mostrava o nome de um motor sobre o ícone de outro e o prompt de sistema o chamava pelo errado.
+  Um nome padrão agora acompanha o provedor; um nome escolhido por você permanece. O chat do
+  orquestrador também acompanha o planejador raiz quando outro agente é promovido na hierarquia,
+  em vez de deixar o compositor apontando para o anterior. (#38)
+
 ## 0.23.0 — 2026-09-20
 
 ### Novo

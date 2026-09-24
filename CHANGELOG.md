@@ -6,6 +6,17 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **Changing the orchestrator's engine no longer leaves the old name on it.** An agent called by
+  its engine's default name ("Claude Code") kept that name when its provider was switched, so the
+  chat showed one engine's name over another's icon and the system prompt addressed it by the
+  wrong one. A default name now follows the provider; a name you chose yourself stays. The
+  orchestrator chat also follows the root planner when another agent is promoted in the
+  hierarchy, instead of keeping the composer pointed at the previous one. (#38)
+
 ## 0.23.0 — 2026-09-20
 
 ### Added
