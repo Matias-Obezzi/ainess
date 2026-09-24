@@ -7,9 +7,9 @@ import { roleLabelKey } from "@/lib/labels";
 /**
  * What Claude Code accepts after `--model`.
  *
- * Hardcoded, unlike antigravity and opencode, which are asked (`listModels` runs their `models`
- * subcommand). So this list goes stale in silence: a model released after the last time somebody
- * edited this line does not appear in the picker, and the only way in is the "Otro…" field.
+ * This static list is now the fallback: providers that expose model-discovery subcommands
+ * (antigravity, opencode, ollama) are queried dynamically via their CLI, and any model typed
+ * by hand in a picker is remembered so it can be picked again without retyping.
  */
 const CLAUDE_MODELS = [
   "opus", "sonnet", "haiku",

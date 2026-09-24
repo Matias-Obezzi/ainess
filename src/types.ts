@@ -478,6 +478,8 @@ export interface AppConfig {
    * been: the empty thread and nowhere else.
    */
   mascotAlways?: boolean;
+  /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
+  rememberedModels?: Partial<Record<ProviderId, string[]>>;
 }
 
 export interface AgentRuntime {

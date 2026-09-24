@@ -31,6 +31,8 @@ import { readWithLegacy } from "@/lib/storage-keys";
 import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 import type { QuestionChoice } from "@/lib/question-choice";
+import { PROVIDERS } from "@/lib/providers";
+import { isRemoteBuild } from "@/lib/platform";
 
 /** The channels the messaging config actually has a slot for today. */
 type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
@@ -82,6 +84,8 @@ export interface AppState {
   openProjects: string[];
   /** Models available per provider (fetched or fixed list). */
   models: Partial<Record<ProviderId, ModelInfo[]>>;
+  /** When models were last fetched for each provider (epoch ms). In-memory only. */
+  modelsFetchedAt: Partial<Record<ProviderId, number>>;
   /** Last known quota per provider. */
   quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** The editors on this machine, for "open in…". Detected once at startup. */
@@ -337,6 +341,10 @@ export interface AppState {
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
+  /** Fetches models for askable providers if detected, not in flight, and stale (>10 min). */
+  ensureModels(provider: ProviderId): Promise<void>;
+  /** Remembers a hand-typed model id for a provider, capped at 10, persisted. */
+  rememberModel(provider: ProviderId, id: string): void;
   /** `force` skips the shared cache: it is the user asking on purpose. */
   refreshQuota(provider: ProviderId, opts?: { force?: boolean }): Promise<ProviderQuota>;
   loadQuotaMarks(): Promise<void>;
@@ -1014,6 +1022,10 @@ function findTaskProject(state: AppState, taskId: string): [string, Task[]] | un
   return undefined;
 }
 
+const ASKABLE_PROVIDERS: ProviderId[] = ["antigravity", "opencode", "ollama"];
+const MODELS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const modelsInFlight = new Map<ProviderId, Promise<void>>();
+
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
@@ -1097,6 +1109,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
+  modelsFetchedAt: {},
   quota: {},
   editors: [],
   repoState: {},
@@ -2218,8 +2231,52 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   refreshModels: async (provider) => {
     const models = await quota.listModels(provider, get().binaries);
-    set(state => ({ models: { ...state.models, [provider]: models } }));
+    set(state => ({
+      models: { ...state.models, [provider]: models },
+      modelsFetchedAt: { ...state.modelsFetchedAt, [provider]: Date.now() },
+    }));
     return models;
+  },
+
+  ensureModels: async (provider) => {
+    // Phone build runs in a browser/web context without local CLI binaries.
+    if (isRemoteBuild()) return;
+    if (!ASKABLE_PROVIDERS.includes(provider)) return;
+    if (!get().binaries[provider]?.path) return;
+
+    const inFlight = modelsInFlight.get(provider);
+    if (inFlight) return inFlight;
+
+    const lastFetched = get().modelsFetchedAt[provider] ?? 0;
+    if (Date.now() - lastFetched < MODELS_REFRESH_INTERVAL_MS) return;
+
+    const promise = (async () => {
+      try {
+        await get().refreshModels(provider);
+      } finally {
+        modelsInFlight.delete(provider);
+      }
+    })();
+    modelsInFlight.set(provider, promise);
+    return promise;
+  },
+
+  rememberModel: (provider, id) => {
+    const trimmed = id.trim();
+    if (!trimmed) return;
+    const staticModels = PROVIDERS[provider]?.models ?? [];
+    const dynamicModels = get().models[provider] ?? [];
+    if (staticModels.some(m => m.id === trimmed) || dynamicModels.some(m => m.id === trimmed)) {
+      return;
+    }
+    const current = get().config.rememberedModels?.[provider] ?? [];
+    const next = [trimmed, ...current.filter(m => m !== trimmed)].slice(0, 10);
+    get().updateConfig({
+      rememberedModels: {
+        ...get().config.rememberedModels,
+        [provider]: next,
+      },
+    });
   },
 
   refreshQuota: async (provider, opts) => {
@@ -2946,6 +3003,11 @@ async function runInit(): Promise<void> {
     // kills the agents, so this is where they are found and stopped — before the user sends
     // anything new and ends up with two agents in the same workspace.
     void recovery.reapAfterCrash();
+
+    // Query askable CLIs for available models in the background so pickers have them ready.
+    for (const p of ASKABLE_PROVIDERS) {
+      void get().ensureModels(p);
+    }
 
     set({ loaded: true });
 

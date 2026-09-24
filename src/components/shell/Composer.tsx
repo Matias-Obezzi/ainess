@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState, use
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
+import { useModelChoices } from "@/hooks/useModelChoices";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { Preset } from "@/types";
@@ -337,7 +338,7 @@ export function Composer() {
   const targetRuntime = targetAgent && currentProjectId ? runtime[currentProjectId]?.[targetId] : undefined;
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
   const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
-  const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+  const modelOptions = useModelChoices(targetAgent?.provider);
 
   // The model of this conversation, remembered next to its draft: picking one, going to the board
   // and coming back used to say "default model" again while the box below still held the prompt.
@@ -345,12 +346,13 @@ export function Composer() {
   // one typed by hand. The only thing it cannot say is "custom, nothing typed yet".
   const composerModel = useAppStore(state => state.composerModels[draftKey] ?? "");
   const setComposerModel = useAppStore(state => state.setComposerModel);
+  const rememberModel = useAppStore(state => state.rememberModel);
   const [wantsCustom, setWantsCustom] = useState(false);
   useEffect(() => { setWantsCustom(false); }, [draftKey]);
   const targetModel = wantsCustom
     ? "custom"
     : composerModel
-      ? (modelOptions.includes(composerModel) ? composerModel : "custom")
+      ? (modelOptions.some(m => m.id === composerModel) ? composerModel : "custom")
       : "none";
   const setTargetModel = (value: string) => {
     setWantsCustom(value === "custom");
@@ -680,6 +682,9 @@ export function Composer() {
       else void sendChatMessage(currentChatId, value);
     } else if (currentProjectId) {
       const model = targetModel === "none" ? undefined : targetModel === "custom" ? customModel : targetModel;
+      if (targetModel === "custom" && customModel.trim() && targetAgent) {
+        rememberModel(targetAgent.provider, customModel);
+      }
       // An agent that is working queues what it is told and picks it up when it is free; that is
       // what `instructAgent` has always done for the "instruct" action.
       // `instructAgent` runs it now when the agent is free and queues it when it is not, which is
@@ -1187,7 +1192,7 @@ export function Composer() {
                     <SelectContent>
                       <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
                       {modelOptions.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
                       ))}
                       <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                     </SelectContent>

@@ -13,7 +13,7 @@ import { PROVIDERS } from "@/lib/providers";
 const QUOTA_FILE = "quota/antigravity.json";
 const AGY_MODELS_CACHE_MS = 10 * 60 * 1000;
 
-let agyModelsCache: { at: number; models: ModelInfo[] } | null = null;
+const modelsCache = new Map<ProviderId, { at: number; models: ModelInfo[] }>();
 
 /** Parses `agy models` stdout: one `id<TAB>label` per line, ignoring lines without a tab. */
 export function parseAgyModels(stdout: string): ModelInfo[] {
@@ -136,17 +136,18 @@ export async function antigravityQuota(): Promise<AntigravityPools["pools"]> {
 // ---------------------------------------------------------------------------------------------
 
 export async function listModels(provider: ProviderId, binaries: Binaries): Promise<ModelInfo[]> {
+  const cached = modelsCache.get(provider);
+  if (cached && Date.now() - cached.at < AGY_MODELS_CACHE_MS) {
+    return cached.models;
+  }
   if (provider === "antigravity") {
-    if (agyModelsCache && Date.now() - agyModelsCache.at < AGY_MODELS_CACHE_MS) {
-      return agyModelsCache.models;
-    }
     const bin = binaries.antigravity;
     if (!bin?.path) return PROVIDERS.antigravity.models;
     try {
       const res = await getTransport().exec(bin.path, ["models"]);
       const models = parseAgyModels(res.stdout);
       if (models.length > 0) {
-        agyModelsCache = { at: Date.now(), models };
+        modelsCache.set("antigravity", { at: Date.now(), models });
         return models;
       }
       return PROVIDERS.antigravity.models;
@@ -162,9 +163,29 @@ export async function listModels(provider: ProviderId, binaries: Binaries): Prom
     try {
       const res = await getTransport().exec(bin.path, ["models"]);
       const models = parseOpencodeModels(res.stdout);
-      return models.length > 0 ? models : PROVIDERS.opencode.models;
+      if (models.length > 0) {
+        modelsCache.set("opencode", { at: Date.now(), models });
+        return models;
+      }
+      return PROVIDERS.opencode.models;
     } catch {
       return PROVIDERS.opencode.models;
+    }
+  }
+  if (provider === "ollama") {
+    // `ollama list` reports models downloaded to this machine.
+    const bin = binaries.ollama;
+    if (!bin?.path) return PROVIDERS.ollama.models;
+    try {
+      const res = await getTransport().exec(bin.path, ["list"]);
+      const models = parseOllamaList(res.stdout);
+      if (models.length > 0) {
+        modelsCache.set("ollama", { at: Date.now(), models });
+        return models;
+      }
+      return PROVIDERS.ollama.models;
+    } catch {
+      return PROVIDERS.ollama.models;
     }
   }
   return PROVIDERS[provider]?.models || [];
@@ -177,6 +198,24 @@ export function parseOpencodeModels(stdout: string): ModelInfo[] {
   for (const raw of stdout.split(/\r?\n/)) {
     const id = raw.trim();
     if (!/^[\w.-]+\/[\w.:-]+$/.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    models.push({ id, label: id });
+  }
+  return models;
+}
+
+/**
+ * Parses `ollama list` stdout: skips the header (starts with NAME) and takes the first
+ * whitespace-separated column as model id and label. Empty output or only header returns [].
+ */
+export function parseOllamaList(stdout: string): ModelInfo[] {
+  const seen = new Set<string>();
+  const models: ModelInfo[] = [];
+  for (const raw of stdout.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("NAME")) continue;
+    const id = line.split(/\s+/)[0];
+    if (!id || seen.has(id)) continue;
     seen.add(id);
     models.push({ id, label: id });
   }
@@ -581,6 +620,12 @@ const inFlight = new Map<ProviderId, Promise<ProviderQuota>>();
 export function clearQuotaCache(): void {
   cache.clear();
   inFlight.clear();
+  modelsCache.clear();
+}
+
+/** Clears the in-memory cache of CLI-reported models (used in tests). */
+export function clearModelsCache(): void {
+  modelsCache.clear();
 }
 
 async function readQuota(provider: ProviderId, binaries?: Binaries): Promise<ProviderQuota> {

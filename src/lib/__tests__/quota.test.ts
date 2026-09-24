@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAgyModels, parseResetDuration, poolOf, copilotQuotaFromJson, claudeQuotaFromJson } from "@/lib/quota";
+import { parseAgyModels, parseOllamaList, parseResetDuration, poolOf, copilotQuotaFromJson, claudeQuotaFromJson } from "@/lib/quota";
 import { useAppStore } from "@/store";
 import { es, loadLanguage } from "@/i18n";
 import { en } from "@/i18n/en";
@@ -27,6 +27,37 @@ describe("parseAgyModels", () => {
 
   it("returns an empty list when there is no tab-separated line", () => {
     expect(parseAgyModels("nothing here\njust text\n")).toEqual([]);
+  });
+});
+
+describe("parseOllamaList", () => {
+  it("skips the header line starting with NAME and takes the first whitespace-separated column", () => {
+    const stdout = "NAME                ID              SIZE      MODIFIED\nllama3.1:8b         46e0c10c039e    4.7 GB    2 days ago\nmistral:latest      6276e6d9e374    4.1 GB    3 weeks ago\n";
+    expect(parseOllamaList(stdout)).toEqual([
+      { id: "llama3.1:8b", label: "llama3.1:8b" },
+      { id: "mistral:latest", label: "mistral:latest" },
+    ]);
+  });
+
+  it("handles blank output or header-only output", () => {
+    expect(parseOllamaList("")).toEqual([]);
+    expect(parseOllamaList("   \n\n  ")).toEqual([]);
+    expect(parseOllamaList("NAME      ID    SIZE    MODIFIED\n")).toEqual([]);
+  });
+
+  it("handles CRLF line endings and spaces/tabs", () => {
+    const stdout = "NAME\tID\tSIZE\r\nllama3.1:8b\t46e0c10c039e\t4.7GB\r\nqwen2.5-coder:7b\t2b04965d41c7\t4.7GB\r\n";
+    expect(parseOllamaList(stdout)).toEqual([
+      { id: "llama3.1:8b", label: "llama3.1:8b" },
+      { id: "qwen2.5-coder:7b", label: "qwen2.5-coder:7b" },
+    ]);
+  });
+
+  it("deduplicates multiple entries of the same model", () => {
+    const stdout = "NAME ID\nllama3.1:8b 1\nllama3.1:8b 2\n";
+    expect(parseOllamaList(stdout)).toEqual([
+      { id: "llama3.1:8b", label: "llama3.1:8b" },
+    ]);
   });
 });
 
