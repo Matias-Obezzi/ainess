@@ -362,6 +362,16 @@ export function Composer() {
   };
   const customModel = composerModel;
   const setCustomModel = (value: string) => setComposerModel(draftKey, value);
+  /**
+   * What the select would be showing if it were on screen. On the phone it is not — it is folded
+   * behind a button — and a button with nothing but an icon on it never said which model the next
+   * message goes out on, which is the one thing you want to check before sending from a phone.
+   */
+  const activeModelLabel = targetModel === "none"
+    ? t("composer.defaultModel")
+    : targetModel === "custom"
+      ? (customModel.trim() || t("composer.otherModel"))
+      : (modelOptions.find(m => m.id === targetModel)?.label ?? targetModel);
   // An order bound to another agent would run somewhere else than what the composer says, so only
   // the ones for this target (and the ones bound to nobody) are offered.
   const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
@@ -387,6 +397,26 @@ export function Composer() {
   const quotaAgent = chatMode
     ? allAgents.find(a => a.id === chatAgentId)
     : targetAgent || defaultAgent;
+
+  /**
+   * Who answers in this chat and on which model, to be read and not changed: a chat carries no
+   * model of its own, it runs on the one it was created with or, failing that, the agent's default.
+   * That is the same order the runner resolves it in (`run.model ?? agent.model`), so what is
+   * printed here is what will actually be spawned — and until now nothing printed it at all.
+   */
+  const chatParticipants = useMemo(() => {
+    if (!chat) return [];
+    return chat.participants.map((p, i) => {
+      const agent = allAgents.find(a => a.id === p.agentId);
+      return {
+        key: `${p.agentId}-${i}`,
+        name: agent?.name ?? p.agentId,
+        // The id and not a label: each participant can come from a different provider, and the
+        // list of labels is fetched per provider by a hook that cannot run once per row.
+        model: p.model ?? agent?.model ?? "",
+      };
+    });
+  }, [chat, allAgents]);
 
   const currentProject = config.projects.find(p => p.id === currentProjectId);
   // Attachments go with the project; the file list for `@` comes from the repo, which may sit under it.
@@ -1138,7 +1168,9 @@ export function Composer() {
           </div>
         )}
 
-        {(!chatMode || quotaAgent || !compact) && (
+        {/* The row used to be dropped in a chat on a phone with no quota ring to show, back when
+            it had nothing else in it. It says which model each participant runs on now. */}
+        {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
           <div className="flex gap-2 items-center flex-wrap">
             {!compact && (
               <Button
@@ -1157,7 +1189,17 @@ export function Composer() {
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}
             <div className="ml-auto flex items-center gap-2 flex-wrap">
-              {!chatMode && (
+              {chatMode ? (
+                /* Read-only on purpose: the model of a chat is decided when the chat is made, and
+                   one more control down here would be a second place to set the same thing. */
+                <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap text-xs text-muted-foreground">
+                  {chatParticipants.map(p => (
+                    <span key={p.key} className="min-w-0 max-w-[16rem] truncate">
+                      {t("composer.runsOn", { name: p.name, model: p.model || t("composer.defaultModel") })}
+                    </span>
+                  ))}
+                </div>
+              ) : (
                 <>
                   <Select value={targetId} onValueChange={setTargetId}>
                     <SelectTrigger className={cn("w-[150px]", FLAT_SELECT)}>
@@ -1172,22 +1214,28 @@ export function Composer() {
                     </SelectContent>
                   </Select>
 
+                  {/* The phone's version of the select next to it: the same toggle as before, but
+                      wearing the model it would open on, so the answer is there without a tap. */}
                   {compact && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 text-xs"
+                      className="h-8 min-w-0 gap-1.5 px-2 text-xs"
                       aria-label={t("composer.pickModel")}
+                      title={activeModelLabel}
                       onClick={() => setShowModel(v => !v)}
                     >
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                      <span className="max-w-[9rem] truncate">{activeModelLabel}</span>
                     </Button>
                   )}
 
+                  {/* Opened on a phone the two of them take a line of their own rather than a
+                      fixed 170px each: a model id is long and the row is 360px wide. */}
                   {(!compact || showModel) && (
                   <Select value={targetModel} onValueChange={setTargetModel}>
-                    <SelectTrigger className={cn("w-[170px]", FLAT_SELECT)}>
+                    <SelectTrigger className={cn(compact ? "w-full" : "w-[170px]", FLAT_SELECT)}>
                       <SelectValue placeholder={t("common.model")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1202,7 +1250,7 @@ export function Composer() {
 
                   {targetModel === "custom" && (!compact || showModel) && (
                     <Input
-                      className="h-8 w-[150px] text-xs"
+                      className={cn("h-8 text-xs", compact ? "w-full" : "w-[150px]")}
                       placeholder={t("composer.typeModel")}
                       value={customModel}
                       onChange={e => setCustomModel(e.target.value)}

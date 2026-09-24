@@ -257,6 +257,20 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         if (decision === "reject") await s.reject(id, str("note")); else await s.approve(id, str("note"));
         return { ok: true };
       }
+      case "agent": {
+        // The one thing about an agent the phone gets to change. Its whole config is not on
+        // offer: a system prompt or a provider typed into a URL from a phone on the same wifi is
+        // a different kind of reach than picking a model from the list it was shown.
+        const projectId = str("projectId");
+        const agentId = str("agentId");
+        if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+        if (!agentId || !selectProjectAgents(s, projectId).some(a => a.id === agentId)) return { error: translateNow("remote.err.invalidAgent") };
+        // An empty string is how the phone says "no model of its own", which JSON cannot carry
+        // as an absent key inside an object it also has to be able to send filled.
+        const model = str("model")?.trim();
+        s.updateAgent(projectId, agentId, { model: model || undefined });
+        return { ok: true };
+      }
       case "chat": {
         const chatId = str("chatId");
         const text = str("text")?.trim();

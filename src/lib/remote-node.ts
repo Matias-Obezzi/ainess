@@ -63,6 +63,7 @@ const ACTIONS: Record<string, string> = {
   "/api/chat": "chat",
   "/api/task": "task",
   "/api/answer": "answer",
+  "/api/agent": "agent",
 };
 
 /** Whether the client asked for gzip; one that did not gets the page as it is. */

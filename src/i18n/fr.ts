@@ -208,6 +208,7 @@ export const fr: Dictionary = {
   "composer.defaultModel": "Modèle par défaut",
   "composer.otherModel": "Autre…",
   "composer.typeModel": "Écris le modèle…",
+  "composer.runsOn": "{name} avec {model}",
   "presetStrip.previous": "Voir les consignes précédentes",
   "presetStrip.next": "Voir les consignes suivantes",
 

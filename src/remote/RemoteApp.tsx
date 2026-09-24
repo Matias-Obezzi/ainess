@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AgentModelSelect } from "./AgentModelSelect";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
 import { useKeyboardInset } from "./useKeyboardInset";
@@ -678,6 +679,7 @@ function AgentsTab({ projectId }: { projectId: string }) {
             {rt?.currentTask && (
               <p className="text-xs text-muted-foreground line-clamp-3">{rt.currentTask}</p>
             )}
+            <AgentModelSelect projectId={projectId} agent={agent} />
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-10 flex-1" onClick={() => setInstructing(agent.id)}>
                 {t("agentActions.instruct")}

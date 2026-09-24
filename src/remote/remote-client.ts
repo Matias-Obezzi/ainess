@@ -250,7 +250,8 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     if (isForUser(question)) questions[question.id] = question;
   }
 
-  // The phone never edits agents, so the fields it does not get can take their safe default.
+  // The phone edits nothing of an agent but its model, so the fields it does not get — and it
+  // gets the model — can take their safe default.
   const agentsByProject = new Map<string, AgentConfig[]>();
   for (const { projectId, ...a } of snapshot.agents) {
     const agent: AgentConfig = { ...a, autoApprove: false };
@@ -329,6 +330,11 @@ export function installRemoteActions(): void {
     archiveTask: (taskId) => { void call("/api/task", { taskId, op: "archive" }); },
     removeTask: (taskId) => { void call("/api/task", { taskId, op: "delete" }); },
     stopChat: (chatId) => call("/api/stop", { chatId }),
+    // Only the model travels: it is the only field the phone can edit, and the next snapshot
+    // overwrites whatever was written here anyway, so the PC has to be the one doing it.
+    updateAgent: (projectId, agentId, patch) => {
+      void call("/api/agent", { projectId, agentId, model: patch.model ?? "" });
+    },
     // The snapshot is the only source of truth here: nothing to load, nothing to persist.
     saveConfig: async () => {},
     loadChatMessages: async () => {},

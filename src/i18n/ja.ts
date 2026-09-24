@@ -209,6 +209,7 @@ export const ja: Dictionary = {
   "composer.defaultModel": "デフォルトモデル",
   "composer.otherModel": "その他…",
   "composer.typeModel": "モデル名を入力…",
+  "composer.runsOn": "{name}は{model}",
   "presetStrip.previous": "前のオーダーを見る",
   "presetStrip.next": "次のオーダーを見る",
 

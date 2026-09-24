@@ -139,7 +139,8 @@ describe("Composer - orchestrator target tracking", () => {
 
     render(<Composer />);
 
-    // In chatMode, the target dropdown is not rendered
-    expect(screen.queryByText("Claude Code")).toBeNull();
+    // In chatMode, the target dropdown is not rendered. The agent's name is still on screen —
+    // the read-only line saying which model the chat runs on — but nothing to pick with.
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
   });
 });

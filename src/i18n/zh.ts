@@ -208,6 +208,7 @@ export const zh: Dictionary = {
   "composer.defaultModel": "默认模型",
   "composer.otherModel": "其他…",
   "composer.typeModel": "输入模型…",
+  "composer.runsOn": "{name} 使用 {model}",
   "presetStrip.previous": "查看前面的指令",
   "presetStrip.next": "查看后面的指令",
 

@@ -276,6 +276,7 @@ command_route!(cmd_approve, "approve");
 command_route!(cmd_chat, "chat");
 command_route!(cmd_task, "task");
 command_route!(cmd_answer, "answer");
+command_route!(cmd_agent, "agent");
 
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, Json(json!({ "error": "No encontrado" }))).into_response()
@@ -319,6 +320,7 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
         .route("/api/chat", post(cmd_chat))
         .route("/api/answer", post(cmd_answer))
         .route("/api/task", post(cmd_task))
+        .route("/api/agent", post(cmd_agent))
         .fallback(not_found)
         .with_state(inner.clone());
 
