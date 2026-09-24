@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS, parseSuggestion } from "@/lib/providers";
 import { isChatActive, subscribeChatActivity } from "@/lib/chat";
+import { isThreadTurn } from "@/lib/thread-turns";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
@@ -270,7 +271,7 @@ export function Composer() {
     // The orchestrator's thread: a round-zero run with no parent is a prompt the user typed, and
     // its output is what came back.
     const own = Object.values(runs)
-      .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0)
+      .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0 && isThreadTurn(r))
       .sort((a, b) => b.startedAt - a.startedAt);
     const lastAgent = own.find(r => r.status === "done" && r.output)?.output;
     return {
