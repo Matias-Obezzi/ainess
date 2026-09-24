@@ -55,6 +55,13 @@ let one of them fall behind.
   resolve it at startup, so what you read is what will actually run. The Agents tab on the phone
   was read-only. Now you can change an agent's default model from there, with the same choices
   the composer offers. (#29)
+- **A ceiling on how many runs go at the same time.** A run is a process that runs tests, builds
+  and installs of its own, and nothing bounded how many of them started together: with you
+  watching, the approval dialog was the only brake, and unattended ten delegations meant ten CLIs
+  fighting over the machine. Settings → General → "Runs at the same time" now sets that ceiling —
+  four by default, 0 for no ceiling — counting every project together, because what is being
+  protected is the machine. Whatever goes over it waits its turn and starts on its own as soon as
+  a slot frees, so nothing is dropped and nothing is asked for twice. (#36)
 
 ### Fixed
 
@@ -90,6 +97,12 @@ let one of them fall behind.
   compaction prompt no longer appears under the up arrow in the composer, and a planner's answer
   to one of its implementers' questions is not drawn either — that is traffic between agents,
   not something you need to read. Works on desktop and on the phone.
+- **The phone remote costs the app far less while it is on.** Every change serialized the whole
+  state twice on its way out, three times when it was big enough to be trimmed, and it was built
+  and sent even with no phone connected at all — once every 300 ms through a long autonomous run,
+  on the same thread that draws the app. It is now serialized once per send, and with nobody
+  connected nothing is built: whatever happened in the meantime goes out the moment a phone
+  connects, so what you open on the phone is still up to date. (#36)
 
 ## 0.23.0 — 2026-09-20
 

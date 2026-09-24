@@ -20,7 +20,8 @@ let server: http.Server | null = null;
 let token = "";
 let url = "";
 let ip = "";
-let lastSnapshot: unknown = null;
+/** Kept serialized: it arrives that way and it goes out that way (see `remotePushState`). */
+let lastSnapshotJson: string | null = null;
 let handler: Handler | null = null;
 const clients = new Set<http.ServerResponse>();
 
@@ -125,15 +126,18 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): P
 
   if (!authorized(req, reqUrl)) { json(res, 401, { error: translateNow("remote.err.invalidToken") }); return; }
   if (req.method === "GET" && path === "/api/state") {
-    const snap = handler ? await handler({ id: "state", action: "state", payload: {} }) : lastSnapshot;
-    json(res, 200, snap ?? {});
+    if (handler) { json(res, 200, await handler({ id: "state", action: "state", payload: {} })); return; }
+    // No orchestrator on this process: the last pushed snapshot is already JSON, so it is written
+    // as it came in instead of being parsed and serialized again.
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(lastSnapshotJson ?? "{}");
     return;
   }
   if (req.method === "GET" && path === "/api/events") {
     res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", "Connection": "keep-alive" });
     res.write(":ok\n\n");
-    const snap = handler ? await handler({ id: "state", action: "state", payload: {} }) : lastSnapshot;
-    if (snap) res.write(`event: state\ndata: ${JSON.stringify(snap)}\n\n`);
+    const snap = handler ? JSON.stringify(await handler({ id: "state", action: "state", payload: {} })) : lastSnapshotJson;
+    if (snap) res.write(`event: state\ndata: ${snap}\n\n`);
     clients.add(res);
     const ping = setInterval(() => { try { res.write("event: ping\ndata: {}\n\n"); } catch { /* closed */ } }, 20000);
     req.on("close", () => { clearInterval(ping); clients.delete(res); });
@@ -171,9 +175,9 @@ export const nodeRemote: Pick<Transport, "remoteStart" | "remoteStop" | "remoteS
     await new Promise<void>((resolve) => { if (!server) return resolve(); server.close(() => resolve()); server = null; });
   },
   remoteStatus: async () => ({ running: !!server, url: server ? url : undefined, ip: server ? ip : undefined, clients: clients.size }),
-  remotePushState: async (snapshot) => {
-    lastSnapshot = snapshot;
-    const line = `event: state\ndata: ${JSON.stringify(snapshot)}\n\n`;
+  remotePushState: async (json) => {
+    lastSnapshotJson = json;
+    const line = `event: state\ndata: ${json}\n\n`;
     for (const c of clients) { try { c.write(line); } catch { clients.delete(c); } }
   },
   onRemoteCommand: async (h) => { handler = h; return () => { if (handler === h) handler = null; }; },

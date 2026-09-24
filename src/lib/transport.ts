@@ -68,7 +68,13 @@ export interface Transport {
   remoteStart(port: number, token: string): Promise<{ url: string; ip: string }>;
   remoteStop(): Promise<void>;
   remoteStatus(): Promise<{ running: boolean; url?: string; ip?: string; clients: number }>;
-  remotePushState(snapshot: unknown): Promise<void>;
+  /**
+   * The snapshot already serialized. A string and not an object because that is what both servers
+   * send (an SSE frame is text, and the Rust side broadcasts a String): passing the object would
+   * have the renderer serialize it, the transport serialize it again, and the Rust command turn
+   * its `Value` back into text — three passes over the same megabyte, up to once every 300 ms.
+   */
+  remotePushState(json: string): Promise<void>;
   /** Register the single handler that answers commands from remote clients. */
   onRemoteCommand(h: (cmd: { id: string; action: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>): Promise<() => void>;
 

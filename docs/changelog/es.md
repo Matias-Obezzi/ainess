@@ -55,6 +55,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   de verdad. La pestaña de Agentes del celular era de solo lectura. Ahora desde ahí se puede
   cambiar el modelo por defecto de un agente, con las mismas opciones que ofrece el
   compositor. (#29)
+- **Un tope de ejecuciones en paralelo.** Una ejecución es un proceso que corre sus propios tests,
+  builds e instalaciones, y nada limitaba cuántas arrancaban juntas: con vos mirando, el diálogo de
+  aprobación era el único freno; sin nadie encima, diez delegaciones eran diez CLIs peleándose la
+  máquina. Ajustes → General → «Ejecuciones en paralelo» ahora fija ese tope —cuatro por defecto,
+  0 para ninguno— contando todos los proyectos juntos, porque lo que se protege es la máquina. Lo
+  que pasa del tope espera su turno y arranca solo en cuanto se libera un lugar, así que nada se
+  pierde ni se pide dos veces. (#36)
 
 ### Arreglado
 
@@ -93,6 +100,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   de un planificador a una pregunta de uno de sus implementadores tampoco se dibuja — es
   tráfico entre agentes, no algo que tengas que leer. Vale igual en el escritorio y en el
   celular.
+- **El remoto del celular le cuesta mucho menos a la app mientras está prendido.** Cada cambio
+  serializaba el estado entero dos veces para mandarlo, tres cuando era grande y había que
+  recortarlo, y lo armaba igual aunque no hubiera ningún celular conectado: una vez cada 300 ms
+  durante toda una corrida autónoma, en el mismo hilo que dibuja la app. Ahora se serializa una
+  sola vez por envío, y sin nadie conectado no se arma nada: lo que pasó mientras tanto sale en el
+  momento en que un celular se conecta, así que lo que abrís en el celular sigue estando al día.
+  (#36)
 
 ## 0.23.0 — 2026-09-20
 

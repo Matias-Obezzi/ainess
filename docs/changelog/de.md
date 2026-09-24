@@ -56,6 +56,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   dieselbe Reihenfolge, in der es beim Start aufgelöst wird, sodass das, was Sie lesen, auch
   wirklich läuft. Der Agenten-Tab auf dem Handy war schreibgeschützt. Jetzt können Sie dort das
   Standardmodell eines Agenten ändern, mit denselben Möglichkeiten, die der Composer bietet. (#29)
+- **Eine Obergrenze für gleichzeitige Durchläufe.** Ein Durchlauf ist ein Prozess, der eigene
+  Tests, Builds und Installationen startet, und nichts begrenzte, wie viele davon zusammen
+  losliefen: wenn du zusiehst, war der Freigabedialog die einzige Bremse; unbeaufsichtigt wurden
+  aus zehn Delegationen zehn CLIs, die sich um die Maschine stritten. Einstellungen → Allgemein ->
+  „Gleichzeitige Durchläufe“ setzt diese Grenze jetzt — vier als Standard, 0 für keine — und zählt
+  alle Projekte zusammen, denn geschützt wird die Maschine. Was darüber liegt, wartet und startet
+  von selbst, sobald ein Platz frei wird, es geht also nichts verloren und nichts wird zweimal
+  angefragt. (#36)
 
 ### Behoben
 
@@ -97,6 +105,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   eines Planers auf eine Frage eines seiner Implementierer wird ebenfalls nicht angezeigt — das
   ist Verkehr zwischen Agenten, nichts, das Sie lesen müssten. Gilt für die Desktop-App und das
   Handy gleichermaßen.
+- **Der Handy-Fernzugriff kostet die App deutlich weniger, solange er an ist.** Jede Änderung
+  serialisierte den gesamten Zustand zweimal, um ihn zu senden, dreimal wenn er groß genug war,
+  gekürzt zu werden, und er wurde selbst dann gebaut, wenn kein Handy verbunden war: einmal alle
+  300 ms über einen ganzen autonomen Lauf, auf demselben Thread, der die App zeichnet. Jetzt wird
+  er pro Sendung einmal serialisiert, und ohne Verbundene wird gar nichts gebaut: was in der
+  Zwischenzeit passiert ist, geht in dem Moment raus, in dem sich ein Handy verbindet — was du am
+  Handy öffnest, ist also weiter aktuell. (#36)
 
 ## 0.23.0 — 2026-09-20
 

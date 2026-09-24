@@ -74,6 +74,8 @@ const MAX_OUTPUT_CHARS = 20000;
 const MAX_SNAPSHOT_BYTES = 1_000_000;
 const TRIMMED_LIMITS = { messages: 400, runs: 30 };
 const PUSH_THROTTLE_MS = 300;
+/** How often the push loop looks at whether any phone is connected. */
+const CLIENT_WATCH_MS = 1500;
 
 function clip(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) + "…" : text;
@@ -151,14 +153,34 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
   };
 }
 
-export function buildSnapshot(): RemoteSnapshot {
+/**
+ * The snapshot together with its serialization. Deciding whether it has to be trimmed already
+ * costs the bytes, so whoever needs the string gets it for free instead of serializing the same
+ * object a second time on the way to the wire.
+ */
+function snapshotAndJson(): { snapshot: RemoteSnapshot; json: string } {
   const full = snapshotWith({ messages: MAX_MESSAGES, runs: MAX_RUNS_PER_PROJECT });
-  const size = JSON.stringify(full).length;
-  log.debug("remote", `snapshot de ${size} bytes (${full.messages.length} mensajes, ${full.runs.length} runs)`);
-  if (size <= MAX_SNAPSHOT_BYTES) return full;
+  const json = JSON.stringify(full);
+  log.debug("remote", `snapshot of ${json.length} bytes (${full.messages.length} messages, ${full.runs.length} runs)`);
+  if (json.length <= MAX_SNAPSHOT_BYTES) return { snapshot: full, json };
   const trimmed = snapshotWith(TRIMMED_LIMITS);
-  log.debug("remote", `snapshot recortado a ${JSON.stringify(trimmed).length} bytes`);
-  return trimmed;
+  const trimmedJson = JSON.stringify(trimmed);
+  log.debug("remote", `snapshot trimmed to ${trimmedJson.length} bytes`);
+  return { snapshot: trimmed, json: trimmedJson };
+}
+
+/** The snapshot as an object, for the `state` command, which answers with one. */
+export function buildSnapshot(): RemoteSnapshot {
+  return snapshotAndJson().snapshot;
+}
+
+/**
+ * The snapshot already serialized, which is what every push wants: the SSE frame is text and the
+ * Rust side broadcasts a string. A push lands every 300 ms while an autonomous run is going, so
+ * the serialization it used to pay twice (three times when trimming) is paid once here.
+ */
+export function buildSnapshotJson(): string {
+  return snapshotAndJson().json;
 }
 
 /** Executes a command coming from the phone page. Never throws: errors are returned. */
@@ -292,13 +314,89 @@ export async function handleRemoteCommand(action: string, payload: Record<string
 let attached = false;
 let running = false;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+/** Phones listening as of the last look. `null` while it is not known (nothing asked yet, or the backend did not answer). */
+let clientCount: number | null = null;
+/** Something changed while nobody was connected: whoever connects next has to be told. */
+let pendingPush = false;
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+
+function pushNow(): Promise<void> {
+  pendingPush = false;
+  return getTransport().remotePushState(buildSnapshotJson()).catch(() => {});
+}
 
 function schedulePush(): void {
   if (!running || pushTimer) return;
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    void getTransport().remotePushState(buildSnapshot()).catch(() => {});
+    if (!running) return;
+    // Building the snapshot walks every run, message and chat of every project and serializes the
+    // lot, on the thread that draws the app. With nobody on the other end that is pure cost, so it
+    // is not built at all — an unknown count (`null`) pushes anyway, because the old behaviour is
+    // the safe default when we cannot tell.
+    if (clientCount === 0) {
+      pendingPush = true;
+      return;
+    }
+    void pushNow();
   }, PUSH_THROTTLE_MS);
+}
+
+/**
+ * Asks the backend how many phones are connected, and brings them up to date when that changed.
+ *
+ * The push on the 0 -> N transition is not an optimisation, it is what makes skipping pushes safe.
+ * In the desktop app `GET /api/state` (`state_handler`, src-tauri/src/remote.rs) and the first
+ * event of the SSE stream (`events`, same file) answer with the LAST SNAPSHOT PUSHED; they never
+ * ask the webview for a fresh one. Only the CLI server (src/lib/remote-node.ts) calls the command
+ * handler when a client connects. So a phone that shows up after we skipped pushes would be served
+ * whatever was in memory — minutes old — until something else changed. Hence the push happens on
+ * the transition even with no `pendingPush`: time alone makes the held snapshot wrong.
+ */
+async function refreshClientCount(): Promise<void> {
+  let count: number | null = null;
+  try {
+    const status = await getTransport().remoteStatus();
+    count = typeof status.clients === "number" ? status.clients : null;
+  } catch {
+    // Pushing to nobody is cheaper than a phone frozen on old state, so a failed look pushes again.
+    count = null;
+  }
+  if (!running) return;
+  const before = clientCount;
+  clientCount = count;
+  // The UI reads the count from the store, which only the poll in useRemoteSync keeps fresh and
+  // which `startRemote` used to fill with a hardcoded zero.
+  if (count !== null && count !== before) {
+    useAppStore.setState(state => ({ remoteStatus: { ...state.remoteStatus, clients: count as number } }));
+  }
+  const appeared = count !== null && count > 0 && (before === null || before === 0);
+  if (count !== 0 && (appeared || pendingPush)) await pushNow();
+}
+
+/** The watch lives here and not in a React hook: `ainess serve` mounts no React and behaves the same. */
+function startClientWatch(): void {
+  if (watchTimer) return;
+  watchTimer = setInterval(() => { void refreshClientCount().catch(() => {}); }, CLIENT_WATCH_MS);
+}
+
+function stopClientWatch(): void {
+  if (watchTimer) clearInterval(watchTimer);
+  watchTimer = null;
+  clientCount = null;
+  pendingPush = false;
+}
+
+/**
+ * Shared tail of starting and of adopting a server: learn who is listening, then bring them up to
+ * date. `refreshClientCount` sends the first snapshot itself when a phone is already connected.
+ */
+async function beginPushing(): Promise<void> {
+  running = true;
+  await refreshClientCount();
+  startClientWatch();
+  if (clientCount === 0) pendingPush = true;
+  else if (clientCount === null) await pushNow();
 }
 
 /** Wire the store to the server once: push snapshots on change, answer commands. */
@@ -336,8 +434,7 @@ export async function adoptRemote(): Promise<void> {
   if (running) return;
   await attachRemote();
   await loadEveryBoard();
-  running = true;
-  await getTransport().remotePushState(buildSnapshot()).catch(() => {});
+  await beginPushing();
 }
 
 export async function startRemote(portOverride?: number): Promise<RemoteStatus> {
@@ -346,13 +443,18 @@ export async function startRemote(portOverride?: number): Promise<RemoteStatus> 
   const { remote } = useAppStore.getState().config;
   const port = portOverride ?? remote.port;
   const info = await getTransport().remoteStart(port, remote.token);
-  running = true;
-  await getTransport().remotePushState(buildSnapshot()).catch(() => {});
-  return { running: true, url: info.url, ip: info.ip, clients: 0 };
+  await beginPushing();
+  // A server that was already up answers `remoteStart` with itself, phones included, so the count
+  // is whatever the backend reports — not the zero this used to claim.
+  return { running: true, url: info.url, ip: info.ip, clients: clientCount ?? 0 };
 }
 
 export async function stopRemote(): Promise<void> {
   running = false;
+  // A push already scheduled would otherwise land on a server that is going away.
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = null;
+  stopClientWatch();
   await getTransport().remoteStop();
 }
 

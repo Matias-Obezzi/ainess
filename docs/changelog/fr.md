@@ -57,6 +57,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   ce qui va réellement s'exécuter. L'onglet Agents du téléphone était en lecture seule. Vous
   pouvez maintenant y changer le modèle par défaut d'un agent, avec les mêmes choix que propose le
   compositeur. (#29)
+- **Un plafond d’exécutions en parallèle.** Une exécution est un processus qui lance ses propres
+  tests, builds et installations, et rien ne limitait le nombre de celles qui démarraient
+  ensemble : sous vos yeux, la boîte d’approbation était le seul frein ; sans personne, dix
+  délégations faisaient dix CLI se disputant la machine. Réglages → Général → « Exécutions en
+  parallèle » fixe désormais ce plafond — quatre par défaut, 0 pour aucun — tous projets confondus,
+  parce que ce qui est protégé, c’est la machine. Ce qui dépasse attend son tour et démarre tout
+  seul dès qu’une place se libère : rien n’est perdu ni demandé deux fois. (#36)
 
 ### Corrigé
 
@@ -98,6 +105,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   planificateur à une question de l'un de ses implémenteurs n'est pas affichée non plus — c'est
   du trafic entre agents, pas quelque chose que vous avez besoin de lire. Fonctionne aussi bien
   sur le bureau que sur le téléphone.
+- **Le remote du téléphone coûte bien moins à l’application quand il est allumé.** Chaque
+  changement sérialisait l’état entier deux fois pour l’envoyer, trois fois quand il était assez
+  gros pour être réduit, et il était construit même sans aucun téléphone connecté : une fois
+  toutes les 300 ms pendant toute une exécution autonome, sur le fil qui dessine l’application.
+  Il n’est plus sérialisé qu’une fois par envoi, et sans personne de connecté rien n’est
+  construit : ce qui s’est passé entre-temps part à l’instant où un téléphone se connecte, donc
+  ce que vous ouvrez sur le téléphone est toujours à jour. (#36)
 
 ## 0.23.0 — 2026-09-20
 

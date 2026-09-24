@@ -101,7 +101,7 @@ export const tauriTransport: Transport = {
   remoteStart: async (port, token) => invoke<{ url: string; ip: string }>("remote_start", { port, token }),
   remoteStop: async () => invoke<void>("remote_stop"),
   remoteStatus: async () => invoke<{ running: boolean; url?: string; ip?: string; clients: number }>("remote_status"),
-  remotePushState: async (snapshot) => invoke<void>("remote_push_state", { snapshot }),
+  remotePushState: async (json) => invoke<void>("remote_push_state", { snapshot: json }),
   onRemoteCommand: async (h) =>
     listenOnce<{ id: string; action: string; payload: Record<string, unknown> }>("remote-command", async (cmd) => {
       let result: Record<string, unknown>;

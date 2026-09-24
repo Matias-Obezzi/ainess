@@ -37,7 +37,9 @@ const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 
 struct Inner {
     token: String,
-    snapshot: RwLock<Value>,
+    /// The last snapshot pushed, kept as the JSON text it arrived as: every reader of it writes it
+    /// to a socket, so parsing it into a `Value` would only be work to undo.
+    snapshot: RwLock<String>,
     tx: broadcast::Sender<String>,
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
     app: AppHandle,
@@ -180,15 +182,15 @@ async fn state_handler(State(inner): State<Arc<Inner>>, headers: HeaderMap, Quer
     if !authorized(&inner, &headers, &q) {
         return unauthorized();
     }
-    let snap = inner.snapshot.read().map(|s| s.clone()).unwrap_or(Value::Null);
-    Json(snap).into_response()
+    let snap = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
+    ([(header::CONTENT_TYPE, "application/json; charset=utf-8")], snap).into_response()
 }
 
 async fn events(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
     if !authorized(&inner, &headers, &q) {
         return unauthorized();
     }
-    let first = inner.snapshot.read().map(|s| s.to_string()).unwrap_or_else(|_| "null".into());
+    let first = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
     let rx = inner.tx.subscribe();
     let initial = tokio_stream::once(Ok::<Event, Infallible>(Event::default().event("state").data(first)));
     let inner_updates = inner.clone();
@@ -201,7 +203,7 @@ async fn events(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Q
             let latest = inner_updates
                 .snapshot
                 .read()
-                .map(|s| s.to_string())
+                .map(|s| s.clone())
                 .unwrap_or_else(|_| "null".into());
             Ok(Event::default().event("state").data(latest))
         }
@@ -299,7 +301,7 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
     let (tx, _rx) = broadcast::channel::<String>(64);
     let inner = Arc::new(Inner {
         token: token.clone(),
-        snapshot: RwLock::new(Value::Null),
+        snapshot: RwLock::new("null".to_string()),
         tx,
         pending: Mutex::new(HashMap::new()),
         app,
@@ -373,12 +375,13 @@ pub fn remote_status(state: TauriState<'_, RemoteState>) -> RemoteStatus {
 }
 
 #[tauri::command]
-pub fn remote_push_state(state: TauriState<'_, RemoteState>, snapshot: Value) -> Result<(), String> {
+pub fn remote_push_state(state: TauriState<'_, RemoteState>, snapshot: String) -> Result<(), String> {
     if let Some(s) = state.server.lock().unwrap().as_ref() {
         if let Ok(mut snap) = s.inner.snapshot.write() {
-            *snap = snapshot.clone();
+            // Reuses the buffer already there: snapshots come in at up to three a second.
+            snap.clone_from(&snapshot);
         }
-        let _ = s.inner.tx.send(snapshot.to_string());
+        let _ = s.inner.tx.send(snapshot);
     }
     Ok(())
 }
