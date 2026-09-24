@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
+import { ProjectAvatar } from "@/components/ProjectAvatar";
 import { TasksTab } from "./TasksTab";
 import { Logo } from "@/components/Logo";
 import { StatusDot } from "@/components/StatusDot";
@@ -34,6 +35,7 @@ import {
 import { truncate } from "@/lib/format";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError, runDiagnostics } from "./remote-client";
+import { readRemoteNav, writeRemoteNav, restoreNav, type Tab } from "./remote-nav";
 import {
   ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
   ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw, Loader2,
@@ -44,7 +46,6 @@ import { QuotaRing } from "@/components/QuotaRing";
 import type { DiagnosticResult } from "@/lib/diagnostics";
 
 type Phase = "loading" | "no-token" | "unauthorized" | "ready";
-type Tab = "tasks" | "thread" | "chats" | "approvals" | "agents";
 
 /** Straight to the store: the phone has no back/forward stack and nothing to persist. */
 function goHome(): void {
@@ -62,11 +63,32 @@ export function RemoteApp() {
   // Bumped by the token form: it is what makes the effect below try again with the new token.
   const [attempt, setAttempt] = useState(0);
   const currentProjectId = useAppStore(state => state.currentProjectId);
+  const currentChatId = useAppStore(state => state.currentChatId);
+  // Lifted from ProjectView so switching between home and projects or reloading preserves where you were.
+  const [tab, setTab] = useState<Tab>("tasks");
   const installed = useRef(false);
+  // Guard the persistence effect so the initial un-restored state never overwrites saved storage.
+  const restoredRef = useRef(false);
 
   // What needs you, on the phone's own notifications: only while the page is not in front, and
   // only once it has been allowed from the bell.
   useWebNotifications();
+
+  // Persist navigation on every change, but only after initial restore has run.
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    try {
+      if (typeof localStorage !== "undefined") {
+        writeRemoteNav(localStorage, {
+          projectId: currentProjectId,
+          chatId: currentChatId,
+          tab,
+        });
+      }
+    } catch {
+      // Storage unavailable or disabled
+    }
+  }, [currentProjectId, currentChatId, tab]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -82,6 +104,22 @@ export function RemoteApp() {
       if (!installed.current) {
         installRemoteActions();
         installed.current = true;
+        // Restore saved navigation exactly once after the first snapshot has hydrated projects/chats.
+        try {
+          if (typeof localStorage !== "undefined") {
+            const saved = readRemoteNav(localStorage);
+            const state = useAppStore.getState();
+            const restored = restoreNav(saved, state.config.projects, state.config.chats);
+            useAppStore.setState({
+              currentProjectId: restored.projectId,
+              currentChatId: restored.chatId,
+            });
+            setTab(restored.tab);
+          }
+        } catch {
+          // Swallow any storage read or restore failure
+        }
+        restoredRef.current = true;
       }
       setPhase("ready");
       setConnected(true);
@@ -114,6 +152,11 @@ export function RemoteApp() {
       stop?.();
     };
   }, [attempt]);
+
+  const handleOpenProject = (projectId: string) => {
+    setTab("tasks");
+    openProject(projectId);
+  };
 
   if (phase !== "ready") {
     return (
@@ -151,7 +194,11 @@ export function RemoteApp() {
           <WifiOff className="h-3.5 w-3.5" /> {t("phone.reconnecting")}
         </div>
       )}
-      {currentProjectId ? <ProjectView projectId={currentProjectId} /> : <HomeView />}
+      {currentProjectId ? (
+        <ProjectView projectId={currentProjectId} tab={tab} setTab={setTab} />
+      ) : (
+        <HomeView onOpenProject={handleOpenProject} />
+      )}
     </Shell>
   );
 }
@@ -216,7 +263,7 @@ function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
 
 // ---- Home: the project list ----
 
-function HomeView() {
+function HomeView({ onOpenProject }: { onOpenProject(projectId: string): void }) {
   const t = useT();
   const projects = useAppStore(state => state.config.projects);
   const runs = useAppStore(state => state.runs);
@@ -239,7 +286,7 @@ function HomeView() {
               variant="outline"
               size="sm"
               className="h-10 gap-1.5 border-amber-500/60 text-amber-600 dark:text-amber-400"
-              onClick={() => openProject(pending[0].projectId)}
+              onClick={() => onOpenProject(pending[0].projectId)}
             >
               <ShieldCheck className="h-4 w-4" />
               {plural(pending.length, t("phone.approvals.one", { n: pending.length }), t("phone.approvals.other", { n: pending.length }))}
@@ -260,10 +307,10 @@ function HomeView() {
               .filter(r => r.projectId === project.id && r.parentRunId === null && r.kind !== "chat")
               .sort((a, b) => b.startedAt - a.startedAt)[0];
             return (
-              <button key={project.id} type="button" className="w-full text-left" onClick={() => openProject(project.id)}>
+              <button key={project.id} type="button" className="w-full text-left" onClick={() => onOpenProject(project.id)}>
                 {/* Card is a column by default: force the row, or the dot, name and chevron stack up. */}
                 <Card className="flex-row items-center gap-3 px-3 py-3 min-h-16">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: project.color || "#888" }} />
+                  <ProjectAvatar name={project.name} color={project.color} size={36} />
                   <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                     <span className="font-medium truncate">{project.name}</span>
                     <span className="text-xs text-muted-foreground truncate">
@@ -284,10 +331,16 @@ function HomeView() {
 
 // ---- Project: header, body and the bottom tab bar ----
 
-function ProjectView({ projectId }: { projectId: string }) {
+function ProjectView({
+  projectId,
+  tab,
+  setTab,
+}: {
+  projectId: string;
+  tab: Tab;
+  setTab: (tab: Tab) => void;
+}) {
   const t = useT();
-  // The board is the project home on the desktop, so the phone opens there too.
-  const [tab, setTab] = useState<Tab>("tasks");
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
   const approvals = useAppStore(state => state.approvals);
   const currentChatId = useAppStore(state => state.currentChatId);
@@ -317,6 +370,7 @@ function ProjectView({ projectId }: { projectId: string }) {
         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" aria-label={t("phone.back")} onClick={goHome}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
+        <ProjectAvatar name={project.name} color={project.color} size={28} />
         <span className="font-semibold truncate flex-1">{project.name}</span>
         <AlertsButton />
         <DiagnosticsButton />
