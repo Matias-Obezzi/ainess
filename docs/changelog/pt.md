@@ -4,6 +4,25 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
+### Novo
+
+- **Os seletores de modelo oferecem o que o CLI instalado consegue rodar de verdade.** Antigravity
+  e opencode já eram consultados sobre seus modelos, mas só o diálogo do agente lia a resposta; o
+  compositor, os presets, os chats e o anel de cota mostravam uma lista escrita no código, que
+  envelhecia em silêncio. Agora todos os seletores leem a mesma lista: o que o CLI informa,
+  atualizado ao iniciar e no máximo a cada dez minutos, com a lista embutida como reserva. O
+  Ollama também é consultado, então os modelos instalados na máquina aparecem sem ninguém editar
+  uma constante. Um modelo digitado em «Outro…» fica lembrado por provedor e é oferecido da
+  próxima vez. (#37)
+- **O remoto do celular volta para onde você parou.** Reabrir ou recarregar a página (o que o
+  celular faz sozinho ao descartar a aba) caía sempre na tela inicial e na aba Tarefas. Agora o
+  projeto, o chat e a aba ficam guardados no aparelho e são restaurados quando chega o primeiro
+  instantâneo; um projeto ou chat que não existe mais volta ao início ou ao fio do orquestrador.
+  (#28)
+- **Os projetos no celular levam o mesmo avatar do desktop.** A lista mostrava um ponto de cor
+  sem mais nada; agora mostra o círculo colorido com as iniciais do projeto, na lista e no
+  cabeçalho do projeto, para que as duas superfícies pareçam um só app. (#30)
+
 ### Corrigido
 
 - **Trocar o motor do orquestrador não deixa mais o nome antigo nele.** Um agente chamado pelo

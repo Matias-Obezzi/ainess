@@ -8,6 +8,24 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **Model pickers offer what the installed CLI can actually run.** Antigravity and opencode were
+  already asked for their models, but only the agent dialog read the answer; the composer,
+  presets, chats and the quota ring showed a list typed into the code, which went stale in
+  silence. Every picker now reads the same list: what the CLI reports, refreshed at startup and
+  at most every ten minutes, with the built-in list as a fallback. Ollama is asked too, so the
+  models installed on the machine appear without anyone editing a constant. A model typed under
+  "Other…" is remembered per provider and offered next time. (#37)
+- **The phone remote comes back where you left it.** Reopening or reloading the page (which a
+  phone does on its own when it drops the tab) landed on the home screen and the Tasks tab every
+  time. The project, chat and tab are kept on the device now and restored once the first
+  snapshot arrives; a project or chat that no longer exists falls back to home or to the
+  orchestrator thread. (#28)
+- **Projects on the phone carry the same avatar as on the desktop.** The list showed a bare
+  colour dot; it shows the coloured circle with the project's initials now, in the list and in
+  the project header, so both surfaces read as one app. (#30)
+
 ### Fixed
 
 - **Changing the orchestrator's engine no longer leaves the old name on it.** An agent called by

@@ -4,6 +4,27 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
+
+- **Les sélecteurs de modèle proposent ce que le CLI installé sait vraiment exécuter.** Antigravity
+  et opencode étaient déjà interrogés sur leurs modèles, mais seule la boîte de dialogue de
+  l'agent lisait la réponse ; le compositeur, les préréglages, les conversations et l'anneau de
+  quota affichaient une liste écrite dans le code, qui vieillissait en silence. Tous les
+  sélecteurs lisent maintenant la même liste : ce que le CLI rapporte, rafraîchi au démarrage et
+  au plus toutes les dix minutes, avec la liste intégrée en secours. Ollama est interrogé aussi,
+  donc les modèles installés sur la machine apparaissent sans que personne ne modifie une
+  constante. Un modèle saisi sous « Autre… » est mémorisé par fournisseur et proposé la fois
+  suivante. (#37)
+- **La télécommande sur téléphone revient là où vous l'aviez laissée.** Rouvrir ou recharger la
+  page (ce que le téléphone fait de lui-même quand il abandonne l'onglet) ramenait chaque fois à
+  l'accueil et à l'onglet Tâches. Le projet, la conversation et l'onglet sont désormais gardés
+  sur l'appareil et restaurés à l'arrivée du premier instantané ; un projet ou une conversation
+  disparus renvoient à l'accueil ou au fil de l'orchestrateur. (#28)
+- **Les projets sur le téléphone portent le même avatar que sur le bureau.** La liste montrait un
+  simple point de couleur ; elle montre maintenant le cercle coloré avec les initiales du projet,
+  dans la liste et dans l'en-tête du projet, pour que les deux surfaces se lisent comme une
+  seule application. (#30)
+
 ### Corrigé
 
 - **Changer le moteur de l'orchestrateur ne lui laisse plus l'ancien nom.** Un agent portant le

@@ -4,6 +4,25 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Die Modellauswahl bietet an, was die installierte CLI tatsächlich ausführen kann.** Antigravity
+  und opencode wurden schon nach ihren Modellen gefragt, aber nur der Agenten-Dialog las die
+  Antwort; Composer, Presets, Chats und der Kontingent-Ring zeigten eine im Code eingetippte
+  Liste, die still veraltete. Jede Auswahl liest jetzt dieselbe Liste: was die CLI meldet, beim
+  Start und höchstens alle zehn Minuten aufgefrischt, mit der eingebauten Liste als Rückfall.
+  Ollama wird ebenfalls gefragt, sodass die auf dem Rechner installierten Modelle erscheinen,
+  ohne dass jemand eine Konstante bearbeitet. Ein unter „Anderes…“ eingetipptes Modell wird pro
+  Anbieter gemerkt und beim nächsten Mal angeboten. (#37)
+- **Die Handy-Fernbedienung kehrt dorthin zurück, wo Sie waren.** Die Seite neu zu öffnen oder
+  zu laden (was das Handy von selbst tut, wenn es den Tab verwirft) landete jedes Mal auf dem
+  Startbildschirm und dem Aufgaben-Tab. Projekt, Chat und Tab werden jetzt auf dem Gerät
+  behalten und wiederhergestellt, sobald der erste Schnappschuss ankommt; ein Projekt oder Chat,
+  den es nicht mehr gibt, führt zurück zum Start oder zum Orchestrator-Thread. (#28)
+- **Projekte auf dem Handy tragen denselben Avatar wie auf dem Desktop.** Die Liste zeigte einen
+  bloßen Farbpunkt; jetzt zeigt sie den farbigen Kreis mit den Initialen des Projekts, in der
+  Liste und in der Projektkopfzeile, damit beide Oberflächen wie eine App wirken. (#30)
+
 ### Behoben
 
 - **Ein Wechsel der Engine des Orchestrators lässt ihm nicht mehr den alten Namen.** Ein Agent
