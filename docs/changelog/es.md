@@ -14,6 +14,24 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   la lista incorporada como respaldo. A Ollama también se le pregunta, así que los modelos
   instalados en la máquina aparecen sin que nadie edite una constante. Un modelo escrito en
   «Otro…» se recuerda por proveedor y se ofrece la próxima vez. (#37)
+- **Se puede editar un mensaje encolado antes de que se entregue.** Cuando le escribís a un
+  agente que está ocupado, lo que escribís queda esperando en una cola y se le entrega cuando
+  termina el turno. Antes lo único que se podía hacer con una línea encolada era cancelarla y
+  volver a escribirla entera. Ahora cada línea que está esperando tiene un lápiz al lado: se
+  edita ahí mismo en un cuadro de texto en línea, Enter guarda, Shift+Enter mete un salto de
+  línea y Escape sale sin cambiar nada. Guardar con el texto vacío equivale a cancelar la línea.
+  Vale tanto en el hilo del proyecto como en un chat uno a uno. Si la línea ya salió mientras la
+  estabas editando, la edición no la revive. (#32)
+- **El celular tiene una sola pestaña de Conversaciones, y la pantalla de inicio muestra quién
+  está trabajando.** Antes el remoto tenía dos pestañas separadas para la misma idea — el hilo
+  del proyecto por un lado y los chats uno a uno por otro. Ahora hay una sola pestaña,
+  «Conversaciones», que lista arriba el hilo del proyecto y debajo los chats; se entra a
+  cualquiera y se vuelve a la lista con la flecha. Cambiar de pestaña y volver ya no cierra la
+  conversación que tenías abierta. Además, la pantalla de inicio del celular muestra, arriba de
+  la lista de proyectos, qué agentes están trabajando o esperando una respuesta tuya en
+  cualquier proyecto, con el avatar del agente, el proyecto al que pertenece y en qué está; los
+  que esperan van primero y quedan resaltados, y tocando uno vas derecho a esa conversación. Cada
+  proyecto de la lista avisa también si alguno de sus agentes está esperando. (#27, #31)
 - **El remoto del celular vuelve a donde lo dejaste.** Reabrir o recargar la página (algo que el
   celular hace solo cuando descarta la pestaña) caía siempre en la pantalla de inicio y la
   pestaña Tareas. Ahora el proyecto, el chat y la pestaña se guardan en el dispositivo y se
@@ -46,6 +64,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   Ahora la página toma cualquier señal de vida como conexión, descarta un flujo callado 45
   segundos, reconecta apenas la pestaña vuelve al frente o vuelve la red, y la PC reenvía su
   último estado a un celular que quedó atrás. (#26)
+- **El turno de mantenimiento ya no se ve como un mensaje tuyo.** Cuando un agente compacta su
+  historial con /compact, o cuando un planificador contesta una pregunta de uno de sus
+  implementadores, la app manda un turno que ella misma escribió. Ese texto aparecía en el hilo
+  alineado a la derecha, con la misma forma que un mensaje tipeado por vos, y hasta se ofrecía al
+  apretar la flecha arriba en el compositor como si fuera un prompt tuyo. Ahora esos turnos no se
+  dibujan: nunca fueron trabajo y nunca fueron tuyos. Vale igual en la app de escritorio y en el
+  celular.
 
 ## 0.23.0 — 2026-09-20
 

@@ -15,6 +15,24 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   donc les modèles installés sur la machine apparaissent sans que personne ne modifie une
   constante. Un modèle saisi sous « Autre… » est mémorisé par fournisseur et proposé la fois
   suivante. (#37)
+- **Un message en file d'attente peut être modifié avant d'être délivré.** Quand vous écrivez à
+  un agent occupé, votre message attend dans une file et lui est remis à la fin de son tour.
+  Auparavant, la seule chose possible avec une ligne en attente était de l'annuler et de tout
+  retaper. Désormais chaque ligne en attente affiche un crayon : cliquez dessus et le texte
+  s'ouvre dans un champ d'édition en ligne, Entrée enregistre, Maj+Entrée insère un saut de
+  ligne et Échap quitte sans modifier. Enregistrer avec un texte vide revient à annuler la ligne.
+  Fonctionne dans le fil du projet comme dans une conversation directe. Si la ligne a déjà été
+  délivrée pendant que vous l'éditiez, la modification ne la ramène pas. (#32)
+- **Le téléphone n'a plus qu'un seul onglet Conversations, et l'accueil montre qui travaille.**
+  La télécommande séparait la même idée en deux onglets — le fil du projet d'un côté et les
+  conversations directes de l'autre. Il n'y a plus qu'un onglet, « Conversations », qui liste le
+  fil du projet en haut et les conversations en dessous ; touchez l'un d'eux pour l'ouvrir et la
+  flèche de retour ramène à la liste. Changer d'onglet et revenir ne ferme plus la conversation
+  que vous aviez ouverte. De plus, l'accueil du téléphone affiche, au-dessus de la liste des
+  projets, quels agents travaillent ou attendent votre réponse dans n'importe quel projet, avec
+  l'avatar de l'agent, le projet auquel il appartient et ce qu'il fait ; ceux qui attendent sont
+  en premier et mis en évidence, et toucher l'un d'eux mène directement à cette conversation.
+  Chaque projet de la liste signale également si l'un de ses agents attend. (#27, #31)
 - **La télécommande sur téléphone revient là où vous l'aviez laissée.** Rouvrir ou recharger la
   page (ce que le téléphone fait de lui-même quand il abandonne l'onglet) ramenait chaque fois à
   l'accueil et à l'onglet Tâches. Le projet, la conversation et l'onglet sont désormais gardés
@@ -49,6 +67,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   tout signe de vie comme une connexion, abandonne un flux muet depuis 45 secondes, se reconnecte
   dès que l'onglet revient devant ou que le réseau revient, et le PC renvoie son dernier état à
   un téléphone resté en arrière. (#26)
+- **Le tour de maintenance ne ressemble plus à un message que vous avez écrit.** Quand un agent
+  compacte son historique avec /compact, ou quand un planificateur répond à une question de l'un
+  de ses implémenteurs, l'application envoie un tour qu'elle a rédigé elle-même. Ce texte
+  apparaissait dans le fil aligné à droite, avec la même apparence qu'un message tapé par vous,
+  et était même proposé en appuyant sur la flèche haut dans le compositeur comme s'il s'agissait
+  de l'un de vos prompts. Ces tours ne sont plus affichés : ils n'ont jamais été du travail et
+  n'ont jamais été les vôtres. Le correctif s'applique aussi bien à l'application de bureau qu'au
+  téléphone.
 
 ## 0.23.0 — 2026-09-20
 

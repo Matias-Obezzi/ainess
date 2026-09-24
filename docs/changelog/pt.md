@@ -14,6 +14,23 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   Ollama também é consultado, então os modelos instalados na máquina aparecem sem ninguém editar
   uma constante. Um modelo digitado em «Outro…» fica lembrado por provedor e é oferecido da
   próxima vez. (#37)
+- **Uma mensagem na fila pode ser editada antes de ser entregue.** Quando você escreve para um
+  agente que está ocupado, o que você escreveu fica esperando numa fila e é entregue quando o
+  turno do agente termina. Antes a única coisa que se podia fazer com uma linha na fila era
+  cancelá-la e reescrever tudo. Agora cada linha em espera tem um lápis ao lado: clique nele e o
+  texto abre num campo de edição em linha, Enter salva, Shift+Enter insere uma quebra de linha e
+  Escape sai sem alterar nada. Salvar com o texto vazio equivale a cancelar a linha. Funciona
+  tanto no fio do projeto quanto num chat direto. Se a linha já tiver sido entregue enquanto você
+  a editava, a edição não a ressuscita. (#32)
+- **O celular tem uma única aba de Conversas, e a tela inicial mostra quem está trabalhando.** O
+  remoto antes separava a mesma ideia em duas abas — o fio do projeto de um lado e os chats
+  diretos do outro. Agora há uma só aba, «Conversas», que lista acima o fio do projeto e abaixo
+  os chats; toque em qualquer um para abrir e use a seta para voltar à lista. Trocar de aba e
+  voltar não fecha mais a conversa que você tinha aberta. Além disso, a tela inicial do celular
+  mostra, acima da lista de projetos, quais agentes estão trabalhando ou esperando uma resposta
+  sua em qualquer projeto, com o avatar do agente, o projeto a que pertence e no que está; os que
+  esperam vêm primeiro e ficam destacados, e ao tocar em um você vai direto àquela conversa. Cada
+  projeto na lista também avisa se algum de seus agentes está esperando. (#27, #31)
 - **O remoto do celular volta para onde você parou.** Reabrir ou recarregar a página (o que o
   celular faz sozinho ao descartar a aba) caía sempre na tela inicial e na aba Tarefas. Agora o
   projeto, o chat e a aba ficam guardados no aparelho e são restaurados quando chega o primeiro
@@ -44,6 +61,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   página trata qualquer sinal de vida como conexão, descarta um fluxo calado por 45 segundos,
   reconecta assim que a aba volta à frente ou a rede retorna, e o PC reenvia seu último estado a
   um celular que ficou para trás. (#26)
+- **O turno de manutenção não aparece mais como uma mensagem sua.** Quando um agente compacta
+  seu histórico com /compact, ou quando um planejador responde a uma pergunta de um de seus
+  implementadores, o app envia um turno que ele mesmo escreveu. Esse texto aparecia no fio
+  alinhado à direita, com a mesma aparência de uma mensagem digitada por você, e até era
+  oferecido ao pressionar a seta para cima no compositor como se fosse um prompt seu. Agora esses
+  turnos não são desenhados: nunca foram trabalho e nunca foram seus. Vale tanto no app de
+  desktop quanto no celular.
 
 ## 0.23.0 — 2026-09-20
 

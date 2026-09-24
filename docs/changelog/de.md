@@ -14,6 +14,26 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Ollama wird ebenfalls gefragt, sodass die auf dem Rechner installierten Modelle erscheinen,
   ohne dass jemand eine Konstante bearbeitet. Ein unter „Anderes…“ eingetipptes Modell wird pro
   Anbieter gemerkt und beim nächsten Mal angeboten. (#37)
+- **Eine wartende Nachricht kann bearbeitet werden, bevor sie zugestellt wird.** Wenn Sie einem
+  beschäftigten Agenten schreiben, wartet Ihre Nachricht in einer Warteschlange und wird
+  zugestellt, sobald der Agent seinen Zug beendet. Bisher konnte man eine wartende Zeile nur
+  abbrechen und von vorn eintippen. Jetzt hat jede wartende Zeile einen Stift daneben: klicken
+  Sie darauf und der Text öffnet sich in einem Inline-Textfeld, Enter speichert, Umschalt+Enter
+  fügt einen Zeilenumbruch ein und Escape verlässt ohne Änderung. Mit leerem Text zu speichern
+  ist dasselbe wie die Zeile abzubrechen. Funktioniert sowohl im Projekt-Thread als auch in
+  Einzelchats. Wurde die Zeile bereits zugestellt, während Sie sie bearbeiteten, holt die
+  Bearbeitung sie nicht zurück. (#32)
+- **Das Handy hat nur noch einen Konversationen-Tab, und der Startbildschirm zeigt, wer
+  arbeitet.** Die Fernbedienung teilte dieselbe Idee in zwei Tabs auf — den Projekt-Thread auf
+  der einen und die Einzelchats auf der anderen Seite. Jetzt gibt es nur noch einen Tab,
+  „Konversationen", der oben den Projekt-Thread und darunter die Chats auflistet; tippen Sie auf
+  einen, um ihn zu öffnen, und der Zurück-Pfeil bringt Sie zur Liste zurück. Tab-Wechsel und
+  Rückkehr schließen die geöffnete Konversation nicht mehr. Außerdem zeigt der Startbildschirm
+  des Handys oberhalb der Projektliste, welche Agenten in irgendeinem Projekt arbeiten oder auf
+  Ihre Antwort warten, mit dem Avatar des Agenten, dem zugehörigen Projekt und was er gerade tut;
+  wartende Agenten stehen zuerst und sind hervorgehoben, und ein Tippen führt direkt zu dieser
+  Konversation. Jedes Projekt in der Liste zeigt ebenfalls an, ob einer seiner Agenten wartet.
+  (#27, #31)
 - **Die Handy-Fernbedienung kehrt dorthin zurück, wo Sie waren.** Die Seite neu zu öffnen oder
   zu laden (was das Handy von selbst tut, wenn es den Tab verwirft) landete jedes Mal auf dem
   Startbildschirm und dem Aufgaben-Tab. Projekt, Chat und Tab werden jetzt auf dem Gerät
@@ -47,6 +67,13 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   als verbunden, verwirft einen 45 Sekunden stummen Strom, verbindet sich neu, sobald der Tab
   wieder vorne ist oder das Netz zurückkommt, und der PC schickt seinen letzten Stand an ein
   zurückgefallenes Handy erneut. (#26)
+- **Der Wartungszug sieht nicht mehr wie eine eigene Nachricht aus.** Wenn ein Agent seinen
+  Verlauf mit /compact komprimiert oder wenn ein Planer eine Frage eines seiner Implementierer
+  beantwortet, sendet die App einen Zug, den sie selbst verfasst hat. Dieser Text erschien im
+  Thread rechtsbündig, im selben Stil wie eine von Ihnen getippte Nachricht, und wurde sogar beim
+  Drücken der Pfeiltaste nach oben im Composer angeboten, als wäre er einer Ihrer Prompts. Diese
+  Züge werden nicht mehr angezeigt: sie waren nie Arbeit und sie waren nie Ihre. Die Korrektur
+  gilt für die Desktop-App und das Handy gleichermaßen.
 
 ## 0.23.0 — 2026-09-20
 

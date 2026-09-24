@@ -17,6 +17,23 @@ let one of them fall behind.
   at most every ten minutes, with the built-in list as a fallback. Ollama is asked too, so the
   models installed on the machine appear without anyone editing a constant. A model typed under
   "Other…" is remembered per provider and offered next time. (#37)
+- **A queued message can be edited before it is delivered.** When you write to an agent that is
+  busy, your message waits in a queue and is delivered when the agent's turn ends. Previously the
+  only thing you could do with a queued line was cancel it and retype the whole thing. Now every
+  waiting line has a pencil beside it: click it and the text opens in an inline text box, Enter
+  saves, Shift+Enter inserts a line break and Escape leaves it unchanged. Saving with empty text
+  is the same as cancelling the line. Works in the project thread and in one-on-one chats alike.
+  If the line has already been delivered while you were editing, the edit does not revive it. (#32)
+- **The phone has a single Conversations tab, and the home screen shows who is working.** The
+  remote used to split the same idea into two separate tabs — the project thread on one side and
+  the one-on-one chats on the other. Now there is one tab, "Conversations", which lists the
+  project thread at the top and the chats below; tap any of them to open it and use the back
+  arrow to return to the list. Switching tabs and coming back no longer closes the conversation
+  you had open. The home screen also shows, above the project list, which agents are working or
+  waiting for your answer in any project, with the agent's avatar, the project it belongs to and
+  what it is doing; agents waiting for you come first and are highlighted, and tapping one takes
+  you straight to that conversation. Each project in the list also flags whether any of its
+  agents is waiting. (#27, #31)
 - **The phone remote comes back where you left it.** Reopening or reloading the page (which a
   phone does on its own when it drops the tab) landed on the home screen and the Tasks tab every
   time. The project, chat and tab are kept on the device now and restored once the first
@@ -47,6 +64,12 @@ let one of them fall behind.
   The page now treats every sign of life as connected, drops a stream that has been silent for
   45 seconds, reconnects the moment the tab is back in front or the network returns, and the PC
   resends its latest state to a phone that fell behind. (#26)
+- **A maintenance turn no longer looks like something you wrote.** When an agent compacts its
+  history with /compact, or when a planner answers a question from one of its implementers, the
+  app sends a turn that it wrote itself. That text appeared in the thread right-aligned, styled
+  the same way as a message you typed, and was even offered when pressing the up arrow in the
+  composer as if it were one of your prompts. Those turns are no longer drawn: they were never
+  work and they were never yours. The fix applies to the desktop app and the phone alike.
 
 ## 0.23.0 — 2026-09-20
 
