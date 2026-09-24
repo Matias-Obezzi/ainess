@@ -9,7 +9,7 @@
 // starts the next run with nothing behind it. `/compact` is the same thing with the summary asked
 // for first. `/wipe` has no counterpart on the other side — it is about the app's own record of
 // the project, which the CLIs never see.
-import { useAppStore, selectProjectAgents } from "@/store";
+import { useAppStore, selectProjectAgents, selectAgent } from "@/store";
 import { startRun } from "@/lib/orchestrator";
 import { hasHistoryFile, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
 import { FOLDER } from "@/lib/project-folder";
@@ -59,6 +59,41 @@ export function parseCommand(text: string): ChatCommand | undefined {
 }
 
 /**
+ * Asks a single agent to summarise its own history file and then forget its session.
+ *
+ * An agent with no file yet has nothing to summarise, so its session goes right away, which is all
+ * `/compact` ever did. Same for a run that could not be started at all: letting go of the session
+ * is the floor of this command, never the part that gets skipped.
+ *
+ * Returns `true` if it asked the agent to compact (asynchronous run started), or `false` if it
+ * released the session directly.
+ */
+export function compactAgent(projectId: string, agentId: string): boolean {
+  const store = useAppStore.getState();
+  const agent = selectAgent(store, agentId);
+  if (!agent) return false;
+
+  if (!hasHistoryFile(store.runs, projectId, agent.id)) {
+    store.resetSession(agent.id, projectId);
+    return false;
+  }
+  // `resume: true`: the session it is about to lose is exactly what makes this turn cheap.
+  // A busy agent queues it like any other run (see `startRun`).
+  const runId = startRun({
+    agentId: agent.id,
+    projectId,
+    prompt: translateNow("prompt.compact", { file: `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` }),
+    parentRunId: null,
+    round: 0,
+    resume: true,
+    kind: "compact",
+  });
+  if (runId) return true;
+  store.resetSession(agent.id, projectId);
+  return false;
+}
+
+/**
  * Every agent of the project summarises its own history file and then forgets its session.
  *
  * The order is the whole point. The agent is asked to compact `.ainess/history/<agent>.md` while
@@ -78,23 +113,7 @@ export function compactProject(projectId: string): number {
   const agents = selectProjectAgents(store, projectId);
   let asked = 0;
   for (const agent of agents) {
-    if (!hasHistoryFile(store.runs, projectId, agent.id)) {
-      store.resetSession(agent.id, projectId);
-      continue;
-    }
-    // `resume: true`: the session it is about to lose is exactly what makes this turn cheap.
-    // A busy agent queues it like any other run (see `startRun`).
-    const runId = startRun({
-      agentId: agent.id,
-      projectId,
-      prompt: translateNow("prompt.compact", { file: `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` }),
-      parentRunId: null,
-      round: 0,
-      resume: true,
-      kind: "compact",
-    });
-    if (runId) asked++;
-    else store.resetSession(agent.id, projectId);
+    if (compactAgent(projectId, agent.id)) asked++;
   }
   return asked;
 }

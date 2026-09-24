@@ -9,7 +9,7 @@ import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { attachListeners } from "@/lib/orchestrator";
-import { clearSessions, compactProject } from "@/lib/commands";
+import { clearSessions, compactProject, compactAgent } from "@/lib/commands";
 import type { Run, RunExitEvent } from "@/types";
 
 vi.mock("@/lib/hooks", () => ({ emitHookEvent: async () => {} }));
@@ -96,6 +96,23 @@ describe("compactProject", () => {
     expect(sessionOf("a1")).toBeUndefined();
     // A failure is still visible as a failure.
     expect(useAppStore.getState().runtime.p1.a1.status).toBe("error");
+  });
+});
+
+describe("compactAgent", () => {
+  it("drops the session of an agent with no history file and returns false", () => {
+    const asked = compactAgent("p1", "a2");
+    expect(asked).toBe(false);
+    expect(sessionOf("a2")).toBeUndefined();
+    expect(compactRuns().some(r => r.agentId === "a2")).toBe(false);
+  });
+
+  it("starts a compaction run for an agent with a history file and returns true", () => {
+    const asked = compactAgent("p1", "a1");
+    expect(asked).toBe(true);
+    const run = compactRuns().find(r => r.agentId === "a1");
+    expect(run?.kind).toBe("compact");
+    expect(sessionOf("a1")).toBe("ses-a1");
   });
 });
 

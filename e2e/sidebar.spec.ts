@@ -1,4 +1,4 @@
-// The menu in its three shapes. The one that matters on screen is the middle one: a rail of icons
+// The menu in its two shapes. The one that matters on screen is the rail: a strip of icons
 // that carries everything the expanded bar does — home, new project, the projects, the counters and
 // the gear — and opens nothing by itself. A project's rows hang from its own avatar.
 import { test, expect } from "@playwright/test";
@@ -87,7 +87,7 @@ test("a project on the rail opens its own rows on click and its menu on right cl
   await expect(context.getByRole("menuitem", { name: "Open in a new pane" })).toBeVisible();
 });
 
-test("the title bar button walks the three shapes", async ({ page }) => {
+test("the title bar button walks the two shapes", async ({ page }) => {
   await openDemo(page, "chat");
   const sidebar = page.getByTestId("sidebar");
   await expect(sidebar).toHaveAttribute("data-mode", "expanded");
@@ -95,17 +95,46 @@ test("the title bar button walks the three shapes", async ({ page }) => {
   // The label is what the next press does, so naming it is also asserting it.
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(sidebar).toHaveAttribute("data-mode", "collapsed");
-
-  await page.getByRole("button", { name: "Hide sidebar" }).click();
-  await expect(sidebar).toHaveAttribute("data-mode", "hidden");
-  await expect(page.getByTestId("sidebar-rail")).toHaveCount(0);
-  // Hidden means gone: hovering where it was does not bring it back.
-  await page.mouse.move(2, 400);
+  // Hovering an avatar on the rail does not pop a menu open without a click.
+  await page.getByTestId("rail-project").first().hover();
   await expect(page.getByTestId("rail-project-menu")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
   await expect(sidebar).toHaveAttribute("data-mode", "expanded");
   // Expanded, the menu is the column it always was and the hover does nothing either.
   await page.getByTestId("sidebar-project").first().hover();
   await expect(page.getByTestId("rail-project-menu")).toHaveCount(0);
 });
+
+test("the project avatar is vertically centered in its row when git status adds a second line", async ({ page }) => {
+  await openDemo(page, "chat");
+
+  await page.evaluate(async () => {
+    const { useAppStore } = await import("/src/store.ts");
+    const state = useAppStore.getState();
+    const firstProject = state.config.projects[0];
+    if (!firstProject) throw new Error("no project in demo");
+    useAppStore.setState({
+      repoState: {
+        ...state.repoState,
+        [firstProject.id]: {
+          isRepo: true,
+          status: { branch: "main", dirty: 0, ahead: 0, behind: 0, upstream: null },
+          pullRequests: [],
+          fetchedAt: Date.now(),
+        },
+      },
+    });
+  });
+
+  const row = page.getByTestId("sidebar-project").first();
+  await expect(row.getByText("main")).toBeVisible();
+
+  const avatar = row.locator(".rounded-full").first();
+  const rowBox = (await row.boundingBox())!;
+  const avatarBox = (await avatar.boundingBox())!;
+  const rowCenterY = rowBox.y + rowBox.height / 2;
+  const avatarCenterY = avatarBox.y + avatarBox.height / 2;
+  expect(Math.abs(rowCenterY - avatarCenterY)).toBeLessThanOrEqual(1);
+});
+

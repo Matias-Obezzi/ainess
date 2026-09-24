@@ -2,6 +2,48 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.23.0 — 2026-09-20
+
+### Nuevo
+
+- **Una conversación que se pone pesada se compacta sola sin tener que pedirlo.** Cada llamada a
+  herramientas vuelve a leer toda la conversación, por lo que una sesión larga se paga muchas veces.
+  Podarla antes dependía de acordarse de ejecutar `/compact`. Ahora, cuando el contexto de un agente
+  alcanza el umbral de compactación tras una corrida, la sesión se compacta automáticamente y un
+  mensaje en el hilo lo avisa.
+- **La tabla de uso muestra el peso de cada conversación.** Volver a leer la conversación en cada
+  llamada a herramientas es lo que más tokens cuesta; por eso el cuadro de diálogo de uso suma una
+  columna de conversación en el desglose por agente. Muestra los tokens de contexto de la última
+  corrida frente al umbral de compactación, y baja sola en cuanto la sesión se compacta.
+- **El selector de modelo dice a qué resuelve «por defecto» y cuánto cuesta cada opción.** Elegir un
+  modelo ya no se hace a ciegas. El selector ahora muestra el modelo resuelto junto a la opción por
+  defecto en cuanto se conoce por corridas previas, y detalla el costo por millón de tokens calculado
+  directamente a partir del uso real.
+- **La tarjeta que está esperando su turno lo dice claramente.** Cuando se le asignan varias tareas
+  al mismo agente, las corridas se ponen en cola detrás de la activa. Las tarjetas en la columna de
+  trabajo ahora indican que están esperando su turno en lugar de simular que trabajan en paralelo.
+
+### Cambiado
+
+- **La barra lateral alterna entre expandida y tira de iconos, sin estado oculto.** La versión 0.22.0
+  había anunciado que Ctrl+B y el botón alternaban entre tres estados: expandida, tira y oculta. Pasar
+  por tres estados obligaba a clics de más, de modo que ahora conmuta directo entre el panel completo
+  y la tira de iconos. Una preferencia guardada como oculta en la 0.22.0 ahora se abre como la tira.
+- **Los agentes trabajan únicamente con el equipo asignado.** Los agentes ya no pueden iniciar
+  subagentes propios por fuera de la jerarquía del proyecto. Los subagentes creados por la CLI por su
+  cuenta quedaban sin tarjeta en el tablero, sin costo atribuido y sin forma de detenerlos desde la
+  app. Ahora se limitan estrictamente al equipo configurado para el proyecto.
+
+### Arreglado
+
+- **El ícono del proyecto se mantiene centrado en su fila, tenga o no línea de git.** En proyectos con
+  git, la fila suma una segunda línea para la rama y el avatar quedaba desplazado hacia arriba. El
+  ícono ahora se ubica centrado verticalmente respecto a toda la fila, con o sin estado de git.
+- **Deslizar dos dedos hacia los lados en el trackpad vuelve a mover el tablero.** Una regla global
+  para evitar el rebote bloqueaba el encadenamiento del desplazamiento horizontal en las columnas. El
+  gesto lateral ahora se traslada correctamente al contenedor del tablero para deslizarlo de costado,
+  manteniendo las ventanas sin rebote.
+
 ## 0.22.0 — 2026-09-20
 
 ### Nuevo

@@ -167,12 +167,10 @@ export function TitleBar() {
   const t = useT();
   const sidebarMode = useAppStore(state => state.sidebarMode);
   const cycleSidebar = useAppStore(state => state.cycleSidebar);
-  // One button, one direction: expanded → the strip of avatars → gone → expanded. The label is
+  // A toggle between the expanded sidebar and the strip of icons. The label is
   // what the next press does, so it is a promise and not a state read.
   const sidebarLabel = t(
-    sidebarMode === "expanded" ? "titlebar.collapseSidebar"
-    : sidebarMode === "collapsed" ? "titlebar.hideSidebar"
-    : "titlebar.showSidebar",
+    sidebarMode === "expanded" ? "titlebar.collapseSidebar" : "titlebar.expandSidebar",
   );
   const toggleSearch = useAppStore(state => state.toggleSearch);
   const goBack = useAppStore(state => state.goBack);

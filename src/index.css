@@ -200,8 +200,12 @@
   .select-text { user-select: text; -webkit-user-select: text; cursor: auto; }
 
   /* A scroll that reaches its end stops there: it does not carry on into the pane behind it, and
-     it does not rubber-band. Only scroll containers are affected, so the `*` costs nothing. */
-  * { overscroll-behavior: none; }
+     it does not rubber-band. The vertical axis is turned off everywhere so a thread that reaches
+     its end does not push the pane behind it. The horizontal axis is left to chain on purpose, so
+     a sideways trackpad gesture over a column reaches the board container. The window itself stays
+     pinned in both axes through html and body. */
+  * { overscroll-behavior-y: none; }
+  html, body { overscroll-behavior: none; }
 
   /* Dragging a picture out of the window is a page's gesture. Nothing here is draggable on
      purpose except the task cards and the terminal tabs, and those are not images. */
