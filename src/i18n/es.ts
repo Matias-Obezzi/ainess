@@ -1621,6 +1621,7 @@ export const es: Dictionary = {
   "phone.noApprovals.title": "No hay nada esperando tu aprobación",
   "phone.noApprovals.body": "Cuando el planificador delegue una tarea que necesite tu visto bueno, aparece acá.",
   "phone.tab.approvals": "Aprobaciones",
+  "phone.tab.conversations": "Conversaciones",
   "phone.noChats": "Este proyecto no tiene chats",
   "phone.answering": "Respondiendo…",
   "phone.noAgents": "No hay agentes configurados",

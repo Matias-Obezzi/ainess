@@ -1620,6 +1620,7 @@ export const fr: Dictionary = {
   "phone.noApprovals.title": "Rien n'attend ton approbation",
   "phone.noApprovals.body": "Quand le planificateur délègue une tâche qui a besoin de ton feu vert, elle apparaît ici.",
   "phone.tab.approvals": "Approbations",
+  "phone.tab.conversations": "Conversations",
   "phone.noChats": "Ce projet n'a aucun chat",
   "phone.answering": "Réponse en cours…",
   "phone.noAgents": "Aucun agent configuré",

@@ -41,11 +41,21 @@ describe("remote-nav storage", () => {
     const nav: RemoteNav = {
       projectId: "proj-1",
       chatId: "chat-1",
-      tab: "chats",
+      tab: "conversations",
+      threadOpen: false,
     };
 
     writeRemoteNav(storage, nav);
     expect(readRemoteNav(storage)).toEqual(nav);
+
+    const navThread: RemoteNav = {
+      projectId: "proj-1",
+      chatId: null,
+      tab: "conversations",
+      threadOpen: true,
+    };
+    writeRemoteNav(storage, navThread);
+    expect(readRemoteNav(storage)).toEqual(navThread);
   });
 
   it("returns null when storage is empty", () => {
@@ -77,6 +87,13 @@ describe("remote-nav storage", () => {
 
     storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ tab: "tasks", chatId: true }));
     expect(readRemoteNav(storage)).toBeNull();
+
+    // Non-boolean threadOpen
+    storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ tab: "tasks", threadOpen: "yes" }));
+    expect(readRemoteNav(storage)).toBeNull();
+
+    storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ tab: "tasks", threadOpen: 123 }));
+    expect(readRemoteNav(storage)).toBeNull();
   });
 
   it("returns null when the tab is unknown or missing", () => {
@@ -89,6 +106,42 @@ describe("remote-nav storage", () => {
     expect(readRemoteNav(storage)).toBeNull();
   });
 
+  it("maps legacy tab 'thread' to 'conversations' with threadOpen true", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ projectId: "p1", chatId: null, tab: "thread" }));
+
+    expect(readRemoteNav(storage)).toEqual({
+      projectId: "p1",
+      chatId: null,
+      tab: "conversations",
+      threadOpen: true,
+    });
+  });
+
+  it("maps legacy tab 'chats' to 'conversations' with threadOpen false", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ projectId: "p1", chatId: "c1", tab: "chats" }));
+
+    expect(readRemoteNav(storage)).toEqual({
+      projectId: "p1",
+      chatId: "c1",
+      tab: "conversations",
+      threadOpen: false,
+    });
+  });
+
+  it("defaults threadOpen to false when missing in old saved values", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(REMOTE_NAV_KEY, JSON.stringify({ projectId: "p1", chatId: null, tab: "tasks" }));
+
+    expect(readRemoteNav(storage)).toEqual({
+      projectId: "p1",
+      chatId: null,
+      tab: "tasks",
+      threadOpen: false,
+    });
+  });
+
   it("swallows write errors (e.g. quota exceeded or private mode)", () => {
     const storage = new MemoryStorage();
     vi.spyOn(storage, "setItem").mockImplementation(() => {
@@ -96,7 +149,7 @@ describe("remote-nav storage", () => {
     });
 
     expect(() => {
-      writeRemoteNav(storage, { projectId: "p1", chatId: null, tab: "tasks" });
+      writeRemoteNav(storage, { projectId: "p1", chatId: null, tab: "tasks", threadOpen: false });
     }).not.toThrow();
   });
 
@@ -122,12 +175,14 @@ describe("restoreNav", () => {
       projectId: null,
       chatId: null,
       tab: "tasks",
+      threadOpen: false,
     });
 
-    expect(restoreNav({ projectId: null, chatId: null, tab: "thread" }, projects, chats)).toEqual({
+    expect(restoreNav({ projectId: null, chatId: null, tab: "conversations", threadOpen: true }, projects, chats)).toEqual({
       projectId: null,
       chatId: null,
       tab: "tasks",
+      threadOpen: false,
     });
   });
 
@@ -136,74 +191,86 @@ describe("restoreNav", () => {
       projectId: "deleted-project",
       chatId: null,
       tab: "tasks",
+      threadOpen: false,
     };
 
     expect(restoreNav(saved, projects, chats)).toEqual({
       projectId: null,
       chatId: null,
       tab: "tasks",
+      threadOpen: false,
     });
   });
 
-  it("falls back to orchestrator thread when saved chat no longer exists", () => {
+  it("falls back to conversations list when saved chat no longer exists", () => {
     const saved: RemoteNav = {
       projectId: "proj-1",
       chatId: "deleted-chat",
-      tab: "chats",
+      tab: "conversations",
+      threadOpen: false,
     };
 
     expect(restoreNav(saved, projects, chats)).toEqual({
       projectId: "proj-1",
       chatId: null,
-      tab: "thread",
+      tab: "conversations",
+      threadOpen: false,
     });
   });
 
-  it("falls back to orchestrator thread when saved chat belongs to another project", () => {
+  it("falls back to conversations list when saved chat belongs to another project", () => {
     const saved: RemoteNav = {
       projectId: "proj-1",
       // chat-2 belongs to proj-2, not proj-1
       chatId: "chat-2",
-      tab: "chats",
+      tab: "conversations",
+      threadOpen: false,
     };
 
     expect(restoreNav(saved, projects, chats)).toEqual({
       projectId: "proj-1",
       chatId: null,
-      tab: "thread",
+      tab: "conversations",
+      threadOpen: false,
     });
   });
 
-  it("forces tab 'chats' when chat exists in the project", () => {
+  it("forces tab 'conversations' with chat when chat exists in the project", () => {
     const saved: RemoteNav = {
       projectId: "proj-1",
       chatId: "chat-1",
-      // Even if saved tab was tasks or thread, existing chat forces chats tab
+      // Even if saved tab was tasks, existing chat forces conversations tab
       tab: "tasks",
+      threadOpen: false,
     };
 
     expect(restoreNav(saved, projects, chats)).toEqual({
       projectId: "proj-1",
       chatId: "chat-1",
-      tab: "chats",
+      tab: "conversations",
+      threadOpen: false,
     });
   });
 
-  it("preserves saved tab when project exists and no chat was active", () => {
-    const tabs: RemoteNav["tab"][] = ["tasks", "thread", "chats", "approvals", "agents"];
+  it("preserves saved tab and threadOpen when project exists and no chat was active", () => {
+    const tabs: RemoteNav["tab"][] = ["tasks", "conversations", "approvals", "agents"];
 
     for (const tab of tabs) {
-      const saved: RemoteNav = {
-        projectId: "proj-1",
-        chatId: null,
-        tab,
-      };
+      for (const threadOpen of [true, false]) {
+        const saved: RemoteNav = {
+          projectId: "proj-1",
+          chatId: null,
+          tab,
+          threadOpen,
+        };
 
-      expect(restoreNav(saved, projects, chats)).toEqual({
-        projectId: "proj-1",
-        chatId: null,
-        tab,
-      });
+        expect(restoreNav(saved, projects, chats)).toEqual({
+          projectId: "proj-1",
+          chatId: null,
+          tab,
+          threadOpen,
+        });
+      }
     }
   });
 });

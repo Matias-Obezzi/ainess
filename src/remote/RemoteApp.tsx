@@ -33,11 +33,13 @@ import {
   type NotificationState,
 } from "./web-notifications";
 import { truncate } from "@/lib/format";
+import { isThreadTurn } from "@/lib/thread-turns";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError, runDiagnostics } from "./remote-client";
 import { readRemoteNav, writeRemoteNav, restoreNav, type Tab } from "./remote-nav";
+import { activeAgentsAcross } from "./active-agents";
 import {
-  ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessageSquare, MessagesSquare,
+  ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessagesSquare,
   ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw, Loader2,
   AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
@@ -66,6 +68,7 @@ export function RemoteApp() {
   const currentChatId = useAppStore(state => state.currentChatId);
   // Lifted from ProjectView so switching between home and projects or reloading preserves where you were.
   const [tab, setTab] = useState<Tab>("tasks");
+  const [threadOpen, setThreadOpen] = useState(false);
   const installed = useRef(false);
   // Guard the persistence effect so the initial un-restored state never overwrites saved storage.
   const restoredRef = useRef(false);
@@ -83,12 +86,13 @@ export function RemoteApp() {
           projectId: currentProjectId,
           chatId: currentChatId,
           tab,
+          threadOpen,
         });
       }
     } catch {
       // Storage unavailable or disabled
     }
-  }, [currentProjectId, currentChatId, tab]);
+  }, [currentProjectId, currentChatId, tab, threadOpen]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -115,6 +119,7 @@ export function RemoteApp() {
               currentChatId: restored.chatId,
             });
             setTab(restored.tab);
+            setThreadOpen(restored.threadOpen);
           }
         } catch {
           // Swallow any storage read or restore failure
@@ -155,6 +160,13 @@ export function RemoteApp() {
 
   const handleOpenProject = (projectId: string) => {
     setTab("tasks");
+    setThreadOpen(false);
+    openProject(projectId);
+  };
+
+  const handleOpenActiveAgent = (projectId: string) => {
+    setTab("conversations");
+    setThreadOpen(true);
     openProject(projectId);
   };
 
@@ -195,9 +207,18 @@ export function RemoteApp() {
         </div>
       )}
       {currentProjectId ? (
-        <ProjectView projectId={currentProjectId} tab={tab} setTab={setTab} />
+        <ProjectView
+          projectId={currentProjectId}
+          tab={tab}
+          setTab={setTab}
+          threadOpen={threadOpen}
+          setThreadOpen={setThreadOpen}
+        />
       ) : (
-        <HomeView onOpenProject={handleOpenProject} />
+        <HomeView
+          onOpenProject={handleOpenProject}
+          onOpenActiveAgent={handleOpenActiveAgent}
+        />
       )}
     </Shell>
   );
@@ -263,12 +284,20 @@ function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
 
 // ---- Home: the project list ----
 
-function HomeView({ onOpenProject }: { onOpenProject(projectId: string): void }) {
+function HomeView({
+  onOpenProject,
+  onOpenActiveAgent,
+}: {
+  onOpenProject(projectId: string): void;
+  onOpenActiveAgent(projectId: string): void;
+}) {
   const t = useT();
   const projects = useAppStore(state => state.config.projects);
   const runs = useAppStore(state => state.runs);
   const runtime = useAppStore(state => state.runtime);
   const approvals = useAppStore(state => state.approvals);
+
+  const activeRows = useMemo(() => activeAgentsAcross(runtime, projects, runs), [runtime, projects, runs]);
 
   const pending = useMemo(
     () => Object.values(approvals).filter(a => a.status === "pending").sort((a, b) => a.createdAt - b.createdAt),
@@ -297,33 +326,86 @@ function HomeView({ onOpenProject }: { onOpenProject(projectId: string): void })
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2">
-        {projects.length === 0 ? (
-          <EmptyState icon={FolderOpen} title={t("home.empty.title")} description={t("phone.createOnDesktop")} />
-        ) : (
-          projects.map(project => {
-            const working = Object.values(runtime[project.id] ?? {}).filter(r => r.status === "working").length;
-            const last = Object.values(runs)
-              .filter(r => r.projectId === project.id && r.parentRunId === null && r.kind !== "chat")
-              .sort((a, b) => b.startedAt - a.startedAt)[0];
-            return (
-              <button key={project.id} type="button" className="w-full text-left" onClick={() => onOpenProject(project.id)}>
-                {/* Card is a column by default: force the row, or the dot, name and chevron stack up. */}
-                <Card className="flex-row items-center gap-3 px-3 py-3 min-h-16">
-                  <ProjectAvatar name={project.name} color={project.color} size={36} />
-                  <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                    <span className="font-medium truncate">{project.name}</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : t("phone.noTasksYet")}
-                    </span>
-                  </div>
-                  {working > 0 && <Badge variant="secondary" className="shrink-0">{t("sidebar.working", { n: working })}</Badge>}
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Card>
-              </button>
-            );
-          })
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-4">
+        {activeRows.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+              {t("sidebar.activeAgents")}
+            </h2>
+            <div className="flex flex-col gap-2">
+              {activeRows.map(row => (
+                <button
+                  key={`${row.projectId}-${row.agentId}`}
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => onOpenActiveAgent(row.projectId)}
+                >
+                  <Card className="flex flex-col gap-1.5 p-3">
+                    <div className="flex items-center gap-2">
+                      <AgentAvatar provider={row.provider} size={24} />
+                      <span className="font-medium text-sm truncate">{row.agentName}</span>
+                      <div className="flex items-center gap-1 min-w-0 text-xs text-muted-foreground">
+                        <ProjectAvatar name={row.projectName} color={row.projectColor} size={16} />
+                        <span className="truncate">{row.projectName}</span>
+                      </div>
+                      <div className="ml-auto flex items-center gap-1.5 shrink-0 text-xs">
+                        <StatusDot status={row.status} />
+                        <span className={cn(
+                          row.status === "waiting"
+                            ? "text-amber-600 dark:text-amber-400 font-medium"
+                            : "text-muted-foreground"
+                        )}>
+                          {t(statusLabelKey[row.status])}
+                        </span>
+                      </div>
+                    </div>
+                    {row.detail && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {truncate(row.detail, 60)}
+                      </p>
+                    )}
+                  </Card>
+                </button>
+              ))}
+            </div>
+          </section>
         )}
+
+        <div className="flex flex-col gap-2">
+          {projects.length === 0 ? (
+            <EmptyState icon={FolderOpen} title={t("home.empty.title")} description={t("phone.createOnDesktop")} />
+          ) : (
+            projects.map(project => {
+              const projectRuntime = runtime[project.id] ?? {};
+              const working = Object.values(projectRuntime).filter(r => r.status === "working").length;
+              const waiting = Object.values(projectRuntime).some(r => r.status === "waiting");
+              const last = Object.values(runs)
+                .filter(r => r.projectId === project.id && r.parentRunId === null && isThreadTurn(r))
+                .sort((a, b) => b.startedAt - a.startedAt)[0];
+              return (
+                <button key={project.id} type="button" className="w-full text-left" onClick={() => onOpenProject(project.id)}>
+                  {/* Card is a column by default: force the row, or the dot, name and chevron stack up. */}
+                  <Card className="flex-row items-center gap-3 px-3 py-3 min-h-16">
+                    <ProjectAvatar name={project.name} color={project.color} size={36} />
+                    <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                      <span className="font-medium truncate">{project.name}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : t("phone.noTasksYet")}
+                      </span>
+                    </div>
+                    {working > 0 && <Badge variant="secondary" className="shrink-0">{t("sidebar.working", { n: working })}</Badge>}
+                    {waiting && (
+                      <Badge variant="outline" className="shrink-0 border-amber-500/60 text-amber-600 dark:text-amber-400">
+                        {t(statusLabelKey.waiting)}
+                      </Badge>
+                    )}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Card>
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
     </>
   );
@@ -335,25 +417,30 @@ function ProjectView({
   projectId,
   tab,
   setTab,
+  threadOpen,
+  setThreadOpen,
 }: {
   projectId: string;
   tab: Tab;
   setTab: (tab: Tab) => void;
+  threadOpen: boolean;
+  setThreadOpen: (open: boolean) => void;
 }) {
   const t = useT();
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
   const approvals = useAppStore(state => state.approvals);
   const currentChatId = useAppStore(state => state.currentChatId);
+  const currentChat = useAppStore(state =>
+    currentChatId ? state.config.chats.find(c => c.id === currentChatId && c.projectId === projectId) : null
+  );
 
   const pending = useMemo(
     () => Object.values(approvals).filter(a => a.status === "pending" && a.projectId === projectId).length,
     [approvals, projectId],
   );
 
-  // A tab that is not "chats" always talks to the orchestrator, so no chat may stay selected.
   const selectTab = (next: Tab) => {
     setTab(next);
-    if (next !== "chats" && currentChatId) useAppStore.setState({ currentChatId: null });
   };
 
   if (!project) {
@@ -378,20 +465,59 @@ function ProjectView({
 
       <div className="flex-1 min-h-0 flex flex-col">
         {tab === "tasks" && <TasksTab projectId={projectId} />}
-        {tab === "thread" && (
-          <>
-            <div className="flex-1 min-h-0"><OrchestratorThread /></div>
-            <Composer />
-          </>
-        )}
-        {tab === "chats" && (
-          currentChatId ? (
-            <>
+        {tab === "conversations" && (
+          threadOpen ? (
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="shrink-0 flex items-center gap-2 px-2 h-10 border-b border-border">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  aria-label={t("phone.back")}
+                  onClick={() => {
+                    setThreadOpen(false);
+                    useAppStore.setState({ currentChatId: null });
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium truncate">{t("sidebar.orchestrator")}</span>
+              </div>
+              <div className="flex-1 min-h-0"><OrchestratorThread /></div>
+              <Composer />
+            </div>
+          ) : currentChatId && currentChat ? (
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="shrink-0 flex items-center gap-2 px-2 h-10 border-b border-border">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  aria-label={t("phone.back")}
+                  onClick={() => {
+                    setThreadOpen(false);
+                    useAppStore.setState({ currentChatId: null });
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium truncate">{currentChat.name}</span>
+              </div>
               <div className="flex-1 min-h-0"><ChatThread chatId={currentChatId} /></div>
               <Composer />
-            </>
+            </div>
           ) : (
-            <ChatList projectId={projectId} />
+            <ConversationsList
+              projectId={projectId}
+              onOpenThread={() => {
+                setThreadOpen(true);
+                useAppStore.setState({ currentChatId: null });
+              }}
+              onOpenChat={chatId => {
+                setThreadOpen(false);
+                useAppStore.setState({ currentChatId: chatId });
+              }}
+            />
           )
         )}
         {tab === "approvals" && (
@@ -406,10 +532,9 @@ function ProjectView({
         {tab === "agents" && <AgentsTab projectId={projectId} />}
       </div>
 
-      <nav className="shrink-0 grid grid-cols-5 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
+      <nav className="shrink-0 grid grid-cols-4 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
         <TabButton icon={ListTodo} label={t("projectScreen.tasks")} active={tab === "tasks"} onClick={() => selectTab("tasks")} />
-        <TabButton icon={MessagesSquare} label={t("sidebar.orchestrator")} active={tab === "thread"} onClick={() => selectTab("thread")} />
-        <TabButton icon={MessageSquare} label={t("search.group.chats")} active={tab === "chats"} onClick={() => selectTab("chats")} />
+        <TabButton icon={MessagesSquare} label={t("phone.tab.conversations")} active={tab === "conversations"} onClick={() => selectTab("conversations")} />
         <TabButton icon={ShieldCheck} label={t("phone.tab.approvals")} active={tab === "approvals"} badge={pending} onClick={() => selectTab("approvals")} />
         <TabButton icon={Users} label={t("settings.section.agents")} active={tab === "agents"} onClick={() => selectTab("agents")} />
       </nav>
@@ -418,7 +543,7 @@ function ProjectView({
 }
 
 function TabButton({ icon: Icon, label, active, badge, onClick }: {
-  icon: typeof MessageSquare;
+  icon: typeof MessagesSquare;
   label: string;
   active: boolean;
   badge?: number;
@@ -443,28 +568,51 @@ function TabButton({ icon: Icon, label, active, badge, onClick }: {
   );
 }
 
-// ---- Chats tab ----
+// ---- Conversations tab: pinned orchestrator and 1:1 chats ----
 
-function ChatList({ projectId }: { projectId: string }) {
+function ConversationsList({
+  projectId,
+  onOpenThread,
+  onOpenChat,
+}: {
+  projectId: string;
+  onOpenThread: () => void;
+  onOpenChat: (chatId: string) => void;
+}) {
   const t = useT();
   const allChats = useAppStore(state => state.config.chats);
   const agents = useAppStore(selectAllAgents);
   const active = useAppStore(state => state.remoteActiveChats);
+  const runtime = useAppStore(state => state.runtime[projectId]);
+  const runs = useAppStore(state => state.runs);
+
   // Filtering inside the selector would hand zustand a new array on every render (infinite loop).
   const chats = useMemo(() => allChats.filter(c => c.projectId === projectId), [allChats, projectId]);
 
-  if (chats.length === 0) {
-    return (
-      <div className="flex-1 min-h-0 overflow-y-auto p-3">
-        <EmptyState icon={MessageSquare} title={t("phone.noChats")} description={t("phone.createOnDesktop")} />
-      </div>
-    );
-  }
+  const working = Object.values(runtime ?? {}).filter(r => r.status === "working").length;
+  const last = Object.values(runs)
+    .filter(r => r.projectId === projectId && r.parentRunId === null && isThreadTurn(r))
+    .sort((a, b) => b.startedAt - a.startedAt)[0];
+  const orchestratorSubtitle = last ? truncate(last.prompt.replace(/\s+/g, " "), 70) : t("phone.noTasksYet");
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2">
+      {/* Pinned orchestrator row */}
+      <button type="button" className="text-left" onClick={onOpenThread}>
+        <Card className="p-3 flex items-center gap-3 min-h-16">
+          <MessagesSquare className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+            <span className="font-medium truncate">{t("sidebar.orchestrator")}</span>
+            <span className="text-xs text-muted-foreground truncate">{orchestratorSubtitle}</span>
+          </div>
+          {working > 0 && <Badge variant="secondary" className="shrink-0">{t("sidebar.working", { n: working })}</Badge>}
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Card>
+      </button>
+
+      {/* 1:1 chat rows */}
       {chats.map(chat => (
-        <button key={chat.id} type="button" className="text-left" onClick={() => useAppStore.setState({ currentChatId: chat.id })}>
+        <button key={chat.id} type="button" className="text-left" onClick={() => onOpenChat(chat.id)}>
           <Card className="p-3 flex items-center gap-3 min-h-16">
             <div className="min-w-0 flex-1 flex flex-col gap-0.5">
               <span className="font-medium truncate">{chat.name}</span>

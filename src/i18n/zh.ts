@@ -1620,6 +1620,7 @@ export const zh: Dictionary = {
   "phone.noApprovals.title": "没有等待你审批的内容",
   "phone.noApprovals.body": "规划者委派了需要你点头的任务时，就会出现在这里。",
   "phone.tab.approvals": "审批",
+  "phone.tab.conversations": "对话",
   "phone.noChats": "这个项目没有聊天",
   "phone.answering": "正在回复…",
   "phone.noAgents": "没有配置任何智能体",

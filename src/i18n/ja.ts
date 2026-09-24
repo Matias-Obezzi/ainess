@@ -1621,6 +1621,7 @@ export const ja: Dictionary = {
   "phone.noApprovals.title": "承認待ちのものはありません",
   "phone.noApprovals.body": "プランナーが承認の必要なタスクを委任すると、ここに表示されます。",
   "phone.tab.approvals": "承認",
+  "phone.tab.conversations": "会話",
   "phone.noChats": "このプロジェクトにはチャットがありません",
   "phone.answering": "応答中…",
   "phone.noAgents": "設定されたエージェントがありません",
