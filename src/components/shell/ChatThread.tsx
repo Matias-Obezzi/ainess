@@ -76,6 +76,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
   // Sent while the chat was mid-answer: it waits its turn, and says so.
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);
   const unqueueChatMessage = useAppStore(state => state.unqueueChatMessage);
+  const editQueuedChatMessage = useAppStore(state => state.editQueuedChatMessage);
   const sendChatNow = useAppStore(state => state.sendChatNow);
   // One block: they go over as a single message, so there is one "send now" for the lot.
   const queued = useMemo(
@@ -83,10 +84,11 @@ export function ChatThread({ chatId }: { chatId: string }) {
       lines: (chatQueue ?? []).map((text, index) => ({
         text,
         onCancel: () => unqueueChatMessage(chatId, index),
+        onEdit: (next: string) => editQueuedChatMessage(chatId, index, text, next),
       })),
       onSendNow: () => void sendChatNow(chatId),
     }],
-    [chatQueue, chatId, unqueueChatMessage, sendChatNow],
+    [chatQueue, chatId, unqueueChatMessage, editQueuedChatMessage, sendChatNow],
   );
 
   useEffect(() => {

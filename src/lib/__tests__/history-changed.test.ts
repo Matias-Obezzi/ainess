@@ -39,7 +39,7 @@ describe("changedProjectsFromMessages", () => {
     const m1 = m("1", "p1");
     const m2 = m("2", "p2");
     const m3 = m("3", "p3");
-    
+
     const prev = [m1, m2, m3];
     const next = [m3];
     // Since index 0 in `next` is m3, and index 0 in `prev` is m1, they mismatch.
@@ -48,5 +48,28 @@ describe("changedProjectsFromMessages", () => {
     expect(res).toContain("p3");
     expect(res).toContain("p2");
     expect(res).toContain("p1");
+  });
+
+  it("detects an in-place edit at a middle position (same length)", () => {
+    const m1 = m("1", "p1");
+    const m2a = m("2", "p2");
+    const m3 = m("3", "p3");
+    const m2b = { ...m2a, text: "edited" } as CommMessage;
+
+    const prev = [m1, m2a, m3];
+    const next = [m1, m2b, m3];
+    expect(changedProjectsFromMessages(next, prev)).toEqual(["p2"]);
+  });
+
+  it("detects an in-place edit at the first position of a long array (same length)", () => {
+    const m1a = m("1", "p1");
+    const m1b = { ...m1a, text: "edited" } as CommMessage;
+    const m2 = m("2", "p2");
+    const m3 = m("3", "p3");
+    const m4 = m("4", "p4");
+
+    const prev = [m1a, m2, m3, m4];
+    const next = [m1b, m2, m3, m4];
+    expect(changedProjectsFromMessages(next, prev)).toEqual(["p1"]);
   });
 });

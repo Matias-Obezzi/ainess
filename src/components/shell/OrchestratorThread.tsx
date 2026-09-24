@@ -16,6 +16,7 @@ import { QuotaCard } from "@/components/QuotaCard";
 import { outOfQuota } from "@/lib/quota";
 import { retriedLater } from "@/lib/quota-card";
 import { shownRootRuns } from "@/lib/retry";
+import { isThreadTurn } from "@/lib/thread-turns";
 import { retryRun } from "@/lib/orchestrator";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -79,6 +80,7 @@ export function OrchestratorThread() {
   );
   const mood = plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined;
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
+  const editQueuedInstruction = useAppStore(state => state.editQueuedInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   // A block per agent: what is waiting for one of them goes over as a single message, and what is
   // waiting for another is a different message on a different turn.
@@ -90,16 +92,17 @@ export function OrchestratorThread() {
       lines: (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
         text,
         onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
+        onEdit: (next: string) => editQueuedInstruction(currentProjectId, agent.id, index, text, next),
       })),
       onSendNow: () => void sendInstructionNow(currentProjectId, agent.id),
     }));
-  }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
+  }, [runtime, agents, currentProjectId, unqueueInstruction, editQueuedInstruction, sendInstructionNow]);
 
   // A retried run takes the place of the one it replaced instead of landing at the bottom, and
   // that one stops being drawn: see `shownRootRuns`.
   const rootRuns = useMemo(
     () => shownRootRuns(
-      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat"),
+      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && isThreadTurn(r)),
     ),
     [runs, currentProjectId],
   );

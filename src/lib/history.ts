@@ -80,11 +80,25 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
 const filePath = (projectId: string) => `history/${projectId}.json`;
 
 /**
- * Finds the projects whose messages changed without walking the whole unchanged prefix.
+ * Finds the projects whose messages changed. The early-break walk from the end is only valid when
+ * the length changed (append/slice), because there the tail up to the first common reference is
+ * exactly the delta. Same length means an in-place edit could sit anywhere — including a position
+ * whose old and new tail happen to share a reference past it — so that case has to compare every
+ * position instead of stopping at the first match.
  */
 export function changedProjectsFromMessages(next: CommMessage[], prev: CommMessage[]): string[] {
   if (next === prev) return [];
   const changed = new Set<string>();
+  if (next.length === prev.length) {
+    for (let i = 0; i < next.length; i++) {
+      const n = next[i];
+      const p = prev[i];
+      if (n === p) continue;
+      if (n && n.projectId) changed.add(n.projectId);
+      if (p && p.projectId) changed.add(p.projectId);
+    }
+    return Array.from(changed);
+  }
   const len = Math.max(next.length, prev.length);
   for (let i = len - 1; i >= 0; i--) {
     const n = next[i];

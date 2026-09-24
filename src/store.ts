@@ -18,6 +18,7 @@ import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
+import { replaceQueuedLine, replaceInstructionHistory } from "@/lib/queued-edit";
 import { translateNow } from "@/i18n/useT";
 import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
 import { forgetMissingBinaries } from "@/lib/missing-binary";
@@ -164,8 +165,12 @@ export interface AppState {
   queueChatMessage(chatId: string, text: string): void;
   /** Takes one queued message back before its turn comes. */
   unqueueChatMessage(chatId: string, index: number): void;
+  /** Replaces a queued chat message at index, or drops it if empty. No-op if stale. */
+  editQueuedChatMessage(chatId: string, index: number, previous: string, next: string): void;
   /** The same, for an instruction waiting on a working agent. */
   unqueueInstruction(projectId: string, agentId: string, index: number): void;
+  /** Replaces a queued instruction at index (and updates history), or drops it if empty. No-op if stale. */
+  editQueuedInstruction(projectId: string, agentId: string, index: number, previous: string, next: string): void;
   /**
    * Cuts the turn that is running short and hands the queue over now.
    *
@@ -2635,6 +2640,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }));
   },
 
+  editQueuedChatMessage: (chatId, index, previous, next) => {
+    set(state => {
+      const queue = state.chatQueues[chatId];
+      const nextQueue = replaceQueuedLine(queue, index, previous, next);
+      if (!nextQueue) return {};
+      return {
+        chatQueues: {
+          ...state.chatQueues,
+          [chatId]: nextQueue,
+        },
+      };
+    });
+  },
+
   unqueueInstruction: (projectId, agentId, index) => {
     set(state => {
       const projectRuntime = state.runtime[projectId];
@@ -2651,6 +2670,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
             },
           },
         },
+      };
+    });
+  },
+
+  editQueuedInstruction: (projectId, agentId, index, previous, next) => {
+    set(state => {
+      const projectRuntime = state.runtime[projectId];
+      const runtime = projectRuntime?.[agentId];
+      if (!runtime) return {};
+      const nextQueue = replaceQueuedLine(runtime.queuedInstructions, index, previous, next);
+      if (!nextQueue) return {};
+      const nextMessages = replaceInstructionHistory(state.messages, projectId, agentId, previous, next);
+      return {
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...projectRuntime,
+            [agentId]: {
+              ...runtime,
+              queuedInstructions: nextQueue,
+            },
+          },
+        },
+        ...(nextMessages !== state.messages ? { messages: nextMessages } : {}),
       };
     });
   },
