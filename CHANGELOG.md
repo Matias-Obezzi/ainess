@@ -16,14 +16,12 @@ let one of them fall behind.
   wrong one. A default name now follows the provider; a name you chose yourself stays. The
   orchestrator chat also follows the root planner when another agent is promoted in the
   hierarchy, instead of keeping the composer pointed at the previous one. (#38)
-
 - **What you typed into an agent's question is no longer lost when the box goes away.** The
   marked options and the free text lived in the question box itself, so switching project,
   opening a chat, pressing "Write instead" or the thread scrolling past the run threw them out.
   They are kept per question now, across navigation and across a restart, and the two copies of
   the same question (under the run and above the composer) show the same marks. A draft goes
   when its question is answered, by you or automatically. (#35)
-
 - **The phone remote recovers on its own after the screen was locked.** The "Reconnecting…"
   banner stayed up while the app worked, and a message sent from the phone sometimes only showed
   after a reload: the keep-alive from the PC never cleared the banner, a connection that had

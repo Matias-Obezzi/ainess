@@ -13,7 +13,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   vous avez choisi reste. La conversation de l'orchestrateur suit aussi le planificateur racine
   quand un autre agent est promu dans la hiérarchie, au lieu de laisser le compositeur pointer
   sur l'ancien. (#38)
-
 - **Ce que vous avez tapé dans une question de l'agent n'est plus perdu quand la boîte disparaît.**
   Les options cochées et le texte libre vivaient dans la boîte elle-même : changer de projet,
   ouvrir une conversation, appuyer sur « Écrire à la place » ou laisser le fil dépasser
@@ -21,7 +20,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   redémarrage à l'autre, et les deux copies de la même question (sous l'exécution et au-dessus
   du compositeur) montrent les mêmes coches. Un brouillon disparaît quand sa question est
   répondue, par vous ou automatiquement. (#35)
-
 - **La télécommande sur téléphone se rétablit seule après le verrouillage de l'écran.** La
   bannière « Reconnexion… » restait affichée alors que l'application fonctionnait, et un message
   envoyé depuis le téléphone n'apparaissait parfois qu'après un rechargement : le signal de vie du
