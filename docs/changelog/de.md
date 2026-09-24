@@ -14,6 +14,23 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   der Hierarchie ein anderer Agent befördert wird, statt den Composer auf den vorherigen zeigen
   zu lassen. (#38)
 
+- **Was Sie in eine Frage des Agenten getippt haben, geht nicht mehr verloren, wenn das Feld
+  verschwindet.** Die markierten Optionen und der freie Text lebten im Feld selbst: Projekt
+  wechseln, einen Chat öffnen, „Stattdessen schreiben“ drücken oder ein Thread, der am Lauf
+  vorbeiscrollte, warfen sie weg. Sie werden jetzt pro Frage behalten, über Bildschirme und
+  Neustarts hinweg, und die beiden Kopien derselben Frage (unter dem Lauf und über dem Composer)
+  zeigen dieselben Markierungen. Ein Entwurf verschwindet, wenn seine Frage beantwortet ist, von
+  Ihnen oder automatisch. (#35)
+
+- **Die Handy-Fernbedienung erholt sich nach dem Sperren des Bildschirms von selbst.** Das Banner
+  „Verbindung wird wiederhergestellt…“ blieb stehen, obwohl die App funktionierte, und eine vom
+  Handy gesendete Nachricht erschien manchmal erst nach dem Neuladen: das Lebenszeichen des PCs
+  räumte das Banner nie weg, eine still gestorbene Verbindung fiel nicht auf, und die Rückkehr in
+  den Vordergrund wartete den Wiederholungs-Timer ab. Die Seite wertet jetzt jedes Lebenszeichen
+  als verbunden, verwirft einen 45 Sekunden stummen Strom, verbindet sich neu, sobald der Tab
+  wieder vorne ist oder das Netz zurückkommt, und der PC schickt seinen letzten Stand an ein
+  zurückgefallenes Handy erneut. (#26)
+
 ## 0.23.0 — 2026-09-20
 
 ### Neu

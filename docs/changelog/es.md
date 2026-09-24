@@ -14,6 +14,21 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   asciende a otro agente en la jerarquía, en vez de dejar el compositor apuntando al anterior.
   (#38)
 
+- **Lo que escribiste en una pregunta del agente ya no se pierde cuando la caja desaparece.** Las
+  opciones marcadas y el texto libre vivían en la caja misma, así que cambiar de proyecto, abrir
+  un chat, tocar «Escribir en su lugar» o que el hilo pasara de largo la corrida los tiraba.
+  Ahora se guardan por pregunta, entre pantallas y entre reinicios, y las dos copias de la misma
+  pregunta (debajo de la corrida y sobre el compositor) muestran las mismas marcas. Un borrador
+  se va cuando su pregunta se responde, a mano o sola. (#35)
+
+- **El remoto del celular se recupera solo después de bloquear la pantalla.** El cartel
+  «Reconectando…» quedaba pegado mientras la app funcionaba, y un mensaje enviado desde el celular
+  a veces recién aparecía tras recargar: el latido de la PC nunca sacaba el cartel, una conexión
+  muerta en silencio no se detectaba, y volver al frente esperaba el temporizador de reintento.
+  Ahora la página toma cualquier señal de vida como conexión, descarta un flujo callado 45
+  segundos, reconecta apenas la pestaña vuelve al frente o vuelve la red, y la PC reenvía su
+  último estado a un celular que quedó atrás. (#26)
+
 ## 0.23.0 — 2026-09-20
 
 ### Nuevo

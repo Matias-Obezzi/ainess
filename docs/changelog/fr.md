@@ -14,6 +14,23 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   quand un autre agent est promu dans la hiérarchie, au lieu de laisser le compositeur pointer
   sur l'ancien. (#38)
 
+- **Ce que vous avez tapé dans une question de l'agent n'est plus perdu quand la boîte disparaît.**
+  Les options cochées et le texte libre vivaient dans la boîte elle-même : changer de projet,
+  ouvrir une conversation, appuyer sur « Écrire à la place » ou laisser le fil dépasser
+  l'exécution les jetait. Ils sont maintenant gardés par question, d'un écran à l'autre et d'un
+  redémarrage à l'autre, et les deux copies de la même question (sous l'exécution et au-dessus
+  du compositeur) montrent les mêmes coches. Un brouillon disparaît quand sa question est
+  répondue, par vous ou automatiquement. (#35)
+
+- **La télécommande sur téléphone se rétablit seule après le verrouillage de l'écran.** La
+  bannière « Reconnexion… » restait affichée alors que l'application fonctionnait, et un message
+  envoyé depuis le téléphone n'apparaissait parfois qu'après un rechargement : le signal de vie du
+  PC n'effaçait jamais la bannière, une connexion morte en silence n'était pas remarquée, et le
+  retour au premier plan attendait le minuteur de nouvelle tentative. La page considère désormais
+  tout signe de vie comme une connexion, abandonne un flux muet depuis 45 secondes, se reconnecte
+  dès que l'onglet revient devant ou que le réseau revient, et le PC renvoie son dernier état à
+  un téléphone resté en arrière. (#26)
+
 ## 0.23.0 — 2026-09-20
 
 ### Nouveau

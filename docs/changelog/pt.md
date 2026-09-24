@@ -13,6 +13,21 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   orquestrador também acompanha o planejador raiz quando outro agente é promovido na hierarquia,
   em vez de deixar o compositor apontando para o anterior. (#38)
 
+- **O que você digitou numa pergunta do agente não se perde mais quando a caixa some.** As opções
+  marcadas e o texto livre viviam na própria caixa, então trocar de projeto, abrir um chat, tocar
+  em «Escrever em vez disso» ou o fio passar da execução jogava tudo fora. Agora ficam guardados
+  por pergunta, entre telas e entre reinícios, e as duas cópias da mesma pergunta (sob a execução
+  e sobre o compositor) mostram as mesmas marcas. Um rascunho vai embora quando sua pergunta é
+  respondida, por você ou automaticamente. (#35)
+
+- **O remoto do celular se recupera sozinho depois de bloquear a tela.** O aviso «Reconectando…»
+  ficava preso enquanto o app funcionava, e uma mensagem enviada do celular às vezes só aparecia
+  depois de recarregar: o sinal de vida do PC nunca tirava o aviso, uma conexão morta em silêncio
+  não era percebida, e voltar ao primeiro plano esperava o temporizador de nova tentativa. Agora a
+  página trata qualquer sinal de vida como conexão, descarta um fluxo calado por 45 segundos,
+  reconecta assim que a aba volta à frente ou a rede retorna, e o PC reenvia seu último estado a
+  um celular que ficou para trás. (#26)
+
 ## 0.23.0 — 2026-09-20
 
 ### Novo
