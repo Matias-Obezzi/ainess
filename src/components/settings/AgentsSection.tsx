@@ -20,7 +20,8 @@ import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
-import { confirmDelete } from "@/lib/confirm";
+import { confirm, confirmDelete } from "@/lib/confirm";
+import { probeClaudeAuth, ensureClaudeAuth, claudeLogout } from "@/lib/claude-auth";
 import { AgentDialog } from "@/components/AgentDialog";
 import { AgentConfig, Formation, ProviderId } from "@/types";
 import { toast } from "@/components/ui/toast";
@@ -179,7 +180,12 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
         {hasOverride && <div className="text-xs">{t("agents.manualPath")}</div>}
       </div>
 
-      {provider === "claude" && <ManagedRuntimeStatus />}
+      {provider === "claude" && (
+        <>
+          <ManagedRuntimeStatus />
+          <ClaudeIdentity />
+        </>
+      )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-2">
         {/* Only what is missing gets an install button, and it says what it is about to run. */}
@@ -516,6 +522,107 @@ function ManagedRuntimeStatus() {
           <Button variant="outline" size="sm" className="w-fit" onClick={() => void handleInstall()}>
             <Download className="mr-1 size-3" /> {t("agents.managedRuntime.installNow")}
           </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Who Claude Code is logged in as, sourced from `claudeAuth.status` and probed on demand. */
+export function ClaudeIdentity() {
+  const t = useT();
+  const status = useAppStore(state => state.claudeAuth.status);
+  const [checking, setChecking] = useState(false);
+
+  const probe = useCallback(async () => {
+    setChecking(true);
+    try {
+      await probeClaudeAuth();
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  // Only when nothing is known yet: a re-render after that first probe must not fire another one.
+  useEffect(() => {
+    if (status === null) void probe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLogin = async () => {
+    await ensureClaudeAuth();
+    await probe();
+  };
+
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: t("agents.claudeIdentity.confirmTitle"),
+      description: t("agents.claudeIdentity.confirmDescription"),
+      destructive: true,
+      confirmText: t("agents.claudeIdentity.logout"),
+    });
+    if (!ok) return;
+    await claudeLogout();
+    await probe();
+  };
+
+  const checkButton = (
+    <Button variant="outline" size="sm" className="w-fit" disabled={checking} onClick={() => void probe()}>
+      {checking ? <Loader2 className="mr-1 size-3 animate-spin" /> : <RefreshCw className="mr-1 size-3" />}
+      {t("agents.claudeIdentity.check")}
+    </Button>
+  );
+
+  return (
+    <div className="mt-2 flex flex-col gap-1 rounded border border-border p-3 text-sm">
+      <div className="font-medium">{t("agents.claudeIdentity.title")}</div>
+
+      {status === null && checking && (
+        <div className="text-xs text-muted-foreground">{t("agents.claudeIdentity.checking")}</div>
+      )}
+
+      {status === null && !checking && (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">{t("agents.claudeIdentity.unknown")}</div>
+          <div className="flex flex-wrap gap-2">
+            {checkButton}
+            <Button variant="outline" size="sm" className="w-fit" onClick={() => void handleLogin()}>
+              {t("agents.claudeIdentity.login")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {status !== null && status.kind === "none" && (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">{t("agents.claudeIdentity.loggedOut")}</div>
+          <div className="flex flex-wrap gap-2">
+            {checkButton}
+            <Button variant="outline" size="sm" className="w-fit" onClick={() => void handleLogin()}>
+              {t("agents.claudeIdentity.login")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {status !== null && status.kind !== "none" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-0.5 text-xs">
+            <div>{status.label}</div>
+            <div className="flex flex-col gap-0.5 text-muted-foreground break-all">
+              {status.account?.email && <div>{t("agents.claudeIdentity.email", { email: status.account.email })}</div>}
+              {status.account?.organization && (
+                <div>{t("agents.claudeIdentity.organization", { organization: status.account.organization })}</div>
+              )}
+              {status.account?.plan && <div>{t("agents.claudeIdentity.plan", { plan: status.account.plan })}</div>}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {checkButton}
+            <Button variant="destructive" size="sm" className="w-fit" onClick={() => void handleLogout()}>
+              {t("agents.claudeIdentity.logout")}
+            </Button>
+          </div>
         </div>
       )}
     </div>
