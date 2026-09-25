@@ -22,6 +22,10 @@ export const remoteTransport: Transport = {
   saveConfig: async () => {},
   detectBinaries: async () => ({}),
   whichProgram: async () => null,
+  // The adapter is installed on the PC, by the PC.
+  acpManagedStatus: async () => null,
+  acpManagedEnsure: async () => null,
+  acpManagedCancel: async () => {},
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   exec: async () => ({ code: null, stdout: "", stderr: "" }),

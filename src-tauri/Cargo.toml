@@ -43,6 +43,10 @@ base64 = "0.22"
 tauri-plugin-single-instance = "2.4.4"
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
 tauri-plugin-window-state = "2"
+# The managed JS runtime (src/acp_setup.rs): bun ships as a zip, checked against the sha256 the
+# release publishes next to it.
+zip = { version = "6", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
 
 
 # Just enough of the Win32 API to take one console for the app and hide it, so that nothing an

@@ -29,6 +29,21 @@ export interface Transport {
    * path, because a bare `npx` is a `.cmd` shim that `Command::new` cannot resolve on Windows.
    */
   whichProgram(name: string): Promise<string | null>;
+
+  // The JS runtime and the ACP adapter the app installs for itself, for the machines where node is
+  // not there to run either of them (see src-tauri/src/acp_setup.rs). Null where there is no local
+  // process to install anything for — and on purpose in the CLI, which runs under node already and
+  // so has the `npx` way in.
+  /** What is installed, without touching the network. */
+  acpManagedStatus(): Promise<import("@/types").AcpManagedStatus | null>;
+  /**
+   * Installs whatever is missing and answers with the status either way. Idempotent, and safe to
+   * call twice at once: the second call waits for the first instead of installing again. Progress
+   * arrives as `acp-setup` events.
+   */
+  acpManagedEnsure(): Promise<import("@/types").AcpManagedStatus | null>;
+  /** Stops an install in flight. A no-op when there is none. */
+  acpManagedCancel(): Promise<void>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
   readTextFile(relativePath: string): Promise<string | null>;
   /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */

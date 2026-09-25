@@ -435,6 +435,13 @@ export const nodeTransport: Transport = {
 
   whichProgram: async (name: string) => which(name),
 
+  // Null on purpose, and not for want of a filesystem: the CLI runs under node, so `npx` is right
+  // there and the managed runtime exists for exactly the machines where it is not. Downloading a
+  // second JS runtime to sit next to the one already running this line would be absurd.
+  acpManagedStatus: async () => null,
+  acpManagedEnsure: async () => null,
+  acpManagedCancel: async () => {},
+
   detectBinaries: async () => {
     return {
       claude: detectClaude(),

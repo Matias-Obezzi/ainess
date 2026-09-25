@@ -1,3 +1,4 @@
+mod acp_setup;
 mod config;
 mod console;
 mod detect;
@@ -34,6 +35,7 @@ pub fn run() {
             logging::append(app, "info", "app", "another instance tried to open: the one already running was focused");
         }))
         .manage(runner::RunnerState::default())
+        .manage(acp_setup::AcpSetupState::default())
         .manage(remote::RemoteState::default())
         .manage(tray::TrayState::default())
         .manage(tunnel::TunnelState::default())
@@ -132,7 +134,10 @@ pub fn run() {
             tunnel::tunnel_status,
             tunnel::tunnel_detect,
             repo_watch::repo_watch_start,
-            repo_watch::repo_watch_stop
+            repo_watch::repo_watch_stop,
+            acp_setup::acp_managed_status,
+            acp_setup::acp_managed_ensure,
+            acp_setup::acp_managed_cancel
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

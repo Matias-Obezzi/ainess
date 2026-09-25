@@ -22,6 +22,15 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
+  acpManagedStatus: async () => {
+    try {
+      return await invoke<import("@/types").AcpManagedStatus>("acp_managed_status");
+    } catch {
+      return null;
+    }
+  },
+  acpManagedEnsure: async () => invoke<import("@/types").AcpManagedStatus>("acp_managed_ensure"),
+  acpManagedCancel: async () => invoke<void>("acp_managed_cancel"),
   writeTextFile: async (relativePath, content) =>
     invoke<string>("write_config_file", { relativePath, content }),
   readTextFile: async (relativePath) => {

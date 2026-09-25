@@ -715,6 +715,29 @@ export interface StorageStat {
 }
 
 /**
+ * The JS runtime and the ACP adapter the app installs for itself (see src-tauri/src/acp_setup.rs).
+ *
+ * A machine with no node cannot reach the adapter any other way — neither `claude-agent-acp` on
+ * PATH nor `npx` exists there — so the app downloads bun into its own config folder and installs
+ * the adapter with it. Null everywhere there is no local process to install anything for.
+ */
+export interface AcpManagedStatus {
+  /** A bun the app installed is sitting where the app put it. */
+  runtimeReady: boolean;
+  /** The adapter is installed, and installed for the version range this build asks for. */
+  adapterReady: boolean;
+  bunVersion: string | null;
+  adapterVersion: string | null;
+  /** What to spawn to start the adapter. Null until both are ready. */
+  program: string | null;
+  args: string[];
+  /** Absolute path of the folder the adapter lives in. */
+  installDir: string;
+  /** The `claude` binary of the engine package, when it is there. */
+  enginePath: string | null;
+}
+
+/**
  * One TCP port something is listening on here (see `Transport.listeningPorts`).
  *
  * `project` and `descendant` are hints, never proof: a dev server an agent left behind is usually
