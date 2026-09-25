@@ -978,3 +978,11 @@ export interface FilePreview {
   candidates: string[];
   line?: number;
 }
+
+export type AcpSetupPhase = "runtime-download" | "runtime-verify" | "runtime-extract" | "adapter-install" | "ready" | "error";
+export interface AcpSetupEvent {
+  phase: AcpSetupPhase;
+  received?: number;
+  total?: number;
+  message?: string;
+}

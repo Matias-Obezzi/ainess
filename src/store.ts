@@ -237,6 +237,10 @@ export interface AppState {
   searchOpen: boolean;
   /** Whether the Ctrl+/ shortcuts dialog is open. Not persisted. */
   shortcutsOpen: boolean;
+  
+  acpSetup: { open: boolean, phase?: import("@/types").AcpSetupPhase, received?: number, total?: number, message?: string, error?: string };
+  setAcpSetup: (patch: Partial<AppState["acpSetup"]>) => void;
+
   /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
   focusedTaskId: string | null;
   /** Message the chat/thread should scroll to and highlight (set by the search palette). Not persisted. */
@@ -1147,6 +1151,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   navIndex: 0,
   searchOpen: false,
   shortcutsOpen: false,
+  acpSetup: { open: false },
   focusedTaskId: null,
   focusedMessageId: null,
   searchInitialGroup: null,
@@ -1356,6 +1361,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleShortcuts: (open) => {
     set(s => ({ shortcutsOpen: open ?? !s.shortcutsOpen }));
+  },
+  
+  setAcpSetup: (patch) => {
+    set((state) => ({ acpSetup: { ...state.acpSetup, ...patch } }));
   },
 
   focusTask: (taskId) => {

@@ -4,8 +4,9 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ## Sin publicar
 
-### Nuevo
 
+
+- **Claude Code es completamente independiente.** La primera vez que ejecutes Claude Code en un proyecto, la app descarga y configura el adaptador y entorno necesarios (~360 MB) automáticamente en su propia carpeta de datos. Ya no necesitás tener Node.js instalado para usar Claude Code.
 - **Los selectores de modelo ofrecen lo que el CLI instalado puede correr de verdad.** A
   Antigravity y opencode ya se les pedía la lista de modelos, pero solo el diálogo del agente
   leía la respuesta; el compositor, los presets, los chats y el anillo de cuota mostraban una

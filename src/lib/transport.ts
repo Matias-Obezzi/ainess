@@ -44,6 +44,7 @@ export interface Transport {
   acpManagedEnsure(): Promise<import("@/types").AcpManagedStatus | null>;
   /** Stops an install in flight. A no-op when there is none. */
   acpManagedCancel(): Promise<void>;
+  onAcpSetup(h: (e: import("@/types").AcpSetupEvent) => void): Promise<() => void>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
   readTextFile(relativePath: string): Promise<string | null>;
   /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */

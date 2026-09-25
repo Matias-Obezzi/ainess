@@ -20,6 +20,7 @@ export const nullTransport: Transport = {
   acpManagedStatus: async () => null,
   acpManagedEnsure: async () => null,
   acpManagedCancel: async () => {},
+  onAcpSetup: async () => () => {},
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   exec: async (_program, _args, _cwd) => ({ code: null, stdout: "", stderr: "" }),

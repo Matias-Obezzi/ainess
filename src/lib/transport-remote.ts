@@ -26,6 +26,7 @@ export const remoteTransport: Transport = {
   acpManagedStatus: async () => null,
   acpManagedEnsure: async () => null,
   acpManagedCancel: async () => {},
+  onAcpSetup: async () => () => {},
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   exec: async () => ({ code: null, stdout: "", stderr: "" }),

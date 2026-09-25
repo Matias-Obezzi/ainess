@@ -4,8 +4,9 @@
 
 ## 未发布
 
-### 新增
 
+
+- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
 - **模型选择器只列出已安装 CLI 真正能运行的模型。** 之前已经会向 Antigravity 和 opencode 询问模型列表，但只有
   智能体对话框读取了答案；输入框、预设、聊天和配额环显示的是写死在代码里的列表，悄悄过时。现在所有选择器
   读取同一份列表：CLI 报告的内容，在启动时刷新且最多每十分钟刷新一次，内置列表仅作后备。Ollama 也会被询问，

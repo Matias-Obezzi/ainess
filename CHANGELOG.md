@@ -10,6 +10,7 @@ let one of them fall behind.
 
 ### Added
 
+- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
 - **Model pickers offer what the installed CLI can actually run.** Antigravity and opencode were
   already asked for their models, but only the agent dialog read the answer; the composer,
   presets, chats and the quota ring showed a list typed into the code, which went stale in

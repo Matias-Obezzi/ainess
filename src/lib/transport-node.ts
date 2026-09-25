@@ -441,6 +441,7 @@ export const nodeTransport: Transport = {
   acpManagedStatus: async () => null,
   acpManagedEnsure: async () => null,
   acpManagedCancel: async () => {},
+  onAcpSetup: async () => () => {},
 
   detectBinaries: async () => {
     return {

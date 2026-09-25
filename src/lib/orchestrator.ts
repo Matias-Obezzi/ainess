@@ -23,6 +23,7 @@ import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
 import { log } from "@/lib/logger";
+import { acpAdapterAvailability, forgetAcpAdapter } from "@/lib/acp/adapter";
 import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
@@ -59,6 +60,7 @@ export async function attachListeners(): Promise<void> {
   listenersAttached = true;
   await getTransport().onRunOutput(handleOutput);
   await getTransport().onRunExit(handleExit);
+  await getTransport().onAcpSetup((e) => useAppStore.getState().setAcpSetup(e));
 }
 
 export function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
@@ -862,6 +864,24 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       mcpConfigPath,
       mcpServers,
     };
+
+    if (provider.transport === "acp") {
+      const managedStatus = await getTransport().acpManagedStatus();
+      if (managedStatus) {
+        const availability = await acpAdapterAvailability();
+        if (!availability.ready) {
+          useAppStore.getState().setAcpSetup({ open: true });
+          const ensureResult = await getTransport().acpManagedEnsure();
+          useAppStore.getState().setAcpSetup({ open: false });
+          if (!ensureResult || !ensureResult.adapterReady || !ensureResult.runtimeReady) {
+            finishNeverSpawned(runId, opts.projectId, opts.agentId, translateNow("run.acpSetupFailed"));
+            return;
+          }
+          forgetAcpAdapter();
+        }
+      }
+    }
+
     const spawnOpts = provider.transport === "acp"
       ? await provider.buildAcpCommand(buildInput)
       : provider.buildCommand(buildInput);

@@ -1,8 +1,9 @@
 // Configuración → Agentes: what this machine has installed (which CLI, which version, how much
 // quota is left) and the formations, the saved teams a new project can start from. The agents
 // themselves belong to each project and are managed from its hierarchy board.
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAppStore, cloneAgents, nextAgentName } from "@/store";
+import { getTransport } from "@/lib/transport";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { QuotaRing, useProviderModels } from "@/components/QuotaRing";
 import { Card } from "@/components/ui/card";
@@ -176,6 +177,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
         <div className="text-xs">{t("agents.quota", { detail: summary.detail })}</div>
         {hasOverride && <div className="text-xs">{t("agents.manualPath")}</div>}
       </div>
+
+      {provider === "claude" && <ManagedRuntimeStatus />}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-2">
         {/* Only what is missing gets an install button, and it says what it is about to run. */}
@@ -464,6 +467,56 @@ export function AgentsSection() {
       </section>
 
       <FormationDialog open={open} onOpenChange={(o) => !o && close()} formation={editing} />
+    </div>
+  );
+}
+
+function ManagedRuntimeStatus() {
+  const t = useT();
+  const [status, setStatus] = useState<import("@/types").AcpManagedStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      setStatus(await getTransport().acpManagedStatus());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStatus();
+  }, [fetchStatus]);
+
+  if (loading || status === null) return null; // Only render when status is fetched and exists (not null platform)
+
+  const handleInstall = async () => {
+    useAppStore.getState().setAcpSetup({ open: true });
+    await getTransport().acpManagedEnsure();
+    useAppStore.getState().setAcpSetup({ open: false });
+    await fetchStatus();
+  };
+
+  const isReady = status.adapterReady && status.runtimeReady;
+
+  return (
+    <div className="mt-2 flex flex-col gap-1 rounded border border-border p-3 text-sm">
+      <div className="font-medium">{t("agents.managedRuntime.title")}</div>
+      {isReady ? (
+        <div className="flex flex-col gap-0.5 text-muted-foreground text-xs break-all">
+          <div>{t("agents.managedRuntime.bunVersion", { version: status.bunVersion || "?" })}</div>
+          <div>{t("agents.managedRuntime.adapterVersion", { version: status.adapterVersion || "?" })}</div>
+          <div>{t("agents.managedRuntime.folder", { folder: status.installDir })}</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">{t("agents.managedRuntime.notInstalled")}</div>
+          <Button variant="outline" size="sm" className="w-fit" onClick={() => void handleInstall()}>
+            <Download className="mr-1 size-3" /> {t("agents.managedRuntime.installNow")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import type {
   RunOutputEvent,
   SpawnOptions,
   SpawnedProcess,
+  AcpSetupEvent,
 } from "@/types";
 
 export const ipc = {
@@ -56,6 +57,12 @@ export function onRunExit(
   handler: (e: RunExitEvent) => void,
 ): Promise<UnlistenFn> {
   return listenOnce<RunExitEvent>("run-exit", handler);
+}
+
+export function onAcpSetup(
+  handler: (e: AcpSetupEvent) => void,
+): Promise<UnlistenFn> {
+  return listenOnce<AcpSetupEvent>("acp-setup", handler);
 }
 
 /** True when running inside the Tauri webview (false in a plain browser). */

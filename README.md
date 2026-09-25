@@ -50,7 +50,7 @@ from Settings → Agents:
 
 | Provider | How it gets there |
 | --- | --- |
-| Claude Code | `npm install -g @anthropic-ai/claude-code` |
+| Claude Code | Downloads its own adapter (~360 MB) automatically |
 | GitHub Copilot CLI | `npm install -g @github/copilot` |
 | Antigravity | `irm https://antigravity.google/cli/install.ps1 \| iex` |
 | Gemini CLI | `npm install -g @google/gemini-cli` |

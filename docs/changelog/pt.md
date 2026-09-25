@@ -4,8 +4,9 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ## Não publicado
 
-### Novo
 
+
+- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
 - **Os seletores de modelo oferecem o que o CLI instalado consegue rodar de verdade.** Antigravity
   e opencode já eram consultados sobre seus modelos, mas só o diálogo do agente lia a resposta; o
   compositor, os presets, os chats e o anel de cota mostravam uma lista escrita no código, que

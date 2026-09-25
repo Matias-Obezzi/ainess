@@ -24,6 +24,7 @@ import { useSystemHooks } from "@/hooks/useSystemHooks";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { EditContextMenu } from "@/components/EditContextMenu";
 import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
+import { AcpSetupDialog } from "@/components/AcpSetupDialog";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
@@ -154,6 +155,7 @@ export default function App() {
         </main>
       </div>
 
+      <AcpSetupDialog />
       <SettingsDialog />
       <SearchPalette />
       <ShortcutsDialog />

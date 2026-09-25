@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Transport } from "./transport";
-import { ipc, listenOnce, onRunOutput, onRunExit } from "./tauri";
+import { ipc, listenOnce, onRunOutput, onRunExit, onAcpSetup } from "./tauri";
 import type { PtyExitEvent, PtyOutputEvent, ShellInfo, StorageStat } from "@/types";
 
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
@@ -31,6 +31,7 @@ export const tauriTransport: Transport = {
   },
   acpManagedEnsure: async () => invoke<import("@/types").AcpManagedStatus>("acp_managed_ensure"),
   acpManagedCancel: async () => invoke<void>("acp_managed_cancel"),
+  onAcpSetup: async (h) => onAcpSetup(h),
   writeTextFile: async (relativePath, content) =>
     invoke<string>("write_config_file", { relativePath, content }),
   readTextFile: async (relativePath) => {
