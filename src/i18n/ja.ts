@@ -2013,6 +2013,6 @@ export const ja: Dictionary = {
   "agents.managedRuntime.bunVersion": "Bun version: {version}",
   "agents.managedRuntime.adapterVersion": "Adapter version: {version}",
   "agents.managedRuntime.folder": "Folder: {folder}",
-  "agents.managedRuntime.notInstalled": "It will install automatically the first time Claude Code runs.",
+  "agents.managedRuntime.notInstalled": "Nodeがインストールされている場合は追加のインストールは不要です（アプリがnpxを使用します）。Nodeがない場合は、Claude Codeの初回実行時にデータフォルダー内に独自の環境（約360 MB）が構築されます（あらかじめ準備しておきたい場合は、横のボタンから今すぐインストールできます）。",
   "agents.managedRuntime.installNow": "Install now",
 };

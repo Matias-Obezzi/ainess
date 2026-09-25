@@ -2012,6 +2012,6 @@ export const zh: Dictionary = {
   "agents.managedRuntime.bunVersion": "Bun version: {version}",
   "agents.managedRuntime.adapterVersion": "Adapter version: {version}",
   "agents.managedRuntime.folder": "Folder: {folder}",
-  "agents.managedRuntime.notInstalled": "It will install automatically the first time Claude Code runs.",
+  "agents.managedRuntime.notInstalled": "如果已有 Node 则无需安装任何内容（应用会使用 npx）。如果未安装 Node，首次运行 Claude Code 时会在其数据文件夹中构建专属的 ~360 MB 运行环境（也可以使用旁边的按钮提前立即安装）。",
   "agents.managedRuntime.installNow": "Install now",
 };

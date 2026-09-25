@@ -2012,6 +2012,6 @@ export const pt: Dictionary = {
   "agents.managedRuntime.bunVersion": "Bun version: {version}",
   "agents.managedRuntime.adapterVersion": "Adapter version: {version}",
   "agents.managedRuntime.folder": "Folder: {folder}",
-  "agents.managedRuntime.notInstalled": "It will install automatically the first time Claude Code runs.",
+  "agents.managedRuntime.notInstalled": "Não é necessário instalar nada se você tiver o Node (o app usa o npx). Se o Node não estiver instalado, ele criará seu próprio ambiente de ~360 MB na pasta de dados na primeira vez que o Claude Code for executado (o botão ao lado instala agora mesmo se você quiser adiantar).",
   "agents.managedRuntime.installNow": "Install now",
 };
