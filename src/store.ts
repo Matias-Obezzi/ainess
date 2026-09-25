@@ -57,7 +57,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "appearance" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;

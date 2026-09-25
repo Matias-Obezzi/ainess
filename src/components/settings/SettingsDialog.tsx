@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
-import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
+import { AgentsSection, AgentsSectionActions } from "@/components/settings/AgentsSection";
+import { TeamsSection, TeamsSectionActions, TeamsSectionProvider } from "@/components/settings/TeamsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
 import { PresetsSection, PresetsSectionActions, PresetsSectionProvider } from "@/components/settings/PresetsSection";
 import { SkillsSection, SkillsSectionActions, SkillsSectionProvider } from "@/components/settings/SkillsSection";
@@ -47,13 +48,14 @@ interface SectionUI {
 export type SettingsSectionDef = SettingsSectionMeta & SectionUI;
 
 /**
- * Map from section id to its React pieces. TypeScript enforces all eleven ids are covered:
+ * Map from section id to its React pieces. TypeScript enforces every id is covered:
  * adding a section in sections.ts without wiring it here causes a compile error.
  */
 const SECTION_UI: Record<SettingsSection, SectionUI> = {
   general:     { component: GeneralSection },
   appearance:  { component: AppearanceSection },
-  agents:      { component: AgentsSection,    actions: AgentsSectionActions,   provider: AgentsSectionProvider },
+  agents:      { component: AgentsSection,    actions: AgentsSectionActions },
+  teams:       { component: TeamsSection,     actions: TeamsSectionActions,    provider: TeamsSectionProvider },
   profile:     { component: ProfileSection,   actions: ProfileSectionActions,  provider: ProfileSectionProvider },
   presets:     { component: PresetsSection,   actions: PresetsSectionActions,  provider: PresetsSectionProvider },
   skills:      { component: SkillsSection,    actions: SkillsSectionActions,   provider: SkillsSectionProvider },
