@@ -4,6 +4,8 @@ import { setTransport } from "@/lib/transport";
 import { createRunStream } from "@/lib/acp/stream";
 import { eventsFromSessionUpdate } from "@/lib/acp/events";
 import { runAcpPrompt } from "@/lib/acp/session";
+import { AcpAuthRequiredError } from "@/lib/acp/auth";
+import { useAppStore } from "@/store";
 import type { AnyMessage } from "@agentclientprotocol/sdk";
 import type { Transport } from "@/lib/transport";
 import type { ParsedEvent, RunExitEvent, RunOutputEvent } from "@/types";
@@ -33,7 +35,13 @@ rl.on("line", (line) => {
     if (MODE === "stderr") process.stderr.write('{"jsonrpc":"2.0","id":' + msg.id + ',"result":{"protocolVersion":0}}\n(node:1) Warning: chatter\n');
     // Only the agent that says it can load sessions is offered one.
     const agentCapabilities = MODE === "resume" ? { loadSession: true } : {};
-    return reply(msg.id, { protocolVersion: 1, agentCapabilities, authMethods: [] });
+    // The adapter announces the auth extension in initialize and then pushes the status: there is
+    // no request that asks for it, so this is the only moment it can be heard.
+    if (MODE.startsWith("auth")) agentCapabilities._meta = { authStatus: {} };
+    reply(msg.id, { protocolVersion: 1, agentCapabilities, authMethods: [] });
+    if (MODE === "auth-none") send({ jsonrpc: "2.0", method: "_auth/status_update", params: { authStatus: { kind: "none", label: "Not logged in" } } });
+    if (MODE === "auth-garbage") send({ jsonrpc: "2.0", method: "_auth/status_update", params: { authStatus: { kind: "sso", label: "Single sign-on" } } });
+    return;
   }
   if (msg.method === "session/load") {
     sid = msg.params.sessionId;
@@ -46,6 +54,8 @@ rl.on("line", (line) => {
   }
   if (msg.method === "session/new") {
     asked = msg.params;
+    // What a session that nobody is logged in for comes back with.
+    if (MODE.startsWith("auth")) return send({ jsonrpc: "2.0", id: msg.id, error: { code: -32000, message: "Authentication required" } });
     if (MODE === "split") {
       // One frame, two writes: the agent flushed half of it. The platform's line reader is what
       // puts it back together, so this side must never see two halves.
@@ -334,6 +344,25 @@ describe("runAcpPrompt", () => {
     await startAgent(runId);
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", resumeSessionId: "sess-old", onEvent: () => {} });
     expect(result).toMatchObject({ sessionId: "sess-1", resumed: false });
+  });
+
+  test("a session nobody is logged in for comes back as an error the caller can recognise", async () => {
+    const runId = "acp-auth";
+    await startAgent(runId, "auth-none");
+    await expect(runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: () => {} }))
+      .rejects.toBeInstanceOf(AcpAuthRequiredError);
+    // And what the adapter pushed on the way is what the app now knows about the identity.
+    expect(useAppStore.getState().claudeAuth.status).toEqual({ kind: "none", label: "Not logged in" });
+  });
+
+  test("a status this build does not understand is dropped, and leaves nothing known behind", async () => {
+    useAppStore.setState(state => ({ claudeAuth: { ...state.claudeAuth, status: null } }));
+    const runId = "acp-auth-garbage";
+    await startAgent(runId, "auth-garbage");
+    // Still auth_required: the error code says so on its own, with or without a status to read.
+    await expect(runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: () => {} }))
+      .rejects.toBeInstanceOf(AcpAuthRequiredError);
+    expect(useAppStore.getState().claudeAuth.status).toBeNull();
   });
 
   test("killing the run settles the turn instead of leaving it hanging", async () => {

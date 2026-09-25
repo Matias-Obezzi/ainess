@@ -738,6 +738,31 @@ export interface AcpManagedStatus {
 }
 
 /**
+ * Who Claude Code is logged in as, as the ACP adapter reports it.
+ *
+ * Mirrors the `authStatus` the adapter pushes over its `_auth/status_update` extension
+ * notification: push only, scoped to the connection, and only sent when the payload changed. There
+ * is no request that asks for it, so the app either has been told or has not.
+ *
+ * `kind: "none"` is an explicit "nobody is logged in". Having no status at all is a third state —
+ * "could not be determined" — and must not be read as either logged in or logged out.
+ *
+ * `label` and `detail` come in English from the adapter. They are data, not interface: they are
+ * shown as they arrive and never translated.
+ */
+export interface ClaudeAuthStatus {
+  kind: ClaudeAuthKind;
+  label: string;
+  detail?: string;
+  account?: { email?: string; organization?: string; plan?: string };
+  /** Whatever the agent wanted to add. Carried across untouched. */
+  vendor?: Record<string, unknown>;
+}
+
+/** The identities the adapter distinguishes. `none` means "not logged in". */
+export type ClaudeAuthKind = "account" | "api_key" | "gateway" | "external" | "none";
+
+/**
  * One TCP port something is listening on here (see `Transport.listeningPorts`).
  *
  * `project` and `descendant` are hints, never proof: a dev server an agent left behind is usually

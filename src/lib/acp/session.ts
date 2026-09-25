@@ -5,6 +5,8 @@
 // needs goes through the transport.
 import { createRunStream } from "@/lib/acp/stream";
 import { eventsFromSessionUpdate } from "@/lib/acp/events";
+import { AUTH_STATUS_METHOD, AcpAuthRequiredError, isAuthRequired, parseAuthStatus } from "@/lib/acp/auth";
+import { rememberClaudeAuthStatus } from "@/lib/claude-auth";
 import { log } from "@/lib/logger";
 import type { ParsedEvent } from "@/types";
 import type { ClientContext, McpServer, PermissionOption, SessionUpdate, StopReason } from "@agentclientprotocol/sdk";
@@ -106,7 +108,24 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
   // Set only on the resume path, where there is no `ActiveSession` routing updates for us.
   let loadedSessionId: string | null = null;
 
+  /**
+   * Set when the adapter has told us, during this very connection, that nobody is logged in.
+   *
+   * `_auth/status_update` is push only and scoped to the connection, so this is the one chance to
+   * hear it. A turn that then fails is a turn that failed for want of a session even when the error
+   * it came back with says something vaguer — the adapter does not always translate the engine's
+   * complaint into `auth_required`.
+   */
+  let loggedOut = false;
+
   const app = client({ name: "ainess" })
+    .onNotification(AUTH_STATUS_METHOD, (params: unknown) => params, ({ params }) => {
+      const status = parseAuthStatus(params);
+      if (!status) return;
+      loggedOut = status.kind === "none";
+      log.debug("acp", `run ${runId}: auth status is ${status.kind} (${status.label})`);
+      rememberClaudeAuthStatus(status);
+    })
     .onRequest("session/request_permission", ({ params }) => {
       const option = grantOption(params.options);
       log.debug("acp", `run ${runId}: granting ${params.toolCall.title ?? params.toolCall.toolCallId} as ${option?.optionId ?? "(no option offered)"}`);
@@ -190,6 +209,11 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
     // the timeline the same way a CLI failure does, and the caller still gets to see it thrown.
     const text = e instanceof Error ? e.message : String(e);
     onEvent({ type: "error", text });
+    // One failure the caller must be able to recognise without reading the message: the session
+    // could not be opened, or the prompt could not be sent, because Claude Code has no login. It
+    // arrives as the `auth_required` error (-32000) or, when the adapter only pushed the status,
+    // as whatever the engine said next. Everything else is thrown exactly as it came.
+    if (isAuthRequired(e) || loggedOut) throw new AcpAuthRequiredError(text, e);
     throw e;
   } finally {
     run.dispose();

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase, ClaudeAuthStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
@@ -245,6 +245,18 @@ export interface AppState {
    */
   acpSetup: { open: boolean; phase?: AcpSetupPhase; received?: number; total?: number; message?: string };
   setAcpSetup: (patch: Partial<AppState["acpSetup"]>) => void;
+
+  /**
+   * Whether Claude Code has a session, and the screen that opens one (see src/lib/claude-auth.ts).
+   *
+   * `status` is the last `_auth/status_update` the adapter pushed, kept so Settings can show who is
+   * logged in without paying for another probe. Null is "nobody has said", which is not the same as
+   * logged out — that one arrives as `kind: "none"`. The rest is the dialog: `open` while it is up,
+   * `hasEngine` false when there is no `claude` to log in with and the screen has to offer the
+   * managed runtime instead, `failed` after a login that came back without a session. Not persisted.
+   */
+  claudeAuth: { status: ClaudeAuthStatus | null; open: boolean; hasEngine: boolean; failed: boolean };
+  setClaudeAuth: (patch: Partial<AppState["claudeAuth"]>) => void;
 
   /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
   focusedTaskId: string | null;
@@ -1157,6 +1169,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   searchOpen: false,
   shortcutsOpen: false,
   acpSetup: { open: false },
+  claudeAuth: { status: null, open: false, hasEngine: true, failed: false },
   focusedTaskId: null,
   focusedMessageId: null,
   searchInitialGroup: null,
@@ -1370,6 +1383,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setAcpSetup: (patch) => {
     set((state) => ({ acpSetup: { ...state.acpSetup, ...patch } }));
+  },
+
+  setClaudeAuth: (patch) => {
+    set((state) => ({ claudeAuth: { ...state.claudeAuth, ...patch } }));
   },
 
   focusTask: (taskId) => {

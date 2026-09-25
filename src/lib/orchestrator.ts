@@ -25,6 +25,8 @@ import { emitHookEvent } from "@/lib/hooks";
 import { log } from "@/lib/logger";
 import { acpAdapterAvailability, forgetAcpAdapter } from "@/lib/acp/adapter";
 import { ensureAcpRuntime } from "@/lib/acp-setup";
+import { AcpAuthRequiredError } from "@/lib/acp/auth";
+import { ensureClaudeAuth } from "@/lib/claude-auth";
 import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
@@ -1114,6 +1116,7 @@ async function driveAcpRun(opts: {
   const { runId } = opts;
   const { runAcpPrompt } = await import("@/lib/acp/session");
   let failure: string | undefined;
+  let missingLogin = false;
   try {
     await runAcpPrompt({
       runId,
@@ -1130,26 +1133,63 @@ async function driveAcpRun(opts: {
       },
     });
   } catch (e) {
-    if (useAppStore.getState().runs[runId]?.status === "running") failure = errorText(e);
+    if (useAppStore.getState().runs[runId]?.status === "running") {
+      // A turn that never started because Claude Code has no session is not a crash, and it must
+      // not read as one: it ends with the one sentence that says what to do about it.
+      missingLogin = e instanceof AcpAuthRequiredError;
+      failure = missingLogin ? translateNow("run.claudeNotLoggedIn") : errorText(e);
+    }
   } finally {
     // A run that is already closed — the user stopped it, the spawn never got off the ground — has
     // had its exit and will get no other: leaving a verdict for it would only sit in the map.
     if (useAppStore.getState().runs[runId]?.status === "running") acpTurnEnded.set(runId, { failure });
-    // EOF is the polite end of an ACP session; the adapter exits on it and `handleExit` closes the
-    // run. One that does not is killed, because a run nobody can finish is worse than a rude end.
-    const transport = getTransport();
-    const closed = await transport.closeStdin(runId).catch(() => false);
-    if (!closed) {
-      await transport.killRun(runId).catch(() => {});
-      return;
-    }
-    setTimeout(() => {
-      if (useAppStore.getState().runs[runId]?.status === "running") {
-        log.warn("acp", `run ${runId} did not exit ${ACP_EXIT_GRACE_MS} ms after EOF; killing it`);
-        void transport.killRun(runId).catch(() => {});
-      }
-    }, ACP_EXIT_GRACE_MS);
+    await endAcpRun(runId);
   }
+
+  // Only once the turn is wound up. The gate can sit there for minutes while the user finishes a
+  // browser login, and the run it starts afterwards must not land on an agent this one still holds
+  // — the same lesson the install gate learned (see `ensureAcpRuntime` in `launchRun`).
+  if (missingLogin) await recoverFromMissingLogin(runId);
+}
+
+/**
+ * Closes the agent behind `runId`, politely if it lets us.
+ *
+ * EOF is the polite end of an ACP session; the adapter exits on it and `handleExit` closes the run.
+ * One that does not is killed, because a run nobody can finish is worse than a rude end.
+ */
+async function endAcpRun(runId: string): Promise<void> {
+  const transport = getTransport();
+  const closed = await transport.closeStdin(runId).catch(() => false);
+  if (!closed) {
+    await transport.killRun(runId).catch(() => {});
+    return;
+  }
+  setTimeout(() => {
+    if (useAppStore.getState().runs[runId]?.status === "running") {
+      log.warn("acp", `run ${runId} did not exit ${ACP_EXIT_GRACE_MS} ms after EOF; killing it`);
+      void transport.killRun(runId).catch(() => {});
+    }
+  }, ACP_EXIT_GRACE_MS);
+}
+
+/**
+ * Offers the login the run needed, and starts that run again if it is now there.
+ *
+ * Reactive on purpose: `claude auth status` costs seconds and almost every run starts fine, so
+ * nothing is checked beforehand — the screen only opens for a run that already hit the wall.
+ * Retrying goes through `retryRun`, the path the retry button uses, so the failed attempt keeps its
+ * detail and the card, the thread and the chat bubble behave exactly as they do there.
+ *
+ * When the user cancels there is nothing to do: the run is already finished with
+ * `run.claudeNotLoggedIn` as its output, which is what they were told on screen.
+ */
+async function recoverFromMissingLogin(runId: string): Promise<void> {
+  if (!(await ensureClaudeAuth())) return;
+  const run = useAppStore.getState().runs[runId];
+  if (!run) return;
+  log.info("acp", `run ${runId}: Claude Code is logged in now; starting it again`);
+  retryRun(runId, { agentId: run.agentId, ...(run.model ? { model: run.model } : {}) });
 }
 
 function handleExit(e: RunExitEvent) {
