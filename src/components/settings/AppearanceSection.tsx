@@ -28,6 +28,7 @@ export function AppearanceSection() {
   const t = useT();
   const theme = useAppStore(state => state.config.theme ?? DEFAULT_THEME);
   const mascotAlways = useAppStore(state => state.config.mascotAlways ?? false);
+  const screenAnimations = useAppStore(state => state.config.screenAnimations ?? true);
   const updateConfig = useAppStore(state => state.updateConfig);
   const [pasted, setPasted] = useState("");
 
@@ -116,6 +117,21 @@ export function AppearanceSection() {
           <div className="flex flex-col">
             <label className="text-sm font-semibold">{t("settings.option.appearance.mascotAlways")}</label>
             <span className="text-sm text-muted-foreground">{t("appearance.mascotAlwaysHint")}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center gap-2">
+          {/* On unless it was turned off: the app animates as shipped, and a config written before
+              this setting existed says nothing about it. */}
+          <Switch
+            checked={screenAnimations}
+            onCheckedChange={checked => updateConfig({ screenAnimations: checked })}
+          />
+          <div className="flex flex-col">
+            <label className="text-sm font-semibold">{t("settings.option.appearance.screenAnimations")}</label>
+            <span className="text-sm text-muted-foreground">{t("appearance.screenAnimationsHint")}</span>
           </div>
         </CardContent>
       </Card>

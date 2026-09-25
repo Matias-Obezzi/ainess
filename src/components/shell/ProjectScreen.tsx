@@ -10,6 +10,7 @@ import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
 import { Composer } from "./Composer";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT } from "@/i18n/useT";
 import { MessagesSquare, TerminalSquare, FileDiff, X } from "lucide-react";
 import { ProjectPaneProvider } from "./project-pane";
@@ -35,6 +36,10 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
   const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
   const toggleTermPanel = useAppStore(state => state.toggleTermPanel);
   const project = useAppStore(state => selectProject(state, paneId));
+  // The board and the hierarchy fade up when this pane switches project or mode. The two threads
+  // are not wrapped here: each of them animates a column inside its own scroller, which is the
+  // only place the transform can go without costing the thread its scroll anchoring.
+  const screenIn = useScreenIn([paneId, projectMode]);
 
   if (!project) {
     return (
@@ -146,9 +151,9 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
           <div className="flex-1 min-h-0">
             <ErrorBoundary where={`thread:${projectMode}`} resetKey={`${project.id}:${currentChatId ?? ""}`}>
               {projectMode === "tasks"
-                ? <TasksView projectId={project.id} />
+                ? <div ref={screenIn} className="h-full min-h-0"><TasksView projectId={project.id} /></div>
                 : projectMode === "graph"
-                  ? <HierarchyGraph />
+                  ? <div ref={screenIn} className="h-full min-h-0"><HierarchyGraph /></div>
                   : currentChatId
                     ? <ChatThread chatId={currentChatId} />
                     : <OrchestratorThread />}

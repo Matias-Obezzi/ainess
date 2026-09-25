@@ -249,6 +249,16 @@
   to { transform: translateY(-100%); opacity: 0; }
 }
 
+/* What a screen does when it arrives (hooks/use-screen-in.ts): the body fades up from a few pixels
+   below. Short and small on purpose — 8px, not a swipe: this fires on every navigation, and a
+   journey long enough to notice the first time is one that gets in the way the hundredth. Same
+   curve as `step-in` so it reads as the same app moving, and no `fill-mode`, so nothing is left
+   holding a transform once it is over (a transform that stays is a containing block that stays). */
+@keyframes screen-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 @keyframes flash-highlight {
   0% { background-color: color-mix(in oklab, var(--primary) 28%, transparent); }
   50% { background-color: color-mix(in oklab, var(--primary) 28%, transparent); }
@@ -350,6 +360,7 @@
   .animate-mascot-peek { animation: mascot-peek 3.4s ease-in-out infinite; }
   .animate-step-in { animation: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-step-out { animation: step-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-screen-in { animation: screen-in 200ms cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-flash-highlight { animation: flash-highlight 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   /* Someone who asked for less movement gets none. The step still changes; it just changes
      without sliding, and the one on its way out is gone rather than fading. */
@@ -357,6 +368,7 @@
     .animate-breathe { animation: none; }
     .animate-step-in { animation: none; }
     .animate-step-out { animation: none; opacity: 0; }
+    .animate-screen-in { animation: none; }
     .animate-flash-highlight { animation: none; }
     .animate-mascot-float { animation: none; }
     .animate-mascot-blink { animation: none; }

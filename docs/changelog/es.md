@@ -69,6 +69,14 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   0 para ninguno— contando todos los proyectos juntos, porque lo que se protege es la máquina. Lo
   que pasa del tope espera su turno y arranca solo en cuanto se libera un lugar, así que nada se
   pierde ni se pide dos veces. (#36)
+- **Las pantallas aparecen con un fundido corto.** Al abrir la app, al ir del inicio a un proyecto,
+  al cambiar de chat, al cambiar de sección en Ajustes: el cuerpo de lo que llega sube ocho píxeles
+  en un quinto de segundo. Sólo el cuerpo — la barra de título, la barra lateral, el compositor y el
+  panel de la derecha se quedan donde están, porque no se fueron a ningún lado. Se repite cuando
+  volvés a la ventana desde la bandeja, desde un minimizado o al abrir la app una segunda vez;
+  volver del navegador con alt-tab no cuenta como volver, y ahí no se mueve nada. Apariencia →
+  «Animaciones de pantalla» lo apaga, y un sistema configurado para reducir el movimiento lo apaga
+  solo, en toda la app.
 
 ### Cambiado
 

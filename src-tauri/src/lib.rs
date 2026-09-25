@@ -31,6 +31,7 @@ pub fn run() {
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
+                tray::announce_return(app);
             }
             logging::append(app, "info", "app", "another instance tried to open: the one already running was focused");
         }))

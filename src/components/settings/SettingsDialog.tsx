@@ -22,6 +22,7 @@ import { BoardsSection } from "@/components/settings/BoardsSection";
 import { MessagingSection } from "@/components/settings/MessagingSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT } from "@/i18n/useT";
 import {
   SETTINGS_SECTIONS_META,
@@ -126,6 +127,8 @@ export function SettingsDialog() {
   };
 
   const active = SETTINGS_SECTIONS.find(s => s.id === settingsSection) ?? SETTINGS_SECTIONS[0];
+  // Changing section is navigating: the body fades up, the sidebar and the header above it do not.
+  const screenIn = useScreenIn([active.id]);
   const Provider = active.provider ?? PassThrough;
   const Actions = active.actions;
   const Body = active.component;
@@ -236,8 +239,12 @@ export function SettingsDialog() {
                   </Button>
                 </div>
               </div>
+              {/* The wrapper animates, not the pane that scrolls: a section long enough to scroll
+                  must not be the thing carrying a transform. */}
               <div className="flex-1 overflow-y-auto p-6">
-                <Body />
+                <div ref={screenIn}>
+                  <Body />
+                </div>
               </div>
             </div>
           </Provider>

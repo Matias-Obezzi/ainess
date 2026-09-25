@@ -27,6 +27,7 @@ import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { interruptedOutput } from "@/lib/history";
@@ -81,6 +82,10 @@ export function OrchestratorThread() {
   // Same as in a chat: what is being typed below wins over a planner with nothing to show.
   const composerTyping = useAppStore(state => state.composerTyping);
   const mood = withTyping(plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined, composerTyping);
+  // The body fades up when the thread arrives: another project, and the history finishing loading
+  // under a pair of skeletons. Nothing here is keyed on it — the element stays, so the scroll
+  // position and every open bubble stay with it.
+  const screenIn = useScreenIn([currentProjectId, historyLoading]);
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const editQueuedInstruction = useAppStore(state => state.editQueuedInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
@@ -256,21 +261,27 @@ export function OrchestratorThread() {
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 select-text">
+        {/* `screenIn` goes on whichever of the three is showing — never on the scroller above them.
+            A transform on the element that scrolls makes it the containing block for everything
+            inside, and the thread loses its sticky headers and its scroll anchoring while it
+            plays. Only one branch exists at a time, so one ref is enough for all three. */}
         {historyLoading ? (
-          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+          <div ref={screenIn} className="flex flex-col gap-4 max-w-3xl mx-auto">
             <RunBubbleSkeleton />
             <RunBubbleSkeleton />
           </div>
         ) : rootRuns.length === 0 && queued.length === 0 ? (
-          <EmptyState
-            icon={MessagesSquare}
-            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
-            title={t("thread.empty.title")}
-            description={t("thread.empty.body")}
-            className="h-full"
-          />
+          <div ref={screenIn} className="h-full">
+            <EmptyState
+              icon={MessagesSquare}
+              visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
+              title={t("thread.empty.title")}
+              description={t("thread.empty.body")}
+              className="h-full"
+            />
+          </div>
         ) : (
-          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+          <div ref={screenIn} className="flex flex-col gap-4 max-w-3xl mx-auto">
             {hiddenRuns > 0 && (
               <div className="flex justify-center pb-2">
                 <Button variant="ghost" size="sm" className="text-xs" onClick={handleShowOlder}>

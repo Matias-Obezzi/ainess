@@ -26,6 +26,7 @@ import { EditContextMenu } from "@/components/EditContextMenu";
 import { ChangelogDialog, useChangelogOnUpdate } from "@/components/settings/ChangelogDialog";
 import { AcpSetupDialog } from "@/components/AcpSetupDialog";
 import { ClaudeAuthDialog } from "@/components/ClaudeAuthDialog";
+import { watchAppReturn } from "@/lib/app-return";
 import { getTransport } from "@/lib/transport";
 import { ensureNgrokUpToDate } from "@/lib/ngrok-account";
 import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
@@ -38,6 +39,14 @@ export default function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // Coming back to the window — out of the tray, out of a minimize, out of a second launch — is
+  // what makes the body play its arrival again (see `lib/app-return.ts`). Nothing to undo: the
+  // listener is registered once for the life of the process, and there is none at all outside the
+  // desktop app.
+  useEffect(() => {
+    void watchAppReturn();
+  }, []);
 
   // ngrok refuses to connect when the agent is older than the minimum its account asks for, and
   // winget's package lags behind, so the app keeps it current on its own as soon as it finds it.

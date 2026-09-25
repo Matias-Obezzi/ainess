@@ -68,6 +68,14 @@ let one of them fall behind.
   four by default, 0 for no ceiling — counting every project together, because what is being
   protected is the machine. Whatever goes over it waits its turn and starts on its own as soon as
   a slot frees, so nothing is dropped and nothing is asked for twice. (#36)
+- **Screens fade up when they arrive.** Opening the app, going between the home and a project,
+  switching to another chat, changing section in Settings: the body of what arrives comes up from
+  eight pixels below over a fifth of a second. Only the body — the title bar, the sidebar, the
+  composer and the dock on the right stay exactly where they are, because they never left. It plays
+  again when you come back to the window from the tray, from a minimize, or from launching the app a
+  second time; alt-tabbing back from a browser does not count as coming back, and nothing moves.
+  Appearance → "Screen animations" turns it off, and a system set to reduce motion turns it off on
+  its own, everywhere in the app.
 
 ### Changed
 

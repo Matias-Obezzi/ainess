@@ -486,6 +486,11 @@ export interface AppConfig {
    * been: the empty thread and nowhere else.
    */
   mascotAlways?: boolean;
+  /**
+   * Fade the body of a screen up when it arrives (see `lib/screen-in.ts`). Missing is on, which is
+   * how the app ships; `prefers-reduced-motion: reduce` turns it off whatever this says.
+   */
+  screenAnimations?: boolean;
   /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
   rememberedModels?: Partial<Record<ProviderId, string[]>>;
 }

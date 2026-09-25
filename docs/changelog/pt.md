@@ -66,6 +66,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   padrão, 0 para nenhum — contando todos os projetos juntos, porque o que se protege é a máquina.
   O que passa do limite espera a vez e começa sozinho assim que uma vaga abre, então nada se perde
   nem é pedido duas vezes. (#36)
+- **As telas aparecem com um fade curto.** Ao abrir o app, ao ir do início para um projeto, ao trocar
+  de conversa, ao mudar de seção nas Configurações: o corpo do que chega sobe oito pixels em um
+  quinto de segundo. Só o corpo — a barra de título, a barra lateral, o campo de escrita e o painel
+  da direita ficam onde estão, porque não foram a lugar nenhum. Ele toca de novo quando você volta
+  para a janela pela bandeja, por um minimizado, ou abrindo o app uma segunda vez; voltar do
+  navegador com alt-tab não conta como voltar, e aí nada se mexe. Aparência → "Animações de tela"
+  desliga isso, e um sistema configurado para reduzir movimento desliga sozinho, no app inteiro.
 
 ### Alterado
 

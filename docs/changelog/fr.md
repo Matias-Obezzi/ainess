@@ -71,6 +71,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   parallèle » fixe désormais ce plafond — quatre par défaut, 0 pour aucun — tous projets confondus,
   parce que ce qui est protégé, c’est la machine. Ce qui dépasse attend son tour et démarre tout
   seul dès qu’une place se libère : rien n’est perdu ni demandé deux fois. (#36)
+- **Les écrans apparaissent en fondu.** À l'ouverture de l'application, en passant de l'accueil à un
+  projet, en changeant de fil, en changeant de section dans les Réglages : le corps de ce qui arrive
+  monte de huit pixels en un cinquième de seconde. Le corps seulement — la barre de titre, la barre
+  latérale, la zone de saisie et le panneau de droite restent où ils sont, puisqu'ils n'ont jamais
+  disparu. Cela rejoue quand vous revenez à la fenêtre depuis la zone de notification, depuis une
+  réduction, ou en lançant l'application une seconde fois ; revenir du navigateur avec alt-tab ne
+  compte pas, et rien ne bouge alors. Apparence → « Animations d'écran » le désactive, et un système
+  réglé sur moins de mouvement le désactive de lui-même, partout dans l'application.
 
 ### Modifié
 

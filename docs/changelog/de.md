@@ -71,6 +71,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   alle Projekte zusammen, denn geschützt wird die Maschine. Was darüber liegt, wartet und startet
   von selbst, sobald ein Platz frei wird, es geht also nichts verloren und nichts wird zweimal
   angefragt. (#36)
+- **Bildschirme werden beim Erscheinen kurz eingeblendet.** Beim Öffnen der App, beim Wechsel von
+  der Startseite zu einem Projekt, beim Wechsel des Chats, beim Wechsel des Bereichs in den
+  Einstellungen: der Inhalt kommt in einer Fünftelsekunde acht Pixel von unten herauf. Nur der
+  Inhalt — Titelleiste, Seitenleiste, Eingabefeld und das rechte Panel bleiben, wo sie sind, denn
+  sie waren nie weg. Es läuft erneut, wenn Sie aus dem Tray, aus einem minimierten Fenster oder
+  durch einen zweiten Start zurück zum Fenster kommen; mit Alt-Tab aus dem Browser zurückzukommen
+  zählt nicht, und dann bewegt sich nichts. Darstellung → „Bildschirmanimationen" schaltet es ab,
+  und ein System, das weniger Bewegung verlangt, schaltet es überall von selbst ab.
 
 ### Geändert
 

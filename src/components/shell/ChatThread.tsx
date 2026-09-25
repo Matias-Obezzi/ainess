@@ -20,6 +20,7 @@ import { formatClock } from "@/lib/format";
 import { confirm } from "@/lib/confirm";
 import { isNearBottom } from "@/lib/feed-window";
 import { plural } from "@/i18n";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
@@ -41,6 +42,10 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const agents = useAppStore(selectAllAgents);
   const chatMessages = useAppStore(state => state.chatMessages);
   const chatLoading = useAppStore(state => state.chatLoading[chatId]);
+  // The body fades up when another chat is opened, and again when its history lands under the
+  // skeletons. On the column inside the scroller, never on the scroller: a transform there is a
+  // containing block, and the thread would lose its scroll anchoring for as long as it plays.
+  const screenIn = useScreenIn([chatId, chatLoading]);
   const loadChatMessages = useAppStore(state => state.loadChatMessages);
   const removeChat = useAppStore(state => state.removeChat);
   const openProject = useAppStore(state => state.openProject);
@@ -233,7 +238,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 select-text" ref={scrollRef} onScroll={onScroll}>
-        <div className="flex flex-col gap-3 max-w-3xl mx-auto">
+        <div ref={screenIn} className="flex flex-col gap-3 max-w-3xl mx-auto">
           {/* Skeletons only over an empty thread. A reload that happens while the history is
               already on screen used to replace it with three grey blocks, which reads as the
               conversation having been lost. */}
