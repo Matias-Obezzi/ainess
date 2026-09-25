@@ -76,6 +76,30 @@ let one of them fall behind.
   second time; alt-tabbing back from a browser does not count as coming back, and nothing moves.
   Appearance → "Screen animations" turns it off, and a system set to reduce motion turns it off on
   its own, everywhere in the app.
+- **Claude Code can log in without leaving the app.** A run against the `claude` provider on a
+  machine where Claude Code had never signed in died with the same generic error as any other
+  failure, and there was no way to open a session short of quitting the app. The ACP client now
+  tells that failure apart — from the adapter's `_auth/status_update` notification and from the
+  `auth_required` error it answers a request with — and opens a screen for it. Login runs in an
+  integrated terminal, and once a session is there the run that had failed launches itself again,
+  no need to retype anything. A machine with no engine at all is offered the managed runtime
+  first, since that is what brings one. Cancelling still leaves the run finished, saying what is
+  missing.
+- **Settings → Agents shows who Claude Code is logged in as.** The Claude card now reads the
+  account — email, organization, plan — with a button to check it again and one to log out.
+  Logging out warns that the credentials live in `~/.claude` and that doing it affects any other
+  Claude Code on the machine, not just this app.
+- **Teams have their own settings screen.** Settings → Agents used to stack two unrelated things —
+  the CLIs installed on this machine and the saved teams — so reaching a team meant scrolling past
+  every provider card. Teams are a section of their own now, right below Agents. Both screens also
+  dropped the heading and description that used to sit above their content, since the sidebar
+  already names the screen, and what is visible now says "team" instead of "formation", in all
+  seven languages.
+- **The mascot watches what you are typing.** A sixth mood, on top of the five that already came
+  from the agent: while you type into the composer, it raises a pair of binoculars and looks down
+  at the box. It beats being asleep and waiting for you — what you are typing is the very thing a
+  waiting agent stopped for — and it never covers what the agent is actually doing: working,
+  broken or out of tokens still win.
 
 ### Changed
 
@@ -135,6 +159,11 @@ let one of them fall behind.
   on the same thread that draws the app. It is now serialized once per send, and with nobody
   connected nothing is built: whatever happened in the meantime goes out the moment a phone
   connects, so what you open on the phone is still up to date. (#36)
+- **Two small fixes.** The phone icon in the title bar now opens Settings → Remote instead of
+  switching the server on directly — one click used to start a server on the local network with
+  no chance to see the port, the token or the QR code first; the icon still shows whether the
+  server is running. And the ring that marks the current project in the collapsed sidebar now
+  hugs its circle like the circle's own border, instead of floating a few pixels clear of it.
 
 ## 0.23.0 — 2026-09-20
 

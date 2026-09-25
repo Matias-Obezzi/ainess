@@ -79,6 +79,32 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   durch einen zweiten Start zurück zum Fenster kommen; mit Alt-Tab aus dem Browser zurückzukommen
   zählt nicht, und dann bewegt sich nichts. Darstellung → „Bildschirmanimationen" schaltet es ab,
   und ein System, das weniger Bewegung verlangt, schaltet es überall von selbst ab.
+- **Claude Code kann sich anmelden, ohne dass man die App verlässt.** Ein Lauf gegen den Anbieter
+  `claude` auf einer Maschine, auf der sich Claude Code noch nie angemeldet hatte, endete mit
+  demselben allgemeinen Fehler wie jeder andere Ausfall, und es gab keine Möglichkeit, eine
+  Sitzung zu öffnen, ohne die App zu verlassen. Der ACP-Client unterscheidet diesen Ausfall jetzt —
+  anhand der `_auth/status_update`-Benachrichtigung, die der Adapter sendet, und anhand des Fehlers
+  `auth_required`, mit dem er auf eine Anfrage antwortet — und öffnet dafür einen Bildschirm. Die
+  Anmeldung läuft in einem eingebauten Terminal, und sobald eine Sitzung besteht, startet der
+  fehlgeschlagene Lauf sich selbst neu, ohne dass irgendetwas erneut eingetippt werden muss. Einer
+  Maschine ganz ohne Engine wird zuerst die verwaltete Laufzeitumgebung angeboten, denn die bringt
+  eine mit. Abbrechen lässt den Lauf trotzdem beendet zurück, mit einer Angabe, was fehlt.
+- **Einstellungen → Agenten zeigt, mit welchem Konto Claude Code angemeldet ist.** Die Claude-Karte
+  zeigt jetzt das Konto — E-Mail, Organisation, Tarif — mit einem Knopf zum erneuten Prüfen und
+  einem zum Abmelden. Das Abmelden weist darauf hin, dass die Zugangsdaten in `~/.claude` liegen
+  und dass es jedes andere Claude Code auf der Maschine betrifft, nicht nur diese App.
+- **Teams bekommen einen eigenen Einstellungsbereich.** Einstellungen → Agenten stapelte zwei
+  Dinge, die nichts miteinander zu tun haben — die auf dieser Maschine installierten CLIs und die
+  gespeicherten Teams —, sodass man an jeder Anbieter-Karte vorbeischeiten musste, um ein Team zu
+  erreichen. Teams sind jetzt ein eigener Abschnitt, direkt unter Agenten. Beide Bildschirme haben
+  außerdem die Überschrift und Beschreibung verloren, die über ihrem Inhalt standen, da die
+  Seitenleiste den Bildschirm bereits benennt, und der sichtbare Text sagt jetzt „Team“ statt
+  „Aufstellung“, in allen sieben Sprachen.
+- **Das Maskottchen schaut zu, was Sie tippen.** Eine sechste Stimmung, zusätzlich zu den fünf, die
+  schon vom Agenten kamen: während Sie im Composer tippen, hebt es ein Fernglas und schaut hinunter
+  zum Eingabefeld. Sie schlägt Schlafen und Warten — was Sie gerade tippen, ist genau das, worauf
+  ein wartender Agent angehalten hat zu warten — und sie verdeckt nie, was der Agent wirklich tut:
+  Arbeiten, Kaputt oder Kontingent leer gewinnen weiterhin.
 
 ### Geändert
 
@@ -146,6 +172,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   er pro Sendung einmal serialisiert, und ohne Verbundene wird gar nichts gebaut: was in der
   Zwischenzeit passiert ist, geht in dem Moment raus, in dem sich ein Handy verbindet — was du am
   Handy öffnest, ist also weiter aktuell. (#36)
+- **Zwei kleine Korrekturen.** Das Telefon-Symbol in der Titelleiste öffnet jetzt Einstellungen →
+  Remote, statt den Server direkt einzuschalten — ein Klick startete zuvor einen Server im lokalen
+  Netzwerk, ohne je den Port, das Token oder den QR-Code zu zeigen; das Symbol zeigt weiterhin an,
+  ob der Server läuft. Und der Ring, der das aktuelle Projekt in der eingeklappten Seitenleiste
+  markiert, liegt jetzt eng an seinem Kreis an, wie der Rand des Kreises selbst, statt ein paar
+  Pixel entfernt zu schweben.
 
 ## 0.23.0 — 2026-09-20
 

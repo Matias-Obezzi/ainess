@@ -77,6 +77,30 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   volver del navegador con alt-tab no cuenta como volver, y ahí no se mueve nada. Apariencia →
   «Animaciones de pantalla» lo apaga, y un sistema configurado para reducir el movimiento lo apaga
   solo, en toda la app.
+- **Claude Code se puede loguear sin salir de la app.** Un run contra el proveedor `claude` en una
+  máquina donde Claude Code nunca había iniciado sesión moría con el mismo error genérico que
+  cualquier otra falla, y no había forma de abrir una sesión sin salir de la app. Ahora el cliente
+  ACP distingue esa falla — por la notificación `_auth/status_update` que manda el adaptador y por
+  el error `auth_required` con el que contesta un pedido — y abre una pantalla para eso. El login
+  corre en una terminal integrada y, en cuanto hay una sesión, el run que había fallado se vuelve a
+  lanzar solo, sin que haya que reescribir nada. A una máquina sin ningún motor se le ofrece
+  primero el entorno gestionado, porque es lo que trae uno. Cancelar deja igual el run terminado,
+  diciendo qué falta.
+- **Ajustes → Agentes muestra con qué cuenta está logueado Claude Code.** La tarjeta de Claude
+  ahora lee la cuenta — email, organización, plan — con un botón para volver a comprobarlo y otro
+  para cerrar sesión. Cerrar sesión avisa que las credenciales viven en `~/.claude` y que hacerlo
+  afecta a cualquier otro Claude Code de la máquina, no solo a esta app.
+- **Los equipos tienen su propia pantalla en Ajustes.** Ajustes → Agentes apilaba dos cosas sin
+  relación — las CLIs instaladas en esta máquina y los equipos guardados — así que llegar a un
+  equipo significaba scrollear más allá de cada tarjeta de proveedor. Los equipos son una sección
+  propia ahora, justo debajo de Agentes. Las dos pantallas además perdieron el encabezado y la
+  descripción que tenían arriba de su contenido, porque la barra lateral ya nombra la pantalla, y
+  el texto visible ahora dice «equipo» en vez de «formación», en los siete idiomas.
+- **La mascota mira lo que estás escribiendo.** Un sexto estado, sumado a los cinco que ya venían
+  del agente: mientras escribís en el compositor, levanta unos binoculares y mira hacia el cuadro.
+  Gana a estar dormida y a estar esperándote — lo que estás escribiendo es justo lo que un agente
+  que espera se quedó esperando — y nunca tapa lo que el agente esté haciendo de verdad: trabajando,
+  roto o sin tokens siguen ganando.
 
 ### Cambiado
 
@@ -140,6 +164,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   sola vez por envío, y sin nadie conectado no se arma nada: lo que pasó mientras tanto sale en el
   momento en que un celular se conecta, así que lo que abrís en el celular sigue estando al día.
   (#36)
+- **Dos arreglos chicos.** El ícono del teléfono en la barra de título ahora abre Ajustes → Remoto
+  en vez de prender el servidor directamente — antes un click arrancaba un servidor en la red
+  local sin dar chance de ver el puerto, el token ni el QR; el ícono sigue mostrando si el servidor
+  está corriendo. Y el aro que marca el proyecto actual en la barra lateral colapsada ahora está
+  pegado a su círculo, como el borde del círculo mismo, en vez de flotar separado unos píxeles.
 
 ## 0.23.0 — 2026-09-20
 

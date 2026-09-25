@@ -79,6 +79,32 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   réduction, ou en lançant l'application une seconde fois ; revenir du navigateur avec alt-tab ne
   compte pas, et rien ne bouge alors. Apparence → « Animations d'écran » le désactive, et un système
   réglé sur moins de mouvement le désactive de lui-même, partout dans l'application.
+- **Claude Code peut se connecter sans quitter l'application.** Une exécution contre le fournisseur
+  `claude` sur une machine où Claude Code ne s'était jamais connecté mourait avec la même erreur
+  générique que n'importe quel autre échec, sans aucun moyen d'ouvrir une session sans quitter
+  l'application. Le client ACP distingue maintenant cet échec — via la notification
+  `_auth/status_update` que pousse l'adaptateur, et via l'erreur `auth_required` qu'il renvoie en
+  réponse à une requête — et ouvre un écran pour ça. La connexion se fait dans un terminal intégré,
+  et dès qu'une session existe, l'exécution qui avait échoué se relance d'elle-même, sans rien
+  retaper. Une machine sans aucun moteur se voit d'abord proposer le runtime géré, puisque c'est
+  lui qui en apporte un. Annuler laisse quand même l'exécution terminée, en disant ce qui manque.
+- **Réglages → Agents affiche le compte avec lequel Claude Code est connecté.** La carte Claude
+  affiche maintenant le compte — e-mail, organisation, forfait — avec un bouton pour revérifier et
+  un autre pour se déconnecter. Se déconnecter prévient que les identifiants vivent dans
+  `~/.claude` et que l'opération affecte tout autre Claude Code sur la machine, pas seulement
+  cette application.
+- **Les équipes ont leur propre écran de réglages.** Réglages → Agents empilait deux choses sans
+  rapport — les CLI installés sur cette machine et les équipes enregistrées — si bien qu'atteindre
+  une équipe voulait dire défiler au-delà de chaque carte de fournisseur. Les équipes sont
+  maintenant une section à part, juste en dessous d'Agents. Les deux écrans ont aussi perdu le
+  titre et la description qui surmontaient leur contenu, puisque la barre latérale nomme déjà
+  l'écran, et le texte visible dit désormais « équipe » au lieu de « formation », dans les sept
+  langues.
+- **La mascotte observe ce que vous tapez.** Une sixième humeur, en plus des cinq qui venaient déjà
+  de l'agent : pendant que vous tapez dans le compositeur, elle lève des jumelles et regarde vers
+  le champ de saisie. Elle l'emporte sur le sommeil et sur l'attente — ce que vous tapez est
+  justement ce pour quoi un agent en attente s'est arrêté — et elle ne masque jamais ce que l'agent
+  fait vraiment : au travail, en panne ou à court de jetons l'emportent toujours.
 
 ### Modifié
 
@@ -146,6 +172,12 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   Il n’est plus sérialisé qu’une fois par envoi, et sans personne de connecté rien n’est
   construit : ce qui s’est passé entre-temps part à l’instant où un téléphone se connecte, donc
   ce que vous ouvrez sur le téléphone est toujours à jour. (#36)
+- **Deux petites corrections.** L'icône du téléphone dans la barre de titre ouvre maintenant
+  Réglages → Distant au lieu d'allumer le serveur directement — un clic lançait auparavant un
+  serveur sur le réseau local sans jamais montrer le port, le jeton ou le QR code ; l'icône
+  continue d'indiquer si le serveur tourne. Et l'anneau qui marque le projet actif dans la barre
+  latérale repliée épouse maintenant son cercle, comme le bord du cercle lui-même, au lieu de
+  flotter à quelques pixels de distance.
 
 ## 0.23.0 — 2026-09-20
 
