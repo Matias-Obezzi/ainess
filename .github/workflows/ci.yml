@@ -7,10 +7,13 @@ on:
   push:
     branches: [dev]
 
-# A push to `dev` with its pull request open fires this twice, once per event. Same branch, same
-# group: the newer run cancels the older one and only one of the two survives.
+# A push to `dev` with its pull request open fires this twice, once per event. The group has to
+# land on the same value from both, and only `head_ref` on a pull request and `ref_name` on a push
+# spell the branch the same way — `github.ref` says `refs/heads/dev` on the push and would leave
+# the two runs in separate groups, checking the branch twice. Same value, so the newer run cancels
+# the older one and only one of the two survives.
 concurrency:
-  group: ci-${{ github.head_ref || github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
