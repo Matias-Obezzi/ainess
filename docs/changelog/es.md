@@ -122,6 +122,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Arreglado
 
+- **Un run que espera un lugar libre ahora lo recibe en el orden en que se pidió.** Con el techo de
+  cuántos runs van a la vez ya lleno, los demás esperan — y varias delegaciones aprobadas juntas se
+  encolan dentro del mismo milisegundo, así que a la app no le quedaba nada para distinguirlas salvo
+  sus identificadores internos. Esos son aleatorios, así que cuál de los que esperaban se quedaba
+  con el lugar liberado se decidía comparando dos cadenas al azar: algo podía quedarse esperando
+  mientras se adelantaba otra cosa pedida después. Ahora se anota el orden en que llegó el trabajo y
+  se respeta, igual que ya hacía la cola detrás de un agente ocupado.
 - **Cambiar el motor del orquestador ya no le deja el nombre viejo.** Un agente que se llamaba
   como su motor por defecto («Claude Code») conservaba ese nombre al cambiarle el proveedor, así
   que el chat mostraba el nombre de un motor sobre el ícono de otro y el prompt del sistema lo

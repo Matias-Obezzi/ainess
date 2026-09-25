@@ -127,6 +127,15 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Behoben
 
+- **Ein Lauf, der auf einen freien Platz wartet, erhält ihn nun in der Reihenfolge seiner
+  Anforderung.** Ist die Obergrenze für gleichzeitige Läufe erreicht, warten die übrigen — und
+  mehrere gemeinsam genehmigte Delegationen landen innerhalb derselben Millisekunde in der
+  Warteschlange, sodass der App nichts blieb, um sie auseinanderzuhalten, außer ihren internen
+  Bezeichnern. Die sind zufällig, also entschied ein Vergleich zweier zufälliger Zeichenketten,
+  welcher der wartenden Läufe den frei gewordenen Platz bekam: Arbeit konnte warten, während etwas
+  später Angefordertes vorgezogen wurde. Die Reihenfolge, in der die Arbeit eintraf, wird jetzt
+  festgehalten und eingehalten — genau wie es die Warteschlange hinter einem beschäftigten Agenten
+  schon tat.
 - **Ein Wechsel der Engine des Orchestrators lässt ihm nicht mehr den alten Namen.** Ein Agent
   mit dem Standardnamen seiner Engine („Claude Code“) behielt diesen Namen beim Wechsel des
   Anbieters, sodass der Chat den Namen einer Engine über dem Symbol einer anderen zeigte und der

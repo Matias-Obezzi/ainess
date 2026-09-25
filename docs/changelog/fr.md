@@ -127,6 +127,14 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Corrigé
 
+- **Une exécution qui attend une place libre l'obtient désormais dans l'ordre où elle a été
+  demandée.** Le plafond du nombre d'exécutions simultanées étant atteint, les autres attendent — et
+  plusieurs délégations approuvées ensemble entrent dans la file au cours de la même milliseconde :
+  il ne restait donc à l'application que leurs identifiants internes pour les distinguer. Ceux-ci
+  sont aléatoires, si bien que la place libérée revenait à celle qui gagnait une comparaison entre
+  deux chaînes tirées au hasard : du travail pouvait attendre pendant qu'une demande postérieure
+  passait devant lui. L'ordre d'arrivée du travail est maintenant noté et respecté, comme le faisait
+  déjà la file d'attente derrière un agent occupé.
 - **Changer le moteur de l'orchestrateur ne lui laisse plus l'ancien nom.** Un agent portant le
   nom par défaut de son moteur (« Claude Code ») gardait ce nom quand on changeait son
   fournisseur : la conversation affichait le nom d'un moteur sur l'icône d'un autre et l'invite

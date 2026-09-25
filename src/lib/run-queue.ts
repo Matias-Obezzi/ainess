@@ -68,9 +68,24 @@ export function slotAvailable(runs: Record<string, Run>, maxConcurrentRuns: numb
   return runningRunCount(runs) < maxConcurrentRuns;
 }
 
-/** Everything queued anywhere, oldest first: the order a freed slot is handed out in. */
-export function queuedRunsEverywhere(runs: Record<string, Run>): Run[] {
+/**
+ * Everything queued anywhere, in the order the work arrived: the order a freed slot is handed out in.
+ *
+ * Arrival order is passed in rather than read off the runs because `startedAt` cannot carry it: a
+ * loop of delegations queues several runs inside the same millisecond, and every one of them gets
+ * the same number. This used to break that tie on `id`, which is a random UUID — so which run got
+ * the freed slot was decided by a string comparison between two random strings. The caller holds the
+ * real record of arrival: the insertion order of its map of queued runs.
+ *
+ * What is not in that record goes last, by the old comparison. A run only lands there if the process
+ * that queued it is gone, and such a run cannot be launched at all (`launchRunsWaitingForSlot`
+ * skips it), so nothing that can move is ordered by a coin flip.
+ */
+export function queuedRunsEverywhere(runs: Record<string, Run>, arrivalOrder: Iterable<string>): Run[] {
+  const arrived = new Map<string, number>();
+  for (const id of arrivalOrder) if (!arrived.has(id)) arrived.set(id, arrived.size);
+  const at = (r: Run) => arrived.get(r.id) ?? Number.MAX_SAFE_INTEGER;
   return Object.values(runs)
     .filter(r => r.status === "queued")
-    .sort((a, b) => a.startedAt - b.startedAt || a.id.localeCompare(b.id));
+    .sort((a, b) => at(a) - at(b) || a.startedAt - b.startedAt || a.id.localeCompare(b.id));
 }

@@ -118,7 +118,21 @@ describe("the rules", () => {
       first: run("first", "planner", "queued", 3),
       going: run("going", "reviewer", "running", 1),
     };
-    expect(queuedRunsEverywhere(all).map(r => r.id)).toEqual(["first", "later"]);
+    expect(queuedRunsEverywhere(all, ["first", "later"]).map(r => r.id)).toEqual(["first", "later"]);
+  });
+
+  it("goes by the order the work arrived in, not by what the ids happen to compare like", () => {
+    // The same millisecond for both, which is what a loop of delegations gives them, and ids that
+    // sort the wrong way round. Nothing left in the run itself says which came first.
+    const all = {
+      zz: run("zz", "reviewer", "queued", 7),
+      aa: run("aa", "planner", "queued", 7),
+    };
+    expect(queuedRunsEverywhere(all, ["zz", "aa"]).map(r => r.id)).toEqual(["zz", "aa"]);
+    expect(queuedRunsEverywhere(all, ["aa", "zz"]).map(r => r.id)).toEqual(["aa", "zz"]);
+    // A run whose arrival nobody recorded goes last: the process that queued it is gone and it
+    // cannot be launched, so it must not sit in front of one that can.
+    expect(queuedRunsEverywhere(all, ["zz"]).map(r => r.id)).toEqual(["zz", "aa"]);
   });
 });
 

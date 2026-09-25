@@ -121,6 +121,13 @@ let one of them fall behind.
 
 ### Fixed
 
+- **A run waiting for a free slot now gets it in the order it was asked for.** With the ceiling on
+  how many runs go at once already full, the rest wait — and several delegations approved together
+  are queued within the same millisecond, which left the app with nothing to tell them apart by
+  except their internal identifiers. Those are random, so which of the waiting runs took the freed
+  slot came down to a comparison between two random strings: work could sit waiting while something
+  asked for after it went ahead of it. The order the work arrived in is now recorded and followed,
+  the same way the queue behind a single busy agent already did it.
 - **Changing the orchestrator's engine no longer leaves the old name on it.** An agent called by
   its engine's default name ("Claude Code") kept that name when its provider was switched, so the
   chat showed one engine's name over another's icon and the system prompt addressed it by the

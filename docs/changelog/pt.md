@@ -118,6 +118,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 
 ### Corrigido
 
+- **Uma execução que espera por uma vaga livre agora a recebe na ordem em que foi pedida.** Com o
+  teto de quantas execuções vão ao mesmo tempo já cheio, as outras esperam — e várias delegações
+  aprovadas juntas entram na fila dentro do mesmo milissegundo, então não sobrava à app nada para
+  distingui-las além dos seus identificadores internos. Esses são aleatórios, então qual das que
+  esperavam ficava com a vaga liberada se decidia comparando duas cadeias ao acaso: um trabalho
+  podia ficar esperando enquanto outro, pedido depois, passava à sua frente. Agora a ordem em que o
+  trabalho chegou é anotada e respeitada, como a fila atrás de um agente ocupado já fazia.
 - **Trocar o motor do orquestrador não deixa mais o nome antigo nele.** Um agente chamado pelo
   nome padrão do seu motor («Claude Code») mantinha esse nome ao trocar de provedor, então o chat
   mostrava o nome de um motor sobre o ícone de outro e o prompt de sistema o chamava pelo errado.

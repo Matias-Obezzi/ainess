@@ -131,6 +131,42 @@ describe("the ceiling on how many runs go at once", () => {
     expect(useAppStore.getState().runs[third].status).toBe("running");
   });
 
+  // The test above passes on a coin flip. Its three runs are queued inside the same millisecond, so
+  // `startedAt` ties and whatever breaks that tie decides who gets the freed slot — and with run ids
+  // being random, an id comparison is that coin flip. Here the ids are forced to sort backwards from
+  // the order the work arrived in, which is the side of the flip the app used to get wrong.
+  it("hands the slots out oldest first even when the run ids sort backwards", () => {
+    let n = 0;
+    // Same width, descending: every id sorts before the id of the run asked for before it.
+    const uuid = vi.spyOn(crypto, "randomUUID").mockImplementation(
+      () => `${String(9000 - n++).padStart(4, "0")}-0000-4000-8000-000000000000` as ReturnType<typeof crypto.randomUUID>,
+    );
+    // And one single millisecond for all three, which is what happens in a loop of delegations.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    try {
+      reset(1);
+
+      const first = ask("a1")!;
+      const second = ask("a2")!;
+      const third = ask("a3")!;
+
+      // The shape the test needs, asserted rather than assumed.
+      const runs = useAppStore.getState().runs;
+      expect(runs[second].startedAt).toBe(runs[third].startedAt);
+      expect(second.localeCompare(third)).toBeGreaterThan(0);
+
+      end(first, "listo");
+      expect(useAppStore.getState().runs[second].status).toBe("running");
+      expect(useAppStore.getState().runs[third].status).toBe("queued");
+
+      end(second, "listo");
+      expect(useAppStore.getState().runs[third].status).toBe("running");
+    } finally {
+      uuid.mockRestore();
+      clock.mockRestore();
+    }
+  });
+
   it("queues nothing at 0: that is the app as it was before the ceiling existed", () => {
     reset(0);
 

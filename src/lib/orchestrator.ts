@@ -566,7 +566,9 @@ export function launchRunsWaitingForSlot(): void {
     for (;;) {
       const store = useAppStore.getState();
       if (!slotAvailable(store.runs, store.config.maxConcurrentRuns)) return;
-      const next = queuedRunsEverywhere(store.runs).find(
+      // In the order the work arrived, which the map keeps and `startedAt` cannot: runs queued in
+      // the same millisecond all carry the same one (see `launchNextForAgent`, same reason).
+      const next = queuedRunsEverywhere(store.runs, queuedRunOpts.keys()).find(
         r => !tried.has(r.id) && queuedRunOpts.has(r.id) && !isAgentBusy(store, r.projectId, r.agentId),
       );
       if (!next) return;
