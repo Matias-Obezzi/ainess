@@ -163,7 +163,7 @@ describe("probeClaudeAuth", () => {
     engineAnswering({ code: 0, stdout: JSON.stringify({ loggedIn: true, email: "matias@example.com", plan: "pro" }) });
     expect(await probeClaudeAuth()).toEqual({
       kind: "account",
-      label: "Logged in",
+      label: "matias@example.com (pro)",
       account: { email: "matias@example.com", plan: "pro" },
     });
     // Kept for Settings, so nothing pays for this probe twice.
@@ -227,6 +227,34 @@ describe("parseCliAuthStatus", () => {
 
   it("calls an API key what it is", () => {
     expect(parseCliAuthStatus('{"loggedIn":true,"authMethod":"apiKey"}')).toEqual({ kind: "api_key", label: "Logged in" });
+  });
+
+  it("reads the real output of `claude auth status --json`, logged in", () => {
+    const stdout = `{
+  "loggedIn": true,
+  "authMethod": "claude.ai",
+  "apiProvider": "firstParty",
+  "analyticsDisabled": false,
+  "projectsDirectory": "C:\\\\Users\\\\matia\\\\.claude\\\\projects",
+  "configDirectory": "C:\\\\Users\\\\matia\\\\.claude",
+  "email": "matiasobezzi@gmail.com",
+  "orgId": "67fce469-b3e1-4334-973b-0ebd1b3b3ffb",
+  "orgName": "matiasobezzi@gmail.com's Organization",
+  "subscriptionType": "max"
+}`;
+    expect(parseCliAuthStatus(stdout)).toEqual({
+      kind: "account",
+      label: "matiasobezzi@gmail.com (max)",
+      account: {
+        email: "matiasobezzi@gmail.com",
+        organization: "matiasobezzi@gmail.com's Organization",
+        plan: "max",
+      },
+    });
+  });
+
+  it("reads the real output of `claude auth status --json`, logged out", () => {
+    expect(parseCliAuthStatus('{"loggedIn":false}')).toEqual({ kind: "none", label: "Not logged in" });
   });
 });
 

@@ -149,16 +149,32 @@ export function parseCliAuthStatus(stdout: string): ClaudeAuthStatus | null {
   // it arrives, and a probe has to speak the same language as the notification it stands in for.
   if (!raw.loggedIn) return { kind: "none", label: "Not logged in" };
 
+  const authMethod = typeof raw.authMethod === "string" ? raw.authMethod : "";
+  const apiProvider = typeof raw.apiProvider === "string" ? raw.apiProvider : "";
+  // The real binary prints `"claude.ai"` for a subscription login. The exact string for a
+  // Console/API key login is unconfirmed, so this side is matched loosely.
+  const isApiKey = /api/i.test(authMethod) || authMethod === "console" || (apiProvider !== "" && apiProvider !== "firstParty");
+
+  const email = typeof raw.email === "string" ? raw.email : undefined;
+  const organization = typeof raw.orgName === "string" ? raw.orgName : typeof raw.organization === "string" ? raw.organization : undefined;
+  const plan = typeof raw.subscriptionType === "string" ? raw.subscriptionType : typeof raw.plan === "string" ? raw.plan : undefined;
+
   const status: ClaudeAuthStatus = {
-    kind: typeof raw.authMethod === "string" && raw.authMethod === "apiKey" ? "api_key" : "account",
-    label: typeof raw.label === "string" ? raw.label : "Logged in",
+    kind: isApiKey ? "api_key" : "account",
+    label: typeof raw.label === "string" ? raw.label : defaultLabel(email, plan),
   };
   const account: NonNullable<ClaudeAuthStatus["account"]> = {};
-  if (typeof raw.email === "string") account.email = raw.email;
-  if (typeof raw.organization === "string") account.organization = raw.organization;
-  if (typeof raw.plan === "string") account.plan = raw.plan;
+  if (email) account.email = email;
+  if (organization) account.organization = organization;
+  if (plan) account.plan = plan;
   if (Object.keys(account).length > 0) status.account = account;
   return status;
+}
+
+/** What to show when the CLI does not send a `label` of its own — the real binary never does. */
+function defaultLabel(email: string | undefined, plan: string | undefined): string {
+  if (!email) return "Logged in";
+  return plan ? `${email} (${plan})` : email;
 }
 
 /**
@@ -212,11 +228,6 @@ export async function claudeLogout(): Promise<void> {
 /** Writes down what the adapter pushed, replacing whatever was known before. */
 export function rememberClaudeAuthStatus(status: ClaudeAuthStatus): void {
   remember(status);
-}
-
-/** The last identity anything reported. Null while nothing has. */
-export function knownClaudeAuthStatus(): ClaudeAuthStatus | null {
-  return useAppStore.getState().claudeAuth.status;
 }
 
 /**
