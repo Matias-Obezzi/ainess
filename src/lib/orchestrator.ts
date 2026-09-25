@@ -24,6 +24,7 @@ import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
 import { log } from "@/lib/logger";
 import { acpAdapterAvailability, forgetAcpAdapter } from "@/lib/acp/adapter";
+import { ensureAcpRuntime } from "@/lib/acp-setup";
 import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
@@ -870,10 +871,11 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       if (managedStatus) {
         const availability = await acpAdapterAvailability();
         if (!availability.ready) {
-          useAppStore.getState().setAcpSetup({ open: true });
-          const ensureResult = await getTransport().acpManagedEnsure();
-          useAppStore.getState().setAcpSetup({ open: false });
-          if (!ensureResult || !ensureResult.adapterReady || !ensureResult.runtimeReady) {
+          // One await for however many attempts it takes: the screen owns the retrying, and this
+          // answers only when the adapter is there or the user gave up. Awaiting the install itself
+          // instead left a retry installing for nobody — this run had already been closed by the
+          // first failure, so it never started even when the second attempt worked.
+          if (!(await ensureAcpRuntime())) {
             finishNeverSpawned(runId, opts.projectId, opts.agentId, translateNow("run.acpSetupFailed"));
             return;
           }

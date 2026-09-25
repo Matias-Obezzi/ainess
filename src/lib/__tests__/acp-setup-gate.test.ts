@@ -1,10 +1,17 @@
+// The gate before a claude run on a machine with nothing to spawn.
+//
+// Only one machine has to be offered anything: the one where neither `claude-agent-acp` nor `npx` is
+// on PATH (see src/lib/acp/adapter.ts). There the run waits behind the setup screen instead of dying
+// on a spawn error nobody can read, and — the part that matters here — it waits for the *screen*, not
+// for one install: a first attempt that fails and a retry that works still starts the run that asked.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { startRun } from "@/lib/orchestrator";
 import { useAppStore } from "@/store";
 import { nullTransport } from "@/lib/transport-null";
 import { setTransport } from "@/lib/transport";
 import { forgetAcpAdapter, acpAdapterAvailability } from "@/lib/acp/adapter";
-import type { AcpManagedStatus } from "@/types";
+import { registerAcpSetupHost, type AcpSetupDecision } from "@/lib/acp-setup";
+import type { AcpManagedStatus, Project } from "@/types";
 
 const READY: AcpManagedStatus = {
   runtimeReady: true,
@@ -17,7 +24,17 @@ const READY: AcpManagedStatus = {
   enginePath: null,
 };
 
-vi.mock("@/lib/acp/adapter", async (importOriginal) => {
+const project: Project = {
+  id: "p1",
+  name: "P1",
+  workspaceDir: "C:/p1",
+  createdAt: 1,
+  agents: [
+    { id: "a1", name: "A1", provider: "claude", role: "implementer", parentId: null, autoApprove: true, model: "claude-3-5" },
+  ],
+};
+
+vi.mock("@/lib/acp/adapter", async importOriginal => {
   const actual = await importOriginal<typeof import("@/lib/acp/adapter")>();
   return {
     ...actual,
@@ -26,81 +43,125 @@ vi.mock("@/lib/acp/adapter", async (importOriginal) => {
 });
 
 describe("the ACP setup gate before a run", () => {
-  beforeEach(async () => {
+  let unregisterScreen: (() => void) | null = null;
+
+  beforeEach(() => {
     useAppStore.setState({
-      config: {
-        projects: [{ id: "p1", name: "P1", agents: [{ id: "a1", name: "A1", provider: "claude", model: "claude-3-5", role: "custom" }] }],
-        binaryOverrides: {},
-        skills: [],
-        mcpServers: [],
-      } as any,
+      config: { ...useAppStore.getState().config, projects: [project] },
       currentProjectId: "p1",
       runtime: { p1: { a1: { agentId: "a1", status: "idle", queuedInstructions: [] } } },
       runs: {},
       messages: [],
-      acpSetup: { open: false }
-    });
+      acpSetup: { open: false },
+    } as never);
   });
 
   afterEach(() => {
+    unregisterScreen?.();
+    unregisterScreen = null;
     forgetAcpAdapter();
     vi.restoreAllMocks();
   });
 
-  const getRun = (id: string) => useAppStore.getState().runs[id];
+  /** A screen that answers the error face the way the user would, in order; then always cancel. */
+  function screenAnswers(...decisions: AcpSetupDecision[]) {
+    let asked = 0;
+    unregisterScreen = registerAcpSetupHost(question => {
+      question.resolve(decisions[asked++] ?? "cancel");
+    });
+  }
 
-  it("does not open the dialog if acpManagedStatus is null (e.g., node transport)", async () => {
+  const getRun = (id: string) => useAppStore.getState().runs[id];
+  const ask = () => startRun({ agentId: "a1", projectId: "p1", prompt: "hola", parentRunId: null, round: 0 })!;
+
+  it("asks nothing when the platform has no managed runtime to offer (the CLI, the phone)", async () => {
     let checked = false;
+    let spawned = false;
     setTransport({
       ...nullTransport,
       acpManagedStatus: async () => { checked = true; return null; },
-    } as any);
+      spawnRun: async () => { spawned = true; },
+    });
 
-    const id = startRun({ agentId: "a1", projectId: useAppStore.getState().currentProjectId!, prompt: "hello" })!;
-    await new Promise(r => setTimeout(r, 10));
+    const id = ask();
+    await vi.waitFor(() => expect(spawned).toBe(true));
     expect(checked).toBe(true);
     expect(useAppStore.getState().acpSetup.open).toBe(false);
     expect(getRun(id).status).not.toBe("killed");
   });
 
-  it("opens the dialog, installs, and starts the run if ready: false", async () => {
-    let ensureCalled = false;
-    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "managed" });
-    
+  it("installs behind the screen and then starts the run", async () => {
+    let ensureCalls = 0;
+    let spawned = false;
+    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "none" });
+    setTransport({
+      ...nullTransport,
+      acpManagedStatus: async () => READY,
+      acpManagedEnsure: async () => { ensureCalls++; return READY; },
+      spawnRun: async () => { spawned = true; },
+    });
+
+    const id = ask();
+    await vi.waitFor(() => expect(spawned).toBe(true));
+    expect(ensureCalls).toBe(1);
+    expect(useAppStore.getState().acpSetup.open).toBe(false);
+    expect(getRun(id).status).not.toBe("killed");
+  });
+
+  it("retries as many times as the screen asks, and starts the run when one attempt works", async () => {
+    let ensureCalls = 0;
+    let spawned = false;
+    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "none" });
+    setTransport({
+      ...nullTransport,
+      acpManagedStatus: async () => READY,
+      // Two failures, then the download that goes through.
+      acpManagedEnsure: async () => (++ensureCalls < 3 ? null : READY),
+      spawnRun: async () => { spawned = true; },
+    });
+    screenAnswers("retry", "retry");
+
+    const id = ask();
+    await vi.waitFor(() => expect(spawned).toBe(true));
+    expect(ensureCalls).toBe(3);
+    expect(useAppStore.getState().acpSetup.open).toBe(false);
+    expect(getRun(id).status).not.toBe("killed");
+  });
+
+  it("clears the failed attempt from the screen before trying again", async () => {
+    let ensureCalls = 0;
+    const phasesSeen: (string | undefined)[] = [];
+    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "none" });
     setTransport({
       ...nullTransport,
       acpManagedStatus: async () => READY,
       acpManagedEnsure: async () => {
-        ensureCalled = true;
-        return READY;
+        phasesSeen.push(useAppStore.getState().acpSetup.phase);
+        return ++ensureCalls < 2 ? null : READY;
       },
-    } as any);
+    });
+    screenAnswers("retry");
 
-    const id = startRun({ agentId: "a1", projectId: useAppStore.getState().currentProjectId!, prompt: "hello" })!;
-    
-    // Wait for the async gate to process
-    await new Promise(r => setTimeout(r, 10));
-    
-    expect(ensureCalled).toBe(true);
-    expect(useAppStore.getState().acpSetup.open).toBe(false); // Closed after success
-    expect(getRun(id).status).not.toBe("killed");
+    ask();
+    await vi.waitFor(() => expect(ensureCalls).toBe(2));
+    // The second attempt starts on a clean screen: the first one's error is not still on it.
+    expect(phasesSeen).toEqual([undefined, undefined]);
   });
 
-  it("fails the run if the installation is canceled", async () => {
-    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "managed" });
-    
+  it("fails the run when the screen gives up", async () => {
+    let ensureCalls = 0;
+    vi.mocked(acpAdapterAvailability).mockResolvedValue({ ready: false, via: "none" });
     setTransport({
       ...nullTransport,
       acpManagedStatus: async () => READY,
-      acpManagedEnsure: async () => null, // null means failed/canceled
-    } as any);
+      acpManagedEnsure: async () => { ensureCalls++; return null; },
+    });
+    screenAnswers("cancel");
 
-    const id = startRun({ agentId: "a1", projectId: useAppStore.getState().currentProjectId!, prompt: "hello" })!;
-    
-    await new Promise(r => setTimeout(r, 10));
-    
+    const id = ask();
+    await vi.waitFor(() => expect(getRun(id).status).toBe("killed"));
+    expect(ensureCalls).toBe(1);
     expect(useAppStore.getState().acpSetup.open).toBe(false);
-    expect(getRun(id).status).toBe("killed");
     expect(getRun(id).output).toContain("falló o fue cancelada");
   });
 });

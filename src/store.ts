@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
@@ -237,8 +237,13 @@ export interface AppState {
   searchOpen: boolean;
   /** Whether the Ctrl+/ shortcuts dialog is open. Not persisted. */
   shortcutsOpen: boolean;
-  
-  acpSetup: { open: boolean, phase?: import("@/types").AcpSetupPhase, received?: number, total?: number, message?: string, error?: string };
+
+  /**
+   * What the managed ACP runtime install shows on screen: `open` while the dialog is up, the rest
+   * written by the `acp-setup` events Rust emits (see src/lib/acp-setup.ts). A failure travels in
+   * `message`, like every other phase's detail. Not persisted.
+   */
+  acpSetup: { open: boolean; phase?: AcpSetupPhase; received?: number; total?: number; message?: string };
   setAcpSetup: (patch: Partial<AppState["acpSetup"]>) => void;
 
   /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
@@ -1362,7 +1367,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   toggleShortcuts: (open) => {
     set(s => ({ shortcutsOpen: open ?? !s.shortcutsOpen }));
   },
-  
+
   setAcpSetup: (patch) => {
     set((state) => ({ acpSetup: { ...state.acpSetup, ...patch } }));
   },

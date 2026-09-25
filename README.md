@@ -50,7 +50,7 @@ from Settings → Agents:
 
 | Provider | How it gets there |
 | --- | --- |
-| Claude Code | Downloads its own adapter (~360 MB) automatically |
+| Claude Code | nothing to install — with Node.js it runs through `npx`, and without it the app builds its own ~360 MB environment in its data folder on first use |
 | GitHub Copilot CLI | `npm install -g @github/copilot` |
 | Antigravity | `irm https://antigravity.google/cli/install.ps1 \| iex` |
 | Gemini CLI | `npm install -g @google/gemini-cli` |

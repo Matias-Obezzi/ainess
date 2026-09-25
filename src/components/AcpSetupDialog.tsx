@@ -1,41 +1,63 @@
+// The screen that installs the managed ACP runtime, and the host that answers `ensureAcpRuntime()`.
+//
+// Mounted once near the root of the app; nobody renders it to ask for something. It shows the phases
+// Rust emits over `acp-setup` (src-tauri/src/acp_setup.rs) and, when an attempt fails, hands retry or
+// cancel back to whoever is waiting — see src/lib/acp-setup.ts for the two halves of that.
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { useT } from "@/i18n/useT";
+import type { AcpSetupPhase } from "@/types";
+import {
+  abortAcpSetup,
+  registerAcpSetupHost,
+  type AcpSetupDecision,
+  type AcpSetupQuestion,
+} from "@/lib/acp-setup";
+
+/**
+ * One key per phase, written out. A phase renamed on the Rust side then breaks the typecheck here
+ * instead of quietly showing the key itself on screen.
+ */
+const PHASE_KEY: Record<AcpSetupPhase, string> = {
+  "runtime-download": "acpSetup.phase.runtime-download",
+  "runtime-verify": "acpSetup.phase.runtime-verify",
+  "runtime-extract": "acpSetup.phase.runtime-extract",
+  "adapter-install": "acpSetup.phase.adapter-install",
+  ready: "acpSetup.phase.ready",
+  error: "acpSetup.phase.error",
+};
 
 export function AcpSetupDialog() {
   const t = useT();
-  const acpSetup = useAppStore((state) => state.acpSetup);
+  const acpSetup = useAppStore(state => state.acpSetup);
+  const [question, setQuestion] = useState<AcpSetupQuestion | null>(null);
 
-  // No se cierra al clickear afuera mientras está instalando.
+  // On every render, not once on mount: a hot reload re-runs the lib module with an empty
+  // registration while this component keeps its effects, and a failed install would then have
+  // nowhere to ask what to do next.
+  useEffect(() => registerAcpSetupHost(setQuestion));
+
+  const failed = acpSetup.phase === "error";
+
+  const decide = (decision: AcpSetupDecision) => {
+    const pending = question;
+    setQuestion(null);
+    if (pending) pending.resolve(decision);
+    // Nothing was waiting on this screen (an event put it on the error face on its own): there is no
+    // install to cancel and nobody to answer, so cancel just puts it away.
+    else if (decision === "cancel") useAppStore.getState().setAcpSetup({ open: false });
+  };
+
   const handleOpenChange = (open: boolean) => {
-    if (!open && acpSetup.phase !== "error") {
-      // only allow closing if error, otherwise use Cancel button or programmatic close
-      return;
-    }
-    if (!open) {
-      useAppStore.getState().setAcpSetup({ open: false });
-    }
-  };
-
-  const handleCancel = () => {
-    void getTransport().acpManagedCancel();
-  };
-
-  const handleRetry = () => {
-    // Retry basically just closes the dialog (or triggers managed ensure again).
-    // The orchestrator handles the run starting, so retry from here would mean re-triggering ensure.
-    // But since the dialog is opened by the orchestrator run interception,
-    // if we just close it, they can click "Run" again.
-    // Or we can call acpManagedEnsure here. Wait, orchestrator is waiting for the first acpManagedEnsure to resolve.
-    // If we cancel, orchestrator will see it failed. So retry from here:
-    // Actually, "reintentar empieza de nuevo, y eso hay que decirlo".
-    // If they click retry, we can just call acpManagedEnsure() which will trigger the phase to go from error to download again.
-    // But orchestrator is blocked on the first call.
-    // Let's check how we handle retry. If they retry, it calls `acpManagedEnsure()` again.
-    void getTransport().acpManagedEnsure();
+    if (open) return;
+    // While something is installing the screen is not dismissible: the cancel button is the way out,
+    // because it is the one that also tells the install on the other side to stop.
+    if (!failed) return;
+    decide("cancel");
   };
 
   const percent = acpSetup.total && acpSetup.received ? (acpSetup.received / acpSetup.total) * 100 : undefined;
@@ -51,10 +73,10 @@ export function AcpSetupDialog() {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-4">
-          {acpSetup.phase && acpSetup.phase !== "error" && (
+          {acpSetup.phase && !failed && (
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">
-                {t(`acpSetup.phase.${acpSetup.phase}` as any)}
+                {t(PHASE_KEY[acpSetup.phase])}
               </span>
               <Progress value={acpSetup.phase === "adapter-install" ? undefined : percent} />
               {acpSetup.phase === "adapter-install" && acpSetup.message && (
@@ -65,7 +87,7 @@ export function AcpSetupDialog() {
             </div>
           )}
 
-          {acpSetup.phase === "error" && (
+          {failed && (
             <div className="flex flex-col gap-2">
               <span className="text-sm text-destructive">{acpSetup.message}</span>
               <span className="text-sm text-muted-foreground">{t("acpSetup.retryNotice")}</span>
@@ -77,13 +99,13 @@ export function AcpSetupDialog() {
         </div>
 
         <DialogFooter>
-          {acpSetup.phase === "error" ? (
+          {failed ? (
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={handleCancel}>{t("acpSetup.cancel")}</Button>
-              <Button onClick={handleRetry}>{t("acpSetup.retry")}</Button>
+              <Button variant="ghost" onClick={() => decide("cancel")}>{t("acpSetup.cancel")}</Button>
+              <Button onClick={() => decide("retry")}>{t("acpSetup.retry")}</Button>
             </div>
           ) : (
-            <Button variant="ghost" onClick={handleCancel}>
+            <Button variant="ghost" onClick={abortAcpSetup}>
               {t("acpSetup.cancel")}
             </Button>
           )}

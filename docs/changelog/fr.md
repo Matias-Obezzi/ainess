@@ -4,9 +4,15 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ## Non publié
 
+### Nouveau
 
-
-- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
+- **Claude Code n'a plus besoin de Node.js sur la machine.** Il communique via un adaptateur publié
+  sur npm, et jusqu'ici la seule porte d'entrée était `npx` : sans Node.js il n'y avait rien à
+  lancer et l'exécution mourait sur une erreur de spawn illisible. Quand ni l'adaptateur ni `npx` ne
+  sont dans le PATH, l'app se construit désormais son propre environnement : elle télécharge un
+  runtime et installe l'adaptateur dans son dossier de données (~360 Mo, une seule fois), derrière
+  un écran qui dit ce qu'il fait et que l'on peut relancer. Une machine qui a déjà Node.js continue
+  d'utiliser `npx` et ne télécharge rien.
 - **Les sélecteurs de modèle proposent ce que le CLI installé sait vraiment exécuter.** Antigravity
   et opencode étaient déjà interrogés sur leurs modèles, mais seule la boîte de dialogue de
   l'agent lisait la réponse ; le compositeur, les préréglages, les conversations et l'anneau de

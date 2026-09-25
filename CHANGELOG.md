@@ -10,7 +10,12 @@ let one of them fall behind.
 
 ### Added
 
-- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
+- **Claude Code no longer needs Node.js on the machine.** It speaks through an adapter published on
+  npm, and until now the only way in was `npx`: where Node.js was missing there was nothing to spawn
+  and the run died on a spawn error nobody could read. When neither the adapter nor `npx` is on PATH
+  the app builds its own environment instead — it downloads a runtime and installs the adapter in
+  its data folder (~360 MB, once) behind a screen that says what it is doing and can be retried. A
+  machine that already has Node.js keeps using `npx` and downloads nothing.
 - **Model pickers offer what the installed CLI can actually run.** Antigravity and opencode were
   already asked for their models, but only the agent dialog read the answer; the composer,
   presets, chats and the quota ring showed a list typed into the code, which went stale in

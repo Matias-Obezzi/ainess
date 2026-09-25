@@ -4,9 +4,13 @@
 
 ## 未发布
 
+### 新增
 
-
-- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
+- **Claude Code 不再需要机器上装有 Node.js。** 它通过发布在 npm 上的适配器通信，此前唯一的入口是
+  `npx`：没有 Node.js 的机器无从启动，运行只会以一个没人看得懂的 spawn 错误结束。现在当适配器和
+  `npx` 都不在 PATH 中时，应用会自己搭建环境：下载一个运行时，把适配器安装到自己的数据目录（约
+  360 MB，仅一次），并在一个会说明进度、可以重试的界面后面完成。已经装有 Node.js 的机器仍然使用
+  `npx`，什么都不会下载。
 - **模型选择器只列出已安装 CLI 真正能运行的模型。** 之前已经会向 Antigravity 和 opencode 询问模型列表，但只有
   智能体对话框读取了答案；输入框、预设、聊天和配额环显示的是写死在代码里的列表，悄悄过时。现在所有选择器
   读取同一份列表：CLI 报告的内容，在启动时刷新且最多每十分钟刷新一次，内置列表仅作后备。Ollama 也会被询问，

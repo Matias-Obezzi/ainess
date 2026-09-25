@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppStore, cloneAgents, nextAgentName } from "@/store";
 import { getTransport } from "@/lib/transport";
+import { ensureAcpRuntime } from "@/lib/acp-setup";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { QuotaRing, useProviderModels } from "@/components/QuotaRing";
 import { Card } from "@/components/ui/card";
@@ -491,10 +492,10 @@ function ManagedRuntimeStatus() {
 
   if (loading || status === null) return null; // Only render when status is fetched and exists (not null platform)
 
+  // The same road a run takes when it finds nothing to spawn, so retrying and cancelling behave
+  // here exactly as they do behind a run (see src/lib/acp-setup.ts).
   const handleInstall = async () => {
-    useAppStore.getState().setAcpSetup({ open: true });
-    await getTransport().acpManagedEnsure();
-    useAppStore.getState().setAcpSetup({ open: false });
+    await ensureAcpRuntime();
     await fetchStatus();
   };
 

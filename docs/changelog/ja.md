@@ -4,9 +4,14 @@
 
 ## 未リリース
 
+### 追加
 
-
-- **Claude Code is completely standalone.** The first time you run Claude Code in a project, the app downloads and configures the required adapter and runtime (~360 MB) automatically in its own data folder. You no longer need Node.js installed to use Claude Code.
+- **Claude Code に Node.js は要らなくなりました。** Claude Code は npm で公開されているアダプター
+  を通して話すので、これまでの入口は `npx` だけでした。Node.js がないマシンでは起動するものが何もなく、
+  実行は誰も読めない spawn エラーで終わっていました。アダプターも `npx` も PATH にない場合、アプリは
+  自分の環境を用意します。ランタイムをダウンロードし、アダプターをデータフォルダーに（約360 MB、初回
+  だけ）インストールし、進行状況を伝えて再試行もできる画面の裏で進めます。Node.js があるマシンは
+  今までどおり `npx` を使い、何もダウンロードしません。
 - **モデル選択には、インストール済みCLIが実際に実行できるものが並びます。** Antigravityとopencodeにはすでに
   モデルを問い合わせていましたが、その答えを読んでいたのはエージェントのダイアログだけで、入力欄、プリセット、
   チャット、クォータリングはコードに書かれた一覧を表示し、静かに古びていました。今はすべての選択が同じ一覧を
