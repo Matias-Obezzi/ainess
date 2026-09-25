@@ -19,7 +19,7 @@ let one of them fall behind.
 - **A delegation no longer writes its JSON out in front of you.** The block arrives character by
   character, and until the last one it parses as nothing, so the answer grew a wall of escaped
   braces while the agent typed. While it is being written it says who it is going to —
-  "Delegando a Implementer 1…" — and becomes the card when it is done. A block that is finished
+  "Delegating to Implementer 1…" — and becomes the card when it is done. A block that is finished
   and still unreadable is shown as the mistake it is, which is what that fallback was for.
 - **Each delegated task opens on its own**, instead of every task in the block unrolling at once,
   and shut it shows the title the planner gave the card rather than the first line of the
