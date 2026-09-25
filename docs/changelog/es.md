@@ -56,10 +56,10 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   nada, sabés con qué modelo va a salir lo que estás por escribir. El campo de texto libre para
   escribir un modelo a mano («Otro…») ahora entra bien en una pantalla angosta. En un chat uno
   a uno no se veía con qué modelo corría el agente, ni en el celular ni en el escritorio; ahora
-  se muestra, uno por participante. No se puede cambiar desde ahí a propósito: un chat no lleva
-  modelo propio, corre con el que se eligió al crearlo o, si no, con el del agente, y ése es el
-  mismo orden en que se resuelve al arrancar, así que lo que se lee es lo que se va a ejecutar
-  de verdad. La pestaña de Agentes del celular era de solo lectura. Ahora desde ahí se puede
+  se muestra, uno por participante, y se puede cambiar desde ahí (ver más abajo). A qué recurre
+  cuando no hay ninguno no cambió: el modelo que se eligió al crear el chat o, si no, el del
+  agente — el mismo orden en que se resuelve al arrancar, así que lo que se lee es lo que se va a
+  ejecutar de verdad. La pestaña de Agentes del celular era de solo lectura. Ahora desde ahí se puede
   cambiar el modelo por defecto de un agente, con las mismas opciones que ofrece el
   compositor. (#29)
 - **Un tope de ejecuciones en paralelo.** Una ejecución es un proceso que corre sus propios tests,
@@ -69,6 +69,24 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   0 para ninguno— contando todos los proyectos juntos, porque lo que se protege es la máquina. Lo
   que pasa del tope espera su turno y arranca solo en cuanto se libera un lugar, así que nada se
   pierde ni se pide dos veces. (#36)
+
+### Cambiado
+
+- **La barra de abajo del compositor dice menos y hace más.** Los dos selectores — quién responde
+  y con qué modelo — perdieron la flecha y ahora ocupan el ancho de lo que están mostrando, como
+  siempre hizo el botón de cuota que tienen al lado: un modelo de nombre corto ya no deja un hueco
+  y uno largo ya no queda cortado en un ancho fijo. Dentro de un chat, la línea de solo lectura
+  por participante ahora es el logo del agente y su nombre, y al lado un selector de modelo que sí
+  se puede tocar: lo que elegís queda escrito en ese participante de ese chat. Quién está en el
+  chat sigue sin ser algo que se cambie desde acá — hablarle a otro es un chat aparte, que se crea
+  desde la barra de la izquierda. Las órdenes guardadas arriba del cuadro ahora se pliegan detrás
+  de un botón chico y siguen plegadas hasta que digas lo contrario, y el cuadro ya no se dibuja un
+  aro alrededor al tomar el foco: lo dice el borde, una sola vez.
+- **La flecha abajo sale de un bloque de código que termina el mensaje.** Un bloque cerrado en la
+  última línea del cuadro no tenía nada debajo, así que no había forma de escribir después de él
+  sin volver atrás y hacer la línea a mano. Ahora la hace la flecha. En cualquier otro lado — con
+  una línea debajo del cursor, fuera de un bloque, en un bloque todavía abierto — es la flecha de
+  siempre, y la flecha arriba quedó igual.
 
 ### Arreglado
 

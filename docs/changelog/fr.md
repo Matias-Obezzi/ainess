@@ -58,10 +58,10 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   d'écrire. Le champ de texte libre pour saisir un modèle à la main (« Autre… ») tient désormais
   aussi sur un écran étroit. Dans une conversation directe, on ne voyait pas avec quel modèle
   tournait l'agent, ni sur le téléphone ni sur le bureau ; c'est affiché maintenant, un par
-  participant. On ne peut pas le changer depuis là, et c'est voulu : une conversation ne porte pas
-  de modèle à elle, elle tourne avec celui choisi à sa création ou, à défaut, avec celui de
-  l'agent, et c'est le même ordre qui sert à le résoudre au démarrage, donc ce que vous lisez est
-  ce qui va réellement s'exécuter. L'onglet Agents du téléphone était en lecture seule. Vous
+  participant, et il peut être changé depuis là (voir plus bas). Ce sur quoi il retombe n'a pas
+  changé : le modèle choisi à la création de la conversation ou, à défaut, celui de l'agent — le
+  même ordre qui sert à le résoudre au démarrage, donc ce que vous lisez est ce qui va réellement
+  s'exécuter. L'onglet Agents du téléphone était en lecture seule. Vous
   pouvez maintenant y changer le modèle par défaut d'un agent, avec les mêmes choix que propose le
   compositeur. (#29)
 - **Un plafond d’exécutions en parallèle.** Une exécution est un processus qui lance ses propres
@@ -71,6 +71,25 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   parallèle » fixe désormais ce plafond — quatre par défaut, 0 pour aucun — tous projets confondus,
   parce que ce qui est protégé, c’est la machine. Ce qui dépasse attend son tour et démarre tout
   seul dès qu’une place se libère : rien n’est perdu ni demandé deux fois. (#36)
+
+### Modifié
+
+- **La barre du bas du compositeur en dit moins et en fait plus.** Les deux sélecteurs — qui
+  répond, et avec quel modèle — ont perdu leur flèche et prennent désormais la largeur de ce
+  qu'ils affichent, comme le bouton de quota à côté l'a toujours fait : un nom de modèle court ne
+  laisse plus de vide, et un long n'est plus coupé à une largeur fixe. Dans une conversation, la
+  ligne en lecture seule par participant est maintenant le logo de l'agent et son nom, et à côté
+  un sélecteur de modèle qui, lui, se touche : ce que vous choisissez est écrit sur ce participant
+  de cette conversation. Qui est dans la conversation ne se change toujours pas d'ici — parler à
+  quelqu'un d'autre, c'est une conversation à part, créée depuis la barre de gauche. Les ordres
+  enregistrés au-dessus du champ se replient derrière un petit bouton et restent repliés jusqu'à
+  ce que vous disiez le contraire, et le champ ne dessine plus d'anneau autour de lui quand il
+  prend le focus : c'est la bordure qui le dit, une fois.
+- **La flèche bas sort d'un bloc de code qui termine le message.** Un bloc fermé sur la dernière
+  ligne du champ n'avait rien en dessous : impossible d'écrire après lui sans revenir en arrière
+  et faire la ligne à la main. La flèche la fait maintenant. Partout ailleurs — avec une ligne
+  sous le curseur, hors d'un bloc, dans un bloc encore ouvert — c'est la flèche de toujours, et la
+  flèche haut n'a pas bougé.
 
 ### Corrigé
 

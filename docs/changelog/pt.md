@@ -53,10 +53,10 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   botão mostra o nome do modelo ativo, então, de relance, sem tocar em nada, você sabe com qual
   modelo a sua próxima mensagem vai sair. O campo de texto livre para digitar um modelo na mão
   («Outro…») agora cabe numa tela estreita. Num chat direto, nem o celular nem o desktop
-  mostravam com qual modelo o agente rodava; agora aparece, um por participante. Não dá para
-  trocar de lá de propósito: um chat não carrega modelo próprio, roda com o que foi escolhido ao
-  criá-lo ou, na falta, com o padrão do agente, e essa é a mesma ordem usada para resolver na
-  inicialização, então o que você lê é o que vai de fato rodar. A aba de Agentes do celular era
+  mostravam com qual modelo o agente rodava; agora aparece, um por participante, e dá para trocar
+  de lá (veja abaixo). O que ele usa quando não há nenhum não mudou: o modelo escolhido ao criar o
+  chat ou, na falta, o do agente — a mesma ordem usada para resolver na inicialização, então o que
+  você lê é o que vai de fato rodar. A aba de Agentes do celular era
   somente leitura. Agora dá para trocar o modelo padrão de um agente por ali, com as mesmas
   opções que o compositor oferece. (#29)
 - **Um limite de execuções em paralelo.** Uma execução é um processo que roda os próprios testes,
@@ -66,6 +66,24 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   padrão, 0 para nenhum — contando todos os projetos juntos, porque o que se protege é a máquina.
   O que passa do limite espera a vez e começa sozinho assim que uma vaga abre, então nada se perde
   nem é pedido duas vezes. (#36)
+
+### Alterado
+
+- **A barra de baixo do compositor diz menos e faz mais.** Os dois seletores — quem responde e com
+  qual modelo — perderam a seta e agora ocupam a largura do que estão mostrando, como o botão de
+  cota ao lado sempre fez: um nome de modelo curto não deixa mais um vão, e um longo não fica mais
+  cortado numa largura fixa. Dentro de um chat, a linha somente-leitura por participante agora é o
+  logo do agente e o seu nome, e ao lado um seletor de modelo que funciona: o que você escolhe fica
+  escrito naquele participante daquele chat. Quem está no chat continua não sendo algo que se
+  troca daqui — falar com outra pessoa é um chat à parte, criado na barra da esquerda. As ordens
+  salvas acima da caixa agora se recolhem atrás de um botão pequeno e ficam assim até você dizer o
+  contrário, e a caixa não desenha mais um anel em volta ao receber o foco: quem diz é a borda,
+  uma vez só.
+- **A seta para baixo sai de um bloco de código que termina a mensagem.** Um bloco fechado na
+  última linha da caixa não tinha nada embaixo, então não havia como escrever depois dele sem
+  voltar e fazer a linha na mão. Agora a seta faz. Em qualquer outro lugar — com uma linha abaixo
+  do cursor, fora de um bloco, num bloco ainda aberto — é a seta de sempre, e a seta para cima
+  ficou intacta.
 
 ### Corrigido
 

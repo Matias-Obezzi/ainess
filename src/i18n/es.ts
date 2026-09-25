@@ -209,7 +209,9 @@ export const es: Dictionary = {
   "composer.defaultModel": "Modelo por defecto",
   "composer.otherModel": "Otro…",
   "composer.typeModel": "Escribí el modelo…",
-  "composer.runsOn": "{name} con {model}",
+  "composer.modelOf": "Modelo de {name}",
+  "composer.hidePresets": "Ocultar los mensajes rápidos",
+  "composer.showPresets": "Mostrar los mensajes rápidos",
   "presetStrip.previous": "Ver las órdenes anteriores",
   "presetStrip.next": "Ver las órdenes siguientes",
 

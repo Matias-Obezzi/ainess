@@ -1,7 +1,7 @@
 // What the composer says about the model it will run on: the phone's collapsed picker has to
 // wear the name of the model it hides, and a chat has to name the model of everyone in it.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, resetStore } from "@/test/render";
+import { render, screen, fireEvent, resetStore } from "@/test/render";
 import { useAppStore } from "@/store";
 import { translateNow } from "@/i18n/useT";
 import type { AgentConfig, Chat, Project } from "@/types";
@@ -102,16 +102,17 @@ describe("Composer - the model it runs on", () => {
     expect(button.textContent).not.toContain(tDefaultModel);
   });
 
-  it("in a chat it says which model the agent runs on, with nothing to change it", () => {
+  it("in a chat it names the member and the model it runs on", () => {
     setUpProject({ chats: [chat([{ agentId: "a2", role: "engineer" }])], currentChatId: "c1" });
 
     render(<Composer />);
 
-    expect(
-      screen.getByText(translateNow("composer.runsOn", { name: "Antigravity", model: "gemini-3.1-pro-high" })),
-    ).toBeDefined();
-    // Read-only: no select of any kind, and no box to type a model into.
-    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    expect(screen.getByText("Antigravity")).toBeDefined();
+    const model = screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Antigravity" }) });
+    expect(model.textContent).toContain("gemini-3.1-pro-high");
+    // The member itself is not a control: nothing to pick another one with, and nothing to type
+    // a model into either — the select is the whole of it.
+    expect(screen.queryAllByRole("combobox")).toHaveLength(1);
     expect(screen.queryByPlaceholderText(translateNow("composer.typeModel"))).toBeNull();
   });
 
@@ -120,9 +121,8 @@ describe("Composer - the model it runs on", () => {
 
     render(<Composer />);
 
-    expect(
-      screen.getByText(translateNow("composer.runsOn", { name: "Claude Code", model: tDefaultModel })),
-    ).toBeDefined();
+    const model = screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Claude Code" }) });
+    expect(model.textContent).toContain(tDefaultModel);
   });
 
   it("names every participant of a chat with more than one", () => {
@@ -138,10 +138,46 @@ describe("Composer - the model it runs on", () => {
     render(<Composer />);
 
     expect(
-      screen.getByText(translateNow("composer.runsOn", { name: "Claude Code", model: tDefaultModel })),
-    ).toBeDefined();
+      screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Claude Code" }) }).textContent,
+    ).toContain(tDefaultModel);
     expect(
-      screen.getByText(translateNow("composer.runsOn", { name: "Antigravity", model: "gemini-3.8-flash-high" })),
-    ).toBeDefined();
+      screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Antigravity" }) }).textContent,
+    ).toContain("gemini-3.8-flash-high");
+  });
+
+  it("writes the model picked in a chat onto that participant, and leaves the others alone", () => {
+    setUpProject({
+      chats: [chat([
+        { agentId: "a1", role: "engineer" },
+        { agentId: "a2", role: "reviewer", model: "gemini-3.8-flash-high" },
+      ])],
+      currentChatId: "c1",
+    });
+    useAppStore.setState({ models: { claude: [{ id: "claude-opus-5", label: "Opus 5" }] } });
+
+    render(<Composer />);
+
+    const model = screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Claude Code" }) });
+    fireEvent.keyDown(model, { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "Opus 5" }));
+
+    const participants = useAppStore.getState().config.chats[0].participants;
+    expect(participants[0].model).toBe("claude-opus-5");
+    expect(participants[1].model).toBe("gemini-3.8-flash-high");
+  });
+
+  it("picking the default model again clears the one that was pinned", () => {
+    setUpProject({
+      chats: [chat([{ agentId: "a2", role: "engineer", model: "gemini-3.8-flash-high" }])],
+      currentChatId: "c1",
+    });
+
+    render(<Composer />);
+
+    const model = screen.getByRole("combobox", { name: translateNow("composer.modelOf", { name: "Antigravity" }) });
+    fireEvent.keyDown(model, { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: tDefaultModel }));
+
+    expect(useAppStore.getState().config.chats[0].participants[0].model).toBeUndefined();
   });
 });

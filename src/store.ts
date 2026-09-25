@@ -217,6 +217,8 @@ export interface AppState {
   diffPanelOpen: boolean;
   /** Whether the terminals section of the right dock is open (persisted). */
   termPanelOpen: boolean;
+  /** Whether the saved orders show above the composer (persisted). Visible on a fresh install. */
+  presetsVisible: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
   /** projectId -> the file open beside that project's conversation. Not persisted. */
@@ -290,6 +292,8 @@ export interface AppState {
   toggleCommPanel(open?: boolean, projectId?: string | null): void;
   toggleDiffPanel(open?: boolean, projectId?: string | null): void;
   toggleTermPanel(open?: boolean, projectId?: string | null): void;
+  /** Shows or hides the strip of saved orders above the composer. Left out, it flips. */
+  togglePresets(visible?: boolean): void;
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
   openPreview(ref: string, projectId?: string | null): void;
   closePreview(projectId?: string | null): void;
@@ -589,6 +593,7 @@ interface UiPrefs {
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
+  presetsVisible: boolean;
   dockSizes: Record<DockSectionId, number>;
   paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
@@ -805,6 +810,7 @@ const defaultUiPrefs: UiPrefs = {
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
+  presetsVisible: true,
   dockSizes: { comm: 1, diff: 1, term: 1, file: 1 },
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
@@ -916,6 +922,9 @@ function loadUiPrefs(): UiPrefs {
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
+      // The only one of these that starts open, so it is the only one read the other way round:
+      // anything but an explicit false (a build that never wrote it included) shows the strip.
+      presetsVisible: parsed.presetsVisible !== false,
       dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: sanitizeBoolMap(parsed.sidebarCollapsed),
@@ -941,6 +950,7 @@ function saveUiPrefs(): void {
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
+      presetsVisible: s.presetsVisible,
       dockSizes: s.dockSizes,
       paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
@@ -1309,6 +1319,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleTermPanel: (open, projectId) => {
     set(s => rememberPanels(s, "term", open, projectId));
+    saveUiPrefs();
+  },
+
+  togglePresets: (visible) => {
+    set(s => ({ presetsVisible: visible ?? !s.presetsVisible }));
     saveUiPrefs();
   },
 

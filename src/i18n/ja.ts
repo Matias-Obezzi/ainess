@@ -209,7 +209,9 @@ export const ja: Dictionary = {
   "composer.defaultModel": "デフォルトモデル",
   "composer.otherModel": "その他…",
   "composer.typeModel": "モデル名を入力…",
-  "composer.runsOn": "{name}は{model}",
+  "composer.modelOf": "{name}のモデル",
+  "composer.hidePresets": "クイックメッセージを隠す",
+  "composer.showPresets": "クイックメッセージを表示",
   "presetStrip.previous": "前のオーダーを見る",
   "presetStrip.next": "次のオーダーを見る",
 

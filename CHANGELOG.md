@@ -55,10 +55,10 @@ let one of them fall behind.
   name of the active model, so at a glance, without tapping anything, you know which model your
   next message will use. The free-text field for typing a model by hand ("Other…") also fits on
   a narrow screen now. In a one-on-one chat, neither the phone nor the desktop showed which
-  model the agent was running; now it is displayed, one per participant. You cannot change it
-  from there on purpose: a chat does not carry its own model, it runs with the one chosen when
-  it was created or, failing that, with the agent's default, and that is the same order used to
-  resolve it at startup, so what you read is what will actually run. The Agents tab on the phone
+  model the agent was running; now it is displayed, one per participant, and can be changed from
+  there (see below). What it falls back to has not changed: the model chosen when the chat was
+  created or, failing that, the agent's own — the same order used to resolve it at startup, so
+  what you read is what will actually run. The Agents tab on the phone
   was read-only. Now you can change an agent's default model from there, with the same choices
   the composer offers. (#29)
 - **A ceiling on how many runs go at the same time.** A run is a process that runs tests, builds
@@ -68,6 +68,24 @@ let one of them fall behind.
   four by default, 0 for no ceiling — counting every project together, because what is being
   protected is the machine. Whatever goes over it waits its turn and starts on its own as soon as
   a slot frees, so nothing is dropped and nothing is asked for twice. (#36)
+
+### Changed
+
+- **The bottom bar of the composer says less and does more.** The two pickers — who answers, and
+  on which model — lost their arrow and now take the width of whatever they are showing, the way
+  the quota button beside them always has: a short model name no longer leaves a gap, and a long
+  one is no longer cut to a fixed width. Inside a chat, the read-only line per member is now the
+  member's avatar and its name, and beside it a model picker that works: what you pick is written
+  onto that member of that chat and stays there. Who is in the chat is still not something you
+  change from here — saying something to somebody else is a chat of its own, started from the bar
+  on the left. The saved orders above the box now fold away behind a small button and stay folded
+  until you say otherwise, and the box no longer draws a ring around itself when it takes the
+  focus: the border says it, once.
+- **The down arrow walks out of a ``` block that ends the message.** A block closed on the last
+  line of the box had nothing under it, so there was no way to write anything after it without
+  going back and making the line by hand. The arrow makes it now. Everywhere else — with a line
+  under the caret, outside a block, in a block still open — it is the arrow it always was, and
+  the up arrow is untouched.
 
 ### Fixed
 

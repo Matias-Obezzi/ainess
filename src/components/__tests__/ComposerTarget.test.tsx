@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent, resetStore, act } from "@/test/render";
 import { Composer } from "../shell/Composer";
 import { useAppStore } from "@/store";
+import { translateNow } from "@/i18n/useT";
 import type { AgentConfig, Project } from "@/types";
 
 const agent1: AgentConfig = {
@@ -139,8 +140,15 @@ describe("Composer - orchestrator target tracking", () => {
 
     render(<Composer />);
 
-    // In chatMode, the target dropdown is not rendered. The agent's name is still on screen —
-    // the read-only line saying which model the chat runs on — but nothing to pick with.
-    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    // In chatMode the target dropdown is not rendered: the only select down there is the model of
+    // the one member, and the member itself is a name and a logo with nothing to pick from.
+    const selects = screen.getAllByRole("combobox");
+    expect(selects).toHaveLength(1);
+    expect(selects[0].getAttribute("aria-label")).toBe(
+      translateNow("composer.modelOf", { name: "Claude Code" }),
+    );
+    // The name is on screen as the member; it is not an option of anything.
+    expect(screen.getByText("Claude Code")).toBeDefined();
+    expect(screen.queryByRole("option", { name: /Claude Code/ })).toBeNull();
   });
 });

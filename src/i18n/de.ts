@@ -208,7 +208,9 @@ export const de: Dictionary = {
   "composer.defaultModel": "Standardmodell",
   "composer.otherModel": "Anderes…",
   "composer.typeModel": "Modell eintippen…",
-  "composer.runsOn": "{name} mit {model}",
+  "composer.modelOf": "Modell von {name}",
+  "composer.hidePresets": "Schnellnachrichten ausblenden",
+  "composer.showPresets": "Schnellnachrichten anzeigen",
   "presetStrip.previous": "Vorherige Aufträge anzeigen",
   "presetStrip.next": "Nächste Aufträge anzeigen",
 

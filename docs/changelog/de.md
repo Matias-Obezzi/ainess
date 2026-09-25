@@ -58,8 +58,8 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Nachricht laufen wird. Das freie Textfeld, um ein Modell von Hand einzutippen („Anderes…“),
   passt jetzt auch auf einen schmalen Bildschirm. In einem Einzelchat war weder auf dem Handy
   noch auf dem Desktop zu sehen, mit welchem Modell der Agent lief; jetzt wird es angezeigt, eines
-  pro Teilnehmer. Ändern lässt es sich dort mit Absicht nicht: ein Chat trägt kein eigenes Modell,
-  er läuft mit dem, das bei seiner Erstellung gewählt wurde, und sonst mit dem des Agenten —
+  pro Teilnehmer, und es lässt sich dort auch ändern (siehe unten). Worauf es zurückfällt, ist
+  gleich geblieben: das bei der Erstellung des Chats gewählte Modell und sonst das des Agenten —
   dieselbe Reihenfolge, in der es beim Start aufgelöst wird, sodass das, was Sie lesen, auch
   wirklich läuft. Der Agenten-Tab auf dem Handy war schreibgeschützt. Jetzt können Sie dort das
   Standardmodell eines Agenten ändern, mit denselben Möglichkeiten, die der Composer bietet. (#29)
@@ -71,6 +71,25 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   alle Projekte zusammen, denn geschützt wird die Maschine. Was darüber liegt, wartet und startet
   von selbst, sobald ein Platz frei wird, es geht also nichts verloren und nichts wird zweimal
   angefragt. (#36)
+
+### Geändert
+
+- **Die untere Leiste des Composers sagt weniger und kann mehr.** Die beiden Auswahlfelder — wer
+  antwortet und mit welchem Modell — haben ihren Pfeil verloren und nehmen jetzt die Breite
+  dessen ein, was sie zeigen, so wie es der Kontingent-Knopf daneben immer getan hat: ein kurzer
+  Modellname lässt keine Lücke mehr, ein langer wird nicht mehr auf eine feste Breite
+  abgeschnitten. In einem Chat ist die schreibgeschützte Zeile pro Teilnehmer jetzt das Logo des
+  Agenten und sein Name, daneben eine Modellauswahl, die sich bedienen lässt: was Sie wählen, wird
+  auf diesen Teilnehmer dieses Chats geschrieben. Wer im Chat ist, ändert sich weiterhin nicht von
+  hier aus — jemand anderem etwas zu sagen ist ein eigener Chat, gestartet in der linken Leiste.
+  Die gespeicherten Befehle über dem Feld klappen jetzt hinter einem kleinen Knopf weg und bleiben
+  weggeklappt, bis Sie es anders sagen, und das Feld zeichnet beim Fokus keinen Ring mehr um sich:
+  das sagt der Rand, einmal.
+- **Der Pfeil nach unten führt aus einem Codeblock heraus, der die Nachricht beendet.** Ein in der
+  letzten Zeile geschlossener Block hatte nichts unter sich, es gab also keine Möglichkeit, danach
+  noch etwas zu schreiben, ohne zurückzugehen und die Zeile von Hand zu machen. Jetzt macht sie
+  der Pfeil. Überall sonst — mit einer Zeile unter dem Cursor, außerhalb eines Blocks, in einem
+  noch offenen Block — ist es der Pfeil von immer, und der Pfeil nach oben bleibt unangetastet.
 
 ### Behoben
 
