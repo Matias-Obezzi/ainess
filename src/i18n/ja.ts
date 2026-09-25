@@ -111,11 +111,10 @@ export const ja: Dictionary = {
   // ---- Title bar ----
   "titlebar.remoteOn": "リモートアクセス有効",
   "titlebar.remoteOff": "リモートアクセス無効",
+  "titlebar.remoteOpen": "リモートアクセスを開く",
   "titlebar.bridgeOn": "{channels} に接続中",
-  "titlebar.remoteTurnOn": "リモートアクセスをオンにする",
-  "titlebar.remoteTurnOff": "リモートアクセスをオフにする",
   "titlebar.remoteBusy": "少々お待ちください…",
-  "titlebar.remoteAt": "リモートアクセスが {host}:{port} で有効です",
+  "titlebar.remoteAt": "{host}:{port} でリモートアクセス中 · 画面を開く",
   "titlebar.localNetwork": "ローカルネットワーク",
   "titlebar.minimize": "最小化",
   "titlebar.maximize": "最大化",

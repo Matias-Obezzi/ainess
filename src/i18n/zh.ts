@@ -110,11 +110,10 @@ export const zh: Dictionary = {
   // ---- Title bar ----
   "titlebar.remoteOn": "远程访问已开启",
   "titlebar.remoteOff": "远程访问已关闭",
+  "titlebar.remoteOpen": "打开远程访问",
   "titlebar.bridgeOn": "已连接到 {channels}",
-  "titlebar.remoteTurnOn": "开启远程访问",
-  "titlebar.remoteTurnOff": "关闭远程访问",
   "titlebar.remoteBusy": "请稍候…",
-  "titlebar.remoteAt": "远程访问已在 {host}:{port} 开启",
+  "titlebar.remoteAt": "远程访问已在 {host}:{port} 运行 · 打开设置页",
   "titlebar.localNetwork": "本地网络",
   "titlebar.minimize": "最小化",
   "titlebar.maximize": "最大化",

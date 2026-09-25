@@ -110,11 +110,10 @@ export const pt: Dictionary = {
   // ---- Title bar ----
   "titlebar.remoteOn": "Acesso remoto ativo",
   "titlebar.remoteOff": "Acesso remoto desligado",
+  "titlebar.remoteOpen": "Abrir o acesso remoto",
   "titlebar.bridgeOn": "Conectado a {channels}",
-  "titlebar.remoteTurnOn": "Ligar o acesso remoto",
-  "titlebar.remoteTurnOff": "Desligar o acesso remoto",
   "titlebar.remoteBusy": "Só um instante…",
-  "titlebar.remoteAt": "Acesso remoto ativo em {host}:{port}",
+  "titlebar.remoteAt": "Acesso remoto ativo em {host}:{port} · Abrir a tela",
   "titlebar.localNetwork": "a rede local",
   "titlebar.minimize": "Minimizar",
   "titlebar.maximize": "Maximizar",

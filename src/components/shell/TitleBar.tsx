@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Copy, Loader2, MessagesSquare, Minus, PanelL
 import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/shell/NotificationBell";
@@ -12,8 +11,12 @@ import type { BridgeProviderId } from "@/lib/bridge/types";
 import { useT } from "@/i18n/useT";
 
 /**
- * Turns the remote server on and off from the window bar, so the phone can be let in without
- * opening Configuración. The state comes from `remoteStatus`, which the app keeps in sync.
+ * The way to the remote access screen, with the light that says whether the server is up.
+ *
+ * It used to be the switch itself. One click from the window bar started a server on the local
+ * network — with no chance to look at the port, the token or the QR first, and no way to tell from
+ * a grey phone whether it was off or about to be. Turning it on and off lives in Configuración →
+ * Remoto, which is where everything else about it already was; this opens that.
  */
 function RemoteButton() {
   const t = useT();
@@ -21,17 +24,7 @@ function RemoteButton() {
   const ip = useAppStore(state => state.remoteStatus.ip);
   const port = useAppStore(state => state.config.remote.port);
   const busy = useAppStore(state => state.remoteBusy);
-  const toggleRemote = useAppStore(state => state.toggleRemote);
-
-  const click = async () => {
-    const turningOn = !running;
-    try {
-      await toggleRemote(turningOn);
-      toast.success(turningOn ? t("titlebar.remoteOn") : t("titlebar.remoteOff"));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-  };
+  const openSettings = useAppStore(state => state.openSettings);
 
   return (
     <Tooltip>
@@ -40,10 +33,11 @@ function RemoteButton() {
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          aria-label={running ? t("titlebar.remoteTurnOff") : t("titlebar.remoteTurnOn")}
-          disabled={busy}
-          onClick={() => void click()}
+          aria-label={t("titlebar.remoteOpen")}
+          onClick={() => openSettings("remote")}
         >
+          {/* Starting and stopping happens on the screen this opens, so the spinner is still worth
+              drawing: it is the same server, and this is where its light is. */}
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -52,7 +46,7 @@ function RemoteButton() {
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {busy ? t("titlebar.remoteBusy") : running ? t("titlebar.remoteAt", { host: ip ?? t("titlebar.localNetwork"), port }) : t("titlebar.remoteTurnOn")}
+        {busy ? t("titlebar.remoteBusy") : running ? t("titlebar.remoteAt", { host: ip ?? t("titlebar.localNetwork"), port }) : t("titlebar.remoteOpen")}
       </TooltipContent>
     </Tooltip>
   );
