@@ -274,27 +274,29 @@ function Alarm({ base, light }: { base: string; light: string }) {
 /**
  * Typing: binoculars held up to the face and aimed at the box below, scanning slowly across.
  *
- * In `shade` rather than in the project colour, unlike the props that hang off to the side: these
- * are drawn over the body, which is that colour, so the base tone would have made them vanish.
+ * In `light`, not in the project colour like the props that hang off to the side: these are drawn
+ * over the creature itself, and the base tone against a body painted in it is no prop at all. The
+ * pale tube also holds up over a visor, which is the one face already drawn in near-black.
  */
 function Binoculars({ shade, light }: { shade: string; light: string }) {
   return (
     <g
       data-testid="mascot-binoculars"
       className="animate-mascot-peek"
-      style={{ transformOrigin: "50% 20%", transformBox: "fill-box" }}
+      style={{ transformOrigin: "50% 15%", transformBox: "fill-box" }}
     >
-      {/* Two tubes and the bridge between them. They sit below the eyes and point down, so the
-          creature reads as looking into them at whatever is being written under it. */}
-      <g style={{ fill: shade }}>
-        <rect x="30" y="63" width="15" height="19" rx="7.5" />
-        <rect x="55" y="63" width="15" height="19" rx="7.5" />
-        <rect x="43.5" y="67" width="13" height="5" rx="2.5" />
+      {/* Two tubes and the bridge between them, held just under the eyes and pointing down: low
+          enough that the lowered pupils stay above the rim, so the glance down into them is still
+          part of the picture rather than something hidden behind it. */}
+      <g strokeWidth="1.8" strokeLinejoin="round" style={{ fill: light, stroke: shade }}>
+        <rect x="30.5" y="65" width="14" height="18" rx="7" />
+        <rect x="55.5" y="65" width="14" height="18" rx="7" />
+        <rect x="43.5" y="69" width="13" height="5" rx="2.5" />
       </g>
-      {/* The far end of each tube: the glass, seen at the angle the creature is holding them. */}
-      <g strokeWidth="1.6" style={{ fill: light, stroke: shade }}>
-        <ellipse cx="37.5" cy="80.5" rx="6" ry="2.8" />
-        <ellipse cx="62.5" cy="80.5" rx="6" ry="2.8" />
+      {/* The far end of each tube: the glass, seen at the angle it is being held. */}
+      <g style={{ fill: shade }}>
+        <ellipse cx="37.5" cy="81.5" rx="5.2" ry="2.4" />
+        <ellipse cx="62.5" cy="81.5" rx="5.2" ry="2.4" />
       </g>
     </g>
   );
