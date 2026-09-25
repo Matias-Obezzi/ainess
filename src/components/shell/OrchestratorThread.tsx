@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
-import { mascotMood } from "@/lib/mascot";
+import { mascotMood, withTyping } from "@/lib/mascot";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
@@ -78,7 +78,9 @@ export function OrchestratorThread() {
   const plannerOutOfTokens = useAppStore(state =>
     Object.values(state.quotaWaiting).some(w => w.projectId === currentProjectId && w.agentId === plannerId),
   );
-  const mood = plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined;
+  // Same as in a chat: what is being typed below wins over a planner with nothing to show.
+  const composerTyping = useAppStore(state => state.composerTyping);
+  const mood = withTyping(plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined, composerTyping);
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
   const editQueuedInstruction = useAppStore(state => state.editQueuedInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);

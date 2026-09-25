@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
-import { mascotMood } from "@/lib/mascot";
+import { mascotMood, withTyping } from "@/lib/mascot";
 import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { useAppStore, selectAllAgents } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
@@ -71,7 +71,10 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const mascotOutOfTokens = useAppStore(state =>
     Object.values(state.quotaWaiting).some(w => w.projectId === project?.id && w.agentId === mascotAgent?.id),
   );
-  const mood = mascotAgent ? mascotMood(mascotRuntime, mascotOutOfTokens) : undefined;
+  // The one mood that is not the agent's: while the box below is being typed into, the creature
+  // watches it — unless the agent has something of its own to show (see `withTyping`).
+  const composerTyping = useAppStore(state => state.composerTyping);
+  const mood = withTyping(mascotAgent ? mascotMood(mascotRuntime, mascotOutOfTokens) : undefined, composerTyping);
 
   // Sent while the chat was mid-answer: it waits its turn, and says so.
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);

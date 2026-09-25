@@ -239,6 +239,12 @@ export interface AppState {
   searchOpen: boolean;
   /** Whether the Ctrl+/ shortcuts dialog is open. Not persisted. */
   shortcutsOpen: boolean;
+  /**
+   * True while the user is putting something in the composer, and for a moment after the last
+   * keystroke. Read by the mascot, which looks down at the box while it is on (see
+   * `lib/mascot.ts#withTyping`). Transient: it belongs to this session, never to the config.
+   */
+  composerTyping: boolean;
 
   /**
    * What the managed ACP runtime install shows on screen: `open` while the dialog is up, the rest
@@ -305,6 +311,8 @@ export interface AppState {
   cycleSidebar(): void;
   toggleSearch(open?: boolean, initialGroup?: "messages" | null): void;
   toggleShortcuts(open?: boolean): void;
+  /** The composer says here whether it is being typed into; nothing else writes it. */
+  setComposerTyping(typing: boolean): void;
   /** Asks the task board to open (or close, with null) one task's detail. */
   focusTask(taskId: string | null): void;
   /** Asks the thread to scroll to and highlight one message. */
@@ -1178,6 +1186,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   navIndex: 0,
   searchOpen: false,
   shortcutsOpen: false,
+  composerTyping: false,
   acpSetup: { open: false },
   claudeAuth: { status: null, open: false, hasEngine: true, failed: false },
   focusedTaskId: null,
@@ -1394,6 +1403,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleShortcuts: (open) => {
     set(s => ({ shortcutsOpen: open ?? !s.shortcutsOpen }));
+  },
+
+  setComposerTyping: (typing) => {
+    // Guarded: the composer calls this on every keystroke, and a `set` that changes nothing would
+    // still re-run every subscriber's selector in the app.
+    if (get().composerTyping === typing) return;
+    set({ composerTyping: typing });
   },
 
   setAcpSetup: (patch) => {

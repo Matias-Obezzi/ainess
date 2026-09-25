@@ -51,8 +51,8 @@ export function mascotTraits(seed: string): MascotTraits {
   };
 }
 
-/** What the creature is doing, one step coarser than `AgentStatus`: five things read at a glance. */
-export type MascotMood = "working" | "waiting" | "quota" | "error" | "idle";
+/** What the creature is doing, one step coarser than `AgentStatus`: six things read at a glance. */
+export type MascotMood = "working" | "waiting" | "quota" | "error" | "idle" | "typing";
 
 /**
  * The mood of the agent the mascot stands for. Takes what was already read out of the store rather
@@ -70,4 +70,19 @@ export function mascotMood(runtime: { status: AgentStatus } | undefined, outOfTo
   // `stopped` stays here: stopped by hand is not broken, and to someone looking at a corner of the
   // screen it means the same as idle — nothing is happening.
   return "idle";
+}
+
+/**
+ * Folds in the one mood that is not the agent's: the user typing.
+ *
+ * It wins over `idle` and over `waiting`, which are the two the agent has nothing to show for —
+ * and `waiting` is the better of the two trades, since what is being typed is the very thing the
+ * agent stopped to wait for. It loses to `working`, `error` and `quota`: those happen on the
+ * agent's side of the conversation, and a creature that stopped hammering because you touched the
+ * keyboard would be reporting on the wrong half of it.
+ */
+export function withTyping(mood: MascotMood | undefined, typing: boolean): MascotMood | undefined {
+  if (!typing) return mood;
+  if (mood === undefined || mood === "idle" || mood === "waiting") return "typing";
+  return mood;
 }

@@ -166,6 +166,52 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
   return nodes;
 }
 
+/**
+ * How long after the last keystroke the box still counts as being typed into.
+ *
+ * Long enough that thinking mid-sentence does not put the creature back to sleep, short enough
+ * that it is not still watching a box you walked away from.
+ */
+const TYPING_IDLE_MS = 1500;
+
+/**
+ * Says in the store whether this box is being typed into, for the mascot to read (see
+ * `lib/mascot.ts#withTyping`).
+ *
+ * One timer, pushed back on each keystroke rather than one per key, and the store is only written
+ * when the answer changes — a `set` per character would re-run every subscriber's selector in the
+ * app, which is the mistake `useDraft` exists to avoid.
+ */
+function useTypingSignal(): (text: string) => void {
+  const setComposerTyping = useAppStore(state => state.setComposerTyping);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stop = useCallback(() => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    setComposerTyping(false);
+  }, [setComposerTyping]);
+
+  // Unmounting with the flag left on would leave the creature staring at a box that is gone.
+  useEffect(() => stop, [stop]);
+
+  return useCallback((text: string) => {
+    // An emptied box is not someone typing: it is a message that went out, or one taken back.
+    if (!text) {
+      stop();
+      return;
+    }
+    setComposerTyping(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setComposerTyping(false);
+    }, TYPING_IDLE_MS);
+  }, [setComposerTyping, stop]);
+}
+
 /** One attached file before it is sent: images show themselves, the rest show their name. */
 function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
   const t = useT();
@@ -391,6 +437,8 @@ export function Composer() {
   // store, and zustand re-runs every subscriber's selector on every `set` — so each character made
   // every mounted screen work. See `useDraft`.
   const { text, setText } = useDraft(draftKey);
+  // What the mascot watches: it looks down at the box while this is on.
+  const noteTyping = useTypingSignal();
   // A turn lives outside the store, so this used to be polled twice a second for as long as a chat
   // was open. It is subscribed now: the box redraws when a turn starts or ends and not otherwise.
   const chatBusy = useSyncExternalStore(
@@ -698,6 +746,7 @@ export function Composer() {
   const runCommand = (command: ChatCommand) => {
     if (!currentProjectId) return;
     setText("");
+    noteTyping("");
     setHistoryIndex(null);
     if (command.id === "compact") {
       const n = compactProject(currentProjectId);
@@ -746,6 +795,7 @@ export function Composer() {
     sentHistory.push(typed);
     setHistoryIndex(null);
     setText("");
+    noteTyping("");
     setAttachments([]);
 
     // The files are copied into the project first: what the agent gets is the paths, which is the
@@ -1208,7 +1258,7 @@ export function Composer() {
               ref={attachBox}
               data-testid="composer-input"
               value={text}
-              onChange={e => { setText(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
+              onChange={e => { setText(e.target.value); noteTyping(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
               onKeyDown={handleKeyDown}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}

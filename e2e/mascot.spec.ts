@@ -1,10 +1,10 @@
-// The mascot acting out what its agent is doing. Nothing here is compared to a stored image: the
-// five moods are drawn so a person can look at them side by side and say whether "asleep" reads as
-// asleep, which no assertion is going to settle.
+// The mascot acting out what its agent is doing — and, in one case, what the user is doing. Nothing
+// here is compared to a stored image: the moods are drawn so a person can look at them side by side
+// and say whether "asleep" reads as asleep, which no assertion is going to settle.
 import { test, expect } from "@playwright/test";
 import { openDemo, snap } from "./demo";
 
-type Mood = "working" | "waiting" | "idle" | "quota" | "error";
+type Mood = "working" | "waiting" | "idle" | "quota" | "error" | "typing";
 
 /** Puts the corner mascot on screen, with the planner in the state that mood comes from. */
 async function setMood(page: import("@playwright/test").Page, mood: Mood): Promise<void> {
@@ -15,6 +15,7 @@ async function setMood(page: import("@playwright/test").Page, mood: Mood): Promi
       currentProjectId: string | null;
       runtime: Record<string, Record<string, { status: string }>>;
       quotaWaiting: Record<string, unknown>;
+      composerTyping: boolean;
     };
     const store = (window as unknown as { __ainess: { getState(): State; setState(patch: object): void } }).__ainess;
     const state = store.getState();
@@ -25,6 +26,8 @@ async function setMood(page: import("@playwright/test").Page, mood: Mood): Promi
     const status = m === "working" || m === "waiting" || m === "error" ? m : "idle";
     store.setState({
       config: { ...state.config, mascotAlways: true },
+      // Typing is not a status: it is the flag the composer raises, and it wins over an idle agent.
+      composerTyping: m === "typing",
       runtime: { ...state.runtime, [projectId]: { ...state.runtime[projectId], [planner.id]: { ...state.runtime[projectId]?.[planner.id], status } } },
       quotaWaiting: m === "quota"
         ? { "r-demo": { agentId: planner.id, projectId, provider: "claude", prompt: "", createdAt: Date.now(), attempts: 0 } }
@@ -33,7 +36,7 @@ async function setMood(page: import("@playwright/test").Page, mood: Mood): Promi
   }, mood);
 }
 
-for (const mood of ["working", "waiting", "idle", "quota", "error"] as Mood[]) {
+for (const mood of ["working", "waiting", "idle", "quota", "error", "typing"] as Mood[]) {
   test(`the mascot in the corner, ${mood}`, async ({ page }) => {
     // Shot with the motion turned down, which is the one still frame where every mood shows what it
     // adds: mid-animation the z's are halfway faded out and the clock is halfway out of sight.
