@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, availableProviders, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage } from "@/lib/providers";
+import { acpProvider, cliProvider, availableProviders, isDefaultProviderName, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage, type BuildInput } from "@/lib/providers";
+import { forgetAcpAdapter, resolveAcpAdapter } from "@/lib/acp/adapter";
+import { setTransport } from "@/lib/transport";
+import { nullTransport } from "@/lib/transport-null";
 import { mergeUsage } from "@/lib/orchestrator";
 import { useAppStore } from "@/store";
 import { es, loadLanguage } from "@/i18n";
@@ -29,6 +32,9 @@ const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
   ...over,
 });
 
+/** Claude Code, the one provider that runs over ACP. */
+const spec = acpProvider("claude");
+
 describe("parseDelegations", () => {
   it("reads the {tasks:[...]} form", () => {
     const text = 'Voy a delegar.\n```delegate\n{"tasks":[{"agent":"Obrero","task":"crear hola.txt"}]}\n```\n';
@@ -57,7 +63,7 @@ describe("parseDelegations", () => {
 
 describe("antigravity provider", () => {
   it("passes --add-dir, --conversation and skip-permissions", () => {
-    const cmd = PROVIDERS.antigravity.buildCommand({
+    const cmd = cliProvider("antigravity").buildCommand({
       agent: agent({ model: "gemini-3.1-pro-high" }),
       prompt: "hola",
       systemPrompt: "SYS",
@@ -77,7 +83,7 @@ describe("antigravity provider", () => {
   });
 
   it("parses stream-json events", () => {
-    const p = PROVIDERS.antigravity;
+    const p = cliProvider("antigravity");
     expect(p.parseLine('{"event":"init","conversation_id":"c1","init":{}}', "stdout")).toEqual([{ type: "session", sessionId: "c1" }]);
     expect(p.parseLine('{"event":"step_update","step_update":{"step_type":"agent_response","text_delta":"OK","state":"DONE"}}', "stdout"))
       .toEqual([{ type: "text", text: "OK" }]);
@@ -94,124 +100,124 @@ describe("antigravity provider", () => {
   });
 });
 
-describe("claude provider", () => {
-  it("sends the prompt via stdin and restricts planners to read-only tools", () => {
-    const cmd = PROVIDERS.claude.buildCommand({
-      agent: agent({ provider: "claude", role: "planner", autoApprove: false }),
-      prompt: "planificá",
-      systemPrompt: "SYS",
-      sessionId: "s1",
-      cwd: "C:/ws",
-      binaryPath: "claude.exe",
-    });
-    expect(cmd.stdinText).toBe("planificá");
-    expect(cmd.args).toContain("--resume");
-    expect(cmd.args).toContain("--allowedTools");
-    expect(cmd.args).toContain("--permission-mode");
-    expect(cmd.args).not.toContain("--dangerously-skip-permissions");
-  });
-
-  it("passes --disallowedTools with Agent and Workflow for an implementer", () => {
-    const cmd = PROVIDERS.claude.buildCommand({
-      agent: agent({ provider: "claude", role: "implementer" }),
-      prompt: "hacé esto",
+describe("claude provider over ACP", () => {
+  const session = (over: Partial<AgentConfig> = {}, input: Partial<BuildInput> = {}) =>
+    spec.buildAcpSession({
+      agent: agent({ provider: "claude", ...over }),
+      prompt: "hace esto",
       systemPrompt: "SYS",
       cwd: "C:/ws",
       binaryPath: "claude.exe",
+      ...input,
     });
-    expect(cmd.args).toContain("--disallowedTools");
-    const disallowed = cmd.args.slice(cmd.args.indexOf("--disallowedTools") + 1);
-    expect(disallowed).toContain("Agent");
-    expect(disallowed).toContain("Workflow");
+  const optionsOf = (meta: Record<string, unknown> | undefined) =>
+    (meta?.claudeCode as { options: Record<string, unknown> }).options;
+
+  it("appends the system prompt instead of replacing the preset", () => {
+    // A string here would take the `claude_code` preset's place, and with it Claude Code's own
+    // system prompt. `{ append }` is what `--append-system-prompt` was.
+    expect(session().meta?.systemPrompt).toEqual({ append: "SYS" });
+    expect(session({}, { systemPrompt: "" }).meta?.systemPrompt).toBeUndefined();
   });
 
-  it("does not pass --disallowedTools to planners and keeps their --allowedTools", () => {
-    const cmd = PROVIDERS.claude.buildCommand({
-      agent: agent({ provider: "claude", role: "planner" }),
-      prompt: "planificá",
+  it("restricts a planner to the tools it had on the command line", () => {
+    const options = optionsOf(session({ role: "planner", autoApprove: false }).meta);
+    expect(options.allowedTools).toEqual([
+      "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)",
+      "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)",
+    ]);
+    expect(options.disallowedTools).toBeUndefined();
+    expect(options.permissionMode).toBe("acceptEdits");
+    expect(options.allowDangerouslySkipPermissions).toBeUndefined();
+  });
+
+  it("keeps subagents away from everyone else", () => {
+    const options = optionsOf(session({ role: "implementer" }).meta);
+    expect(options.disallowedTools).toEqual(["Agent", "Workflow", "Task"]);
+    expect(options.allowedTools).toBeUndefined();
+  });
+
+  it("turns autoApprove into the bypass mode, said twice as the SDK asks", () => {
+    const options = optionsOf(session({ autoApprove: true }).meta);
+    expect(options.permissionMode).toBe("bypassPermissions");
+    expect(options.allowDangerouslySkipPermissions).toBe(true);
+  });
+
+  it("passes the model when the agent has one", () => {
+    expect(optionsOf(session({ model: "claude-opus-5" }).meta).model).toBe("claude-opus-5");
+    expect(optionsOf(session().meta).model).toBeUndefined();
+  });
+
+  it("starts the adapter with stdin open, and with the configured CLI in the environment", async () => {
+    setTransport({ ...nullTransport, whichProgram: async (name: string) => `C:/bin/${name}.cmd` } as never);
+    forgetAcpAdapter();
+    const cmd = await spec.buildAcpCommand({
+      agent: agent({ provider: "claude" }),
+      prompt: "hola",
       systemPrompt: "SYS",
       cwd: "C:/ws",
-      binaryPath: "claude.exe",
+      binaryPath: "C:/mine/claude.exe",
     });
-    expect(cmd.args).not.toContain("--disallowedTools");
-    expect(cmd.args).toContain("--allowedTools");
+    expect(cmd.keepStdinOpen).toBe(true);
+    expect(cmd.cwd).toBe("C:/ws");
+    expect(cmd.env?.CLAUDE_CODE_EXECUTABLE).toBe("C:/mine/claude.exe");
   });
 
-  it("parses stream-json events", () => {
-    const p = PROVIDERS.claude;
-    expect(p.parseLine('{"type":"system","subtype":"init","session_id":"s1"}', "stdout")).toEqual([{ type: "session", sessionId: "s1" }]);
-    const assistant = p.parseLine('{"type":"assistant","message":{"content":[{"type":"text","text":"hola"},{"type":"tool_use","name":"Edit","input":{"a":1}}]}}', "stdout");
-    expect(assistant.map(e => e.type)).toEqual(["text", "tool"]);
-    expect(p.parseLine('{"type":"result","subtype":"success","result":"fin","session_id":"s1"}', "stdout")).toEqual([{ type: "result", text: "fin", sessionId: "s1" }]);
-  });
-
-  // An init without an id used to come out as a session event carrying `undefined`, and the next
-  // turn resumed on it. Better no session at all: the run starts fresh instead of pointing nowhere.
-  it("ignores an init line that brings no session id", () => {
-    expect(PROVIDERS.claude.parseLine('{"type":"system","subtype":"init"}', "stdout")).toEqual([]);
-  });
-
-  it("emits contextTokens with the sum of cache and input tokens on assistant line", () => {
-    const line = JSON.stringify({
-      type: "assistant",
-      message: {
-        content: [{ type: "text", text: "pensando" }],
-        usage: {
-          input_tokens: 12,
-          output_tokens: 1_204,
-          cache_read_input_tokens: 48_233,
-          cache_creation_input_tokens: 1_640,
-        },
-      },
+  it("says nothing about a CLI that was never configured", async () => {
+    setTransport({ ...nullTransport, whichProgram: async () => null } as never);
+    forgetAcpAdapter();
+    const cmd = await spec.buildAcpCommand({
+      agent: agent({ provider: "claude" }),
+      prompt: "hola",
+      systemPrompt: "",
+      cwd: "C:/ws",
+      binaryPath: "",
     });
-    const events = PROVIDERS.claude.parseLine(line, "stdout");
-    expect(events).toEqual([
-      { type: "text", text: "pensando\n\n" },
-      { type: "usage", usage: { contextTokens: 49_885 } },
-    ]);
-  });
-
-  it("defaults missing cache token counters to 0 when computing contextTokens", () => {
-    const line = JSON.stringify({
-      type: "assistant",
-      message: {
-        content: [{ type: "text", text: "hola" }],
-        usage: {
-          input_tokens: 50,
-          cache_read_input_tokens: 1_000,
-        },
-      },
-    });
-    const events = PROVIDERS.claude.parseLine(line, "stdout");
-    expect(events).toEqual([
-      { type: "text", text: "hola\n\n" },
-      { type: "usage", usage: { contextTokens: 1_050 } },
-    ]);
-  });
-
-  it("does not emit usage when assistant line has no usage or empty usage", () => {
-    const withoutUsage = JSON.stringify({
-      type: "assistant",
-      message: {
-        content: [{ type: "text", text: "sin uso" }],
-      },
-    });
-    expect(PROVIDERS.claude.parseLine(withoutUsage, "stdout")).toEqual([
-      { type: "text", text: "sin uso\n\n" },
-    ]);
-
-    const emptyUsage = JSON.stringify({
-      type: "assistant",
-      message: {
-        content: [{ type: "text", text: "uso vacio" }],
-        usage: {},
-      },
-    });
-    expect(PROVIDERS.claude.parseLine(emptyUsage, "stdout")).toEqual([
-      { type: "text", text: "uso vacio\n\n" },
-    ]);
+    expect(cmd.env?.CLAUDE_CODE_EXECUTABLE).toBeUndefined();
   });
 });
+
+describe("the ACP adapter, as it is found", () => {
+  it("prefers an install already on the machine", async () => {
+    const asked: string[] = [];
+    setTransport({
+      ...nullTransport,
+      whichProgram: async (name: string) => { asked.push(name); return name === "claude-agent-acp" ? "C:/bin/claude-agent-acp.cmd" : null; },
+    } as never);
+    forgetAcpAdapter();
+    expect(await resolveAcpAdapter()).toEqual({ program: "C:/bin/claude-agent-acp.cmd", args: [], via: "installed" });
+    expect(asked).toEqual(["claude-agent-acp"]);
+  });
+
+  it("falls back to npx, by full path, and answers its prompt for it", async () => {
+    setTransport({
+      ...nullTransport,
+      whichProgram: async (name: string) => (name === "npx" ? "C:/nodejs/npx.cmd" : null),
+    } as never);
+    forgetAcpAdapter();
+    expect(await resolveAcpAdapter()).toEqual({
+      program: "C:/nodejs/npx.cmd",
+      args: ["-y", "@agentclientprotocol/claude-agent-acp"],
+      via: "npx",
+    });
+  });
+
+  it("tries the bare name when there is no npx to be found, rather than giving up here", async () => {
+    setTransport({ ...nullTransport, whichProgram: async () => null } as never);
+    forgetAcpAdapter();
+    expect((await resolveAcpAdapter()).program).toBe("npx");
+  });
+
+  it("only looks once", async () => {
+    let calls = 0;
+    setTransport({ ...nullTransport, whichProgram: async () => { calls++; return "C:/bin/claude-agent-acp"; } } as never);
+    forgetAcpAdapter();
+    await resolveAcpAdapter();
+    await resolveAcpAdapter();
+    expect(calls).toBe(1);
+  });
+});
+
 
 // "root agent idle; waiting for 1 background task(s)" is Claude Code saying, on stderr, that it is
 // waiting on a subtask. It was filed as an error, every error is toasted, and so a red box that said
@@ -219,18 +225,18 @@ describe("claude provider", () => {
 describe("what a CLI writes to stderr", () => {
   const chatter = "root agent idle; waiting for 1 background task(s) (bounded by --print-timeout)";
 
-  it.each(["claude", "antigravity", "copilot", "opencode", "custom"] as const)("is stderr for %s, not an error", provider => {
-    expect(PROVIDERS[provider].parseLine(chatter, "stderr")).toEqual([{ type: "stderr", text: chatter }]);
+  it.each(["antigravity", "copilot", "opencode", "custom"] as const)("is stderr for %s, not an error", provider => {
+    expect(cliProvider(provider).parseLine(chatter, "stderr")).toEqual([{ type: "stderr", text: chatter }]);
   });
 
   it("still yields nothing for a blank stderr line where that was the rule", () => {
-    expect(PROVIDERS.copilot.parseLine("   ", "stderr")).toEqual([]);
+    expect(cliProvider("copilot").parseLine("   ", "stderr")).toEqual([]);
   });
 
   // An error the CLI names in its structured stream is a different thing and keeps its kind.
   it("keeps a structured error as an error", () => {
     const line = JSON.stringify({ event: "result", result: { status: "FAILED", error: "quota exhausted" } });
-    expect(PROVIDERS.antigravity.parseLine(line, "stdout")).toContainEqual({ type: "error", text: "quota exhausted" });
+    expect(cliProvider("antigravity").parseLine(line, "stdout")).toContainEqual({ type: "error", text: "quota exhausted" });
   });
 });
 
@@ -291,26 +297,41 @@ describe("MCP servers reaching an agent", () => {
   // Verified against `copilot --help` on Windows: "--additional-mcp-config <json>  Additional MCP
   // servers configuration as JSON string or file path (prefix with @)".
   it("hands Copilot the same file Claude Code gets, by path", () => {
-    const { args } = PROVIDERS.copilot.buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp });
+    const { args } = cliProvider("copilot").buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp });
     const i = args.indexOf("--additional-mcp-config");
     expect(i).toBeGreaterThan(-1);
     expect(args[i + 1]).toBe("@C:/cfg/mcp/a1.json");
   });
 
   it("says nothing about MCP when there is none", () => {
-    const { args } = PROVIDERS.copilot.buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp, mcpConfigPath: undefined });
+    const { args } = cliProvider("copilot").buildCommand({ agent: agent({ provider: "copilot" }), ...withMcp, mcpConfigPath: undefined });
     expect(args).not.toContain("--additional-mcp-config");
   });
 
-  it("keeps passing it to Claude Code as it did", () => {
-    const { args } = PROVIDERS.claude.buildCommand({ agent: agent({ provider: "claude" }), ...withMcp });
-    const i = args.indexOf("--mcp-config");
-    expect(args[i + 1]).toBe("C:/cfg/mcp/a1.json");
+  // Claude Code reads no file any more: over ACP the servers are part of `session/new`, in the
+  // spelling the protocol asks for (a list, headers and environment as name/value pairs).
+  it("declares them to Claude Code in the session instead of in a file", () => {
+    const { mcpServers } = spec.buildAcpSession({
+      agent: agent({ provider: "claude" }),
+      ...withMcp,
+      mcpServers: [
+        { id: "m1", name: "trello", transport: "http", url: "https://mcp.trello.com", headers: { Authorization: "Bearer ${TRELLO}" }, enabledFor: "all" },
+        { id: "m2", name: "files", transport: "stdio", command: "npx", args: ["-y", "server"], env: { ROOT: "C:/ws" }, enabledFor: "all" },
+      ],
+    });
+    expect(mcpServers).toEqual([
+      { type: "http", name: "trello", url: "https://mcp.trello.com", headers: [{ name: "Authorization", value: "Bearer ${TRELLO}" }] },
+      { name: "files", command: "npx", args: ["-y", "server"], env: [{ name: "ROOT", value: "C:/ws" }] },
+    ]);
+  });
+
+  it("has an empty list when the agent has no servers", () => {
+    expect(spec.buildAcpSession({ agent: agent({ provider: "claude" }), ...withMcp }).mcpServers).toEqual([]);
   });
 });
 
 describe("copilot provider", () => {
-  const copilot = PROVIDERS.copilot;
+  const copilot = cliProvider("copilot");
   const msg = (content: string, toolRequests: unknown[] = []) =>
     JSON.stringify({ type: "assistant.message", data: { messageId: "m", content, toolRequests } });
 
@@ -356,8 +377,10 @@ describe("parseDelegations with fences inside the task", () => {
 });
 
 describe("usage reported by each CLI", () => {
+  // No run reads this line any more (claude runs over ACP, which reports its own usage), but the
+  // shape it is read in is still the one the app shows.
   it("takes cost, turns, duration and tokens from Claude Code's result line", () => {
-    const line = JSON.stringify({
+    const raw = {
       type: "result",
       subtype: "success",
       is_error: false,
@@ -367,17 +390,9 @@ describe("usage reported by each CLI", () => {
       session_id: "s1",
       total_cost_usd: 0.3421,
       usage: { input_tokens: 12, output_tokens: 1_204, cache_read_input_tokens: 48_233, cache_creation_input_tokens: 1_640 },
-    });
-    const events = PROVIDERS.claude.parseLine(line, "stdout");
-    expect(events).toEqual([
-      {
-        type: "result",
-        text: "listo",
-        sessionId: "s1",
-        // The two cache counters are one figure for us.
-        usage: { costUsd: 0.3421, inputTokens: 12, outputTokens: 1_204, cachedInputTokens: 49_873, turns: 7, durationMs: 41_562 },
-      },
-    ]);
+    };
+    // The two cache counters are one figure for us.
+    expect(claudeUsage(raw)).toEqual({ costUsd: 0.3421, inputTokens: 12, outputTokens: 1_204, cachedInputTokens: 49_873, turns: 7, durationMs: 41_562 });
   });
 
   it("leaves out whatever Claude Code did not report, without inventing zeros", () => {
@@ -471,7 +486,7 @@ describe("usage reported by each CLI", () => {
         usage: { input_tokens: 900, output_tokens: 300, total_cost_usd: 0.02 },
       },
     });
-    expect(PROVIDERS.antigravity.parseLine(line, "stdout")).toEqual([
+    expect(cliProvider("antigravity").parseLine(line, "stdout")).toEqual([
       { type: "result", text: "hecho", sessionId: "c1", usage: { costUsd: 0.02, inputTokens: 900, outputTokens: 300 } },
     ]);
     expect(antigravityUsage({ usage: { promptTokens: 10, completionTokens: 4 } })).toEqual({ inputTokens: 10, outputTokens: 4 });
@@ -486,7 +501,7 @@ describe("usage reported by each CLI", () => {
       exitCode: 0,
       usage: { premiumRequests: 3, sessionDurationMs: 92_310 },
     });
-    expect(PROVIDERS.copilot.parseLine(line, "stdout")).toEqual([
+    expect(cliProvider("copilot").parseLine(line, "stdout")).toEqual([
       { type: "session", sessionId: "s-1" },
       // Copilot's result has no answer text: the event exists only to carry the usage.
       { type: "result", text: "", usage: { durationMs: 92_310, premiumRequests: 3 } },
@@ -546,7 +561,55 @@ describe("availableProviders", () => {
     expect(availableProviders({ claude: { path: "C:/claude.exe" } }, "codex")).toContain("codex");
   });
 
-  it("with nothing detected, leaves the custom command", () => {
-    expect(availableProviders({})).toEqual(["custom"]);
+  // Claude Code is always there: it runs over ACP, whose adapter is fetched when it is needed, so
+  // there is no CLI for a detection to miss.
+  it("with nothing detected, leaves the ACP provider and the custom command", () => {
+    expect(availableProviders({})).toEqual(["claude", "custom"]);
+  });
+});
+
+describe("isDefaultProviderName", () => {
+  it("matches standard provider labels and IDs", () => {
+    expect(isDefaultProviderName("Claude Code", "claude")).toBe(true);
+    expect(isDefaultProviderName("claude", "claude")).toBe(true);
+    expect(isDefaultProviderName("Antigravity", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("antigravity", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("GitHub Copilot", "copilot")).toBe(true);
+    expect(isDefaultProviderName("Copilot", "copilot")).toBe(true);
+    expect(isDefaultProviderName("OpenCode", "opencode")).toBe(true);
+    expect(isDefaultProviderName("Custom", "custom")).toBe(true);
+  });
+
+  it("matches variations with numbers and hex counters", () => {
+    expect(isDefaultProviderName("Claude Code 2", "claude")).toBe(true);
+    expect(isDefaultProviderName("Claude 3", "claude")).toBe(true);
+    expect(isDefaultProviderName("Antigravity 2", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Antigravity 99", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Antigravity a1b2", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("Copilot 4", "copilot")).toBe(true);
+    expect(isDefaultProviderName("OpenCode 5", "opencode")).toBe(true);
+  });
+
+  it("is case-insensitive and trims whitespace", () => {
+    expect(isDefaultProviderName("  claude code  ", "claude")).toBe(true);
+    expect(isDefaultProviderName("ANTIGRAVITY", "antigravity")).toBe(true);
+    expect(isDefaultProviderName("github copilot 2", "copilot")).toBe(true);
+  });
+
+  it("treats empty or whitespace-only name as default", () => {
+    expect(isDefaultProviderName("", "claude")).toBe(true);
+    expect(isDefaultProviderName("   ", "antigravity")).toBe(true);
+  });
+
+  it("rejects custom agent names", () => {
+    expect(isDefaultProviderName("My Worker", "claude")).toBe(false);
+    expect(isDefaultProviderName("Orquestador", "antigravity")).toBe(false);
+    expect(isDefaultProviderName("Architect", "copilot")).toBe(false);
+    expect(isDefaultProviderName("Claude 3 Opus", "claude")).toBe(false);
+  });
+
+  it("rejects names belonging to a different provider", () => {
+    expect(isDefaultProviderName("Antigravity", "claude")).toBe(false);
+    expect(isDefaultProviderName("Claude Code", "antigravity")).toBe(false);
   });
 });

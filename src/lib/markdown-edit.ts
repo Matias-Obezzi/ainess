@@ -2,6 +2,8 @@
 // the next line, wrapping a selection in bold, italic or code, turning it into a link. Pure
 // functions over the text and the selection, so the box only has to put the result back.
 
+import { fenceRegions } from "./fences";
+
 export interface TextEdit {
   text: string;
   /** Where the selection goes afterwards. Equal when it is a bare caret. */
@@ -114,4 +116,24 @@ export function pasteAsCode(text: string, start: number, end: number, code: stri
   const block = `${lead}\`\`\`\n${code.replace(/\s+$/, "")}\n\`\`\`${trail}`;
   const caret = start + block.length - trail.length;
   return { text: before + block + after, start: caret, end: caret };
+}
+
+/**
+ * The way out of a ``` block that ends the message.
+ *
+ * A block closed on the last line of the box has nothing under it, so the arrow that would walk
+ * out of it has nowhere to land and the code is the last thing you can write. This makes the line:
+ * a newline after the closing fence, caret on it, outside the block.
+ *
+ * Null wherever the arrow already goes somewhere — a line below the caret, the caret outside every
+ * block, a selection rather than a bare caret — and in a fence still open, where the way out is
+ * closing it (Enter does that for you) rather than walking past a closer that is not there.
+ */
+export function exitCodeBlock(text: string, start: number, end: number): TextEdit | null {
+  if (start !== end) return null;
+  if (text.indexOf("\n", start) !== -1) return null;
+  const inClosedFence = fenceRegions(text).some(r => r.closed && start > r.start && start <= r.end);
+  if (!inClosedFence) return null;
+  const caret = text.length + 1;
+  return { text: `${text}\n`, start: caret, end: caret };
 }

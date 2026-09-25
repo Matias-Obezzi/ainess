@@ -1,7 +1,7 @@
 // The box helps you write markdown: a list carries on when you ask for a new line, and the keys
 // every editor uses for bold, italic, code and links do that to the selection.
 import { describe, it, expect } from "vitest";
-import { continueList, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
+import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
 
 describe("continueList", () => {
   it("carries a bullet on to the next line, indentation and all", () => {
@@ -104,5 +104,56 @@ describe("pasteAsCode", () => {
     const edit = pasteAsCode("before SEL after", 7, 10, "a;\nb;");
     expect(edit.text).toBe("before \n```\na;\nb;\n```\n after");
     expect(edit.text.slice(edit.start)).toBe("\n after");
+  });
+});
+
+describe("exitCodeBlock", () => {
+  it("makes the line the closing fence has nothing under", () => {
+    const text = "hi\n```\ncode\n```";
+    expect(exitCodeBlock(text, text.length, text.length)).toEqual({
+      text: "hi\n```\ncode\n```\n",
+      start: 16,
+      end: 16,
+    });
+  });
+
+  it("works anywhere on the closing line, not just at its end", () => {
+    const text = "```\ncode\n```";
+    // Right after the first backtick of the closer.
+    expect(exitCodeBlock(text, 10, 10)?.text).toBe("```\ncode\n```\n");
+  });
+
+  it("leaves the arrow alone when there is already a line after the block", () => {
+    const text = "```\ncode\n```\nafter";
+    expect(exitCodeBlock(text, text.length, text.length)).toBeNull();
+    // And on the closing line itself, which has the line below it the arrow wants.
+    expect(exitCodeBlock(text, 12, 12)).toBeNull();
+  });
+
+  it("leaves the arrow alone inside the block, where the closing line is below", () => {
+    const text = "```\ncode\n```";
+    expect(exitCodeBlock(text, 8, 8)).toBeNull();
+  });
+
+  it("is nothing outside every block", () => {
+    const text = "just words";
+    expect(exitCodeBlock(text, text.length, text.length)).toBeNull();
+    const after = "```\ncode\n```\nplain";
+    expect(exitCodeBlock(after, after.length, after.length)).toBeNull();
+  });
+
+  it("is nothing in a fence that was never closed", () => {
+    const text = "```\ncode";
+    expect(exitCodeBlock(text, text.length, text.length)).toBeNull();
+  });
+
+  it("is nothing with a selection: this is a caret's move", () => {
+    const text = "```\ncode\n```";
+    expect(exitCodeBlock(text, 4, text.length)).toBeNull();
+  });
+
+  it("leaves the second of two blocks, not the first", () => {
+    const text = "```\na\n```\n```\nb\n```";
+    expect(exitCodeBlock(text, text.length, text.length)?.text).toBe(`${text}\n`);
   });
 });

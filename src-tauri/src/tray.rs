@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State, Wry,
+    AppHandle, Emitter, Manager, State, Wry,
 };
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
@@ -21,17 +21,26 @@ struct TrayHandles {
     icon: TrayIcon<Wry>,
 }
 
+/// The event the webview listens for to know the window is back in front of somebody: out of the
+/// tray, out of a minimize, or because a second launch was turned into a focus of this one. It is
+/// never emitted for plain focus — alt-tabbing back from a browser is not coming back to the app,
+/// and the webview animating on each of those would be a flicker that never stops.
+pub const WINDOW_RETURNED: &str = "window-returned";
+
 /// Whether closing the main window should hide it to the tray instead of quitting.
 /// Defaults to `true`: the app stays in the background unless the user turns it off.
 pub struct TrayState {
     pub enabled: AtomicBool,
     /// None until the webview has said what the menu should read (`tray_configure`).
     handles: Mutex<Option<TrayHandles>>,
+    /// Whether the window was minimized as of the last resize. Windows reports a minimize as a
+    /// resize, and the only thing worth announcing is the edge back out of it.
+    minimized: AtomicBool,
 }
 
 impl Default for TrayState {
     fn default() -> Self {
-        Self { enabled: AtomicBool::new(true), handles: Mutex::new(None) }
+        Self { enabled: AtomicBool::new(true), handles: Mutex::new(None), minimized: AtomicBool::new(false) }
     }
 }
 
@@ -89,7 +98,13 @@ fn show_main_window(app: &AppHandle) {
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
+        announce_return(app);
     }
+}
+
+/// Tells the webview the window is back. Shared by every way back in (`lib.rs` calls it too).
+pub fn announce_return(app: &AppHandle) {
+    let _ = app.emit(WINDOW_RETURNED, ());
 }
 
 fn build_tray(app: &AppHandle, labels: &TrayLabels) -> tauri::Result<TrayHandles> {
@@ -127,6 +142,18 @@ fn build_tray(app: &AppHandle, labels: &TrayLabels) -> tauri::Result<TrayHandles
 /// there is no tray yet to find it in again, which is the case until the webview has configured
 /// one. A window hidden with no way back is an app that has to be killed from the task manager.
 pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    // A minimize and a restore both arrive as a resize; which of the two it was is the difference
+    // between the flag we are holding and what the window says now. Only the edge out of minimized
+    // is announced — a resize that was somebody dragging a corner is not coming back to anything.
+    if let tauri::WindowEvent::Resized(_) = event {
+        let state = window.state::<TrayState>();
+        let now = window.is_minimized().unwrap_or(false);
+        let before = state.minimized.swap(now, Ordering::Relaxed);
+        if before && !now {
+            announce_return(window.app_handle());
+        }
+        return;
+    }
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         let state = window.state::<TrayState>();
         let has_tray = state.handles.lock().map(|h| h.is_some()).unwrap_or(false);

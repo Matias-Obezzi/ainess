@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PROVIDERS } from "@/lib/providers";
+import { useModelChoices } from "@/hooks/useModelChoices";
 import { useT } from "@/i18n/useT";
 
 interface Preset {
@@ -61,7 +61,7 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
   };
 
   const selectedAgent = agents.find(a => a.id === agentId);
-  const providerSpec = selectedAgent ? PROVIDERS[selectedAgent.provider] : null;
+  const modelChoices = useModelChoices(selectedAgent?.provider);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,10 +95,10 @@ export function PresetDialog({ open, onOpenChange, preset }: { open: boolean, on
                 <SelectTrigger className="w-full"><SelectValue placeholder={agentId === "none" ? t("presetDialog.pickAgentFirst") : t("presetDialog.agentDefault")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t("presetDialog.agentDefault")}</SelectItem>
-                  {providerSpec?.defaultModels.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  {modelChoices.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
                   ))}
-                  {selectedAgent?.model && !providerSpec?.defaultModels.includes(selectedAgent.model) && (
+                  {selectedAgent?.model && !modelChoices.some(m => m.id === selectedAgent.model) && (
                     <SelectItem value={selectedAgent.model}>{selectedAgent.model}</SelectItem>
                   )}
                 </SelectContent>

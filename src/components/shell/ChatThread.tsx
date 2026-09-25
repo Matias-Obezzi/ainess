@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
-import { mascotMood } from "@/lib/mascot";
+import { mascotMood, withTyping } from "@/lib/mascot";
 import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { useAppStore, selectAllAgents } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
@@ -20,6 +20,7 @@ import { formatClock } from "@/lib/format";
 import { confirm } from "@/lib/confirm";
 import { isNearBottom } from "@/lib/feed-window";
 import { plural } from "@/i18n";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT, useLocale } from "@/i18n/useT";
 import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
@@ -41,6 +42,10 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const agents = useAppStore(selectAllAgents);
   const chatMessages = useAppStore(state => state.chatMessages);
   const chatLoading = useAppStore(state => state.chatLoading[chatId]);
+  // The body fades up when another chat is opened, and again when its history lands under the
+  // skeletons. On the column inside the scroller, never on the scroller: a transform there is a
+  // containing block, and the thread would lose its scroll anchoring for as long as it plays.
+  const screenIn = useScreenIn([chatId, chatLoading]);
   const loadChatMessages = useAppStore(state => state.loadChatMessages);
   const removeChat = useAppStore(state => state.removeChat);
   const openProject = useAppStore(state => state.openProject);
@@ -71,11 +76,15 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const mascotOutOfTokens = useAppStore(state =>
     Object.values(state.quotaWaiting).some(w => w.projectId === project?.id && w.agentId === mascotAgent?.id),
   );
-  const mood = mascotAgent ? mascotMood(mascotRuntime, mascotOutOfTokens) : undefined;
+  // The one mood that is not the agent's: while the box below is being typed into, the creature
+  // watches it — unless the agent has something of its own to show (see `withTyping`).
+  const composerTyping = useAppStore(state => state.composerTyping);
+  const mood = withTyping(mascotAgent ? mascotMood(mascotRuntime, mascotOutOfTokens) : undefined, composerTyping);
 
   // Sent while the chat was mid-answer: it waits its turn, and says so.
   const chatQueue = useAppStore(state => state.chatQueues[chatId]);
   const unqueueChatMessage = useAppStore(state => state.unqueueChatMessage);
+  const editQueuedChatMessage = useAppStore(state => state.editQueuedChatMessage);
   const sendChatNow = useAppStore(state => state.sendChatNow);
   // One block: they go over as a single message, so there is one "send now" for the lot.
   const queued = useMemo(
@@ -83,10 +92,11 @@ export function ChatThread({ chatId }: { chatId: string }) {
       lines: (chatQueue ?? []).map((text, index) => ({
         text,
         onCancel: () => unqueueChatMessage(chatId, index),
+        onEdit: (next: string) => editQueuedChatMessage(chatId, index, text, next),
       })),
       onSendNow: () => void sendChatNow(chatId),
     }],
-    [chatQueue, chatId, unqueueChatMessage, sendChatNow],
+    [chatQueue, chatId, unqueueChatMessage, editQueuedChatMessage, sendChatNow],
   );
 
   useEffect(() => {
@@ -228,7 +238,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 select-text" ref={scrollRef} onScroll={onScroll}>
-        <div className="flex flex-col gap-3 max-w-3xl mx-auto">
+        <div ref={screenIn} className="flex flex-col gap-3 max-w-3xl mx-auto">
           {/* Skeletons only over an empty thread. A reload that happens while the history is
               already on screen used to replace it with three grey blocks, which reads as the
               conversation having been lost. */}

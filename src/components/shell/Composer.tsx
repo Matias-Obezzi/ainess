@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
-import { ProviderLogo } from "@/components/ProviderLogo";
+import { AgentAvatar, ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
+import { useModelChoices } from "@/hooks/useModelChoices";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
-import type { Preset } from "@/types";
+import type { AgentConfig, ChatParticipant, Preset } from "@/types";
 import { useAppStore, selectAllAgents, selectProjectAgents, selectProjectChatId } from "@/store";
 import { instructAgent } from "@/lib/orchestrator";
 import { Button } from "@/components/ui/button";
@@ -14,19 +15,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS, parseSuggestion } from "@/lib/providers";
 import { isChatActive, subscribeChatActivity } from "@/lib/chat";
+import { isTypedPrompt } from "@/lib/thread-turns";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { continueList, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
-import { FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
+import { ChevronDown, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { questionsForComposer } from "@/lib/pending-question";
 import { useDraft } from "@/hooks/useDraft";
@@ -63,6 +65,14 @@ interface MenuOption {
  * rarely change — a framed control for that is a frame around nothing.
  */
 const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
+
+/**
+ * And the width of whatever they are showing, the way the quota button beside them takes the room
+ * its number needs and no more. A fixed width left a gap after a short model name and cut a long
+ * one in the same row; the cap is only there so a hand-typed model id cannot push the quota ring
+ * off the line.
+ */
+const FLAT_SELECT_AUTO = "w-auto min-w-0 max-w-[14rem] truncate";
 
 /**
  * The text of the box as the highlight layer draws it: plain text as is, and each ``` fence as a
@@ -156,6 +166,52 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
   return nodes;
 }
 
+/**
+ * How long after the last keystroke the box still counts as being typed into.
+ *
+ * Long enough that thinking mid-sentence does not put the creature back to sleep, short enough
+ * that it is not still watching a box you walked away from.
+ */
+const TYPING_IDLE_MS = 1500;
+
+/**
+ * Says in the store whether this box is being typed into, for the mascot to read (see
+ * `lib/mascot.ts#withTyping`).
+ *
+ * One timer, pushed back on each keystroke rather than one per key, and the store is only written
+ * when the answer changes — a `set` per character would re-run every subscriber's selector in the
+ * app, which is the mistake `useDraft` exists to avoid.
+ */
+function useTypingSignal(): (text: string) => void {
+  const setComposerTyping = useAppStore(state => state.setComposerTyping);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stop = useCallback(() => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    setComposerTyping(false);
+  }, [setComposerTyping]);
+
+  // Unmounting with the flag left on would leave the creature staring at a box that is gone.
+  useEffect(() => stop, [stop]);
+
+  return useCallback((text: string) => {
+    // An emptied box is not someone typing: it is a message that went out, or one taken back.
+    if (!text) {
+      stop();
+      return;
+    }
+    setComposerTyping(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setComposerTyping(false);
+    }, TYPING_IDLE_MS);
+  }, [setComposerTyping, stop]);
+}
+
 /** One attached file before it is sent: images show themselves, the rest show their name. */
 function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
   const t = useT();
@@ -196,6 +252,67 @@ function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
   );
 }
 
+/**
+ * One member of a chat in the bottom bar: who it is, and the model it answers on.
+ *
+ * The member itself is not a control, on purpose: a chat is made with the members it has, and
+ * saying something to somebody else is a chat of its own, started from the bar on the left — a
+ * member picker down here would move a conversation to another agent halfway through it. The
+ * model is the opposite: it is the one thing about a running chat you do want to change, it lives
+ * on the participant (`chat.participants[i].model`), and picking one writes it back there.
+ *
+ * A component of its own rather than a row inside a `map`: the list of models is fetched per
+ * provider by a hook, each member can come from a different provider, and a hook cannot run in a
+ * loop.
+ */
+function ChatParticipantModel({ chatId, participants, index, agent, name }: {
+  chatId: string;
+  participants: ChatParticipant[];
+  index: number;
+  agent: AgentConfig | undefined;
+  name: string;
+}) {
+  const t = useT();
+  const updateChat = useAppStore(state => state.updateChat);
+  const options = useModelChoices(agent?.provider);
+  // What actually runs: the one the chat pinned when it was made, otherwise the agent's own.
+  const model = participants[index]?.model ?? agent?.model ?? "";
+  // A model the CLI no longer lists — or one typed by hand into the agent — is still the one that
+  // answers, so it gets an entry of its own instead of leaving the select showing nothing.
+  const unlisted = model && !options.some(m => m.id === model) ? model : "";
+
+  const pick = (value: string) => {
+    updateChat(chatId, {
+      participants: participants.map((p, i) => (
+        i === index ? { ...p, model: value === "none" ? undefined : value } : p
+      )),
+    });
+  };
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={18} />}
+      <span className="min-w-0 max-w-[10rem] truncate text-xs text-muted-foreground">{name}</span>
+      <Select value={model || "none"} onValueChange={pick}>
+        <SelectTrigger
+          hideChevron
+          aria-label={t("composer.modelOf", { name })}
+          className={cn(FLAT_SELECT, FLAT_SELECT_AUTO)}
+        >
+          <SelectValue placeholder={t("common.model")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
+          {options.map(m => (
+            <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+          ))}
+          {unlisted && <SelectItem value={unlisted}>{unlisted}</SelectItem>}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 /** The input pinned at the bottom of the project screen: orchestrator prompt or chat message. */
 export function Composer() {
   const t = useT();
@@ -214,6 +331,8 @@ export function Composer() {
   const stopAll = useAppStore(state => state.stopAll);
   const setProjectMode = useAppStore(state => state.setProjectMode);
   const toggleDiffPanel = useAppStore(state => state.toggleDiffPanel);
+  const presetsVisible = useAppStore(state => state.presetsVisible);
+  const togglePresets = useAppStore(state => state.togglePresets);
   const clearMessages = useAppStore(state => state.clearMessages);
 
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -269,7 +388,7 @@ export function Composer() {
     // The orchestrator's thread: a round-zero run with no parent is a prompt the user typed, and
     // its output is what came back.
     const own = Object.values(runs)
-      .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0)
+      .filter(r => r.projectId === currentProjectId && !r.parentRunId && r.round === 0 && isTypedPrompt(r))
       .sort((a, b) => b.startedAt - a.startedAt);
     const lastAgent = own.find(r => r.status === "done" && r.output)?.output;
     return {
@@ -297,13 +416,19 @@ export function Composer() {
   const roots = agents.filter(a => a.parentId === null);
   const defaultAgent = roots.find(a => a.role === "planner") || roots[0];
   const [targetId, setTargetId] = useState<string>(defaultAgent?.id || "");
+  const prevDefaultAgentIdRef = useRef<string | undefined>(defaultAgent?.id);
 
   // Agents can be created or deleted from Settings; keep the target pointing at something real.
+  // In the orchestrator thread (!chatMode), follow the new orchestrator if targeting the previous one.
   useEffect(() => {
+    const prevDefaultId = prevDefaultAgentIdRef.current;
     if (!agents.some(a => a.id === targetId)) {
       setTargetId(defaultAgent?.id || "");
+    } else if (!chatMode && prevDefaultId !== defaultAgent?.id && (targetId === prevDefaultId || !targetId)) {
+      setTargetId(defaultAgent?.id || "");
     }
-  }, [agents, targetId, defaultAgent?.id]);
+    prevDefaultAgentIdRef.current = defaultAgent?.id;
+  }, [agents, targetId, defaultAgent?.id, chatMode]);
 
   // What is typed lives in the store, by conversation: going to the board and back used to come
   // back to an empty box.
@@ -312,6 +437,8 @@ export function Composer() {
   // store, and zustand re-runs every subscriber's selector on every `set` — so each character made
   // every mounted screen work. See `useDraft`.
   const { text, setText } = useDraft(draftKey);
+  // What the mascot watches: it looks down at the box while this is on.
+  const noteTyping = useTypingSignal();
   // A turn lives outside the store, so this used to be polled twice a second for as long as a chat
   // was open. It is subscribed now: the box redraws when a turn starts or ends and not otherwise.
   const chatBusy = useSyncExternalStore(
@@ -330,8 +457,12 @@ export function Composer() {
   const targetAgent = agents.find(a => a.id === targetId);
   const targetRuntime = targetAgent && currentProjectId ? runtime[currentProjectId]?.[targetId] : undefined;
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
-  const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
-  const modelOptions = targetAgent ? (PROVIDERS[targetAgent.provider]?.defaultModels || []) : [];
+  // Undefined for a provider that needs no CLI: one that runs over ACP brings its own adapter, so
+  // there is nothing missing to warn about.
+  const binaryInfo = targetAgent && PROVIDERS[targetAgent.provider]?.transport !== "acp"
+    ? binaries[targetAgent.provider]
+    : undefined;
+  const modelOptions = useModelChoices(targetAgent?.provider);
 
   // The model of this conversation, remembered next to its draft: picking one, going to the board
   // and coming back used to say "default model" again while the box below still held the prompt.
@@ -339,12 +470,13 @@ export function Composer() {
   // one typed by hand. The only thing it cannot say is "custom, nothing typed yet".
   const composerModel = useAppStore(state => state.composerModels[draftKey] ?? "");
   const setComposerModel = useAppStore(state => state.setComposerModel);
+  const rememberModel = useAppStore(state => state.rememberModel);
   const [wantsCustom, setWantsCustom] = useState(false);
   useEffect(() => { setWantsCustom(false); }, [draftKey]);
   const targetModel = wantsCustom
     ? "custom"
     : composerModel
-      ? (modelOptions.includes(composerModel) ? composerModel : "custom")
+      ? (modelOptions.some(m => m.id === composerModel) ? composerModel : "custom")
       : "none";
   const setTargetModel = (value: string) => {
     setWantsCustom(value === "custom");
@@ -353,6 +485,16 @@ export function Composer() {
   };
   const customModel = composerModel;
   const setCustomModel = (value: string) => setComposerModel(draftKey, value);
+  /**
+   * What the select would be showing if it were on screen. On the phone it is not — it is folded
+   * behind a button — and a button with nothing but an icon on it never said which model the next
+   * message goes out on, which is the one thing you want to check before sending from a phone.
+   */
+  const activeModelLabel = targetModel === "none"
+    ? t("composer.defaultModel")
+    : targetModel === "custom"
+      ? (customModel.trim() || t("composer.otherModel"))
+      : (modelOptions.find(m => m.id === targetModel)?.label ?? targetModel);
   // An order bound to another agent would run somewhere else than what the composer says, so only
   // the ones for this target (and the ones bound to nobody) are offered.
   const presetsForTarget = (config.presets ?? []).filter(p => !p.agentId || p.agentId === targetId);
@@ -378,6 +520,22 @@ export function Composer() {
   const quotaAgent = chatMode
     ? allAgents.find(a => a.id === chatAgentId)
     : targetAgent || defaultAgent;
+
+  /**
+   * Who answers in this chat and on which model, to be read and not changed: a chat carries no
+   * model of its own, it runs on the one it was created with or, failing that, the agent's default.
+   * That is the same order the runner resolves it in (`run.model ?? agent.model`), so what is
+   * printed here is what will actually be spawned — and until now nothing printed it at all.
+   */
+  const chatParticipants = useMemo(() => {
+    if (!chat) return [];
+    return chat.participants.map((p, i) => {
+      const agent = allAgents.find(a => a.id === p.agentId);
+      // The whole list on every row: a row writes its model back through `updateChat`, which takes
+      // the participants as a whole, and the rest of them have to travel unchanged.
+      return { key: `${p.agentId}-${i}`, chatId: chat.id, participants: chat.participants, index: i, agent, name: agent?.name ?? p.agentId };
+    });
+  }, [chat, allAgents]);
 
   const currentProject = config.projects.find(p => p.id === currentProjectId);
   // Attachments go with the project; the file list for `@` comes from the repo, which may sit under it.
@@ -588,6 +746,7 @@ export function Composer() {
   const runCommand = (command: ChatCommand) => {
     if (!currentProjectId) return;
     setText("");
+    noteTyping("");
     setHistoryIndex(null);
     if (command.id === "compact") {
       const n = compactProject(currentProjectId);
@@ -636,6 +795,7 @@ export function Composer() {
     sentHistory.push(typed);
     setHistoryIndex(null);
     setText("");
+    noteTyping("");
     setAttachments([]);
 
     // The files are copied into the project first: what the agent gets is the paths, which is the
@@ -674,6 +834,9 @@ export function Composer() {
       else void sendChatMessage(currentChatId, value);
     } else if (currentProjectId) {
       const model = targetModel === "none" ? undefined : targetModel === "custom" ? customModel : targetModel;
+      if (targetModel === "custom" && customModel.trim() && targetAgent) {
+        rememberModel(targetAgent.provider, customModel);
+      }
       // An agent that is working queues what it is told and picks it up when it is free; that is
       // what `instructAgent` has always done for the "instruct" action.
       // `instructAgent` runs it now when the agent is free and queues it when it is not, which is
@@ -822,6 +985,13 @@ export function Composer() {
       handleStop();
       return;
     }
+    // Out of a ``` block that ends the message: under its closing fence there is no line for the
+    // arrow to land on, so it makes one. Only there — everywhere else the arrow is the arrow, and
+    // ArrowUp is left alone entirely.
+    if (e.key === "ArrowDown" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const out = exitCodeBlock(text, e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
+      if (out) return applyEdit(out);
+    }
     // Arrow up on an empty box walks back through the prompts sent in this session.
     if (e.key === "ArrowUp" && sentHistory.length > 0 && (text === "" || historyIndex !== null)) {
       e.preventDefault();
@@ -960,8 +1130,34 @@ export function Composer() {
           </Alert>
         )}
 
-        {/* The saved orders that apply to whoever is going to run this. */}
-        <PresetStrip presets={presetsForTarget} onPick={applyPreset} />
+        {/* The saved orders that apply to whoever is going to run this, and the button that folds
+            them away: they are one click from the box, which is the point, but a row of them above
+            a conversation you are reading is a row of them you are not using. Nothing to fold when
+            there is nothing saved for this target — the strip draws nothing there either. */}
+        {presetsForTarget.length > 0 && (
+          <div className="flex items-start gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:bg-accent"
+              onClick={() => togglePresets()}
+              aria-expanded={presetsVisible}
+              aria-label={presetsVisible ? t("composer.hidePresets") : t("composer.showPresets")}
+              title={presetsVisible ? t("composer.hidePresets") : t("composer.showPresets")}
+            >
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !presetsVisible && "-rotate-90")} />
+            </Button>
+            <div
+              className={cn(
+                "min-w-0 flex-1 overflow-hidden transition-[max-height] duration-200 ease-out",
+                presetsVisible ? "max-h-[100vh]" : "max-h-0",
+              )}
+            >
+              <PresetStrip presets={presetsForTarget} onPick={applyPreset} />
+            </div>
+          </div>
+        )}
 
         {/* What is going with the message, before it goes. */}
         {attachments.length > 0 && (
@@ -1062,7 +1258,7 @@ export function Composer() {
               ref={attachBox}
               data-testid="composer-input"
               value={text}
-              onChange={e => { setText(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
+              onChange={e => { setText(e.target.value); noteTyping(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
               onKeyDown={handleKeyDown}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
@@ -1077,7 +1273,10 @@ export function Composer() {
               aria-label={placeholder}
               rows={2}
               // Transparent text, a caret and a selection: the layer underneath draws the words.
-              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent"
+              // No halo around the box: three pixels of ring on the one control that is always on
+              // screen read as an error. The focus is still said — the border turns to the ring
+              // colour, which the base Textarea already does — it is just said once.
+              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
@@ -1126,7 +1325,9 @@ export function Composer() {
           </div>
         )}
 
-        {(!chatMode || quotaAgent || !compact) && (
+        {/* The row used to be dropped in a chat on a phone with no quota ring to show, back when
+            it had nothing else in it. It says which model each participant runs on now. */}
+        {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
           <div className="flex gap-2 items-center flex-wrap">
             {!compact && (
               <Button
@@ -1145,10 +1346,25 @@ export function Composer() {
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}
             <div className="ml-auto flex items-center gap-2 flex-wrap">
-              {!chatMode && (
+              {chatMode ? (
+                /* One row per member: the member itself as a name and a logo, and the model as the
+                   only thing you can change from here. See `ChatParticipantModel`. */
+                <div className="flex flex-col items-end gap-0.5">
+                  {chatParticipants.map(p => (
+                    <ChatParticipantModel
+                      key={p.key}
+                      chatId={p.chatId}
+                      participants={p.participants}
+                      index={p.index}
+                      agent={p.agent}
+                      name={p.name}
+                    />
+                  ))}
+                </div>
+              ) : (
                 <>
                   <Select value={targetId} onValueChange={setTargetId}>
-                    <SelectTrigger className={cn("w-[150px]", FLAT_SELECT)}>
+                    <SelectTrigger hideChevron className={cn(FLAT_SELECT, FLAT_SELECT_AUTO)}>
                       <SelectValue placeholder={t("composer.target")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1160,28 +1376,34 @@ export function Composer() {
                     </SelectContent>
                   </Select>
 
+                  {/* The phone's version of the select next to it: the same toggle as before, but
+                      wearing the model it would open on, so the answer is there without a tap. */}
                   {compact && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 text-xs"
+                      className="h-8 min-w-0 gap-1.5 px-2 text-xs"
                       aria-label={t("composer.pickModel")}
+                      title={activeModelLabel}
                       onClick={() => setShowModel(v => !v)}
                     >
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                      <span className="max-w-[9rem] truncate">{activeModelLabel}</span>
                     </Button>
                   )}
 
+                  {/* Opened on a phone the two of them take a line of their own rather than a
+                      fixed 170px each: a model id is long and the row is 360px wide. */}
                   {(!compact || showModel) && (
                   <Select value={targetModel} onValueChange={setTargetModel}>
-                    <SelectTrigger className={cn("w-[170px]", FLAT_SELECT)}>
+                    <SelectTrigger hideChevron className={cn(FLAT_SELECT, compact ? "w-full" : FLAT_SELECT_AUTO)}>
                       <SelectValue placeholder={t("common.model")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
                       {modelOptions.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
                       ))}
                       <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                     </SelectContent>
@@ -1190,7 +1412,7 @@ export function Composer() {
 
                   {targetModel === "custom" && (!compact || showModel) && (
                     <Input
-                      className="h-8 w-[150px] text-xs"
+                      className={cn("h-8 text-xs", compact ? "w-full" : "w-[150px]")}
                       placeholder={t("composer.typeModel")}
                       value={customModel}
                       onChange={e => setCustomModel(e.target.value)}

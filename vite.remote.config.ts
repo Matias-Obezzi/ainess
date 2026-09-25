@@ -28,5 +28,18 @@ export default defineConfig({
     cssCodeSplit: false,
     // One file is the whole point here; the size warning would fire on every build.
     chunkSizeWarningLimit: 100000,
+    rollupOptions: {
+      /**
+       * The ACP SDK never travels to the phone.
+       *
+       * `src/lib/acp/session.ts` loads it with a dynamic import so it stays in a chunk of its own,
+       * which is enough everywhere but here: a single-file build inlines every chunk, dynamic ones
+       * included, so the import alone put 163 kB of protocol client and zod validators into the
+       * page (1,935.78 kB → 2,099.10 kB). The phone spawns no processes and its transport has no
+       * stdin to write to, so ACP is unreachable there by construction and the specifier is left
+       * unresolved rather than shipped.
+       */
+      external: ["@agentclientprotocol/sdk"],
+    },
   },
 });

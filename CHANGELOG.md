@@ -6,6 +6,172 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.24.0 — 2026-09-25
+
+### Added
+
+- **Claude Code no longer needs Node.js on the machine.** It speaks through an adapter published on
+  npm, and until now the only way in was `npx`: where Node.js was missing there was nothing to spawn
+  and the run died on a spawn error nobody could read. When neither the adapter nor `npx` is on PATH
+  the app builds its own environment instead — it downloads a runtime and installs the adapter in
+  its data folder (~360 MB, once) behind a screen that says what it is doing and can be retried. A
+  machine that already has Node.js keeps using `npx` and downloads nothing.
+- **Model pickers offer what the installed CLI can actually run.** Antigravity and opencode were
+  already asked for their models, but only the agent dialog read the answer; the composer,
+  presets, chats and the quota ring showed a list typed into the code, which went stale in
+  silence. Every picker now reads the same list: what the CLI reports, refreshed at startup and
+  at most every ten minutes, with the built-in list as a fallback. Ollama is asked too, so the
+  models installed on the machine appear without anyone editing a constant. A model typed under
+  "Other…" is remembered per provider and offered next time. (#37)
+- **A queued message can be edited before it is delivered.** When you write to an agent that is
+  busy, your message waits in a queue and is delivered when the agent's turn ends. Previously the
+  only thing you could do with a queued line was cancel it and retype the whole thing. Now every
+  waiting line has a pencil beside it: click it and the text opens in an inline text box, Enter
+  saves, Shift+Enter inserts a line break and Escape leaves it unchanged. Saving with empty text
+  is the same as cancelling the line. Works in the project thread and in one-on-one chats alike.
+  If the line has already been delivered while you were editing, the edit does not revive it. (#32)
+- **The phone has a single Conversations tab, and the home screen shows who is working.** The
+  remote used to split the same idea into two separate tabs — the project thread on one side and
+  the one-on-one chats on the other. Now there is one tab, "Conversations", which lists the
+  project thread at the top and the chats below; tap any of them to open it and use the back
+  arrow to return to the list. Switching tabs and coming back no longer closes the conversation
+  you had open. The home screen also shows, above the project list, which agents are working or
+  waiting for your answer in any project, with the agent's avatar, the project it belongs to and
+  what it is doing; agents waiting for you come first and are highlighted, and tapping one takes
+  you straight to that conversation. Each project in the list also flags whether any of its
+  agents is waiting. (#27, #31)
+- **The phone remote comes back where you left it.** Reopening or reloading the page (which a
+  phone does on its own when it drops the tab) landed on the home screen and the Tasks tab every
+  time. The project, chat and tab are kept on the device now and restored once the first
+  snapshot arrives; a project or chat that no longer exists falls back to home or to the
+  orchestrator thread. (#28)
+- **Projects on the phone carry the same avatar as on the desktop.** The list showed a bare
+  colour dot; it shows the coloured circle with the project's initials now, in the list and in
+  the project header, so both surfaces read as one app. (#30)
+- **The model can be picked from the phone.** The model is one of the things you most want to
+  change while away from the computer — a quota ran out, a task calls for the cheap model — and
+  until now that meant walking back to the PC. In the project thread the phone hid the model
+  picker behind an icon with no label: you had to guess it was there. Now that button shows the
+  name of the active model, so at a glance, without tapping anything, you know which model your
+  next message will use. The free-text field for typing a model by hand ("Other…") also fits on
+  a narrow screen now. In a one-on-one chat, neither the phone nor the desktop showed which
+  model the agent was running; now it is displayed, one per participant, and can be changed from
+  there (see below). What it falls back to has not changed: the model chosen when the chat was
+  created or, failing that, the agent's own — the same order used to resolve it at startup, so
+  what you read is what will actually run. The Agents tab on the phone
+  was read-only. Now you can change an agent's default model from there, with the same choices
+  the composer offers. (#29)
+- **A ceiling on how many runs go at the same time.** A run is a process that runs tests, builds
+  and installs of its own, and nothing bounded how many of them started together: with you
+  watching, the approval dialog was the only brake, and unattended ten delegations meant ten CLIs
+  fighting over the machine. Settings → General → "Runs at the same time" now sets that ceiling —
+  four by default, 0 for no ceiling — counting every project together, because what is being
+  protected is the machine. Whatever goes over it waits its turn and starts on its own as soon as
+  a slot frees, so nothing is dropped and nothing is asked for twice. (#36)
+- **Screens fade up when they arrive.** Opening the app, going between the home and a project,
+  switching to another chat, changing section in Settings: the body of what arrives comes up from
+  eight pixels below over a fifth of a second. Only the body — the title bar, the sidebar, the
+  composer and the dock on the right stay exactly where they are, because they never left. It plays
+  again when you come back to the window from the tray, from a minimize, or from launching the app a
+  second time; alt-tabbing back from a browser does not count as coming back, and nothing moves.
+  Appearance → "Screen animations" turns it off, and a system set to reduce motion turns it off on
+  its own, everywhere in the app.
+- **Claude Code can log in without leaving the app.** A run against the `claude` provider on a
+  machine where Claude Code had never signed in died with the same generic error as any other
+  failure, and there was no way to open a session short of quitting the app. The ACP client now
+  tells that failure apart — from the adapter's `_auth/status_update` notification and from the
+  `auth_required` error it answers a request with — and opens a screen for it. Login runs in an
+  integrated terminal, and once a session is there the run that had failed launches itself again,
+  no need to retype anything. A machine with no engine at all is offered the managed runtime
+  first, since that is what brings one. Cancelling still leaves the run finished, saying what is
+  missing.
+- **Settings → Agents shows who Claude Code is logged in as.** The Claude card now reads the
+  account — email, organization, plan — with a button to check it again and one to log out.
+  Logging out warns that the credentials live in `~/.claude` and that doing it affects any other
+  Claude Code on the machine, not just this app.
+- **Teams have their own settings screen.** Settings → Agents used to stack two unrelated things —
+  the CLIs installed on this machine and the saved teams — so reaching a team meant scrolling past
+  every provider card. Teams are a section of their own now, right below Agents. Both screens also
+  dropped the heading and description that used to sit above their content, since the sidebar
+  already names the screen, and what is visible now says "team" instead of "formation", in all
+  seven languages.
+- **The mascot watches what you are typing.** A sixth mood, on top of the five that already came
+  from the agent: while you type into the composer, it raises a pair of binoculars and looks down
+  at the box. It beats being asleep and waiting for you — what you are typing is the very thing a
+  waiting agent stopped for — and it never covers what the agent is actually doing: working,
+  broken or out of tokens still win.
+
+### Changed
+
+- **The bottom bar of the composer says less and does more.** The two pickers — who answers, and
+  on which model — lost their arrow and now take the width of whatever they are showing, the way
+  the quota button beside them always has: a short model name no longer leaves a gap, and a long
+  one is no longer cut to a fixed width. Inside a chat, the read-only line per member is now the
+  member's avatar and its name, and beside it a model picker that works: what you pick is written
+  onto that member of that chat and stays there. Who is in the chat is still not something you
+  change from here — saying something to somebody else is a chat of its own, started from the bar
+  on the left. The saved orders above the box now fold away behind a small button and stay folded
+  until you say otherwise, and the box no longer draws a ring around itself when it takes the
+  focus: the border says it, once.
+- **The down arrow walks out of a ``` block that ends the message.** A block closed on the last
+  line of the box had nothing under it, so there was no way to write anything after it without
+  going back and making the line by hand. The arrow makes it now. Everywhere else — with a line
+  under the caret, outside a block, in a block still open — it is the arrow it always was, and
+  the up arrow is untouched.
+
+### Fixed
+
+- **A run waiting for a free slot now gets it in the order it was asked for.** With the ceiling on
+  how many runs go at once already full, the rest wait — and several delegations approved together
+  are queued within the same millisecond, which left the app with nothing to tell them apart by
+  except their internal identifiers. Those are random, so which of the waiting runs took the freed
+  slot came down to a comparison between two random strings: work could sit waiting while something
+  asked for after it went ahead of it. The order the work arrived in is now recorded and followed,
+  the same way the queue behind a single busy agent already did it.
+- **Changing the orchestrator's engine no longer leaves the old name on it.** An agent called by
+  its engine's default name ("Claude Code") kept that name when its provider was switched, so the
+  chat showed one engine's name over another's icon and the system prompt addressed it by the
+  wrong one. A default name now follows the provider; a name you chose yourself stays. The
+  orchestrator chat also follows the root planner when another agent is promoted in the
+  hierarchy, instead of keeping the composer pointed at the previous one. (#38)
+- **What you typed into an agent's question is no longer lost when the box goes away.** The
+  marked options and the free text lived in the question box itself, so switching project,
+  opening a chat, pressing "Write instead" or the thread scrolling past the run threw them out.
+  They are kept per question now, across navigation and across a restart, and the two copies of
+  the same question (under the run and above the composer) show the same marks. A draft goes
+  when its question is answered, by you or automatically. (#35)
+- **The phone remote recovers on its own after the screen was locked.** The "Reconnecting…"
+  banner stayed up while the app worked, and a message sent from the phone sometimes only showed
+  after a reload: the keep-alive from the PC never cleared the banner, a connection that had
+  silently died was never noticed, and coming back to the foreground waited out the retry timer.
+  The page now treats every sign of life as connected, drops a stream that has been silent for
+  45 seconds, reconnects the moment the tab is back in front or the network returns, and the PC
+  resends its latest state to a phone that fell behind. (#26)
+- **A compaction is announced in the thread and can be inspected.** When an agent compacts its
+  history — automatically because the conversation grew heavy, or because you ran `/compact` —
+  the app used to draw that turn right-aligned, styled the same way as a message you typed, and
+  even offered it when pressing the up arrow in the composer as if it were one of your prompts.
+  Hiding it entirely was not the answer either: an automatic compaction restarts the agent's
+  session, and with no trace of it happening the thread just silently changed character.
+  Compactions now appear as a quiet maintenance note — one line naming the agent, whether the
+  compaction was automatic or requested, and the time. A "More details" expander shows what the
+  app asked the agent and what the agent answered, and the note also says when a compaction is
+  running, failed or was interrupted. Two things that were never yours remain hidden: the
+  compaction prompt no longer appears under the up arrow in the composer, and a planner's answer
+  to one of its implementers' questions is not drawn either — that is traffic between agents,
+  not something you need to read. Works on desktop and on the phone.
+- **The phone remote costs the app far less while it is on.** Every change serialized the whole
+  state twice on its way out, three times when it was big enough to be trimmed, and it was built
+  and sent even with no phone connected at all — once every 300 ms through a long autonomous run,
+  on the same thread that draws the app. It is now serialized once per send, and with nobody
+  connected nothing is built: whatever happened in the meantime goes out the moment a phone
+  connects, so what you open on the phone is still up to date. (#36)
+- **The title bar phone icon opens Settings → Remote instead of switching the server on
+  directly.** One click used to start a server on the local network with no chance to see the
+  port, the token or the QR code first; the icon still shows whether the server is running.
+- **The ring marking the current project in the collapsed sidebar now hugs its circle.** It used
+  to float a few pixels clear of it; it now sits like the circle's own border.
+
 ## 0.23.0 — 2026-09-20
 
 ### Added

@@ -14,8 +14,14 @@ import { isForUser } from "@/lib/pending-question";
 /** Session storage, not local: the token dies with the tab, like a phone browser session. */
 const TOKEN_KEY = "ainess.remote.token";
 const TOKEN_LEGACY_KEY = "ais.remote.token";
-const RECONNECT_MIN_MS = 1000;
-const RECONNECT_MAX_MS = 10000;
+export const RECONNECT_MIN_MS = 1000;
+export const RECONNECT_MAX_MS = 10000;
+/** Two missed 20s server pings mean the half-open socket is dead; force-reopen it. */
+export const STALE_AFTER_MS = 45000;
+/** If resuming after 25s without events (longer than the 20s ping interval), resync right away. */
+export const STALE_ON_RESUME_MS = 25000;
+/** Foreground watchdog frequency checking for dead half-open connections. */
+export const WATCHDOG_INTERVAL_MS = 5000;
 
 const notOnPhone = () => translateNow("app.editOnDesktop");
 
@@ -93,6 +99,7 @@ export async function api(path: string, body?: Record<string, unknown>): Promise
 
 /**
  * Keeps an EventSource on `/api/events` alive, reconnecting with a 1→10 s backoff.
+ * Watches for half-open connections, dead sockets, and handles wakeups on visibility/online.
  * Returns the teardown.
  */
 export function connectEvents(handlers: {
@@ -104,13 +111,26 @@ export function connectEvents(handlers: {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let delay = RECONNECT_MIN_MS;
   let closed = false;
+  let lastEventAt = Date.now();
+
+  const markAlive = () => {
+    lastEventAt = Date.now();
+    delay = RECONNECT_MIN_MS;
+    handlers.onConnected();
+  };
 
   const open = () => {
     if (closed) return;
+    lastEventAt = Date.now();
     source = new EventSource(`/api/events?token=${encodeURIComponent(getToken() ?? "")}`);
+    source.onopen = () => {
+      markAlive();
+    };
+    source.addEventListener("ping", () => {
+      markAlive();
+    });
     source.addEventListener("state", (event) => {
-      delay = RECONNECT_MIN_MS;
-      handlers.onConnected();
+      markAlive();
       try {
         handlers.onState(JSON.parse((event as MessageEvent<string>).data) as RemoteSnapshot);
       } catch {
@@ -118,8 +138,12 @@ export function connectEvents(handlers: {
       }
     });
     source.onerror = () => {
-      source?.close();
+      const s = source;
       source = null;
+      if (s) {
+        s.onerror = null;
+        s.close();
+      }
       handlers.onDisconnected();
       if (closed) return;
       timer = setTimeout(open, delay);
@@ -127,11 +151,79 @@ export function connectEvents(handlers: {
     };
   };
 
+  const resume = () => {
+    if (closed) return;
+    const isStale = Date.now() - lastEventAt >= STALE_ON_RESUME_MS;
+    if (timer !== null || !source || isStale) {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (source) {
+        const s = source;
+        source = null;
+        s.onerror = null;
+        s.close();
+        handlers.onDisconnected();
+      }
+      delay = RECONNECT_MIN_MS;
+      open();
+    }
+  };
+
+  const onVisibility = () => {
+    if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") {
+      return;
+    }
+    resume();
+  };
+
+  const onOnline = () => {
+    resume();
+  };
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onVisibility);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("online", onOnline);
+  }
+
+  const watchdog = setInterval(() => {
+    if (closed) return;
+    // On phones, locked screens or network handoffs leave the socket half-open without firing
+    // onerror. If no pings or states arrived in STALE_AFTER_MS, force-reconnect.
+    if (source && Date.now() - lastEventAt >= STALE_AFTER_MS) {
+      const s = source;
+      source = null;
+      s.onerror = null;
+      s.close();
+      handlers.onDisconnected();
+      delay = RECONNECT_MIN_MS;
+      open();
+    }
+  }, WATCHDOG_INTERVAL_MS);
+
   open();
   return () => {
     closed = true;
-    if (timer) clearTimeout(timer);
-    source?.close();
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    clearInterval(watchdog);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", onVisibility);
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("online", onOnline);
+    }
+    if (source) {
+      const s = source;
+      source = null;
+      s.onerror = null;
+      s.close();
+    }
   };
 }
 
@@ -158,7 +250,8 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     if (isForUser(question)) questions[question.id] = question;
   }
 
-  // The phone never edits agents, so the fields it does not get can take their safe default.
+  // The phone edits nothing of an agent but its model, so the fields it does not get — and it
+  // gets the model — can take their safe default.
   const agentsByProject = new Map<string, AgentConfig[]>();
   for (const { projectId, ...a } of snapshot.agents) {
     const agent: AgentConfig = { ...a, autoApprove: false };
@@ -237,6 +330,11 @@ export function installRemoteActions(): void {
     archiveTask: (taskId) => { void call("/api/task", { taskId, op: "archive" }); },
     removeTask: (taskId) => { void call("/api/task", { taskId, op: "delete" }); },
     stopChat: (chatId) => call("/api/stop", { chatId }),
+    // Only the model travels: it is the only field the phone can edit, and the next snapshot
+    // overwrites whatever was written here anyway, so the PC has to be the one doing it.
+    updateAgent: (projectId, agentId, patch) => {
+      void call("/api/agent", { projectId, agentId, model: patch.model ?? "" });
+    },
     // The snapshot is the only source of truth here: nothing to load, nothing to persist.
     saveConfig: async () => {},
     loadChatMessages: async () => {},

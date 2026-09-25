@@ -1,4 +1,4 @@
-import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, type AppState } from "@/store";
+import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
 import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
@@ -14,7 +14,8 @@ import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
 import { pickReviewer } from "@/lib/review";
-import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import type { AcpSessionSpec } from "@/lib/acp/session";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
@@ -22,12 +23,16 @@ import { resolveDelegations } from "@/lib/delegation";
 import { bumpToolFailure, REPEATED_FAILURE_AT } from "@/lib/tool-failures";
 import { emitHookEvent } from "@/lib/hooks";
 import { log } from "@/lib/logger";
+import { acpAdapterAvailability, forgetAcpAdapter } from "@/lib/acp/adapter";
+import { ensureAcpRuntime } from "@/lib/acp-setup";
+import { AcpAuthRequiredError } from "@/lib/acp/auth";
+import { ensureClaudeAuth } from "@/lib/claude-auth";
 import { budgetState, budgetAllowsStart, capBreachIn, capAllowsContinue, runOverCap } from "@/lib/budget";
 import { runsOfProject, formatCost, dayKey } from "@/lib/usage";
 import { isAutonomous, canAutoAnswer } from "@/lib/autonomous";
 import { decideQuestions, questionKey, MAX_QUESTION_TURNS, type AnsweredBefore } from "@/lib/question-loop";
 import { teamFingerprint, sessionKnowsTeam } from "@/lib/session-team";
-import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
+import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf, queuedRunsEverywhere, slotAvailable } from "@/lib/run-queue";
 import { touchRun, forgetStall } from "@/lib/stall";
 import { repoDirOf } from "@/lib/repo-dir";
 import { forChat } from "@/lib/chat-text";
@@ -58,6 +63,7 @@ export async function attachListeners(): Promise<void> {
   listenersAttached = true;
   await getTransport().onRunOutput(handleOutput);
   await getTransport().onRunExit(handleExit);
+  await getTransport().onAcpSetup((e) => useAppStore.getState().setAcpSetup(e));
 }
 
 export function addMessage(msg: Omit<CommMessage, "id" | "ts">) {
@@ -322,7 +328,7 @@ function scheduleStreamFlush() {
   }
 }
 
-export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; sessionId?: string; chatId?: string; replacesRunId?: string };
+export type StartRunOptions = { agentId: string; projectId: string; prompt: string; parentRunId: string | null; round: number; resume?: boolean; rootRunId?: string; model?: string; kind?: Run["kind"]; systemPromptOverride?: string; review?: { ofRunId: string; taskId: string }; answersQuestionId?: string; auto?: boolean; sessionId?: string; chatId?: string; replacesRunId?: string };
 
 /**
  * What `startRun` was asked for, by run id, for the runs that are waiting for their agent: the
@@ -434,6 +440,19 @@ export function startRun(opts: StartRunOptions): string | undefined {
   // In a turn of its own right now. The run is written down either way — the parent counts it as
   // a child it is waiting for, the board gets its card — but it waits for that turn to end.
   const busy = isAgentBusy(store, opts.projectId, opts.agentId);
+  // The other reason to wait: the machine is already running as many CLIs as it was told to.
+  //
+  // Why this cannot deadlock, which is the thing a concurrency cap gets wrong. The feared shape is
+  // a planner holding a slot while the children it is waiting for sit queued behind that same
+  // slot — with the ceiling at 1, forever. It cannot happen here because an agent waiting for its
+  // own delegations has no process at all: delegations are started from `onRunFinished`, after the
+  // planner's run is already `done` and its process gone, and the planner comes back as a *new*
+  // run in `maybeContinueParent` once the children finish (`waitingForOwnDelegations` describes
+  // exactly that state — `status: "waiting"` with no `currentRunId`). Every wait in this
+  // orchestrator is between runs, never inside one, so a run that occupies a slot is never waiting
+  // on another run to start. What the cap counts is `running` only; `queued` runs hold nothing.
+  const noSlot = !busy && !slotAvailable(store.runs, store.config.maxConcurrentRuns);
+  const waits = busy || noSlot;
   const run: Run = {
     id: runId,
     projectId: opts.projectId,
@@ -441,7 +460,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
     parentRunId: opts.parentRunId,
     rootRunId: opts.rootRunId ?? runId,
     prompt: opts.prompt,
-    status: busy ? "queued" : "running",
+    status: waits ? "queued" : "running",
     startedAt: Date.now(),
     output: "",
     rawLines: [],
@@ -452,6 +471,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
     chatId: opts.chatId,
     review: opts.review,
     answersQuestionId: opts.answersQuestionId,
+    auto: opts.auto,
     replacesRunId: opts.replacesRunId,
   };
 
@@ -464,7 +484,7 @@ export function startRun(opts: StartRunOptions): string | undefined {
         [runId]: run,
         ...(parentRun && opts.parentRunId ? { [opts.parentRunId]: { ...parentRun, childRunIds: [...parentRun.childRunIds, runId] } } : {})
       },
-      runtime: busy ? state.runtime : {
+      runtime: waits ? state.runtime : {
         ...state.runtime,
         [opts.projectId]: {
           ...projectRuntime,
@@ -479,14 +499,16 @@ export function startRun(opts: StartRunOptions): string | undefined {
     };
   });
 
-  if (busy) {
+  if (waits) {
     queuedRunOpts.set(runId, opts);
     addMessage({
       projectId: opts.projectId,
       fromAgentId: "system",
       toAgentId: opts.agentId,
       kind: "system",
-      text: translateNow("run.queuedBehind", { name: agent.name }),
+      text: busy
+        ? translateNow("run.queuedBehind", { name: agent.name })
+        : translateNow("run.queuedForSlot", { n: store.config.maxConcurrentRuns }),
       runId,
     });
     return runId;
@@ -497,12 +519,23 @@ export function startRun(opts: StartRunOptions): string | undefined {
 }
 
 /**
- * Launches the next run waiting for this agent, if it is free. Called wherever a run of the agent
- * ends — next to `drainContinuations`, and for the same reason.
+ * Launches the next run waiting for this agent, then whatever else was waiting for a slot. Called
+ * wherever a run of the agent ends — next to `drainContinuations`, and for the same reason.
+ *
+ * Two passes because a run that ends frees two different things: this agent, and one of the
+ * machine's slots. The second one belongs to no agent in particular — the run it lets through can
+ * be another agent's, in another project entirely.
  */
 export function launchQueuedRuns(agentId: string, projectId: string): void {
+  launchNextForAgent(agentId, projectId);
+  launchRunsWaitingForSlot();
+}
+
+/** The agent's own queue: its turn ended, so what was waiting behind it goes first. */
+function launchNextForAgent(agentId: string, projectId: string): void {
   const store = useAppStore.getState();
   if (isAgentBusy(store, projectId, agentId)) return;
+  if (!slotAvailable(store.runs, store.config.maxConcurrentRuns)) return;
   // In the order the work arrived: the map keeps it, and two runs queued in the same millisecond
   // have the same `startedAt`. What has no entry there is a run this process cannot launch anyway.
   const next = [...queuedRunOpts.keys()]
@@ -510,20 +543,59 @@ export function launchQueuedRuns(agentId: string, projectId: string): void {
     .find(r => r && r.status === "queued" && r.agentId === agentId && r.projectId === projectId)
     ?? nextQueuedRun(store.runs, agentId, projectId);
   if (!next) return;
-  const opts = queuedRunOpts.get(next.id);
-  queuedRunOpts.delete(next.id);
+  launchQueuedRun(next.id, agentId, projectId);
+}
+
+/** Re-entrancy guard: launching a run can end it (no binary, agent gone) right back into here. */
+let handingOutSlots = false;
+
+/**
+ * Hands the free slots to whatever is queued for one, oldest first, app-wide.
+ *
+ * Exported because the ceiling is also a setting: raising it has to release the queue right then,
+ * and with nothing running there is no run ending to do it (see `setMaxConcurrentRuns`).
+ */
+export function launchRunsWaitingForSlot(): void {
+  if (handingOutSlots) return;
+  handingOutSlots = true;
+  try {
+    // Every id is tried once. A launch normally takes the run out of `queued`, but the paths that
+    // fail before spawning are the ones this has no control over, and a run left queued by one of
+    // them would otherwise be picked again on the next turn of the loop, forever.
+    const tried = new Set<string>();
+    for (;;) {
+      const store = useAppStore.getState();
+      if (!slotAvailable(store.runs, store.config.maxConcurrentRuns)) return;
+      // In the order the work arrived, which the map keeps and `startedAt` cannot: runs queued in
+      // the same millisecond all carry the same one (see `launchNextForAgent`, same reason).
+      const next = queuedRunsEverywhere(store.runs, queuedRunOpts.keys()).find(
+        r => !tried.has(r.id) && queuedRunOpts.has(r.id) && !isAgentBusy(store, r.projectId, r.agentId),
+      );
+      if (!next) return;
+      tried.add(next.id);
+      launchQueuedRun(next.id, next.agentId, next.projectId);
+    }
+  } finally {
+    handingOutSlots = false;
+  }
+}
+
+/** Turns one queued run into a running one and spawns it. Both queues end here. */
+function launchQueuedRun(runId: string, agentId: string, projectId: string): void {
+  const opts = queuedRunOpts.get(runId);
+  queuedRunOpts.delete(runId);
   if (!opts) {
     // Queued by a process that is gone: nothing here knows what it was asked for.
-    finishNeverSpawned(next.id, projectId, agentId, interruptedOutput());
+    finishNeverSpawned(runId, projectId, agentId, interruptedOutput());
     return;
   }
   useAppStore.setState(state => {
-    const run = state.runs[next.id];
+    const run = state.runs[runId];
     if (!run) return state;
     const projectRuntime = state.runtime[projectId] || {};
     return {
       // The clock starts now: what it shows as elapsed is the turn, not the wait.
-      runs: { ...state.runs, [next.id]: { ...run, status: "running", startedAt: Date.now() } },
+      runs: { ...state.runs, [runId]: { ...run, status: "running", startedAt: Date.now() } },
       runtime: {
         ...state.runtime,
         [projectId]: {
@@ -531,14 +603,14 @@ export function launchQueuedRuns(agentId: string, projectId: string): void {
           [agentId]: {
             ...(projectRuntime[agentId] ?? { agentId, queuedInstructions: [] }),
             status: "working",
-            currentRunId: next.id,
+            currentRunId: runId,
             currentTask: opts.prompt,
           },
         },
       },
     };
   });
-  launchRun(next.id, opts);
+  launchRun(runId, opts);
 }
 
 /**
@@ -600,7 +672,11 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     ? (agent.customCommand?.program ? { path: agent.customCommand.program } : null)
     : store.binaries[agent.provider];
 
-  if (!binary || !binary.path) {
+  // A provider that runs over ACP brings its own adapter, and the adapter brings the agent: there
+  // is nothing to detect, and a machine that never installed the CLI can still run it. When there
+  // *is* a path — detected, or set by hand in Settings — it travels to the adapter anyway (see
+  // `buildAcpCommand` in src/lib/providers.ts).
+  if ((!binary || !binary.path) && provider.transport !== "acp") {
     const err = translateNow("system.cliMissing", { cli: provider.label });
     useAppStore.setState(state => {
       const pRuntime = state.runtime[opts.projectId] || {};
@@ -720,12 +796,12 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     if (project) await writeSkillFiles(project, skills);
 
     let mcpConfigPath: string | undefined;
-    // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
-    // Antigravity is configured machine-wide instead (`ainess mcp sync`), and the rest have no way in
-    // yet — see Configuración → MCP.
-    if ((agent.provider === "claude" || agent.provider === "copilot") && mcpServers.length > 0) {
-      // The file Claude Code and Copilot read. Declared rather than built loose: it is a contract
-      // with another program, and a key misspelled here fails as a server that never connects.
+    // Copilot takes a file of MCP servers for the session. Antigravity is configured machine-wide
+    // instead (`ainess mcp sync`), a provider that speaks ACP declares them in `session/new` (no
+    // file needed, see `buildAcpSession`), and the rest have no way in yet — see Configuración → MCP.
+    if (agent.provider === "copilot" && mcpServers.length > 0) {
+      // The file Copilot reads. Declared rather than built loose: it is a contract with another
+      // program, and a key misspelled here fails as a server that never connects.
       type McpEntry =
         | { type: "http"; url?: string; headers?: Record<string, string> }
         | { command?: string; args: string[]; env: Record<string, string> };
@@ -783,15 +859,38 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       return;
     }
 
-    const spawnOpts = provider.buildCommand({
+    const buildInput = {
       agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
       cwd,
-      binaryPath: binary.path,
-      mcpConfigPath
-    });
+      binaryPath: binary?.path ?? "",
+      mcpConfigPath,
+      mcpServers,
+    };
+
+    if (provider.transport === "acp") {
+      const managedStatus = await getTransport().acpManagedStatus();
+      if (managedStatus) {
+        const availability = await acpAdapterAvailability();
+        if (!availability.ready) {
+          // One await for however many attempts it takes: the screen owns the retrying, and this
+          // answers only when the adapter is there or the user gave up. Awaiting the install itself
+          // instead left a retry installing for nobody — this run had already been closed by the
+          // first failure, so it never started even when the second attempt worked.
+          if (!(await ensureAcpRuntime())) {
+            finishNeverSpawned(runId, opts.projectId, opts.agentId, translateNow("run.acpSetupFailed"));
+            return;
+          }
+          forgetAcpAdapter();
+        }
+      }
+    }
+
+    const spawnOpts = provider.transport === "acp"
+      ? await provider.buildAcpCommand(buildInput)
+      : provider.buildCommand(buildInput);
 
     // An http server has no process of its own, so its variables live in the agent's environment —
     // that is where the MCP client looks to expand `${VAR}` in a header. The provider's own vars go
@@ -808,6 +907,18 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       useAppStore.setState(state => {
         const run = state.runs[runId];
         return run ? { runs: { ...state.runs, [runId]: { ...run, process: spawned } } } : state;
+      });
+    }
+
+    // A CLI run is driven by the process itself: it reads its arguments and prints until it is
+    // done. An ACP run has nobody driving it yet — the adapter is up and waiting to be spoken to.
+    if (provider.transport === "acp") {
+      void driveAcpRun({
+        runId,
+        cwd,
+        prompt: opts.prompt,
+        sessionId,
+        session: provider.buildAcpSession(buildInput),
       });
     }
   };
@@ -864,17 +975,37 @@ function handleOutput(e: RunOutputEvent) {
   const agent = selectAgent(store, run.agentId);
   if (!agent) return;
 
-  const provider = PROVIDERS[agent.provider];
-  const events = provider.parseLine(e.line, e.stream);
-
   streamBuffer.pushLine(e.runId, e.line);
   touchRun(e.runId);
+
+  const provider = PROVIDERS[agent.provider];
+  // An ACP run's stdout is JSON-RPC frames, and they are read by its session client, which hands
+  // the events it makes of them to `applyRunEvents` below. The lines are still kept — they are
+  // what the raw view of the run shows, and what tells the stall watchdog the run is alive — but
+  // there is no line parser to run over them.
+  if (provider.transport === "acp") {
+    scheduleStreamFlush();
+    return;
+  }
+
+  applyRunEvents(e.runId, provider.parseLine(e.line, e.stream));
+}
+
+/**
+ * What the app does with a run's events, wherever they came from: lines of a CLI's stdout, or
+ * `session/update` notifications of an ACP session. Nothing below this line knows the difference,
+ * which is the whole point of `ParsedEvent`.
+ */
+function applyRunEvents(runId: string, events: ParsedEvent[]): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  if (!run) return;
 
   for (const ev of events) {
     if (ev.type === "session") {
       useAppStore.setState(state => rememberSession(state, run, ev.sessionId));
     } else if (ev.type === "text") {
-      streamBuffer.pushText(e.runId, ev.text);
+      streamBuffer.pushText(runId, ev.text);
     } else if (ev.type === "tool") {
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
@@ -884,7 +1015,7 @@ function handleOutput(e: RunOutputEvent) {
           fromAgentId: run.agentId,
           kind: "tool",
           text: translateNow("tool.failedShort", { name: ev.name }),
-          runId: e.runId,
+          runId: runId,
           meta: { tool: ev.name, summary, input: ev.input, failed: true, error: ev.error },
         });
 
@@ -906,19 +1037,19 @@ function handleOutput(e: RunOutputEvent) {
           fromAgentId: run.agentId,
           kind: "tool",
           text: text.substring(0, 300),
-          runId: e.runId,
+          runId: runId,
           meta: { tool: ev.name, summary, input: ev.input },
         });
       }
     } else if (ev.type === "usage") {
       useAppStore.setState(state => {
-        const r = state.runs[e.runId];
+        const r = state.runs[runId];
         if (!r) return state;
         const usage = mergeUsage(r.usage, ev.usage);
         return {
           runs: {
             ...state.runs,
-            [e.runId]: {
+            [runId]: {
               ...r,
               ...(usage ? { usage } : {}),
             },
@@ -927,14 +1058,14 @@ function handleOutput(e: RunOutputEvent) {
       });
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
-        const r = state.runs[e.runId];
+        const r = state.runs[runId];
         if (!r) return state;
         const usage = mergeUsage(r.usage, ev.usage);
         return {
           // Copilot's result carries usage but no text: keep whatever answer we already had.
           runs: {
             ...state.runs,
-            [e.runId]: {
+            [runId]: {
               ...r,
               output: ev.text || r.output,
               ...(usage ? { usage } : {}),
@@ -944,15 +1075,123 @@ function handleOutput(e: RunOutputEvent) {
         };
       });
     } else if (ev.type === "error") {
-      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: runId });
     } else if (ev.type === "stderr") {
       // Kept as what it is. It used to be filed as an error, and every error is toasted, so a CLI
       // saying it was waiting on a subtask came up as a red box that said "idle".
-      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "stderr", text: ev.text, runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "stderr", text: ev.text, runId: runId });
     }
   }
 
   scheduleStreamFlush();
+}
+
+/**
+ * How an ACP run ends, which no exit code can say.
+ *
+ * A CLI that fails says so by exiting non-zero. The adapter does not: the turn can fail — the agent
+ * answered an error, the session died mid-sentence — while the process it happened in goes on to
+ * exit cleanly when we close its stdin. So the turn's verdict is left here for `handleExit`, which
+ * is still the one place a run is closed.
+ *
+ * An entry also means "this run is being wound up on purpose": the kill that may follow the EOF is
+ * ours, not the user's, and must not read as "stopped by user".
+ */
+const acpTurnEnded = new Map<string, { failure?: string }>();
+
+/** How long the adapter gets to exit on its own after EOF before it is killed. */
+const ACP_EXIT_GRACE_MS = 5_000;
+
+/**
+ * Drives one ACP turn on a run that is already spawned, and then ends the run.
+ *
+ * Everything it produces goes through `applyRunEvents`, the same door a CLI's lines go through, so
+ * delegations, questions, approvals, usage, the queue and the stall watchdog carry on unchanged.
+ */
+async function driveAcpRun(opts: {
+  runId: string;
+  cwd: string;
+  prompt: string;
+  sessionId?: string;
+  session: AcpSessionSpec;
+}): Promise<void> {
+  const { runId } = opts;
+  const { runAcpPrompt } = await import("@/lib/acp/session");
+  let failure: string | undefined;
+  let missingLogin = false;
+  try {
+    await runAcpPrompt({
+      runId,
+      cwd: opts.cwd,
+      prompt: opts.prompt,
+      session: opts.session,
+      resumeSessionId: opts.sessionId,
+      clientVersion: __APP_VERSION__,
+      onEvent: (event) => {
+        // A run that is already over is a run the user stopped: its last event is the session
+        // client noticing the process died, and that is not news worth a red box in the timeline.
+        if (useAppStore.getState().runs[runId]?.status !== "running") return;
+        applyRunEvents(runId, [event]);
+      },
+    });
+  } catch (e) {
+    if (useAppStore.getState().runs[runId]?.status === "running") {
+      // A turn that never started because Claude Code has no session is not a crash, and it must
+      // not read as one: it ends with the one sentence that says what to do about it.
+      missingLogin = e instanceof AcpAuthRequiredError;
+      failure = missingLogin ? translateNow("run.claudeNotLoggedIn") : errorText(e);
+    }
+  } finally {
+    // A run that is already closed — the user stopped it, the spawn never got off the ground — has
+    // had its exit and will get no other: leaving a verdict for it would only sit in the map.
+    if (useAppStore.getState().runs[runId]?.status === "running") acpTurnEnded.set(runId, { failure });
+    await endAcpRun(runId);
+  }
+
+  // Only once the turn is wound up. The gate can sit there for minutes while the user finishes a
+  // browser login, and the run it starts afterwards must not land on an agent this one still holds
+  // — the same lesson the install gate learned (see `ensureAcpRuntime` in `launchRun`).
+  if (missingLogin) await recoverFromMissingLogin(runId);
+}
+
+/**
+ * Closes the agent behind `runId`, politely if it lets us.
+ *
+ * EOF is the polite end of an ACP session; the adapter exits on it and `handleExit` closes the run.
+ * One that does not is killed, because a run nobody can finish is worse than a rude end.
+ */
+async function endAcpRun(runId: string): Promise<void> {
+  const transport = getTransport();
+  const closed = await transport.closeStdin(runId).catch(() => false);
+  if (!closed) {
+    await transport.killRun(runId).catch(() => {});
+    return;
+  }
+  setTimeout(() => {
+    if (useAppStore.getState().runs[runId]?.status === "running") {
+      log.warn("acp", `run ${runId} did not exit ${ACP_EXIT_GRACE_MS} ms after EOF; killing it`);
+      void transport.killRun(runId).catch(() => {});
+    }
+  }, ACP_EXIT_GRACE_MS);
+}
+
+/**
+ * Offers the login the run needed, and starts that run again if it is now there.
+ *
+ * Reactive on purpose: `claude auth status` costs seconds and almost every run starts fine, so
+ * nothing is checked beforehand — the screen only opens for a run that already hit the wall.
+ * Retrying goes through `retryRun`, the path the retry button uses, so the failed attempt keeps its
+ * detail and the card, the thread and the chat bubble behave exactly as they do there.
+ *
+ * When the user cancels there is nothing to do: the run is already finished with
+ * `run.claudeNotLoggedIn` as its output, which is what they were told on screen.
+ */
+async function recoverFromMissingLogin(runId: string): Promise<void> {
+  if (!(await ensureClaudeAuth())) return;
+  const run = useAppStore.getState().runs[runId];
+  if (!run) return;
+  log.info("acp", `run ${runId}: Claude Code is logged in now; starting it again`);
+  retryRun(runId, { agentId: run.agentId, ...(run.model ? { model: run.model } : {}) });
 }
 
 function handleExit(e: RunExitEvent) {
@@ -969,12 +1208,24 @@ function handleExit(e: RunExitEvent) {
 
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
-  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(rawLines) : finalOutputFromLines(rawLines));
+  const cli = spec?.transport === "cli" ? spec : undefined;
+  // How the turn went, for a run whose exit code cannot say (see `acpTurnEnded`). Read once: a
+  // second exit for the same run is nobody's.
+  const acp = acpTurnEnded.get(e.runId);
+  acpTurnEnded.delete(e.runId);
+  // The raw lines of an ACP run are protocol frames, so there is no answer to rebuild out of them:
+  // the turn either produced a `result` event, which is already in `run.output`, or it failed.
+  const fromLines = spec?.transport === "acp"
+    ? (acp?.failure ?? "")
+    : (cli?.finalOutput ? cli.finalOutput(rawLines) : finalOutputFromLines(rawLines));
+  const collected = run.output || fromLines;
   // Providers that only report what each step spent (opencode) are added up here, once.
-  const finalUsage = spec?.finalUsage ? spec.finalUsage(rawLines) : undefined;
-  const isError = e.code !== 0 && !e.killed && !collected;
-  const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
-  const output = e.killed ? translateNow("system.stoppedByUser") : collected;
+  const finalUsage = cli?.finalUsage ? cli.finalUsage(rawLines) : undefined;
+  // A kill that came after the turn was over is ours (the EOF the adapter ignored), not the user's.
+  const killedByUser = e.killed && !acp;
+  const isError = acp?.failure ? true : (e.code !== 0 && !killedByUser && !collected);
+  const status: RunStatus = killedByUser ? "killed" : isError ? "error" : "done";
+  const output = killedByUser ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:
@@ -1353,6 +1604,9 @@ function onRunFinished(runId: string) {
     // message already say what happened, and firing both would read as contradicting itself.
     useAppStore.setState(state => ({ activeTaskRunId: { ...state.activeTaskRunId, [run.projectId]: null } }));
     taskFinished(run.projectId, run.rootRunId, true, translateNow("autonomous.quotaParked", { name: agent.name }));
+    // This branch returns before the `launchQueuedRuns` at the end of the function, and the slot
+    // this run held is free all the same: parked is not running.
+    launchRunsWaitingForSlot();
     return;
   }
 
@@ -1441,7 +1695,7 @@ function onRunFinished(runId: string) {
       }),
       runId,
     });
-    compactAgent(run.projectId, agent.id);
+    compactAgent(run.projectId, agent.id, { auto: true });
   }
 }
 
@@ -1534,9 +1788,23 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
       };
       return question;
     });
-    useAppStore.setState(state => ({
-      questions: { ...state.questions, ...Object.fromEntries(items.map(q => [q.id, q])) },
-    }));
+    useAppStore.setState(state => {
+      const questionDrafts = { ...state.questionDrafts };
+      let draftsChanged = false;
+      for (const q of items) {
+        if (q.id in questionDrafts) {
+          delete questionDrafts[q.id];
+          draftsChanged = true;
+        }
+      }
+      if (draftsChanged) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      }
+      return {
+        questions: { ...state.questions, ...Object.fromEntries(items.map(q => [q.id, q])) },
+        ...(draftsChanged ? { questionDrafts } : {}),
+      };
+    });
     // Deferred for the same reason the autonomous path defers: the caller still has this run's own
     // runtime update to make, and it would stomp on the resumed run's `currentRunId`.
     const asked = items.map((question, i) => ({ question, answer: decision.repeat[i].answer }));
@@ -1611,7 +1879,24 @@ function askQuestions(run: Run, agent: AgentConfig): boolean {
     });
     void emitHookEvent("question.asked", { question: q.question }, ctx);
   }
-  useAppStore.setState(state => ({ questions: { ...state.questions, ...questions } }));
+  useAppStore.setState(state => {
+    let questionDrafts = state.questionDrafts;
+    if (autoAnswer) {
+      const drafts = { ...state.questionDrafts };
+      let changed = false;
+      for (const id of Object.keys(questions)) {
+        if (id in drafts) {
+          delete drafts[id];
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, drafts);
+        questionDrafts = drafts;
+      }
+    }
+    return { questions: { ...state.questions, ...questions }, questionDrafts };
+  });
 
   if (autoAnswer) {
     autoAnswersUsed.set(run.rootRunId, autoAnswered + Object.keys(questions).length);

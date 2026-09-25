@@ -5,7 +5,7 @@
 // Several processes may write the same file (the app, `ainess run`, `ainess approvals approve`,
 // `ainess serve`), so every save first merges what is on disk, and the app re-syncs the
 // current project periodically to see decisions taken elsewhere.
-import { useAppStore, selectAgent } from "@/store";
+import { useAppStore, selectAgent, prunedQuestionDrafts, saveJsonMapSoon, QUESTION_DRAFTS_KEY } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Run, CommMessage, AgentQuestion, Approval, AgentWorktree } from "@/types";
 import { translateNow } from "@/i18n/useT";
@@ -80,11 +80,25 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
 const filePath = (projectId: string) => `history/${projectId}.json`;
 
 /**
- * Finds the projects whose messages changed without walking the whole unchanged prefix.
+ * Finds the projects whose messages changed. The early-break walk from the end is only valid when
+ * the length changed (append/slice), because there the tail up to the first common reference is
+ * exactly the delta. Same length means an in-place edit could sit anywhere — including a position
+ * whose old and new tail happen to share a reference past it — so that case has to compare every
+ * position instead of stopping at the first match.
  */
 export function changedProjectsFromMessages(next: CommMessage[], prev: CommMessage[]): string[] {
   if (next === prev) return [];
   const changed = new Set<string>();
+  if (next.length === prev.length) {
+    for (let i = 0; i < next.length; i++) {
+      const n = next[i];
+      const p = prev[i];
+      if (n === p) continue;
+      if (n && n.projectId) changed.add(n.projectId);
+      if (p && p.projectId) changed.add(p.projectId);
+    }
+    return Array.from(changed);
+  }
   const len = Math.max(next.length, prev.length);
   for (let i = len - 1; i >= 0; i--) {
     const n = next[i];
@@ -274,7 +288,13 @@ async function mergeFromDisk(projectId: string): Promise<void> {
         }
       }
     }
-    return changed ? { runs, messages, approvals, questions, runtime, worktrees } : state;
+    // Never dropping unknown ids: this file is one project, the drafts are everyone's.
+    const questionDrafts = prunedQuestionDrafts(state.questionDrafts, questions, false);
+    if (Object.keys(questionDrafts).length !== Object.keys(state.questionDrafts).length) {
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      changed = true;
+    }
+    return changed ? { runs, messages, approvals, questions, runtime, worktrees, questionDrafts } : state;
   });
   notifyInterrupted(projectId, interrupted);
 }
@@ -433,12 +453,21 @@ export async function runningRunsOnDisk(projectId: string): Promise<Run[]> {
 /** Drop a project's runs, messages and approvals, in memory and on disk. */
 export async function clearHistory(projectId: string): Promise<void> {
   loadedProjects.add(projectId);
-  useAppStore.setState(state => ({
-    runs: Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== projectId)),
-    messages: state.messages.filter(m => m.projectId !== projectId),
-    approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
-    questions: Object.fromEntries(Object.entries(state.questions).filter(([, q]) => q.projectId !== projectId)),
-  }));
+  useAppStore.setState(state => {
+    const questionDrafts = Object.fromEntries(
+      Object.entries(state.questionDrafts).filter(([id]) => state.questions[id]?.projectId !== projectId),
+    );
+    if (Object.keys(questionDrafts).length !== Object.keys(state.questionDrafts).length) {
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+    }
+    return {
+      runs: Object.fromEntries(Object.entries(state.runs).filter(([, r]) => r.projectId !== projectId)),
+      messages: state.messages.filter(m => m.projectId !== projectId),
+      approvals: Object.fromEntries(Object.entries(state.approvals).filter(([, a]) => a.projectId !== projectId)),
+      questions: Object.fromEntries(Object.entries(state.questions).filter(([, q]) => q.projectId !== projectId)),
+      questionDrafts,
+    };
+  });
   // Clearing the history is about runs and messages: the worktrees the agents work in stay.
   const file: HistoryFile = {
     version: 1,

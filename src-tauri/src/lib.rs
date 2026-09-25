@@ -1,3 +1,4 @@
+mod acp_setup;
 mod config;
 mod console;
 mod detect;
@@ -30,10 +31,12 @@ pub fn run() {
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
+                tray::announce_return(app);
             }
             logging::append(app, "info", "app", "another instance tried to open: the one already running was focused");
         }))
         .manage(runner::RunnerState::default())
+        .manage(acp_setup::AcpSetupState::default())
         .manage(remote::RemoteState::default())
         .manage(tray::TrayState::default())
         .manage(tunnel::TunnelState::default())
@@ -83,6 +86,8 @@ pub fn run() {
             runner::spawn_run,
             runner::reap_orphans,
             runner::kill_run,
+            runner::write_stdin,
+            runner::close_stdin,
             runner::running_runs,
             runner::exec_capture,
             config::load_config,
@@ -96,6 +101,7 @@ pub fn run() {
             config::write_file_abs,
             config::write_file_bytes,
             detect::detect_binaries,
+            detect::which_program,
             editors::detect_editors,
             editors::open_in_editor,
             config::list_subdirs,
@@ -129,7 +135,10 @@ pub fn run() {
             tunnel::tunnel_status,
             tunnel::tunnel_detect,
             repo_watch::repo_watch_start,
-            repo_watch::repo_watch_stop
+            repo_watch::repo_watch_stop,
+            acp_setup::acp_managed_status,
+            acp_setup::acp_managed_ensure,
+            acp_setup::acp_managed_cancel
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

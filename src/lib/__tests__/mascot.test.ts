@@ -2,7 +2,7 @@
 // it has to be a different one per project. Both of those are properties of the hash, not of the
 // SVG, so they get pinned down here.
 import { describe, it, expect } from "vitest";
-import { mascotHash, mascotTraits, mascotMood } from "@/lib/mascot";
+import { mascotHash, mascotTraits, mascotMood, withTyping } from "@/lib/mascot";
 import type { AgentStatus } from "@/types";
 
 const SEEDS = Array.from({ length: 36 }, (_, i) => `4f9a1c${i.toString(16).padStart(2, "0")}-b2d3-4e5f-8a90-${i}beefcafe01`);
@@ -75,5 +75,31 @@ describe("mascotMood", () => {
       expect(mascotMood(at(status), false)).toBe("idle");
     }
     expect(mascotMood(undefined, false)).toBe("idle");
+  });
+});
+
+describe("withTyping", () => {
+  it("wins over the two moods with nothing of the agent's in them", () => {
+    // Waiting is the better of the two trades: what is being typed is the answer it stopped for.
+    expect(withTyping("idle", true)).toBe("typing");
+    expect(withTyping("waiting", true)).toBe("typing");
+  });
+
+  it("loses to everything that is happening on the agent's side", () => {
+    expect(withTyping("working", true)).toBe("working");
+    expect(withTyping("error", true)).toBe("error");
+    expect(withTyping("quota", true)).toBe("quota");
+  });
+
+  it("changes nothing when nobody is typing", () => {
+    for (const mood of ["working", "waiting", "quota", "error", "idle"] as const) {
+      expect(withTyping(mood, false)).toBe(mood);
+    }
+    expect(withTyping(undefined, false)).toBeUndefined();
+  });
+
+  it("stands on its own where there is no agent to read a mood from", () => {
+    // The empty thread of a project with no team still has a box to type into.
+    expect(withTyping(undefined, true)).toBe("typing");
   });
 });

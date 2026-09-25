@@ -53,7 +53,7 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
   };
   const blinkDelay = { animationDelay: `${hash % 3100}ms`, transformOrigin: "center", transformBox: "fill-box" as const };
   // The whole creature leans into the swing while working and sags while it has no tokens left;
-  // the other two moods only add props, so the body keeps floating as it always did.
+  // the rest only add props, so the body keeps floating as it always did.
   const bodyAnim = mood === "working" ? "animate-mascot-work"
     : mood === "quota" ? "animate-mascot-deflate"
     : mood === "error" ? "animate-mascot-shiver"
@@ -90,7 +90,8 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
               <CrossedEyes pupil={pupil} />
             ) : (
               <g className="animate-mascot-blink" style={blinkDelay}>
-                <Eyes variant={eyes} sclera={sclera} pupil={pupil} />
+                {/* Watching what is being typed means watching the box, and the box is below. */}
+                <Eyes variant={eyes} sclera={sclera} pupil={pupil} drop={mood === "typing" ? 3 : 0} />
               </g>
             )}
           </g>
@@ -99,6 +100,7 @@ export function ProjectMascot({ projectId, projectName, color, provider, mood, s
           {mood === "idle" && <Snores base={base} delay={hash % 900} />}
           {mood === "quota" && <EmptyCoin base={base} />}
           {mood === "error" && <Alarm base={base} light={light} />}
+          {mood === "typing" && <Binoculars shade={shade} light={light} />}
         </g>
       </svg>
       {provider && (
@@ -122,16 +124,22 @@ function Body({ variant, fill }: { variant: 0 | 1 | 2 | 3; fill: string }) {
   return <path d="M50 34 L74 47 L74 75 L50 88 L26 75 L26 47 Z" strokeWidth="9" strokeLinejoin="round" style={{ fill, stroke: fill }} />;
 }
 
-function Eyes({ variant, sclera, pupil }: { variant: 0 | 1 | 2 | 3; sclera: string; pupil: string }) {
+/**
+ * The four faces. `drop` lowers the pupils inside eyes that stay where they are, which is how a
+ * mood aims the gaze: at 0 the creature looks straight out, at 3 it is looking down at the box.
+ * The whites, the visor and the wink do not move — an eye that slides down its own socket reads as
+ * the face melting rather than as a glance.
+ */
+function Eyes({ variant, sclera, pupil, drop = 0 }: { variant: 0 | 1 | 2 | 3; sclera: string; pupil: string; drop?: number }) {
   if (variant === 0) {
     return (
       <g>
         <circle cx="39" cy="58" r="9" style={{ fill: sclera }} />
         <circle cx="61" cy="58" r="9" style={{ fill: sclera }} />
-        <circle cx="40" cy="59" r="4.4" style={{ fill: pupil }} />
-        <circle cx="62" cy="59" r="4.4" style={{ fill: pupil }} />
-        <circle cx="37.5" cy="55.5" r="1.8" style={{ fill: "white" }} />
-        <circle cx="59.5" cy="55.5" r="1.8" style={{ fill: "white" }} />
+        <circle cx="40" cy={59 + drop} r="4.4" style={{ fill: pupil }} />
+        <circle cx="62" cy={59 + drop} r="4.4" style={{ fill: pupil }} />
+        <circle cx="37.5" cy={55.5 + drop} r="1.8" style={{ fill: "white" }} />
+        <circle cx="59.5" cy={55.5 + drop} r="1.8" style={{ fill: "white" }} />
       </g>
     );
   }
@@ -139,7 +147,8 @@ function Eyes({ variant, sclera, pupil }: { variant: 0 | 1 | 2 | 3; sclera: stri
     return (
       <g>
         <rect x="29" y="48" width="42" height="22" rx="11" style={{ fill: pupil }} />
-        <path d="M41 60 Q50 67 59 60" fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: sclera }} />
+        {/* The visor has no pupils to lower, so the light inside it is what moves. */}
+        <path d={`M41 ${60 + drop} Q50 ${67 + drop} 59 ${60 + drop}`} fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: sclera }} />
       </g>
     );
   }
@@ -147,8 +156,8 @@ function Eyes({ variant, sclera, pupil }: { variant: 0 | 1 | 2 | 3; sclera: stri
     return (
       <g>
         <circle cx="39" cy="58" r="8" style={{ fill: sclera }} />
-        <circle cx="40" cy="59" r="4" style={{ fill: pupil }} />
-        <circle cx="37.7" cy="55.7" r="1.6" style={{ fill: "white" }} />
+        <circle cx="40" cy={59 + drop} r="4" style={{ fill: pupil }} />
+        <circle cx="37.7" cy={55.7 + drop} r="1.6" style={{ fill: "white" }} />
         <path d="M54 60 Q61 52 68 60" fill="none" strokeWidth="3.4" strokeLinecap="round" style={{ stroke: pupil }} />
       </g>
     );
@@ -157,9 +166,9 @@ function Eyes({ variant, sclera, pupil }: { variant: 0 | 1 | 2 | 3; sclera: stri
     <g>
       <circle cx="38" cy="56" r="10" style={{ fill: sclera }} />
       <circle cx="62" cy="60" r="6" style={{ fill: sclera }} />
-      <circle cx="39" cy="57" r="5" style={{ fill: pupil }} />
-      <circle cx="63" cy="61" r="3" style={{ fill: pupil }} />
-      <circle cx="36" cy="53" r="1.9" style={{ fill: "white" }} />
+      <circle cx="39" cy={57 + drop} r="5" style={{ fill: pupil }} />
+      <circle cx="63" cy={61 + drop * 0.6} r="3" style={{ fill: pupil }} />
+      <circle cx="36" cy={53 + drop} r="1.9" style={{ fill: "white" }} />
     </g>
   );
 }
@@ -258,6 +267,66 @@ function Alarm({ base, light }: { base: string; light: string }) {
       <path d="M82 58 L93 78 L71 78 Z" strokeWidth="2.6" strokeLinejoin="round" style={{ fill: light, stroke: base }} />
       <path d="M82 65 L82 71" fill="none" strokeWidth="2.8" strokeLinecap="round" style={{ stroke: base }} />
       <circle cx="82" cy="74.6" r="1.6" style={{ fill: base }} />
+    </g>
+  );
+}
+
+/**
+ * Typing: binoculars held up in front of the lower face and aimed at the box below, scanning slowly.
+ *
+ * Two round lenses rather than two tubes. A tube drawn end-on at this size is a rounded rectangle,
+ * and a pair of rounded rectangles under a face reads as two mittens holding something — which is
+ * exactly what the first version looked like. What says "binoculars" is the pair of circles: a rim
+ * around each one, a dark glass inside it, a highlight across the glass, and a short bridge joining
+ * the two. The lenses are ellipses wider than they are tall and the whole thing is tipped a few
+ * degrees, which is what an instrument pointed down at something looks like from here.
+ *
+ * Held low on purpose: the rim sits below the eyes, so the lowered gaze — the pupils, or the light
+ * inside a visor — is still above it. Covering the eyes would lose the half of the mood that says
+ * where it is looking.
+ *
+ * In `light` and `shade`, not in the project colour like the props that hang off to the side: these
+ * are drawn over the creature itself, and the base tone against a body painted in it is no prop at
+ * all. The pale rim also holds up over a visor, which is the one face already drawn in near-black.
+ */
+function Binoculars({ shade, light }: { shade: string; light: string }) {
+  return (
+    <g
+      data-testid="mascot-binoculars"
+      className="animate-mascot-peek"
+      style={{ transformOrigin: "50% 15%", transformBox: "fill-box" }}
+    >
+      {/* The tilt is on the pair, not on each lens: an instrument leans as one piece. */}
+      <g transform="rotate(-7 50 76)">
+        {/* The bridge goes down first, so both rims are drawn over its ends and it reads as
+            something the two lenses are mounted on rather than a bar laid across them. */}
+        <rect
+          x="43"
+          y="73"
+          width="14"
+          height="6"
+          rx="3"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+          style={{ fill: light, stroke: shade }}
+        />
+        {[38, 62].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="76" rx="8.8" ry="7.4" strokeWidth="2.4" style={{ fill: light, stroke: shade }} />
+            <ellipse cx={cx} cy="76" rx="5" ry="4" style={{ fill: shade }} />
+            {/* One streak across the glass, up and to the left: without it the dark middle is a
+                hole, and with it the lens is made of something. */}
+            <ellipse
+              cx={cx - 1.5}
+              cy="74"
+              rx="2.6"
+              ry="1.2"
+              transform={`rotate(-32 ${cx - 1.5} 74)`}
+              style={{ fill: "white", opacity: 0.75 }}
+            />
+          </g>
+        ))}
+      </g>
     </g>
   );
 }

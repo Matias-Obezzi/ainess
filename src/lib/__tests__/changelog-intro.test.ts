@@ -10,11 +10,13 @@ import { changelogFor } from "@/lib/changelog";
 
 describe("changelogFor('en')", () => {
   const text = changelogFor("en");
-  // Everything before the first version heading: the dialog's opening words, which should be none.
-  const intro = text.slice(0, text.indexOf("## 0."));
+  // Everything before the first section heading: the dialog's opening words, which should be none.
+  // The first heading is a version, or "Unreleased" while the next one is being written; either
+  // way the reader gets entries, not a preamble.
+  const intro = text.slice(0, text.indexOf("## "));
 
-  it("starts at the first version heading", () => {
-    expect(text.startsWith("## 0.")).toBe(true);
+  it("starts at the first section heading", () => {
+    expect(/^## (?:0\.|Unreleased)/.test(text)).toBe(true);
     expect(intro).toBe("");
   });
 

@@ -1,5 +1,8 @@
-import { AgentConfig, AgentRole, Binaries, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, ModelTokenUsage, Task, TaskStatus } from "@/types";
+import { AgentConfig, AgentRole, Binaries, McpServer, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, ModelTokenUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
+import { resolveAcpAdapter } from "@/lib/acp/adapter";
+import type { AcpSessionSpec } from "@/lib/acp/session";
+import type { McpServer as AcpMcpServer } from "@agentclientprotocol/sdk";
 import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/labels";
@@ -7,9 +10,9 @@ import { roleLabelKey } from "@/lib/labels";
 /**
  * What Claude Code accepts after `--model`.
  *
- * Hardcoded, unlike antigravity and opencode, which are asked (`listModels` runs their `models`
- * subcommand). So this list goes stale in silence: a model released after the last time somebody
- * edited this line does not appear in the picker, and the only way in is the "Otro…" field.
+ * This static list is now the fallback: providers that expose model-discovery subcommands
+ * (antigravity, opencode, ollama) are queried dynamically via their CLI, and any model typed
+ * by hand in a picker is remembered so it can be picked again without retyping.
  */
 const CLAUDE_MODELS = [
   "opus", "sonnet", "haiku",
@@ -27,11 +30,21 @@ export interface BuildInput {
   systemPrompt: string;
   sessionId?: string;
   cwd?: string;
+  /**
+   * The CLI behind this agent. A detected binary, or the path the user set by hand in Settings.
+   *
+   * Empty for an ACP provider on a machine where that CLI was never installed: there the adapter
+   * brings its own, and the path — when there is one — is a preference to be passed on, not a
+   * requirement to be met.
+   */
   binaryPath: string;
+  /** The file of MCP servers written for this run, for a CLI that reads one. */
   mcpConfigPath?: string;
+  /** The same servers as objects, for a provider that declares them in the protocol instead. */
+  mcpServers?: McpServer[];
 }
 
-export interface ProviderSpec {
+interface ProviderSpecBase {
   id: ProviderId;
   label: string;
   defaultModels: string[];
@@ -41,6 +54,14 @@ export interface ProviderSpec {
   promptVia: "stdin" | "arg";
   /** Dictionary key of a line of help about this provider (see `provider.*` in src/i18n). */
   noteKey?: string;
+}
+
+/**
+ * A provider driven by its CLI: one process per turn, the whole request in the arguments, the
+ * answer as JSON lines on stdout.
+ */
+export interface CliProviderSpec extends ProviderSpecBase {
+  transport: "cli";
   buildCommand(input: BuildInput): Omit<SpawnOptions, "runId">;
   parseLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[];
   /** Final answer when the provider's own `result` event doesn't carry it (default: all raw lines). */
@@ -52,6 +73,33 @@ export interface ProviderSpec {
   finalUsage?(rawLines: string[]): RunUsage | undefined;
 }
 
+/**
+ * A provider driven over ACP: a process that is a whole session, spoken to in JSON-RPC.
+ *
+ * Two methods instead of `buildCommand`, and none instead of `parseLine`, because that is the shape
+ * of the thing: *what to start* (the adapter, which is not the CLI and takes no request in its
+ * arguments) is one question, and *what the session is opened with* is another — the request that
+ * a CLI spells out in argv travels in `session/new` here, after the process is already up. The
+ * lines it prints are protocol frames, not events, so there is nothing for a line parser to read:
+ * src/lib/acp/events.ts turns the notifications into the very same `ParsedEvent`s.
+ *
+ * A union rather than optional fields, so that the compiler is the one asking which kind of run
+ * this is: a `parseLine` quietly returning nothing for an ACP run would be a timeline that is
+ * simply empty, with nowhere to look for why.
+ */
+export interface AcpProviderSpec extends ProviderSpecBase {
+  transport: "acp";
+  /**
+   * The adapter process to spawn, always with `keepStdinOpen`. Async because finding it means
+   * looking at the machine (see src/lib/acp/adapter.ts).
+   */
+  buildAcpCommand(input: BuildInput): Promise<Omit<SpawnOptions, "runId">>;
+  /** What `session/new` is asked for: the MCP servers and the agent's own `_meta` knobs. */
+  buildAcpSession(input: BuildInput): AcpSessionSpec;
+}
+
+export type ProviderSpec = CliProviderSpec | AcpProviderSpec;
+
 // ---- What each provider is assumed to print on one line of stdout -------------------------------
 //
 // These were `any`. Not a shape nobody knew — a shape nobody wrote down: a field renamed between
@@ -59,23 +107,6 @@ export interface ProviderSpec {
 // the assumption lives. Every field is optional because every one of them is the provider's choice,
 // and the parsers still check before they use; what changed is that the assumption now has a name
 // and a place, and adding a field means declaring it.
-
-interface ClaudeLine {
-  type?: string;
-  subtype?: string;
-  session_id?: string;
-  message?: {
-    content?: Array<{ type?: string; text?: string; name?: string; input?: unknown }>;
-    usage?: {
-      input_tokens?: unknown;
-      output_tokens?: unknown;
-      cache_read_input_tokens?: unknown;
-      cache_creation_input_tokens?: unknown;
-    };
-  };
-  result?: string;
-  modelUsage?: unknown;
-}
 
 interface AntigravityLine {
   event?: string;
@@ -214,6 +245,11 @@ function parseModelUsage(raw: unknown): Record<string, ModelTokenUsage> | undefi
 /**
  * Claude Code's `result` line: `total_cost_usd`, `num_turns`, `duration_ms` and a `usage` object
  * with the token counts. The two cache counters are added up into one "cached" figure.
+ *
+ * No run reads this any more: claude runs over ACP, which reports its own usage (see
+ * `usage_update` in src/lib/acp/events.ts) — cost and context size, but no per-model breakdown.
+ * Kept because that breakdown is a shape the app still knows how to show (`byModel`, see
+ * src/lib/model-cost.ts), and the way back to filling it is through this function.
  */
 export function claudeUsage(obj: unknown): RunUsage | undefined {
   const u = field(obj, "usage");
@@ -265,53 +301,6 @@ export function copilotUsage(obj: unknown): RunUsage | undefined {
     durationMs: num(u.sessionDurationMs ?? u.session_duration_ms ?? u.durationMs),
     premiumRequests: num(u.premiumRequests ?? u.premium_requests),
   });
-}
-
-function parseClaudeLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
-  const obj = parseJsonTolerant<ClaudeLine>(line);
-  if (!obj) {
-    if (stream === "stderr") return [{ type: "stderr", text: line }];
-    return [{ type: "raw", text: line }];
-  }
-  
-  // The id is checked rather than assumed: `sessionId` is declared a string, and an init line
-  // without one used to travel as `undefined` pretending to be one — which the resume then used.
-  if (obj.type === "system" && obj.subtype === "init" && obj.session_id) {
-    return [{ type: "session", sessionId: obj.session_id }];
-  }
-  if (obj.type === "assistant" && obj.message) {
-    const events: ParsedEvent[] = [];
-    if (Array.isArray(obj.message.content)) {
-      for (const item of obj.message.content) {
-        if (item.type === "text") {
-          // A whole block, not a delta: Claude Code prints one `assistant` line per text block, and
-          // a turn that talks, uses a tool and talks again has two. Appended raw, the second glued
-          // itself to the first — "…as you asked.```delegate" — and the fence, no longer at the start
-          // of a line, was not a fence: the JSON read as prose and the closing ``` swallowed the rest.
-          events.push({ type: "text", text: `${item.text ?? ""}\n\n` });
-        } else if (item.type === "tool_use") {
-          const detail = item.input ? JSON.stringify(item.input).substring(0, 200) : undefined;
-          events.push({ type: "tool", name: item.name ?? "tool", detail, input: item.input });
-        }
-      }
-    }
-    const u = obj.message.usage;
-    if (isRecord(u)) {
-      const read = num(u.cache_read_input_tokens);
-      const write = num(u.cache_creation_input_tokens);
-      const input = num(u.input_tokens);
-      if (read !== undefined || write !== undefined || input !== undefined) {
-        const contextTokens = (read ?? 0) + (write ?? 0) + (input ?? 0);
-        events.push({ type: "usage", usage: { contextTokens } });
-      }
-    }
-    return events;
-  }
-  if (obj.type === "result") {
-    const usage = claudeUsage(obj);
-    return [{ type: "result", text: obj.result || "", sessionId: obj.session_id, ...(usage ? { usage } : {}) }];
-  }
-  return [];
 }
 
 function parseAntigravityLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[] {
@@ -502,6 +491,25 @@ function parsePlainLine(line: string, stream: "stdout" | "stderr"): ParsedEvent[
  * read them — and the headers are dropped with them, because a "## Tarea" with an empty preamble
  * above it is one more thing for the model to read and nothing for it to learn.
  */
+/**
+ * The project's MCP servers as `session/new` wants them.
+ *
+ * Same servers a CLI reads from the file the orchestrator writes (`mcp/<agent>.json`), in the other
+ * spelling: ACP takes them as a list, names the transport with a `type` (stdio being the one
+ * without), and writes headers and environment as `{ name, value }` pairs instead of objects. What
+ * the user typed is passed through untouched — a `${VAR}` in a header is expanded by whoever reads
+ * it, and a command that is a bare name is the user's business, not this function's.
+ */
+function toAcpMcpServers(servers: McpServer[] | undefined): AcpMcpServer[] {
+  const pairs = (obj: Record<string, string> | undefined) =>
+    Object.entries(obj ?? {}).map(([name, value]) => ({ name, value }));
+  return (servers ?? []).map((server) =>
+    server.transport === "http"
+      ? { type: "http" as const, name: server.name, url: server.url ?? "", headers: pairs(server.headers) }
+      : { name: server.name, command: server.command ?? "", args: server.args ?? [], env: pairs(server.env) },
+  );
+}
+
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
   return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
@@ -519,42 +527,65 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: toModels(CLAUDE_MODELS),
     supportsSessions: true,
     promptVia: "stdin",
-    buildCommand: (input) => {
-      const args = ["-p", "--output-format", "stream-json", "--verbose"];
-      if (input.agent.model) args.push("--model", input.agent.model);
-      if (input.sessionId) args.push("--resume", input.sessionId);
-      if (input.systemPrompt) args.push("--append-system-prompt", input.systemPrompt);
-      if (input.mcpConfigPath) args.push("--mcp-config", input.mcpConfigPath);
-      
+    // Claude Code runs through the ACP adapter, not through `claude -p`. Everything the argv path
+    // used to say is said in `session/new` instead (see `buildAcpSession` below), and what comes
+    // back is a stream of notifications rather than lines of JSON — the same events, one protocol
+    // up. See src/lib/acp/adapter.ts for what gets spawned.
+    transport: "acp",
+    buildAcpCommand: async (input) => {
+      const adapter = await resolveAcpAdapter();
+      return {
+        program: adapter.program,
+        args: adapter.args,
+        cwd: input.cwd,
+        // ACP is a conversation: the process reads for as long as the session lasts, and EOF is
+        // what ends it.
+        keepStdinOpen: true,
+        env: {
+          NO_COLOR: "1",
+          // The adapter finds Claude Code by itself, and whoever pointed the app at their own
+          // build in Settings → Agentes meant it: this is how that choice survives the move to
+          // ACP. Nothing is set when nothing was configured, so the adapter keeps deciding.
+          ...(input.binaryPath ? { CLAUDE_CODE_EXECUTABLE: input.binaryPath } : {}),
+        },
+      };
+    },
+    buildAcpSession: (input) => {
+      // The Agent SDK's own options, which the adapter forwards verbatim. Same names, same values
+      // as the flags the CLI took.
+      const options: Record<string, unknown> = {};
+      if (input.agent.model) options.model = input.agent.model;
+
       if (input.agent.autoApprove) {
-        args.push("--dangerously-skip-permissions");
+        // `--dangerously-skip-permissions`, as two options: the SDK refuses the bypass mode unless
+        // the caller also says out loud that it knows what it is asking for.
+        options.permissionMode = "bypassPermissions";
+        options.allowDangerouslySkipPermissions = true;
       } else {
-        args.push("--permission-mode", "acceptEdits");
+        options.permissionMode = "acceptEdits";
       }
-      
+
       if (input.agent.role === "planner") {
         // Planners do not implement, but they do keep the plans (.ainess/, the folder the app
         // writes the board and the team into) and need git to check what the implementers left
         // behind and to commit/push: nothing else from the shell.
-        args.push("--allowedTools", "Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)");
+        options.allowedTools = ["Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "Bash(git:*)", "Edit(.ainess/**)", "Write(.ainess/**)", "MultiEdit(.ainess/**)"];
       } else {
         // The project hierarchy decides which agents exist. Any subagent spawned directly by the
-        // CLI sits outside of it — with no board card, no attributed cost, and no way to stop
+        // agent sits outside of it — with no board card, no attributed cost, and no way to stop
         // it from the app. A blacklist lets implementers keep the rest of their tools (and any
-        // tool the CLI introduces) while stripping out subagents. `Task` is kept for older CLI
+        // tool that gets introduced) while stripping out subagents. `Task` is kept for older
         // versions where that was the name for `Agent`.
-        args.push("--disallowedTools", "Agent", "Workflow", "Task");
+        options.disallowedTools = ["Agent", "Workflow", "Task"];
       }
 
-      return {
-        program: input.binaryPath,
-        args,
-        cwd: input.cwd,
-        stdinText: input.prompt,
-        env: { NO_COLOR: "1" }
-      };
+      const meta: Record<string, unknown> = { claudeCode: { options } };
+      // The object form, not the string: a string *replaces* the `claude_code` preset, which would
+      // take Claude Code's own system prompt away from it. `append` is `--append-system-prompt`.
+      if (input.systemPrompt) meta.systemPrompt = { append: input.systemPrompt };
+
+      return { mcpServers: toAcpMcpServers(input.mcpServers), meta };
     },
-    parseLine: parseClaudeLine
   },
   antigravity: {
     id: "antigravity",
@@ -563,6 +594,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: toModels(["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]),
     supportsSessions: true,
     promptVia: "arg",
+    transport: "cli",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
@@ -607,6 +639,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     ]),
     supportsSessions: true,
     promptVia: "arg",
+    transport: "cli",
     noteKey: "provider.copilotNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
@@ -633,6 +666,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: [],
     supportsSessions: false,
     promptVia: "arg",
+    transport: "cli",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       const args = ["-p", prompt];
@@ -649,6 +683,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: [],
     supportsSessions: false,
     promptVia: "arg",
+    transport: "cli",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       const args = ["exec", prompt];
@@ -665,6 +700,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: [],
     supportsSessions: false,
     promptVia: "arg",
+    transport: "cli",
     buildCommand: (input) => {
       const cmd = input.agent.customCommand;
       if (!cmd) throw new Error("Missing custom command config");
@@ -697,6 +733,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: [],
     supportsSessions: false,
     promptVia: "stdin",
+    transport: "cli",
     buildCommand: (input) => {
       const model = input.agent.model;
       if (!model) throw new Error("Ollama requires a model to be selected");
@@ -718,6 +755,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: [],
     supportsSessions: false,
     promptVia: "arg",
+    transport: "cli",
     buildCommand: (input) => {
       const prompt = withSystem(input);
       const args = ["--message", prompt, "--yes-always"];
@@ -738,6 +776,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     // shim on Windows, and Windows refuses to start a batch file whose arguments carry newlines
     // ("batch file arguments are invalid"), which every system prompt does.
     promptVia: "stdin",
+    transport: "cli",
     noteKey: "provider.opencodeNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
@@ -756,6 +795,28 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
 };
 
 /**
+ * The provider as the kind of provider it is.
+ *
+ * `PROVIDERS[id]` answers the union, which is right for the orchestrator (it branches) and in the
+ * way everywhere the caller already knows which one it is holding — a test about the opencode
+ * command line, the code that only applies to a CLI run. Throwing rather than answering
+ * `undefined`: asking claude for its `buildCommand` is a mistake in the caller, and a soft answer
+ * would turn it into a check that quietly passes.
+ */
+export function cliProvider(id: ProviderId): CliProviderSpec {
+  const spec = PROVIDERS[id];
+  if (spec.transport !== "cli") throw new Error(`${id} does not run through a CLI`);
+  return spec;
+}
+
+/** The ACP half of the same idea. */
+export function acpProvider(id: ProviderId): AcpProviderSpec {
+  const spec = PROVIDERS[id];
+  if (spec.transport !== "acp") throw new Error(`${id} does not run through ACP`);
+  return spec;
+}
+
+/**
  * The providers worth offering: the ones whose CLI was found on this machine, plus `custom`, whose
  * command the user writes, plus whichever one the agent already has.
  *
@@ -763,10 +824,13 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
  * agent only said so when its first run died. Keeping the current one matters when editing: an
  * agent that came in a formation from another machine, or whose CLI is momentarily missing, must
  * not have its provider quietly swapped for another just by opening its dialog.
+ *
+ * A provider that runs over ACP is always offered: its adapter is fetched when it is first needed,
+ * so there is no CLI to find and nothing for a detection to miss.
  */
 export function availableProviders(binaries: Binaries, current?: ProviderId): ProviderId[] {
   return (Object.keys(PROVIDERS) as ProviderId[]).filter(
-    id => id === "custom" || id === current || !!binaries[id]?.path,
+    id => id === "custom" || id === current || PROVIDERS[id].transport === "acp" || !!binaries[id]?.path,
   );
 }
 
@@ -787,6 +851,43 @@ export function defaultAgentDescription(role: AgentRole, provider: ProviderId): 
     role: translateNow(roleLabelKey[role]),
     cli: PROVIDERS[provider]?.label ?? provider,
   });
+}
+
+/**
+ * Checks whether an agent's name matches the default name, label, or suggested
+ * naming pattern of a provider (e.g. "Claude Code", "Claude Code 2", "Claude",
+ * "Antigravity", "Antigravity 3", "GitHub Copilot", "Copilot 2", etc.).
+ */
+export function isDefaultProviderName(name: string, provider: ProviderId): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return true;
+
+  const spec = PROVIDERS[provider];
+  const label = spec?.label ?? provider;
+
+  const candidates = new Set<string>();
+  candidates.add(label.toLowerCase());
+  candidates.add(provider.toLowerCase());
+
+  if (provider === "claude") {
+    candidates.add("claude");
+  } else if (provider === "copilot") {
+    candidates.add("copilot");
+    candidates.add("github copilot");
+  } else if (provider === "gemini") {
+    candidates.add("gemini");
+    candidates.add("gemini cli");
+  } else if (provider === "codex") {
+    candidates.add("codex");
+    candidates.add("codex cli");
+  }
+
+  for (const cand of candidates) {
+    const escaped = cand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`^${escaped}(?:\\s+(?:\\d+|[0-9a-f]{4}))?$`, "i");
+    if (regex.test(trimmed)) return true;
+  }
+  return false;
 }
 
 /** The eight characters of a task id the planner sees and quotes back in a `delegate` block. */

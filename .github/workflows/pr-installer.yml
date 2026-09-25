@@ -17,13 +17,57 @@ on:
   # For the times a fresh installer of an open pull request is actually wanted.
   workflow_dispatch:
 
-# A new push to the branch makes the build of the previous one pointless.
+# A new push to the branch makes the build of the previous one pointless. A manual dispatch has no
+# pull request behind it, so it groups by the branch it was launched on instead of by an empty
+# number that would put every dispatch of the repository in one group, cancelling each other.
 concurrency:
-  group: pr-installer-${{ github.event.pull_request.number }}
+  group: pr-installer-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  # The pull request that bumps the version is the release itself: merging it is what makes
+  # `release.yml` build and publish the signed installer, minutes after this one finished. So for
+  # that pull request the installer here is thrown away every single time, not now and then, and
+  # the two builds are the most expensive thing this repository does. The version at the head is
+  # compared against the version at the base, and when they differ the build below does not run.
+  # A manual dispatch carries no pull request and always builds: it is the way to get the
+  # installer of an open pull request anyway, a release one included.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide whether this pull request needs an installer
+        id: decide
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER:-}" ]; then
+            echo "No pull request behind this run: building."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The checkout is shallow and the pull request's merge commit, so the base branch has to
+          # be brought in on purpose before its version can be read.
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          head=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          base=$(git show FETCH_HEAD:src-tauri/tauri.conf.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+          echo "head=$head base=$base"
+          if [ "$head" = "$base" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The version goes from $base to $head: this is the release pull request and the installer it needs is the one release.yml publishes on merge."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +97,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ainess-${{ steps.version.outputs.value }}-pr${{ github.event.pull_request.number }}
+          name: ainess-${{ steps.version.outputs.value }}-${{ github.event.pull_request.number && format('pr{0}', github.event.pull_request.number) || github.ref_name }}
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
           retention-days: 14

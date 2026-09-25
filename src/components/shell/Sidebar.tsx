@@ -682,7 +682,11 @@ export function Sidebar() {
                               type="button"
                               data-testid="rail-project"
                               aria-label={p.name}
-                              className={`rounded-full p-0.5 shrink-0 ring-offset-1 ring-offset-card transition-shadow ${
+                              // `flex` so the button is exactly the circle and no taller: the ring
+                              // is drawn on its edge, with no padding and no offset between the two,
+                              // so being the current project reads as the circle's own border
+                              // rather than as a second, detached hoop around it.
+                              className={`flex rounded-full shrink-0 transition-shadow ${
                                 here ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-primary"
                               }`}
                             >

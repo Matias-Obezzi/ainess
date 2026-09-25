@@ -12,7 +12,9 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
-import { availableProviders, defaultAgentDescription, PROVIDERS } from "@/lib/providers";
+import { availableProviders, defaultAgentDescription, isDefaultProviderName, PROVIDERS } from "@/lib/providers";
+import { useModelChoices } from "@/hooks/useModelChoices";
+import { modelChoices } from "@/lib/models";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
@@ -164,8 +166,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const updateAgent = useAppStore(state => state.updateAgent);
   const binaries = useAppStore(state => state.binaries);
   const models = useAppStore(state => state.models);
+  const rememberedModels = useAppStore(state => state.config.rememberedModels);
+  const rememberModel = useAppStore(state => state.rememberModel);
   const quotaByProvider = useAppStore(state => state.quota);
-  const refreshModels = useAppStore(state => state.refreshModels);
   const refreshQuota = useAppStore(state => state.refreshQuota);
   const detectBinaries = useAppStore(state => state.detectBinaries);
   const updateConfig = useAppStore(state => state.updateConfig);
@@ -216,11 +219,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       if (agent) {
         setId(agent.id);
         setName(agent.name);
-        setSuggestedName("");
+        const isDefault = isDefaultProviderName(agent.name, agent.provider);
+        setSuggestedName(isDefault ? agent.name : "");
         setProvider(agent.provider);
         setRole(agent.role);
         setParentId(agent.parentId);
-        setModelFromAgent(agent.provider, agent.model, models[agent.provider] || []);
+        const remembered = rememberedModels?.[agent.provider] ?? [];
+        const choices = modelChoices(agent.provider, models[agent.provider], remembered);
+        setModelFromAgent(agent.provider, agent.model, choices);
         setAutoApprove(agent.autoApprove);
         setApprovalMode(agent.requireApproval === undefined ? "inherit" : agent.requireApproval ? "always" : "never");
         setWorktree(agent.worktree ?? false);
@@ -279,12 +285,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, targetProjectId]);
 
-  // Fetch the model list and quota for the selected provider whenever the dialog is open
-  // and the provider changes (covers both opening the dialog and switching providers).
+  // Fetch quota for the selected provider whenever the dialog is open and the provider changes.
+  // Models are ensured by useModelChoices hook.
   useEffect(() => {
     if (!dialogOpen || provider === "custom") return;
     setModelsLoading(true);
-    void Promise.all([refreshModels(provider), refreshQuota(provider)]).finally(() => setModelsLoading(false));
+    void refreshQuota(provider).finally(() => setModelsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, provider]);
 
@@ -305,8 +311,14 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const handleProviderChange = (value: ProviderId) => {
     setProvider(value);
-    if (!agent && (name.trim() === "" || name === suggestedName)) {
-      const proposed = nextAgentName(roster, PROVIDERS[value]?.label || value);
+    const shouldUpdateName =
+      name.trim() === "" ||
+      name === suggestedName ||
+      isDefaultProviderName(name, provider);
+
+    if (shouldUpdateName) {
+      const targetRoster = roster.filter(a => a.id !== (agent?.id ?? id));
+      const proposed = nextAgentName(targetRoster, PROVIDERS[value]?.label || value);
       setName(proposed);
       setSuggestedName(proposed);
     }
@@ -315,6 +327,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const effectiveModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
 
   const handleSave = () => {
+    if (modelOption === OTHER_MODEL_OPTION && otherModel.trim()) {
+      rememberModel(provider, otherModel);
+    }
     const newAgent: AgentConfig = {
       id,
       name,
@@ -345,7 +360,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
     onOpenChange(false);
   };
 
-  const availableModels = models[provider] || PROVIDERS[provider]?.models || [];
+  const availableModels = useModelChoices(provider);
   const providerQuota = quotaByProvider[provider];
 
   const agentResolvedModel = useMemo(() => {

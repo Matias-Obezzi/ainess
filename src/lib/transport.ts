@@ -7,11 +7,44 @@ export interface Transport {
    */
   reapOrphans(orphans: Array<{ runId: string; pid: number; image: string; startedAt: number }>): Promise<string[]>;
   killRun(runId: string): Promise<boolean>;
+  /**
+   * Writes to the stdin of a run started with `keepStdinOpen`, exactly as given — the framing is
+   * the caller's, because only it knows whether the protocol wants a trailing newline. `false` when
+   * that run has no stdin to write to: it ended, or it was not started with the pipe open. Always
+   * `false` where there is no local process (the browser preview, the phone build).
+   */
+  writeStdin(runId: string, text: string): Promise<boolean>;
+  /** Sends EOF to such a run, which is how a bidirectional session is ended. `false` when there was none. */
+  closeStdin(runId: string): Promise<boolean>;
   onRunOutput(h: (e: import("@/types").RunOutputEvent) => void): Promise<() => void>;
   onRunExit(h: (e: import("@/types").RunExitEvent) => void): Promise<() => void>;
   loadConfig(): Promise<import("@/types").AppConfig | null>;
   saveConfig(config: import("@/types").AppConfig): Promise<void>;
   detectBinaries(): Promise<import("@/types").Binaries>;
+  /**
+   * Full path of a program by name, the way the shell would find it (PATH, and on Windows the
+   * PATHEXT shims and the folders an installer added after this process started). Null when it is
+   * not there. `detectBinaries` answers the fixed list of providers; this answers one name, which
+   * is what finding the ACP adapter (or the `npx` that fetches it) needs — and it has to be a full
+   * path, because a bare `npx` is a `.cmd` shim that `Command::new` cannot resolve on Windows.
+   */
+  whichProgram(name: string): Promise<string | null>;
+
+  // The JS runtime and the ACP adapter the app installs for itself, for the machines where node is
+  // not there to run either of them (see src-tauri/src/acp_setup.rs). Null where there is no local
+  // process to install anything for — and on purpose in the CLI, which runs under node already and
+  // so has the `npx` way in.
+  /** What is installed, without touching the network. */
+  acpManagedStatus(): Promise<import("@/types").AcpManagedStatus | null>;
+  /**
+   * Installs whatever is missing and answers with the status either way. Idempotent, and safe to
+   * call twice at once: the second call waits for the first instead of installing again. Progress
+   * arrives as `acp-setup` events.
+   */
+  acpManagedEnsure(): Promise<import("@/types").AcpManagedStatus | null>;
+  /** Stops an install in flight. A no-op when there is none. */
+  acpManagedCancel(): Promise<void>;
+  onAcpSetup(h: (e: import("@/types").AcpSetupEvent) => void): Promise<() => void>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
   readTextFile(relativePath: string): Promise<string | null>;
   /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */
@@ -68,7 +101,13 @@ export interface Transport {
   remoteStart(port: number, token: string): Promise<{ url: string; ip: string }>;
   remoteStop(): Promise<void>;
   remoteStatus(): Promise<{ running: boolean; url?: string; ip?: string; clients: number }>;
-  remotePushState(snapshot: unknown): Promise<void>;
+  /**
+   * The snapshot already serialized. A string and not an object because that is what both servers
+   * send (an SSE frame is text, and the Rust side broadcasts a String): passing the object would
+   * have the renderer serialize it, the transport serialize it again, and the Rust command turn
+   * its `Value` back into text — three passes over the same megabyte, up to once every 300 ms.
+   */
+  remotePushState(json: string): Promise<void>;
   /** Register the single handler that answers commands from remote clients. */
   onRemoteCommand(h: (cmd: { id: string; action: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>): Promise<() => void>;
 

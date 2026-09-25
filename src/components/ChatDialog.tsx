@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
-import type { ChatParticipant } from "@/types";
-import { PROVIDERS } from "@/lib/providers";
+import type { ChatParticipant, AgentConfig } from "@/types";
 import { useT } from "@/i18n/useT";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
+import { useModelChoices } from "@/hooks/useModelChoices";
 
 interface Props {
   open: boolean;
@@ -37,14 +37,111 @@ const OTHER_ROLE = "__other__";
 const DEFAULT_MODEL = "__default__";
 const OTHER_MODEL = "__other_model__";
 
+function ParticipantRow({
+  participant,
+  agents,
+  canRemove,
+  onUpdate,
+  onRemove,
+}: {
+  participant: ChatParticipant;
+  agents: AgentConfig[];
+  canRemove: boolean;
+  onUpdate: (patch: Partial<ChatParticipant>) => void;
+  onRemove: () => void;
+}) {
+  const t = useT();
+  const provider = agents.find(a => a.id === participant.agentId)?.provider;
+  const modelChoices = useModelChoices(provider);
+  const modelIds = modelChoices.map(m => m.id);
+
+  return (
+    <div className="rounded-md border border-border p-2 flex flex-col gap-2">
+      {/* `1fr` is `minmax(auto, 1fr)`: a column refuses to go under the width of what it holds,
+          so a model with a long name stretched the row, the row stretched the dialog, and the
+          fields above it hung out of the card. `minmax(0, 1fr)` lets the three columns shrink
+          and the value clamp. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
+        <Select value={participant.agentId} onValueChange={v => onUpdate({ agentId: v, model: undefined })}>
+          <SelectTrigger className="w-full min-w-0" title={t("chatDialog.agent")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {agents.map(a => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={CHAT_ROLES.includes(participant.role) ? participant.role : OTHER_ROLE}
+          onValueChange={v => onUpdate({ role: v === OTHER_ROLE ? "" : v })}
+        >
+          <SelectTrigger className="w-full min-w-0" title={t("chatDialog.roleHint")}>
+            <SelectValue placeholder={t("chatDialog.role")} />
+          </SelectTrigger>
+          <SelectContent>
+            {CHAT_ROLES.map(r => (
+              <SelectItem key={r} value={r}>{t(CHAT_ROLE_KEY[r])}</SelectItem>
+            ))}
+            <SelectItem value={OTHER_ROLE}>{t("composer.otherModel")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={!participant.model ? DEFAULT_MODEL : modelIds.includes(participant.model) ? participant.model : OTHER_MODEL}
+          onValueChange={v => onUpdate({ model: v === DEFAULT_MODEL ? undefined : v === OTHER_MODEL ? "custom" : v })}
+        >
+          <SelectTrigger className="w-full min-w-0" title={t("chatDialog.modelHint")}>
+            <SelectValue placeholder={t("common.model")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={DEFAULT_MODEL}>{t("composer.defaultModel")}</SelectItem>
+            {modelChoices.map(m => (
+              <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+            ))}
+            <SelectItem value={OTHER_MODEL}>{t("composer.otherModel")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          disabled={!canRemove}
+          title={t("chatDialog.removeParticipant")}
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      {(!CHAT_ROLES.includes(participant.role) || (participant.model && !modelIds.includes(participant.model))) && (
+        <div className="grid grid-cols-2 gap-2">
+          {!CHAT_ROLES.includes(participant.role) && (
+            <Input
+              value={participant.role}
+              onChange={e => onUpdate({ role: e.target.value })}
+              placeholder={t("chatDialog.customRolePlaceholder")}
+            />
+          )}
+          {participant.model && !modelIds.includes(participant.model) && (
+            <Input
+              value={participant.model === "custom" ? "" : participant.model}
+              onChange={e => onUpdate({ model: e.target.value || "custom" })}
+              placeholder={t("chatDialog.modelIdPlaceholder")}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
   const t = useT();
-  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
-  const models = useAppStore(state => state.models);
   const currentProjectId = useCurrentProjectId();
+  const agents = useAppStore(state => selectProjectAgents(state, currentProjectId));
   const chats = useAppStore(state => state.config.chats);
   const createChat = useAppStore(state => state.createChat);
   const updateChat = useAppStore(state => state.updateChat);
+  const rememberModel = useAppStore(state => state.rememberModel);
 
   const editChat = editChatId ? chats.find(c => c.id === editChatId) : undefined;
 
@@ -75,6 +172,14 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
     if (!name.trim() || participants.length === 0 || !currentProjectId) return;
     const effectiveMode = participants.length === 1 ? "individual" : mode;
     const cleaned = participants.map(p => ({ ...p, model: p.model === "custom" ? undefined : p.model }));
+    for (const p of participants) {
+      if (p.model && p.model !== "custom" && p.model.trim()) {
+        const agent = agents.find(a => a.id === p.agentId);
+        if (agent) {
+          rememberModel(agent.provider, p.model);
+        }
+      }
+    }
     if (editChat) {
       updateChat(editChat.id, { name, participants: cleaned });
     } else {
@@ -112,87 +217,16 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
             <Label>{t("chatDialog.participants")}</Label>
             <p className="text-xs text-muted-foreground mt-1">{t("chatDialog.participantsHint")}</p>
             <div className="flex flex-col gap-2 mt-2">
-              {participants.map((p, idx) => {
-                const provider = agents.find(a => a.id === p.agentId)?.provider;
-                const modelIds = provider ? (models[provider]?.map(m => m.id) ?? PROVIDERS[provider]?.defaultModels ?? []) : [];
-                return (
-                  <div key={idx} className="rounded-md border border-border p-2 flex flex-col gap-2">
-                    {/* `1fr` is `minmax(auto, 1fr)`: a column refuses to go under the width of
-                        what it holds, so a model with a long name stretched the row, the row
-                        stretched the dialog, and the fields above it hung out of the card.
-                        `minmax(0, 1fr)` lets the three columns shrink and the value clamp. */}
-                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
-                      <Select value={p.agentId} onValueChange={v => updateParticipant(idx, { agentId: v, model: undefined })}>
-                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.agent")}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {agents.map(a => (
-                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={CHAT_ROLES.includes(p.role) ? p.role : OTHER_ROLE}
-                        onValueChange={v => updateParticipant(idx, { role: v === OTHER_ROLE ? "" : v })}
-                      >
-                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.roleHint")}>
-                          <SelectValue placeholder={t("chatDialog.role")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CHAT_ROLES.map(r => (
-                            <SelectItem key={r} value={r}>{t(CHAT_ROLE_KEY[r])}</SelectItem>
-                          ))}
-                          <SelectItem value={OTHER_ROLE}>{t("composer.otherModel")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={!p.model ? DEFAULT_MODEL : modelIds.includes(p.model) ? p.model : OTHER_MODEL}
-                        onValueChange={v => updateParticipant(idx, { model: v === DEFAULT_MODEL ? undefined : v === OTHER_MODEL ? "custom" : v })}
-                      >
-                        <SelectTrigger className="w-full min-w-0" title={t("chatDialog.modelHint")}>
-                          <SelectValue placeholder={t("common.model")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={DEFAULT_MODEL}>{t("composer.defaultModel")}</SelectItem>
-                          {modelIds.map(m => (
-                            <SelectItem key={m} value={m}>{m}</SelectItem>
-                          ))}
-                          <SelectItem value={OTHER_MODEL}>{t("composer.otherModel")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={participants.length <= 1}
-                        title={t("chatDialog.removeParticipant")}
-                        onClick={() => removeParticipant(idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {(!CHAT_ROLES.includes(p.role) || (p.model && !modelIds.includes(p.model))) && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {!CHAT_ROLES.includes(p.role) && (
-                          <Input
-                            value={p.role}
-                            onChange={e => updateParticipant(idx, { role: e.target.value })}
-                            placeholder={t("chatDialog.customRolePlaceholder")}
-                          />
-                        )}
-                        {p.model && !modelIds.includes(p.model) && (
-                          <Input
-                            value={p.model === "custom" ? "" : p.model}
-                            onChange={e => updateParticipant(idx, { model: e.target.value || "custom" })}
-                            placeholder={t("chatDialog.modelIdPlaceholder")}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {participants.map((p, idx) => (
+                <ParticipantRow
+                  key={idx}
+                  participant={p}
+                  agents={agents}
+                  canRemove={participants.length > 1}
+                  onUpdate={patch => updateParticipant(idx, patch)}
+                  onRemove={() => removeParticipant(idx)}
+                />
+              ))}
               <Button variant="outline" size="sm" onClick={addParticipant} disabled={participants.length >= agents.length}>
                 <Plus className="h-4 w-4 mr-1" /> {t("chatDialog.addParticipant")}
               </Button>

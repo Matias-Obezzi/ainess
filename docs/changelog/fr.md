@@ -2,6 +2,192 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.24.0 — 2026-09-25
+
+### Nouveau
+
+- **Claude Code n'a plus besoin de Node.js sur la machine.** Il communique via un adaptateur publié
+  sur npm, et jusqu'ici la seule porte d'entrée était `npx` : sans Node.js il n'y avait rien à
+  lancer et l'exécution mourait sur une erreur de spawn illisible. Quand ni l'adaptateur ni `npx` ne
+  sont dans le PATH, l'app se construit désormais son propre environnement : elle télécharge un
+  runtime et installe l'adaptateur dans son dossier de données (~360 Mo, une seule fois), derrière
+  un écran qui dit ce qu'il fait et que l'on peut relancer. Une machine qui a déjà Node.js continue
+  d'utiliser `npx` et ne télécharge rien.
+- **Les sélecteurs de modèle proposent ce que le CLI installé sait vraiment exécuter.** Antigravity
+  et opencode étaient déjà interrogés sur leurs modèles, mais seule la boîte de dialogue de
+  l'agent lisait la réponse ; le compositeur, les préréglages, les conversations et l'anneau de
+  quota affichaient une liste écrite dans le code, qui vieillissait en silence. Tous les
+  sélecteurs lisent maintenant la même liste : ce que le CLI rapporte, rafraîchi au démarrage et
+  au plus toutes les dix minutes, avec la liste intégrée en secours. Ollama est interrogé aussi,
+  donc les modèles installés sur la machine apparaissent sans que personne ne modifie une
+  constante. Un modèle saisi sous « Autre… » est mémorisé par fournisseur et proposé la fois
+  suivante. (#37)
+- **Un message en file d'attente peut être modifié avant d'être délivré.** Quand vous écrivez à
+  un agent occupé, votre message attend dans une file et lui est remis à la fin de son tour.
+  Auparavant, la seule chose possible avec une ligne en attente était de l'annuler et de tout
+  retaper. Désormais chaque ligne en attente affiche un crayon : cliquez dessus et le texte
+  s'ouvre dans un champ d'édition en ligne, Entrée enregistre, Maj+Entrée insère un saut de
+  ligne et Échap quitte sans modifier. Enregistrer avec un texte vide revient à annuler la ligne.
+  Fonctionne dans le fil du projet comme dans une conversation directe. Si la ligne a déjà été
+  délivrée pendant que vous l'éditiez, la modification ne la ramène pas. (#32)
+- **Le téléphone n'a plus qu'un seul onglet Conversations, et l'accueil montre qui travaille.**
+  La télécommande séparait la même idée en deux onglets — le fil du projet d'un côté et les
+  conversations directes de l'autre. Il n'y a plus qu'un onglet, « Conversations », qui liste le
+  fil du projet en haut et les conversations en dessous ; touchez l'un d'eux pour l'ouvrir et la
+  flèche de retour ramène à la liste. Changer d'onglet et revenir ne ferme plus la conversation
+  que vous aviez ouverte. De plus, l'accueil du téléphone affiche, au-dessus de la liste des
+  projets, quels agents travaillent ou attendent votre réponse dans n'importe quel projet, avec
+  l'avatar de l'agent, le projet auquel il appartient et ce qu'il fait ; ceux qui attendent sont
+  en premier et mis en évidence, et toucher l'un d'eux mène directement à cette conversation.
+  Chaque projet de la liste signale également si l'un de ses agents attend. (#27, #31)
+- **La télécommande sur téléphone revient là où vous l'aviez laissée.** Rouvrir ou recharger la
+  page (ce que le téléphone fait de lui-même quand il abandonne l'onglet) ramenait chaque fois à
+  l'accueil et à l'onglet Tâches. Le projet, la conversation et l'onglet sont désormais gardés
+  sur l'appareil et restaurés à l'arrivée du premier instantané ; un projet ou une conversation
+  disparus renvoient à l'accueil ou au fil de l'orchestrateur. (#28)
+- **Les projets sur le téléphone portent le même avatar que sur le bureau.** La liste montrait un
+  simple point de couleur ; elle montre maintenant le cercle coloré avec les initiales du projet,
+  dans la liste et dans l'en-tête du projet, pour que les deux surfaces se lisent comme une
+  seule application. (#30)
+- **Le modèle peut être choisi depuis le téléphone.** Le modèle est l'une des choses que l'on a le
+  plus envie de changer quand on est loin de l'ordinateur — un quota épuisé, une tâche qui réclame
+  le modèle pas cher — et jusqu'ici cela voulait dire revenir jusqu'au PC. Dans le fil du projet,
+  le téléphone cachait le sélecteur de modèle derrière une icône sans étiquette : il fallait
+  deviner qu'il était là. Ce bouton affiche maintenant le nom du modèle actif, si bien que d'un
+  coup d'œil, sans rien toucher, vous savez avec quel modèle partira ce que vous êtes en train
+  d'écrire. Le champ de texte libre pour saisir un modèle à la main (« Autre… ») tient désormais
+  aussi sur un écran étroit. Dans une conversation directe, on ne voyait pas avec quel modèle
+  tournait l'agent, ni sur le téléphone ni sur le bureau ; c'est affiché maintenant, un par
+  participant, et il peut être changé depuis là (voir plus bas). Ce sur quoi il retombe n'a pas
+  changé : le modèle choisi à la création de la conversation ou, à défaut, celui de l'agent — le
+  même ordre qui sert à le résoudre au démarrage, donc ce que vous lisez est ce qui va réellement
+  s'exécuter. L'onglet Agents du téléphone était en lecture seule. Vous
+  pouvez maintenant y changer le modèle par défaut d'un agent, avec les mêmes choix que propose le
+  compositeur. (#29)
+- **Un plafond d’exécutions en parallèle.** Une exécution est un processus qui lance ses propres
+  tests, builds et installations, et rien ne limitait le nombre de celles qui démarraient
+  ensemble : sous vos yeux, la boîte d’approbation était le seul frein ; sans personne, dix
+  délégations faisaient dix CLI se disputant la machine. Réglages → Général → « Exécutions en
+  parallèle » fixe désormais ce plafond — quatre par défaut, 0 pour aucun — tous projets confondus,
+  parce que ce qui est protégé, c’est la machine. Ce qui dépasse attend son tour et démarre tout
+  seul dès qu’une place se libère : rien n’est perdu ni demandé deux fois. (#36)
+- **Les écrans apparaissent en fondu.** À l'ouverture de l'application, en passant de l'accueil à un
+  projet, en changeant de fil, en changeant de section dans les Réglages : le corps de ce qui arrive
+  monte de huit pixels en un cinquième de seconde. Le corps seulement — la barre de titre, la barre
+  latérale, la zone de saisie et le panneau de droite restent où ils sont, puisqu'ils n'ont jamais
+  disparu. Cela rejoue quand vous revenez à la fenêtre depuis la zone de notification, depuis une
+  réduction, ou en lançant l'application une seconde fois ; revenir du navigateur avec alt-tab ne
+  compte pas, et rien ne bouge alors. Apparence → « Animations d'écran » le désactive, et un système
+  réglé sur moins de mouvement le désactive de lui-même, partout dans l'application.
+- **Claude Code peut se connecter sans quitter l'application.** Une exécution contre le fournisseur
+  `claude` sur une machine où Claude Code ne s'était jamais connecté mourait avec la même erreur
+  générique que n'importe quel autre échec, sans aucun moyen d'ouvrir une session sans quitter
+  l'application. Le client ACP distingue maintenant cet échec — via la notification
+  `_auth/status_update` que pousse l'adaptateur, et via l'erreur `auth_required` qu'il renvoie en
+  réponse à une requête — et ouvre un écran pour ça. La connexion se fait dans un terminal intégré,
+  et dès qu'une session existe, l'exécution qui avait échoué se relance d'elle-même, sans rien
+  retaper. Une machine sans aucun moteur se voit d'abord proposer le runtime géré, puisque c'est
+  lui qui en apporte un. Annuler laisse quand même l'exécution terminée, en disant ce qui manque.
+- **Réglages → Agents affiche le compte avec lequel Claude Code est connecté.** La carte Claude
+  affiche maintenant le compte — e-mail, organisation, forfait — avec un bouton pour revérifier et
+  un autre pour se déconnecter. Se déconnecter prévient que les identifiants vivent dans
+  `~/.claude` et que l'opération affecte tout autre Claude Code sur la machine, pas seulement
+  cette application.
+- **Les équipes ont leur propre écran de réglages.** Réglages → Agents empilait deux choses sans
+  rapport — les CLI installés sur cette machine et les équipes enregistrées — si bien qu'atteindre
+  une équipe voulait dire défiler au-delà de chaque carte de fournisseur. Les équipes sont
+  maintenant une section à part, juste en dessous d'Agents. Les deux écrans ont aussi perdu le
+  titre et la description qui surmontaient leur contenu, puisque la barre latérale nomme déjà
+  l'écran, et le texte visible dit désormais « équipe » au lieu de « formation », dans les sept
+  langues.
+- **La mascotte observe ce que vous tapez.** Une sixième humeur, en plus des cinq qui venaient déjà
+  de l'agent : pendant que vous tapez dans le compositeur, elle lève des jumelles et regarde vers
+  le champ de saisie. Elle l'emporte sur le sommeil et sur l'attente — ce que vous tapez est
+  justement ce pour quoi un agent en attente s'est arrêté — et elle ne masque jamais ce que l'agent
+  fait vraiment : au travail, en panne ou à court de jetons l'emportent toujours.
+
+### Modifié
+
+- **La barre du bas du compositeur en dit moins et en fait plus.** Les deux sélecteurs — qui
+  répond, et avec quel modèle — ont perdu leur flèche et prennent désormais la largeur de ce
+  qu'ils affichent, comme le bouton de quota à côté l'a toujours fait : un nom de modèle court ne
+  laisse plus de vide, et un long n'est plus coupé à une largeur fixe. Dans une conversation, la
+  ligne en lecture seule par participant est maintenant le logo de l'agent et son nom, et à côté
+  un sélecteur de modèle qui, lui, se touche : ce que vous choisissez est écrit sur ce participant
+  de cette conversation. Qui est dans la conversation ne se change toujours pas d'ici — parler à
+  quelqu'un d'autre, c'est une conversation à part, créée depuis la barre de gauche. Les ordres
+  enregistrés au-dessus du champ se replient derrière un petit bouton et restent repliés jusqu'à
+  ce que vous disiez le contraire, et le champ ne dessine plus d'anneau autour de lui quand il
+  prend le focus : c'est la bordure qui le dit, une fois.
+- **La flèche bas sort d'un bloc de code qui termine le message.** Un bloc fermé sur la dernière
+  ligne du champ n'avait rien en dessous : impossible d'écrire après lui sans revenir en arrière
+  et faire la ligne à la main. La flèche la fait maintenant. Partout ailleurs — avec une ligne
+  sous le curseur, hors d'un bloc, dans un bloc encore ouvert — c'est la flèche de toujours, et la
+  flèche haut n'a pas bougé.
+
+### Corrigé
+
+- **Une exécution qui attend une place libre l'obtient désormais dans l'ordre où elle a été
+  demandée.** Le plafond du nombre d'exécutions simultanées étant atteint, les autres attendent — et
+  plusieurs délégations approuvées ensemble entrent dans la file au cours de la même milliseconde :
+  il ne restait donc à l'application que leurs identifiants internes pour les distinguer. Ceux-ci
+  sont aléatoires, si bien que la place libérée revenait à celle qui gagnait une comparaison entre
+  deux chaînes tirées au hasard : du travail pouvait attendre pendant qu'une demande postérieure
+  passait devant lui. L'ordre d'arrivée du travail est maintenant noté et respecté, comme le faisait
+  déjà la file d'attente derrière un agent occupé.
+- **Changer le moteur de l'orchestrateur ne lui laisse plus l'ancien nom.** Un agent portant le
+  nom par défaut de son moteur (« Claude Code ») gardait ce nom quand on changeait son
+  fournisseur : la conversation affichait le nom d'un moteur sur l'icône d'un autre et l'invite
+  système l'appelait par le mauvais. Un nom par défaut suit désormais le fournisseur ; un nom que
+  vous avez choisi reste. La conversation de l'orchestrateur suit aussi le planificateur racine
+  quand un autre agent est promu dans la hiérarchie, au lieu de laisser le compositeur pointer
+  sur l'ancien. (#38)
+- **Ce que vous avez tapé dans une question de l'agent n'est plus perdu quand la boîte disparaît.**
+  Les options cochées et le texte libre vivaient dans la boîte elle-même : changer de projet,
+  ouvrir une conversation, appuyer sur « Écrire à la place » ou laisser le fil dépasser
+  l'exécution les jetait. Ils sont maintenant gardés par question, d'un écran à l'autre et d'un
+  redémarrage à l'autre, et les deux copies de la même question (sous l'exécution et au-dessus
+  du compositeur) montrent les mêmes coches. Un brouillon disparaît quand sa question est
+  répondue, par vous ou automatiquement. (#35)
+- **La télécommande sur téléphone se rétablit seule après le verrouillage de l'écran.** La
+  bannière « Reconnexion… » restait affichée alors que l'application fonctionnait, et un message
+  envoyé depuis le téléphone n'apparaissait parfois qu'après un rechargement : le signal de vie du
+  PC n'effaçait jamais la bannière, une connexion morte en silence n'était pas remarquée, et le
+  retour au premier plan attendait le minuteur de nouvelle tentative. La page considère désormais
+  tout signe de vie comme une connexion, abandonne un flux muet depuis 45 secondes, se reconnecte
+  dès que l'onglet revient devant ou que le réseau revient, et le PC renvoie son dernier état à
+  un téléphone resté en arrière. (#26)
+- **La compaction est annoncée dans le fil et peut être consultée.** Quand un agent compacte
+  son historique — automatiquement parce que la conversation devenait lourde, ou parce que vous
+  avez lancé `/compact` — l'application dessinait ce tour aligné à droite, avec la même
+  apparence qu'un message tapé par vous, et le proposait même en appuyant sur la flèche haut
+  dans le compositeur comme s'il s'agissait de l'un de vos prompts. Le masquer complètement
+  n'était pas non plus la bonne réponse : une compaction automatique redémarre la session de
+  l'agent, et sans trace visible le fil changeait de caractère en silence. La compaction
+  apparaît maintenant comme une note de maintenance discrète — une seule ligne nommant l'agent,
+  indiquant si la compaction était automatique ou demandée, et portant l'heure. Un « Plus de
+  détails » se déplie et montre ce que l'application a demandé à l'agent et ce que l'agent a
+  répondu ; la note indique aussi quand une compaction est en cours, a échoué ou a été
+  interrompue. Deux choses qui n'ont jamais été les vôtres restent masquées : le prompt de
+  compaction n'apparaît plus sous la flèche haut du compositeur, et la réponse d'un
+  planificateur à une question de l'un de ses implémenteurs n'est pas affichée non plus — c'est
+  du trafic entre agents, pas quelque chose que vous avez besoin de lire. Fonctionne aussi bien
+  sur le bureau que sur le téléphone.
+- **Le remote du téléphone coûte bien moins à l’application quand il est allumé.** Chaque
+  changement sérialisait l’état entier deux fois pour l’envoyer, trois fois quand il était assez
+  gros pour être réduit, et il était construit même sans aucun téléphone connecté : une fois
+  toutes les 300 ms pendant toute une exécution autonome, sur le fil qui dessine l’application.
+  Il n’est plus sérialisé qu’une fois par envoi, et sans personne de connecté rien n’est
+  construit : ce qui s’est passé entre-temps part à l’instant où un téléphone se connecte, donc
+  ce que vous ouvrez sur le téléphone est toujours à jour. (#36)
+- **L'icône du téléphone dans la barre de titre ouvre maintenant Réglages → Distant au lieu
+  d'allumer le serveur directement.** Un clic lançait auparavant un serveur sur le réseau local
+  sans jamais montrer le port, le jeton ou le QR code ; l'icône continue d'indiquer si le serveur
+  tourne.
+- **L'anneau qui marque le projet actif dans la barre latérale repliée épouse maintenant son
+  cercle.** Il flottait auparavant à quelques pixels de distance ; il tient désormais comme le
+  bord du cercle lui-même.
+
 ## 0.23.0 — 2026-09-20
 
 ### Nouveau

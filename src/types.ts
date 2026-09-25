@@ -423,7 +423,7 @@ export interface MessagingChannelConfig {
 }
 
 export interface AppConfig {
-  version: 13;
+  version: 14;
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -450,6 +450,14 @@ export interface AppConfig {
   lastProjectId: string | null;
   /** Max planner continuation rounds per user task. */
   maxRounds: number;
+  /**
+   * How many runs may hold a CLI process at once, counted across every project.
+   *
+   * A run is a process, and that process runs tests, builds and installs of its own, so the ceiling
+   * is about the machine rather than about any one project. A run over it is queued, never dropped:
+   * it starts on its own as soon as a slot frees. 0 means no ceiling at all.
+   */
+  maxConcurrentRuns: number;
   skills: Skill[];
   mcpServers: McpServer[];
   /**
@@ -478,6 +486,13 @@ export interface AppConfig {
    * been: the empty thread and nowhere else.
    */
   mascotAlways?: boolean;
+  /**
+   * Fade the body of a screen up when it arrives (see `lib/screen-in.ts`). Missing is on, which is
+   * how the app ships; `prefers-reduced-motion: reduce` turns it off whatever this says.
+   */
+  screenAnimations?: boolean;
+  /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
+  rememberedModels?: Partial<Record<ProviderId, string[]>>;
 }
 
 export interface AgentRuntime {
@@ -610,6 +625,11 @@ export interface Run {
   kind?: "task" | "chat" | "compact" | "answer";
   /** Only on `kind: "answer"`: the question the run was started to answer. */
   answersQuestionId?: string;
+  /**
+   * Only on `kind: "compact"`: the app started this turn on its own because the session had grown
+   * heavy, not the user typing `/compact`. The thread says so, since nobody asked for it.
+   */
+  auto?: boolean;
   /** The chat this run answers in, so its provider session is kept with that chat and not shared. */
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
@@ -700,6 +720,54 @@ export interface StorageStat {
 }
 
 /**
+ * The JS runtime and the ACP adapter the app installs for itself (see src-tauri/src/acp_setup.rs).
+ *
+ * A machine with no node cannot reach the adapter any other way — neither `claude-agent-acp` on
+ * PATH nor `npx` exists there — so the app downloads bun into its own config folder and installs
+ * the adapter with it. Null everywhere there is no local process to install anything for.
+ */
+export interface AcpManagedStatus {
+  /** A bun the app installed is sitting where the app put it. */
+  runtimeReady: boolean;
+  /** The adapter is installed, and installed for the version range this build asks for. */
+  adapterReady: boolean;
+  bunVersion: string | null;
+  adapterVersion: string | null;
+  /** What to spawn to start the adapter. Null until both are ready. */
+  program: string | null;
+  args: string[];
+  /** Absolute path of the folder the adapter lives in. */
+  installDir: string;
+  /** The `claude` binary of the engine package, when it is there. */
+  enginePath: string | null;
+}
+
+/**
+ * Who Claude Code is logged in as, as the ACP adapter reports it.
+ *
+ * Mirrors the `authStatus` the adapter pushes over its `_auth/status_update` extension
+ * notification: push only, scoped to the connection, and only sent when the payload changed. There
+ * is no request that asks for it, so the app either has been told or has not.
+ *
+ * `kind: "none"` is an explicit "nobody is logged in". Having no status at all is a third state —
+ * "could not be determined" — and must not be read as either logged in or logged out.
+ *
+ * `label` and `detail` come in English from the adapter. They are data, not interface: they are
+ * shown as they arrive and never translated.
+ */
+export interface ClaudeAuthStatus {
+  kind: ClaudeAuthKind;
+  label: string;
+  detail?: string;
+  account?: { email?: string; organization?: string; plan?: string };
+  /** Whatever the agent wanted to add. Carried across untouched. */
+  vendor?: Record<string, unknown>;
+}
+
+/** The identities the adapter distinguishes. `none` means "not logged in". */
+export type ClaudeAuthKind = "account" | "api_key" | "gateway" | "external" | "none";
+
+/**
  * One TCP port something is listening on here (see `Transport.listeningPorts`).
  *
  * `project` and `descendant` are hints, never proof: a dev server an agent left behind is usually
@@ -781,6 +849,14 @@ export interface SpawnOptions {
   args: string[];
   cwd?: string;
   stdinText?: string;
+  /**
+   * Leaves stdin open after the spawn instead of closing it, so the run can be written to again
+   * (see `Transport.writeStdin`). A turn-per-process run wants the opposite — the CLI only starts
+   * working when it sees EOF — so this stays off unless a bidirectional protocol asks for it:
+   * ACP's JSON-RPC over stdio, or `--input-format stream-json`, where the process is one whole
+   * session and closing stdin is what ends it.
+   */
+  keepStdinOpen?: boolean;
   env?: Record<string, string>;
 }
 
@@ -931,4 +1007,12 @@ export interface FilePreview {
   /** Where it may be, in the order to look: under the repo, then under the project folder. */
   candidates: string[];
   line?: number;
+}
+
+export type AcpSetupPhase = "runtime-download" | "runtime-verify" | "runtime-extract" | "adapter-install" | "ready" | "error";
+export interface AcpSetupEvent {
+  phase: AcpSetupPhase;
+  received?: number;
+  total?: number;
+  message?: string;
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview } from "@/types";
+import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase, ClaudeAuthStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { chimeFor, playChime, soundEnabled } from "@/lib/sound";
 import { isTauri } from "@/lib/tauri";
@@ -18,6 +18,7 @@ import { forgetPty } from "@/lib/pty-bus";
 import { mergeConfig } from "@/lib/config-merge";
 import * as notifications from "@/lib/notifications";
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
+import { replaceQueuedLine, replaceInstructionHistory } from "@/lib/queued-edit";
 import { translateNow } from "@/i18n/useT";
 import { findRepoDir, repoDirOf } from "@/lib/repo-dir";
 import { forgetMissingBinaries } from "@/lib/missing-binary";
@@ -29,7 +30,11 @@ import * as notificationStore from "@/lib/notification-store";
 import * as recovery from "@/lib/recovery";
 import { readWithLegacy } from "@/lib/storage-keys";
 import { MAX_PROJECT_PANES } from "@/lib/project-panes";
+import { DEFAULT_MAX_CONCURRENT_RUNS } from "@/lib/run-queue";
 import type { BridgeProviderId } from "@/lib/bridge/types";
+import type { QuestionChoice } from "@/lib/question-choice";
+import { PROVIDERS } from "@/lib/providers";
+import { isRemoteBuild } from "@/lib/platform";
 
 /** The channels the messaging config actually has a slot for today. */
 type MessagingChannelId = Extract<BridgeProviderId, "telegram" | "discord" | "slack">;
@@ -52,7 +57,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "appearance" | "agents" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -81,6 +86,8 @@ export interface AppState {
   openProjects: string[];
   /** Models available per provider (fetched or fixed list). */
   models: Partial<Record<ProviderId, ModelInfo[]>>;
+  /** When models were last fetched for each provider (epoch ms). In-memory only. */
+  modelsFetchedAt: Partial<Record<ProviderId, number>>;
   /** Last known quota per provider. */
   quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** The editors on this machine, for "open in…". Detected once at startup. */
@@ -139,6 +146,18 @@ export interface AppState {
   setComposerModel(key: string, model: string): void;
 
   /**
+   * What was marked and typed for pending questions, by question id. Kept across views and navigation
+   * so switching screens, toggling "write instead", or thread scrolling never loses an answer.
+   */
+  questionDrafts: Record<string, QuestionChoice>;
+  setQuestionDraft(questionId: string, choice: QuestionChoice | null): void;
+  /**
+   * Drops the drafts of questions that are settled — and of questions nobody knows, when every
+   * project's history has been read and an unknown id cannot be one still waiting to load.
+   */
+  pruneQuestionDrafts(dropUnknown?: boolean): void;
+
+  /**
    * Messages written while a chat was mid-turn, sent when it ends. The orchestrator has had this
    * for its agents since it existed (`queuedInstructions`); a chat had nothing and the box was
    * simply disabled.
@@ -147,8 +166,12 @@ export interface AppState {
   queueChatMessage(chatId: string, text: string): void;
   /** Takes one queued message back before its turn comes. */
   unqueueChatMessage(chatId: string, index: number): void;
+  /** Replaces a queued chat message at index, or drops it if empty. No-op if stale. */
+  editQueuedChatMessage(chatId: string, index: number, previous: string, next: string): void;
   /** The same, for an instruction waiting on a working agent. */
   unqueueInstruction(projectId: string, agentId: string, index: number): void;
+  /** Replaces a queued instruction at index (and updates history), or drops it if empty. No-op if stale. */
+  editQueuedInstruction(projectId: string, agentId: string, index: number, previous: string, next: string): void;
   /**
    * Cuts the turn that is running short and hands the queue over now.
    *
@@ -194,6 +217,8 @@ export interface AppState {
   diffPanelOpen: boolean;
   /** Whether the terminals section of the right dock is open (persisted). */
   termPanelOpen: boolean;
+  /** Whether the saved orders show above the composer (persisted). Visible on a fresh install. */
+  presetsVisible: boolean;
   /** Flex weights for the sections of the right dock. */
   dockSizes: Record<DockSectionId, number>;
   /** projectId -> the file open beside that project's conversation. Not persisted. */
@@ -214,6 +239,33 @@ export interface AppState {
   searchOpen: boolean;
   /** Whether the Ctrl+/ shortcuts dialog is open. Not persisted. */
   shortcutsOpen: boolean;
+  /**
+   * True while the user is putting something in the composer, and for a moment after the last
+   * keystroke. Read by the mascot, which looks down at the box while it is on (see
+   * `lib/mascot.ts#withTyping`). Transient: it belongs to this session, never to the config.
+   */
+  composerTyping: boolean;
+
+  /**
+   * What the managed ACP runtime install shows on screen: `open` while the dialog is up, the rest
+   * written by the `acp-setup` events Rust emits (see src/lib/acp-setup.ts). A failure travels in
+   * `message`, like every other phase's detail. Not persisted.
+   */
+  acpSetup: { open: boolean; phase?: AcpSetupPhase; received?: number; total?: number; message?: string };
+  setAcpSetup: (patch: Partial<AppState["acpSetup"]>) => void;
+
+  /**
+   * Whether Claude Code has a session, and the screen that opens one (see src/lib/claude-auth.ts).
+   *
+   * `status` is the last `_auth/status_update` the adapter pushed, kept so Settings can show who is
+   * logged in without paying for another probe. Null is "nobody has said", which is not the same as
+   * logged out — that one arrives as `kind: "none"`. The rest is the dialog: `open` while it is up,
+   * `hasEngine` false when there is no `claude` to log in with and the screen has to offer the
+   * managed runtime instead, `failed` after a login that came back without a session. Not persisted.
+   */
+  claudeAuth: { status: ClaudeAuthStatus | null; open: boolean; hasEngine: boolean; failed: boolean };
+  setClaudeAuth: (patch: Partial<AppState["claudeAuth"]>) => void;
+
   /** Task the board should open its detail dialog on (set by the search palette). Not persisted. */
   focusedTaskId: string | null;
   /** Message the chat/thread should scroll to and highlight (set by the search palette). Not persisted. */
@@ -246,6 +298,8 @@ export interface AppState {
   toggleCommPanel(open?: boolean, projectId?: string | null): void;
   toggleDiffPanel(open?: boolean, projectId?: string | null): void;
   toggleTermPanel(open?: boolean, projectId?: string | null): void;
+  /** Shows or hides the strip of saved orders above the composer. Left out, it flips. */
+  togglePresets(visible?: boolean): void;
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
   openPreview(ref: string, projectId?: string | null): void;
   closePreview(projectId?: string | null): void;
@@ -257,6 +311,8 @@ export interface AppState {
   cycleSidebar(): void;
   toggleSearch(open?: boolean, initialGroup?: "messages" | null): void;
   toggleShortcuts(open?: boolean): void;
+  /** The composer says here whether it is being typed into; nothing else writes it. */
+  setComposerTyping(typing: boolean): void;
   /** Asks the task board to open (or close, with null) one task's detail. */
   focusTask(taskId: string | null): void;
   /** Asks the thread to scroll to and highlight one message. */
@@ -296,6 +352,8 @@ export interface AppState {
   removeProject(id: string): void;
   setCurrentProject(id: string | null): void;
   setMaxRounds(n: number): void;
+  /** How many runs may hold a CLI process at once, across every project; 0 means no ceiling. */
+  setMaxConcurrentRuns(n: number): void;
   /** Adds an agent to a project's team (replacing the one with the same id, if any). */
   addAgent(projectId: string, agent: AgentConfig): void;
   updateAgent(projectId: string, agentId: string, patch: Partial<AgentConfig>): void;
@@ -324,6 +382,10 @@ export interface AppState {
   detectBinaries(): Promise<{ found: ProviderId[]; missing: ProviderId[] }>;
   updateConfig(patch: Partial<AppConfig>): void;
   refreshModels(provider: ProviderId): Promise<ModelInfo[]>;
+  /** Fetches models for askable providers if detected, not in flight, and stale (>10 min). */
+  ensureModels(provider: ProviderId): Promise<void>;
+  /** Remembers a hand-typed model id for a provider, capped at 10, persisted. */
+  rememberModel(provider: ProviderId, id: string): void;
   /** `force` skips the shared cache: it is the user asking on purpose. */
   refreshQuota(provider: ProviderId, opts?: { force?: boolean }): Promise<ProviderQuota>;
   loadQuotaMarks(): Promise<void>;
@@ -443,7 +505,7 @@ export interface AppState {
  */
 function generateSeedConfig(): AppConfig {
   return {
-    version: 13,
+    version: 14,
     language: null,
     approveDelegations: false,
     remote: { enabled: false, port: 4710, token: crypto.randomUUID(), tunnel: { provider: "cloudflared", enabled: false } },
@@ -453,6 +515,7 @@ function generateSeedConfig(): AppConfig {
     defaultFormationId: null,
     lastProjectId: null,
     maxRounds: 6,
+    maxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS,
     skills: [],
     mcpServers: [],
     hooks: [],
@@ -538,6 +601,7 @@ interface UiPrefs {
   commPanelOpen: boolean;
   diffPanelOpen: boolean;
   termPanelOpen: boolean;
+  presetsVisible: boolean;
   dockSizes: Record<DockSectionId, number>;
   paneWidths: Record<PaneId, number>;
   settingsSection: SettingsSection;
@@ -591,6 +655,7 @@ export function flushStringMapSaves(): void {
     saveStringMap(key, pending.value);
   }
   pendingSaves.clear();
+  flushJsonMapSaves();
 }
 
 if (typeof window !== "undefined") {
@@ -620,6 +685,88 @@ export function saveStringMapSoon(storageKey: string, map: Record<string, string
     };
     pendingSaves.set(storageKey, newPending);
   }
+}
+
+export const QUESTION_DRAFTS_KEY = "ainess.questionDrafts";
+
+/**
+ * A map of question id to QuestionChoice JSON objects, kept across views and restarts.
+ */
+function loadJsonMap<T>(storageKey: string): Record<string, T> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, T> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value && typeof value === "object") out[key] = value as T;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveJsonMap<T>(storageKey: string, map: Record<string, T>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(map));
+  } catch {
+    // Private mode or quota: an unsent draft is not worth failing over.
+  }
+}
+
+const pendingJsonSaves = new Map<string, { value: Record<string, unknown>; timer: ReturnType<typeof setTimeout> }>();
+
+/** Flushes all pending JSON map writes to localStorage immediately. */
+export function flushJsonMapSaves(): void {
+  for (const [key, pending] of pendingJsonSaves.entries()) {
+    clearTimeout(pending.timer);
+    saveJsonMap(key, pending.value);
+  }
+  pendingJsonSaves.clear();
+}
+
+/**
+ * Persists JSON maps with a delay, mirroring saveStringMapSoon.
+ */
+export function saveJsonMapSoon<T>(storageKey: string, map: Record<string, T>): void {
+  const pending = pendingJsonSaves.get(storageKey);
+  if (pending) {
+    pending.value = map as Record<string, unknown>;
+  } else {
+    const newPending = {
+      value: map as Record<string, unknown>,
+      timer: setTimeout(() => {
+        pendingJsonSaves.delete(storageKey);
+        saveJsonMap(storageKey, newPending.value);
+      }, 400),
+    };
+    pendingJsonSaves.set(storageKey, newPending);
+  }
+}
+
+/**
+ * The drafts still worth keeping: those of a question that is known and still pending.
+ *
+ * A question nobody has loaded yet is not a question that is gone. History is read per project,
+ * and with many projects only the last one is read at startup, so a draft for a question in
+ * another project has no entry in `questions` until that project is opened. Such drafts stay,
+ * unless `dropUnknown` says every project has been read and an unknown id can only be stale.
+ */
+export function prunedQuestionDrafts(
+  drafts: Record<string, QuestionChoice>,
+  questions: Record<string, AgentQuestion>,
+  dropUnknown: boolean,
+): Record<string, QuestionChoice> {
+  const kept: Record<string, QuestionChoice> = {};
+  for (const [id, draft] of Object.entries(drafts)) {
+    const question = questions[id];
+    if (question ? question.status === "pending" : !dropUnknown) kept[id] = draft;
+  }
+  return kept;
 }
 
 /** The two side panes the user can drag: the menu on the left, the dock on the right. */
@@ -671,6 +818,7 @@ const defaultUiPrefs: UiPrefs = {
   commPanelOpen: false,
   diffPanelOpen: false,
   termPanelOpen: false,
+  presetsVisible: true,
   dockSizes: { comm: 1, diff: 1, term: 1, file: 1 },
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
@@ -782,6 +930,9 @@ function loadUiPrefs(): UiPrefs {
       commPanelOpen: parsed.commPanelOpen === true,
       diffPanelOpen: parsed.diffPanelOpen === true,
       termPanelOpen: parsed.termPanelOpen === true,
+      // The only one of these that starts open, so it is the only one read the other way round:
+      // anything but an explicit false (a build that never wrote it included) shows the strip.
+      presetsVisible: parsed.presetsVisible !== false,
       dockSizes,
       settingsSection: sanitizeSettingsSection(parsed.settingsSection),
       sidebarCollapsed: sanitizeBoolMap(parsed.sidebarCollapsed),
@@ -807,6 +958,7 @@ function saveUiPrefs(): void {
       commPanelOpen: s.commPanelOpen,
       diffPanelOpen: s.diffPanelOpen,
       termPanelOpen: s.termPanelOpen,
+      presetsVisible: s.presetsVisible,
       dockSizes: s.dockSizes,
       paneWidths: s.paneWidths,
       settingsSection: s.settingsSection,
@@ -918,6 +1070,10 @@ function findTaskProject(state: AppState, taskId: string): [string, Task[]] | un
   return undefined;
 }
 
+const ASKABLE_PROVIDERS: ProviderId[] = ["antigravity", "opencode", "ollama"];
+const MODELS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const modelsInFlight = new Map<ProviderId, Promise<void>>();
+
 let initPromise: Promise<void> | null = null;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
@@ -998,9 +1154,10 @@ function syncTrayLabels(): void {
 
 export const useAppStore = create<AppState>()((set, get) => ({
   loaded: false,
-  config: { version: 13, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
+  config: { version: 14, language: null, approveDelegations: false, remote: { enabled: false, port: 4710, token: "", tunnel: { provider: "cloudflared", enabled: false } }, tray: { enabled: true, notifyApprovals: true, notifyResults: true }, projects: [], formations: [], defaultFormationId: null, lastProjectId: null, maxRounds: 6, maxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS, skills: [], mcpServers: [], hooks: [], sharedContext: "", binaryOverrides: {}, profile: { name: "", about: "", preferences: "" }, presets: [], autoModel: false, chats: [], logLevel: "info", autoUpdateCheck: true, autoArchiveDoneDays: null } as AppConfig,
   binaries: {},
   models: {},
+  modelsFetchedAt: {},
   quota: {},
   editors: [],
   repoState: {},
@@ -1019,6 +1176,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   historyLoading: {},
   drafts: loadStringMap(DRAFTS_KEY, DRAFTS_LEGACY_KEY),
   composerModels: loadStringMap(COMPOSER_MODELS_KEY, COMPOSER_MODELS_LEGACY_KEY),
+  questionDrafts: loadJsonMap<QuestionChoice>(QUESTION_DRAFTS_KEY),
   chatQueues: {},
   remoteActiveChats: [],
   approvals: {},
@@ -1028,6 +1186,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   navIndex: 0,
   searchOpen: false,
   shortcutsOpen: false,
+  composerTyping: false,
+  acpSetup: { open: false },
+  claudeAuth: { status: null, open: false, hasEngine: true, failed: false },
   focusedTaskId: null,
   focusedMessageId: null,
   searchInitialGroup: null,
@@ -1170,6 +1331,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveUiPrefs();
   },
 
+  togglePresets: (visible) => {
+    set(s => ({ presetsVisible: visible ?? !s.presetsVisible }));
+    saveUiPrefs();
+  },
+
   openPreview: (ref, projectId) => {
     const state = get();
     // The dock lives inside the pane that opened it, so the file does too: a path clicked in one
@@ -1237,6 +1403,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   toggleShortcuts: (open) => {
     set(s => ({ shortcutsOpen: open ?? !s.shortcutsOpen }));
+  },
+
+  setComposerTyping: (typing) => {
+    // Guarded: the composer calls this on every keystroke, and a `set` that changes nothing would
+    // still re-run every subscriber's selector in the app.
+    if (get().composerTyping === typing) return;
+    set({ composerTyping: typing });
+  },
+
+  setAcpSetup: (patch) => {
+    set((state) => ({ acpSetup: { ...state.acpSetup, ...patch } }));
+  },
+
+  setClaudeAuth: (patch) => {
+    set((state) => ({ claudeAuth: { ...state.claudeAuth, ...patch } }));
   },
 
   focusTask: (taskId) => {
@@ -1594,6 +1775,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const newQuestions = Object.fromEntries(
         Object.entries(state.questions).filter(([, q]) => q.projectId !== id),
       );
+      // Told apart while the map still says which project each question belonged to: once they
+      // are out of it, a draft of theirs would look like one for a project not yet loaded.
+      const newQuestionDrafts = Object.fromEntries(
+        Object.entries(state.questionDrafts).filter(([qid]) => state.questions[qid]?.projectId !== id),
+      );
+      if (Object.keys(newQuestionDrafts).length !== Object.keys(state.questionDrafts).length) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, newQuestionDrafts);
+      }
       // Whatever the bell said about this project (or about one of its approvals or runs) goes too.
       const newNotifications = state.notifications.filter(n =>
         n.projectId !== id
@@ -1641,6 +1830,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         tasks: newTasks,
         approvals: newApprovals,
         questions: newQuestions,
+        questionDrafts: newQuestionDrafts,
         notifications: newNotifications,
         chatMessages: dropByChat(state.chatMessages),
         chatSessions: dropByChat(state.chatSessions),
@@ -1703,6 +1893,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setMaxRounds: (n) => {
     set((state) => ({ config: { ...state.config, maxRounds: n } }));
     debouncedSave();
+  },
+
+  setMaxConcurrentRuns: (n) => {
+    set((state) => ({ config: { ...state.config, maxConcurrentRuns: n } }));
+    debouncedSave();
+    // Raising the ceiling (or taking it off) has to free whatever is queued for a slot now. The
+    // only other thing that hands slots out is a run ending, and with nothing running there is no
+    // run to end: the queue would sit there until something unrelated happened to finish.
+    orchestrator.launchRunsWaitingForSlot();
   },
 
   setAutonomous: (projectId, until) => {
@@ -2112,8 +2311,52 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   refreshModels: async (provider) => {
     const models = await quota.listModels(provider, get().binaries);
-    set(state => ({ models: { ...state.models, [provider]: models } }));
+    set(state => ({
+      models: { ...state.models, [provider]: models },
+      modelsFetchedAt: { ...state.modelsFetchedAt, [provider]: Date.now() },
+    }));
     return models;
+  },
+
+  ensureModels: async (provider) => {
+    // Phone build runs in a browser/web context without local CLI binaries.
+    if (isRemoteBuild()) return;
+    if (!ASKABLE_PROVIDERS.includes(provider)) return;
+    if (!get().binaries[provider]?.path) return;
+
+    const inFlight = modelsInFlight.get(provider);
+    if (inFlight) return inFlight;
+
+    const lastFetched = get().modelsFetchedAt[provider] ?? 0;
+    if (Date.now() - lastFetched < MODELS_REFRESH_INTERVAL_MS) return;
+
+    const promise = (async () => {
+      try {
+        await get().refreshModels(provider);
+      } finally {
+        modelsInFlight.delete(provider);
+      }
+    })();
+    modelsInFlight.set(provider, promise);
+    return promise;
+  },
+
+  rememberModel: (provider, id) => {
+    const trimmed = id.trim();
+    if (!trimmed) return;
+    const staticModels = PROVIDERS[provider]?.models ?? [];
+    const dynamicModels = get().models[provider] ?? [];
+    if (staticModels.some(m => m.id === trimmed) || dynamicModels.some(m => m.id === trimmed)) {
+      return;
+    }
+    const current = get().config.rememberedModels?.[provider] ?? [];
+    const next = [trimmed, ...current.filter(m => m !== trimmed)].slice(0, 10);
+    get().updateConfig({
+      rememberedModels: {
+        ...get().config.rememberedModels,
+        [provider]: next,
+      },
+    });
   },
 
   refreshQuota: async (provider, opts) => {
@@ -2190,8 +2433,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const answeredAt = Date.now();
     set(state => {
       const questions = { ...state.questions };
+      const questionDrafts = { ...state.questionDrafts };
+      let draftsChanged = false;
       for (const { question, answer } of pending) {
         questions[question.id] = { ...question, status: "answered", answer, answeredAt };
+      }
+      for (const item of items) {
+        if (item.questionId in questionDrafts) {
+          delete questionDrafts[item.questionId];
+          draftsChanged = true;
+        }
+      }
+      if (draftsChanged) {
+        saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+        return { questions, questionDrafts };
       }
       return { questions };
     });
@@ -2425,6 +2680,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveStringMapSoon(COMPOSER_MODELS_KEY, composerModels);
   },
 
+  setQuestionDraft: (questionId, choice) => {
+    if (!questionId) return;
+    const questionDrafts = { ...get().questionDrafts };
+    if (choice) questionDrafts[questionId] = choice;
+    else delete questionDrafts[questionId];
+    set({ questionDrafts });
+    saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+  },
+
+  pruneQuestionDrafts: (dropUnknown = false) => {
+    set(state => {
+      const questionDrafts = prunedQuestionDrafts(state.questionDrafts, state.questions, dropUnknown);
+      if (Object.keys(questionDrafts).length === Object.keys(state.questionDrafts).length) {
+        return state;
+      }
+      saveJsonMapSoon(QUESTION_DRAFTS_KEY, questionDrafts);
+      return { questionDrafts };
+    });
+  },
+
   queueChatMessage: (chatId, text) => {
     set(state => ({
       chatQueues: { ...state.chatQueues, [chatId]: [...(state.chatQueues[chatId] ?? []), text] },
@@ -2438,6 +2713,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
         [chatId]: (state.chatQueues[chatId] ?? []).filter((_, i) => i !== index),
       },
     }));
+  },
+
+  editQueuedChatMessage: (chatId, index, previous, next) => {
+    set(state => {
+      const queue = state.chatQueues[chatId];
+      const nextQueue = replaceQueuedLine(queue, index, previous, next);
+      if (!nextQueue) return {};
+      return {
+        chatQueues: {
+          ...state.chatQueues,
+          [chatId]: nextQueue,
+        },
+      };
+    });
   },
 
   unqueueInstruction: (projectId, agentId, index) => {
@@ -2456,6 +2745,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
             },
           },
         },
+      };
+    });
+  },
+
+  editQueuedInstruction: (projectId, agentId, index, previous, next) => {
+    set(state => {
+      const projectRuntime = state.runtime[projectId];
+      const runtime = projectRuntime?.[agentId];
+      if (!runtime) return {};
+      const nextQueue = replaceQueuedLine(runtime.queuedInstructions, index, previous, next);
+      if (!nextQueue) return {};
+      const nextMessages = replaceInstructionHistory(state.messages, projectId, agentId, previous, next);
+      return {
+        runtime: {
+          ...state.runtime,
+          [projectId]: {
+            ...projectRuntime,
+            [agentId]: {
+              ...runtime,
+              queuedInstructions: nextQueue,
+            },
+          },
+        },
+        ...(nextMessages !== state.messages ? { messages: nextMessages } : {}),
       };
     });
   },
@@ -2694,7 +3007,20 @@ async function runInit(): Promise<void> {
         version: 13,
         sharedContext: "",
         projects: (config.projects ?? []).map(p => ({ ...p, sharedContext: p.sharedContext ?? global })),
-      } as AppConfig;
+      } as unknown as AppConfig;
+      isSeed = true;
+    }
+
+    // Migration to version 14: a ceiling on how many CLIs hold a process at once.
+    // Left missing the field would read as 0, and 0 is what the setting calls "no ceiling" — an
+    // existing config would silently keep the behaviour the ceiling exists to stop. Everyone who
+    // never chose a number gets the default; whoever did keeps theirs.
+    if ((config.version as number) < 14) {
+      config = {
+        ...config,
+        version: 14,
+        maxConcurrentRuns: config.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS,
+      } as unknown as AppConfig;
       isSeed = true;
     }
 
@@ -2798,6 +3124,8 @@ async function runInit(): Promise<void> {
     // With the runs in memory, the boards can be put back in step with them.
     for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
+    // An unknown question id only means a stale draft once every project's history is in memory.
+    get().pruneQuestionDrafts(toLoad.length === config.projects.length);
     // Load persisted notifications before marking the store as ready, so the bell
     // shows its badge without a flash of empty state on startup.
     await notificationStore.loadNotifications();
@@ -2806,6 +3134,11 @@ async function runInit(): Promise<void> {
     // kills the agents, so this is where they are found and stopped — before the user sends
     // anything new and ends up with two agents in the same workspace.
     void recovery.reapAfterCrash();
+
+    // Query askable CLIs for available models in the background so pickers have them ready.
+    for (const p of ASKABLE_PROVIDERS) {
+      void get().ensureModels(p);
+    }
 
     set({ loaded: true });
 

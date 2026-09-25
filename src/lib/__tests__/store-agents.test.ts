@@ -61,7 +61,7 @@ describe("migration 9 -> 10", () => {
     const { store } = await boot(legacyConfig());
     const config = store.useAppStore.getState().config;
 
-    expect(config.version).toBe(13);
+    expect(config.version).toBe(14);
     expect((config as unknown as { agents?: unknown }).agents).toBeUndefined();
     // Version 12 only adds a setting, and it starts off.
     expect(config.autoArchiveDoneDays).toBeNull();
@@ -101,7 +101,7 @@ describe("migration 9 -> 10", () => {
     const p2 = state.config.projects.find(p => p.id === "p2")!;
     for (const agent of p2.agents) expect(state.runtime.p2[agent.id]).toBeDefined();
     expect(saved.length).toBeGreaterThan(0);
-    expect(saved[saved.length - 1].version).toBe(13);
+    expect(saved[saved.length - 1].version).toBe(14);
   });
 
   it("leaves the per-agent skill assignments of the first project alone", async () => {
@@ -259,7 +259,7 @@ describe("migration 12 -> 13", () => {
     const { store } = await boot(legacy);
     const config = store.useAppStore.getState().config;
 
-    expect(config.version).toBe(13);
+    expect(config.version).toBe(14);
     expect(config.projects.length).toBeGreaterThan(1);
     for (const project of config.projects) {
       expect(project.sharedContext).toBe("El repo usa pnpm.");
@@ -280,5 +280,26 @@ describe("migration 12 -> 13", () => {
 
     expect(config.projects.find(p => p.id === "p1")!.sharedContext).toBe("mine");
     expect(config.projects.find(p => p.id === "p2")!.sharedContext).toBe("global");
+  });
+});
+
+// The ceiling on how many CLIs run at once arrived with a default of 4, and a config written before
+// it has no field at all. Reading that as 0 would mean "no ceiling" — exactly the behaviour the
+// ceiling exists to stop — so the migration has to write the default in.
+describe("migration 13 -> 14", () => {
+  it("gives a config with no ceiling written in it the default, not 0", async () => {
+    const legacy = { ...legacyConfig(), version: 13 };
+    const { store } = await boot(legacy);
+    const config = store.useAppStore.getState().config;
+
+    expect(config.version).toBe(14);
+    expect(config.maxConcurrentRuns).toBe(4);
+  });
+
+  it("leaves a number that was already chosen alone, 0 included", async () => {
+    const chosen = { ...legacyConfig(), version: 13, maxConcurrentRuns: 0 };
+    const { store } = await boot(chosen);
+
+    expect(store.useAppStore.getState().config.maxConcurrentRuns).toBe(0);
   });
 });

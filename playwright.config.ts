@@ -19,6 +19,10 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     channel: "chrome",
     viewport: { width: 1400, height: 900 },
+    // The app fades the body of every screen up when it arrives, and a shot taken mid-fade is a
+    // shot of a half-transparent screen eight pixels off. The app already honours the system asking
+    // for less motion, so the honest way to a still frame is to ask for it — not to sleep.
+    reducedMotion: "reduce",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },

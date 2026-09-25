@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Transport } from "./transport";
-import { ipc, listenOnce, onRunOutput, onRunExit } from "./tauri";
+import { ipc, listenOnce, onRunOutput, onRunExit, onAcpSetup } from "./tauri";
 import type { PtyExitEvent, PtyOutputEvent, ShellInfo, StorageStat } from "@/types";
 
 // Every file/exec/http/remote capability goes through real Tauri commands (see src-tauri/src/*.rs).
@@ -8,11 +8,30 @@ export const tauriTransport: Transport = {
   spawnRun: async (opts) => ipc.spawnRun(opts),
   reapOrphans: async (orphans) => ipc.reapOrphans(orphans),
   killRun: async (runId) => ipc.killRun(runId),
+  writeStdin: async (runId, text) => ipc.writeStdin(runId, text),
+  closeStdin: async (runId) => ipc.closeStdin(runId),
   onRunOutput: async (h) => onRunOutput(h),
   onRunExit: async (h) => onRunExit(h),
   loadConfig: async () => ipc.loadConfig(),
   saveConfig: async (config) => ipc.saveConfig(config),
   detectBinaries: async () => ipc.detectBinaries(),
+  whichProgram: async (name) => {
+    try {
+      return await invoke<string | null>("which_program", { name });
+    } catch {
+      return null;
+    }
+  },
+  acpManagedStatus: async () => {
+    try {
+      return await invoke<import("@/types").AcpManagedStatus>("acp_managed_status");
+    } catch {
+      return null;
+    }
+  },
+  acpManagedEnsure: async () => invoke<import("@/types").AcpManagedStatus>("acp_managed_ensure"),
+  acpManagedCancel: async () => invoke<void>("acp_managed_cancel"),
+  onAcpSetup: async (h) => onAcpSetup(h),
   writeTextFile: async (relativePath, content) =>
     invoke<string>("write_config_file", { relativePath, content }),
   readTextFile: async (relativePath) => {
@@ -101,7 +120,7 @@ export const tauriTransport: Transport = {
   remoteStart: async (port, token) => invoke<{ url: string; ip: string }>("remote_start", { port, token }),
   remoteStop: async () => invoke<void>("remote_stop"),
   remoteStatus: async () => invoke<{ running: boolean; url?: string; ip?: string; clients: number }>("remote_status"),
-  remotePushState: async (snapshot) => invoke<void>("remote_push_state", { snapshot }),
+  remotePushState: async (json) => invoke<void>("remote_push_state", { snapshot: json }),
   onRemoteCommand: async (h) =>
     listenOnce<{ id: string; action: string; payload: Record<string, unknown> }>("remote-command", async (cmd) => {
       let result: Record<string, unknown>;

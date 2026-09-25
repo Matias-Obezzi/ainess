@@ -3,7 +3,7 @@
 // with the providers that take the instructions inside the prompt it left a copy of them in the
 // transcript for good.
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, buildSystemPrompt } from "@/lib/providers";
+import { cliProvider, buildSystemPrompt } from "@/lib/providers";
 import type { AgentConfig, Task } from "@/types";
 
 const agent = (over: Partial<AgentConfig> = {}): AgentConfig => ({
@@ -106,13 +106,13 @@ describe("the providers that take the instructions inside the prompt", () => {
   });
 
   it("writes the two headers when there is something to put under them", () => {
-    const built = PROVIDERS.opencode.buildCommand(input("Sos el PLANIFICADOR."));
+    const built = cliProvider("opencode").buildCommand(input("Sos el PLANIFICADOR."));
     expect(built.stdinText).toContain("## Instrucciones del sistema");
     expect(built.stdinText).toContain("## Tarea");
   });
 
   it("sends the task alone when the preamble is empty", () => {
-    const built = PROVIDERS.opencode.buildCommand(input(""));
+    const built = cliProvider("opencode").buildCommand(input(""));
     expect(built.stdinText).toBe("seguí con lo de antes");
   });
 });

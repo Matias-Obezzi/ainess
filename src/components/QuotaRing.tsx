@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import type { AgentConfig } from "@/types";
 import { useAppStore } from "@/store";
-import { PROVIDERS } from "@/lib/providers";
+import { useModelChoices } from "@/hooks/useModelChoices";
 import { summarizeAgentQuota, type QuotaSummary } from "@/lib/quota-summary";
 import { cn } from "@/lib/utils";
 import { translateNow } from "@/i18n/useT";
@@ -80,13 +80,10 @@ export function QuotaRing({
   );
 }
 
-/** Every model an agent could end up using: what the provider reported, else its default list. */
+/** Every model an agent could end up using: what the provider reported, static fallback, or remembered. */
 export function useProviderModels(provider: AgentConfig["provider"]): string[] {
-  const known = useAppStore(state => state.models[provider]);
-  return useMemo(() => {
-    if (known && known.length > 0) return known.map(m => m.id);
-    return PROVIDERS[provider]?.defaultModels || [];
-  }, [known, provider]);
+  const choices = useModelChoices(provider);
+  return useMemo(() => choices.map(m => m.id), [choices]);
 }
 
 /**

@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import { GeneralSection } from "@/components/settings/GeneralSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
-import { AgentsSection, AgentsSectionActions, AgentsSectionProvider } from "@/components/settings/AgentsSection";
+import { AgentsSection, AgentsSectionActions } from "@/components/settings/AgentsSection";
+import { TeamsSection, TeamsSectionActions, TeamsSectionProvider } from "@/components/settings/TeamsSection";
 import { ProfileSection, ProfileSectionActions, ProfileSectionProvider } from "@/components/settings/ProfileSection";
 import { PresetsSection, PresetsSectionActions, PresetsSectionProvider } from "@/components/settings/PresetsSection";
 import { SkillsSection, SkillsSectionActions, SkillsSectionProvider } from "@/components/settings/SkillsSection";
@@ -21,6 +22,7 @@ import { BoardsSection } from "@/components/settings/BoardsSection";
 import { MessagingSection } from "@/components/settings/MessagingSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT } from "@/i18n/useT";
 import {
   SETTINGS_SECTIONS_META,
@@ -47,13 +49,14 @@ interface SectionUI {
 export type SettingsSectionDef = SettingsSectionMeta & SectionUI;
 
 /**
- * Map from section id to its React pieces. TypeScript enforces all eleven ids are covered:
+ * Map from section id to its React pieces. TypeScript enforces every id is covered:
  * adding a section in sections.ts without wiring it here causes a compile error.
  */
 const SECTION_UI: Record<SettingsSection, SectionUI> = {
   general:     { component: GeneralSection },
   appearance:  { component: AppearanceSection },
-  agents:      { component: AgentsSection,    actions: AgentsSectionActions,   provider: AgentsSectionProvider },
+  agents:      { component: AgentsSection,    actions: AgentsSectionActions },
+  teams:       { component: TeamsSection,     actions: TeamsSectionActions,    provider: TeamsSectionProvider },
   profile:     { component: ProfileSection,   actions: ProfileSectionActions,  provider: ProfileSectionProvider },
   presets:     { component: PresetsSection,   actions: PresetsSectionActions,  provider: PresetsSectionProvider },
   skills:      { component: SkillsSection,    actions: SkillsSectionActions,   provider: SkillsSectionProvider },
@@ -124,6 +127,8 @@ export function SettingsDialog() {
   };
 
   const active = SETTINGS_SECTIONS.find(s => s.id === settingsSection) ?? SETTINGS_SECTIONS[0];
+  // Changing section is navigating: the body fades up, the sidebar and the header above it do not.
+  const screenIn = useScreenIn([active.id]);
   const Provider = active.provider ?? PassThrough;
   const Actions = active.actions;
   const Body = active.component;
@@ -234,8 +239,12 @@ export function SettingsDialog() {
                   </Button>
                 </div>
               </div>
+              {/* The wrapper animates, not the pane that scrolls: a section long enough to scroll
+                  must not be the thing carrying a transform. */}
               <div className="flex-1 overflow-y-auto p-6">
-                <Body />
+                <div ref={screenIn}>
+                  <Body />
+                </div>
               </div>
             </div>
           </Provider>

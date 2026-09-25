@@ -2,6 +2,176 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.24.0 — 2026-09-25
+
+### Novo
+
+- **Claude Code já não precisa de Node.js na máquina.** Ele se comunica por um adaptador publicado
+  no npm e, até agora, a única porta era o `npx`: onde não havia Node.js não havia nada para
+  iniciar e a execução morria com um erro de spawn que ninguém conseguia ler. Quando nem o adaptador
+  nem o `npx` estão no PATH, o app agora monta o próprio ambiente: baixa um runtime e instala o
+  adaptador na sua pasta de dados (~360 MB, uma única vez), atrás de uma tela que diz o que está
+  fazendo e que pode ser repetida. Uma máquina que já tem Node.js continua usando o `npx` e não
+  baixa nada.
+- **Os seletores de modelo oferecem o que o CLI instalado consegue rodar de verdade.** Antigravity
+  e opencode já eram consultados sobre seus modelos, mas só o diálogo do agente lia a resposta; o
+  compositor, os presets, os chats e o anel de cota mostravam uma lista escrita no código, que
+  envelhecia em silêncio. Agora todos os seletores leem a mesma lista: o que o CLI informa,
+  atualizado ao iniciar e no máximo a cada dez minutos, com a lista embutida como reserva. O
+  Ollama também é consultado, então os modelos instalados na máquina aparecem sem ninguém editar
+  uma constante. Um modelo digitado em «Outro…» fica lembrado por provedor e é oferecido da
+  próxima vez. (#37)
+- **Uma mensagem na fila pode ser editada antes de ser entregue.** Quando você escreve para um
+  agente que está ocupado, o que você escreveu fica esperando numa fila e é entregue quando o
+  turno do agente termina. Antes a única coisa que se podia fazer com uma linha na fila era
+  cancelá-la e reescrever tudo. Agora cada linha em espera tem um lápis ao lado: clique nele e o
+  texto abre num campo de edição em linha, Enter salva, Shift+Enter insere uma quebra de linha e
+  Escape sai sem alterar nada. Salvar com o texto vazio equivale a cancelar a linha. Funciona
+  tanto no fio do projeto quanto num chat direto. Se a linha já tiver sido entregue enquanto você
+  a editava, a edição não a ressuscita. (#32)
+- **O celular tem uma única aba de Conversas, e a tela inicial mostra quem está trabalhando.** O
+  remoto antes separava a mesma ideia em duas abas — o fio do projeto de um lado e os chats
+  diretos do outro. Agora há uma só aba, «Conversas», que lista acima o fio do projeto e abaixo
+  os chats; toque em qualquer um para abrir e use a seta para voltar à lista. Trocar de aba e
+  voltar não fecha mais a conversa que você tinha aberta. Além disso, a tela inicial do celular
+  mostra, acima da lista de projetos, quais agentes estão trabalhando ou esperando uma resposta
+  sua em qualquer projeto, com o avatar do agente, o projeto a que pertence e no que está; os que
+  esperam vêm primeiro e ficam destacados, e ao tocar em um você vai direto àquela conversa. Cada
+  projeto na lista também avisa se algum de seus agentes está esperando. (#27, #31)
+- **O remoto do celular volta para onde você parou.** Reabrir ou recarregar a página (o que o
+  celular faz sozinho ao descartar a aba) caía sempre na tela inicial e na aba Tarefas. Agora o
+  projeto, o chat e a aba ficam guardados no aparelho e são restaurados quando chega o primeiro
+  instantâneo; um projeto ou chat que não existe mais volta ao início ou ao fio do orquestrador.
+  (#28)
+- **Os projetos no celular levam o mesmo avatar do desktop.** A lista mostrava um ponto de cor
+  sem mais nada; agora mostra o círculo colorido com as iniciais do projeto, na lista e no
+  cabeçalho do projeto, para que as duas superfícies pareçam um só app. (#30)
+- **O modelo pode ser escolhido pelo celular.** O modelo é uma das coisas que mais se quer
+  trocar estando longe do computador — uma cota estourou, uma tarefa pede o modelo barato — e
+  até agora isso significava voltar até o PC. No fio do projeto, o celular escondia o seletor de
+  modelo atrás de um ícone sem rótulo: era preciso adivinhar que ele estava ali. Agora esse
+  botão mostra o nome do modelo ativo, então, de relance, sem tocar em nada, você sabe com qual
+  modelo a sua próxima mensagem vai sair. O campo de texto livre para digitar um modelo na mão
+  («Outro…») agora cabe numa tela estreita. Num chat direto, nem o celular nem o desktop
+  mostravam com qual modelo o agente rodava; agora aparece, um por participante, e dá para trocar
+  de lá (veja abaixo). O que ele usa quando não há nenhum não mudou: o modelo escolhido ao criar o
+  chat ou, na falta, o do agente — a mesma ordem usada para resolver na inicialização, então o que
+  você lê é o que vai de fato rodar. A aba de Agentes do celular era
+  somente leitura. Agora dá para trocar o modelo padrão de um agente por ali, com as mesmas
+  opções que o compositor oferece. (#29)
+- **Um limite de execuções em paralelo.** Uma execução é um processo que roda os próprios testes,
+  builds e instalações, e nada limitava quantas começavam juntas: com você olhando, o diálogo de
+  aprovação era o único freio; sem ninguém por perto, dez delegações eram dez CLIs disputando a
+  máquina. Ajustes → Geral → "Execuções em paralelo" agora define esse limite — quatro por
+  padrão, 0 para nenhum — contando todos os projetos juntos, porque o que se protege é a máquina.
+  O que passa do limite espera a vez e começa sozinho assim que uma vaga abre, então nada se perde
+  nem é pedido duas vezes. (#36)
+- **As telas aparecem com um fade curto.** Ao abrir o app, ao ir do início para um projeto, ao trocar
+  de conversa, ao mudar de seção nas Configurações: o corpo do que chega sobe oito pixels em um
+  quinto de segundo. Só o corpo — a barra de título, a barra lateral, o campo de escrita e o painel
+  da direita ficam onde estão, porque não foram a lugar nenhum. Ele toca de novo quando você volta
+  para a janela pela bandeja, por um minimizado, ou abrindo o app uma segunda vez; voltar do
+  navegador com alt-tab não conta como voltar, e aí nada se mexe. Aparência → "Animações de tela"
+  desliga isso, e um sistema configurado para reduzir movimento desliga sozinho, no app inteiro.
+- **O Claude Code pode fazer login sem sair do app.** Uma execução contra o provedor `claude` numa
+  máquina onde o Claude Code nunca tinha feito login morria com o mesmo erro genérico de qualquer
+  outra falha, e não havia como abrir uma sessão sem sair do app. Agora o cliente ACP distingue
+  essa falha — pela notificação `_auth/status_update` que o adaptador manda e pelo erro
+  `auth_required` com que ele responde um pedido — e abre uma tela para isso. O login roda num
+  terminal integrado e, assim que existe uma sessão, a execução que tinha falhado se relança
+  sozinha, sem precisar reescrever nada. Numa máquina sem nenhum motor, é oferecido primeiro o
+  ambiente gerenciado, já que é ele que traz um. Cancelar deixa a execução encerrada mesmo assim,
+  dizendo o que falta.
+- **Ajustes → Agentes mostra com qual conta o Claude Code está logado.** O cartão do Claude agora
+  mostra a conta — e-mail, organização, plano — com um botão para conferir de novo e outro para
+  sair. Sair avisa que as credenciais moram em `~/.claude` e que fazer isso afeta qualquer outro
+  Claude Code na máquina, não só este app.
+- **As equipes ganharam sua própria tela nos Ajustes.** Ajustes → Agentes empilhava duas coisas sem
+  relação — as CLIs instaladas nesta máquina e as equipes salvas — então chegar a uma equipe
+  significava rolar além de cada cartão de provedor. As equipes são uma seção própria agora, logo
+  abaixo de Agentes. As duas telas também perderam o título e a descrição que ficavam acima do
+  conteúdo, já que a barra lateral já nomeia a tela, e o texto visível agora diz "equipe" em vez de
+  "formação", nos sete idiomas.
+- **O mascote observa o que você está digitando.** Um sexto estado, além dos cinco que já vinham do
+  agente: enquanto você digita no compositor, ele levanta um binóculo e olha para a caixa. Ganha de
+  estar dormindo e de estar esperando por você — o que você está digitando é bem a coisa que um
+  agente à espera parou para esperar — e nunca esconde o que o agente está realmente fazendo:
+  trabalhando, quebrado ou sem tokens continuam ganhando.
+
+### Alterado
+
+- **A barra de baixo do compositor diz menos e faz mais.** Os dois seletores — quem responde e com
+  qual modelo — perderam a seta e agora ocupam a largura do que estão mostrando, como o botão de
+  cota ao lado sempre fez: um nome de modelo curto não deixa mais um vão, e um longo não fica mais
+  cortado numa largura fixa. Dentro de um chat, a linha somente-leitura por participante agora é o
+  logo do agente e o seu nome, e ao lado um seletor de modelo que funciona: o que você escolhe fica
+  escrito naquele participante daquele chat. Quem está no chat continua não sendo algo que se
+  troca daqui — falar com outra pessoa é um chat à parte, criado na barra da esquerda. As ordens
+  salvas acima da caixa agora se recolhem atrás de um botão pequeno e ficam assim até você dizer o
+  contrário, e a caixa não desenha mais um anel em volta ao receber o foco: quem diz é a borda,
+  uma vez só.
+- **A seta para baixo sai de um bloco de código que termina a mensagem.** Um bloco fechado na
+  última linha da caixa não tinha nada embaixo, então não havia como escrever depois dele sem
+  voltar e fazer a linha na mão. Agora a seta faz. Em qualquer outro lugar — com uma linha abaixo
+  do cursor, fora de um bloco, num bloco ainda aberto — é a seta de sempre, e a seta para cima
+  ficou intacta.
+
+### Corrigido
+
+- **Uma execução que espera por uma vaga livre agora a recebe na ordem em que foi pedida.** Com o
+  teto de quantas execuções vão ao mesmo tempo já cheio, as outras esperam — e várias delegações
+  aprovadas juntas entram na fila dentro do mesmo milissegundo, então não sobrava à app nada para
+  distingui-las além dos seus identificadores internos. Esses são aleatórios, então qual das que
+  esperavam ficava com a vaga liberada se decidia comparando duas cadeias ao acaso: um trabalho
+  podia ficar esperando enquanto outro, pedido depois, passava à sua frente. Agora a ordem em que o
+  trabalho chegou é anotada e respeitada, como a fila atrás de um agente ocupado já fazia.
+- **Trocar o motor do orquestrador não deixa mais o nome antigo nele.** Um agente chamado pelo
+  nome padrão do seu motor («Claude Code») mantinha esse nome ao trocar de provedor, então o chat
+  mostrava o nome de um motor sobre o ícone de outro e o prompt de sistema o chamava pelo errado.
+  Um nome padrão agora acompanha o provedor; um nome escolhido por você permanece. O chat do
+  orquestrador também acompanha o planejador raiz quando outro agente é promovido na hierarquia,
+  em vez de deixar o compositor apontando para o anterior. (#38)
+- **O que você digitou numa pergunta do agente não se perde mais quando a caixa some.** As opções
+  marcadas e o texto livre viviam na própria caixa, então trocar de projeto, abrir um chat, tocar
+  em «Escrever em vez disso» ou o fio passar da execução jogava tudo fora. Agora ficam guardados
+  por pergunta, entre telas e entre reinícios, e as duas cópias da mesma pergunta (sob a execução
+  e sobre o compositor) mostram as mesmas marcas. Um rascunho vai embora quando sua pergunta é
+  respondida, por você ou automaticamente. (#35)
+- **O remoto do celular se recupera sozinho depois de bloquear a tela.** O aviso «Reconectando…»
+  ficava preso enquanto o app funcionava, e uma mensagem enviada do celular às vezes só aparecia
+  depois de recarregar: o sinal de vida do PC nunca tirava o aviso, uma conexão morta em silêncio
+  não era percebida, e voltar ao primeiro plano esperava o temporizador de nova tentativa. Agora a
+  página trata qualquer sinal de vida como conexão, descarta um fluxo calado por 45 segundos,
+  reconecta assim que a aba volta à frente ou a rede retorna, e o PC reenvia seu último estado a
+  um celular que ficou para trás. (#26)
+- **A compactação é anunciada no fio e pode ser inspecionada.** Quando um agente compacta seu
+  histórico — automaticamente porque a conversa ficou pesada, ou porque você executou
+  `/compact` — o app antes desenhava esse turno alinhado à direita, com a mesma aparência de
+  uma mensagem digitada por você, e até o oferecia ao pressionar a seta para cima no compositor
+  como se fosse um prompt seu. Escondê-lo por completo também não era a resposta: uma
+  compactação automática reinicia a sessão do agente, e sem rastro de que tivesse acontecido o
+  fio mudava de caráter em silêncio. Agora a compactação aparece como uma nota de manutenção
+  discreta — uma linha só, nomeando o agente, dizendo se foi automática ou solicitada, e com o
+  horário. Um "Mais detalhes" se expande e mostra o que o app pediu ao agente e o que o agente
+  respondeu; a nota também avisa quando a compactação está em andamento, falhou ou foi
+  interrompida. Duas coisas que nunca foram suas continuam ocultas: o prompt da compactação não
+  aparece mais sob a seta para cima no compositor, e a resposta de um planejador a uma pergunta
+  de um de seus implementadores também não é desenhada — é tráfego entre agentes, não algo que
+  você precise ler. Vale tanto no desktop quanto no celular.
+- **O remoto do celular custa muito menos para o app enquanto está ligado.** Cada mudança
+  serializava o estado inteiro duas vezes para enviá-lo, três quando era grande e precisava ser
+  encurtado, e ele era montado mesmo sem nenhum celular conectado: uma vez a cada 300 ms durante
+  uma execução autônoma inteira, na mesma thread que desenha o app. Agora é serializado uma única
+  vez por envio, e sem ninguém conectado nada é montado: o que aconteceu nesse meio-tempo sai no
+  instante em que um celular se conecta, então o que você abre no celular continua atualizado.
+  (#36)
+- **O ícone do telefone na barra de título agora abre Ajustes → Remoto em vez de ligar o servidor
+  direto.** Antes um clique já iniciava um servidor na rede local sem chance de ver a porta, o
+  token ou o QR; o ícone continua mostrando se o servidor está rodando.
+- **O anel que marca o projeto atual na barra lateral recolhida agora fica colado no seu
+  círculo.** Antes flutuava separado por alguns pixels; agora é como se fosse a própria borda do
+  círculo.
+
 ## 0.23.0 — 2026-09-20
 
 ### Novo

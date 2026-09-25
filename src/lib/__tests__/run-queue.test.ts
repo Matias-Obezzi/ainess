@@ -7,7 +7,7 @@ import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { startRun, launchQueuedRuns, stopAgent } from "@/lib/orchestrator";
-import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf } from "@/lib/run-queue";
+import { isLiveRun, isFinishedRun, nextQueuedRun, queuedRunsOf, queuedRunsEverywhere, runningRunCount, slotAvailable } from "@/lib/run-queue";
 import { boardFixes } from "@/lib/task-reconcile";
 import { createTask } from "@/lib/tasks";
 import type { Run } from "@/types";
@@ -95,6 +95,44 @@ describe("the rules", () => {
     expect(queuedRunsOf(all, "reviewer", "p1").map(r => r.id)).toEqual(["first", "later"]);
     expect(nextQueuedRun(all, "reviewer", "p1")?.id).toBe("first");
     expect(nextQueuedRun(all, "planner", "p2")).toBeUndefined();
+  });
+
+  it("counts only the runs that hold a process", () => {
+    const all = {
+      going: run("going", "reviewer", "running"),
+      also: run("also", "planner", "running"),
+      waiting: run("waiting", "reviewer", "queued"),
+      over: run("over", "planner", "done"),
+    };
+    expect(runningRunCount(all)).toBe(2);
+    expect(slotAvailable(all, 3)).toBe(true);
+    expect(slotAvailable(all, 2)).toBe(false);
+    // 0 is the setting's way of saying "no ceiling", and so is a config too old to have the field.
+    expect(slotAvailable(all, 0)).toBe(true);
+    expect(slotAvailable(all, undefined)).toBe(true);
+  });
+
+  it("hands a freed slot to the oldest thing waiting anywhere, whatever project it is in", () => {
+    const all = {
+      later: run("later", "reviewer", "queued", 5),
+      first: run("first", "planner", "queued", 3),
+      going: run("going", "reviewer", "running", 1),
+    };
+    expect(queuedRunsEverywhere(all, ["first", "later"]).map(r => r.id)).toEqual(["first", "later"]);
+  });
+
+  it("goes by the order the work arrived in, not by what the ids happen to compare like", () => {
+    // The same millisecond for both, which is what a loop of delegations gives them, and ids that
+    // sort the wrong way round. Nothing left in the run itself says which came first.
+    const all = {
+      zz: run("zz", "reviewer", "queued", 7),
+      aa: run("aa", "planner", "queued", 7),
+    };
+    expect(queuedRunsEverywhere(all, ["zz", "aa"]).map(r => r.id)).toEqual(["zz", "aa"]);
+    expect(queuedRunsEverywhere(all, ["aa", "zz"]).map(r => r.id)).toEqual(["aa", "zz"]);
+    // A run whose arrival nobody recorded goes last: the process that queued it is gone and it
+    // cannot be launched, so it must not sit in front of one that can.
+    expect(queuedRunsEverywhere(all, ["zz"]).map(r => r.id)).toEqual(["zz", "aa"]);
   });
 });
 

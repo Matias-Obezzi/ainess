@@ -11,16 +11,21 @@
 // has that no other screen adds up across projects.
 import { HomeComposer } from "@/components/shell/HomeComposer";
 import { HomeUsage } from "@/components/shell/HomeUsage";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT } from "@/i18n/useT";
 
 export function HomeScreen() {
   const t = useT();
+  // Arriving here is arriving: this screen is mounted by the navigation, so there is nothing else
+  // to watch — the hook re-plays it on its own when the app is come back to.
+  const screenIn = useScreenIn();
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       {/* One column down the middle. Full width, the box stretched across a desktop monitor into a
-          letterbox nobody wants to write a paragraph into. */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 pb-8">
+          letterbox nobody wants to write a paragraph into. Also what the arrival animates: the
+          transform stays off the element that scrolls. */}
+      <div ref={screenIn} className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 pb-8">
 
         {/* The whole first screen. Opening the app asks what you want done; it does not report. */}
         <div className="flex min-h-[72vh] flex-col justify-center gap-4">

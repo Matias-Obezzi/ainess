@@ -37,7 +37,9 @@ const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 
 struct Inner {
     token: String,
-    snapshot: RwLock<Value>,
+    /// The last snapshot pushed, kept as the JSON text it arrived as: every reader of it writes it
+    /// to a socket, so parsing it into a `Value` would only be work to undo.
+    snapshot: RwLock<String>,
     tx: broadcast::Sender<String>,
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
     app: AppHandle,
@@ -180,20 +182,31 @@ async fn state_handler(State(inner): State<Arc<Inner>>, headers: HeaderMap, Quer
     if !authorized(&inner, &headers, &q) {
         return unauthorized();
     }
-    let snap = inner.snapshot.read().map(|s| s.clone()).unwrap_or(Value::Null);
-    Json(snap).into_response()
+    let snap = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
+    ([(header::CONTENT_TYPE, "application/json; charset=utf-8")], snap).into_response()
 }
 
 async fn events(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
     if !authorized(&inner, &headers, &q) {
         return unauthorized();
     }
-    let first = inner.snapshot.read().map(|s| s.to_string()).unwrap_or_else(|_| "null".into());
+    let first = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
     let rx = inner.tx.subscribe();
     let initial = tokio_stream::once(Ok::<Event, Infallible>(Event::default().event("state").data(first)));
-    let updates = BroadcastStream::new(rx).filter_map(|item| match item {
-        Ok(data) => Some(Ok::<Event, Infallible>(Event::default().event("state").data(data))),
-        Err(_) => None, // lagged: the next snapshot catches up
+    let inner_updates = inner.clone();
+    let updates = BroadcastStream::new(rx).map(move |item| match item {
+        Ok(data) => Ok::<Event, Infallible>(Event::default().event("state").data(data)),
+        Err(_) => {
+            // When a client lags behind (e.g. backgrounded or slow network) and drops broadcast frames,
+            // push the latest snapshot directly from memory rather than waiting for another event that
+            // may not arrive, ensuring the phone remote never stays stale.
+            let latest = inner_updates
+                .snapshot
+                .read()
+                .map(|s| s.clone())
+                .unwrap_or_else(|_| "null".into());
+            Ok(Event::default().event("state").data(latest))
+        }
     });
     Sse::new(initial.chain(updates))
         .keep_alive(KeepAlive::new().interval(Duration::from_secs(20)).event(Event::default().event("ping").data("{}")))
@@ -265,6 +278,7 @@ command_route!(cmd_approve, "approve");
 command_route!(cmd_chat, "chat");
 command_route!(cmd_task, "task");
 command_route!(cmd_answer, "answer");
+command_route!(cmd_agent, "agent");
 
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, Json(json!({ "error": "No encontrado" }))).into_response()
@@ -284,10 +298,10 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
     if token.trim().is_empty() {
         return Err("Falta el token".into());
     }
-    let (tx, _rx) = broadcast::channel::<String>(16);
+    let (tx, _rx) = broadcast::channel::<String>(64);
     let inner = Arc::new(Inner {
         token: token.clone(),
-        snapshot: RwLock::new(Value::Null),
+        snapshot: RwLock::new("null".to_string()),
         tx,
         pending: Mutex::new(HashMap::new()),
         app,
@@ -308,6 +322,7 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
         .route("/api/chat", post(cmd_chat))
         .route("/api/answer", post(cmd_answer))
         .route("/api/task", post(cmd_task))
+        .route("/api/agent", post(cmd_agent))
         .fallback(not_found)
         .with_state(inner.clone());
 
@@ -360,12 +375,13 @@ pub fn remote_status(state: TauriState<'_, RemoteState>) -> RemoteStatus {
 }
 
 #[tauri::command]
-pub fn remote_push_state(state: TauriState<'_, RemoteState>, snapshot: Value) -> Result<(), String> {
+pub fn remote_push_state(state: TauriState<'_, RemoteState>, snapshot: String) -> Result<(), String> {
     if let Some(s) = state.server.lock().unwrap().as_ref() {
         if let Ok(mut snap) = s.inner.snapshot.write() {
-            *snap = snapshot.clone();
+            // Reuses the buffer already there: snapshots come in at up to three a second.
+            snap.clone_from(&snapshot);
         }
-        let _ = s.inner.tx.send(snapshot.to_string());
+        let _ = s.inner.tx.send(snapshot);
     }
     Ok(())
 }

@@ -2,6 +2,192 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.24.0 — 2026-09-25
+
+### Neu
+
+- **Claude Code braucht kein installiertes Node.js mehr.** Es spricht über einen Adapter, der auf
+  npm veröffentlicht wird, und bisher führte der Weg nur über `npx`: ohne Node.js gab es nichts zu
+  starten und der Lauf endete mit einem Spawn-Fehler, den niemand lesen konnte. Wenn weder der
+  Adapter noch `npx` im PATH liegt, baut die App sich jetzt ihre eigene Umgebung: sie lädt eine
+  Laufzeitumgebung herunter und installiert den Adapter in ihrem Datenordner (~360 MB, einmalig),
+  hinter einem Fenster, das zeigt was gerade läuft und das man erneut versuchen kann. Eine Maschine
+  mit Node.js nutzt weiterhin `npx` und lädt nichts herunter.
+- **Die Modellauswahl bietet an, was die installierte CLI tatsächlich ausführen kann.** Antigravity
+  und opencode wurden schon nach ihren Modellen gefragt, aber nur der Agenten-Dialog las die
+  Antwort; Composer, Presets, Chats und der Kontingent-Ring zeigten eine im Code eingetippte
+  Liste, die still veraltete. Jede Auswahl liest jetzt dieselbe Liste: was die CLI meldet, beim
+  Start und höchstens alle zehn Minuten aufgefrischt, mit der eingebauten Liste als Rückfall.
+  Ollama wird ebenfalls gefragt, sodass die auf dem Rechner installierten Modelle erscheinen,
+  ohne dass jemand eine Konstante bearbeitet. Ein unter „Anderes…“ eingetipptes Modell wird pro
+  Anbieter gemerkt und beim nächsten Mal angeboten. (#37)
+- **Eine wartende Nachricht kann bearbeitet werden, bevor sie zugestellt wird.** Wenn Sie einem
+  beschäftigten Agenten schreiben, wartet Ihre Nachricht in einer Warteschlange und wird
+  zugestellt, sobald der Agent seinen Zug beendet. Bisher konnte man eine wartende Zeile nur
+  abbrechen und von vorn eintippen. Jetzt hat jede wartende Zeile einen Stift daneben: klicken
+  Sie darauf und der Text öffnet sich in einem Inline-Textfeld, Enter speichert, Umschalt+Enter
+  fügt einen Zeilenumbruch ein und Escape verlässt ohne Änderung. Mit leerem Text zu speichern
+  ist dasselbe wie die Zeile abzubrechen. Funktioniert sowohl im Projekt-Thread als auch in
+  Einzelchats. Wurde die Zeile bereits zugestellt, während Sie sie bearbeiteten, holt die
+  Bearbeitung sie nicht zurück. (#32)
+- **Das Handy hat nur noch einen Konversationen-Tab, und der Startbildschirm zeigt, wer
+  arbeitet.** Die Fernbedienung teilte dieselbe Idee in zwei Tabs auf — den Projekt-Thread auf
+  der einen und die Einzelchats auf der anderen Seite. Jetzt gibt es nur noch einen Tab,
+  „Konversationen", der oben den Projekt-Thread und darunter die Chats auflistet; tippen Sie auf
+  einen, um ihn zu öffnen, und der Zurück-Pfeil bringt Sie zur Liste zurück. Tab-Wechsel und
+  Rückkehr schließen die geöffnete Konversation nicht mehr. Außerdem zeigt der Startbildschirm
+  des Handys oberhalb der Projektliste, welche Agenten in irgendeinem Projekt arbeiten oder auf
+  Ihre Antwort warten, mit dem Avatar des Agenten, dem zugehörigen Projekt und was er gerade tut;
+  wartende Agenten stehen zuerst und sind hervorgehoben, und ein Tippen führt direkt zu dieser
+  Konversation. Jedes Projekt in der Liste zeigt ebenfalls an, ob einer seiner Agenten wartet.
+  (#27, #31)
+- **Die Handy-Fernbedienung kehrt dorthin zurück, wo Sie waren.** Die Seite neu zu öffnen oder
+  zu laden (was das Handy von selbst tut, wenn es den Tab verwirft) landete jedes Mal auf dem
+  Startbildschirm und dem Aufgaben-Tab. Projekt, Chat und Tab werden jetzt auf dem Gerät
+  behalten und wiederhergestellt, sobald der erste Schnappschuss ankommt; ein Projekt oder Chat,
+  den es nicht mehr gibt, führt zurück zum Start oder zum Orchestrator-Thread. (#28)
+- **Projekte auf dem Handy tragen denselben Avatar wie auf dem Desktop.** Die Liste zeigte einen
+  bloßen Farbpunkt; jetzt zeigt sie den farbigen Kreis mit den Initialen des Projekts, in der
+  Liste und in der Projektkopfzeile, damit beide Oberflächen wie eine App wirken. (#30)
+- **Das Modell lässt sich vom Handy aus wählen.** Das Modell ist eines der Dinge, die man am
+  liebsten ändern möchte, wenn man weit weg vom Rechner ist — ein Kontingent ist aufgebraucht,
+  eine Aufgabe verlangt das billige Modell — und bisher hieß das, zum PC zurückzugehen. Im
+  Projekt-Thread versteckte das Handy die Modellauswahl hinter einem Symbol ohne Beschriftung:
+  man musste erraten, dass sie da ist. Jetzt zeigt dieser Knopf den Namen des aktiven Modells,
+  sodass Sie auf einen Blick, ohne irgendwo zu tippen, wissen, mit welchem Modell Ihre nächste
+  Nachricht laufen wird. Das freie Textfeld, um ein Modell von Hand einzutippen („Anderes…“),
+  passt jetzt auch auf einen schmalen Bildschirm. In einem Einzelchat war weder auf dem Handy
+  noch auf dem Desktop zu sehen, mit welchem Modell der Agent lief; jetzt wird es angezeigt, eines
+  pro Teilnehmer, und es lässt sich dort auch ändern (siehe unten). Worauf es zurückfällt, ist
+  gleich geblieben: das bei der Erstellung des Chats gewählte Modell und sonst das des Agenten —
+  dieselbe Reihenfolge, in der es beim Start aufgelöst wird, sodass das, was Sie lesen, auch
+  wirklich läuft. Der Agenten-Tab auf dem Handy war schreibgeschützt. Jetzt können Sie dort das
+  Standardmodell eines Agenten ändern, mit denselben Möglichkeiten, die der Composer bietet. (#29)
+- **Eine Obergrenze für gleichzeitige Durchläufe.** Ein Durchlauf ist ein Prozess, der eigene
+  Tests, Builds und Installationen startet, und nichts begrenzte, wie viele davon zusammen
+  losliefen: wenn du zusiehst, war der Freigabedialog die einzige Bremse; unbeaufsichtigt wurden
+  aus zehn Delegationen zehn CLIs, die sich um die Maschine stritten. Einstellungen → Allgemein ->
+  „Gleichzeitige Durchläufe“ setzt diese Grenze jetzt — vier als Standard, 0 für keine — und zählt
+  alle Projekte zusammen, denn geschützt wird die Maschine. Was darüber liegt, wartet und startet
+  von selbst, sobald ein Platz frei wird, es geht also nichts verloren und nichts wird zweimal
+  angefragt. (#36)
+- **Bildschirme werden beim Erscheinen kurz eingeblendet.** Beim Öffnen der App, beim Wechsel von
+  der Startseite zu einem Projekt, beim Wechsel des Chats, beim Wechsel des Bereichs in den
+  Einstellungen: der Inhalt kommt in einer Fünftelsekunde acht Pixel von unten herauf. Nur der
+  Inhalt — Titelleiste, Seitenleiste, Eingabefeld und das rechte Panel bleiben, wo sie sind, denn
+  sie waren nie weg. Es läuft erneut, wenn Sie aus dem Tray, aus einem minimierten Fenster oder
+  durch einen zweiten Start zurück zum Fenster kommen; mit Alt-Tab aus dem Browser zurückzukommen
+  zählt nicht, und dann bewegt sich nichts. Darstellung → „Bildschirmanimationen" schaltet es ab,
+  und ein System, das weniger Bewegung verlangt, schaltet es überall von selbst ab.
+- **Claude Code kann sich anmelden, ohne dass man die App verlässt.** Ein Lauf gegen den Anbieter
+  `claude` auf einer Maschine, auf der sich Claude Code noch nie angemeldet hatte, endete mit
+  demselben allgemeinen Fehler wie jeder andere Ausfall, und es gab keine Möglichkeit, eine
+  Sitzung zu öffnen, ohne die App zu verlassen. Der ACP-Client unterscheidet diesen Ausfall jetzt —
+  anhand der `_auth/status_update`-Benachrichtigung, die der Adapter sendet, und anhand des Fehlers
+  `auth_required`, mit dem er auf eine Anfrage antwortet — und öffnet dafür einen Bildschirm. Die
+  Anmeldung läuft in einem eingebauten Terminal, und sobald eine Sitzung besteht, startet der
+  fehlgeschlagene Lauf sich selbst neu, ohne dass irgendetwas erneut eingetippt werden muss. Einer
+  Maschine ganz ohne Engine wird zuerst die verwaltete Laufzeitumgebung angeboten, denn die bringt
+  eine mit. Abbrechen lässt den Lauf trotzdem beendet zurück, mit einer Angabe, was fehlt.
+- **Einstellungen → Agenten zeigt, mit welchem Konto Claude Code angemeldet ist.** Die Claude-Karte
+  zeigt jetzt das Konto — E-Mail, Organisation, Tarif — mit einem Knopf zum erneuten Prüfen und
+  einem zum Abmelden. Das Abmelden weist darauf hin, dass die Zugangsdaten in `~/.claude` liegen
+  und dass es jedes andere Claude Code auf der Maschine betrifft, nicht nur diese App.
+- **Teams bekommen einen eigenen Einstellungsbereich.** Einstellungen → Agenten stapelte zwei
+  Dinge, die nichts miteinander zu tun haben — die auf dieser Maschine installierten CLIs und die
+  gespeicherten Teams —, sodass man an jeder Anbieter-Karte vorbeischeiten musste, um ein Team zu
+  erreichen. Teams sind jetzt ein eigener Abschnitt, direkt unter Agenten. Beide Bildschirme haben
+  außerdem die Überschrift und Beschreibung verloren, die über ihrem Inhalt standen, da die
+  Seitenleiste den Bildschirm bereits benennt, und der sichtbare Text sagt jetzt „Team“ statt
+  „Aufstellung“, in allen sieben Sprachen.
+- **Das Maskottchen schaut zu, was Sie tippen.** Eine sechste Stimmung, zusätzlich zu den fünf, die
+  schon vom Agenten kamen: während Sie im Composer tippen, hebt es ein Fernglas und schaut hinunter
+  zum Eingabefeld. Sie schlägt Schlafen und Warten — was Sie gerade tippen, ist genau das, worauf
+  ein wartender Agent angehalten hat zu warten — und sie verdeckt nie, was der Agent wirklich tut:
+  Arbeiten, Kaputt oder Kontingent leer gewinnen weiterhin.
+
+### Geändert
+
+- **Die untere Leiste des Composers sagt weniger und kann mehr.** Die beiden Auswahlfelder — wer
+  antwortet und mit welchem Modell — haben ihren Pfeil verloren und nehmen jetzt die Breite
+  dessen ein, was sie zeigen, so wie es der Kontingent-Knopf daneben immer getan hat: ein kurzer
+  Modellname lässt keine Lücke mehr, ein langer wird nicht mehr auf eine feste Breite
+  abgeschnitten. In einem Chat ist die schreibgeschützte Zeile pro Teilnehmer jetzt das Logo des
+  Agenten und sein Name, daneben eine Modellauswahl, die sich bedienen lässt: was Sie wählen, wird
+  auf diesen Teilnehmer dieses Chats geschrieben. Wer im Chat ist, ändert sich weiterhin nicht von
+  hier aus — jemand anderem etwas zu sagen ist ein eigener Chat, gestartet in der linken Leiste.
+  Die gespeicherten Befehle über dem Feld klappen jetzt hinter einem kleinen Knopf weg und bleiben
+  weggeklappt, bis Sie es anders sagen, und das Feld zeichnet beim Fokus keinen Ring mehr um sich:
+  das sagt der Rand, einmal.
+- **Der Pfeil nach unten führt aus einem Codeblock heraus, der die Nachricht beendet.** Ein in der
+  letzten Zeile geschlossener Block hatte nichts unter sich, es gab also keine Möglichkeit, danach
+  noch etwas zu schreiben, ohne zurückzugehen und die Zeile von Hand zu machen. Jetzt macht sie
+  der Pfeil. Überall sonst — mit einer Zeile unter dem Cursor, außerhalb eines Blocks, in einem
+  noch offenen Block — ist es der Pfeil von immer, und der Pfeil nach oben bleibt unangetastet.
+
+### Behoben
+
+- **Ein Lauf, der auf einen freien Platz wartet, erhält ihn nun in der Reihenfolge seiner
+  Anforderung.** Ist die Obergrenze für gleichzeitige Läufe erreicht, warten die übrigen — und
+  mehrere gemeinsam genehmigte Delegationen landen innerhalb derselben Millisekunde in der
+  Warteschlange, sodass der App nichts blieb, um sie auseinanderzuhalten, außer ihren internen
+  Bezeichnern. Die sind zufällig, also entschied ein Vergleich zweier zufälliger Zeichenketten,
+  welcher der wartenden Läufe den frei gewordenen Platz bekam: Arbeit konnte warten, während etwas
+  später Angefordertes vorgezogen wurde. Die Reihenfolge, in der die Arbeit eintraf, wird jetzt
+  festgehalten und eingehalten — genau wie es die Warteschlange hinter einem beschäftigten Agenten
+  schon tat.
+- **Ein Wechsel der Engine des Orchestrators lässt ihm nicht mehr den alten Namen.** Ein Agent
+  mit dem Standardnamen seiner Engine („Claude Code“) behielt diesen Namen beim Wechsel des
+  Anbieters, sodass der Chat den Namen einer Engine über dem Symbol einer anderen zeigte und der
+  System-Prompt ihn mit dem falschen ansprach. Ein Standardname folgt jetzt dem Anbieter; ein
+  selbst gewählter Name bleibt. Der Orchestrator-Chat folgt außerdem dem Wurzel-Planer, wenn in
+  der Hierarchie ein anderer Agent befördert wird, statt den Composer auf den vorherigen zeigen
+  zu lassen. (#38)
+- **Was Sie in eine Frage des Agenten getippt haben, geht nicht mehr verloren, wenn das Feld
+  verschwindet.** Die markierten Optionen und der freie Text lebten im Feld selbst: Projekt
+  wechseln, einen Chat öffnen, „Stattdessen schreiben“ drücken oder ein Thread, der am Lauf
+  vorbeiscrollte, warfen sie weg. Sie werden jetzt pro Frage behalten, über Bildschirme und
+  Neustarts hinweg, und die beiden Kopien derselben Frage (unter dem Lauf und über dem Composer)
+  zeigen dieselben Markierungen. Ein Entwurf verschwindet, wenn seine Frage beantwortet ist, von
+  Ihnen oder automatisch. (#35)
+- **Die Handy-Fernbedienung erholt sich nach dem Sperren des Bildschirms von selbst.** Das Banner
+  „Verbindung wird wiederhergestellt…“ blieb stehen, obwohl die App funktionierte, und eine vom
+  Handy gesendete Nachricht erschien manchmal erst nach dem Neuladen: das Lebenszeichen des PCs
+  räumte das Banner nie weg, eine still gestorbene Verbindung fiel nicht auf, und die Rückkehr in
+  den Vordergrund wartete den Wiederholungs-Timer ab. Die Seite wertet jetzt jedes Lebenszeichen
+  als verbunden, verwirft einen 45 Sekunden stummen Strom, verbindet sich neu, sobald der Tab
+  wieder vorne ist oder das Netz zurückkommt, und der PC schickt seinen letzten Stand an ein
+  zurückgefallenes Handy erneut. (#26)
+- **Eine Komprimierung wird im Thread angekündigt und kann eingesehen werden.** Wenn ein Agent
+  seinen Verlauf komprimiert — automatisch, weil die Konversation zu umfangreich wurde, oder
+  weil Sie `/compact` ausgeführt haben — zeichnete die App diesen Zug bisher rechtsbündig, im
+  selben Stil wie eine von Ihnen getippte Nachricht, und bot ihn sogar beim Drücken der
+  Pfeiltaste nach oben im Composer an, als wäre er einer Ihrer Prompts. Ihn vollständig zu
+  verstecken war auch nicht die Lösung: eine automatische Komprimierung startet die Sitzung des
+  Agenten neu, und ohne sichtbare Spur veränderte sich der Thread still und leise. Die
+  Komprimierung erscheint nun als dezente Wartungsnotiz — eine einzige Zeile mit dem Namen des
+  Agenten, ob die Komprimierung automatisch oder angefordert war, und der Uhrzeit. Ein
+  „Mehr Details" klappt aus und zeigt, was die App dem Agenten aufgetragen hat und was der
+  Agent geantwortet hat; die Notiz zeigt auch an, wenn eine Komprimierung läuft, fehlgeschlagen
+  ist oder abgebrochen wurde. Zwei Dinge, die nie Ihre waren, bleiben verborgen: der Prompt der
+  Komprimierung erscheint nicht mehr unter der Pfeiltaste nach oben im Composer, und die Antwort
+  eines Planers auf eine Frage eines seiner Implementierer wird ebenfalls nicht angezeigt — das
+  ist Verkehr zwischen Agenten, nichts, das Sie lesen müssten. Gilt für die Desktop-App und das
+  Handy gleichermaßen.
+- **Der Handy-Fernzugriff kostet die App deutlich weniger, solange er an ist.** Jede Änderung
+  serialisierte den gesamten Zustand zweimal, um ihn zu senden, dreimal wenn er groß genug war,
+  gekürzt zu werden, und er wurde selbst dann gebaut, wenn kein Handy verbunden war: einmal alle
+  300 ms über einen ganzen autonomen Lauf, auf demselben Thread, der die App zeichnet. Jetzt wird
+  er pro Sendung einmal serialisiert, und ohne Verbundene wird gar nichts gebaut: was in der
+  Zwischenzeit passiert ist, geht in dem Moment raus, in dem sich ein Handy verbindet — was du am
+  Handy öffnest, ist also weiter aktuell. (#36)
+- **Das Telefon-Symbol in der Titelleiste öffnet jetzt Einstellungen → Remote, statt den Server
+  direkt einzuschalten.** Ein Klick startete zuvor einen Server im lokalen Netzwerk, ohne je den
+  Port, das Token oder den QR-Code zu zeigen; das Symbol zeigt weiterhin an, ob der Server läuft.
+- **Der Ring, der das aktuelle Projekt in der eingeklappten Seitenleiste markiert, liegt jetzt eng
+  an seinem Kreis an.** Zuvor schwebte er ein paar Pixel entfernt; jetzt sitzt er wie der Rand des
+  Kreises selbst.
+
 ## 0.23.0 — 2026-09-20
 
 ### Neu

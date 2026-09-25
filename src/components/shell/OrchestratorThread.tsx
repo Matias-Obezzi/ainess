@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
-import { mascotMood } from "@/lib/mascot";
+import { mascotMood, withTyping } from "@/lib/mascot";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
@@ -16,6 +16,7 @@ import { QuotaCard } from "@/components/QuotaCard";
 import { outOfQuota } from "@/lib/quota";
 import { retriedLater } from "@/lib/quota-card";
 import { shownRootRuns } from "@/lib/retry";
+import { isThreadTurn } from "@/lib/thread-turns";
 import { retryRun } from "@/lib/orchestrator";
 import { ContextActionItems, type MenuAction } from "@/components/menu-actions";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -26,6 +27,7 @@ import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
 import { runStatusLabelKey } from "@/lib/labels";
+import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { interruptedOutput } from "@/lib/history";
@@ -34,7 +36,7 @@ import { copyText } from "@/lib/clipboard";
 import { hasMarkdown, toPlainText } from "@/lib/text";
 import { createTaskFromMessage } from "@/lib/task-from-message";
 import type { Run } from "@/types";
-import { ArrowDown, ChevronDown, ChevronRight, Copy, FileCode, FileText, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, ChevronUp, Copy, FileCode, FileText, FoldVertical, ListTodo, MessagesSquare, RotateCw, Sparkles } from "lucide-react";
 import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
 import { isForUser } from "@/lib/pending-question";
 import { useCurrentProjectId } from "./project-pane";
@@ -77,8 +79,15 @@ export function OrchestratorThread() {
   const plannerOutOfTokens = useAppStore(state =>
     Object.values(state.quotaWaiting).some(w => w.projectId === currentProjectId && w.agentId === plannerId),
   );
-  const mood = plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined;
+  // Same as in a chat: what is being typed below wins over a planner with nothing to show.
+  const composerTyping = useAppStore(state => state.composerTyping);
+  const mood = withTyping(plannerId ? mascotMood(runtime?.[plannerId], plannerOutOfTokens) : undefined, composerTyping);
+  // The body fades up when the thread arrives: another project, and the history finishing loading
+  // under a pair of skeletons. Nothing here is keyed on it — the element stays, so the scroll
+  // position and every open bubble stay with it.
+  const screenIn = useScreenIn([currentProjectId, historyLoading]);
   const unqueueInstruction = useAppStore(state => state.unqueueInstruction);
+  const editQueuedInstruction = useAppStore(state => state.editQueuedInstruction);
   const sendInstructionNow = useAppStore(state => state.sendInstructionNow);
   // A block per agent: what is waiting for one of them goes over as a single message, and what is
   // waiting for another is a different message on a different turn.
@@ -90,16 +99,17 @@ export function OrchestratorThread() {
       lines: (runtime[agent.id]?.queuedInstructions ?? []).map((text, index) => ({
         text,
         onCancel: () => unqueueInstruction(currentProjectId, agent.id, index),
+        onEdit: (next: string) => editQueuedInstruction(currentProjectId, agent.id, index, text, next),
       })),
       onSendNow: () => void sendInstructionNow(currentProjectId, agent.id),
     }));
-  }, [runtime, agents, currentProjectId, unqueueInstruction, sendInstructionNow]);
+  }, [runtime, agents, currentProjectId, unqueueInstruction, editQueuedInstruction, sendInstructionNow]);
 
   // A retried run takes the place of the one it replaced instead of landing at the bottom, and
   // that one stops being drawn: see `shownRootRuns`.
   const rootRuns = useMemo(
     () => shownRootRuns(
-      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && r.kind !== "chat"),
+      Object.values(runs).filter(r => r.projectId === currentProjectId && r.parentRunId === null && isThreadTurn(r)),
     ),
     [runs, currentProjectId],
   );
@@ -251,21 +261,27 @@ export function OrchestratorThread() {
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 select-text">
+        {/* `screenIn` goes on whichever of the three is showing — never on the scroller above them.
+            A transform on the element that scrolls makes it the containing block for everything
+            inside, and the thread loses its sticky headers and its scroll anchoring while it
+            plays. Only one branch exists at a time, so one ref is enough for all three. */}
         {historyLoading ? (
-          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+          <div ref={screenIn} className="flex flex-col gap-4 max-w-3xl mx-auto">
             <RunBubbleSkeleton />
             <RunBubbleSkeleton />
           </div>
         ) : rootRuns.length === 0 && queued.length === 0 ? (
-          <EmptyState
-            icon={MessagesSquare}
-            visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
-            title={t("thread.empty.title")}
-            description={t("thread.empty.body")}
-            className="h-full"
-          />
+          <div ref={screenIn} className="h-full">
+            <EmptyState
+              icon={MessagesSquare}
+              visual={project && <ProjectMascot projectId={project.id} projectName={project.name} color={project.color} provider={planner?.provider} mood={mood} size={128} className="mb-2" />}
+              title={t("thread.empty.title")}
+              description={t("thread.empty.body")}
+              className="h-full"
+            />
+          </div>
         ) : (
-          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+          <div ref={screenIn} className="flex flex-col gap-4 max-w-3xl mx-auto">
             {hiddenRuns > 0 && (
               <div className="flex justify-center pb-2">
                 <Button variant="ghost" size="sm" className="text-xs" onClick={handleShowOlder}>
@@ -273,7 +289,11 @@ export function OrchestratorThread() {
                 </Button>
               </div>
             )}
-            {shownRuns.map(run => <RunBubble key={run.id} run={run} />)}
+            {/* Branched here and not inside `RunBubble`: that one calls hooks before it returns
+                anything, so an early exit at the top of it would break the rules of hooks. */}
+            {shownRuns.map(run => run.kind === "compact"
+              ? <CompactTurn key={run.id} run={run} />
+              : <RunBubble key={run.id} run={run} />)}
             <QueuedMessages groups={queued} />
             <div ref={bottomRef} />
           </div>
@@ -314,6 +334,68 @@ function RunBubbleSkeleton() {
         <Skeleton className="h-8 w-48 rounded-lg" />
       </div>
       <Skeleton className="h-16 w-full rounded-lg" />
+    </div>
+  );
+}
+
+/**
+ * A compaction turn: the app asked an agent to rewrite its own history file and then let go of its
+ * session. Nobody typed the prompt behind it — and when it fired on its own, nobody asked for it
+ * at all — so it is a maintenance note and not a bubble, with the detail one click away. Hiding it
+ * outright was worse: an automatic compaction restarts an agent's session with nothing said.
+ */
+export function CompactTurn({ run }: { run: Run }) {
+  const t = useT();
+  const locale = useLocale();
+  const agents = useAppStore(selectAllAgents);
+  const [open, setOpen] = useState(false);
+
+  const name = agents.find(a => a.id === run.agentId)?.name ?? pastAgent(t);
+  // A compaction that failed still lets the session go, so it is reported and never actioned.
+  const statusKey =
+    run.status === "error" ? "thread.compact.error"
+      : run.status === "killed" ? "thread.compact.killed"
+        : isLiveRun(run.status) ? "thread.compact.running"
+          : run.auto ? "thread.compact.auto"
+            : "thread.compact.done";
+  // The prompt asks for a single line, so there is usually little to show — and nothing at all
+  // while the run is still going, in which case that half of the detail is left out.
+  const answer = (run.output ?? "").trim();
+  const Chevron = open ? ChevronDown : ChevronUp;
+
+  return (
+    <div data-message-id={run.id} data-testid="compact-turn" className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <FoldVertical className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{t(statusKey, { name })}</span>
+        <span className="shrink-0">· {formatClock(run.startedAt, locale)}</span>
+        <button
+          type="button"
+          aria-expanded={open}
+          className="ml-auto flex shrink-0 items-center gap-1 hover:text-foreground"
+          onClick={() => setOpen(o => !o)}
+        >
+          {t("thread.compact.details")}
+          <Chevron className="h-3 w-3" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="ml-[22px] flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{t("thread.compact.asked")}</span>
+            {hasMarkdown(run.prompt)
+              ? <Markdown text={run.prompt} />
+              : <p className="whitespace-pre-wrap">{run.prompt}</p>}
+          </div>
+          {answer && (
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">{t("thread.compact.answered")}</span>
+              {hasMarkdown(answer) ? <Markdown text={answer} /> : <p className="whitespace-pre-wrap">{answer}</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
