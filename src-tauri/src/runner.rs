@@ -14,7 +14,14 @@ use tauri::{AppHandle, Emitter, State};
 use crate::logging;
 
 /// The stdin pipes of the runs started with `keep_stdin_open`, by run id.
-type Stdins = Arc<Mutex<HashMap<String, ChildStdin>>>;
+///
+/// Each pipe has its own lock, separate from the map's. `write_all` on a full pipe blocks until
+/// the other side reads — the CLI is thinking, hung, or the message outgrew the OS buffer (a few
+/// tens of KB on Windows, which a system prompt clears easily) — and a thread stuck there cannot
+/// be holding a lock that anyone else needs, `kill_run` and `close_stdin` included. So the map's
+/// lock only ever guards finding and removing an entry; the write itself happens against the
+/// entry's own lock, taken after the map's is already released.
+type Stdins = Arc<Mutex<HashMap<String, Arc<Mutex<ChildStdin>>>>>;
 
 #[derive(Default)]
 pub struct RunnerState {
@@ -311,7 +318,7 @@ pub fn spawn_run(
                 );
             }
         }
-        state.stdins.lock().unwrap().insert(run_id.clone(), stdin);
+        state.stdins.lock().unwrap().insert(run_id.clone(), Arc::new(Mutex::new(stdin)));
     }
 
     let children = state.children.clone();
@@ -385,21 +392,34 @@ pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, S
 /// registered — it already ended, or it was not started with `keep_stdin_open` — which is a fact
 /// about the run and not an error. Only a write that actually fails is one.
 fn write_stdin_to(stdins: &Stdins, run_id: &str, text: &str) -> Result<bool, String> {
-    let mut map = stdins.lock().unwrap();
-    let Some(stdin) = map.get_mut(run_id) else {
-        return Ok(false);
+    // Only the map's lock is needed to find the pipe; it is dropped here, before the write, so a
+    // write that blocks on a full pipe never holds up anyone else's write, nor `kill_run` or
+    // `close_stdin`, which only ever need the map's lock and not this run's.
+    let stdin = {
+        let map = stdins.lock().unwrap();
+        let Some(stdin) = map.get(run_id) else {
+            return Ok(false);
+        };
+        stdin.clone()
     };
+    let mut stdin = stdin.lock().map_err(|e| e.to_string())?;
     match stdin.write_all(text.as_bytes()).and_then(|_| stdin.flush()) {
         Ok(()) => Ok(true),
         Err(e) => {
             // A broken pipe never heals: keeping the entry would only fail every later write.
-            map.remove(run_id);
+            stdins.lock().unwrap().remove(run_id);
             Err(e.to_string())
         }
     }
 }
 
 /// Drops a run's stdin, which is what sends the CLI EOF. `false` when there was none.
+///
+/// This only ever needs the map's lock, so it never waits on a write in progress. If one is
+/// happening when this runs, removing the entry here drops the map's `Arc` and not the `ChildStdin`
+/// itself — that write still holds its own clone of it, and the pipe only actually closes once the
+/// write finishes and releases it. That is fine: it is `remove` waiting on the write, and not the
+/// other way around, that would bring back the deadlock this whole scheme exists to avoid.
 fn close_stdin_of(stdins: &Stdins, run_id: &str) -> bool {
     stdins.lock().unwrap().remove(run_id).is_some()
 }
@@ -796,7 +816,7 @@ rl.on("close", () => process.exit(0));
         let mut lines = std::io::BufReader::new(child.stdout.take().unwrap()).lines();
 
         let stdins: super::Stdins = Default::default();
-        stdins.lock().unwrap().insert("live".to_string(), stdin);
+        stdins.lock().unwrap().insert("live".to_string(), std::sync::Arc::new(std::sync::Mutex::new(stdin)));
 
         assert!(super::write_stdin_to(&stdins, "live", "{\"id\":1,\"method\":\"initialize\"}\n").unwrap());
         let first = lines.next().expect("an answer").unwrap();
@@ -821,6 +841,54 @@ rl.on("close", () => process.exit(0));
         let stdins: super::Stdins = Default::default();
         assert_eq!(super::write_stdin_to(&stdins, "gone", "{}\n"), Ok(false));
         assert!(!super::close_stdin_of(&stdins, "gone"));
+    }
+
+    /// The whole point of the per-run lock: a write stuck on a full pipe must not hold up a write
+    /// to a different run, nor that other run's `close_stdin`. `sleeper` never reads its stdin, so
+    /// a write bigger than the OS pipe buffer (Windows: a few tens of KB) blocks on it for as long
+    /// as the process lives; a second run is meanwhile written to and closed from another thread,
+    /// with a bounded wait so a regression here fails the test instead of hanging the suite.
+    #[test]
+    fn a_write_stuck_on_a_full_pipe_does_not_block_another_runs_stdin() {
+        use std::sync::{mpsc, Arc, Mutex};
+
+        let mut blocked_child = sleeper(5).stdin(Stdio::piped()).spawn().expect("spawn");
+        let blocked_stdin = blocked_child.stdin.take().expect("stdin(Stdio::piped()) above");
+
+        let (fast_opts, fast_dir) = fake_agent("unblocked", Some(true));
+        let mut fast_child = super::build_command(&fast_opts).spawn().expect("node must be on PATH");
+        let fast_stdin = fast_child.stdin.take().expect("keep_stdin_open asks for a pipe");
+
+        let stdins: super::Stdins = Default::default();
+        stdins.lock().unwrap().insert("blocked".to_string(), Arc::new(Mutex::new(blocked_stdin)));
+        stdins.lock().unwrap().insert("unblocked".to_string(), Arc::new(Mutex::new(fast_stdin)));
+
+        let blocking_stdins = stdins.clone();
+        let blocking_write = thread::spawn(move || {
+            let _ = super::write_stdin_to(&blocking_stdins, "blocked", &"x".repeat(1024 * 1024));
+        });
+
+        // Give the write above time to reach the pipe and actually fill it.
+        thread::sleep(Duration::from_millis(200));
+
+        let (tx, rx) = mpsc::channel();
+        let other_stdins = stdins.clone();
+        thread::spawn(move || {
+            let wrote = super::write_stdin_to(&other_stdins, "unblocked", "{\"id\":1,\"method\":\"ping\"}\n");
+            let closed = super::close_stdin_of(&other_stdins, "unblocked");
+            let _ = tx.send((wrote, closed));
+        });
+        let (wrote, closed) = rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("another run's stdin must not wait on the one stuck on a full pipe");
+        assert_eq!(wrote, Ok(true));
+        assert!(closed);
+
+        let _ = fast_child.wait();
+        let _ = blocked_child.kill();
+        let _ = blocked_child.wait();
+        let _ = blocking_write.join();
+        let _ = std::fs::remove_dir_all(&fast_dir);
     }
 
     /// The old path, untouched: no `keep_stdin_open`, so the prompt is written and the pipe closed,
@@ -963,6 +1031,7 @@ two");
 
     use super::{wait_with_timeout, WaitError};
     use std::process::{Command, Stdio};
+    use std::thread;
     use std::time::Duration;
 
     /// A program that stays alive for about `secs` seconds without needing a shell.
