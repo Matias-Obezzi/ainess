@@ -58,3 +58,59 @@ for (const mood of ["working", "waiting", "idle", "quota", "error", "typing"] as
     await snap(page, `mascot-${mood}`, mascot);
   });
 }
+
+/**
+ * The binoculars over each of the four faces.
+ *
+ * The face is derived from the project id (`lib/mascot.ts#mascotTraits`), so the only way to see
+ * all four is to open a project whose id lands on each one. These ids were picked for exactly
+ * that, one per pair of eyes and, as it happens, one per body too. What is being looked at: that
+ * the pair reads as binoculars at the size the empty thread draws them, and that the gaze — two
+ * pupils, a wink, or the light inside a visor — is still above the rims.
+ */
+const FACES = [
+  { eyes: 0, id: "demo-eyes-0-5" },
+  { eyes: 1, id: "demo-eyes-1-3" },
+  { eyes: 2, id: "demo-eyes-2-18" },
+  { eyes: 3, id: "demo-eyes-3-18" },
+];
+
+for (const face of FACES) {
+  test(`the binoculars over face ${face.eyes}`, async ({ page }) => {
+    await openDemo(page, "chat");
+    await page.evaluate(id => {
+      type Project = { id: string; name: string };
+      type State = { config: { projects: Project[] }; currentProjectId: string | null };
+      type Store = {
+        getState(): State & { openProject(id: string, chatId: string | null, mode: string): void };
+        setState(patch: object): void;
+      };
+      const store = (window as unknown as { __ainess: Store }).__ainess;
+      const state = store.getState();
+      const open = state.config.projects.find(p => p.id === state.currentProjectId);
+      if (!open) throw new Error("no project open");
+      // A copy of the demo project under another id: same team and same colour, another face. It
+      // has no runs of its own, so the thread shows its empty state — which is where the mascot is
+      // drawn at 128px, the size this is about.
+      store.setState({ config: { ...state.config, projects: [...state.config.projects, { ...open, id, name: id }] } });
+      store.getState().openProject(id, null, "chat");
+    }, face.id);
+    const mascot = page.getByTestId("mascot");
+    await expect(mascot).toBeVisible();
+    // After the screen settled, not with it: the composer is remounted by the change of project,
+    // and it turns the flag off on its way out.
+    await page.evaluate(() => {
+      (window as unknown as { __ainess: { setState(patch: object): void } }).__ainess.setState({ composerTyping: true });
+    });
+    await expect(page.getByTestId("mascot-binoculars")).toBeVisible();
+    await mascot.evaluate(el => {
+      const box = el as HTMLElement;
+      box.style.width = "256px";
+      box.style.height = "256px";
+      const svg = box.querySelector("svg");
+      svg?.setAttribute("width", "256");
+      svg?.setAttribute("height", "256");
+    });
+    await snap(page, `mascot-typing-face-${face.eyes}`, mascot);
+  });
+}

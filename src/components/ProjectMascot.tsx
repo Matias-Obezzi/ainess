@@ -272,11 +272,22 @@ function Alarm({ base, light }: { base: string; light: string }) {
 }
 
 /**
- * Typing: binoculars held up to the face and aimed at the box below, scanning slowly across.
+ * Typing: binoculars held up in front of the lower face and aimed at the box below, scanning slowly.
  *
- * In `light`, not in the project colour like the props that hang off to the side: these are drawn
- * over the creature itself, and the base tone against a body painted in it is no prop at all. The
- * pale tube also holds up over a visor, which is the one face already drawn in near-black.
+ * Two round lenses rather than two tubes. A tube drawn end-on at this size is a rounded rectangle,
+ * and a pair of rounded rectangles under a face reads as two mittens holding something — which is
+ * exactly what the first version looked like. What says "binoculars" is the pair of circles: a rim
+ * around each one, a dark glass inside it, a highlight across the glass, and a short bridge joining
+ * the two. The lenses are ellipses wider than they are tall and the whole thing is tipped a few
+ * degrees, which is what an instrument pointed down at something looks like from here.
+ *
+ * Held low on purpose: the rim sits below the eyes, so the lowered gaze — the pupils, or the light
+ * inside a visor — is still above it. Covering the eyes would lose the half of the mood that says
+ * where it is looking.
+ *
+ * In `light` and `shade`, not in the project colour like the props that hang off to the side: these
+ * are drawn over the creature itself, and the base tone against a body painted in it is no prop at
+ * all. The pale rim also holds up over a visor, which is the one face already drawn in near-black.
  */
 function Binoculars({ shade, light }: { shade: string; light: string }) {
   return (
@@ -285,18 +296,36 @@ function Binoculars({ shade, light }: { shade: string; light: string }) {
       className="animate-mascot-peek"
       style={{ transformOrigin: "50% 15%", transformBox: "fill-box" }}
     >
-      {/* Two tubes and the bridge between them, held just under the eyes and pointing down: low
-          enough that the lowered pupils stay above the rim, so the glance down into them is still
-          part of the picture rather than something hidden behind it. */}
-      <g strokeWidth="1.8" strokeLinejoin="round" style={{ fill: light, stroke: shade }}>
-        <rect x="30.5" y="65" width="14" height="18" rx="7" />
-        <rect x="55.5" y="65" width="14" height="18" rx="7" />
-        <rect x="43.5" y="69" width="13" height="5" rx="2.5" />
-      </g>
-      {/* The far end of each tube: the glass, seen at the angle it is being held. */}
-      <g style={{ fill: shade }}>
-        <ellipse cx="37.5" cy="81.5" rx="5.2" ry="2.4" />
-        <ellipse cx="62.5" cy="81.5" rx="5.2" ry="2.4" />
+      {/* The tilt is on the pair, not on each lens: an instrument leans as one piece. */}
+      <g transform="rotate(-7 50 76)">
+        {/* The bridge goes down first, so both rims are drawn over its ends and it reads as
+            something the two lenses are mounted on rather than a bar laid across them. */}
+        <rect
+          x="43"
+          y="73"
+          width="14"
+          height="6"
+          rx="3"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+          style={{ fill: light, stroke: shade }}
+        />
+        {[38, 62].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="76" rx="8.8" ry="7.4" strokeWidth="2.4" style={{ fill: light, stroke: shade }} />
+            <ellipse cx={cx} cy="76" rx="5" ry="4" style={{ fill: shade }} />
+            {/* One streak across the glass, up and to the left: without it the dark middle is a
+                hole, and with it the lens is made of something. */}
+            <ellipse
+              cx={cx - 1.5}
+              cy="74"
+              rx="2.6"
+              ry="1.2"
+              transform={`rotate(-32 ${cx - 1.5} 74)`}
+              style={{ fill: "white", opacity: 0.75 }}
+            />
+          </g>
+        ))}
       </g>
     </g>
   );
