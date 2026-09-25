@@ -3,11 +3,11 @@
 // closing event with the answer, so the answer is rebuilt from the text parts and what the run
 // spent is added up across its steps.
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, opencodeUsage } from "@/lib/providers";
+import { cliProvider, opencodeUsage } from "@/lib/providers";
 import { parseOpencodeModels } from "@/lib/quota";
 import type { AgentConfig } from "@/types";
 
-const spec = PROVIDERS.opencode;
+const spec = cliProvider("opencode");
 const parse = (line: string) => spec.parseLine(line, "stdout");
 
 const SESSION = "ses_f86aec358ffe9lLZvG7suOtcl3";

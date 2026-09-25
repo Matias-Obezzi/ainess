@@ -16,6 +16,7 @@ export const nullTransport: Transport = {
   loadConfig: async () => null,
   saveConfig: async () => {},
   detectBinaries: async () => ({}),
+  whichProgram: async () => null,
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   exec: async (_program, _args, _cwd) => ({ code: null, stdout: "", stderr: "" }),

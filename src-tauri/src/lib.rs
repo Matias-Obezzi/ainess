@@ -98,6 +98,7 @@ pub fn run() {
             config::write_file_abs,
             config::write_file_bytes,
             detect::detect_binaries,
+            detect::which_program,
             editors::detect_editors,
             editors::open_in_editor,
             config::list_subdirs,

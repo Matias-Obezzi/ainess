@@ -15,6 +15,13 @@ export const tauriTransport: Transport = {
   loadConfig: async () => ipc.loadConfig(),
   saveConfig: async (config) => ipc.saveConfig(config),
   detectBinaries: async () => ipc.detectBinaries(),
+  whichProgram: async (name) => {
+    try {
+      return await invoke<string | null>("which_program", { name });
+    } catch {
+      return null;
+    }
+  },
   writeTextFile: async (relativePath, content) =>
     invoke<string>("write_config_file", { relativePath, content }),
   readTextFile: async (relativePath) => {

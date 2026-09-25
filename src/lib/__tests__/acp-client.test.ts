@@ -19,8 +19,10 @@ import type { ParsedEvent, RunExitEvent, RunOutputEvent } from "@/types";
 const FAKE_AGENT = String.raw`
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + "\n");
 const reply = (id, result) => send({ jsonrpc: "2.0", id, result });
-const notify = (update) => send({ jsonrpc: "2.0", method: "session/update", params: { sessionId: "sess-1", update } });
+let sid = "sess-1";
+const notify = (update) => send({ jsonrpc: "2.0", method: "session/update", params: { sessionId: sid, update } });
 const MODE = process.env.FAKE_MODE || "ok";
+let asked = null;
 
 const rl = require("readline").createInterface({ input: process.stdin });
 rl.on("line", (line) => {
@@ -29,9 +31,21 @@ rl.on("line", (line) => {
   if (msg.method === "initialize") {
     // A frame on stderr that would hijack the session if anything but stdout were parsed.
     if (MODE === "stderr") process.stderr.write('{"jsonrpc":"2.0","id":' + msg.id + ',"result":{"protocolVersion":0}}\n(node:1) Warning: chatter\n');
-    return reply(msg.id, { protocolVersion: 1, agentCapabilities: {}, authMethods: [] });
+    // Only the agent that says it can load sessions is offered one.
+    const agentCapabilities = MODE === "resume" ? { loadSession: true } : {};
+    return reply(msg.id, { protocolVersion: 1, agentCapabilities, authMethods: [] });
+  }
+  if (msg.method === "session/load") {
+    sid = msg.params.sessionId;
+    // What a load does: the whole conversation comes back as notifications, and only then does
+    // the request answer. Everything here is history the app already showed once.
+    notify({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "VIEJO" } });
+    notify({ sessionUpdate: "tool_call", toolCallId: "old", name: "Read", status: "completed" });
+    asked = msg.params;
+    return reply(msg.id, {});
   }
   if (msg.method === "session/new") {
+    asked = msg.params;
     if (MODE === "split") {
       // One frame, two writes: the agent flushed half of it. The platform's line reader is what
       // puts it back together, so this side must never see two halves.
@@ -43,7 +57,17 @@ rl.on("line", (line) => {
     return reply(msg.id, { sessionId: "sess-1" });
   }
   if (msg.method === "session/prompt") {
-    if (MODE === "hang") return;
+    // Says back what it was asked for when the session was opened, which is the only way this side
+    // can tell that the meta and the MCP servers travelled.
+    if (MODE === "echo") {
+      notify({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: JSON.stringify({ asked, prompt: msg.params.prompt }) } });
+      return reply(msg.id, { stopReason: "end_turn" });
+    }
+    if (MODE === "resume") {
+      notify({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "nuevo" } });
+      return reply(msg.id, { stopReason: "end_turn" });
+    }
+    if (MODE === "hang") return notify({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "pensando" } });
     if (MODE === "error") {
       return send({ jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: "the agent gave up" } });
     }
@@ -209,7 +233,7 @@ describe("runAcpPrompt", () => {
     const events: ParsedEvent[] = [];
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: (e) => events.push(e) });
 
-    expect(result).toEqual({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola mundo" });
+    expect(result).toEqual({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola mundo", resumed: false });
     expect(events).toEqual([
       { type: "session", sessionId: "sess-1" },
       { type: "text", text: "Hola " },
@@ -264,13 +288,63 @@ describe("runAcpPrompt", () => {
     expect(events.at(-1)).toEqual({ type: "error", text: expect.stringContaining("gave up") });
   });
 
+  test("the session carries what the provider asked for: _meta and the MCP servers", async () => {
+    const runId = "acp-echo";
+    await startAgent(runId, "echo");
+    const result = await runAcpPrompt({
+      runId,
+      cwd: process.cwd(),
+      prompt: "hola",
+      onEvent: () => {},
+      session: {
+        meta: { systemPrompt: { append: "SOS TOSTADORA" }, claudeCode: { options: { disallowedTools: ["Agent"] } } },
+        mcpServers: [{ name: "files", command: "npx", args: ["-y", "server"], env: [] }],
+      },
+    });
+    const said = JSON.parse(result.text) as { asked: { cwd: string; mcpServers: unknown[]; _meta: Record<string, unknown> }; prompt: Array<{ text: string }> };
+    expect(said.asked._meta).toEqual({ systemPrompt: { append: "SOS TOSTADORA" }, claudeCode: { options: { disallowedTools: ["Agent"] } } });
+    expect(said.asked.mcpServers).toEqual([{ name: "files", command: "npx", args: ["-y", "server"], env: [] }]);
+    expect(said.asked.cwd).toBe(process.cwd());
+    expect(said.prompt).toEqual([{ type: "text", text: "hola" }]);
+  });
+
+  test("a session that is carried on is loaded, and its history is not shown twice", async () => {
+    const runId = "acp-resume";
+    await startAgent(runId, "resume");
+    const events: ParsedEvent[] = [];
+    const result = await runAcpPrompt({
+      runId,
+      cwd: process.cwd(),
+      prompt: "seguí",
+      resumeSessionId: "sess-old",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(result).toMatchObject({ sessionId: "sess-old", stopReason: "end_turn", text: "nuevo", resumed: true });
+    // The replay is listened to and dropped: those messages are already in the app's timeline.
+    expect(events).toEqual([
+      { type: "session", sessionId: "sess-old" },
+      { type: "text", text: "nuevo" },
+      { type: "result", text: "nuevo", sessionId: "sess-old" },
+    ]);
+  });
+
+  test("an agent that cannot load a session starts a new one instead of failing", async () => {
+    const runId = "acp-resume-unsupported";
+    await startAgent(runId);
+    const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", resumeSessionId: "sess-old", onEvent: () => {} });
+    expect(result).toMatchObject({ sessionId: "sess-1", resumed: false });
+  });
+
   test("killing the run settles the turn instead of leaving it hanging", async () => {
     const runId = "acp-killed";
     await startAgent(runId, "hang");
     const events: ParsedEvent[] = [];
     const turn = runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: (e) => events.push(e) });
-    // Long enough for the session to be open and the prompt to be in flight.
-    await new Promise((r) => setTimeout(r, 300));
+    // Until the agent has answered something, which is proof the prompt reached it: killing the
+    // run while the prompt is still on its way out fails the write instead of the turn, and the
+    // test would be about a different thing on a busy machine.
+    while (!events.some((e) => e.type === "text")) await new Promise((r) => setTimeout(r, 20));
     await nodeTransport.killRun(runId);
     await expect(turn).rejects.toThrow(/ended/);
     expect(events.at(-1)?.type).toBe("error");

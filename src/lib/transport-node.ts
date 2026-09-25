@@ -433,6 +433,8 @@ export const nodeTransport: Transport = {
     fs.writeFileSync(p, JSON.stringify(config, null, 2), "utf-8");
   },
 
+  whichProgram: async (name: string) => which(name),
+
   detectBinaries: async () => {
     return {
       claude: detectClaude(),

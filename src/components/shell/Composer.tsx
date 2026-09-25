@@ -338,7 +338,11 @@ export function Composer() {
   const targetAgent = agents.find(a => a.id === targetId);
   const targetRuntime = targetAgent && currentProjectId ? runtime[currentProjectId]?.[targetId] : undefined;
   const targetWorking = targetRuntime?.status === "working" || targetRuntime?.status === "waiting";
-  const binaryInfo = targetAgent ? binaries[targetAgent.provider] : undefined;
+  // Undefined for a provider that needs no CLI: one that runs over ACP brings its own adapter, so
+  // there is nothing missing to warn about.
+  const binaryInfo = targetAgent && PROVIDERS[targetAgent.provider]?.transport !== "acp"
+    ? binaries[targetAgent.provider]
+    : undefined;
   const modelOptions = useModelChoices(targetAgent?.provider);
 
   // The model of this conversation, remembered next to its draft: picking one, going to the board

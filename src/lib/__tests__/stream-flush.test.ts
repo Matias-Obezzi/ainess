@@ -3,6 +3,10 @@ const NL = String.fromCharCode(10);
 // The streamed text of a run reaches the feed in one write per flush, not one per token: that is
 // the whole point of the buffer (see `flushStream`), and the only place the behaviour is visible
 // end to end is through the transport handler the orchestrator subscribes with.
+//
+// Copilot is the agent here for one reason: it is a CLI, and what is under test is the path from
+// a line of stdout to the feed. Claude Code's lines are ACP frames now and never reach a parser
+// (see `handleOutput`), so a run of its would prove nothing about this buffer.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
@@ -12,6 +16,9 @@ import { forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
 import type { RunOutputEvent, Run } from "@/types";
 
 let emitOutput: ((e: RunOutputEvent) => void) | undefined;
+
+/** One line of `copilot -p --output-format json`, carrying `text` as the assistant's answer. */
+const said = (text: string) => JSON.stringify({ type: "assistant.message", data: { messageId: "m", content: text } });
 
 const run = (over: Partial<Run> = {}): Run => ({
   id: "r1", projectId: "p1", agentId: "a1", parentRunId: null, rootRunId: "r1",
@@ -36,7 +43,7 @@ describe("streamed output", () => {
       messages: [],
       config: {
         ...useAppStore.getState().config,
-        projects: [{ id: "p1", name: "P", workspaceDir: "C:/p", agents: [{ id: "a1", name: "Uno", provider: "claude", role: "implementer", parentId: null, autoApprove: true }], createdAt: 1 }],
+        projects: [{ id: "p1", name: "P", workspaceDir: "C:/p", agents: [{ id: "a1", name: "Uno", provider: "copilot", role: "implementer", parentId: null, autoApprove: true }], createdAt: 1 }],
       },
     } as never);
   });
@@ -44,7 +51,7 @@ describe("streamed output", () => {
   it("gathers many deltas into a single store write", () => {
     const spy = vi.spyOn(useAppStore, "setState");
     for (let i = 0; i < 20; i++) {
-      emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: `x${i}` }] } }), stream: "stdout" } as never);
+      emitOutput!({ runId: "r1", line: said(`x${i}`), stream: "stdout" } as never);
     }
     const duringStreaming = spy.mock.calls.length;
     vi.advanceTimersByTime(100);
@@ -56,15 +63,16 @@ describe("streamed output", () => {
     spy.mockRestore();
   });
 
-  // Each `assistant` line is a whole block, not a delta, and blocks are paragraphs: a fence at
-  // the start of the second block has to land at the start of a line.
-  it("keeps every block, in order, in one message, a blank line between them", () => {
+  // Each line is a whole message, not a delta: what the parser puts between two of them (a line
+  // break, here) has to survive the buffer, because a fence that stops being the first thing on
+  // its line stops being a fence.
+  it("keeps every block, in order, in one message", () => {
     for (const t of ["uno", "dos", "tres"]) {
-      emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: t }] } }), stream: "stdout" } as never);
+      emitOutput!({ runId: "r1", line: said(t), stream: "stdout" } as never);
     }
     flushStream();
     const text = useAppStore.getState().messages.find(m => m.id === "text-r1");
-    expect(text?.text.trim().split("\n\n")).toEqual(["uno", "dos", "tres"]);
+    expect(text?.text.trim().split("\n")).toEqual(["uno", "dos", "tres"]);
   });
 
   it("keeps the raw lines out of the store while the run is alive", () => {
@@ -74,7 +82,7 @@ describe("streamed output", () => {
     // `lib/raw-lines` now and are written into the run once, when it ends.
     const before = useAppStore.getState().runs.r1;
     for (const t of ["uno", "dos"]) {
-      emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: t }] } }), stream: "stdout" } as never);
+      emitOutput!({ runId: "r1", line: said(t), stream: "stdout" } as never);
     }
     flushStream();
 
@@ -86,21 +94,21 @@ describe("streamed output", () => {
 
   it("leaves the store alone entirely when a flush carries no text", () => {
     // A line the provider parses into nothing at all still used to rewrite `runs`.
-    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "system", subtype: "init" }), stream: "stdout" } as never);
+    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "session.started" }), stream: "stdout" } as never);
     const before = useAppStore.getState();
     flushStream();
     expect(useAppStore.getState()).toBe(before);
   });
 
   it("drops what belonged to a run that is gone instead of throwing", () => {
-    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "hola" }] } }), stream: "stdout" } as never);
+    emitOutput!({ runId: "r1", line: said("hola"), stream: "stdout" } as never);
     useAppStore.setState({ runs: {} } as never);
     expect(() => flushStream()).not.toThrow();
     expect(useAppStore.getState().messages).toHaveLength(0);
   });
   it("hands a note over while the run is still going", () => {
     const note = ["```note", "el build tarda 20 minutos, sigo", "```"].join(NL);
-    emitOutput!({ runId: "r1", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: note }] } }), stream: "stdout" } as never);
+    emitOutput!({ runId: "r1", line: said(note), stream: "stdout" } as never);
     flushStream();
 
     const notes = useAppStore.getState().messages.filter(m => m.kind === "note");
@@ -112,9 +120,9 @@ describe("streamed output", () => {
     // Its own run: what has already been handed over is remembered per run, for the life of the run.
     useAppStore.setState({ runs: { ...useAppStore.getState().runs, r2: run({ id: "r2" }) } } as never);
     const note = ["```note", "ojo con el worktree", "```"].join(NL);
-    emitOutput!({ runId: "r2", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: note }] } }), stream: "stdout" } as never);
+    emitOutput!({ runId: "r2", line: said(note), stream: "stdout" } as never);
     flushStream();
-    emitOutput!({ runId: "r2", line: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: " y sigo escribiendo" }] } }), stream: "stdout" } as never);
+    emitOutput!({ runId: "r2", line: said(" y sigo escribiendo"), stream: "stdout" } as never);
     flushStream();
 
     expect(useAppStore.getState().messages.filter(m => m.kind === "note")).toHaveLength(1);

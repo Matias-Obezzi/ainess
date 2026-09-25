@@ -14,7 +14,8 @@ import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
 import { pickReviewer } from "@/lib/review";
-import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
+import type { AcpSessionSpec } from "@/lib/acp/session";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
@@ -664,7 +665,11 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     ? (agent.customCommand?.program ? { path: agent.customCommand.program } : null)
     : store.binaries[agent.provider];
 
-  if (!binary || !binary.path) {
+  // A provider that runs over ACP brings its own adapter, and the adapter brings the agent: there
+  // is nothing to detect, and a machine that never installed the CLI can still run it. When there
+  // *is* a path — detected, or set by hand in Settings — it travels to the adapter anyway (see
+  // `buildAcpCommand` in src/lib/providers.ts).
+  if ((!binary || !binary.path) && provider.transport !== "acp") {
     const err = translateNow("system.cliMissing", { cli: provider.label });
     useAppStore.setState(state => {
       const pRuntime = state.runtime[opts.projectId] || {};
@@ -784,12 +789,12 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     if (project) await writeSkillFiles(project, skills);
 
     let mcpConfigPath: string | undefined;
-    // Claude Code and Copilot both take a file of MCP servers for the session, in the same shape.
-    // Antigravity is configured machine-wide instead (`ainess mcp sync`), and the rest have no way in
-    // yet — see Configuración → MCP.
-    if ((agent.provider === "claude" || agent.provider === "copilot") && mcpServers.length > 0) {
-      // The file Claude Code and Copilot read. Declared rather than built loose: it is a contract
-      // with another program, and a key misspelled here fails as a server that never connects.
+    // Copilot takes a file of MCP servers for the session. Antigravity is configured machine-wide
+    // instead (`ainess mcp sync`), a provider that speaks ACP declares them in `session/new` (no
+    // file needed, see `buildAcpSession`), and the rest have no way in yet — see Configuración → MCP.
+    if (agent.provider === "copilot" && mcpServers.length > 0) {
+      // The file Copilot reads. Declared rather than built loose: it is a contract with another
+      // program, and a key misspelled here fails as a server that never connects.
       type McpEntry =
         | { type: "http"; url?: string; headers?: Record<string, string> }
         | { command?: string; args: string[]; env: Record<string, string> };
@@ -847,15 +852,19 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       return;
     }
 
-    const spawnOpts = provider.buildCommand({
+    const buildInput = {
       agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
       cwd,
-      binaryPath: binary.path,
-      mcpConfigPath
-    });
+      binaryPath: binary?.path ?? "",
+      mcpConfigPath,
+      mcpServers,
+    };
+    const spawnOpts = provider.transport === "acp"
+      ? await provider.buildAcpCommand(buildInput)
+      : provider.buildCommand(buildInput);
 
     // An http server has no process of its own, so its variables live in the agent's environment —
     // that is where the MCP client looks to expand `${VAR}` in a header. The provider's own vars go
@@ -872,6 +881,18 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       useAppStore.setState(state => {
         const run = state.runs[runId];
         return run ? { runs: { ...state.runs, [runId]: { ...run, process: spawned } } } : state;
+      });
+    }
+
+    // A CLI run is driven by the process itself: it reads its arguments and prints until it is
+    // done. An ACP run has nobody driving it yet — the adapter is up and waiting to be spoken to.
+    if (provider.transport === "acp") {
+      void driveAcpRun({
+        runId,
+        cwd,
+        prompt: opts.prompt,
+        sessionId,
+        session: provider.buildAcpSession(buildInput),
       });
     }
   };
@@ -928,17 +949,37 @@ function handleOutput(e: RunOutputEvent) {
   const agent = selectAgent(store, run.agentId);
   if (!agent) return;
 
-  const provider = PROVIDERS[agent.provider];
-  const events = provider.parseLine(e.line, e.stream);
-
   streamBuffer.pushLine(e.runId, e.line);
   touchRun(e.runId);
+
+  const provider = PROVIDERS[agent.provider];
+  // An ACP run's stdout is JSON-RPC frames, and they are read by its session client, which hands
+  // the events it makes of them to `applyRunEvents` below. The lines are still kept — they are
+  // what the raw view of the run shows, and what tells the stall watchdog the run is alive — but
+  // there is no line parser to run over them.
+  if (provider.transport === "acp") {
+    scheduleStreamFlush();
+    return;
+  }
+
+  applyRunEvents(e.runId, provider.parseLine(e.line, e.stream));
+}
+
+/**
+ * What the app does with a run's events, wherever they came from: lines of a CLI's stdout, or
+ * `session/update` notifications of an ACP session. Nothing below this line knows the difference,
+ * which is the whole point of `ParsedEvent`.
+ */
+function applyRunEvents(runId: string, events: ParsedEvent[]): void {
+  const store = useAppStore.getState();
+  const run = store.runs[runId];
+  if (!run) return;
 
   for (const ev of events) {
     if (ev.type === "session") {
       useAppStore.setState(state => rememberSession(state, run, ev.sessionId));
     } else if (ev.type === "text") {
-      streamBuffer.pushText(e.runId, ev.text);
+      streamBuffer.pushText(runId, ev.text);
     } else if (ev.type === "tool") {
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
@@ -948,7 +989,7 @@ function handleOutput(e: RunOutputEvent) {
           fromAgentId: run.agentId,
           kind: "tool",
           text: translateNow("tool.failedShort", { name: ev.name }),
-          runId: e.runId,
+          runId: runId,
           meta: { tool: ev.name, summary, input: ev.input, failed: true, error: ev.error },
         });
 
@@ -970,19 +1011,19 @@ function handleOutput(e: RunOutputEvent) {
           fromAgentId: run.agentId,
           kind: "tool",
           text: text.substring(0, 300),
-          runId: e.runId,
+          runId: runId,
           meta: { tool: ev.name, summary, input: ev.input },
         });
       }
     } else if (ev.type === "usage") {
       useAppStore.setState(state => {
-        const r = state.runs[e.runId];
+        const r = state.runs[runId];
         if (!r) return state;
         const usage = mergeUsage(r.usage, ev.usage);
         return {
           runs: {
             ...state.runs,
-            [e.runId]: {
+            [runId]: {
               ...r,
               ...(usage ? { usage } : {}),
             },
@@ -991,14 +1032,14 @@ function handleOutput(e: RunOutputEvent) {
       });
     } else if (ev.type === "result") {
       useAppStore.setState(state => {
-        const r = state.runs[e.runId];
+        const r = state.runs[runId];
         if (!r) return state;
         const usage = mergeUsage(r.usage, ev.usage);
         return {
           // Copilot's result carries usage but no text: keep whatever answer we already had.
           runs: {
             ...state.runs,
-            [e.runId]: {
+            [runId]: {
               ...r,
               output: ev.text || r.output,
               ...(usage ? { usage } : {}),
@@ -1008,15 +1049,85 @@ function handleOutput(e: RunOutputEvent) {
         };
       });
     } else if (ev.type === "error") {
-      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "error", text: ev.text, runId: runId });
     } else if (ev.type === "stderr") {
       // Kept as what it is. It used to be filed as an error, and every error is toasted, so a CLI
       // saying it was waiting on a subtask came up as a red box that said "idle".
-      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "stderr", text: ev.text, runId: e.runId });
+      addMessage({ projectId: run.projectId, fromAgentId: run.agentId, kind: "stderr", text: ev.text, runId: runId });
     }
   }
 
   scheduleStreamFlush();
+}
+
+/**
+ * How an ACP run ends, which no exit code can say.
+ *
+ * A CLI that fails says so by exiting non-zero. The adapter does not: the turn can fail — the agent
+ * answered an error, the session died mid-sentence — while the process it happened in goes on to
+ * exit cleanly when we close its stdin. So the turn's verdict is left here for `handleExit`, which
+ * is still the one place a run is closed.
+ *
+ * An entry also means "this run is being wound up on purpose": the kill that may follow the EOF is
+ * ours, not the user's, and must not read as "stopped by user".
+ */
+const acpTurnEnded = new Map<string, { failure?: string }>();
+
+/** How long the adapter gets to exit on its own after EOF before it is killed. */
+const ACP_EXIT_GRACE_MS = 5_000;
+
+/**
+ * Drives one ACP turn on a run that is already spawned, and then ends the run.
+ *
+ * Everything it produces goes through `applyRunEvents`, the same door a CLI's lines go through, so
+ * delegations, questions, approvals, usage, the queue and the stall watchdog carry on unchanged.
+ */
+async function driveAcpRun(opts: {
+  runId: string;
+  cwd: string;
+  prompt: string;
+  sessionId?: string;
+  session: AcpSessionSpec;
+}): Promise<void> {
+  const { runId } = opts;
+  const { runAcpPrompt } = await import("@/lib/acp/session");
+  let failure: string | undefined;
+  try {
+    await runAcpPrompt({
+      runId,
+      cwd: opts.cwd,
+      prompt: opts.prompt,
+      session: opts.session,
+      resumeSessionId: opts.sessionId,
+      clientVersion: __APP_VERSION__,
+      onEvent: (event) => {
+        // A run that is already over is a run the user stopped: its last event is the session
+        // client noticing the process died, and that is not news worth a red box in the timeline.
+        if (useAppStore.getState().runs[runId]?.status !== "running") return;
+        applyRunEvents(runId, [event]);
+      },
+    });
+  } catch (e) {
+    if (useAppStore.getState().runs[runId]?.status === "running") failure = errorText(e);
+  } finally {
+    // A run that is already closed — the user stopped it, the spawn never got off the ground — has
+    // had its exit and will get no other: leaving a verdict for it would only sit in the map.
+    if (useAppStore.getState().runs[runId]?.status === "running") acpTurnEnded.set(runId, { failure });
+    // EOF is the polite end of an ACP session; the adapter exits on it and `handleExit` closes the
+    // run. One that does not is killed, because a run nobody can finish is worse than a rude end.
+    const transport = getTransport();
+    const closed = await transport.closeStdin(runId).catch(() => false);
+    if (!closed) {
+      await transport.killRun(runId).catch(() => {});
+      return;
+    }
+    setTimeout(() => {
+      if (useAppStore.getState().runs[runId]?.status === "running") {
+        log.warn("acp", `run ${runId} did not exit ${ACP_EXIT_GRACE_MS} ms after EOF; killing it`);
+        void transport.killRun(runId).catch(() => {});
+      }
+    }, ACP_EXIT_GRACE_MS);
+  }
 }
 
 function handleExit(e: RunExitEvent) {
@@ -1033,12 +1144,24 @@ function handleExit(e: RunExitEvent) {
 
   const agentForRun = selectAgent(store, run.agentId);
   const spec = agentForRun ? PROVIDERS[agentForRun.provider] : undefined;
-  const collected = run.output || (spec?.finalOutput ? spec.finalOutput(rawLines) : finalOutputFromLines(rawLines));
+  const cli = spec?.transport === "cli" ? spec : undefined;
+  // How the turn went, for a run whose exit code cannot say (see `acpTurnEnded`). Read once: a
+  // second exit for the same run is nobody's.
+  const acp = acpTurnEnded.get(e.runId);
+  acpTurnEnded.delete(e.runId);
+  // The raw lines of an ACP run are protocol frames, so there is no answer to rebuild out of them:
+  // the turn either produced a `result` event, which is already in `run.output`, or it failed.
+  const fromLines = spec?.transport === "acp"
+    ? (acp?.failure ?? "")
+    : (cli?.finalOutput ? cli.finalOutput(rawLines) : finalOutputFromLines(rawLines));
+  const collected = run.output || fromLines;
   // Providers that only report what each step spent (opencode) are added up here, once.
-  const finalUsage = spec?.finalUsage ? spec.finalUsage(rawLines) : undefined;
-  const isError = e.code !== 0 && !e.killed && !collected;
-  const status: RunStatus = e.killed ? "killed" : isError ? "error" : "done";
-  const output = e.killed ? translateNow("system.stoppedByUser") : collected;
+  const finalUsage = cli?.finalUsage ? cli.finalUsage(rawLines) : undefined;
+  // A kill that came after the turn was over is ours (the EOF the adapter ignored), not the user's.
+  const killedByUser = e.killed && !acp;
+  const isError = acp?.failure ? true : (e.code !== 0 && !killedByUser && !collected);
+  const status: RunStatus = killedByUser ? "killed" : isError ? "error" : "done";
+  const output = killedByUser ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:

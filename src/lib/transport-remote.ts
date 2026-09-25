@@ -21,6 +21,7 @@ export const remoteTransport: Transport = {
   loadConfig: async () => null,
   saveConfig: async () => {},
   detectBinaries: async () => ({}),
+  whichProgram: async () => null,
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   exec: async () => ({ code: null, stdout: "", stderr: "" }),

@@ -276,6 +276,19 @@ fn get_version(path: &str) -> Option<String> {
     }
 }
 
+/// Full path of a program by name, for a caller that knows what it is looking for.
+///
+/// The detection above answers a fixed list of providers; this answers one name. The ACP adapter
+/// is reached through `npx` (or its own bin once it is installed), and neither is a provider with
+/// a card in Settings — a `.cmd` shim also has to be spawned by its full path, because a bare name
+/// is not something `Command::new` can find on Windows.
+#[tauri::command]
+pub async fn which_program(name: String) -> Option<String> {
+    tauri::async_runtime::spawn_blocking(move || find_path(&name))
+        .await
+        .unwrap_or_default()
+}
+
 /// Full path of an executable, looking at PATH first and then at the winget package folders
 /// (a process started before a winget install keeps the old PATH). Used by tunnel.rs.
 pub fn find_path(name: &str) -> Option<String> {

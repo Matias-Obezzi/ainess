@@ -21,6 +21,14 @@ export interface Transport {
   loadConfig(): Promise<import("@/types").AppConfig | null>;
   saveConfig(config: import("@/types").AppConfig): Promise<void>;
   detectBinaries(): Promise<import("@/types").Binaries>;
+  /**
+   * Full path of a program by name, the way the shell would find it (PATH, and on Windows the
+   * PATHEXT shims and the folders an installer added after this process started). Null when it is
+   * not there. `detectBinaries` answers the fixed list of providers; this answers one name, which
+   * is what finding the ACP adapter (or the `npx` that fetches it) needs — and it has to be a full
+   * path, because a bare `npx` is a `.cmd` shim that `Command::new` cannot resolve on Windows.
+   */
+  whichProgram(name: string): Promise<string | null>;
   writeTextFile(relativePath: string, content: string): Promise<string>;
   readTextFile(relativePath: string): Promise<string | null>;
   /** `timeoutSecs` defaults to 60; raise it for installers and other slow commands. */
