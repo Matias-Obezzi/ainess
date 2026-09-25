@@ -164,11 +164,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   sola vez por envío, y sin nadie conectado no se arma nada: lo que pasó mientras tanto sale en el
   momento en que un celular se conecta, así que lo que abrís en el celular sigue estando al día.
   (#36)
-- **Dos arreglos chicos.** El ícono del teléfono en la barra de título ahora abre Ajustes → Remoto
-  en vez de prender el servidor directamente — antes un click arrancaba un servidor en la red
-  local sin dar chance de ver el puerto, el token ni el QR; el ícono sigue mostrando si el servidor
-  está corriendo. Y el aro que marca el proyecto actual en la barra lateral colapsada ahora está
-  pegado a su círculo, como el borde del círculo mismo, en vez de flotar separado unos píxeles.
+- **El ícono del teléfono en la barra de título ahora abre Ajustes → Remoto en vez de prender el
+  servidor directamente.** Antes un click arrancaba un servidor en la red local sin dar chance de
+  ver el puerto, el token ni el QR; el ícono sigue mostrando si el servidor está corriendo.
+- **El aro que marca el proyecto actual en la barra lateral colapsada ahora está pegado a su
+  círculo.** Antes flotaba separado unos píxeles; ahora queda como el borde del círculo mismo.
 
 ## 0.23.0 — 2026-09-20
 

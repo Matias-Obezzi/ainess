@@ -172,12 +172,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   Il n’est plus sérialisé qu’une fois par envoi, et sans personne de connecté rien n’est
   construit : ce qui s’est passé entre-temps part à l’instant où un téléphone se connecte, donc
   ce que vous ouvrez sur le téléphone est toujours à jour. (#36)
-- **Deux petites corrections.** L'icône du téléphone dans la barre de titre ouvre maintenant
-  Réglages → Distant au lieu d'allumer le serveur directement — un clic lançait auparavant un
-  serveur sur le réseau local sans jamais montrer le port, le jeton ou le QR code ; l'icône
-  continue d'indiquer si le serveur tourne. Et l'anneau qui marque le projet actif dans la barre
-  latérale repliée épouse maintenant son cercle, comme le bord du cercle lui-même, au lieu de
-  flotter à quelques pixels de distance.
+- **L'icône du téléphone dans la barre de titre ouvre maintenant Réglages → Distant au lieu
+  d'allumer le serveur directement.** Un clic lançait auparavant un serveur sur le réseau local
+  sans jamais montrer le port, le jeton ou le QR code ; l'icône continue d'indiquer si le serveur
+  tourne.
+- **L'anneau qui marque le projet actif dans la barre latérale repliée épouse maintenant son
+  cercle.** Il flottait auparavant à quelques pixels de distance ; il tient désormais comme le
+  bord du cercle lui-même.
 
 ## 0.23.0 — 2026-09-20
 

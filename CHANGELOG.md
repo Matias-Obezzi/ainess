@@ -159,11 +159,11 @@ let one of them fall behind.
   on the same thread that draws the app. It is now serialized once per send, and with nobody
   connected nothing is built: whatever happened in the meantime goes out the moment a phone
   connects, so what you open on the phone is still up to date. (#36)
-- **Two small fixes.** The phone icon in the title bar now opens Settings → Remote instead of
-  switching the server on directly — one click used to start a server on the local network with
-  no chance to see the port, the token or the QR code first; the icon still shows whether the
-  server is running. And the ring that marks the current project in the collapsed sidebar now
-  hugs its circle like the circle's own border, instead of floating a few pixels clear of it.
+- **The title bar phone icon opens Settings → Remote instead of switching the server on
+  directly.** One click used to start a server on the local network with no chance to see the
+  port, the token or the QR code first; the icon still shows whether the server is running.
+- **The ring marking the current project in the collapsed sidebar now hugs its circle.** It used
+  to float a few pixels clear of it; it now sits like the circle's own border.
 
 ## 0.23.0 — 2026-09-20
 

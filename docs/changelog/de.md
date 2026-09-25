@@ -172,12 +172,12 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   er pro Sendung einmal serialisiert, und ohne Verbundene wird gar nichts gebaut: was in der
   Zwischenzeit passiert ist, geht in dem Moment raus, in dem sich ein Handy verbindet — was du am
   Handy öffnest, ist also weiter aktuell. (#36)
-- **Zwei kleine Korrekturen.** Das Telefon-Symbol in der Titelleiste öffnet jetzt Einstellungen →
-  Remote, statt den Server direkt einzuschalten — ein Klick startete zuvor einen Server im lokalen
-  Netzwerk, ohne je den Port, das Token oder den QR-Code zu zeigen; das Symbol zeigt weiterhin an,
-  ob der Server läuft. Und der Ring, der das aktuelle Projekt in der eingeklappten Seitenleiste
-  markiert, liegt jetzt eng an seinem Kreis an, wie der Rand des Kreises selbst, statt ein paar
-  Pixel entfernt zu schweben.
+- **Das Telefon-Symbol in der Titelleiste öffnet jetzt Einstellungen → Remote, statt den Server
+  direkt einzuschalten.** Ein Klick startete zuvor einen Server im lokalen Netzwerk, ohne je den
+  Port, das Token oder den QR-Code zu zeigen; das Symbol zeigt weiterhin an, ob der Server läuft.
+- **Der Ring, der das aktuelle Projekt in der eingeklappten Seitenleiste markiert, liegt jetzt eng
+  an seinem Kreis an.** Zuvor schwebte er ein paar Pixel entfernt; jetzt sitzt er wie der Rand des
+  Kreises selbst.
 
 ## 0.23.0 — 2026-09-20
 
