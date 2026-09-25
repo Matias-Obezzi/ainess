@@ -796,6 +796,14 @@ export interface SpawnOptions {
   args: string[];
   cwd?: string;
   stdinText?: string;
+  /**
+   * Leaves stdin open after the spawn instead of closing it, so the run can be written to again
+   * (see `Transport.writeStdin`). A turn-per-process run wants the opposite — the CLI only starts
+   * working when it sees EOF — so this stays off unless a bidirectional protocol asks for it:
+   * ACP's JSON-RPC over stdio, or `--input-format stream-json`, where the process is one whole
+   * session and closing stdin is what ends it.
+   */
+  keepStdinOpen?: boolean;
   env?: Record<string, string>;
 }
 

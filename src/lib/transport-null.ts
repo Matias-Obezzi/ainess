@@ -8,6 +8,9 @@ export const nullTransport: Transport = {
   spawnRun: async () => {},
   reapOrphans: async () => [],
   killRun: async () => false,
+  // No process was ever started here, so there is no pipe to write to.
+  writeStdin: async () => false,
+  closeStdin: async () => false,
   onRunOutput: async () => () => {},
   onRunExit: async () => () => {},
   loadConfig: async () => null,

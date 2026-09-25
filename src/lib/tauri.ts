@@ -15,6 +15,8 @@ export const ipc = {
   reapOrphans: (orphans: Array<{ runId: string; pid: number; image: string; startedAt: number }>) =>
     invoke<string[]>("reap_orphans", { orphans }),
   killRun: (runId: string) => invoke<boolean>("kill_run", { runId }),
+  writeStdin: (runId: string, text: string) => invoke<boolean>("write_stdin", { runId, text }),
+  closeStdin: (runId: string) => invoke<boolean>("close_stdin", { runId }),
   runningRuns: () => invoke<string[]>("running_runs"),
   loadConfig: () => invoke<AppConfig | null>("load_config"),
   saveConfig: (config: AppConfig) => invoke<void>("save_config", { config }),

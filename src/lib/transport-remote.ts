@@ -13,6 +13,9 @@ export const remoteTransport: Transport = {
   spawnRun: async () => {},
   reapOrphans: async () => [],
   killRun: async () => false,
+  // The runs live on the PC: the phone has no pipe of its own to write to.
+  writeStdin: async () => false,
+  closeStdin: async () => false,
   onRunOutput: async () => () => {},
   onRunExit: async () => () => {},
   loadConfig: async () => null,

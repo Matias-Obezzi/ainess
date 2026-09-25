@@ -83,6 +83,8 @@ pub fn run() {
             runner::spawn_run,
             runner::reap_orphans,
             runner::kill_run,
+            runner::write_stdin,
+            runner::close_stdin,
             runner::running_runs,
             runner::exec_capture,
             config::load_config,

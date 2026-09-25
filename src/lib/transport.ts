@@ -7,6 +7,15 @@ export interface Transport {
    */
   reapOrphans(orphans: Array<{ runId: string; pid: number; image: string; startedAt: number }>): Promise<string[]>;
   killRun(runId: string): Promise<boolean>;
+  /**
+   * Writes to the stdin of a run started with `keepStdinOpen`, exactly as given — the framing is
+   * the caller's, because only it knows whether the protocol wants a trailing newline. `false` when
+   * that run has no stdin to write to: it ended, or it was not started with the pipe open. Always
+   * `false` where there is no local process (the browser preview, the phone build).
+   */
+  writeStdin(runId: string, text: string): Promise<boolean>;
+  /** Sends EOF to such a run, which is how a bidirectional session is ended. `false` when there was none. */
+  closeStdin(runId: string): Promise<boolean>;
   onRunOutput(h: (e: import("@/types").RunOutputEvent) => void): Promise<() => void>;
   onRunExit(h: (e: import("@/types").RunExitEvent) => void): Promise<() => void>;
   loadConfig(): Promise<import("@/types").AppConfig | null>;

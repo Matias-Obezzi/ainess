@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, Command, Output, Stdio};
+use std::process::{Child, ChildStdin, Command, Output, Stdio};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -13,9 +13,16 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::logging;
 
+/// The stdin pipes of the runs started with `keep_stdin_open`, by run id.
+type Stdins = Arc<Mutex<HashMap<String, ChildStdin>>>;
+
 #[derive(Default)]
 pub struct RunnerState {
     children: Arc<Mutex<HashMap<String, Arc<Mutex<Child>>>>>,
+    /// Kept apart from the `Child` and not inside it on purpose: the thread that waits for a
+    /// process to end takes the child's mutex every 50 ms to `try_wait` it, and a write to stdin
+    /// has no business queueing behind that poll — nor making it wait. The two never touch.
+    stdins: Stdins,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +34,10 @@ pub struct SpawnOptions {
     pub args: Vec<String>,
     pub cwd: Option<String>,
     pub stdin_text: Option<String>,
+    /// Leave stdin open after the spawn instead of closing it. What every bidirectional protocol
+    /// needs — ACP's JSON-RPC over stdio, `--input-format stream-json` — because there the process
+    /// is one session and not one turn, and EOF is what ends it. See `write_stdin`/`close_stdin`.
+    pub keep_stdin_open: Option<bool>,
     #[serde(default)]
     pub env: HashMap<String, String>,
 }
@@ -136,7 +147,7 @@ fn build_command(opts: &SpawnOptions) -> Command {
     };
     let mut cmd = Command::new(program);
     cmd.args(args)
-        .stdin(if opts.stdin_text.is_some() {
+        .stdin(if opts.stdin_text.is_some() || opts.keep_stdin_open.unwrap_or(false) {
             Stdio::piped()
         } else {
             Stdio::null()
@@ -256,13 +267,21 @@ pub fn spawn_run(
         &format!("run {} inicia: {} {}", opts.run_id, opts.program, opts.args.join(" ")),
     );
 
-    if let Some(text) = opts.stdin_text.clone() {
-        if let Some(mut stdin) = child.stdin.take() {
-            thread::spawn(move || {
-                let _ = stdin.write_all(text.as_bytes());
-                let _ = stdin.flush();
-                // dropping stdin closes the pipe so the CLI sees EOF
-            });
+    // A bidirectional run holds on to the pipe; the write itself waits until the output pumps are
+    // up, a few lines below, so a first message bigger than the pipe buffer cannot deadlock against
+    // a child that is already answering.
+    let keep_stdin_open = opts.keep_stdin_open.unwrap_or(false);
+    let mut held_stdin = if keep_stdin_open { child.stdin.take() } else { None };
+
+    if !keep_stdin_open {
+        if let Some(text) = opts.stdin_text.clone() {
+            if let Some(mut stdin) = child.stdin.take() {
+                thread::spawn(move || {
+                    let _ = stdin.write_all(text.as_bytes());
+                    let _ = stdin.flush();
+                    // dropping stdin closes the pipe so the CLI sees EOF
+                });
+            }
         }
     }
 
@@ -279,7 +298,24 @@ pub fn spawn_run(
     let out_h = stdout.map(|s| pump(app.clone(), run_id.clone(), "stdout", s));
     let err_h = stderr.map(|s| pump(app.clone(), run_id.clone(), "stderr", s));
 
+    // Registered before the waiter thread exists, so an agent that dies at once cannot have its
+    // entry removed by the cleanup below and then put back here, leaking the handle.
+    if let Some(mut stdin) = held_stdin.take() {
+        if let Some(text) = &opts.stdin_text {
+            if let Err(e) = stdin.write_all(text.as_bytes()).and_then(|_| stdin.flush()) {
+                logging::append(
+                    &app,
+                    "warn",
+                    "runner",
+                    &format!("run {run_id}: first stdin write failed: {e}"),
+                );
+            }
+        }
+        state.stdins.lock().unwrap().insert(run_id.clone(), stdin);
+    }
+
     let children = state.children.clone();
+    let stdins = state.stdins.clone();
     thread::spawn(move || {
         if let Some(h) = out_h {
             let _ = h.join();
@@ -297,6 +333,8 @@ pub fn spawn_run(
             }
         };
         let killed = children.lock().unwrap().remove(&run_id).is_none();
+        // The process is gone: a `ChildStdin` still alive here is an OS handle nobody can use.
+        stdins.lock().unwrap().remove(&run_id);
         logging::append(
             &app,
             "info",
@@ -318,6 +356,7 @@ pub fn spawn_run(
 
 #[tauri::command]
 pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, String> {
+    state.stdins.lock().unwrap().remove(&run_id);
     let child = state.children.lock().unwrap().remove(&run_id);
     match child {
         Some(c) => {
@@ -339,11 +378,50 @@ pub fn kill_run(state: State<'_, RunnerState>, run_id: String) -> Result<bool, S
     }
 }
 
+/// Writes `text` to a live run's stdin, exactly as given.
+///
+/// The framing is the caller's: a JSON-RPC message ends in a newline and a raw prompt may not, and
+/// this side of the wire has no way to tell them apart. Answers `false` when the run has no stdin
+/// registered — it already ended, or it was not started with `keep_stdin_open` — which is a fact
+/// about the run and not an error. Only a write that actually fails is one.
+fn write_stdin_to(stdins: &Stdins, run_id: &str, text: &str) -> Result<bool, String> {
+    let mut map = stdins.lock().unwrap();
+    let Some(stdin) = map.get_mut(run_id) else {
+        return Ok(false);
+    };
+    match stdin.write_all(text.as_bytes()).and_then(|_| stdin.flush()) {
+        Ok(()) => Ok(true),
+        Err(e) => {
+            // A broken pipe never heals: keeping the entry would only fail every later write.
+            map.remove(run_id);
+            Err(e.to_string())
+        }
+    }
+}
+
+/// Drops a run's stdin, which is what sends the CLI EOF. `false` when there was none.
+fn close_stdin_of(stdins: &Stdins, run_id: &str) -> bool {
+    stdins.lock().unwrap().remove(run_id).is_some()
+}
+
+#[tauri::command]
+pub fn write_stdin(state: State<'_, RunnerState>, run_id: String, text: String) -> Result<bool, String> {
+    write_stdin_to(&state.stdins, &run_id, &text)
+}
+
+/// Sends EOF to a run that was started with `keep_stdin_open`, leaving the process to finish on its
+/// own. `false` when that run has no stdin open.
+#[tauri::command]
+pub fn close_stdin(state: State<'_, RunnerState>, run_id: String) -> Result<bool, String> {
+    Ok(close_stdin_of(&state.stdins, &run_id))
+}
+
 /// Kills every agent process still running (whole trees on Windows). Called when the app exits so
 /// no implementer keeps editing a workspace with nobody watching.
 pub fn shutdown(app: &tauri::AppHandle) {
     use tauri::Manager;
     let state = app.state::<RunnerState>();
+    state.stdins.lock().unwrap().clear();
     let children: Vec<(String, Arc<Mutex<Child>>)> = state.children.lock().unwrap().drain().collect();
     for (run_id, child) in children {
         let mut c = child.lock().unwrap();
@@ -675,6 +753,94 @@ mod tests {
         let _ = child.wait();
     }
 
+    // ---- Keeping stdin open (see `write_stdin`/`close_stdin`) ----
+
+    /// A stand-in for an agent that speaks a bidirectional protocol: NDJSON in, NDJSON out, and it
+    /// ends by itself on EOF. No CLI installed here speaks ACP, and the pipe is what is under test,
+    /// not the protocol — so the fake one is enough and it depends on nothing but node.
+    const FAKE_AGENT: &str = r#"
+const rl = require("readline").createInterface({ input: process.stdin });
+rl.on("line", (line) => {
+  if (!line.trim()) return;
+  const msg = JSON.parse(line);
+  process.stdout.write(JSON.stringify({ id: msg.id, pong: msg.method }) + "\n");
+});
+rl.on("close", () => process.exit(0));
+"#;
+
+    /// Writes the fake agent to its own temp folder and answers the options that run it.
+    fn fake_agent(run_id: &str, keep_stdin_open: Option<bool>) -> (super::SpawnOptions, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!("ainess-acp-{run_id}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("agent.js");
+        std::fs::write(&script, FAKE_AGENT).unwrap();
+        let opts = super::SpawnOptions {
+            run_id: run_id.to_string(),
+            program: if cfg!(windows) { "node.exe".to_string() } else { "node".to_string() },
+            args: vec![script.to_string_lossy().into_owned()],
+            cwd: None,
+            stdin_text: None,
+            keep_stdin_open,
+            env: Default::default(),
+        };
+        (opts, dir)
+    }
+
+    #[test]
+    fn writes_two_messages_to_a_live_process_and_ends_it_with_eof() {
+        use std::io::BufRead;
+        let (opts, dir) = fake_agent("live", Some(true));
+        let mut child = super::build_command(&opts).spawn().expect("node must be on PATH");
+        let stdin = child.stdin.take().expect("keep_stdin_open asks for a pipe");
+        let mut lines = std::io::BufReader::new(child.stdout.take().unwrap()).lines();
+
+        let stdins: super::Stdins = Default::default();
+        stdins.lock().unwrap().insert("live".to_string(), stdin);
+
+        assert!(super::write_stdin_to(&stdins, "live", "{\"id\":1,\"method\":\"initialize\"}\n").unwrap());
+        let first = lines.next().expect("an answer").unwrap();
+        assert!(first.contains("\"id\":1") && first.contains("initialize"), "{first}");
+
+        // The point of the whole change: the process is still there for a second message.
+        assert!(super::write_stdin_to(&stdins, "live", "{\"id\":2,\"method\":\"prompt\"}\n").unwrap());
+        let second = lines.next().expect("a second answer").unwrap();
+        assert!(second.contains("\"id\":2") && second.contains("prompt"), "{second}");
+
+        assert!(super::close_stdin_of(&stdins, "live"));
+        // EOF, and nothing had to kill it.
+        let status = child.wait().unwrap();
+        assert!(status.success(), "{status:?}");
+        assert!(!super::close_stdin_of(&stdins, "live"), "the entry is gone once closed");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn writing_to_a_run_that_is_not_there_answers_false() {
+        // The run ended between the caller reading the state and writing: a fact, not an error.
+        let stdins: super::Stdins = Default::default();
+        assert_eq!(super::write_stdin_to(&stdins, "gone", "{}\n"), Ok(false));
+        assert!(!super::close_stdin_of(&stdins, "gone"));
+    }
+
+    /// The old path, untouched: no `keep_stdin_open`, so the prompt is written and the pipe closed,
+    /// and the process ends on the EOF that closing it sends.
+    #[test]
+    fn still_closes_stdin_when_nobody_asked_to_keep_it_open() {
+        use std::io::Write;
+        let (mut opts, dir) = fake_agent("classic", None);
+        opts.stdin_text = Some("{\"id\":7,\"method\":\"once\"}\n".to_string());
+        let mut child = super::build_command(&opts).spawn().expect("node must be on PATH");
+        {
+            let mut stdin = child.stdin.take().expect("stdin_text asks for a pipe");
+            stdin.write_all(opts.stdin_text.as_ref().unwrap().as_bytes()).unwrap();
+        } // dropped: EOF
+        let out = child.wait_with_output().unwrap();
+        assert!(out.status.success());
+        assert!(String::from_utf8_lossy(&out.stdout).contains("\"id\":7"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     // ---- Batch shims (see `unwrap_shim`) ----
 
     /// What npm writes to `%APPDATA%\npm\<name>.cmd`, trimmed to the line that matters.
@@ -730,6 +896,7 @@ mod tests {
 two".into()],
             cwd: None,
             stdin_text: None,
+            keep_stdin_open: None,
             env: Default::default(),
         };
 

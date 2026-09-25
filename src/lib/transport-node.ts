@@ -299,6 +299,30 @@ function killTree(child: ChildProcess): void {
     spawnSync("taskkill", ["/PID", child.pid.toString(), "/T", "/F"], { windowsHide: true });
   }
   try { child.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM"); } catch { /* already gone */ }
+  // A `keepStdinOpen` run leaves the pipe held: with the process gone it is an fd nobody can use
+  // (the Rust runner drops its `ChildStdin` for the same reason).
+  try { child.stdin?.destroy(); } catch { /* already gone */ }
+}
+
+/**
+ * Writes to a live run's stdin, as given. See `Transport.writeStdin`: whether the protocol wants a
+ * trailing newline is the caller's business, not this one's.
+ */
+export function writeRunStdin(runId: string, text: string): boolean {
+  const stdin = activeRuns.get(runId)?.stdin;
+  if (!stdin || stdin.destroyed || !stdin.writable) return false;
+  // A pipe the child closed rejects this asynchronously, and the `error` listener put on it at
+  // spawn time is what keeps that EPIPE from taking the whole CLI down.
+  stdin.write(text);
+  return true;
+}
+
+/** Sends EOF to a run started with `keepStdinOpen`. See `Transport.closeStdin`. */
+export function closeRunStdin(runId: string): boolean {
+  const stdin = activeRuns.get(runId)?.stdin;
+  if (!stdin || stdin.destroyed || !stdin.writable) return false;
+  stdin.end();
+  return true;
 }
 
 /** Kill every active run synchronously (used on process exit). */
@@ -332,6 +356,8 @@ export const nodeTransport: Transport = {
       if (exited) return;
       exited = true;
       activeRuns.delete(opts.runId);
+      // Same as Rust: the pipe dies with the process, so nothing holds it past the exit.
+      try { child.stdin?.destroy(); } catch { /* already gone */ }
       const killed = killedRuns.has(opts.runId);
       killedRuns.delete(opts.runId);
       const ev: RunExitEvent = { runId: opts.runId, code, killed };
@@ -346,7 +372,9 @@ export const nodeTransport: Transport = {
 
     if (opts.stdinText && child.stdin) {
       child.stdin.write(opts.stdinText);
-      child.stdin.end();
+      // Closing is EOF, and a bidirectional run is one session: there EOF is the end of it, sent
+      // later by `closeStdin`, not now.
+      if (!opts.keepStdinOpen) child.stdin.end();
     }
 
     if (child.stdout) {
@@ -375,6 +403,9 @@ export const nodeTransport: Transport = {
     killTree(child);
     return true;
   },
+
+  writeStdin: async (runId, text) => writeRunStdin(runId, text),
+  closeStdin: async (runId) => closeRunStdin(runId),
 
   onRunOutput: async (h) => {
     outputHandlers.add(h);
