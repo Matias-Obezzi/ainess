@@ -15,6 +15,7 @@
     "cli": "node bin/ainess.js",
     "preview": "vite preview",
     "tauri": "tauri",
+    "pretest": "node scripts/ensure-remote-bundle.mjs",
     "test": "vitest run",
     "release:check": "node scripts/release-check.mjs",
     "screenshots": "node scripts/screenshots.mjs",
