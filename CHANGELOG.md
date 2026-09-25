@@ -6,6 +6,31 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **Every tool in the timeline said `Bash` and nothing else.** A tool call reaches the app twice
+  over: once when it opens, then again as its pieces arrive — the protocol says as much, "update
+  the raw input". Claude's agent opens the call with its arguments still empty, and the row was
+  drawn at that first moment, so an afternoon of work read as a column of `Bash` with no command
+  under any of them. The row waits for the arguments now. A tool that takes none still gets its
+  row when it finishes, and a call that fails before it ever got one still says so.
+- **A delegation no longer writes its JSON out in front of you.** The block arrives character by
+  character, and until the last one it parses as nothing, so the answer grew a wall of escaped
+  braces while the agent typed. While it is being written it says who it is going to —
+  "Delegando a Implementer 1…" — and becomes the card when it is done. A block that is finished
+  and still unreadable is shown as the mistake it is, which is what that fallback was for.
+- **Each delegated task opens on its own**, instead of every task in the block unrolling at once,
+  and shut it shows the title the planner gave the card rather than the first line of the
+  instruction — a line written for the agent doing the work, not for whoever is reading the
+  thread. Without a title it says what it is, in the reader's language.
+- **A message with an attachment is a message again.** Sending a file appended the paths and a
+  header to the prompt, and the whole thing was drawn in the bubble: two words of message under
+  four lines of plumbing. The paths still go to the agent, which has no other way to find the
+  files, but the thread now draws what was typed and, above it, the files themselves — images as
+  images, the way the composer shows them before they go. Clicking one opens it.
+
 ## 0.24.0 — 2026-09-25
 
 ### Added

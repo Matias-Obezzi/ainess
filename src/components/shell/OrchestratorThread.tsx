@@ -2,10 +2,12 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "rea
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
 import { mascotMood, withTyping } from "@/lib/mascot";
-import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
+import { useAppStore, selectAllAgents, selectProject, selectProjectAgents } from "@/store";
 import { stickToBottom as stick, isAtBottom, resetScrolledAncestors } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { QueuedMessages } from "./QueuedMessages";
+import { AttachmentStrip } from "@/components/AttachmentStrip";
+import { splitAttachments } from "@/lib/attachments";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -409,6 +411,10 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
   const [retryOpen, setRetryOpen] = useState(false);
   const steps = useActivityCount(run.id);
   const transcript = useRunTranscript(run.id);
+  // What the user typed, apart from the files they attached: the prompt carries both, but only
+  // one of the two was written to be read.
+  const attachments = useMemo(() => splitAttachments(run.prompt), [run.prompt]);
+  const workspaceDir = useAppStore(state => selectProject(state, run.projectId)?.workspaceDir ?? "");
 
   // Arrived here from the search palette: the turn lights up for a moment so the eye finds it.
   const focusedMessageId = useAppStore(state => state.focusedMessageId);
@@ -490,11 +496,16 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
       {/* A round > 0 run is an automatic continuation, not something the user typed. */}
       {run.round === 0 && (
         <div className="flex flex-col items-end gap-1">
+          {/* What was attached, drawn as files: the list of paths under the message is for the
+              agent, which has no other way to find them, and reads as noise here. */}
+          <AttachmentStrip paths={attachments.paths} workspaceDir={workspaceDir} />
           {/* Shown as you wrote it — and when you wrote a list, a link or a block of code, as
               those: the box helps you write them, so the thread has to draw them. */}
-          <div data-testid="user-bubble" className={cn("rounded-xl px-3.5 py-2 max-w-[85%] text-sm break-words bg-muted", !hasMarkdown(run.prompt) && "whitespace-pre-wrap")}>
-            {hasMarkdown(run.prompt) ? <Markdown text={run.prompt} /> : run.prompt}
-          </div>
+          {attachments.body && (
+            <div data-testid="user-bubble" className={cn("rounded-xl px-3.5 py-2 max-w-[85%] text-sm break-words bg-muted", !hasMarkdown(attachments.body) && "whitespace-pre-wrap")}>
+              {hasMarkdown(attachments.body) ? <Markdown text={attachments.body} /> : attachments.body}
+            </div>
+          )}
           <span className="text-[11px] text-muted-foreground">
             → {agentName(run.agentId)}
             {run.model ? ` · ${run.model}` : ""} · {formatClock(run.startedAt, locale)}

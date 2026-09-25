@@ -4,7 +4,7 @@
 // speaks to it. It never touches node: the module is imported from the renderer, and everything it
 // needs goes through the transport.
 import { createRunStream } from "@/lib/acp/stream";
-import { eventsFromSessionUpdate } from "@/lib/acp/events";
+import { eventsFromSessionUpdate, toolCallTracker } from "@/lib/acp/events";
 import { AUTH_STATUS_METHOD, AcpAuthRequiredError, isAuthRequired, parseAuthStatus } from "@/lib/acp/auth";
 import { rememberClaudeAuthStatus } from "@/lib/claude-auth";
 import { log } from "@/lib/logger";
@@ -93,9 +93,13 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
   const run = await createRunStream(runId);
   let answer = "";
 
+  // One per connection: a tool call is drawn when its arguments arrive, which is a later
+  // notification than the one that opened it.
+  const tools = toolCallTracker();
+
   /** The events one update is worth, and the answer growing with them. */
   const consume = (update: SessionUpdate) => {
-    for (const event of eventsFromSessionUpdate(update)) {
+    for (const event of eventsFromSessionUpdate(update, tools)) {
       if (event.type === "text") answer += event.text;
       onEvent(event);
     }

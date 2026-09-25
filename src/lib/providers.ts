@@ -1316,6 +1316,22 @@ export function parseQuestions(text: string): ParsedQuestion[] {
   return out;
 }
 
+/**
+ * Who a delegate block is addressed to, read out of JSON that is not finished yet.
+ *
+ * A block arrives one character at a time, so for most of its life it parses as nothing. The
+ * names are the one part worth showing while it is being written, and they land early — the
+ * `agent` field comes before the instruction that makes the block long.
+ */
+export function delegationTargets(text: string): string[] {
+  const names: string[] = [];
+  for (const match of text.matchAll(/"agent"\s*:\s*"((?:[^"\\]|\\.)*)"/g)) {
+    const name = match[1].replace(/\\(.)/g, "$1").trim();
+    if (name && !names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
 export function parseDelegations(text: string): Delegation[] {
   const delegations: Delegation[] = [];
   // The closing fence must sit at the start of a line: a task's text often carries its own
