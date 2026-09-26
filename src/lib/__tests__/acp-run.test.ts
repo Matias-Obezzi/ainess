@@ -53,6 +53,13 @@ vi.mock("@/lib/acp/adapter", () => ({
 }));
 
 /** Resolves when `cond` holds, rejects after `ms`. No fixed sleep: a slow machine must not fail. */
+/**
+ * How long a test here may take. Each one spawns a real adapter process, which on a loaded machine
+ * takes longer than vitest's own five second default — and `waitFor` below is willing to wait far
+ * longer than that, so without this a test was cut off holding a budget it could never spend.
+ */
+const SPAWNS_A_PROCESS = 30_000;
+
 function waitFor(cond: () => boolean, what: string, ms = 20_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + ms;
@@ -119,7 +126,7 @@ describe("a claude run, which speaks ACP", () => {
     expect(tools.map(m => m.meta?.tool)).toEqual(["Read"]);
     // No CLI was detected here — the adapter is the program, and it brings the agent with it.
     expect(useAppStore.getState().binaries.claude).toBeUndefined();
-  });
+  }, SPAWNS_A_PROCESS);
 
   test("a turn the agent fails ends the run as an error, not as a run that simply finished", async () => {
     const runId = start("error");
@@ -128,7 +135,7 @@ describe("a claude run, which speaks ACP", () => {
     expect(runOf(runId).status).toBe("error");
     expect(runOf(runId).output).toContain("se quedo sin nafta");
     expect(useAppStore.getState().messages.some(m => m.kind === "error" && m.text.includes("se quedo sin nafta"))).toBe(true);
-  });
+  }, SPAWNS_A_PROCESS);
 
   test("stopping the agent stops it, and says nothing about an error", async () => {
     const runId = start("hang");
@@ -140,5 +147,5 @@ describe("a claude run, which speaks ACP", () => {
 
     expect(runOf(runId).status).toBe("killed");
     expect(useAppStore.getState().messages.some(m => m.kind === "error")).toBe(false);
-  }, 20_000);
+  }, SPAWNS_A_PROCESS);
 });
