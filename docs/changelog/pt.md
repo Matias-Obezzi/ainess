@@ -2,6 +2,16 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.24.2 — 2026-09-26
+
+### Corrigido
+
+- **A pré-visualização dizia "Não encontrado" de arquivos que estavam ali.** Ela lê o arquivo como
+  texto, e um arquivo que não é texto voltava dessa leitura como nada — que é o mesmo que volta de
+  um arquivo que não existe, então uma captura era dada como perdida no exato caminho que o painel
+  estava mostrando acima. Uma imagem agora abre como imagem, e qualquer outra coisa que não seja
+  texto diz isso, que é a verdade: está lá, o que não há é nada para ler.
+
 ## 0.24.1 — 2026-09-25
 
 ### Corrigido
@@ -27,7 +37,6 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   de quatro linhas de encanamento. Os caminhos continuam chegando ao agente, que não tem outra forma
   de encontrar os arquivos, mas a conversa agora desenha o que você escreveu e, acima, os arquivos —
   as imagens como imagens, igual ao campo de escrita antes de enviá-las. Um clique abre o arquivo.
-
 ## 0.24.0 — 2026-09-25
 
 ### Novo
@@ -1035,7 +1044,6 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   terminais eram do primeiro. Agora os três painéis são lembrados por projeto: guardados quando você
   sai, trazidos de volta quando você volta, e fechados para um projeto que nunca os abriu.
 
-
 ## 0.11.0 — 2026-09-10
 
 ### Novo
@@ -1618,7 +1626,6 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   dito claramente, com os modelos daquela mesma CLI que ainda valem a pena tentar —a sua própria família
   deixada de fora, já que a cota é gasta por família— e com o lembrete de que uma tarefa pode levar um
   `model`. Quando a CLI não tem outro modelo, é dito ao pai para avisar em vez de tentar novamente.
-
 
 ## 0.7.0 — 2026-09-08
 

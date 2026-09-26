@@ -276,6 +276,42 @@ pub async fn list_subdirs(path: String) -> Result<Vec<String>, String> {
 
 #[cfg(test)]
 mod tests {
+    /// A screenshot is not text, and `read_file_abs` answers `None` for it -- which the preview
+    /// panel could not tell apart from a file that is not there, so it said "not found" about a
+    /// file whose path it was printing. This is the read that gives it back.
+    #[test]
+    fn reads_a_file_that_is_not_text_and_leaves_read_to_string_alone() {
+        use base64::Engine;
+        let dir = std::env::temp_dir().join(format!("ainess-bytes-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("shot.png");
+        // A PNG's first bytes, ending in one that is not valid UTF-8 on its own.
+        let bytes: [u8; 10] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff];
+        std::fs::write(&png, bytes).unwrap();
+        let path = png.to_str().unwrap().to_string();
+
+        // What the panel used to get: nothing, from a file that is plainly there.
+        assert_eq!(super::read_file_abs_blocking(path.clone()).unwrap(), None);
+
+        let b64 = super::read_file_bytes_blocking(path.clone(), 1024).unwrap().expect("bytes");
+        let back = base64::engine::general_purpose::STANDARD.decode(b64.as_bytes()).unwrap();
+        assert_eq!(back, bytes);
+
+        // Past the cap it is not worth carrying, and that is an answer, not an error.
+        assert_eq!(super::read_file_bytes_blocking(path.clone(), 9).unwrap(), None);
+        assert!(super::read_file_bytes_blocking(path, 10).unwrap().is_some());
+
+        // A folder and a file that is not there are both "nothing", never a failure.
+        assert_eq!(super::read_file_bytes_blocking(dir.to_str().unwrap().to_string(), 1024).unwrap(), None);
+        assert_eq!(
+            super::read_file_bytes_blocking(dir.join("nope.png").to_str().unwrap().to_string(), 1024).unwrap(),
+            None,
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// The `.ainess/` folder of a project does not exist until the app writes into it.
     #[test]
     fn writes_a_file_into_a_folder_that_is_not_there_yet() {

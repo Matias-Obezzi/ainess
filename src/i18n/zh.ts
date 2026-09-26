@@ -1423,6 +1423,7 @@ export const zh: Dictionary = {
   "file.reveal": "在文件夹中显示",
   "file.loading": "读取中…",
   "file.missing": "未找到：{path}",
+  "file.notText": "这个文件不是文本，这里没有可显示的内容。从文件夹里用它自己的程序打开。",
   "file.several": "仓库里有多个 {name}。是哪一个？",
   "file.truncated": "文件很长：只显示开头。",
   "dock.file.title": "文件",

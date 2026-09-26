@@ -6,6 +6,16 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.24.2 — 2026-09-26
+
+### Fixed
+
+- **The file preview said "Not found" about files that were right there.** It reads a file as
+  text, and a file that is not text came back from that read as nothing at all — which is what a
+  missing file comes back as too, so a screenshot was reported missing on the very path the panel
+  was printing above the message. An image now opens as an image, and anything else that is not
+  text says that, which is the truth: it is there, there is just nothing to read.
+
 ## 0.24.1 — 2026-09-25
 
 ### Fixed
@@ -30,7 +40,6 @@ let one of them fall behind.
   four lines of plumbing. The paths still go to the agent, which has no other way to find the
   files, but the thread now draws what was typed and, above it, the files themselves — images as
   images, the way the composer shows them before they go. Clicking one opens it.
-
 ## 0.24.0 — 2026-09-25
 
 ### Added
@@ -1021,7 +1030,6 @@ let one of them fall behind.
   walk into another, and it stayed open there too — above an empty tab bar, since the terminals are
   the first project's. All three panels are remembered per project now: put away when you leave,
   taken out again when you come back, and closed for a project that never opened them.
-
 
 ## 0.11.0 — 2026-09-10
 

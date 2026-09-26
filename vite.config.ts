@@ -28,6 +28,15 @@ export default defineConfig(async () => ({
     watch: { ignored: ["**/src-tauri/**", "**/.ainess/**"] },
   },
   test: {
+    /**
+     * Vitest cuts a test off at five seconds by default. A good part of this suite starts a real
+     * process — an ACP adapter, an agent, a CLI — and waits for it to answer, which on a machine
+     * that is also building something else takes longer than that. Those tests were green alone
+     * and red whenever the rest of the suite ran beside them, which reads as a bug in the code
+     * rather than in the clock. Nothing here hangs on purpose, so a bigger number costs nothing:
+     * it is only ever spent by a test that was going to fail anyway.
+     */
+    testTimeout: 30_000,
     projects: [
       {
         extends: true,
