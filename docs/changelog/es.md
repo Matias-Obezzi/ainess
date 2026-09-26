@@ -2,6 +2,16 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.24.2 — 2026-09-26
+
+### Arreglado
+
+- **La vista previa decía «No se encontró» de archivos que estaban ahí.** Lee el archivo como
+  texto, y un archivo que no es texto volvía de esa lectura como nada — que es lo mismo que vuelve
+  un archivo que no existe, así que una captura se reportaba como perdida en la mismísima ruta que
+  el panel estaba mostrando arriba. Una imagen ahora se abre como imagen, y cualquier otra cosa que
+  no sea texto lo dice, que es la verdad: está, lo que no hay es nada que leer.
+
 ## 0.24.1 — 2026-09-25
 
 ### Arreglado
@@ -27,12 +37,6 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   cuatro líneas de plomería. Las rutas le siguen llegando al agente, que no tiene otra forma de
   encontrar los archivos, pero el hilo ahora dibuja lo que escribiste y, arriba, los archivos —
   las imágenes como imágenes, igual que el compositor antes de mandarlas. Un click abre el archivo.
-- **La vista previa decía «No se encontró» de archivos que estaban ahí.** Lee el archivo como
-  texto, y un archivo que no es texto volvía de esa lectura como nada — que es lo mismo que vuelve
-  un archivo que no existe, así que una captura se reportaba como perdida en la mismísima ruta que
-  el panel estaba mostrando arriba. Una imagen ahora se abre como imagen, y cualquier otra cosa que
-  no sea texto lo dice, que es la verdad: está, lo que no hay es nada que leer.
-
 ## 0.24.0 — 2026-09-25
 
 ### Nuevo
@@ -1066,7 +1070,6 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   guardan cuando te vas, vuelven cuando volvés, y quedan cerrados para un proyecto que nunca los
   abrió.
 
-
 ## 0.11.0 — 2026-09-10
 
 ### Nuevo
@@ -1663,7 +1666,6 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   los modelos de esa misma CLI que todavía vale la pena probar —dejando afuera a su propia familia,
   ya que la cuota se gasta por familia— y con el recordatorio de que una tarea puede llevar un
   `model`. Cuando la CLI no tiene otro modelo, se le dice al padre que avise en lugar de reintentar.
-
 
 ## 0.7.0 — 2026-09-08
 

@@ -2,6 +2,17 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.24.2 — 2026-09-26
+
+### Corrigé
+
+- **L'aperçu disait « Introuvable » de fichiers qui étaient bien là.** Il lit le fichier comme du
+  texte, et un fichier qui n'est pas du texte revenait de cette lecture comme rien du tout — ce que
+  renvoie aussi un fichier absent, si bien qu'une capture était donnée pour disparue sur le chemin
+  même que le panneau affichait au-dessus. Une image s'ouvre maintenant comme une image, et tout ce
+  qui n'est pas du texte le dit, ce qui est la vérité : le fichier est là, il n'y a simplement rien
+  à lire.
+
 ## 0.24.1 — 2026-09-25
 
 ### Corrigé
@@ -28,13 +39,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   de trouver les fichiers, mais le fil dessine désormais ce que vous avez écrit et, au-dessus, les
   fichiers — les images comme des images, comme la zone de saisie avant de les envoyer. Un clic
   ouvre le fichier.
-- **L'aperçu disait « Introuvable » de fichiers qui étaient bien là.** Il lit le fichier comme du
-  texte, et un fichier qui n'est pas du texte revenait de cette lecture comme rien du tout — ce que
-  renvoie aussi un fichier absent, si bien qu'une capture était donnée pour disparue sur le chemin
-  même que le panneau affichait au-dessus. Une image s'ouvre maintenant comme une image, et tout ce
-  qui n'est pas du texte le dit, ce qui est la vérité : le fichier est là, il n'y a simplement rien
-  à lire.
-
 ## 0.24.0 — 2026-09-25
 
 ### Nouveau
@@ -1109,7 +1113,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   retenus par projet : rangés quand vous partez, ressortis quand vous revenez, et fermés pour un
   projet qui ne les a jamais ouverts.
 
-
 ## 0.11.0 — 2026-09-10
 
 ### Nouveau
@@ -1725,7 +1728,6 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   dit clairement, avec les modèles de cette même CLI qui valent encore la peine d'être essayés —sa propre famille
   laissée de côté, car le quota est dépensé par famille— et avec le rappel qu'une tâche peut porter un
   `model`. Quand la CLI n'a pas d'autre modèle, on dit au père de prévenir au lieu de réessayer.
-
 
 ## 0.7.0 — 2026-09-08
 

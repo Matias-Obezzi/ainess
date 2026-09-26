@@ -2,6 +2,16 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.24.2 — 2026-09-26
+
+### Behoben
+
+- **Die Vorschau sagte „Nicht gefunden" über Dateien, die genau dort lagen.** Sie liest die Datei
+  als Text, und eine Datei, die kein Text ist, kam aus diesem Lesen als gar nichts zurück — genau
+  wie eine Datei, die es nicht gibt. So galt ein Screenshot als verschwunden, auf eben dem Pfad, den
+  das Fenster darüber anzeigte. Ein Bild geht jetzt als Bild auf, und alles andere, was kein Text
+  ist, sagt das — und das ist die Wahrheit: die Datei ist da, es gibt nur nichts zu lesen.
+
 ## 0.24.1 — 2026-09-25
 
 ### Behoben
@@ -29,12 +39,6 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Dateien sonst nicht finden kann, aber der Verlauf zeichnet jetzt, was getippt wurde, und darüber
   die Dateien — Bilder als Bilder, so wie das Eingabefeld sie vor dem Senden zeigt. Ein Klick öffnet
   die Datei.
-- **Die Vorschau sagte „Nicht gefunden" über Dateien, die genau dort lagen.** Sie liest die Datei
-  als Text, und eine Datei, die kein Text ist, kam aus diesem Lesen als gar nichts zurück — genau
-  wie eine Datei, die es nicht gibt. So galt ein Screenshot als verschwunden, auf eben dem Pfad, den
-  das Fenster darüber anzeigte. Ein Bild geht jetzt als Bild auf, und alles andere, was kein Text
-  ist, sagt das — und das ist die Wahrheit: die Datei ist da, es gibt nur nichts zu lesen.
-
 ## 0.24.0 — 2026-09-25
 
 ### Neu
@@ -1110,7 +1114,6 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Verlassen weggeräumt, beim Zurückkommen wieder hervorgeholt, und zu für ein Projekt, das sie nie
   geöffnet hat.
 
-
 ## 0.11.0 — 2026-09-10
 
 ### Neu
@@ -1727,7 +1730,6 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   ausgenommen, da das Kontingent pro Familie ausgegeben wird— und mit der Erinnerung, dass eine Aufgabe ein
   `model` tragen kann. Wenn die CLI kein anderes Modell hat, wird dem Parent gesagt, er solle Bescheid geben,
   anstatt es erneut zu versuchen.
-
 
 ## 0.7.0 — 2026-09-08
 
