@@ -27,6 +27,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   de quatro linhas de encanamento. Os caminhos continuam chegando ao agente, que não tem outra forma
   de encontrar os arquivos, mas a conversa agora desenha o que você escreveu e, acima, os arquivos —
   as imagens como imagens, igual ao campo de escrita antes de enviá-las. Um clique abre o arquivo.
+- **A pré-visualização dizia "Não encontrado" de arquivos que estavam ali.** Ela lê o arquivo como
+  texto, e um arquivo que não é texto voltava dessa leitura como nada — que é o mesmo que volta de
+  um arquivo que não existe, então uma captura era dada como perdida no exato caminho que o painel
+  estava mostrando acima. Uma imagem agora abre como imagem, e qualquer outra coisa que não seja
+  texto diz isso, que é a verdade: está lá, o que não há é nada para ler.
 
 ## 0.24.0 — 2026-09-25
 

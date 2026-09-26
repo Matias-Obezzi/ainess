@@ -102,6 +102,33 @@ export function languageOf(path: string): string {
 /** Past this a file is a log, not a document: only the head is shown. */
 export const MAX_PREVIEW_BYTES = 512 * 1024;
 
+/** Past this an image is not worth carrying through a data URL to look at. */
+export const MAX_IMAGE_BYTES = 16 * 1024 * 1024;
+
+/** The ones a browser draws on its own, by extension: nothing here needs decoding. */
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+  svg: "image/svg+xml",
+  ico: "image/x-icon",
+};
+
+/**
+ * The media type a file name implies, when it is one a browser can draw.
+ *
+ * By name and not by content on purpose: this decides whether to read the file as bytes at all,
+ * and that decision has to be made before reading it.
+ */
+export function imageTypeOf(path: string): string | undefined {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_TYPES[ext];
+}
+
 /**
  * Whether a mention nobody could place on disk is worth looking for in the repo.
  *

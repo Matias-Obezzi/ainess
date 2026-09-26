@@ -1424,6 +1424,7 @@ export const ja: Dictionary = {
   "file.reveal": "フォルダーで表示",
   "file.loading": "読み込み中…",
   "file.missing": "見つかりません: {path}",
+  "file.notText": "このファイルはテキストではないので、ここに表示できるものはありません。フォルダーから専用のプログラムで開いてください。",
   "file.several": "リポジトリに {name} が複数あります。どれですか？",
   "file.truncated": "長いファイルです。先頭のみ表示しています。",
   "dock.file.title": "ファイル",

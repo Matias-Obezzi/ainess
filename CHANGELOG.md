@@ -30,6 +30,11 @@ let one of them fall behind.
   four lines of plumbing. The paths still go to the agent, which has no other way to find the
   files, but the thread now draws what was typed and, above it, the files themselves — images as
   images, the way the composer shows them before they go. Clicking one opens it.
+- **The file preview said "Not found" about files that were right there.** It reads a file as
+  text, and a file that is not text came back from that read as nothing at all — which is what a
+  missing file comes back as too, so a screenshot was reported missing on the very path the panel
+  was printing above the message. An image now opens as an image, and anything else that is not
+  text says that, which is the truth: it is there, there is just nothing to read.
 
 ## 0.24.0 — 2026-09-25
 

@@ -27,6 +27,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   cuatro líneas de plomería. Las rutas le siguen llegando al agente, que no tiene otra forma de
   encontrar los archivos, pero el hilo ahora dibuja lo que escribiste y, arriba, los archivos —
   las imágenes como imágenes, igual que el compositor antes de mandarlas. Un click abre el archivo.
+- **La vista previa decía «No se encontró» de archivos que estaban ahí.** Lee el archivo como
+  texto, y un archivo que no es texto volvía de esa lectura como nada — que es lo mismo que vuelve
+  un archivo que no existe, así que una captura se reportaba como perdida en la mismísima ruta que
+  el panel estaba mostrando arriba. Una imagen ahora se abre como imagen, y cualquier otra cosa que
+  no sea texto lo dice, que es la verdad: está, lo que no hay es nada que leer.
 
 ## 0.24.0 — 2026-09-25
 

@@ -12,7 +12,7 @@ import { getTransport } from "@/lib/transport";
 import { copyText } from "@/lib/clipboard";
 import { openInEditor, revealPath } from "@/lib/open-external";
 import { toast } from "@/components/ui/toast";
-import { baseName, isMarkdownPath, languageOf, matchTrackedByName, MAX_PREVIEW_BYTES, pathRef, shouldSearchRepo } from "@/lib/file-preview";
+import { baseName, imageTypeOf, isMarkdownPath, languageOf, matchTrackedByName, MAX_IMAGE_BYTES, MAX_PREVIEW_BYTES, pathRef, shouldSearchRepo } from "@/lib/file-preview";
 import { repoDirOf } from "@/lib/repo-dir";
 import { cn } from "@/lib/utils";
 import { useCurrentProjectId } from "./project-pane";
@@ -22,7 +22,11 @@ type Loaded =
   | { state: "missing" }
   /** The repo tracks more than one file by that name, and only the reader knows which one. */
   | { state: "choices"; paths: string[] }
-  | { state: "ready"; path: string; text: string; truncated: boolean };
+  | { state: "ready"; path: string; text: string; truncated: boolean }
+  /** A picture, shown as one. `src` is a data URL: the file never leaves the machine. */
+  | { state: "image"; path: string; src: string }
+  /** There, and not text: a PDF, an archive, a font. Nothing to show, but it is not missing. */
+  | { state: "binary"; path: string };
 
 /** Dark or light, from the theme in use: the highlighter's palette has to match the page's. */
 function pageIsDark(): boolean {
@@ -111,8 +115,25 @@ export function FileDockSection() {
       const transport = getTransport();
       const existing = await transport.filesExistAbs(preview.candidates).catch(() => []);
       const path = existing[0];
+
+      // A file that is there but is not text used to come back from `readFileAbs` as null, which
+      // reads exactly like a file that is not there — so the panel said "not found" about a
+      // screenshot sitting at the path it was printing. A picture is shown as a picture, and
+      // anything else that is not text says so.
+      const type = path ? imageTypeOf(path) : undefined;
+      if (path && type) {
+        const b64 = await transport.readFileBytes(path, MAX_IMAGE_BYTES).catch(() => null);
+        if (!alive) return;
+        setLoaded(b64 ? { state: "image", path, src: `data:${type};base64,${b64}` } : { state: "binary", path });
+        return;
+      }
+
       const text = path ? await transport.readFileAbs(path).catch(() => null) : null;
       if (!alive) return;
+      if (path && text === null) {
+        setLoaded({ state: "binary", path });
+        return;
+      }
       if (!path || text === null) {
         // Only now, and only for a name with no folder on it: an agent that wrote `Composer.tsx`
         // named a file the repo knows where to find even though the app does not. One `git
@@ -142,7 +163,9 @@ export function FileDockSection() {
   }, [preview, repoDir]);
 
   if (!preview) return null;
-  const path = loaded.state === "ready" ? loaded.path : preview.candidates[0];
+  const path = loaded.state === "ready" || loaded.state === "image" || loaded.state === "binary"
+    ? loaded.path
+    : preview.candidates[0];
   const markdown = isMarkdownPath(path);
 
   return (
@@ -187,6 +210,12 @@ export function FileDockSection() {
       <div className="min-h-0 flex-1">
         {loaded.state === "loading" && <div className="p-3 text-xs text-muted-foreground">{t("file.loading")}</div>}
         {loaded.state === "missing" && <div className="p-3 text-xs text-muted-foreground">{t("file.missing", { path: preview.ref })}</div>}
+        {loaded.state === "binary" && <div className="p-3 text-xs text-muted-foreground">{t("file.notText")}</div>}
+        {loaded.state === "image" && (
+          <div className="flex h-full items-center justify-center overflow-auto p-3">
+            <img src={loaded.src} alt={baseName(loaded.path)} className="max-h-full max-w-full object-contain" />
+          </div>
+        )}
         {loaded.state === "choices" && (
           // The chips are the same button the mention itself was: pressing one reopens this panel
           // on a path that now has its folder, and it resolves like any other.

@@ -6,29 +6,13 @@
 // pull all of them into memory to show a row of thumbnails.
 import { useEffect, useState } from "react";
 import { getTransport } from "@/lib/transport";
-import { baseName } from "@/lib/file-preview";
+import { baseName, imageTypeOf } from "@/lib/file-preview";
 import { useAppStore } from "@/store";
 import { useT } from "@/i18n/useT";
 import { FileText } from "lucide-react";
 
-/** Past this an attachment is shown as a name, not as a picture. */
+/** Past this an attachment is shown as a name, not as a picture: this is a thumbnail, not a view. */
 const MAX_THUMBNAIL_BYTES = 4 * 1024 * 1024;
-
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-  bmp: "image/bmp",
-  avif: "image/avif",
-};
-
-/** The media type an attachment's name implies, when that type is one a browser draws. */
-export function imageTypeOf(path: string): string | undefined {
-  const ext = path.split(".").pop()?.toLowerCase() ?? "";
-  return IMAGE_EXTENSIONS[ext];
-}
 
 /** One attachment: the picture when it is one, its name when it is not. */
 function AttachmentChip({ path, workspaceDir }: { path: string; workspaceDir: string }) {

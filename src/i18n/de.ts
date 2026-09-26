@@ -1423,6 +1423,7 @@ export const de: Dictionary = {
   "file.reveal": "Im Ordner zeigen",
   "file.loading": "Lese…",
   "file.missing": "Nicht gefunden: {path}",
+  "file.notText": "Diese Datei ist kein Text, hier gibt es also nichts zu zeigen. Öffne sie aus dem Ordner mit ihrem eigenen Programm.",
   "file.several": "Es gibt mehr als eine {name} im Repository. Welche?",
   "file.truncated": "Lange Datei: nur der Anfang wird gezeigt.",
   "dock.file.title": "Datei",

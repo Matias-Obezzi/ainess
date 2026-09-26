@@ -1424,6 +1424,7 @@ export const en: Dictionary = {
   "file.reveal": "Show in folder",
   "file.loading": "Reading…",
   "file.missing": "Not found: {path}",
+  "file.notText": "This file is not text, so there is nothing to show here. Open it with its own program from the folder.",
   "file.several": "There is more than one {name} in the repository. Which one?",
   "file.truncated": "A long file: only the beginning is shown.",
   "dock.file.title": "File",
