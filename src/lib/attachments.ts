@@ -49,6 +49,41 @@ export function attachmentsBlock(paths: string[]): string {
   return `\n\n${translateNow("attachments.promptHeader")}\n${paths.map(p => `- ${p}`).join("\n")}`;
 }
 
+/**
+ * The prompt split back into what the user wrote and what they attached.
+ *
+ * The block exists for the agent, which has no other way to find the files; it was never meant to
+ * be read. Shown in the thread it was the loudest thing in the bubble — a header and a list of
+ * paths under two words of actual message. So the message is drawn without it, and the files are
+ * drawn as files.
+ *
+ * Found by the paths and not by the header: the header is translated, the language can change
+ * between sending a message and reading it back, and `.ainess/attachments/` is the same line in
+ * every one of them.
+ */
+export function splitAttachments(prompt: string): { body: string; paths: string[] } {
+  const text = prompt ?? "";
+  const lines = text.split("\n");
+  const paths: string[] = [];
+
+  // From the end: the block is always last, because it is appended to whatever was typed.
+  let i = lines.length;
+  while (i > 0) {
+    const line = lines[i - 1].trim();
+    if (line === "") { i--; continue; }
+    const path = line.startsWith("- ") ? line.slice(2).trim() : "";
+    if (!path.startsWith(`${ATTACHMENTS_DIR}/`)) break;
+    paths.unshift(path);
+    i--;
+  }
+  if (paths.length === 0) return { body: text, paths: [] };
+
+  // The line above them is the header that introduced them, whatever language wrote it.
+  while (i > 0 && lines[i - 1].trim() === "") i--;
+  if (i > 0) i--;
+  return { body: lines.slice(0, i).join("\n").trim(), paths };
+}
+
 /** A `File` as base64, without the `data:...;base64,` prefix a data URL carries. */
 async function toBase64(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();

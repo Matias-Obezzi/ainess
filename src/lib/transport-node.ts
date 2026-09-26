@@ -538,6 +538,16 @@ export const nodeTransport: Transport = {
     }
   },
 
+  readFileBytes: async (absPath: string, maxBytes: number) => {
+    try {
+      const stat = fs.statSync(absPath);
+      if (!stat.isFile() || stat.size > maxBytes) return null;
+      return fs.readFileSync(absPath).toString("base64");
+    } catch {
+      return null;
+    }
+  },
+
   listSubdirs: async (dir: string) => {
     try {
       return fs.readdirSync(dir, { withFileTypes: true })

@@ -32,8 +32,38 @@ describe("Markdown", () => {
     const out = html('```delegate\n{"tasks":[{"agent":"Obrero","task":"Arreglar tests"}]}\n```');
     expect(out).toContain(label("label.kind.delegation"));
     expect(out).toContain("Obrero");
-    expect(out).toContain("Arreglar tests");
     expect(out).not.toContain("<pre");
+  });
+
+  // Shut, a task says what it is, in the reader's language. The instruction itself is written for
+  // the agent doing the work and is only worth reading once you open it.
+  it("shows a brief and not the instruction while the task is shut", () => {
+    const out = html('```delegate\n{"tasks":[{"agent":"Obrero","task":"Arreglar tests"}]}\n```');
+    expect(out).toContain(label("delegation.brief").replace("{name}", "Obrero"));
+    expect(out).not.toContain("Arreglar tests");
+  });
+
+  it("prefers the title the planner gave the card", () => {
+    const out = html('```delegate\n{"tasks":[{"agent":"Obrero","task":"Arreglar tests","title":"Poner en verde la suite"}]}\n```');
+    expect(out).toContain("Poner en verde la suite");
+    expect(out).not.toContain("Arreglar tests");
+  });
+
+  it("opens each task on its own, so there is one toggle per task", () => {
+    const out = html('```delegate\n{"tasks":[{"agent":"Uno","task":"a"},{"agent":"Dos","task":"b"}]}\n```');
+    expect((out.match(/aria-expanded="false"/g) || []).length).toBe(2);
+  });
+
+  // Half-written JSON is not broken JSON: it is a block the agent is still typing.
+  it("says who a half-written delegate block is going to, and shows no JSON", () => {
+    const partial = '```delegate\n{"tasks":[{"agent":"Obrero","task":"Arregl';
+    const streaming = renderToStaticMarkup(<Markdown text={partial} streaming />);
+    expect(streaming).toContain(label("delegation.writing").replace("{names}", "Obrero"));
+    expect(streaming).not.toContain("tasks");
+    expect(streaming).not.toContain("<pre");
+
+    // The same text once the agent has stopped writing is a block that never parsed: an error.
+    expect(html(partial)).toContain("<pre");
   });
 
   // The question it describes is drawn under the answer; printing the JSON says it twice, and the

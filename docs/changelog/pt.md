@@ -2,6 +2,32 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.24.1 — 2026-09-25
+
+### Corrigido
+
+- **Todas as ferramentas na atividade diziam `Bash` e nada mais.** Uma chamada de ferramenta chega
+  ao app duas vezes: uma quando abre e outra conforme suas partes chegam — o protocolo diz isso com
+  essas palavras, "atualize o input bruto". O agente do Claude abre a chamada com os argumentos
+  ainda vazios, e a linha era desenhada naquele primeiro momento, então uma tarde de trabalho se lia
+  como uma coluna de `Bash` sem um único comando embaixo. Agora a linha espera os argumentos. Uma
+  ferramenta que não leva nenhum ainda é desenhada quando termina, e uma que falha antes de ter sido
+  desenhada ainda avisa.
+- **Uma delegação não escreve mais o seu JSON na sua frente.** O bloco chega caractere por caractere
+  e até o último não parseia nada, então a resposta ia juntando um paredão de chaves escapadas
+  enquanto o agente digitava. Enquanto está sendo escrita agora diz para quem vai — "Delegando para
+  Implementer 1…" — e vira o cartão quando termina. Um bloco que terminou e mesmo assim está
+  ilegível é mostrado como o erro que é, que era para isso que essa alternativa existia.
+- **Cada tarefa delegada abre sozinha**, em vez de todas se desdobrarem juntas, e fechada mostra o
+  título que o planejador deu ao cartão em vez da primeira linha da instrução — uma linha escrita
+  para o agente que vai fazer o trabalho, não para quem lê a conversa. Sem título, diz o que é, no
+  idioma de quem lê.
+- **Uma mensagem com um anexo volta a ser uma mensagem.** Enviar um arquivo acrescentava ao prompt
+  um cabeçalho e os caminhos, e tudo isso era desenhado no balão: duas palavras de mensagem embaixo
+  de quatro linhas de encanamento. Os caminhos continuam chegando ao agente, que não tem outra forma
+  de encontrar os arquivos, mas a conversa agora desenha o que você escreveu e, acima, os arquivos —
+  as imagens como imagens, igual ao campo de escrita antes de enviá-las. Um clique abre o arquivo.
+
 ## 0.24.0 — 2026-09-25
 
 ### Novo

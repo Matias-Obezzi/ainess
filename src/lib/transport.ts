@@ -59,6 +59,13 @@ export interface Transport {
   readHomeFile(relativePath: string): Promise<string | null>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
+  /**
+   * Reads a file that is not text, base64-encoded: the image a user attached to a message, so the
+   * thread can show it back to them. Null when it is missing, unreadable or past `maxBytes` —
+   * whoever asked wanted to draw it, and a file too big to draw is the same as one that is not
+   * there.
+   */
+  readFileBytes(path: string, maxBytes: number): Promise<string | null>;
 
   /**
    * Which of `paths` are files that exist. Read-only, and it reads none of them — asking

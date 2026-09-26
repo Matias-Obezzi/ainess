@@ -32,6 +32,7 @@ export const nullTransport: Transport = {
   writeFileAbs: async () => {},
   writeFileBytes: async () => {},
   readFileAbs: async () => null,
+  readFileBytes: async () => null,
   filesExistAbs: async () => [],
   listSubdirs: async () => [],
   detectEditors: async () => [],

@@ -179,7 +179,7 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
         </button>
       )}
 
-      {shown.map(msg => <ActivityRow key={msg.id} msg={msg} parentRunId={runId} mode={mode} />)}
+      {shown.map(msg => <ActivityRow key={msg.id} msg={msg} parentRunId={runId} mode={mode} streaming={!!isRunning} />)}
 
       {/* Last, always: the ticker is the floor of the run, and the history opens above it so the
           line you were reading does not move out from under the pointer when you click it. */}
@@ -199,8 +199,10 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
   );
 }
 
-function ActivityRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRunId: string; mode: ActivityMode }) {
-  if (msg.kind === "text") return <Markdown text={msg.text} />;
+function ActivityRow({ msg, parentRunId, mode, streaming }: { msg: CommMessage; parentRunId: string; mode: ActivityMode; streaming?: boolean }) {
+  // The live text of a run that has not ended is still being written: a delegate block half way
+  // through it is not broken JSON, it is a delegation about to happen.
+  if (msg.kind === "text") return <Markdown text={msg.text} streaming={streaming} />;
 
   if (msg.kind === "tool") {
     const Icon = toolIcon(msg.meta?.tool ?? msg.text);

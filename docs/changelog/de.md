@@ -2,6 +2,34 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.24.1 — 2026-09-25
+
+### Behoben
+
+- **Jedes Werkzeug in der Aktivität sagte `Bash` und sonst nichts.** Ein Werkzeugaufruf erreicht die
+  App zweimal: einmal, wenn er aufgeht, und dann noch einmal, während seine Teile eintreffen — das
+  Protokoll sagt es mit diesen Worten, „aktualisiere die rohe Eingabe". Claudes Agent öffnet den
+  Aufruf mit noch leeren Argumenten, und die Zeile wurde in diesem ersten Moment gezeichnet: ein
+  Nachmittag Arbeit las sich als eine Spalte `Bash` ohne einen einzigen Befehl darunter. Die Zeile
+  wartet jetzt auf die Argumente. Ein Werkzeug, das keine nimmt, wird trotzdem gezeichnet, wenn es
+  fertig ist, und ein Aufruf, der scheitert, bevor er je gezeichnet wurde, sagt es trotzdem.
+- **Eine Delegation schreibt ihr JSON nicht mehr vor deinen Augen.** Der Block kommt Zeichen für
+  Zeichen an und lässt sich bis zum letzten nicht lesen, also wuchs in der Antwort eine Wand aus
+  maskierten Klammern, während der Agent tippte. Während sie geschrieben wird, sagt sie jetzt, an
+  wen sie geht — „Wird an Implementer 1 delegiert …" — und wird zur Karte, sobald sie fertig ist.
+  Ein Block, der fertig und trotzdem unlesbar ist, wird als der Fehler gezeigt, der er ist — wofür
+  dieser Rückfall da war.
+- **Jede delegierte Aufgabe geht für sich auf**, statt dass sich alle auf einmal entrollen, und
+  zugeklappt zeigt sie den Titel, den der Planer der Karte gegeben hat, statt der ersten Zeile der
+  Anweisung — eine Zeile, die für den Agenten geschrieben ist, der die Arbeit macht, nicht für den,
+  der den Verlauf liest. Ohne Titel sagt sie, was sie ist, in der Sprache des Lesenden.
+- **Eine Nachricht mit einem Anhang ist wieder eine Nachricht.** Eine Datei zu senden hängte dem
+  Prompt eine Überschrift und die Pfade an, und das alles wurde in der Blase gezeichnet: zwei Wörter
+  Nachricht unter vier Zeilen Installation. Die Pfade gehen weiterhin an den Agenten, der die
+  Dateien sonst nicht finden kann, aber der Verlauf zeichnet jetzt, was getippt wurde, und darüber
+  die Dateien — Bilder als Bilder, so wie das Eingabefeld sie vor dem Senden zeigt. Ein Klick öffnet
+  die Datei.
+
 ## 0.24.0 — 2026-09-25
 
 ### Neu

@@ -2,6 +2,32 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.24.1 — 2026-09-25
+
+### Arreglado
+
+- **Todas las herramientas de la actividad decían `Bash` y nada más.** Una llamada a una
+  herramienta le llega a la app dos veces: una cuando se abre y otra a medida que llegan sus
+  pedazos — el protocolo lo dice con esas palabras, «actualizá el input crudo». El agente de Claude
+  abre la llamada con los argumentos todavía vacíos, y la fila se dibujaba en ese primer momento,
+  así que una tarde de trabajo se leía como una columna de `Bash` sin un solo comando debajo. Ahora
+  la fila espera los argumentos. Una herramienta que no lleva ninguno igual se dibuja cuando
+  termina, y una que falla antes de haberse dibujado igual lo dice.
+- **Una delegación ya no escribe su JSON delante tuyo.** El bloque llega carácter por carácter y
+  hasta el último no parsea nada, así que la respuesta iba juntando un paredón de llaves escapadas
+  mientras el agente tipeaba. Mientras se escribe ahora dice a quién va —«Delegando a Implementer
+  1…»— y se convierte en la tarjeta cuando termina. Un bloque que quedó terminado y aun así
+  ilegible se muestra como el error que es, que es para lo que existía esa alternativa.
+- **Cada tarea delegada abre sola**, en vez de desplegarse todas juntas, y cerrada muestra el
+  título que el planificador le puso a la tarjeta en lugar de la primera línea de la instrucción —
+  una línea escrita para el agente que va a hacer el trabajo, no para quien lee el hilo. Sin
+  título, dice qué es, en el idioma de quien lee.
+- **Un mensaje con un adjunto vuelve a ser un mensaje.** Mandar un archivo le agregaba al prompt un
+  encabezado y las rutas, y todo eso se dibujaba en la burbuja: dos palabras de mensaje abajo de
+  cuatro líneas de plomería. Las rutas le siguen llegando al agente, que no tiene otra forma de
+  encontrar los archivos, pero el hilo ahora dibuja lo que escribiste y, arriba, los archivos —
+  las imágenes como imágenes, igual que el compositor antes de mandarlas. Un click abre el archivo.
+
 ## 0.24.0 — 2026-09-25
 
 ### Nuevo

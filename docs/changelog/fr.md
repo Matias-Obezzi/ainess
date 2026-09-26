@@ -2,6 +2,33 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.24.1 — 2026-09-25
+
+### Corrigé
+
+- **Tous les outils de l'activité disaient `Bash` et rien d'autre.** Un appel d'outil parvient à
+  l'application deux fois : une fois quand il s'ouvre, puis à mesure que ses morceaux arrivent — le
+  protocole le dit en ces termes, « mettez à jour l'entrée brute ». L'agent de Claude ouvre l'appel
+  avec ses arguments encore vides, et la ligne était dessinée à ce premier instant : une après-midi
+  de travail se lisait comme une colonne de `Bash` sans une seule commande dessous. La ligne attend
+  les arguments maintenant. Un outil qui n'en prend aucun est quand même dessiné quand il se
+  termine, et un appel qui échoue avant d'avoir été dessiné le dit quand même.
+- **Une délégation n'écrit plus son JSON devant vous.** Le bloc arrive caractère par caractère et
+  jusqu'au dernier il ne s'analyse pas, alors la réponse accumulait un mur d'accolades échappées
+  pendant que l'agent tapait. Pendant qu'elle s'écrit, elle dit maintenant à qui elle va —
+  « Délégation à Implementer 1… » — et devient la carte une fois terminée. Un bloc terminé et
+  toujours illisible est montré comme l'erreur qu'il est, ce pour quoi ce repli existait.
+- **Chaque tâche déléguée s'ouvre toute seule**, au lieu de toutes se dérouler d'un coup, et fermée
+  elle montre le titre que le planificateur a donné à la carte plutôt que la première ligne de
+  l'instruction — une ligne écrite pour l'agent qui fait le travail, pas pour qui lit le fil. Sans
+  titre, elle dit ce qu'elle est, dans la langue du lecteur.
+- **Un message avec une pièce jointe redevient un message.** Envoyer un fichier ajoutait au prompt
+  un en-tête et les chemins, et tout cela était dessiné dans la bulle : deux mots de message sous
+  quatre lignes de plomberie. Les chemins parviennent toujours à l'agent, qui n'a pas d'autre moyen
+  de trouver les fichiers, mais le fil dessine désormais ce que vous avez écrit et, au-dessus, les
+  fichiers — les images comme des images, comme la zone de saisie avant de les envoyer. Un clic
+  ouvre le fichier.
+
 ## 0.24.0 — 2026-09-25
 
 ### Nouveau

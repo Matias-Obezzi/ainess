@@ -69,6 +69,14 @@ export const tauriTransport: Transport = {
     }
   },
 
+  readFileBytes: async (path, maxBytes) => {
+    try {
+      return await invoke<string | null>("read_file_bytes", { path, maxBytes });
+    } catch {
+      return null;
+    }
+  },
+
   listSubdirs: async (path) => {
     try {
       return await invoke<string[]>("list_subdirs", { path });

@@ -2,7 +2,7 @@ import { describe, test, expect, afterEach } from "vitest";
 import { nodeTransport } from "@/lib/transport-node";
 import { setTransport } from "@/lib/transport";
 import { createRunStream } from "@/lib/acp/stream";
-import { eventsFromSessionUpdate } from "@/lib/acp/events";
+import { eventsFromSessionUpdate, toolCallTracker } from "@/lib/acp/events";
 import { runAcpPrompt } from "@/lib/acp/session";
 import { AcpAuthRequiredError } from "@/lib/acp/auth";
 import { useAppStore } from "@/store";
@@ -233,6 +233,79 @@ describe("eventsFromSessionUpdate", () => {
       status: "failed",
       content: [{ type: "content", content: { type: "text", text: "no such file" } }],
     })).toEqual([{ type: "tool", name: "Read", failed: true, error: "no such file" }]);
+  });
+});
+
+// Claude's agent opens a tool call with its arguments still empty and streams them in afterwards,
+// which had every Bash in the timeline reading as `Bash` and nothing else.
+describe("a tool call whose arguments arrive late", () => {
+  test("waits for them instead of drawing an empty row", () => {
+    const tools = toolCallTracker();
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call", toolCallId: "t1", title: "Bash", name: "Bash", rawInput: {} },
+      tools,
+    )).toEqual([]);
+
+    // Still nothing to say: the arguments are not there yet.
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t1", status: "in_progress" },
+      tools,
+    )).toEqual([]);
+
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t1", rawInput: { command: "npm test" } },
+      tools,
+    )).toEqual([{ type: "tool", name: "Bash", detail: '{"command":"npm test"}', input: { command: "npm test" } }]);
+
+    // And once drawn it stays drawn: the rest of the call's life is not three more rows.
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t1", status: "completed", rawOutput: "ok" },
+      tools,
+    )).toEqual([]);
+  });
+
+  test("draws it at once when they come with the call, as they used to", () => {
+    const tools = toolCallTracker();
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call", toolCallId: "t1", title: "Read", name: "Read", rawInput: { path: "a.txt" } },
+      tools,
+    )).toEqual([{ type: "tool", name: "Read", detail: '{"path":"a.txt"}', input: { path: "a.txt" } }]);
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t1", rawInput: { path: "a.txt" } },
+      tools,
+    )).toEqual([]);
+  });
+
+  test("draws a tool that takes no arguments when it finishes", () => {
+    const tools = toolCallTracker();
+    expect(eventsFromSessionUpdate({ sessionUpdate: "tool_call", toolCallId: "t2", title: "ListAgents", name: "ListAgents" }, tools)).toEqual([]);
+    expect(eventsFromSessionUpdate({ sessionUpdate: "tool_call_update", toolCallId: "t2", status: "completed" }, tools))
+      .toEqual([{ type: "tool", name: "ListAgents", detail: undefined, input: undefined }]);
+  });
+
+  test("keeps the best name it was given along the way", () => {
+    const tools = toolCallTracker();
+    eventsFromSessionUpdate({ sessionUpdate: "tool_call", toolCallId: "t3", title: "Running a command", rawInput: {} }, tools);
+    // The row is drawn by an update that carries the arguments but no name of its own.
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t3", rawInput: { command: "ls" } },
+      tools,
+    )).toEqual([{ type: "tool", name: "Running a command", detail: '{"command":"ls"}', input: { command: "ls" } }]);
+  });
+
+  test("a call that fails before it was ever drawn still says so, once", () => {
+    const tools = toolCallTracker();
+    eventsFromSessionUpdate({ sessionUpdate: "tool_call", toolCallId: "t4", title: "Bash", name: "Bash", rawInput: {} }, tools);
+    expect(eventsFromSessionUpdate({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "t4",
+      status: "failed",
+      content: [{ type: "content", content: { type: "text", text: "boom" } }],
+    }, tools)).toEqual([{ type: "tool", name: "Bash", failed: true, error: "boom" }]);
+    expect(eventsFromSessionUpdate(
+      { sessionUpdate: "tool_call_update", toolCallId: "t4", rawInput: { command: "x" } },
+      tools,
+    )).toEqual([]);
   });
 });
 

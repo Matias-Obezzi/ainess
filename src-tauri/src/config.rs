@@ -193,6 +193,31 @@ fn write_file_bytes_blocking(path: String, data_b64: String) -> Result<(), Strin
     fs::write(&path, bytes).map_err(|e| e.to_string())
 }
 
+/// Reads a file by absolute path as base64 (read-only), for the things that are not text: the
+/// image a user attached to a message, so the thread can show it back to them.
+///
+/// Capped, and the cap is the answer and not an error: past it the caller wanted a thumbnail and
+/// gets nothing, which is the same as a file it cannot draw.
+#[tauri::command]
+pub async fn read_file_bytes(path: String, max_bytes: u64) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || read_file_bytes_blocking(path, max_bytes))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn read_file_bytes_blocking(path: String, max_bytes: u64) -> Result<Option<String>, String> {
+    use base64::Engine;
+    let path = std::path::Path::new(&path);
+    let Ok(meta) = fs::metadata(path) else { return Ok(None) };
+    if !meta.is_file() || meta.len() > max_bytes {
+        return Ok(None);
+    }
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(base64::engine::general_purpose::STANDARD.encode(bytes))),
+        Err(_) => Ok(None),
+    }
+}
+
 /// Reads a file by absolute path (read-only). Returns `None` when it does not exist or cannot
 /// be read, so callers only need to distinguish "not there" from "there".
 #[tauri::command]

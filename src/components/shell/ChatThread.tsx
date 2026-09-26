@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AttachmentStrip } from "@/components/AttachmentStrip";
+import { splitAttachments } from "@/lib/attachments";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
 import { mascotMood, withTyping } from "@/lib/mascot";
 import { stickToBottom as stick, resetScrolledAncestors } from "@/lib/stick-to-bottom";
-import { useAppStore, selectAllAgents } from "@/store";
+import { useAppStore, selectAllAgents, selectProject } from "@/store";
 import { QueuedMessages } from "./QueuedMessages";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -309,6 +311,9 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
   const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
   const isUser = message.from === "user";
+  // The prompt carries both what was typed and where the files landed; only the first is a message.
+  const attachments = useMemo(() => splitAttachments(message.text), [message.text]);
+  const workspaceDir = useAppStore(state => selectProject(state, projectId)?.workspaceDir ?? "");
   const agent = !isUser ? agents.find(a => a.id === message.from) : undefined;
   const name = isUser ? t("chat.you") : (agent?.name || message.from);
   const color = agent?.color || "#888";
@@ -459,8 +464,14 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
             ) : message.status === "error" ? (
               <ErrorMessage text={message.text} />
             ) : isUser ? (
-              // As you wrote it, unless you wrote markdown: a list is a list here too.
-              hasMarkdown(message.text) ? <Markdown text={message.text} /> : message.text
+              // As you wrote it, unless you wrote markdown: a list is a list here too. What was
+              // attached is drawn as files, not as the list of paths the agent is given.
+              <>
+                <AttachmentStrip paths={attachments.paths} workspaceDir={workspaceDir} />
+                {attachments.body && (hasMarkdown(attachments.body)
+                  ? <Markdown text={attachments.body} />
+                  : attachments.body)}
+              </>
             ) : (
               <Markdown text={message.text} />
             )}
