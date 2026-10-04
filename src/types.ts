@@ -463,6 +463,16 @@ export interface AppConfig {
    * carries on with what there is. Unset means `DEFAULT_STALL_STOP_MINUTES`; 0 means never.
    */
   stallStopMinutes?: number;
+  /**
+   * Whether the MCP servers enabled for every agent are also written into each installed CLI's own
+   * config (see `lib/mcp-native`). Unset means yes; false keeps them inside ainess.
+   */
+  mcpNativeSync?: boolean;
+  /**
+   * The server names ainess wrote into each CLI's own config, per CLI. Only these are ever changed
+   * or removed there: anything else in that file is the user's.
+   */
+  mcpOwned?: Partial<Record<"claude-code" | "copilot" | "gemini" | "codex" | "opencode" | "antigravity", string[]>>;
   skills: Skill[];
   mcpServers: McpServer[];
   /**

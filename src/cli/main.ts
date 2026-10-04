@@ -22,7 +22,7 @@ import type { ChatParticipant } from "@/types";
 import { AgentConfig, Skill, McpServer, ProviderId, AgentRole } from "@/types";
 import { defaultAgentDescription } from "@/lib/providers";
 import { agentAfterEdit, agentAutoApprove, autoApproveFlag } from "@/lib/team";
-import { syncMcpToAntigravity } from "@/lib/mcp-sync";
+import { syncNativeMcp } from "@/lib/mcp-native";
 import { mcpHeadersFromArgs } from "@/lib/mcp-headers";
 import { nodeI18n } from "@/i18n/node";
 import { totalsOf, totalsByAgent, totalsByDay, runsOfProject, totalTokens, formatUsage, hasUsage } from "@/lib/usage";
@@ -654,9 +654,10 @@ async function main() {
       print(sanitized, store.config.mcpServers.map(s => `- ${s.name} (${s.transport})`).join("\n"));
       process.exit(0);
     } else if (sub === "sync") {
-      const res = await syncMcpToAntigravity(store.config.mcpServers);
-      print(res, res.success ? `Sync ok: ${res.added} agregados, ${res.removed} removidos` : `Error: ${res.error}`);
-      process.exit(res.success ? 0 : 1);
+      const res = await syncNativeMcp();
+      const failed = Object.values(res).filter(r => r.status === "error").length;
+      print(res, Object.entries(res).map(([target, r]) => `- ${target}: ${r.status}${r.error ? ` (${r.error})` : ""}`).join("\n"));
+      process.exit(failed ? 1 : 0);
     } else if (sub === "add" || sub === "edit") {
       const targetName = args[2];
       if (!targetName || targetName.startsWith("-")) error(t("cli.nameMissing"));

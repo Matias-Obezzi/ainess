@@ -45,7 +45,7 @@ const textMap = (v: unknown): Record<string, string> | undefined => {
 };
 
 /** Without the fields that came out empty, so two finds of one server compare equal. */
-function tidy(s: FoundServer): FoundServer {
+export function tidy(s: FoundServer): FoundServer {
   const out: FoundServer = { name: s.name, transport: s.transport };
   if (s.transport === "stdio") {
     out.command = s.command;

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { confirmDelete } from "@/lib/confirm";
 import { useAppStore, selectAllAgents } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,7 +12,8 @@ import { alreadyKnown, detectMcpServers, type DetectedMcp } from "@/lib/mcp-impo
 import { plural } from "@/i18n";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/toast";
-import { syncMcpToAntigravity } from "@/lib/mcp-sync";
+import { NATIVE_TARGETS, nativeMcpResults, subscribeNativeMcp, syncNativeMcp } from "@/lib/mcp-native";
+import { Switch } from "@/components/ui/switch";
 import { McpServer } from "@/types";
 import { Plug, MoreHorizontal } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
@@ -34,18 +35,15 @@ export function McpSectionProvider({ children }: { children: ReactNode }) {
 
 export function McpSectionActions() {
   const t = useT();
-  const config = useAppStore(state => state.config);
   const { openCreate } = McpDialogCtx.useDialogState();
   const { show } = SuggestedCtx.useToggleState();
   const { show: showImport } = ImportCtx.useToggleState();
 
-  const handleSyncMcp = async () => {
-    const res = await syncMcpToAntigravity(config.mcpServers);
-    if (res.success) {
-      toast.success(t("mcp.syncDone", { added: res.added, removed: res.removed }));
-    } else {
-      toast.error(res.error || t("mcp.syncFailed"));
-    }
+  const handleSync = async () => {
+    const results = Object.values(await syncNativeMcp());
+    const failed = results.filter(r => r.status === "error");
+    if (failed.length) toast.error(t("mcpNative.syncFailed", { n: failed.length }));
+    else toast.success(t("mcpNative.syncDone"));
   };
 
   return (
@@ -59,7 +57,7 @@ export function McpSectionActions() {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>
           <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void handleSyncMcp()}>{t("mcp.syncWithAntigravity")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void handleSync()}>{t("mcpNative.syncNow")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <Button size="sm" onClick={openCreate}>{t("mcp.new")}</Button>
@@ -93,6 +91,39 @@ export function McpSection() {
     </div>
   );
 
+  const updateConfig = useAppStore(state => state.updateConfig);
+  const results = useSyncExternalStore(subscribeNativeMcp, nativeMcpResults);
+  const syncing = config.mcpNativeSync !== false;
+  // One line per CLI that was written to or could not be, so the user sees where their servers went.
+  const native = (
+    <div className="flex flex-col gap-2 rounded-md border px-3 py-2">
+      <div className="flex items-center gap-2">
+        <Switch checked={syncing} onCheckedChange={(checked) => updateConfig({ mcpNativeSync: checked })} />
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">{t("mcpNative.toggle")}</span>
+          <span className="text-xs text-muted-foreground">{t("mcpNative.hint")}</span>
+        </div>
+      </div>
+      {syncing && (
+        <ul className="flex flex-col gap-0.5 pl-11 text-xs text-muted-foreground">
+          {NATIVE_TARGETS.filter(target => results[target] && results[target]!.status !== "not-installed").map(target => {
+            const r = results[target]!;
+            return (
+              <li key={target} className={r.status === "error" || r.status === "untouched" ? "text-amber-600 dark:text-amber-400" : undefined}>
+                <span className="font-medium">{t(`mcpImport.source.${target}`)}</span>
+                {" — "}
+                {r.status === "error" ? t("mcpNative.status.error", { error: r.error ?? "" })
+                  : r.status === "untouched" ? t("mcpNative.status.untouched")
+                  : t("mcpNative.status.synced")}
+                {r.skipped.length > 0 && ` ${t("mcpNative.status.skipped", { names: r.skipped.join(", ") })}`}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+
   const dialogs = (
     <>
       <McpDialog open={open} onOpenChange={(o) => !o && close()} server={editing} />
@@ -105,6 +136,7 @@ export function McpSection() {
     return (
       <>
         {banner}
+        {native}
         <EmptyState
           icon={Plug}
           title={t("mcp.empty.title")}
@@ -121,13 +153,14 @@ export function McpSection() {
       {/* Which CLIs actually receive them: a server enabled for an agent whose CLI has no way in
           did nothing, and said nothing about it. */}
       {banner}
+      {native}
       <p className="text-xs text-muted-foreground">{t("mcp.reach")}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {config.mcpServers.map(server => (
           <Card key={server.id}>
             <CardHeader>
               <CardTitle>{server.name}</CardTitle>
-              <CardDescription>{server.transport === "http" ? server.url : `${server.command} ${server.args?.join(" ")}`}</CardDescription>
+              <CardDescription>{server.transport === "http" ? server.url : `${server.command} ${(server.args ?? []).join(" ")}`.trim()}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-1">

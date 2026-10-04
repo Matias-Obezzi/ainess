@@ -3124,6 +3124,9 @@ async function runInit(): Promise<void> {
     // With the runs in memory, the boards can be put back in step with them.
     for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
+    // The shared MCP servers, written into each installed CLI's own config as well. The desktop app
+    // only: a CLI process is too short-lived to own that, and a phone has no CLIs to write to.
+    if (isTauri()) void import("@/lib/mcp-native").then(m => m.startNativeMcpSync()).catch(() => {});
     // An unknown question id only means a stale draft once every project's history is in memory.
     get().pruneQuestionDrafts(toLoad.length === config.projects.length);
     // Load persisted notifications before marking the store as ready, so the bell

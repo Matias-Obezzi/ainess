@@ -16,7 +16,20 @@ let one of them fall behind.
   One review screen lists them with where each was found, ticks what is new, and imports it for
   every agent — or, for a server Claude Code kept for one folder, for the agents of that project.
   An extension comes in ready to run: its folder and the values you gave it in Claude are filled
-  in. Nothing is written to those tools, and the values of variables and headers are never shown.
+  in. The values of variables and headers are never shown.
+- **…and kept in step, in every CLI.** The servers you enable for every agent are now also written
+  into each installed CLI's own config — Claude Code, Copilot, Gemini, Codex, opencode and
+  Antigravity — so they are there when you use that CLI on its own too. ainess only ever changes or
+  removes what it wrote itself: a server you already had there under the same name stays yours, a
+  config file with comments in it is left alone rather than rewritten, and a server meant for one
+  agent stays with that agent. Settings → MCP says what happened in each CLI, and one switch turns
+  it off.
+
+### Changed
+
+- **"Sync with Antigravity" is gone**, replaced by the above. It removed every Antigravity server
+  ainess did not know about; the new sync never touches yours. `ainess mcp sync` now syncs every
+  installed CLI.
 
 ### Fixed
 
