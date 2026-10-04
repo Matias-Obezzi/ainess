@@ -16,6 +16,7 @@ import { PresetsSection, PresetsSectionActions, PresetsSectionProvider } from "@
 import { SkillsSection, SkillsSectionActions, SkillsSectionProvider } from "@/components/settings/SkillsSection";
 import { McpSection, McpSectionActions, McpSectionProvider } from "@/components/settings/McpSection";
 import { ExtensionsSection, ExtensionsSectionActions, ExtensionsSectionProvider } from "@/components/settings/ExtensionsSection";
+import { ConnectorsSection, ConnectorsSectionActions, ConnectorsSectionProvider } from "@/components/settings/ConnectorsSection";
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
 // Loaded when it is opened: it draws a QR code, and the library for that is not worth the startup.
@@ -63,6 +64,7 @@ const SECTION_UI: Record<SettingsSection, SectionUI> = {
   presets:     { component: PresetsSection,   actions: PresetsSectionActions,  provider: PresetsSectionProvider },
   skills:      { component: SkillsSection,    actions: SkillsSectionActions,   provider: SkillsSectionProvider },
   mcp:         { component: McpSection,       actions: McpSectionActions,      provider: McpSectionProvider },
+  connectors:  { component: ConnectorsSection, actions: ConnectorsSectionActions, provider: ConnectorsSectionProvider },
   extensions:  { component: ExtensionsSection, actions: ExtensionsSectionActions, provider: ExtensionsSectionProvider },
   hooks:       { component: HooksSection,     actions: HooksSectionActions,    provider: HooksSectionProvider },
   context:     { component: ContextSection,   actions: ContextSectionActions,  provider: ContextSectionProvider },

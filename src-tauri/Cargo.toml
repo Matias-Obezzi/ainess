@@ -47,6 +47,10 @@ tauri-plugin-window-state = "2"
 # release publishes next to it.
 zip = { version = "6", default-features = false, features = ["deflate"] }
 sha2 = "0.10"
+# Connector logins (src/oauth.rs): tokens go to the OS keychain (Windows Credential Manager, macOS
+# Keychain), never into config.json; and PKCE needs randomness the OS vouches for.
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+getrandom = "0.3"
 
 
 # Just enough of the Win32 API to take one console for the app and hide it, so that nothing an

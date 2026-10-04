@@ -72,6 +72,15 @@ export interface Transport {
   installExtension(archivePath: string): Promise<{ dir: string; manifest: string } | null>;
   /** Deletes an installed extension's folder; refused for anything outside the app's own folder. */
   removeExtension(dir: string): Promise<void>;
+  /**
+   * Signs in to a connector with OAuth in the user's browser and keeps the tokens in the OS keychain.
+   * `page` is what the browser shows once it is done. Rejects with what went wrong.
+   */
+  oauthConnect(id: string, url: string, page: string): Promise<{ connected: boolean; expiresAt: number | null }>;
+  oauthStatus(id: string): Promise<{ connected: boolean; expiresAt: number | null }>;
+  /** A fresh access token for a run, or null with no sign-in. Never stored or logged by the caller. */
+  oauthAccessToken(id: string): Promise<string | null>;
+  oauthDisconnect(id: string): Promise<void>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**

@@ -82,8 +82,8 @@ export function McpSection() {
     void detectMcpServers().then(found => { if (live) setDetected(found); }).catch(() => { if (live) setDetected([]); });
     return () => { live = false; };
   }, []);
-  // Extensions are listed in their own section; this one is the servers set up by hand.
-  const handMade = config.mcpServers.filter(s => !s.extension);
+  // The local servers set up by hand. Remote ones are Connectors, packaged ones Extensions.
+  const handMade = config.mcpServers.filter(s => !s.extension && s.transport === "stdio");
   const fresh = (detected ?? []).filter(d => !d.project && !alreadyKnown(config.mcpServers, d.server)).length;
 
   const banner = fresh > 0 && (

@@ -108,6 +108,12 @@ export interface McpServer {
    * installed (Claude Desktop): ainess runs it but never deletes its folder.
    */
   extension?: McpExtension;
+  /**
+   * A connector that signs in with OAuth. Its tokens are in the OS keychain, never here: each run
+   * gets a fresh access token as its `Authorization` header (see `lib/connectors`), and the CLIs'
+   * own configs get the URL alone, so each CLI signs in by itself.
+   */
+  oauth?: boolean;
 }
 
 export interface McpExtension {

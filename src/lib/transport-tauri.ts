@@ -60,6 +60,16 @@ export const tauriTransport: Transport = {
     invoke<{ status: number; body: string }>("http_get", { url, headers }),
   installExtension: async (archivePath) => invoke<{ dir: string; manifest: string }>("install_extension", { archivePath }),
   removeExtension: async (dir) => invoke<void>("remove_extension", { dir }),
+  oauthConnect: async (id, url, page) => invoke<{ connected: boolean; expiresAt: number | null }>("oauth_connect", { id, url, page }),
+  oauthStatus: async (id) => {
+    try {
+      return await invoke<{ connected: boolean; expiresAt: number | null }>("oauth_status", { id });
+    } catch {
+      return { connected: false, expiresAt: null };
+    }
+  },
+  oauthAccessToken: async (id) => invoke<string | null>("oauth_access_token", { id }),
+  oauthDisconnect: async (id) => invoke<void>("oauth_disconnect", { id }),
   homeDir: async () => {
     try {
       return await invoke<string | null>("home_dir");

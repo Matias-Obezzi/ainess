@@ -30,6 +30,13 @@ let one of them fall behind.
   for every agent and every CLI, like any other. Each one can be switched off, configured again or
   uninstalled. The ones Claude Desktop installed show up here too once imported; ainess runs them
   but never deletes their folder.
+- **Connectors.** Remote MCP servers — Linear, Notion, Sentry, anything with an address — get a
+  section of their own in Settings, as in the Claude app; the local ones stay under MCP. One that
+  needs a sign-in connects in your browser, the way the MCP spec lays it out, and its session goes
+  to the system keychain (Windows Credential Manager, macOS Keychain), never into ainess's
+  configuration or its logs. Every run ainess starts gets a fresh token, renewed when it is about to
+  expire. Each CLI's own config gets the address alone, so each CLI signs in by itself and no token
+  is ever written into a file. Deleting a connector takes its sign-in with it.
 
 ### Changed
 

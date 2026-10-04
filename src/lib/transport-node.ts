@@ -527,6 +527,11 @@ export const nodeTransport: Transport = {
   // Installing one is a desktop-app job: it asks for the values the manifest wants on screen.
   installExtension: async () => null,
   removeExtension: async () => {},
+  // The keychain is the desktop app's: a run started from the CLI goes without a connector's token.
+  oauthConnect: async () => { throw new Error("connectors sign in from the desktop app"); },
+  oauthStatus: async () => ({ connected: false, expiresAt: null }),
+  oauthAccessToken: async () => null,
+  oauthDisconnect: async () => {},
 
   readHomeFile: async (relativePath: string) => {
     if (relativePath.includes("..")) throw new Error("Invalid path");

@@ -7,6 +7,7 @@ mod editors;
 mod extensions;
 mod http;
 mod logging;
+mod oauth;
 mod ports;
 mod pty;
 mod remote;
@@ -101,6 +102,10 @@ pub fn run() {
             config::home_dir,
             extensions::install_extension,
             extensions::remove_extension,
+            oauth::oauth_connect,
+            oauth::oauth_status,
+            oauth::oauth_access_token,
+            oauth::oauth_disconnect,
             config::read_file_abs,
             config::read_file_bytes,
             config::files_exist_abs,

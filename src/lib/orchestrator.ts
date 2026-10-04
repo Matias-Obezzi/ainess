@@ -12,6 +12,7 @@ import { compactAgent } from "@/lib/commands";
 import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
+import { withConnectorTokens } from "@/lib/connectors";
 import { readTreeState } from "@/lib/run-revert";
 import { parseReviewVerdict, pickReviewer } from "@/lib/review";
 import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
@@ -822,9 +823,11 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     card,
   });
 
-  const mcpServers = selectMcpFor(store, agent.id);
+  const configuredMcp = selectMcpFor(store, agent.id);
 
   const doSpawn = async () => {
+    // Connectors that sign in get their token now, fresh, and only in this run's copy.
+    const mcpServers = await withConnectorTokens(configuredMcp);
     // Right before the run, so what the agent opens is what the settings say right now. Only the
     // ones this agent has: the prompt names them by path and the file has to be there.
     if (project) await writeSkillFiles(project, skills);
