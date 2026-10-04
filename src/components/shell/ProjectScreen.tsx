@@ -5,7 +5,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { GitBranchButton } from "@/components/GitStatus";
 import { UsageButton } from "@/components/UsageDialog";
 import { AutonomousToggleButton, AutonomousBanner } from "@/components/AutonomousControl";
-import { HierarchyGraph } from "@/components/HierarchyGraph";
+import { lazy, Suspense } from "react";
+// The graph library loads with the hierarchy view, the first time it is opened.
+const HierarchyGraph = lazy(() => import("@/components/HierarchyGraph").then(m => ({ default: m.HierarchyGraph })));
 import { TasksView } from "@/components/tasks/TasksView";
 import { OrchestratorThread } from "./OrchestratorThread";
 import { ChatThread } from "./ChatThread";
@@ -153,7 +155,7 @@ export function ProjectScreen({ projectId, onClose }: { projectId?: string; onCl
               {projectMode === "tasks"
                 ? <div ref={screenIn} className="h-full min-h-0"><TasksView projectId={project.id} /></div>
                 : projectMode === "graph"
-                  ? <div ref={screenIn} className="h-full min-h-0"><HierarchyGraph /></div>
+                  ? <div ref={screenIn} className="h-full min-h-0"><Suspense fallback={null}><HierarchyGraph /></Suspense></div>
                   : currentChatId
                     ? <ChatThread chatId={currentChatId} />
                     : <OrchestratorThread />}

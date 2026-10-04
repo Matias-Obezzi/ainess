@@ -1,9 +1,10 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH, selectPanelOpen, selectPreviewFile } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
-import { TerminalDockSection } from "./TerminalDockSection";
+// xterm and its addons load with the panel, not with the app (see `lib/terminal-create`).
+const TerminalDockSection = lazy(() => import("./TerminalDockSection").then(m => ({ default: m.TerminalDockSection })));
 import { FileDockSection } from "./FileDockSection";
 import { useCurrentProjectId } from "./project-pane";
 import { useT } from "@/i18n/useT";
@@ -93,7 +94,7 @@ export function RightDock() {
   const sections: { id: DockSectionId; component: React.ReactNode; open: boolean }[] = [
     { id: "comm", component: <CommDockSection />, open: commPanelOpen },
     { id: "diff", component: <DiffDockSection />, open: diffPanelOpen },
-    { id: "term", component: <TerminalDockSection />, open: termPanelOpen },
+    { id: "term", component: <Suspense fallback={null}><TerminalDockSection /></Suspense>, open: termPanelOpen },
     { id: "file", component: <FileDockSection />, open: previewOpen },
   ];
   

@@ -3,7 +3,8 @@
 // at. See `lib/stall` for what "quiet" means and why it is measured outside the store.
 import { useEffect } from "react";
 import { useAppStore, selectAgent } from "@/store";
-import { stalledRuns } from "@/lib/stall";
+import { DEFAULT_STALL_STOP_MINUTES, lastOutputAt, silenceMs, stalledRuns } from "@/lib/stall";
+import { stopStalledRun } from "@/lib/orchestrator";
 import { translateNow } from "@/i18n/useT";
 import { toast } from "@/components/ui/toast";
 
@@ -20,6 +21,15 @@ export function useStallWatch() {
         const title = translateNow("notify.stalled", { name, minutes });
         state.notify({ kind: "info", title, projectId: run.projectId, agentId: run.agentId, runId: run.id });
         toast.warning(title);
+      }
+      // Delegated work quiet for longer than the setting is stopped: its planner is waiting on it.
+      // A run of yours is not — you are the one waiting, and you can see it.
+      const limit = state.config.stallStopMinutes ?? DEFAULT_STALL_STOP_MINUTES;
+      if (limit > 0) {
+        const now = Date.now();
+        for (const run of running) {
+          if (run.parentRunId && silenceMs(lastOutputAt(run.id), run.startedAt, now) >= limit * 60_000) stopStalledRun(run.id, limit);
+        }
       }
     };
     const interval = setInterval(check, CHECK_EVERY_MS);

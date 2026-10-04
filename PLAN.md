@@ -192,8 +192,9 @@ Para delegar incluí en tu respuesta uno o más bloques exactamente así:
 {"tasks":[{"agent":"antigravity","task":"instrucción detallada y autocontenida"}]}
 ```
 Cada task debe ser autocontenida (el agente no ve esta conversación). Cuando recibas los
-resultados, verificalos; si falta algo delegá de nuevo. Si no queda nada por delegar respondé
-sin bloques delegate con un resumen final para el usuario.
+resultados, leé el resumen y el bloque result de cada uno; abrí el diff solo si algo quedó
+bloqueado, falló o no cierra. Si falta algo, delegá de nuevo. Si no queda nada por delegar
+respondé sin bloques delegate con un resumen final para el usuario.
 ```
 
 **implementer**: "Sos IMPLEMENTADOR. Recibís tareas de tu planificador. Hacé los cambios en el
@@ -204,29 +205,59 @@ qué quedó pendiente o bloqueado."
 
 Siempre se agrega `agent.systemPrompt` al final si existe.
 
+### Bloques del protocolo
+
+Lo que un agente escribe en su respuesta y la app ejecuta. Se leen fuera de los bloques de código
+(`outsideCode` en `providers.ts`): un ejemplo dentro de un ```` ```ts ```` no se ejecuta. Cada
+apertura va al principio de una línea y el cierre es un ```` ``` ```` solo en su línea.
+
+| Bloque | Quién | Qué hace |
+|---|---|---|
+| `delegate` | quien tiene hijos | `{"tasks":[{agent, task, title?, model?, taskId?}]}`; también una lista suelta o un solo objeto |
+| `ask` | cualquiera | pregunta con opciones; `"to":"planner"` se la manda al padre en vez de al usuario |
+| `note` | delegados | aviso a mitad de trabajo: el usuario lo ve al instante, el planner con los resultados |
+| `result` | delegados | `files` / `verified` / `blocked`: el resumen estructurado que lee el planner |
+| `task` | planner | mueve o crea tarjetas del tablero |
+| `suggest` | cualquiera | próximos pasos que la app ofrece como botones |
+
+Un `delegate` que no se pudo leer (`delegationError`) vuelve al planner con el error de JSON para
+que lo reescriba, contando como ronda. Un nombre que no es de ningún hijo, lo mismo.
+
 ### Ciclo (orchestrator.ts)
 
 1. `submitPrompt(text, targetAgentId)` → crea `Run` (round 0, parentRunId null) y lo lanza.
-2. Al terminar un run con status done: si el agente tiene hijos, parsear bloques
-   ```delegate``` (regex `/```delegate\s*\n([\s\S]*?)```/g`, `JSON.parse`).
-   - Match de `agent` por `name` (case-insensitive) o por `id` entre los hijos.
-   - Por cada task: crear run hijo (`parentRunId = run.id`, `round = run.round`) y lanzarlo
-     (en paralelo). Agente padre pasa a `waiting`. Mensaje `delegation` en el log.
-3. Si un run termina y **no** delega: 
-   - Si `parentRunId` es null → tarea del usuario terminada (mensaje `result` para `user`).
-   - Si tiene padre: cuando **todos** los `childRunIds` del run padre terminaron, se arma un
-     prompt "Resultados de tus agentes:\n### <agente>\n<output>…" y se lanza un **nuevo run de
-     continuación** para el agente padre con `sessionId` (resume), `parentRunId` = el
-     `parentRunId` del run padre original, `round = round + 1`. 
-   - Si `round >= config.maxRounds` → no continuar; mensaje `system` avisando.
-4. `stopAgent(agentId)`: `kill_run` del run actual → status `killed`, output
-   `"[detenido por el usuario]"`, y se propaga hacia arriba como resultado normal para no
-   dejar al padre esperando. `stopAll()` mata todos los runs activos.
-5. `instructAgent(agentId, text)`: si está `idle` → run directo (resume de su sesión, sin
-   padre). Si está `working` → se encola en `runtime.queuedInstructions` y se envía al terminar
-   el run actual, como run de continuación con el mismo `parentRunId`.
-6. `sessionId` se captura de los eventos `init`/`result` y se guarda en `runtime[agentId]`.
-   `resetSession(agentId)` lo borra.
+2. Al terminar un run `done`, si **preguntó** (`ask`): queda esperando la respuesta. No se
+   continúa al padre, no se cierra la tarea, no se verifica ni se revisa; el run que lleva la
+   respuesta es el que termina. Sus `delegate` de ese mismo turno no se envían, y el prompt de
+   la respuesta se lo dice.
+3. Si delegó: un run hijo por task (`parentRunId = run.id`, `round = run.round`), en paralelo.
+   Un miembro al que se le vuelve a delegar dentro del mismo `rootRunId` retoma su sesión.
+4. Al terminar un hijo:
+   - Con comandos de verificación en el proyecto (`project.verify`): corren primero. Si pasan,
+     la tarjeta queda lista y **no** se lanza el revisor. Si fallan, el planner se entera.
+   - Sin comandos: si hay un agente revisor, se lanza (`maybeStartReview`).
+   - `maybeContinueParent`: cuando **todos** los hijos terminaron (un hijo con una pregunta
+     pendiente no cuenta como terminado), se lanza **un** run de continuación del padre con
+     "Resultados de tus agentes:" — por hijo, los últimos 6000 caracteres de su respuesta
+     (`childReport`), sus notas si el corte se las llevó, si ya estaba verificado (comandos o
+     revisor: "no vuelvas a leer su diff") o el fallo de verificación. Cada hijo se reporta una
+     vez; un hijo reintentado (`retryRun` conserva el `parentRunId`) es noticia nueva.
+   - Si `round >= config.maxRounds` (salvo modo autónomo), o la continuación no puede arrancar
+     (presupuesto), la tarea se cierra.
+5. Un hijo sin salida durante `config.stallStopMinutes` (30 por defecto, 0 = nunca) se detiene
+   como error y la ronda sigue.
+6. Tras un reinicio, los runs que estaban vivos se cierran como interrumpidos y la tarjeta de un
+   trabajo delegado vuelve a "necesita tu atención"; reintentarlo le reporta al planner.
+7. `stopAgent(agentId)`: `kill_run` del run actual → status `killed`, y se propaga hacia arriba
+   como resultado normal para no dejar al padre esperando. `stopAll()` mata todos los runs.
+8. `instructAgent(agentId, text)`: si está `idle` → run directo (resume de su sesión, sin padre).
+   Si está ocupado → se encola en `runtime.queuedInstructions` y se envía al terminar.
+9. `sessionId` se captura de los eventos `session`/`result` y se guarda en `runtime[agentId]`
+   (o en la sesión del chat). `resetSession(agentId)` lo borra.
+
+Un planner de Claude solo puede usar `git` desde la shell y escribir en `.ainess/`
+(`plannerMayUse`, aplicado cuando el adaptador ACP pide permiso). Los implementadores no pueden
+lanzar sub-agentes que escriben (`general-purpose`, `statusline-setup`); Explore sí.
 
 Todo mensaje va a `messages` (`CommMessage`), que es lo que muestra la pestaña Comunicación.
 Cada línea cruda de stdout/stderr se guarda en `run.rawLines` (para el detalle del run).

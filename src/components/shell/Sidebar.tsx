@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import { confirm } from "@/lib/confirm";
 import { openExternal } from "@/lib/open-external";
 import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { isChatActive } from "@/lib/chat";
+import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { pendingApprovals } from "@/lib/approvals";
@@ -99,12 +99,9 @@ export function Sidebar() {
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [editingChatId, setEditingChatId] = useState<string | undefined>(undefined);
 
-  // A chat's "is it answering right now" lives outside the store, so poll it.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 800);
-    return () => clearInterval(interval);
-  }, []);
+  // A chat's "is it answering right now" lives outside the store. Subscribed to rather than polled:
+  // the poll re-rendered the whole sidebar every 800ms, idle or not, for as long as the app was open.
+  useSyncExternalStore(subscribeChatActivity, answeringChats);
 
   // Counting inside a selector would return a fresh object on every call and loop forever.
   const runningByProject = useMemo(() => {
@@ -797,4 +794,9 @@ export function Sidebar() {
     )}
     </>
   );
+}
+
+/** The chats answering right now, as one string: React re-renders only when the set changes. */
+function answeringChats(): string {
+  return useAppStore.getState().config.chats.filter(c => isChatActive(c.id)).map(c => c.id).join(",");
 }

@@ -53,8 +53,10 @@ describe("settings sections list (B-12)", () => {
   });
 
   it("every SETTINGS_SECTIONS entry has a component", () => {
+    // A function, or what `lazy` returns for a section loaded when opened (an object React renders).
     for (const s of SETTINGS_SECTIONS) {
-      expect(typeof s.component, s.id).toBe("function");
+      const c = s.component as unknown as { $$typeof?: symbol };
+      expect(typeof c === "function" || c?.$$typeof === Symbol.for("react.lazy"), s.id).toBe(true);
     }
   });
 });

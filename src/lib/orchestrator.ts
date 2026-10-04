@@ -1,7 +1,7 @@
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, parseDelegations, delegationError, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -13,7 +13,7 @@ import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
-import { pickReviewer } from "@/lib/review";
+import { parseReviewVerdict, pickReviewer } from "@/lib/review";
 import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import type { AcpSessionSpec } from "@/lib/acp/session";
 import { delegationNeedsApproval } from "@/lib/approvals";
@@ -136,16 +136,32 @@ function finishNeverSpawned(runId: string, projectId: string, agentId: string, r
  */
 const streamBuffer = new StreamBuffer();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * The same for what is not text: each usage update gave `runs` a new identity and each tool call
+ * copied the whole feed, one write per event, and everything subscribed to either — the composer,
+ * the sidebar, the thread — rendered again for each. They wait for the flush with the text.
+ */
+const pendingUsage = new Map<string, RunUsage>();
+let pendingMessages: CommMessage[] = [];
+
+/** `addMessage`, applied with the next flush instead of now. */
+function queueMessage(msg: Omit<CommMessage, "id" | "ts">): void {
+  pendingMessages.push({ ...msg, id: crypto.randomUUID(), ts: Date.now() });
+}
 
 export function flushStream() {
   if (flushTimer !== null) {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
-  if (streamBuffer.isEmpty()) return;
+  const usage = new Map(pendingUsage);
+  pendingUsage.clear();
+  const queued = pendingMessages;
+  pendingMessages = [];
+  if (streamBuffer.isEmpty() && usage.size === 0 && queued.length === 0) return;
 
-  const deltas = streamBuffer.take();
-  if (deltas.size === 0) return;
+  const deltas = streamBuffer.isEmpty() ? new Map<string, { text: string; lines: string[] }>() : streamBuffer.take();
+  if (deltas.size === 0 && usage.size === 0 && queued.length === 0) return;
 
   // The lines go to a module of their own, not into the store. They used to be appended to
   // `runs[id].rawLines` here, which gave `runs` a new identity twelve times a second and re-rendered
@@ -154,13 +170,24 @@ export function flushStream() {
 
   useAppStore.setState(state => {
     const runs = state.runs;
+    // Usage first, and only where it moved: a report that says what the last one said is no change.
+    let nextRuns = runs;
+    for (const [runId, incoming] of usage) {
+      const r = nextRuns[runId];
+      if (!r) continue;
+      const merged = mergeUsage(r.usage, incoming);
+      if (!merged || JSON.stringify(merged) === JSON.stringify(r.usage)) continue;
+      nextRuns = { ...nextRuns, [runId]: { ...r, usage: merged } };
+    }
+    const runsUpdate = nextRuns !== runs ? { runs: nextRuns } : {};
+
     const runIdsWithText = new Set<string>();
     for (const [runId, delta] of deltas.entries()) {
       if (delta.text) runIdsWithText.add(runId);
     }
     // Nothing but lines this time, and those no longer live here: leave the store alone rather than
     // copy the whole feed to put it back unchanged.
-    if (runIdsWithText.size === 0) return state;
+    if (runIdsWithText.size === 0 && queued.length === 0) return nextRuns !== runs ? runsUpdate : state;
 
     let messagesChanged = false;
     let messages = [...state.messages];
@@ -201,12 +228,19 @@ export function flushStream() {
       }
     }
 
+    // After the text: a tool call reported in the same window came after the words leading up to it.
+    if (queued.length > 0) {
+      messages.push(...queued);
+      messagesChanged = true;
+      addedMessages += queued.length;
+    }
+
     if (addedMessages > 0 && messages.length > TRIM_MESSAGES_AT) {
       messages = trimMessagesInMemory(messages);
     }
 
-    if (!messagesChanged) return state;
-    return { messages };
+    if (!messagesChanged) return nextRuns !== runs ? runsUpdate : state;
+    return { messages, ...runsUpdate };
   });
 
   // A note is worth having while the agent is still working, which is the whole point of it, so it
@@ -1010,7 +1044,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
       if (ev.failed) {
-        addMessage({
+        queueMessage({
           projectId: run.projectId,
           fromAgentId: run.agentId,
           kind: "tool",
@@ -1021,7 +1055,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
 
         const count = bumpToolFailure(toolFailures, run.id, ev.name);
         if (count === REPEATED_FAILURE_AT) {
-          addMessage({
+          queueMessage({
             projectId: run.projectId,
             fromAgentId: "system",
             toAgentId: run.agentId,
@@ -1032,7 +1066,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
         }
       } else {
         const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
-        addMessage({
+        queueMessage({
           projectId: run.projectId,
           fromAgentId: run.agentId,
           kind: "tool",
@@ -1042,21 +1076,11 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
         });
       }
     } else if (ev.type === "usage") {
-      useAppStore.setState(state => {
-        const r = state.runs[runId];
-        if (!r) return state;
-        const usage = mergeUsage(r.usage, ev.usage);
-        return {
-          runs: {
-            ...state.runs,
-            [runId]: {
-              ...r,
-              ...(usage ? { usage } : {}),
-            },
-          },
-        };
-      });
+      const merged = mergeUsage(pendingUsage.get(runId), ev.usage);
+      if (merged) pendingUsage.set(runId, merged);
     } else if (ev.type === "result") {
+      // What was queued is older than the result: applied first, so it cannot land over it.
+      flushStream();
       useAppStore.setState(state => {
         const r = state.runs[runId];
         if (!r) return state;
@@ -1224,8 +1248,13 @@ function handleExit(e: RunExitEvent) {
   // A kill that came after the turn was over is ours (the EOF the adapter ignored), not the user's.
   const killedByUser = e.killed && !acp;
   const isError = acp?.failure ? true : (e.code !== 0 && !killedByUser && !collected);
-  const status: RunStatus = killedByUser ? "killed" : isError ? "error" : "done";
-  const output = killedByUser ? translateNow("system.stoppedByUser") : collected;
+  // Stopped by the watchdog, not by you: a failure its planner hears about as one.
+  const stalledFor = stalledStops.get(e.runId);
+  stalledStops.delete(e.runId);
+  const status: RunStatus = stalledFor !== undefined ? "error" : killedByUser ? "killed" : isError ? "error" : "done";
+  const output = stalledFor !== undefined
+    ? translateNow("run.stalledStopped", { minutes: stalledFor })
+    : killedByUser ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:
@@ -1380,6 +1409,7 @@ function onRunFinished(runId: string) {
       };
     });
     store.resetSession(agent.id, run.projectId);
+    drainContinuations(agent.id, run.projectId);
     launchQueuedRuns(agent.id, run.projectId);
     processQueuedInstructions(agent.id, run.projectId);
     return;
@@ -1415,6 +1445,15 @@ function onRunFinished(runId: string) {
     // path a click in the composer takes, nothing here duplicates any of it.
     if (usable) useAppStore.getState().answerQuestions([{ questionId, answer: [answer] }]);
     else questionFallsToUser(questionId);
+    // Its implementers may still be out: answering one of them does not free the planner.
+    if (answerStatus === "idle" && stillHasRunningDelegations(agent.id, run.projectId, run.id)) {
+      useAppStore.setState(state => {
+        const pRuntime = state.runtime[run.projectId] || {};
+        return { runtime: { ...state.runtime, [run.projectId]: { ...pRuntime, [agent.id]: { ...pRuntime[agent.id], status: "waiting" } } } };
+      });
+    }
+    // Results that came back while it was answering were held for this turn to end.
+    drainContinuations(agent.id, run.projectId);
     launchQueuedRuns(agent.id, run.projectId);
     processQueuedInstructions(agent.id, run.projectId);
     return;
@@ -1503,7 +1542,10 @@ function onRunFinished(runId: string) {
             const textForMessage = modelToUse ? `[${modelToUse}] ${task.task}` : task.task;
             addMessage({ projectId: run.projectId, fromAgentId: agent.id, toAgentId: childAgent.id, kind: "delegation", text: textForMessage, runId });
             void emitHookEvent("delegation", {}, { ...ctx, toAgent: childAgent.name, task: task.task, model: modelToUse || "" });
-            const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse };
+            // More of a task the member already worked on in this one (a fix after the review, the
+            // next part of the same change) picks up its own session instead of exploring again.
+            const resume = lastRunWasOf(store, childAgent.id, run.projectId, run.rootRunId);
+            const payload = { agentId: childAgent.id, projectId: run.projectId, prompt: task.task, parentRunId: runId, round: run.round, rootRunId: run.rootRunId, model: modelToUse, ...(resume ? { resume } : {}) };
             const summary = `${agent.name} → ${childAgent.name}: ${task.task.slice(0, 200)}`;
             const needsApproval = delegationNeedsApproval(childAgent, store.config.approveDelegations);
             if (needsApproval && !isAutonomous(project)) {
@@ -1573,6 +1615,11 @@ function onRunFinished(runId: string) {
             agentStatus = "idle";
           }
         }
+      } else if (run.status === "done" && run.round + 1 <= store.config.maxRounds) {
+        // A block that was meant to hand work out and did not parse: told why, the planner writes
+        // it again, the same way a name that matches nobody gets a second go.
+        const error = delegationError(run.output);
+        if (error) retryUnknownPayload = { prompt: translateNow("delegation.malformed", { error }) };
       }
     }
   }
@@ -1624,7 +1671,10 @@ function onRunFinished(runId: string) {
         maybeContinueParent(run.parentRunId);
       }
     }
-  } else if (!waitingForChildren) {
+  } else if (!waitingForChildren && !asked) {
+    // An agent that asked is waiting, not done: its answer resumes it, and that run is the one that
+    // ends the task or reports to the planner. Reporting this one too had the planner carry on with
+    // a question for a result, and a task close with the question still open.
     if (!run.parentRunId) {
       // The streamed text and the final answer are the same words when the agent only talked, so
       // keeping both showed the reply twice. The result is the one that carries the "to user"
@@ -1652,7 +1702,7 @@ function onRunFinished(runId: string) {
       maybeContinueParent(run.parentRunId);
     }
     // Otherwise the parent is told once the project's own commands have had their say — in
-    // `verifyFinishedRun`, which continues it if they passed and does not if they did not. Telling
+    // `verifyFinishedRun`, which continues it either way, with the verdict in the results. Telling
     // the planner the work is done while the tests are still running is the same as not running
     // them: it would hear "finished" and move on, and the failure would arrive to nobody.
   }
@@ -2024,6 +2074,9 @@ export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer
     const chosen = item.answer.filter(a => a.trim()).join(", ");
     return translateNow("questions.answerPrompt", { question: item.question.question, answer: chosen });
   });
+  // A turn that asked is a turn whose delegations were never sent (see `onRunFinished`). Unsaid,
+  // the agent believes its work went out and waits for results that are not coming.
+  const heldBack = run && run.kind !== "chat" && parseDelegations(run.output ?? "").length > 0;
   const text = lines.join("\n");
 
   addMessage({
@@ -2040,7 +2093,7 @@ export function resumeWithAnswers(items: Array<{ question: AgentQuestion; answer
   const resumed = startRun({
     agentId: question.agentId,
     projectId: question.projectId,
-    prompt: text,
+    prompt: heldBack ? `${text}\n\n${translateNow("questions.delegationsHeld")}` : text,
     parentRunId: run?.parentRunId ?? null,
     round: question.round,
     resume: true,
@@ -2154,14 +2207,18 @@ async function verifyAndSettle(run: Run, commands: VerifyCommand[], agent: Agent
       text: translateNow("verify.passed"),
       runId: run.id,
     });
-    maybeStartReview(run, agent);
+    // No reviewer after this: the project's own commands just passed on this work, and a reviewer
+    // re-reading it (and then the planner re-reading both) was the same check paid three times.
+    // A project with no commands still gets its review — that is the only check it has.
     verifying.delete(run.id);
     if (run.parentRunId) maybeContinueParent(run.parentRunId);
     return;
   }
 
-  // Failed: the chain stops here. The planner is not told the work is done, because it is not, and
-  // the card is already back with the user carrying what the command printed.
+  // Failed. The card is already back with the user carrying what the command printed, and the
+  // planner hears it too, failure first (see `maybeContinueParent`): stopping the chain here left
+  // it waiting forever when this child was the last one out, and reading a sibling's later result
+  // as "all done" when it was not.
   verifying.delete(run.id);
 
   const failed = verdict.failed;
@@ -2185,6 +2242,7 @@ async function verifyAndSettle(run: Run, commands: VerifyCommand[], agent: Agent
     error: failed ? `${failed.label}: ${detail}` : detail,
     taskPrompt: run.prompt,
   });
+  if (run.parentRunId) maybeContinueParent(run.parentRunId);
 }
 
 /**
@@ -2195,7 +2253,9 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
   if (run.status !== "done" || !run.parentRunId) return;
   if (run.kind === "chat") return;
   if (run.review) return;
-  
+  // Waiting on an answer: the run that carries it is the one to review.
+  if (parseQuestions(run.output).length > 0) return;
+
   const store = useAppStore.getState();
   const reviewer = pickReviewer(selectProjectAgents(store, run.projectId), agent.id);
   if (!reviewer) return;
@@ -2203,7 +2263,7 @@ function maybeStartReview(run: Run, agent: AgentConfig): void {
   const task = taskSync.taskForRun(run.projectId, run.id);
   if (!task) return;
   
-  const prompt = translateNow("review.prompt", { agent: agent.name, task: run.prompt, output: run.output });
+  const prompt = translateNow("review.prompt", { agent: agent.name, task: run.prompt, output: childReport(run.output).text });
   const reviewRunId = startRun({
     agentId: reviewer.id,
     projectId: run.projectId,
@@ -2331,9 +2391,18 @@ function maybeContinueParent(parentRunId: string) {
   if (pendingApprovalsFor(parentRunId).length > 0) return;
 
   const children = childRunsOf(store.runs, parentRunId);
-  const allChildrenDone = children.every(r => r.status === "done" || r.status === "error" || r.status === "killed");
+  // A child that asked something has ended its run but not its work: the run that carries its
+  // answer is the one the planner is waiting for.
+  const asking = new Set(Object.values(store.questions).filter(q => q.status === "pending").map(q => q.runId));
+  const allChildrenDone = children.every(r => (r.status === "done" || r.status === "error" || r.status === "killed") && !asking.has(r.id));
 
-  if (allChildrenDone) {
+  // What the planner has not heard yet. Every child that ends calls this, and so do a verification
+  // settling and an answer coming back: only the first call that finds them all done reports them.
+  // A child retried after that (`retryRun`) is a new run of the same parent, so it is news again.
+  const reported = reportedChildren.get(parentRunId);
+  const fresh = reported ? children.filter(c => !reported.has(c.id)) : children;
+
+  if (allChildrenDone && fresh.length > 0) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
 
@@ -2346,16 +2415,38 @@ function maybeContinueParent(parentRunId: string) {
       return;
     }
 
+    reportedChildren.set(parentRunId, new Set(children.map(c => c.id)));
+
     const project = store.config.projects.find(p => p.id === parentRun.projectId);
 
     let outputText = translateNow("prompt.results.header") + "\n\n";
-    for (const childRun of children) {
+    for (const childRun of fresh) {
       const childAgent = selectAgent(store, childRun.agentId);
-      outputText += `### ${childAgent?.name || childRun.agentId}\n${childRun.output}\n`;
-      
-      // What the child says it did, in the shape the planner can act on. Only the lists with
+      const report = childReport(childRun.output);
+      outputText += `### ${childAgent?.name || childRun.agentId}\n${report.text}\n`;
+      // Its notes are written for the planner, and the cut above keeps only the end of the turn:
+      // whatever it flagged along the way would otherwise be gone.
+      const notes = report.cut ? parseNotes(childRun.output) : [];
+      if (notes.length > 0) outputText += "\n" + notes.map(n => `> ${n.replace(/\n/g, "\n> ")}`).join("\n") + "\n";
+
+      // Already checked by something that is not the child's word for it: said, so the planner does
+      // not read the diff again or rerun the tests — the third time the same work was checked.
+      if (childRun.verification?.status === "passed") {
+        outputText += "\n" + translateNow("prompt.results.verifiedByChecks") + "\n";
+      } else if (childRun.review && childRun.status === "done" && parseReviewVerdict(childRun.output) === "approved") {
+        outputText += "\n" + translateNow("prompt.results.approvedByReview") + "\n";
+      }
+
+      // The project's own commands disagreed with whatever the child says about its work.
+      if (childRun.verification?.status === "failed") {
+        const failed = childRun.verification.failed;
+        outputText += "\n" + translateNow("verify.failedMessage", { label: failed?.label ?? "", output: briefOutput(failed?.output ?? "") }) + "\n";
+      }
+
+      // What the child says it did, in the shape the planner can act on — only when its own block
+      // was cut off above, or the planner reads the same lists twice. Only the lists with
       // something in them: three empty headings say nothing and cost a paragraph.
-      const result = parseResult(childRun.output);
+      const result = report.cut ? parseResult(childRun.output) : null;
       if (result) {
         const lines: string[] = [];
         if (result.files.length) lines.push(`**${translateNow("result.files")}:** ${result.files.join(", ")}`);
@@ -2385,7 +2476,7 @@ function maybeContinueParent(parentRunId: string) {
 
     // Delegations of this turn that reached nobody. Said here because this is the first moment the
     // planner is listening again, and the work behind them still has to be done by someone.
-    const unknown = parentRun.unknownDelegations ?? [];
+    const unknown = reported ? [] : parentRun.unknownDelegations ?? [];
     if (unknown.length > 0) {
       const roster = selectChildren(store, parentRun.projectId, parentRun.agentId);
       const valid = roster.length > 0 ? roster.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
@@ -2397,9 +2488,21 @@ function maybeContinueParent(parentRunId: string) {
     // skips it so the task keeps going past it, same as it does with approvals and questions. A
     // manual stop (`cancelled`) is not skipped — parar a mano tiene que seguir parando.
     const roundsCapped = !cancelled && parentRun.round >= store.config.maxRounds && !isAutonomous(project);
-    if (cancelled || roundsCapped) {
+    // A continuation the budget refused ends the chain the way a stop does (`startRun` already said
+    // why in the feed): left alone, the planner sat in "waiting" and its card in "working" for good.
+    const continued = !cancelled && !roundsCapped && !!startRun({
+      agentId: parentRun.agentId,
+      projectId: parentRun.projectId,
+      prompt: outputText,
+      parentRunId: parentRun.parentRunId,
+      round: parentRun.round + 1,
+      resume: true,
+      rootRunId: parentRun.rootRunId
+    });
+    if (!continued) {
       const isMaxRounds = roundsCapped;
-      addMessage({
+      const refused = !cancelled && !roundsCapped;
+      if (!refused) addMessage({
         projectId: parentRun.projectId,
         fromAgentId: "system",
         toAgentId: parentRun.agentId,
@@ -2429,12 +2532,12 @@ function maybeContinueParent(parentRunId: string) {
         if (isMaxRounds) {
           taskFinished(parentRun.projectId, parentRun.rootRunId, true, translateNow("rounds.maxReachedDetail", { n: store.config.maxRounds }));
         } else {
-          taskFinished(parentRun.projectId, parentRun.rootRunId, cancelled || parentRun.status === "error", parentRun.output);
+          taskFinished(parentRun.projectId, parentRun.rootRunId, cancelled || refused || parentRun.status === "error", parentRun.output);
         }
 
         const rootRun = store.runs[parentRun.rootRunId];
         const ctx = { project, agent: parentAgent, runId: parentRun.id, round: parentRun.round, prompt: parentRun.prompt, output: parentRun.output, taskPrompt: rootRun ? rootRun.prompt : parentRun.prompt, error: parentRun.status === "error" ? parentRun.output : "" };
-        if (cancelled || parentRun.status === "error" || isMaxRounds) {
+        if (cancelled || refused || parentRun.status === "error" || isMaxRounds) {
           void emitHookEvent("task.failed", {}, ctx);
           if (!cancelled) notifyTaskOutcome(parentRun, true);
         } else {
@@ -2445,18 +2548,56 @@ function maybeContinueParent(parentRunId: string) {
       } else {
         maybeContinueParent(parentRun.parentRunId);
       }
-    } else {
-      startRun({
-        agentId: parentRun.agentId,
-        projectId: parentRun.projectId,
-        prompt: outputText,
-        parentRunId: parentRun.parentRunId,
-        round: parentRun.round + 1,
-        resume: true,
-        rootRunId: parentRun.rootRunId
-      });
     }
   }
+}
+
+/**
+ * Whether an agent's latest run (chats aside: they keep their own sessions) was part of `rootRunId`
+ * and ended well — that is, whether the session in its slot is this task's.
+ */
+function lastRunWasOf(store: AppState, agentId: string, projectId: string, rootRunId: string): boolean {
+  let last: Run | undefined;
+  for (const r of Object.values(store.runs)) {
+    if (r.agentId !== agentId || r.projectId !== projectId || r.chatId) continue;
+    if (!last || r.startedAt > last.startedAt) last = r;
+  }
+  return !!last && last.rootRunId === rootRunId && last.status === "done";
+}
+
+/** Runs the stall watchdog stopped, with how many quiet minutes it took. See `stopStalledRun`. */
+const stalledStops = new Map<string, number>();
+
+/**
+ * Stops a delegated run that has printed nothing for `minutes`. It ends as an error saying so, and
+ * like any child that ends, lets its planner go on — waiting on it would have been waiting forever.
+ */
+export function stopStalledRun(runId: string, minutes: number): void {
+  if (stalledStops.has(runId)) return;
+  stalledStops.set(runId, minutes);
+  void getTransport().killRun(runId).catch(() => {});
+}
+
+/**
+ * The children each parent run has already been told about — see `maybeContinueParent`.
+ *
+ * ponytail: in memory, like `heldContinuations`. After a restart a retried child reports its
+ * siblings again along with itself; persisting this on the parent run would stop that.
+ */
+const reportedChildren = new Map<string, Set<string>>();
+
+/** How much of a child's answer goes back to its planner, from the end: where the summary is. */
+const CHILD_REPORT_CHARS = 6000;
+
+/**
+ * A child's answer as its planner gets it. An ACP turn's output is every message of the turn
+ * ("Let me read…" included), and one of 90k characters went back whole, once per round, into the
+ * most expensive context of the task. The end of it is what matters: the summary and its `result`.
+ */
+export function childReport(output: string): { text: string; cut: boolean } {
+  const text = (output ?? "").trim();
+  if (text.length <= CHILD_REPORT_CHARS) return { text, cut: false };
+  return { text: "…" + text.slice(-CHILD_REPORT_CHARS), cut: true };
 }
 
 /**
@@ -2631,7 +2772,9 @@ export function retryRun(runId: string, opts: { agentId: string; model?: string 
     agentId: opts.agentId,
     projectId: old.projectId,
     prompt: old.prompt,
-    parentRunId: null,
+    // A member's work retried is still its planner's: with no parent its result went to the user,
+    // and the planner that delegated it never heard. A root (or a root's own continuation) has none.
+    parentRunId: old.parentRunId,
     // A continuation stays drawn as one: the bubble only repeats the user's prompt on round 0.
     round: old.round,
     rootRunId: isRoot ? undefined : old.rootRunId,
@@ -2643,6 +2786,11 @@ export function retryRun(runId: string, opts: { agentId: string; model?: string 
 
   if (card) {
     useAppStore.getState().updateTask(card.id, { status: "working", runId: newRunId, agentId: opts.agentId });
+  }
+  // A delegated run's card follows its work to the retry, so the retry's ending is what settles it.
+  const delegatedCard = old.parentRunId ? taskSync.taskForRun(old.projectId, old.id) : undefined;
+  if (delegatedCard) {
+    useAppStore.getState().updateTask(delegatedCard.id, { status: "working", runId: newRunId, agentId: opts.agentId });
   }
   if (isRoot) {
     // What closes that card when the request ends (`taskOnRootFinished` looks it up by the root run

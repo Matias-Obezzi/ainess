@@ -29,6 +29,7 @@ export const remoteTransport: Transport = {
   onAcpSetup: async () => () => {},
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
+  configFileStamp: async () => null,
   exec: async () => ({ code: null, stdout: "", stderr: "" }),
   httpPost: async (url, body, headers) => {
     const res = await fetch(url, { method: "POST", headers, body });

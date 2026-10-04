@@ -23,6 +23,11 @@ import type { ClientContext, McpServer, PermissionOption, SessionUpdate, StopRea
 export interface AcpSessionSpec {
   mcpServers?: McpServer[];
   meta?: Record<string, unknown>;
+  /**
+   * Which tool calls the agent may make when it asks; everything else is refused. Absent: all of
+   * them, which is what the CLI path does with the same agent.
+   */
+  permit?: (call: { kind?: string | null; rawInput?: unknown }) => boolean;
 }
 
 export interface AcpPromptOptions {
@@ -98,9 +103,23 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
   const tools = toolCallTracker();
 
   /** The events one update is worth, and the answer growing with them. */
+  // Text that resumes after a tool call is a new message, not more of the last one. Glued on as it
+  // arrives, "Let me check." and "Done" read as "Let me check.Done", and a fence closed right before
+  // the call came out as "```Done" — a block that no longer closes.
+  let afterTool = false;
   const consume = (update: SessionUpdate) => {
+    // Whether or not its row is drawn yet (see `ToolCallTracker`), a call is a break in the text.
+    if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") afterTool = true;
     for (const event of eventsFromSessionUpdate(update, tools)) {
-      if (event.type === "text") answer += event.text;
+      if (event.type === "text") {
+        if (afterTool && answer && !answer.endsWith("\n\n")) {
+          const gap = answer.endsWith("\n") ? "\n" : "\n\n";
+          answer += gap;
+          onEvent({ type: "text", text: gap });
+        }
+        afterTool = false;
+        answer += event.text;
+      }
       onEvent(event);
     }
   };
@@ -131,6 +150,12 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
       rememberClaudeAuthStatus(status);
     })
     .onRequest("session/request_permission", ({ params }) => {
+      const permit = options.session?.permit;
+      if (permit && !permit(params.toolCall)) {
+        const reject = params.options.find((o) => o.kind === "reject_once") ?? params.options.find((o) => o.kind === "reject_always");
+        log.debug("acp", `run ${runId}: refusing ${params.toolCall.title ?? params.toolCall.toolCallId}`);
+        return { outcome: reject ? { outcome: "selected", optionId: reject.optionId } : { outcome: "cancelled" } };
+      }
       const option = grantOption(params.options);
       log.debug("acp", `run ${runId}: granting ${params.toolCall.title ?? params.toolCall.toolCallId} as ${option?.optionId ?? "(no option offered)"}`);
       if (!option) return { outcome: { outcome: "cancelled" } };

@@ -78,7 +78,13 @@ fn write_config_file_blocking(app: tauri::AppHandle, relative_path: String, cont
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    fs::write(&path, content).map_err(|e| e.to_string())?;
+    // Beside it and renamed over, like `config.json`: a history file is megabytes, rewritten every
+    // few seconds of a run, and a crash halfway through a plain write left it cut in two — unreadable,
+    // so the whole history of the project read as empty.
+    let mut temp = path.clone().into_os_string();
+    temp.push(".tmp");
+    fs::write(&temp, content).map_err(|e| e.to_string())?;
+    fs::rename(&temp, &path).map_err(|e| e.to_string())?;
 
     Ok(path.to_string_lossy().to_string())
 }
@@ -106,6 +112,24 @@ fn delete_config_file_blocking(app: tauri::AppHandle, relative_path: String) -> 
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// Size and modification time of a file of the config dir, as one opaque string; None when it is
+/// not there. The history poll asks this before reading: an 8 MB file nobody else touched was read,
+/// sent across and parsed every few seconds for nothing.
+#[tauri::command]
+pub async fn config_file_stamp(app: tauri::AppHandle, relative_path: String) -> Result<Option<String>, String> {
+    if relative_path.contains("..") {
+        return Err("Invalid path".into());
+    }
+    let config_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(file_stamp(&config_dir.join(&relative_path)))
+}
+
+fn file_stamp(path: &std::path::Path) -> Option<String> {
+    let meta = fs::metadata(path).ok()?;
+    let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(format!("{}:{}", modified.as_nanos(), meta.len()))
 }
 
 #[tauri::command]
@@ -276,6 +300,25 @@ pub async fn list_subdirs(path: String) -> Result<Vec<String>, String> {
 
 #[cfg(test)]
 mod tests {
+    /// The history poll reads a file only when this moved, so it has to move on every write and say
+    /// nothing about a file that is not there.
+    #[test]
+    fn a_stamp_moves_when_the_file_does() {
+        let dir = std::env::temp_dir().join(format!("ainess-stamp-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("history.json");
+        assert_eq!(super::file_stamp(&file), None);
+
+        std::fs::write(&file, "{}").unwrap();
+        let first = super::file_stamp(&file).unwrap();
+        assert_eq!(super::file_stamp(&file).as_deref(), Some(first.as_str()));
+
+        std::fs::write(&file, "{\"runs\":[]}").unwrap();
+        assert_ne!(super::file_stamp(&file).unwrap(), first);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// A screenshot is not text, and `read_file_abs` answers `None` for it -- which the preview
     /// panel could not tell apart from a file that is not there, so it said "not found" about a
     /// file whose path it was printing. This is the read that gives it back.

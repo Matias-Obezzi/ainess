@@ -458,6 +458,11 @@ export interface AppConfig {
    * it starts on its own as soon as a slot frees. 0 means no ceiling at all.
    */
   maxConcurrentRuns: number;
+  /**
+   * Minutes a delegated run may go without printing anything before it is stopped and its planner
+   * carries on with what there is. Unset means `DEFAULT_STALL_STOP_MINUTES`; 0 means never.
+   */
+  stallStopMinutes?: number;
   skills: Skill[];
   mcpServers: McpServer[];
   /**

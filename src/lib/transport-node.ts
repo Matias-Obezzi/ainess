@@ -460,7 +460,10 @@ export const nodeTransport: Transport = {
     if (relativePath.includes("..")) throw new Error("Invalid path");
     const p = path.join(path.dirname(getConfigPath()), relativePath);
     fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, content, "utf-8");
+    // Beside it and renamed over, as the app does: a crash halfway through a history write left a
+    // file cut in two, which reads as no history at all.
+    fs.writeFileSync(`${p}.tmp`, content, "utf-8");
+    fs.renameSync(`${p}.tmp`, p);
     return p;
   },
 
@@ -469,6 +472,16 @@ export const nodeTransport: Transport = {
     const p = path.join(path.dirname(getConfigPath()), relativePath);
     try {
       return fs.readFileSync(p, "utf-8");
+    } catch {
+      return null;
+    }
+  },
+
+  configFileStamp: async (relativePath: string) => {
+    if (relativePath.includes("..")) throw new Error("Invalid path");
+    try {
+      const st = fs.statSync(path.join(path.dirname(getConfigPath()), relativePath), { bigint: true });
+      return `${st.mtimeNs}:${st.size}`;
     } catch {
       return null;
     }

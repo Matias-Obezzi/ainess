@@ -4,10 +4,11 @@
 // out beside every other one, so the graph grew wider than the window and the thing you actually
 // wanted to see — what this task waits for, and what waits for it — was somewhere in the middle of
 // it. Asked from a task instead, there is nothing on screen that is not about that task.
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAppStore, selectTasks } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { TaskGraph } from "./TaskGraph";
+// The graph library loads with the first graph opened.
+const TaskGraph = lazy(() => import("./TaskGraph").then(m => ({ default: m.TaskGraph })));
 import { taskFamily } from "@/lib/tasks";
 import { plural } from "@/i18n";
 import { useT } from "@/i18n/useT";
@@ -48,12 +49,14 @@ export function TaskFamilyDialog({ projectId, taskId, open, onOpenChange }: {
 
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
           {focus && (
-            <TaskGraph
-              key={focus}
-              projectId={projectId}
-              focusTaskId={focus}
-              onOpenTask={setFocus}
-            />
+            <Suspense fallback={null}>
+              <TaskGraph
+                key={focus}
+                projectId={projectId}
+                focusTaskId={focus}
+                onOpenTask={setFocus}
+              />
+            </Suspense>
           )}
         </div>
       </DialogContent>

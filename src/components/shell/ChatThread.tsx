@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { AttachmentStrip } from "@/components/AttachmentStrip";
 import { splitAttachments } from "@/lib/attachments";
 import { AgentAvatar } from "@/components/ProviderLogo";
@@ -42,7 +42,8 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const t = useT();
   const chats = useAppStore(state => state.config.chats);
   const agents = useAppStore(selectAllAgents);
-  const chatMessages = useAppStore(state => state.chatMessages);
+  // This chat's list only: the whole map changes whenever any chat streams a word.
+  const messages: ChatMessage[] = useAppStore(state => state.chatMessages[chatId]) ?? NO_CHAT_MESSAGES;
   const chatLoading = useAppStore(state => state.chatLoading[chatId]);
   // The body fades up when another chat is opened, and again when its history lands under the
   // skeletons. On the column inside the scroller, never on the scroller: a transform there is a
@@ -62,7 +63,6 @@ export function ChatThread({ chatId }: { chatId: string }) {
   const prevMessagesLength = useRef(0);
 
   const chat = chats.find(c => c.id === chatId);
-  const messages: ChatMessage[] = chatMessages[chatId] || [];
 
   // For the mascot. The badge shows whoever is on the other side of this chat; a shared chat with
   // several participants falls back to the project's planner.
@@ -306,7 +306,11 @@ function BubbleSkeleton({ align }: { align: "start" | "end" }) {
   );
 }
 
-function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: string }) {
+const NO_CHAT_MESSAGES: ChatMessage[] = [];
+
+// Memoized: the thread re-renders on every keystroke's typing flag and every other chat's update,
+// and each bubble that is an answer is a markdown parse.
+const ChatBubble = memo(function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: string }) {
   const t = useT();
   const locale = useLocale();
   const agents = useAppStore(selectAllAgents);
@@ -486,4 +490,4 @@ function ChatBubble({ message, projectId }: { message: ChatMessage; projectId?: 
       </ContextMenuContent>
     </ContextMenu>
   );
-}
+});

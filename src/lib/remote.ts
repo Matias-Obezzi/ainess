@@ -74,6 +74,11 @@ const MAX_OUTPUT_CHARS = 20000;
 const MAX_SNAPSHOT_BYTES = 1_000_000;
 const TRIMMED_LIMITS = { messages: 400, runs: 30 };
 const PUSH_THROTTLE_MS = 300;
+/**
+ * While an agent streams, a change lands every 80 ms and each push rebuilds the whole snapshot on the
+ * thread that draws the app. A phone reading along is just as well served a little less often.
+ */
+const PUSH_THROTTLE_STREAMING_MS = 1500;
 /** How often the push loop looks at whether any phone is connected. */
 const CLIENT_WATCH_MS = 1500;
 
@@ -339,7 +344,7 @@ function schedulePush(): void {
       return;
     }
     void pushNow();
-  }, PUSH_THROTTLE_MS);
+  }, Object.values(useAppStore.getState().runs).some(r => r.status === "running") ? PUSH_THROTTLE_STREAMING_MS : PUSH_THROTTLE_MS);
 }
 
 /**

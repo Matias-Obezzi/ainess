@@ -510,6 +510,27 @@ function toAcpMcpServers(servers: McpServer[] | undefined): AcpMcpServer[] {
   );
 }
 
+/**
+ * A tool call a planner may make: git from the shell, and writing only under `.ainess/` (its plans,
+ * the board). Reading, searching and fetching never reach this — they do not ask. The rest is what
+ * its implementers are for.
+ */
+export function plannerMayUse(call: { kind?: string | null; rawInput?: unknown }): boolean {
+  const input = (call.rawInput && typeof call.rawInput === "object" ? call.rawInput : {}) as Record<string, unknown>;
+  if (call.kind === "execute") {
+    const command = typeof input.command === "string" ? input.command : "";
+    // `git add -A && git commit …`: every command of the chain is git. What it is piped into is not
+    // checked — `git log | head` is still reading git.
+    const steps = command.split(/&&|\|\||;/).map(s => s.split("|")[0].trim()).filter(Boolean);
+    return steps.length > 0 && steps.every(s => /^git(\s|$)/.test(s));
+  }
+  if (call.kind === "edit" || call.kind === "delete" || call.kind === "move") {
+    const path = [input.file_path, input.path, input.notebook_path].find(p => typeof p === "string") as string | undefined;
+    return !!path && /(^|[\\/])\.ainess[\\/]/.test(path);
+  }
+  return true;
+}
+
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
   return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
@@ -576,7 +597,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         // it from the app. A blacklist lets implementers keep the rest of their tools (and any
         // tool that gets introduced) while stripping out subagents. `Task` is kept for older
         // versions where that was the name for `Agent`.
-        options.disallowedTools = ["Agent", "Workflow", "Task"];
+        //
+        // Except the read-only ones: an implementer sending Explore off to search the repo keeps
+        // that search out of its own context, which is the expensive one. So the rule names the
+        // agents that can write (`Agent(<type>)` is Claude Code's own per-type deny rule) instead
+        // of the tool. ponytail: agents the user defined in ~/.claude/agents are not named here.
+        options.disallowedTools = ["Agent(general-purpose)", "Agent(statusline-setup)", "Task(general-purpose)", "Workflow"];
       }
 
       const meta: Record<string, unknown> = { claudeCode: { options } };
@@ -584,7 +610,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // take Claude Code's own system prompt away from it. `append` is `--append-system-prompt`.
       if (input.systemPrompt) meta.systemPrompt = { append: input.systemPrompt };
 
-      return { mcpServers: toAcpMcpServers(input.mcpServers), meta };
+      // `allowedTools` only says what runs without asking, and the adapter asks us about the rest
+      // (it takes its permission mode from Claude Code's settings, not from `options`) — so the list
+      // above restricted nothing, and planners read the repo with `cat` and `sed` into the most
+      // expensive context of the task. What they may do is decided here, when they ask.
+      const permit = input.agent.role === "planner" ? plannerMayUse : undefined;
+      return { mcpServers: toAcpMcpServers(input.mcpServers), meta, ...(permit ? { permit } : {}) };
     },
   },
   antigravity: {
@@ -618,7 +649,11 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         env: { NO_COLOR: "1" }
       };
     },
-    parseLine: parseAntigravityLine
+    parseLine: parseAntigravityLine,
+    // A turn with no `result` text falls back to the raw lines, and these are the JSON stream:
+    // the init event, the tool list. That went to the planner as the child's answer, 50k tokens
+    // of it at a time. What is not JSON (an error the CLI printed) is still worth passing on.
+    finalOutput: (lines) => lines.filter(l => !l.trimStart().startsWith("{")).join("\n").trim(),
   },
   copilot: {
     id: "copilot",
@@ -1286,7 +1321,41 @@ export interface ParsedQuestion {
  * line, because the text of a question can carry its own fences. Anything without a question or
  * without at least two options is dropped — a question with one answer is not a question.
  */
+/** The fences the app reads as instructions rather than as code to show. */
+const PROTOCOL_FENCE = /^(delegate|ask|note|suggest|result|task)\b/;
+
+/**
+ * `text` with every code block blanked out, except the app's own blocks.
+ *
+ * An agent explaining the format writes an example of it, and the example went out as a real
+ * delegation, question or board move. Fences are followed the way markdown draws them — inside a
+ * ```ts block a line reading ```delegate is code, and only a bare fence at least as long closes
+ * it — so what runs is exactly what the user does not see drawn as code. Lines keep their place.
+ */
+export function outsideCode(text: string): string {
+  const out: string[] = [];
+  let fence: { char: string; len: number; keep: boolean } | null = null;
+  for (const line of text.split("\n")) {
+    const m = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      const closes = !!m && m[1][0] === fence.char && m[1].length >= fence.len && m[2].trim() === "";
+      out.push(fence.keep ? line : "");
+      if (closes) fence = null;
+      continue;
+    }
+    if (m) {
+      const keep = PROTOCOL_FENCE.test(m[2].trim());
+      fence = { char: m[1][0], len: m[1].length, keep };
+      out.push(keep ? line : "");
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 export function parseQuestions(text: string): ParsedQuestion[] {
+  text = outsideCode(text);
   const out: ParsedQuestion[] = [];
   const regex = /```ask[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
   let match;
@@ -1332,7 +1401,30 @@ export function delegationTargets(text: string): string[] {
   return names;
 }
 
+/**
+ * Why the delegate blocks in `text` handed nothing out, when there is one and it did not: the
+ * engine's own JSON error, or which part of the shape was missing. Null when there is no block,
+ * or when it delegated something.
+ *
+ * Without this a block that did not parse was the same as no block at all: the turn read as the
+ * planner's final answer, the work went nowhere and the planner never heard why.
+ */
+export function delegationError(text: string): string | null {
+  text = outsideCode(text);
+  if (!/^[ \t]*\`\`\`delegate\b/m.test(text)) return null;
+  if (parseDelegations(text).length > 0) return null;
+  const match = /\`\`\`delegate[ \t]*\n([\s\S]*?)\n[ \t]*\`\`\`[ \t]*(?=\n|$)/.exec(text);
+  if (!match) return translateNow("delegation.malformedFence");
+  try {
+    JSON.parse(match[1]);
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+  return translateNow("delegation.malformedFields");
+}
+
 export function parseDelegations(text: string): Delegation[] {
+  text = outsideCode(text);
   const delegations: Delegation[] = [];
   // The closing fence must sit at the start of a line: a task's text often carries its own
   // ``` blocks inside the JSON string, and a lazy match would cut the JSON there.
@@ -1344,6 +1436,9 @@ export function parseDelegations(text: string): Delegation[] {
       let tasks = obj;
       if (obj && Array.isArray(obj.tasks)) {
         tasks = obj.tasks;
+      } else if (obj && typeof obj.agent === "string") {
+        // One task written as the object itself, not as a list of one: what was meant is obvious.
+        tasks = [obj];
       }
       if (Array.isArray(tasks)) {
         for (const t of tasks) {
@@ -1474,6 +1569,7 @@ export type ParsedTaskOp =
 const VALID_TASK_UPDATE_STATUSES = new Set(["working", "needs-you", "in-review", "ready"]);
 
 export function parseTaskOps(text: string): ParsedTaskOp[] {
+  text = outsideCode(text);
   const ops: ParsedTaskOp[] = [];
   const regex = /```task[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
   let match;

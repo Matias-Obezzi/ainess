@@ -11,7 +11,7 @@ import { briefOutput, type Verdict } from "@/lib/verify-commands";
 import { translateNow } from "@/i18n/useT";
 import { parseReviewVerdict } from "@/lib/review";
 import { emitHookEvent } from "@/lib/hooks";
-import type { ParsedTaskOp } from "@/lib/providers";
+import { parseQuestions, type ParsedTaskOp } from "@/lib/providers";
 
 /** Title of a task: its first meaningful line, without markdown decoration. */
 function titleFrom(text: string): string {
@@ -232,6 +232,8 @@ export function taskOnRunFinished(run: Run): void {
     }
 
     if (!run.parentRunId) return;
+    // Asked something: still working, until the run that carries the answer ends.
+    if (run.status === "done" && parseQuestions(run.output).length > 0) return;
     const task = findByRun(run.projectId, run.id);
     if (!task) return;
     const failed = run.status === "error" || run.status === "killed";
@@ -255,6 +257,8 @@ export function taskOnRunFinished(run: Run): void {
 export function verificationFor(run: Run): VerifyCommand[] {
   if (!run.parentRunId) return [];
   if (run.status !== "done") return [];
+  // A turn that ends in a question has not finished the work yet: checked when it has.
+  if (parseQuestions(run.output).length > 0) return [];
   const project = useAppStore.getState().config.projects.find(p => p.id === run.projectId);
   return project?.verify ?? [];
 }
@@ -265,9 +269,8 @@ export function taskOnVerified(run: Run, verdict: Verdict): void {
     const task = findByRun(run.projectId, run.id);
     if (!task) return;
     if (verdict.ok) {
-      useAppStore.getState().updateTask(task.id, {
-        status: hasReviewer(run.projectId) ? "in-review" : "ready",
-      });
+      // Passed is done: no reviewer is asked after the project's own commands (see `verifyAndSettle`).
+      useAppStore.getState().updateTask(task.id, { status: "ready" });
       return;
     }
     const failed = verdict.failed;

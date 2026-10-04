@@ -41,6 +41,13 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
+  configFileStamp: async (relativePath) => {
+    try {
+      return await invoke<string | null>("config_file_stamp", { relativePath });
+    } catch {
+      return null;
+    }
+  },
   exec: async (program, args, cwd, timeoutSecs) =>
     invoke<{ code: number | null; stdout: string; stderr: string }>("exec_capture", { program, args, cwd, timeoutSecs }),
   httpPost: async (url, body, headers) =>

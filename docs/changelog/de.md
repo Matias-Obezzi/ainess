@@ -2,6 +2,91 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.25.0 — 2026-10-04
+
+### Behoben
+
+- **Ein Agent, der dir eine Frage stellte, galt als fertig.** Sein Planer machte mit der Frage
+  weiter, als wäre sie das Ergebnis, und ein zweites Mal, als die Antwort kam; fragte der Planer
+  selbst, wurde die Aufgabe geschlossen und als erledigt gemeldet, während die Frage noch offen war.
+  Fragen heißt jetzt warten: Der Zug, der die Antwort bringt, meldet sich zurück, und die Karte
+  bleibt bis dahin, wo sie war.
+- **Eine fehlgeschlagene Prüfung ließ den Planer für immer warten.** Schlugen die Befehle des
+  Projekts beim letzten fertigen Mitglied fehl, sagte es niemand dem Planer; wurde danach ein
+  anderes Mitglied fertig, hielt der Planer die fehlgeschlagene Arbeit für erledigt. Jetzt erfährt
+  er es in beiden Fällen, mit dem, was der Befehl ausgegeben hat, und kann jemanden zum Beheben
+  schicken.
+- **Eine falsch geschriebene Delegation ging ins Leere.** Ein nicht lesbarer Block wurde als die
+  endgültige Antwort des Planers genommen, und die Arbeit, die er verteilen wollte, wurde nie
+  erledigt. Jetzt erfährt er, was falsch war, und schreibt ihn neu. Eine einzelne Aufgabe ohne die
+  Liste drumherum wird so angenommen, wie sie ist.
+- **Delegationen im selben Zug wie eine Frage gingen kommentarlos verloren.** Der Agent erfährt
+  jetzt, dass sie nicht gesendet wurden, wenn seine Antwort kommt.
+- **Text nach einem Werkzeugaufruf klebte am Text davor** — „Ich schaue nach.Fertig“ — und ein
+  Codeblock, der direkt davor geschlossen wurde, schloss sich nicht mehr. Jetzt beginnt ein neuer
+  Absatz.
+- **Die Arbeit eines Mitglieds erneut zu versuchen schickte das Ergebnis an dich statt an seinen
+  Planer**, der nie davon erfuhr. Der neue Versuch meldet sich jetzt beim Planer, der die Arbeit
+  delegiert hat, und die Karte zieht mit.
+- **Ein Neustart mitten in delegierter Arbeit ließ ihre Karten für immer auf „in Arbeit“.** Sie
+  kommen zu dir zurück, und ein erneuter Versuch meldet sich wie oben beim Planer.
+- **Ein Mitglied, das nie fertig wurde, hielt seinen Planer für immer auf**, denn die Runde geht
+  erst weiter, wenn alle fertig sind. Delegierte Arbeit, die 30 Minuten lang nichts ausgibt, wird
+  jetzt gestoppt und als solche gemeldet, und der Planer macht weiter. Die Zeit steht unter
+  Einstellungen → Allgemein; 0 schaltet es ab.
+- **Den Mitgliedern wurde gesagt, ihre Notizen erreichten den Planer sofort.** Du siehst sie sofort;
+  der Planer liest sie mit den Ergebnissen — und jetzt auch dann, wenn die Antwort so lang war, dass
+  sie gekürzt wurde.
+- **Ein Beispiel in einem Codeblock wurde ausgeführt.** Ein Agent, der das Format einer Delegation,
+  einer Frage oder eines Board-Zugs erklärte, schrieb eins als Beispiel, und die App führte es aus.
+  Was als Code angezeigt wird, wird nicht mehr als Anweisung gelesen.
+
+### Geändert
+
+- **Weniger Tokens pro Aufgabe.**
+  - Was ein Mitglied sagt, geht an seinen Planer auf die letzten 6.000 Zeichen gekürzt zurück, wo
+    die Zusammenfassung steht. Vorher ging der ganze Zug zurück, jede Nachricht, eine davon mit
+    90.000 Zeichen, in den teuersten Kontext der Aufgabe.
+  - Ein Antigravity-Zug ohne Antwort gab dem Planer seinen rohen JSON-Stream, als wäre er eine —
+    rund 50.000 Tokens auf einmal. Jetzt gibt er weiter, was die CLI außerhalb dieses Streams
+    ausgegeben hat.
+  - Ein Mitglied, das mehr von derselben Aufgabe bekommt (eine Korrektur nach dem Review, der
+    nächste Teil einer Änderung), setzt sein eigenes Gespräch fort, statt das Repo wieder von vorn
+    zu erkunden.
+  - Der Planer liest die Zusammenfassung jedes Mitglieds und schaut den Diff nur an, wenn etwas
+    blockiert ist, fehlgeschlagen ist oder nicht zusammenpasst, statt die ganze Arbeit erneut zu
+    lesen.
+  - Arbeit wird einmal geprüft. Wenn die Befehle des Projekts bei der Arbeit eines Mitglieds
+    durchlaufen, wird kein Reviewer mehr um eine weitere Prüfung gebeten und die Karte geht direkt
+    auf fertig; ein Projekt ohne Befehle bekommt weiter sein Review. So oder so erfährt der Planer,
+    dass die Arbeit schon geprüft ist, und liest den Diff nicht ein drittes Mal und führt die Tests
+    nicht erneut aus.
+  - Ein Claude-Implementierer kann Explore, den schreibgeschützten Agenten von Claude Code, zum
+    Durchsuchen des Repos losschicken, damit die Suche aus seinem eigenen Kontext bleibt. Agenten,
+    die etwas ändern können, bleiben weiter draußen.
+  - Ein Claude-Planer kann nur `git` ausführen und seine eigenen Pläne in `.ainess/` schreiben —
+    das, was seine Werkzeugliste schon immer sagte. Die Liste schränkte nichts ein, und Planer lasen
+    das Repo mit `cat` und `sed` in ihren eigenen Kontext, statt zu delegieren.
+- **Flüssiger, während Agenten arbeiten.**
+  - Die App startet mit einem Viertel weniger zu laden: Terminal, Graphen und QR-Code werden
+    geladen, wenn du sie zum ersten Mal öffnest.
+  - Token-Zählungen und Werkzeugaufrufe kommen im selben Schub wie der Text auf den Bildschirm,
+    statt bei jedem Ereignis den Verlauf, die Seitenleiste und das Eingabefeld neu zu zeichnen.
+  - Mit verbundenem Handy wird, was es bekommt, alle anderthalb Sekunden neu aufgebaut, während
+    Agenten arbeiten, statt alle 300 ms.
+  - Eine Antwort, die gerade geschrieben wird, wird absatzweise verarbeitet: Ab etwa 20.000 Zeichen
+    dauerte es länger als der Abstand zwischen zwei Aktualisierungen, bei jeder Aktualisierung die
+    ganze Antwort zu verarbeiten.
+  - Ein Chat zeichnet nicht mehr bei jedem Tastendruck oder bei Änderungen in einem anderen Chat
+    alle Nachrichten neu.
+  - Die Seitenleiste zeichnet sich nicht mehr alle 800 ms neu, ob sich etwas geändert hat oder
+    nicht.
+  - Der Verlauf eines Projekts wird nur noch von der Festplatte gelesen, wenn ein anderer Prozess
+    ihn geändert hat. Er wurde alle drei Sekunden eines Laufs und alle fünf im Leerlauf gelesen,
+    verarbeitet und zusammengeführt — jedes Mal Megabytes.
+  - Dieser Verlauf wird neben den alten geschrieben und in einem Zug ersetzt, sodass ein Absturz
+    mitten im Schreiben ihn nicht mehr halbiert und unlesbar zurücklässt.
+
 ## 0.24.2 — 2026-09-26
 
 ### Behoben

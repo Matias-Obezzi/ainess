@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ensureTerminal, getTerminal } from "@/lib/terminal-registry";
+import { getTerminal } from "@/lib/terminal-registry";
+import { ensureTerminal } from "@/lib/terminal-create";
 import type { TerminalTab } from "@/types";
 
 interface Props {

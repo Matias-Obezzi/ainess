@@ -6,6 +6,78 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.25.0 — 2026-10-04
+
+### Fixed
+
+- **An agent that asked you something was treated as done.** Its planner carried on with the
+  question as if it were the result, and carried on a second time when the answer came back; asked
+  by the planner itself, the task closed and told you it was finished with the question still
+  open. Asking now means waiting: the turn that carries the answer is the one that reports back,
+  and the card stays where it was until then.
+- **A failed check left the planner waiting forever.** When the project's own commands failed on
+  the last member to finish, nobody told the planner; when another member finished afterwards, the
+  planner read the failed work as done. It now hears about it either way, with what the command
+  printed, and can send someone to fix it.
+- **A delegation the planner wrote wrong went nowhere.** A block that did not parse was read as
+  the planner's final answer, and the work it was handing out was never done. The planner is now
+  told what was wrong and writes it again. One task written without the list around it is
+  accepted as it is.
+- **Delegations written in the same turn as a question were dropped without a word.** The agent
+  is now told they were not sent when its answer comes back.
+- **Text after a tool call was glued to the text before it** — "Let me check.Done" — and a code
+  block closed right before the call stopped closing. It starts a new paragraph now.
+- **Retrying a member's work sent its result to you instead of to its planner**, which never heard
+  about it. A retry now reports to the planner that delegated the work, and the card follows it.
+- **A restart in the middle of delegated work left its cards saying "working" for good.** They
+  come back to you, and retrying the work reports to the planner as above.
+- **One member that never finished held its planner forever**, because the round only goes on
+  when every member is done. Delegated work that prints nothing for 30 minutes is now stopped and
+  reported as such, and the planner carries on. The time is in Settings → General; 0 turns it off.
+- **Members were told their notes reach the planner right away.** You see them right away; the
+  planner reads them with the results — and now it does even when the answer was long enough to
+  be cut.
+- **An example written inside a code block was executed.** An agent explaining the format of a
+  delegation, a question or a board move wrote one as an example, and the app ran it. What is
+  drawn as code is no longer read as an instruction.
+
+### Changed
+
+- **Fewer tokens per task.**
+  - What a member says goes back to its planner capped at its last 6,000 characters, where the
+    summary is. A whole turn went back before, every message of it, one of 90,000 characters into
+    the most expensive context of the task.
+  - An Antigravity turn with no answer handed its raw JSON stream to the planner as if it were
+    one — around 50,000 tokens at a time. It hands what the CLI printed outside that stream.
+  - A member handed more of the same task (a fix after the review, the next part of a change)
+    picks up its own conversation instead of exploring the repo from zero again.
+  - The planner reads each member's summary and checks the diff only when something is blocked,
+    failed or does not add up, instead of re-reading all of the work.
+  - Work is checked once. When the project's own commands pass on what a member did, no reviewer
+    is asked to check it again and the card goes straight to ready; a project without commands
+    still gets its review. Either way the planner is told the work was already verified, and does
+    not read its diff or run its tests a third time.
+  - A Claude implementer can send Claude Code's read-only Explore agent to search the repo, so the
+    search stays out of its own context. The agents that can change things are still kept out.
+  - A Claude planner can only run `git` and write its own plans in `.ainess/`, which is what its
+    tool list always said. The list did not restrict anything, and planners read the repo with
+    `cat` and `sed` into their own context instead of delegating.
+- **Smoother while agents work.**
+  - The app starts with a quarter less to load: the terminal, the graphs and the QR code are
+    loaded the first time you open them.
+  - Token counts and tool calls reach the screen in the same batch as the text, instead of one
+    redraw of the thread, the sidebar and the composer per event.
+  - With your phone connected, what is sent to it is rebuilt every second and a half while agents
+    work instead of every 300 ms.
+  - A streaming answer is parsed one paragraph at a time: past about 20,000 characters, parsing
+    the whole answer on every update took longer than the update interval.
+  - A chat no longer redraws every message on every keystroke or when another chat updates.
+  - The sidebar stopped redrawing itself every 800 ms whether anything changed or not.
+  - The history of a project is read from disk only when another process changed it. It was read,
+    parsed and merged every three seconds of a run and every five when idle — megabytes each time.
+  - That history is written beside the old one and swapped in, so a crash mid-write no longer
+    leaves it cut in half and unreadable.
+
 ## 0.24.2 — 2026-09-26
 
 ### Fixed

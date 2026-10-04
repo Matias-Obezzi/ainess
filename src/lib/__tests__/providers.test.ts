@@ -131,9 +131,12 @@ describe("claude provider over ACP", () => {
     expect(options.allowDangerouslySkipPermissions).toBeUndefined();
   });
 
-  it("keeps subagents away from everyone else", () => {
+  // The ones that can write stay out of the hierarchy; Explore, which only reads, is let through so
+  // a search does not land in the implementer's own context.
+  it("keeps the subagents that can write away from everyone else", () => {
     const options = optionsOf(session({ role: "implementer" }).meta);
-    expect(options.disallowedTools).toEqual(["Agent", "Workflow", "Task"]);
+    expect(options.disallowedTools).toEqual(["Agent(general-purpose)", "Agent(statusline-setup)", "Task(general-purpose)", "Workflow"]);
+    expect(options.disallowedTools).not.toContain("Agent");
     expect(options.allowedTools).toBeUndefined();
   });
 
