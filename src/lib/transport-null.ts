@@ -23,6 +23,7 @@ export const nullTransport: Transport = {
   onAcpSetup: async () => () => {},
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
+  configFileStamp: async () => null,
   exec: async (_program, _args, _cwd) => ({ code: null, stdout: "", stderr: "" }),
   httpPost: async () => { throw new Error("null transport"); },
   httpPatch: async () => { throw new Error("null transport"); },

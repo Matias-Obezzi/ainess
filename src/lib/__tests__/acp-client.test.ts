@@ -316,7 +316,7 @@ describe("runAcpPrompt", () => {
     const events: ParsedEvent[] = [];
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: (e) => events.push(e) });
 
-    expect(result).toEqual({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola mundo", resumed: false });
+    expect(result).toEqual({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola \n\nmundo", resumed: false });
     expect(events).toEqual([
       { type: "session", sessionId: "sess-1" },
       { type: "text", text: "Hola " },
@@ -324,8 +324,10 @@ describe("runAcpPrompt", () => {
       { type: "tool", name: "Read", failed: true, error: "no such file" },
       { type: "error", text: "disk full: no room left" },
       { type: "usage", usage: { contextTokens: 1234 } },
+      // Text after a tool call is a new paragraph, not more of the sentence before it.
+      { type: "text", text: "\n\n" },
       { type: "text", text: "mundo" },
-      { type: "result", text: "Hola mundo", sessionId: "sess-1" },
+      { type: "result", text: "Hola \n\nmundo", sessionId: "sess-1" },
     ]);
   });
 
@@ -333,7 +335,7 @@ describe("runAcpPrompt", () => {
     const runId = "acp-stderr";
     await startAgent(runId, "stderr");
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: () => {} });
-    expect(result.text).toBe("Hola mundo");
+    expect(result.text).toBe("Hola \n\nmundo");
   });
 
   test("a frame that arrives in two writes is still one message", async () => {
@@ -347,7 +349,7 @@ describe("runAcpPrompt", () => {
     const runId = "acp-noise";
     await startAgent(runId, "noise");
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: () => {} });
-    expect(result.text).toBe("Hola mundo");
+    expect(result.text).toBe("Hola \n\nmundo");
   });
 
   test("another run's stdout cannot answer for this one", async () => {
@@ -359,7 +361,7 @@ describe("runAcpPrompt", () => {
     const runId = "acp-mine";
     await startAgent(runId);
     const result = await runAcpPrompt({ runId, cwd: process.cwd(), prompt: "hola", onEvent: () => {} });
-    expect(result).toMatchObject({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola mundo" });
+    expect(result).toMatchObject({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola \n\nmundo" });
   });
 
   test("an agent that answers with an error ends as an error event", async () => {

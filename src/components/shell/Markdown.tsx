@@ -1,6 +1,6 @@
 // Markdown renderer for agent answers and live text. Styles come from Tailwind classes here
 // (no @tailwindcss/typography), so the output matches the shell's own type scale.
-import { isValidElement, useMemo, useState, type ReactNode } from "react";
+import { isValidElement, memo, useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown, { defaultUrlTransform, type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { delegationTargets, parseDelegations } from "@/lib/providers";
@@ -265,15 +265,56 @@ const plugins = [remarkGfm];
  * half-written delegate block is drawn as the delegation it is about to be, instead of as the
  * broken JSON it is right now.
  */
-export function Markdown({ text, className, streaming = false }: { text: string; className?: string; streaming?: boolean }) {
-  const components = useMemo(() => makeComponents(streaming), [streaming]);
+export const Markdown = memo(function Markdown({ text, className, streaming = false }: { text: string; className?: string; streaming?: boolean }) {
   const content = unglueFences(text ?? "");
   if (!content.trim()) return null;
+  // A streaming answer is re-rendered every flush, and parsing all of it each time cost more than
+  // the flush interval past ~20k characters. Its finished paragraphs no longer change, so each is
+  // its own memoized block and only the one being written is parsed again. Finished, it is parsed
+  // whole, once: a list split by blank lines reads right only that way.
+  const blocks = streaming ? settledBlocks(content) : [content];
   return (
     <div className={cn("text-sm leading-relaxed break-words select-text", className)}>
-      <ReactMarkdown remarkPlugins={plugins} components={components} urlTransform={urlTransform}>
-        {content}
-      </ReactMarkdown>
+      {/* The paragraph gap the last `<p>` of each block drops (`last:mb-0`), put back between blocks. */}
+      {blocks.map((block, i) => (
+        <div key={i} className="mb-2 last:mb-0">
+          <MarkdownBlock text={block} streaming={streaming && i === blocks.length - 1} />
+        </div>
+      ))}
     </div>
   );
+});
+
+const MarkdownBlock = memo(function MarkdownBlock({ text, streaming }: { text: string; streaming: boolean }) {
+  const components = useMemo(() => makeComponents(streaming), [streaming]);
+  return (
+    <ReactMarkdown remarkPlugins={plugins} components={components} urlTransform={urlTransform}>
+      {text}
+    </ReactMarkdown>
+  );
+});
+
+/**
+ * `text` cut at its blank lines, except inside a fence: paragraphs that are done, and the last
+ * one, which may not be. A cut inside a fence would draw half a code block as prose.
+ */
+export function settledBlocks(text: string): string[] {
+  const blocks: string[] = [];
+  let current: string[] = [];
+  let fence: string | null = null;
+  for (const line of text.split("\n")) {
+    const opener = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (opener) {
+      if (fence === null) fence = opener[1][0];
+      else if (opener[1][0] === fence) fence = null;
+    }
+    if (fence === null && line.trim() === "") {
+      if (current.length > 0) blocks.push(current.join("\n"));
+      current = [];
+      continue;
+    }
+    current.push(line);
+  }
+  if (current.some(l => l.trim() !== "")) blocks.push(current.join("\n"));
+  return blocks;
 }

@@ -94,6 +94,7 @@ pub fn run() {
             config::save_config,
             config::write_config_file,
             config::read_config_file,
+            config::config_file_stamp,
             config::delete_config_file,
             config::read_home_file,
             config::read_file_abs,

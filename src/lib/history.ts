@@ -159,7 +159,7 @@ export function startHistorySync(): void {
   if (syncTimer) return;
   syncTimer = setInterval(() => {
     const id = useAppStore.getState().currentProjectId;
-    if (id && !timers.has(id)) void mergeFromDisk(id);
+    if (id && !timers.has(id)) void mergeIfChanged(id);
   }, SYNC_INTERVAL_MS);
   // Never keep a CLI process alive just for this timer.
   const t = syncTimer as unknown as { unref?: () => void };
@@ -176,6 +176,28 @@ function scheduleSave(projectId: string): void {
     timers.delete(projectId);
     void saveHistory(projectId);
   }, busy ? SAVE_DELAY_BUSY_MS : SAVE_DELAY_MS));
+}
+
+/** Each project's file as this process last read or wrote it. See `mergeIfChanged`. */
+const seenStamps = new Map<string, string>();
+
+async function stampOf(projectId: string): Promise<string | null> {
+  try { return await getTransport().configFileStamp(filePath(projectId)); } catch { return null; }
+}
+
+/**
+ * `mergeFromDisk`, skipped when the file is exactly as this process last left it.
+ *
+ * The poll and every save merged first, and a history file runs to megabytes: it was read, carried
+ * across IPC and parsed every three seconds of a run and every five of idle, nearly always to find
+ * what was already in memory. The stamp is taken before reading, so a write that lands in between
+ * only makes the next check read again.
+ */
+async function mergeIfChanged(projectId: string): Promise<void> {
+  const stamp = await stampOf(projectId);
+  if (stamp !== null && seenStamps.get(projectId) === stamp) return;
+  await mergeFromDisk(projectId);
+  if (stamp !== null) seenStamps.set(projectId, stamp);
 }
 
 async function readFile(projectId: string): Promise<HistoryFile | null> {
@@ -337,7 +359,7 @@ export async function saveHistory(projectId: string): Promise<void> {
   const before = useAppStore.getState();
   if (!before.config.projects.some(p => p.id === projectId)) return;
   // Another process may have added runs/approvals since we last read the file.
-  await mergeFromDisk(projectId);
+  await mergeIfChanged(projectId);
   const state = useAppStore.getState();
   const runs = trimRunsForDisk(
     Object.values(state.runs)
@@ -362,6 +384,10 @@ export async function saveHistory(projectId: string): Promise<void> {
   const file: HistoryFile = { version: 1, runs, messages, approvals, questions, sessions, worktrees };
   try {
     await getTransport().writeTextFile(filePath(projectId), JSON.stringify(file));
+    // ponytail: a write by another process between ours and this stat goes unseen until the file
+    // changes again; a stamp returned by the write itself would close that gap.
+    const stamp = await stampOf(projectId);
+    if (stamp !== null) seenStamps.set(projectId, stamp);
   } catch { /* the null transport (browser preview) cannot write; ignore */ }
 }
 

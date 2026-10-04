@@ -6,6 +6,53 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **An agent that asked you something was treated as done.** Its planner carried on with the
+  question as if it were the result, and carried on a second time when the answer came back; asked
+  by the planner itself, the task closed and told you it was finished with the question still
+  open. Asking now means waiting: the turn that carries the answer is the one that reports back,
+  and the card stays where it was until then.
+- **A failed check left the planner waiting forever.** When the project's own commands failed on
+  the last member to finish, nobody told the planner; when another member finished afterwards, the
+  planner read the failed work as done. It now hears about it either way, with what the command
+  printed, and can send someone to fix it.
+- **A delegation the planner wrote wrong went nowhere.** A block that did not parse was read as
+  the planner's final answer, and the work it was handing out was never done. The planner is now
+  told what was wrong and writes it again. One task written without the list around it is
+  accepted as it is.
+- **Delegations written in the same turn as a question were dropped without a word.** The agent
+  is now told they were not sent when its answer comes back.
+- **Text after a tool call was glued to the text before it** — "Let me check.Done" — and a code
+  block closed right before the call stopped closing. It starts a new paragraph now.
+
+### Changed
+
+- **Fewer tokens per task.**
+  - What a member says goes back to its planner capped at its last 6,000 characters, where the
+    summary is. A whole turn went back before, every message of it, one of 90,000 characters into
+    the most expensive context of the task.
+  - An Antigravity turn with no answer handed its raw JSON stream to the planner as if it were
+    one — around 50,000 tokens at a time. It hands what the CLI printed outside that stream.
+  - A member handed more of the same task (a fix after the review, the next part of a change)
+    picks up its own conversation instead of exploring the repo from zero again.
+  - The planner reads each member's summary and checks the diff only when something is blocked,
+    failed or does not add up, instead of re-reading all of the work.
+  - A Claude planner can only run `git` and write its own plans in `.ainess/`, which is what its
+    tool list always said. The list did not restrict anything, and planners read the repo with
+    `cat` and `sed` into their own context instead of delegating.
+- **Smoother while agents work.**
+  - A streaming answer is parsed one paragraph at a time: past about 20,000 characters, parsing
+    the whole answer on every update took longer than the update interval.
+  - A chat no longer redraws every message on every keystroke or when another chat updates.
+  - The sidebar stopped redrawing itself every 800 ms whether anything changed or not.
+  - The history of a project is read from disk only when another process changed it. It was read,
+    parsed and merged every three seconds of a run and every five when idle — megabytes each time.
+  - That history is written beside the old one and swapped in, so a crash mid-write no longer
+    leaves it cut in half and unreadable.
+
 ## 0.24.2 — 2026-09-26
 
 ### Fixed

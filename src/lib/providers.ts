@@ -510,6 +510,27 @@ function toAcpMcpServers(servers: McpServer[] | undefined): AcpMcpServer[] {
   );
 }
 
+/**
+ * A tool call a planner may make: git from the shell, and writing only under `.ainess/` (its plans,
+ * the board). Reading, searching and fetching never reach this — they do not ask. The rest is what
+ * its implementers are for.
+ */
+export function plannerMayUse(call: { kind?: string | null; rawInput?: unknown }): boolean {
+  const input = (call.rawInput && typeof call.rawInput === "object" ? call.rawInput : {}) as Record<string, unknown>;
+  if (call.kind === "execute") {
+    const command = typeof input.command === "string" ? input.command : "";
+    // `git add -A && git commit …`: every command of the chain is git. What it is piped into is not
+    // checked — `git log | head` is still reading git.
+    const steps = command.split(/&&|\|\||;/).map(s => s.split("|")[0].trim()).filter(Boolean);
+    return steps.length > 0 && steps.every(s => /^git(\s|$)/.test(s));
+  }
+  if (call.kind === "edit" || call.kind === "delete" || call.kind === "move") {
+    const path = [input.file_path, input.path, input.notebook_path].find(p => typeof p === "string") as string | undefined;
+    return !!path && /(^|[\\/])\.ainess[\\/]/.test(path);
+  }
+  return true;
+}
+
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
   return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
@@ -584,7 +605,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // take Claude Code's own system prompt away from it. `append` is `--append-system-prompt`.
       if (input.systemPrompt) meta.systemPrompt = { append: input.systemPrompt };
 
-      return { mcpServers: toAcpMcpServers(input.mcpServers), meta };
+      // `allowedTools` only says what runs without asking, and the adapter asks us about the rest
+      // (it takes its permission mode from Claude Code's settings, not from `options`) — so the list
+      // above restricted nothing, and planners read the repo with `cat` and `sed` into the most
+      // expensive context of the task. What they may do is decided here, when they ask.
+      const permit = input.agent.role === "planner" ? plannerMayUse : undefined;
+      return { mcpServers: toAcpMcpServers(input.mcpServers), meta, ...(permit ? { permit } : {}) };
     },
   },
   antigravity: {
@@ -618,7 +644,11 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         env: { NO_COLOR: "1" }
       };
     },
-    parseLine: parseAntigravityLine
+    parseLine: parseAntigravityLine,
+    // A turn with no `result` text falls back to the raw lines, and these are the JSON stream:
+    // the init event, the tool list. That went to the planner as the child's answer, 50k tokens
+    // of it at a time. What is not JSON (an error the CLI printed) is still worth passing on.
+    finalOutput: (lines) => lines.filter(l => !l.trimStart().startsWith("{")).join("\n").trim(),
   },
   copilot: {
     id: "copilot",
@@ -1332,6 +1362,27 @@ export function delegationTargets(text: string): string[] {
   return names;
 }
 
+/**
+ * Why the delegate blocks in `text` handed nothing out, when there is one and it did not: the
+ * engine's own JSON error, or which part of the shape was missing. Null when there is no block,
+ * or when it delegated something.
+ *
+ * Without this a block that did not parse was the same as no block at all: the turn read as the
+ * planner's final answer, the work went nowhere and the planner never heard why.
+ */
+export function delegationError(text: string): string | null {
+  if (!/^[ \t]*\`\`\`delegate\b/m.test(text)) return null;
+  if (parseDelegations(text).length > 0) return null;
+  const match = /\`\`\`delegate[ \t]*\n([\s\S]*?)\n[ \t]*\`\`\`[ \t]*(?=\n|$)/.exec(text);
+  if (!match) return translateNow("delegation.malformedFence");
+  try {
+    JSON.parse(match[1]);
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+  return translateNow("delegation.malformedFields");
+}
+
 export function parseDelegations(text: string): Delegation[] {
   const delegations: Delegation[] = [];
   // The closing fence must sit at the start of a line: a task's text often carries its own
@@ -1344,6 +1395,9 @@ export function parseDelegations(text: string): Delegation[] {
       let tasks = obj;
       if (obj && Array.isArray(obj.tasks)) {
         tasks = obj.tasks;
+      } else if (obj && typeof obj.agent === "string") {
+        // One task written as the object itself, not as a list of one: what was meant is obvious.
+        tasks = [obj];
       }
       if (Array.isArray(tasks)) {
         for (const t of tasks) {
