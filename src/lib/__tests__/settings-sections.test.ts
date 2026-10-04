@@ -19,6 +19,7 @@ const EXPECTED_IDS = [
   "mcp",
   "connectors",
   "extensions",
+  "plugins",
   "hooks",
   "context",
   "remote",

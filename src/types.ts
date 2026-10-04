@@ -92,9 +92,42 @@ export interface Skill {
   source?: SkillSource;
   /** ainess unpacked it into its own folder, so deleting the skill deletes that folder too. */
   managed?: boolean;
+  /** The plugin it came with: it goes, and is switched on and off, with that plugin. */
+  plugin?: string;
 }
 
-export type SkillSource = "claude-code" | "claude-synced" | "agents" | "codex" | "copilot" | "opencode" | "gemini" | "upload";
+export type SkillSource = "claude-code" | "claude-synced" | "agents" | "codex" | "copilot" | "opencode" | "gemini" | "upload" | "plugin";
+
+/** A command a plugin brings: a prompt the chat's `/` menu offers by name. */
+export interface PluginCommand {
+  name: string;
+  description?: string;
+  prompt: string;
+}
+
+/**
+ * A plugin (Claude Code's format, which other agents read too): a folder with a manifest and some
+ * of skills, MCP servers and commands. Its skills and servers live in `skills`/`mcpServers` like any
+ * other, tagged with this id; its commands stay here. Hooks and subagents are Claude Code's own and
+ * are only counted.
+ */
+export interface Plugin {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  author?: string;
+  dir: string;
+  source: "claude-synced" | "claude-code" | "git" | "folder";
+  /** The repository it was cloned from, to fetch it again. */
+  repo?: string;
+  /** ainess cloned it into its own folder: uninstalling deletes that folder too. */
+  managed?: boolean;
+  enabled: boolean;
+  commands: PluginCommand[];
+  hooks?: boolean;
+  agents?: number;
+}
 
 export interface McpServer {
   id: string;
@@ -126,6 +159,8 @@ export interface McpServer {
    * own configs get the URL alone, so each CLI signs in by itself.
    */
   oauth?: boolean;
+  /** The plugin it came with: it goes, and is switched on and off, with that plugin. */
+  plugin?: string;
 }
 
 export interface McpExtension {
@@ -506,6 +541,8 @@ export interface AppConfig {
    * The server names ainess wrote into each CLI's own config, per CLI. Only these are ever changed
    * or removed there: anything else in that file is the user's.
    */
+  /** Installed plugins (see `lib/plugins`). */
+  plugins?: Plugin[];
   /** Whether the skills enabled for every agent are also written into each CLI's skills folder. Unset means yes. */
   skillsNativeSync?: boolean;
   /** The skill folders ainess wrote into each CLI's skills folder; only these are ever changed there. */

@@ -45,6 +45,15 @@ let one of them fall behind.
   Code's skills folder and into `.agents` (which Codex, Copilot and opencode read), with the same
   rule as MCP: only what ainess wrote is ever changed there. Skills ainess writes itself now use the
   SKILL.md format those tools expect.
+- **Plugins.** Settings → Plugins installs Claude Code plugins — from a GitHub repository, any git
+  address, a marketplace of them (you pick which), or a folder — and brings in the plugins Claude
+  already has, synced from your account or installed in Claude Code. What a plugin carries becomes
+  ainess's own: its skills and MCP servers show up in their sections and reach every agent and
+  every CLI, and its commands (Claude's markdown or Gemini's TOML) are in the chat's `/` menu as
+  prompts you read before sending. Switching a plugin off switches all of that off; updating it
+  fetches it again; uninstalling takes everything it brought. Hooks and subagents only run inside
+  Claude Code, and the card says so. Nothing that came from Claude is written back into Claude
+  Code, which already has it.
 
 ### Changed
 

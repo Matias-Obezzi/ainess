@@ -80,6 +80,8 @@ export const tauriTransport: Transport = {
   copySkillDir: async (src, dst) => invoke<void>("copy_skill_dir", { src, dst }),
   removeSkillDir: async (path) => invoke<void>("remove_skill_dir", { path }),
   unpackSkill: async (archivePath, name) => invoke<string>("unpack_skill", { archivePath, name }),
+  clonePluginRepo: async (repo) => invoke<string>("clone_plugin_repo", { repo }),
+  removePluginDir: async (dir) => invoke<void>("remove_plugin_dir", { dir }),
   homeDir: async () => {
     try {
       return await invoke<string | null>("home_dir");

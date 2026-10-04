@@ -8,6 +8,7 @@ mod extensions;
 mod http;
 mod logging;
 mod oauth;
+mod plugins;
 mod ports;
 mod pty;
 mod remote;
@@ -111,6 +112,8 @@ pub fn run() {
             skills::copy_skill_dir,
             skills::remove_skill_dir,
             skills::unpack_skill,
+            plugins::clone_plugin_repo,
+            plugins::remove_plugin_dir,
             config::read_file_abs,
             config::read_file_bytes,
             config::files_exist_abs,

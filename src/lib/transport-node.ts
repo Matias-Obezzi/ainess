@@ -556,6 +556,8 @@ export const nodeTransport: Transport = {
     else fs.rmSync(target, { recursive: true, force: true });
   },
   unpackSkill: async () => null,
+  clonePluginRepo: async () => null,
+  removePluginDir: async () => {},
 
   readHomeFile: async (relativePath: string) => {
     if (relativePath.includes("..")) throw new Error("Invalid path");

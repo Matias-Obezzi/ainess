@@ -15,6 +15,7 @@ import { useAppStore } from "@/store";
 import { fromCodexToml, fromMcpServers, fromOpencode, stripJsonComments, tidy, type FoundServer } from "@/lib/mcp-import";
 import { redactSecrets } from "@/lib/mcp-sync";
 import { resolveClaudeEngine } from "@/lib/claude-auth";
+import { cameFromClaude } from "@/lib/skills-native";
 import { log } from "@/lib/logger";
 
 export type NativeTarget = "claude-code" | "copilot" | "gemini" | "codex" | "opencode" | "antigravity";
@@ -340,13 +341,15 @@ export async function syncNativeMcp(): Promise<Partial<Record<NativeTarget, Targ
   if (!home) return {};
   const sep = home.includes("\\") ? "\\" : "/";
   const servers = sharedServers(store.config.mcpServers);
+  // A plugin Claude installed already brings its servers to Claude Code.
+  const forClaude = sharedServers(store.config.mcpServers.filter(s => !cameFromClaude(s, store.config.plugins)));
   const ownedNow: NonNullable<AppConfig["mcpOwned"]> = { ...(store.config.mcpOwned ?? {}) };
   const results: Partial<Record<NativeTarget, TargetResult>> = {};
 
   for (const target of NATIVE_TARGETS) {
     const program = await programFor(target).catch(() => null);
     if (!program) { results[target] = empty("not-installed"); continue; }
-    const ctx: Context = { home, sep, servers, owned: ownedNow[target] ?? [] };
+    const ctx: Context = { home, sep, servers: target === "claude-code" ? forClaude : servers, owned: ownedNow[target] ?? [] };
     try {
       const { result, owned } = await syncTarget(target, ctx, program);
       results[target] = result;

@@ -9,7 +9,7 @@
 // Same rules as MCP (`lib/mcp-native`): only skills meant for every agent go out, only folders
 // ainess wrote are ever changed or removed (`config.skillsOwned`), and only into a skills folder
 // the user already has.
-import type { Skill, SkillSource } from "@/types";
+import type { Plugin, Skill, SkillSource } from "@/types";
 import { getTransport } from "@/lib/transport";
 import { useAppStore } from "@/store";
 import { skillMarkdown, skillSlug } from "@/lib/project-folder";
@@ -149,6 +149,17 @@ export function skillFromDetected(d: DetectedSkill): Skill {
   };
 }
 
+/**
+ * Whether something came from Claude itself — a skill or a plugin it synced or installed. Claude
+ * Code already has those; writing them back into its own folders would show each one twice.
+ */
+export function cameFromClaude(item: { source?: string; plugin?: string }, plugins: Plugin[] | undefined): boolean {
+  if (item.source === "claude-code" || item.source === "claude-synced") return true;
+  if (!item.plugin) return false;
+  const plugin = (plugins ?? []).find(p => p.id === item.plugin);
+  return plugin?.source === "claude-synced" || plugin?.source === "claude-code";
+}
+
 // ---- Writing into each CLI ---------------------------------------------------------------------
 
 export type SkillTarget = "claude-code" | "agents";
@@ -213,10 +224,12 @@ export async function syncNativeSkills(): Promise<Partial<Record<SkillTarget, Sk
     if (entries === null) { results[target] = { status: "not-installed", added: 0, updated: 0, removed: 0, skipped: [] }; continue; }
     const existing = new Set(entries.filter(e => e.isDir).map(e => e.name));
     const mine = new Set(ownedNow[target] ?? []);
+    // Claude Code already has what came from Claude; copying it into its folder would list it twice.
+    const forTarget = target === "claude-code" ? shared.filter(s => !cameFromClaude(s, store.config.plugins)) : shared;
     const result: SkillTargetResult = { status: "synced", added: 0, updated: 0, removed: 0, skipped: [] };
     const owned: string[] = [];
     try {
-      for (const skill of shared) {
+      for (const skill of forTarget) {
         const slug = skillSlug(skill);
         const folder = join(sep, root, slug);
         if (!existing.has(slug)) {
@@ -231,7 +244,7 @@ export async function syncNativeSkills(): Promise<Partial<Record<SkillTarget, Sk
           result.skipped.push(skill.name);
         }
       }
-      const wanted = new Set(shared.map(skillSlug));
+      const wanted = new Set(forTarget.map(skillSlug));
       for (const slug of mine) {
         if (!wanted.has(slug) && existing.has(slug)) { await transport.removeSkillDir(join(sep, root, slug)); result.removed++; }
       }

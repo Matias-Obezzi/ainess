@@ -89,6 +89,10 @@ export interface Transport {
   removeSkillDir(path: string): Promise<void>;
   /** Unpacks an uploaded skill zip into the app's own skills folder; its absolute folder, or null. */
   unpackSkill(archivePath: string, name: string): Promise<string | null>;
+  /** Clones a plugin repository (`owner/repo` or a git URL) into the app's plugins folder; its folder, or null. */
+  clonePluginRepo(repo: string): Promise<string | null>;
+  /** Removes a plugin the app cloned (the whole clone it is in); refused outside the app's plugins folder. */
+  removePluginDir(dir: string): Promise<void>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**
