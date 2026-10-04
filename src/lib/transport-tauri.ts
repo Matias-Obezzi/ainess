@@ -58,6 +58,13 @@ export const tauriTransport: Transport = {
     invoke<{ status: number; body: string }>("http_put", { url, body, headers }),
   httpGet: async (url, headers) =>
     invoke<{ status: number; body: string }>("http_get", { url, headers }),
+  homeDir: async () => {
+    try {
+      return await invoke<string | null>("home_dir");
+    } catch {
+      return null;
+    }
+  },
   readHomeFile: async (relativePath) => {
     try {
       return await invoke<string | null>("read_home_file", { relativePath });

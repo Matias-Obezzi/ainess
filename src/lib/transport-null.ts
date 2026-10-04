@@ -30,6 +30,7 @@ export const nullTransport: Transport = {
   httpPut: async () => { throw new Error("null transport"); },
   httpGet: async () => ({ status: 0, body: "" }),
   readHomeFile: async () => null,
+  homeDir: async () => null,
   writeFileAbs: async () => {},
   writeFileBytes: async () => {},
   readFileAbs: async () => null,

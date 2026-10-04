@@ -523,6 +523,8 @@ export const nodeTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
 
+  homeDir: async () => os.homedir(),
+
   readHomeFile: async (relativePath: string) => {
     if (relativePath.includes("..")) throw new Error("Invalid path");
     const p = path.join(os.homedir(), relativePath);

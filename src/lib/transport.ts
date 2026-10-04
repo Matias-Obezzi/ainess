@@ -63,6 +63,8 @@ export interface Transport {
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */
   readHomeFile(relativePath: string): Promise<string | null>;
+  /** The user's home folder, absolute; null where there is no local machine to have one. */
+  homeDir(): Promise<string | null>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**

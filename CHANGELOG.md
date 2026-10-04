@@ -8,6 +8,16 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **The MCP servers you already have, brought in.** ainess now looks at what Claude Desktop
+  (including its installed extensions), Claude Code, Copilot, opencode, Gemini, Codex and
+  Antigravity already have set up, and Settings → MCP says how many of them it does not have yet.
+  One review screen lists them with where each was found, ticks what is new, and imports it for
+  every agent — or, for a server Claude Code kept for one folder, for the agents of that project.
+  An extension comes in ready to run: its folder and the values you gave it in Claude are filled
+  in. Nothing is written to those tools, and the values of variables and headers are never shown.
+
 ### Fixed
 
 - **Stop did not stop, and the composer stayed locked.** Since Claude started running through ACP
