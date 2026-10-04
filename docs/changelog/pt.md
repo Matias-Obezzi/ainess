@@ -2,6 +2,78 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.26.0 — 2026-10-04
+
+### Novo
+
+- **Os servidores MCP que você já tem, trazidos.** O ainess agora olha o que Claude Desktop
+  (incluindo as extensões instaladas), Claude Code, Copilot, opencode, Gemini, Codex e Antigravity
+  já têm configurado, e Configurações → MCP diz quantos ele ainda não tem. Uma tela de revisão os
+  lista com onde cada um foi encontrado, marca o que é novo e o importa para todos os agentes — ou,
+  para um servidor que o Claude Code guardava para uma pasta, para os agentes daquele projeto. Uma
+  extensão chega pronta para rodar: a pasta e os valores que você deu a ela no Claude já vêm
+  preenchidos. Os valores de variáveis e headers nunca são mostrados.
+- **…e em dia em cada CLI.** Os servidores que você habilita para todos os agentes agora também são
+  gravados na configuração de cada CLI instalada — Claude Code, Copilot, Gemini, Codex, opencode e
+  Antigravity —, assim também estão lá quando você usa a CLI por conta própria. O ainess só altera
+  ou remove o que ele mesmo gravou: um servidor que você já tinha com o mesmo nome continua seu, um
+  arquivo de configuração com comentários não é reescrito, e um servidor pensado para um só agente
+  fica com esse agente. Configurações → MCP diz o que aconteceu em cada CLI, e um interruptor
+  desliga isso.
+- **Extensões de desktop.** Configurações → Extensões instala um arquivo `.mcpb` (o formato do
+  Claude Desktop, e `.dxt`, o nome antigo): ele é descompactado na pasta do próprio ainess, os
+  valores que o manifest pede são preenchidos num formulário — segredos em campos de senha — e o
+  servidor fica disponível para todos os agentes e todas as CLIs, como qualquer outro. Cada uma pode
+  ser desligada, configurada de novo ou desinstalada. As que o Claude Desktop instalou também
+  aparecem aqui depois de importadas; o ainess as executa mas nunca apaga a pasta delas.
+- **Conectores.** Servidores MCP remotos — Linear, Notion, Sentry, qualquer um com um endereço —
+  ganham uma seção própria em Configurações, como no app do Claude; os locais continuam em MCP. Um
+  que pede login se conecta pelo seu navegador, como a especificação MCP descreve, e a sessão vai
+  para o chaveiro do sistema (Gerenciador de Credenciais do Windows, Chaveiro do macOS), nunca para
+  a configuração do ainess nem para os logs. Cada execução que o ainess inicia recebe um token novo,
+  renovado quando está para expirar. A configuração de cada CLI recebe só o endereço, assim cada CLI
+  faz o próprio login e nenhum token é gravado num arquivo. Excluir um conector leva a sessão junto.
+- **Skills como pastas, trazidas e compartilhadas.** Uma skill agora pode ser uma pasta — o SKILL.md
+  e os scripts e referências ao lado —, enviada como `.zip`, adicionada de uma pasta ou importada de
+  onde suas ferramentas a guardam: Claude Code, as sincronizadas da sua conta do Claude.ai, a pasta
+  compartilhada `.agents`, Codex, Copilot, opencode e Gemini. Configurações → Skills diz quantas
+  encontrou. Cada execução recebe a pasta inteira, e as skills pensadas para todos os agentes também
+  são copiadas para a pasta de skills do Claude Code e para `.agents` (lida pelo Codex, Copilot e
+  opencode), com a mesma regra do MCP: só o que o ainess gravou é alterado. As skills que o ainess
+  grava agora usam o formato SKILL.md que essas ferramentas esperam.
+- **Plugins.** Configurações → Plugins instala plugins do Claude Code — de um repositório do GitHub,
+  qualquer endereço git, um marketplace de plugins (você escolhe quais) ou uma pasta — e traz os
+  plugins que o Claude já tem, sincronizados da sua conta ou instalados no Claude Code. O que um
+  plugin traz passa a ser do ainess: as skills e os servidores MCP aparecem nas suas seções e chegam
+  a todos os agentes e CLIs, e os comandos (markdown do Claude ou TOML do Gemini) ficam no menu `/`
+  do chat como prompts que você lê antes de enviar. Desligar um plugin desliga tudo isso;
+  atualizá-lo baixa de novo; desinstalá-lo leva tudo o que ele trouxe. Hooks e subagentes só rodam
+  dentro do Claude Code, e o cartão avisa. Nada do que veio do Claude é gravado de volta no Claude
+  Code, que já tem isso.
+
+### Alterado
+
+- **Saiu «Sincronizar com o Antigravity»**, substituído pelo que está acima. Ele apagava todo
+  servidor do Antigravity que o ainess não conhecia; a nova sincronização nunca toca nos seus.
+  `ainess mcp sync` agora sincroniza todas as CLIs instaladas.
+
+### Corrigido
+
+- **Um agente trabalhando num worktree não encontrava suas skills.** Elas eram gravadas na pasta
+  principal do projeto, enquanto o agente as lia da sua; agora vão para onde a execução trabalha.
+- **Parar não parava, e o campo de escrita ficava travado.** Desde que o Claude passou a rodar por
+  ACP (0.24.0), o cliente que fala com cada execução do Claude tomava do app o aviso de quando uma
+  execução imprime e termina: a partir da primeira execução do Claude, o app nunca mais sabia que
+  uma execução tinha terminado. Uma execução cujo processo já não existia continuava em andamento,
+  parar não tinha o que encerrar, e não dava para mandar nada para aquele agente até reiniciar o
+  app. Agora os dois ouvem todas as execuções. E parar uma execução cujo processo já não existe a
+  fecha na hora, seja qual for o motivo de ter ficado aberta.
+- **O login do Claude Code falhava antes de começar.** Ele abre num PowerShell, e o app digitava o
+  caminho do motor entre aspas seguido de `auth login` — que o PowerShell lê como um texto e duas
+  palavras soltas, e para em «auth». Agora é executado como programa no PowerShell, e o terminal
+  fecha sozinho quando o login dá certo, assim a execução que precisava dele continua sem fechar a
+  aba à mão. Se o login falhar, o terminal fica aberto com o que ele disse.
+
 ## 0.25.0 — 2026-10-04
 
 ### Corrigido

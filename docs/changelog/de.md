@@ -2,6 +2,85 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.26.0 — 2026-10-04
+
+### Neu
+
+- **Die MCP-Server, die du schon hast, übernommen.** ainess schaut jetzt, was Claude Desktop (samt
+  installierter Erweiterungen), Claude Code, Copilot, opencode, Gemini, Codex und Antigravity schon
+  eingerichtet haben, und Einstellungen → MCP sagt, wie viele davon ainess noch nicht hat. Ein
+  Prüfbildschirm listet sie mit ihrem Fundort, hakt Neues an und importiert es für alle Agenten —
+  oder, bei einem Server, den Claude Code für einen Ordner hatte, für die Agenten dieses Projekts.
+  Eine Erweiterung kommt startbereit an: Ihr Ordner und die Werte, die du ihr in Claude gegeben
+  hast, sind schon eingetragen. Die Werte von Variablen und Headern werden nie angezeigt.
+- **…und in jeder CLI aktuell.** Server, die du für alle Agenten aktivierst, werden jetzt auch in
+  die Konfiguration jeder installierten CLI geschrieben — Claude Code, Copilot, Gemini, Codex,
+  opencode und Antigravity —, damit sie auch da sind, wenn du die CLI allein benutzt. ainess ändert
+  oder entfernt nur, was es selbst geschrieben hat: Ein Server, den du unter demselben Namen schon
+  hattest, bleibt deiner, eine Konfigurationsdatei mit Kommentaren wird nicht neu geschrieben, und
+  ein Server für nur einen Agenten bleibt bei diesem Agenten. Einstellungen → MCP zeigt, was in
+  jeder CLI passiert ist, und ein Schalter schaltet es ab.
+- **Desktop-Erweiterungen.** Einstellungen → Erweiterungen installiert eine `.mcpb`-Datei (das
+  Format von Claude Desktop, und `.dxt`, sein alter Name): Sie wird in den eigenen Ordner von ainess
+  entpackt, die Werte, die ihr Manifest verlangt, werden in einem Formular eingetragen — Geheimnisse
+  in Passwortfeldern — und ihr Server steht allen Agenten und allen CLIs zur Verfügung wie jeder
+  andere. Jede lässt sich abschalten, neu konfigurieren oder deinstallieren. Die von Claude Desktop
+  installierten erscheinen nach dem Import ebenfalls hier; ainess startet sie, löscht ihren Ordner
+  aber nie.
+- **Konnektoren.** Entfernte MCP-Server — Linear, Notion, Sentry, alles mit einer Adresse — bekommen
+  einen eigenen Bereich in den Einstellungen, wie in der Claude-App; die lokalen bleiben unter MCP.
+  Einer, der eine Anmeldung braucht, verbindet sich über deinen Browser, so wie die
+  MCP-Spezifikation es vorsieht, und seine Sitzung kommt in den Schlüsselbund des Systems
+  (Windows-Anmeldeinformationsverwaltung, macOS-Schlüsselbund), nie in die Konfiguration von ainess
+  oder in seine Logs. Jeder Lauf, den ainess startet, bekommt ein frisches Token, das erneuert wird,
+  kurz bevor es abläuft. In die Konfiguration jeder CLI kommt nur die Adresse, sodass sich jede CLI
+  selbst anmeldet und kein Token in eine Datei geschrieben wird. Einen Konnektor zu löschen nimmt
+  seine Anmeldung mit.
+- **Skills als Ordner, übernommen und geteilt.** Eine Skill kann jetzt ein Ordner sein — ihre
+  SKILL.md und die Skripte und Referenzen daneben —, als `.zip` hochgeladen, aus einem Ordner
+  hinzugefügt oder von dort übernommen, wo deine Tools sie ablegen: Claude Code, die aus deinem
+  Claude.ai-Konto synchronisierten, der gemeinsame Ordner `.agents`, Codex, Copilot, opencode und
+  Gemini. Einstellungen → Skills sagt, wie viele gefunden wurden. Jeder Lauf bekommt den ganzen
+  Ordner, und Skills für alle Agenten werden außerdem in den Skill-Ordner von Claude Code und in
+  `.agents` (gelesen von Codex, Copilot und opencode) kopiert, mit derselben Regel wie bei MCP:
+  Geändert wird nur, was ainess geschrieben hat. Skills, die ainess selbst schreibt, nutzen jetzt
+  das SKILL.md-Format, das diese Tools erwarten.
+- **Plugins.** Einstellungen → Plugins installiert Claude-Code-Plugins — aus einem
+  GitHub-Repository, einer beliebigen git-Adresse, einem Plugin-Marktplatz (du wählst aus) oder
+  einem Ordner — und übernimmt die Plugins, die Claude schon hat, aus deinem Konto synchronisiert
+  oder in Claude Code installiert. Was ein Plugin mitbringt, wird zu ainess' Eigenem: Seine Skills
+  und MCP-Server erscheinen in ihren Bereichen und erreichen alle Agenten und CLIs, und seine
+  Befehle (Claudes Markdown oder Geminis TOML) stehen im /-Menü des Chats als Prompts, die du vor
+  dem Senden liest. Ein Plugin auszuschalten schaltet all das aus; es zu aktualisieren lädt es neu;
+  es zu deinstallieren nimmt alles mit, was es gebracht hat. Hooks und Subagenten laufen nur in
+  Claude Code, und die Karte sagt das. Nichts, was von Claude kam, wird zurück in Claude Code
+  geschrieben, das es schon hat.
+
+### Geändert
+
+- **„Mit Antigravity synchronisieren“ ist weg**, ersetzt durch das Obige. Es löschte jeden
+  Antigravity-Server, den ainess nicht kannte; die neue Synchronisierung rührt deine nie an. `ainess
+  mcp sync` synchronisiert jetzt alle installierten CLIs.
+
+### Behoben
+
+- **Ein Agent in einem Worktree fand seine Skills nicht.** Sie wurden in den Hauptordner des
+  Projekts geschrieben, während der Agent sie aus seinem eigenen las; jetzt landen sie dort, wo der
+  Lauf arbeitet.
+- **Stoppen stoppte nicht, und das Eingabefeld blieb gesperrt.** Seit Claude über ACP läuft
+  (0.24.0), übernahm der Client, der mit jedem Claude-Lauf spricht, das Ohr der App dafür, wann ein
+  Lauf etwas ausgibt und endet: Ab dem ersten Claude-Lauf erfuhr die App nie wieder, dass ein Lauf
+  fertig war. Ein Lauf, dessen Prozess weg war, galt weiter als laufend, Stoppen hatte nichts mehr
+  zu beenden, und man konnte diesem Agenten bis zu einem Neustart der App nichts mehr senden. Jetzt
+  hören beide jeden Lauf. Und einen Lauf zu stoppen, dessen Prozess schon weg ist, schließt ihn
+  sofort, egal warum er offen geblieben war.
+- **Die Anmeldung bei Claude Code scheiterte, bevor sie begann.** Sie öffnet sich in einer
+  PowerShell, und die App tippte den Pfad der Engine in Anführungszeichen gefolgt von `auth login` —
+  was PowerShell als Text und zwei lose Wörter liest und bei „auth“ abbricht. Jetzt wird es in
+  PowerShell als Programm ausgeführt, und das Terminal schließt sich von selbst, sobald die
+  Anmeldung geklappt hat, sodass der Lauf, der sie brauchte, weitergeht, ohne den Tab von Hand zu
+  schließen. Scheitert die Anmeldung, bleibt das Terminal mit seiner Meldung offen.
+
 ## 0.25.0 — 2026-10-04
 
 ### Behoben
