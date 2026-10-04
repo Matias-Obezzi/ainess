@@ -37,6 +37,14 @@ let one of them fall behind.
   configuration or its logs. Every run ainess starts gets a fresh token, renewed when it is about to
   expire. Each CLI's own config gets the address alone, so each CLI signs in by itself and no token
   is ever written into a file. Deleting a connector takes its sign-in with it.
+- **Skills as folders, brought in and shared.** A skill can now be a folder — its SKILL.md and the
+  scripts and references beside it — uploaded as a `.zip`, added from a folder, or imported from
+  where your tools keep them: Claude Code, the ones synced from your Claude.ai account, the shared
+  `.agents` folder, Codex, Copilot, opencode and Gemini. Settings → Skills says how many it found.
+  Each run gets the whole folder, and the skills meant for every agent are also copied into Claude
+  Code's skills folder and into `.agents` (which Codex, Copilot and opencode read), with the same
+  rule as MCP: only what ainess wrote is ever changed there. Skills ainess writes itself now use the
+  SKILL.md format those tools expect.
 
 ### Changed
 
@@ -46,6 +54,8 @@ let one of them fall behind.
 
 ### Fixed
 
+- **An agent working in a worktree could not find its skills.** They were written into the
+  project's main folder, while the agent read them from its own; they now go where the run works.
 - **Stop did not stop, and the composer stayed locked.** Since Claude started running through ACP
   (0.24.0), the client talking to each Claude run took over the app's own ear for when runs print
   and end: from the first Claude run on, the app never heard another run finish. A run whose
