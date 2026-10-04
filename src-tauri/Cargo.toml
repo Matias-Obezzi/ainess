@@ -1,6 +1,6 @@
 [package]
 name = "ainess"
-version = "0.24.2"
+version = "0.25.0"
 description = "Orquestador local de agentes de IA"
 authors = ["you"]
 edition = "2021"

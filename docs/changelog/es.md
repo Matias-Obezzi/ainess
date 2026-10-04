@@ -2,6 +2,85 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.25.0 — 2026-10-04
+
+### Arreglado
+
+- **Un agente que te preguntaba algo se daba por terminado.** Su planificador seguía con la pregunta
+  como si fuera el resultado, y seguía otra vez cuando llegaba la respuesta; si preguntaba el
+  planificador mismo, la tarea se cerraba y te avisaba que había terminado con la pregunta todavía
+  abierta. Preguntar ahora es esperar: el turno que trae la respuesta es el que reporta, y la
+  tarjeta se queda donde estaba hasta entonces.
+- **Una verificación fallida dejaba al planificador esperando para siempre.** Si los comandos del
+  proyecto fallaban sobre el último miembro en terminar, nadie le avisaba al planificador; si otro
+  miembro terminaba después, el planificador tomaba ese trabajo fallido como hecho. Ahora se entera
+  en los dos casos, con lo que imprimió el comando, y puede mandar a alguien a arreglarlo.
+- **Una delegación mal escrita no iba a ningún lado.** Un bloque que no se podía leer se tomaba como
+  la respuesta final del planificador, y el trabajo que estaba repartiendo no se hacía nunca. Ahora
+  se le dice qué estaba mal y lo vuelve a escribir. Una sola tarea escrita sin la lista alrededor se
+  acepta tal cual.
+- **Las delegaciones escritas en el mismo turno que una pregunta se perdían sin aviso.** Ahora el
+  agente se entera de que no salieron cuando le llega la respuesta.
+- **El texto que seguía a una herramienta quedaba pegado al anterior** —«Reviso.Listo»— y un bloque
+  de código cerrado justo antes dejaba de cerrarse. Ahora empieza un párrafo nuevo.
+- **Reintentar el trabajo de un miembro te mandaba el resultado a vos en vez de a su planificador**,
+  que nunca se enteraba. El reintento ahora le reporta al planificador que delegó el trabajo, y la
+  tarjeta lo acompaña.
+- **Un reinicio en medio de un trabajo delegado dejaba sus tarjetas en «trabajando» para siempre.**
+  Vuelven a vos, y reintentar el trabajo le reporta al planificador como arriba.
+- **Un miembro que nunca terminaba frenaba a su planificador para siempre**, porque la ronda solo
+  sigue cuando terminaron todos. El trabajo delegado que no imprime nada durante 30 minutos ahora se
+  detiene y se reporta como tal, y el planificador sigue. El tiempo está en Ajustes → General; 0 lo
+  desactiva.
+- **A los miembros se les decía que sus notas le llegaban al planificador en el momento.** Vos las
+  ves en el momento; el planificador las lee con los resultados — y ahora también cuando la
+  respuesta era tan larga que se recortó.
+- **Un ejemplo escrito dentro de un bloque de código se ejecutaba.** Un agente que explicaba el
+  formato de una delegación, una pregunta o un movimiento del tablero escribía uno de ejemplo, y la
+  app lo corría. Lo que se ve como código ya no se lee como una instrucción.
+
+### Cambiado
+
+- **Menos tokens por tarea.**
+  - Lo que dice un miembro le vuelve a su planificador recortado a sus últimos 6.000 caracteres, que
+    es donde está el resumen. Antes volvía el turno entero, cada mensaje, uno de 90.000 caracteres
+    al contexto más caro de la tarea.
+  - Un turno de Antigravity sin respuesta le pasaba al planificador su stream JSON crudo como si lo
+    fuera — unos 50.000 tokens cada vez. Ahora pasa lo que el CLI imprimió fuera de ese stream.
+  - Un miembro al que se le da más de la misma tarea (un arreglo después de la revisión, la parte
+    siguiente de un cambio) retoma su propia conversación en vez de explorar el repo de cero otra
+    vez.
+  - El planificador lee el resumen de cada miembro y revisa el diff solo si algo quedó bloqueado,
+    falló o no cierra, en vez de releer todo el trabajo.
+  - El trabajo se verifica una vez. Cuando los comandos del proyecto pasan sobre lo que hizo un
+    miembro, no se le pide a un revisor que lo vuelva a revisar y la tarjeta pasa directo a lista;
+    un proyecto sin comandos sigue teniendo su revisión. En los dos casos el planificador se entera
+    de que el trabajo ya está verificado, y no lee su diff ni corre sus tests por tercera vez.
+  - Un implementador de Claude puede mandar a Explore, el agente de solo lectura de Claude Code, a
+    buscar en el repo, así la búsqueda queda fuera de su propio contexto. Los agentes que pueden
+    cambiar cosas siguen afuera.
+  - Un planificador de Claude solo puede correr `git` y escribir sus propios planes en `.ainess/`,
+    que es lo que su lista de herramientas siempre dijo. La lista no restringía nada, y los
+    planificadores leían el repo con `cat` y `sed` metiéndolo en su propio contexto en vez de
+    delegar.
+- **Más fluido mientras trabajan los agentes.**
+  - La app arranca con un cuarto menos para cargar: la terminal, los grafos y el código QR se cargan
+    la primera vez que los abrís.
+  - Los conteos de tokens y las llamadas a herramientas llegan a la pantalla en el mismo lote que el
+    texto, en vez de redibujar el hilo, la barra lateral y el compositor con cada evento.
+  - Con el teléfono conectado, lo que se le manda se rearma cada segundo y medio mientras trabajan
+    los agentes, en vez de cada 300 ms.
+  - Una respuesta que se está escribiendo se procesa de a un párrafo: pasados unos 20.000
+    caracteres, procesar la respuesta entera en cada actualización tardaba más que el intervalo
+    entre actualizaciones.
+  - Un chat ya no redibuja todos sus mensajes con cada tecla ni cuando se actualiza otro chat.
+  - La barra lateral dejó de redibujarse cada 800 ms cambiara algo o no.
+  - El historial de un proyecto se lee del disco solo cuando otro proceso lo cambió. Se leía,
+    procesaba y mezclaba cada tres segundos de ejecución y cada cinco en reposo — megabytes cada
+    vez.
+  - Ese historial se escribe al lado del anterior y se reemplaza de una, así que un cierre a mitad
+    de escritura ya no lo deja cortado a la mitad e ilegible.
+
 ## 0.24.2 — 2026-09-26
 
 ### Arreglado

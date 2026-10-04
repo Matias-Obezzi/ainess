@@ -2,6 +2,80 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.25.0 — 2026-10-04
+
+### Corrigido
+
+- **Um agente que te perguntava algo era dado como terminado.** O planejador dele seguia com a
+  pergunta como se fosse o resultado, e seguia de novo quando a resposta chegava; se quem perguntava
+  era o próprio planejador, a tarefa fechava e avisava que tinha terminado com a pergunta ainda
+  aberta. Perguntar agora é esperar: o turno que traz a resposta é o que reporta, e o cartão fica
+  onde estava até lá.
+- **Uma verificação que falhava deixava o planejador esperando para sempre.** Se os comandos do
+  projeto falhavam no último membro a terminar, ninguém avisava o planejador; se outro membro
+  terminava depois, o planejador tomava o trabalho que falhou como feito. Agora ele fica sabendo nos
+  dois casos, com o que o comando imprimiu, e pode mandar alguém consertar.
+- **Uma delegação mal escrita não ia a lugar nenhum.** Um bloco que não podia ser lido era tomado
+  como a resposta final do planejador, e o trabalho que ele estava distribuindo nunca era feito.
+  Agora ele é avisado do que estava errado e escreve de novo. Uma única tarefa escrita sem a lista
+  em volta é aceita como está.
+- **As delegações escritas no mesmo turno de uma pergunta se perdiam sem aviso.** Agora o agente
+  fica sabendo que elas não foram enviadas quando a resposta chega.
+- **O texto que vinha depois de uma ferramenta ficava grudado no anterior** — "Vou ver.Pronto" — e
+  um bloco de código fechado logo antes deixava de fechar. Agora começa um parágrafo novo.
+- **Tentar de novo o trabalho de um membro mandava o resultado para você em vez de para o planejador
+  dele**, que nunca ficava sabendo. A nova tentativa agora reporta ao planejador que delegou o
+  trabalho, e o cartão vai junto.
+- **Um reinício no meio de um trabalho delegado deixava os cartões dele em "trabalhando" para
+  sempre.** Eles voltam para você, e tentar o trabalho de novo reporta ao planejador como acima.
+- **Um membro que nunca terminava travava o planejador para sempre**, porque a rodada só segue
+  quando todos terminaram. O trabalho delegado que não imprime nada por 30 minutos agora é parado e
+  reportado como tal, e o planejador segue. O tempo fica em Configurações → Geral; 0 desativa.
+- **Os membros ouviam que as notas chegavam ao planejador na hora.** Você vê na hora; o planejador
+  lê junto com os resultados — e agora também quando a resposta era tão longa que foi cortada.
+- **Um exemplo escrito dentro de um bloco de código era executado.** Um agente explicando o formato
+  de uma delegação, de uma pergunta ou de um movimento no quadro escrevia um de exemplo, e o app o
+  executava. O que aparece como código não é mais lido como instrução.
+
+### Alterado
+
+- **Menos tokens por tarefa.**
+  - O que um membro diz volta para o planejador limitado aos últimos 6.000 caracteres, que é onde
+    está o resumo. Antes voltava o turno inteiro, cada mensagem, um de 90.000 caracteres para o
+    contexto mais caro da tarefa.
+  - Um turno do Antigravity sem resposta passava ao planejador o stream JSON cru como se fosse uma —
+    uns 50.000 tokens por vez. Agora passa o que o CLI imprimiu fora desse stream.
+  - Um membro que recebe mais da mesma tarefa (um ajuste depois da revisão, a próxima parte de uma
+    mudança) retoma a própria conversa em vez de explorar o repositório do zero de novo.
+  - O planejador lê o resumo de cada membro e olha o diff só quando algo ficou bloqueado, falhou ou
+    não bate, em vez de reler todo o trabalho.
+  - O trabalho é verificado uma vez. Quando os comandos do projeto passam no que um membro fez,
+    nenhum revisor é chamado para conferir de novo e o cartão vai direto para pronto; um projeto sem
+    comandos continua tendo a revisão. Nos dois casos o planejador fica sabendo que o trabalho já
+    foi verificado, e não lê o diff nem roda os testes uma terceira vez.
+  - Um implementador do Claude pode mandar o Explore, o agente somente leitura do Claude Code,
+    buscar no repositório, assim a busca fica fora do próprio contexto. Os agentes que podem mudar
+    coisas continuam de fora.
+  - Um planejador do Claude só pode rodar `git` e escrever os próprios planos em `.ainess/`, que é o
+    que a lista de ferramentas dele sempre disse. A lista não restringia nada, e os planejadores
+    liam o repositório com `cat` e `sed` para dentro do próprio contexto em vez de delegar.
+- **Mais fluido enquanto os agentes trabalham.**
+  - O app inicia com um quarto a menos para carregar: o terminal, os grafos e o código QR são
+    carregados na primeira vez que você os abre.
+  - As contagens de tokens e as chamadas de ferramentas chegam à tela no mesmo lote que o texto, em
+    vez de redesenhar a conversa, a barra lateral e o campo de escrita a cada evento.
+  - Com o celular conectado, o que é enviado a ele é remontado a cada segundo e meio enquanto os
+    agentes trabalham, em vez de a cada 300 ms.
+  - Uma resposta sendo escrita é processada um parágrafo por vez: passados uns 20.000 caracteres,
+    processar a resposta inteira a cada atualização levava mais que o intervalo entre atualizações.
+  - Um chat não redesenha mais todas as mensagens a cada tecla nem quando outro chat é atualizado.
+  - A barra lateral parou de se redesenhar a cada 800 ms, mudasse algo ou não.
+  - O histórico de um projeto só é lido do disco quando outro processo o mudou. Ele era lido,
+    processado e mesclado a cada três segundos de execução e a cada cinco em repouso — megabytes por
+    vez.
+  - Esse histórico é escrito ao lado do anterior e trocado de uma vez, então um fechamento no meio
+    da escrita não o deixa mais cortado ao meio e ilegível.
+
 ## 0.24.2 — 2026-09-26
 
 ### Corrigido

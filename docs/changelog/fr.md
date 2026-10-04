@@ -2,6 +2,90 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.25.0 — 2026-10-04
+
+### Corrigé
+
+- **Un agent qui te posait une question était considéré comme terminé.** Son planificateur
+  continuait avec la question comme si c'était le résultat, puis continuait une seconde fois quand
+  la réponse arrivait ; si c'était le planificateur lui-même qui demandait, la tâche se fermait et
+  t'annonçait qu'elle était finie avec la question encore ouverte. Demander, c'est maintenant
+  attendre : le tour qui apporte la réponse est celui qui rend compte, et la carte reste où elle
+  était jusque-là.
+- **Une vérification échouée laissait le planificateur attendre pour toujours.** Quand les commandes
+  du projet échouaient sur le dernier membre à finir, personne ne prévenait le planificateur ; quand
+  un autre membre finissait ensuite, le planificateur prenait le travail échoué pour fait. Il
+  l'apprend maintenant dans les deux cas, avec ce que la commande a affiché, et peut envoyer
+  quelqu'un corriger.
+- **Une délégation mal écrite n'allait nulle part.** Un bloc illisible était pris pour la réponse
+  finale du planificateur, et le travail qu'il distribuait n'était jamais fait. On lui dit
+  maintenant ce qui n'allait pas et il le réécrit. Une seule tâche écrite sans la liste autour est
+  acceptée telle quelle.
+- **Les délégations écrites dans le même tour qu'une question disparaissaient sans un mot.** L'agent
+  apprend maintenant qu'elles n'ont pas été envoyées quand sa réponse arrive.
+- **Le texte qui suivait un outil était collé au précédent** — « Je vérifie.Fait » — et un bloc de
+  code fermé juste avant ne se fermait plus. Il commence maintenant un nouveau paragraphe.
+- **Relancer le travail d'un membre t'envoyait le résultat au lieu de l'envoyer à son
+  planificateur**, qui n'en savait jamais rien. La relance rend maintenant compte au planificateur
+  qui a délégué le travail, et la carte la suit.
+- **Un redémarrage au milieu d'un travail délégué laissait ses cartes sur « en cours » pour
+  toujours.** Elles te reviennent, et relancer le travail rend compte au planificateur comme
+  ci-dessus.
+- **Un membre qui ne finissait jamais bloquait son planificateur pour toujours**, car la manche ne
+  continue que quand tous ont fini. Un travail délégué qui n'affiche rien pendant 30 minutes est
+  maintenant arrêté et signalé comme tel, et le planificateur continue. La durée se règle dans
+  Réglages → Général ; 0 le désactive.
+- **On disait aux membres que leurs notes arrivaient tout de suite au planificateur.** Toi, tu les
+  vois tout de suite ; le planificateur les lit avec les résultats — et maintenant même quand la
+  réponse était assez longue pour être coupée.
+- **Un exemple écrit dans un bloc de code était exécuté.** Un agent qui expliquait le format d'une
+  délégation, d'une question ou d'un déplacement sur le tableau en écrivait un en exemple, et l'app
+  l'exécutait. Ce qui s'affiche comme du code n'est plus lu comme une instruction.
+
+### Modifié
+
+- **Moins de tokens par tâche.**
+  - Ce que dit un membre revient à son planificateur limité à ses 6 000 derniers caractères, là où
+    se trouve le résumé. Avant, tout le tour revenait, chaque message, dont un de 90 000 caractères
+    dans le contexte le plus cher de la tâche.
+  - Un tour d'Antigravity sans réponse passait au planificateur son flux JSON brut comme s'il en
+    était une — environ 50 000 tokens à chaque fois. Il passe maintenant ce que le CLI a affiché en
+    dehors de ce flux.
+  - Un membre à qui l'on confie la suite de la même tâche (une correction après la relecture, la
+    partie suivante d'un changement) reprend sa propre conversation au lieu de réexplorer le dépôt
+    de zéro.
+  - Le planificateur lit le résumé de chaque membre et ne regarde le diff que si quelque chose est
+    bloqué, a échoué ou ne colle pas, au lieu de relire tout le travail.
+  - Le travail est vérifié une fois. Quand les commandes du projet passent sur ce qu'a fait un
+    membre, aucun relecteur n'est appelé pour revérifier et la carte passe directement à prête ; un
+    projet sans commandes garde sa relecture. Dans les deux cas, le planificateur apprend que le
+    travail est déjà vérifié, et ne relit pas son diff ni ne relance ses tests une troisième fois.
+  - Un implémenteur Claude peut envoyer Explore, l'agent en lecture seule de Claude Code, chercher
+    dans le dépôt, pour que la recherche reste hors de son propre contexte. Les agents qui peuvent
+    modifier des choses restent exclus.
+  - Un planificateur Claude ne peut lancer que `git` et écrire ses propres plans dans `.ainess/`, ce
+    que sa liste d'outils a toujours dit. La liste ne restreignait rien, et les planificateurs
+    lisaient le dépôt avec `cat` et `sed` dans leur propre contexte au lieu de déléguer.
+- **Plus fluide pendant que les agents travaillent.**
+  - L'app démarre avec un quart de moins à charger : le terminal, les graphes et le code QR se
+    chargent la première fois que tu les ouvres.
+  - Les compteurs de tokens et les appels d'outils arrivent à l'écran dans le même lot que le texte,
+    au lieu de redessiner le fil, la barre latérale et la zone de saisie à chaque événement.
+  - Avec ton téléphone connecté, ce qui lui est envoyé est reconstruit toutes les secondes et demie
+    pendant que les agents travaillent, au lieu de toutes les 300 ms.
+  - Une réponse en cours d'écriture est analysée un paragraphe à la fois : au-delà d'environ 20 000
+    caractères, analyser toute la réponse à chaque mise à jour prenait plus de temps que
+    l'intervalle entre deux mises à jour.
+  - Une discussion ne redessine plus tous ses messages à chaque frappe ni quand une autre discussion
+    se met à jour.
+  - La barre latérale a cessé de se redessiner toutes les 800 ms, que quelque chose ait changé ou
+    non.
+  - L'historique d'un projet n'est lu sur le disque que quand un autre processus l'a modifié. Il
+    était lu, analysé et fusionné toutes les trois secondes pendant une exécution et toutes les cinq
+    au repos — des mégaoctets à chaque fois.
+  - Cet historique est écrit à côté de l'ancien puis échangé d'un coup, donc un arrêt en pleine
+    écriture ne le laisse plus coupé en deux et illisible.
+
 ## 0.24.2 — 2026-09-26
 
 ### Corrigé
