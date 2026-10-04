@@ -81,7 +81,8 @@ beforeEach(async () => {
     writeFileAbs: async () => {},
     exec: async () => ({ code: checkCode, stdout: checkCode === 0 ? "ok" : "2 failing", stderr: "" }),
     // The first one is the orchestrator's. A delegated run started here opens an ACP client that listens
-    // for exits too, and taking the latest handler routed every later exit to it instead.
+    // for exits too, and keeping only the latest handler routed every later exit to it instead — the
+    // very bug the Tauri transport had (see `subscribe` in lib/tauri.ts and tauri-fanout.test.ts).
     onRunExit: async (h: (e: RunExitEvent) => void) => { emitExit ??= h; return () => {}; },
   } as never);
   await attachListeners();
@@ -348,5 +349,24 @@ describe("outsideCode", () => {
     const text = "a\n```ts\nb\n```\nc";
     expect(outsideCode(text).split("\n")).toHaveLength(5);
     expect(outsideCode(text)).toBe("a\n\n\n\nc");
+  });
+});
+
+describe("stopping a run whose process is already gone", () => {
+  it("closes it, so the agent is free and the composer is not locked", async () => {
+    const { stopAgent } = await import("@/lib/orchestrator");
+    setUp([run({ id: "gone", agentId: "a0", parentRunId: null, rootRunId: "gone", round: 0, process: { pid: 1, image: "cmd.exe" } })]);
+    useAppStore.setState(state => ({
+      runtime: { p1: { ...state.runtime.p1, a0: { agentId: "a0", status: "working", queuedInstructions: [], currentRunId: "gone" } } },
+    }) as never);
+
+    // The null transport has no process to kill: `killRun` answers false, as Rust does for a run it
+    // no longer holds.
+    await stopAgent("a0", "p1");
+
+    const state = useAppStore.getState();
+    expect(state.runs.gone.status).toBe("killed");
+    expect(state.runtime.p1.a0.status).not.toBe("working");
+    expect(state.runtime.p1.a0.currentRunId).toBeUndefined();
   });
 });

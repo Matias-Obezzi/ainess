@@ -6,6 +6,17 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **Stop did not stop, and the composer stayed locked.** Since Claude started running through ACP
+  (0.24.0), the client talking to each Claude run took over the app's own ear for when runs print
+  and end: from the first Claude run on, the app never heard another run finish. A run whose
+  process was gone still read as running, stop had nothing left to kill, and nothing could be sent
+  to that agent until the app was restarted. Both now hear every run. And stopping a run whose
+  process is already gone closes it on the spot, whatever the reason it was left open.
+
 ## 0.25.0 — 2026-10-04
 
 ### Fixed

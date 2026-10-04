@@ -16,8 +16,12 @@ export interface Transport {
   writeStdin(runId: string, text: string): Promise<boolean>;
   /** Sends EOF to such a run, which is how a bidirectional session is ended. `false` when there was none. */
   closeStdin(runId: string): Promise<boolean>;
-  onRunOutput(h: (e: import("@/types").RunOutputEvent) => void): Promise<() => void>;
-  onRunExit(h: (e: import("@/types").RunExitEvent) => void): Promise<() => void>;
+  /**
+   * Every handler subscribed hears every run. `key` names a subscription that replaces any earlier
+   * one under the same key (the orchestrator's, across hot reloads); without it each call adds one.
+   */
+  onRunOutput(h: (e: import("@/types").RunOutputEvent) => void, key?: string): Promise<() => void>;
+  onRunExit(h: (e: import("@/types").RunExitEvent) => void, key?: string): Promise<() => void>;
   loadConfig(): Promise<import("@/types").AppConfig | null>;
   saveConfig(config: import("@/types").AppConfig): Promise<void>;
   detectBinaries(): Promise<import("@/types").Binaries>;

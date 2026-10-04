@@ -61,8 +61,8 @@ let listenersAttached = false;
 export async function attachListeners(): Promise<void> {
   if (listenersAttached) return;
   listenersAttached = true;
-  await getTransport().onRunOutput(handleOutput);
-  await getTransport().onRunExit(handleExit);
+  await getTransport().onRunOutput(handleOutput, "orchestrator");
+  await getTransport().onRunExit(handleExit, "orchestrator");
   await getTransport().onAcpSetup((e) => useAppStore.getState().setAcpSetup(e));
 }
 
@@ -3038,8 +3038,17 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
   for (const queued of queuedRunsOf(store.runs, agentId, projectId)) cancelQueuedRun(queued.id);
   const runtime = store.runtime[projectId]?.[agentId];
   if (isAgentBusy(store, projectId, agentId) && runtime?.currentRunId) {
-    stoppedBeforeSpawn.add(runtime.currentRunId);
-    await getTransport().killRun(runtime.currentRunId);
+    const runId = runtime.currentRunId;
+    stoppedBeforeSpawn.add(runId);
+    const killed = await getTransport().killRun(runId).catch(() => false);
+    // Nothing to kill behind a run that did start: its process is gone and the exit never reached
+    // us. Left like that the button stopped nothing and the composer stayed locked on a run that
+    // was over, so the run is closed here, as the exit would have closed it.
+    const run = useAppStore.getState().runs[runId];
+    if (!killed && run?.status === "running" && run.process) {
+      stoppedBeforeSpawn.delete(runId);
+      handleExit({ runId, code: null, killed: true });
+    }
     return;
   }
   if (runtime?.currentRunId) {
