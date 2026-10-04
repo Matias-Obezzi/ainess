@@ -16,8 +16,12 @@ export interface Transport {
   writeStdin(runId: string, text: string): Promise<boolean>;
   /** Sends EOF to such a run, which is how a bidirectional session is ended. `false` when there was none. */
   closeStdin(runId: string): Promise<boolean>;
-  onRunOutput(h: (e: import("@/types").RunOutputEvent) => void): Promise<() => void>;
-  onRunExit(h: (e: import("@/types").RunExitEvent) => void): Promise<() => void>;
+  /**
+   * Every handler subscribed hears every run. `key` names a subscription that replaces any earlier
+   * one under the same key (the orchestrator's, across hot reloads); without it each call adds one.
+   */
+  onRunOutput(h: (e: import("@/types").RunOutputEvent) => void, key?: string): Promise<() => void>;
+  onRunExit(h: (e: import("@/types").RunExitEvent) => void, key?: string): Promise<() => void>;
   loadConfig(): Promise<import("@/types").AppConfig | null>;
   saveConfig(config: import("@/types").AppConfig): Promise<void>;
   detectBinaries(): Promise<import("@/types").Binaries>;
@@ -59,6 +63,36 @@ export interface Transport {
   httpGet(url: string, headers: Record<string,string>): Promise<{ status: number; body: string }>;
   /** Reads a file relative to the user's home directory (read-only, rejects `..`). */
   readHomeFile(relativePath: string): Promise<string | null>;
+  /** The user's home folder, absolute; null where there is no local machine to have one. */
+  homeDir(): Promise<string | null>;
+  /**
+   * Unpacks a desktop extension (`.mcpb`/`.dxt`) into the app's own extensions folder, replacing an
+   * earlier install of it. Null where extensions cannot be installed (the CLI, the phone, a browser).
+   */
+  installExtension(archivePath: string): Promise<{ dir: string; manifest: string } | null>;
+  /** Deletes an installed extension's folder; refused for anything outside the app's own folder. */
+  removeExtension(dir: string): Promise<void>;
+  /**
+   * Signs in to a connector with OAuth in the user's browser and keeps the tokens in the OS keychain.
+   * `page` is what the browser shows once it is done. Rejects with what went wrong.
+   */
+  oauthConnect(id: string, url: string, page: string): Promise<{ connected: boolean; expiresAt: number | null }>;
+  oauthStatus(id: string): Promise<{ connected: boolean; expiresAt: number | null }>;
+  /** A fresh access token for a run, or null with no sign-in. Never stored or logged by the caller. */
+  oauthAccessToken(id: string): Promise<string | null>;
+  oauthDisconnect(id: string): Promise<void>;
+  /** A folder's entries (links followed to tell folders apart); null when it is not there. */
+  listDir(path: string): Promise<Array<{ name: string; isDir: boolean }> | null>;
+  /** `dst` replaced by a copy of the skill folder `src` (one with a SKILL.md), links followed. */
+  copySkillDir(src: string, dst: string): Promise<void>;
+  /** Removes a skill folder — only one inside a `skills` folder, holding a SKILL.md; a link loses itself only. */
+  removeSkillDir(path: string): Promise<void>;
+  /** Unpacks an uploaded skill zip into the app's own skills folder; its absolute folder, or null. */
+  unpackSkill(archivePath: string, name: string): Promise<string | null>;
+  /** Clones a plugin repository (`owner/repo` or a git URL) into the app's plugins folder; its folder, or null. */
+  clonePluginRepo(repo: string): Promise<string | null>;
+  /** Removes a plugin the app cloned (the whole clone it is in); refused outside the app's plugins folder. */
+  removePluginDir(dir: string): Promise<void>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**

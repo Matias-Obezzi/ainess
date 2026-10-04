@@ -2,6 +2,86 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.26.0 — 2026-10-04
+
+### Nouveau
+
+- **Les serveurs MCP que tu as déjà, importés.** ainess regarde maintenant ce que Claude Desktop (y
+  compris ses extensions installées), Claude Code, Copilot, opencode, Gemini, Codex et Antigravity
+  ont déjà configuré, et Réglages → MCP indique combien il n'en a pas encore. Un écran de
+  vérification les liste avec l'endroit où chacun a été trouvé, coche ce qui est nouveau et
+  l'importe pour tous les agents — ou, pour un serveur que Claude Code gardait pour un dossier, pour
+  les agents de ce projet. Une extension arrive prête à tourner : son dossier et les valeurs que tu
+  lui as données dans Claude sont déjà remplis. Les valeurs des variables et des en-têtes ne sont
+  jamais affichées.
+- **…et à jour dans chaque CLI.** Les serveurs que tu actives pour tous les agents sont maintenant
+  aussi écrits dans la configuration de chaque CLI installé — Claude Code, Copilot, Gemini, Codex,
+  opencode et Antigravity —, pour qu'ils y soient aussi quand tu utilises ce CLI seul. ainess ne
+  modifie ou ne supprime que ce qu'il a écrit lui-même : un serveur que tu avais déjà sous le même
+  nom reste le tien, un fichier de configuration avec des commentaires n'est pas réécrit, et un
+  serveur prévu pour un seul agent reste avec cet agent. Réglages → MCP indique ce qui s'est passé
+  dans chaque CLI, et un interrupteur le désactive.
+- **Extensions de bureau.** Réglages → Extensions installe un fichier `.mcpb` (le format de Claude
+  Desktop, et `.dxt`, son ancien nom) : il est décompressé dans le dossier propre d'ainess, les
+  valeurs que demande son manifest sont saisies dans un formulaire — les secrets dans des champs de
+  mot de passe — et son serveur est disponible pour tous les agents et tous les CLI, comme n'importe
+  quel autre. Chacune peut être désactivée, reconfigurée ou désinstallée. Celles installées par
+  Claude Desktop apparaissent aussi ici une fois importées ; ainess les exécute mais ne supprime
+  jamais leur dossier.
+- **Connecteurs.** Les serveurs MCP distants — Linear, Notion, Sentry, tout ce qui a une adresse —
+  ont leur propre section dans Réglages, comme dans l'application Claude ; les locaux restent dans
+  MCP. Un serveur qui demande une connexion se connecte dans ton navigateur, comme le décrit la
+  spécification MCP, et sa session va dans le trousseau du système (Gestionnaire d'identification
+  Windows, Trousseau macOS), jamais dans la configuration d'ainess ni dans ses logs. Chaque
+  exécution lancée par ainess reçoit un jeton frais, renouvelé quand il va expirer. La configuration
+  de chaque CLI ne reçoit que l'adresse, donc chaque CLI se connecte lui-même et aucun jeton n'est
+  écrit dans un fichier. Supprimer un connecteur emporte sa session.
+- **Des skills en dossiers, importées et partagées.** Une skill peut maintenant être un dossier —
+  son SKILL.md et les scripts et références qui l'accompagnent —, importé en `.zip`, ajouté depuis
+  un dossier, ou récupéré là où tes outils les gardent : Claude Code, celles synchronisées depuis
+  ton compte Claude.ai, le dossier partagé `.agents`, Codex, Copilot, opencode et Gemini. Réglages →
+  Skills indique combien il en a trouvé. Chaque exécution reçoit le dossier entier, et les skills
+  prévues pour tous les agents sont aussi copiées dans le dossier de skills de Claude Code et dans
+  `.agents` (lu par Codex, Copilot et opencode), avec la même règle que MCP : seul ce qu'ainess a
+  écrit est modifié. Les skills qu'ainess écrit lui-même utilisent maintenant le format SKILL.md que
+  ces outils attendent.
+- **Plugins.** Réglages → Plugins installe des plugins Claude Code — depuis un dépôt GitHub,
+  n'importe quelle adresse git, une marketplace de plugins (tu choisis lesquels) ou un dossier — et
+  récupère les plugins que Claude a déjà, synchronisés depuis ton compte ou installés dans Claude
+  Code. Ce qu'un plugin apporte devient à ainess : ses skills et serveurs MCP apparaissent dans
+  leurs sections et arrivent à tous les agents et tous les CLI, et ses commandes (markdown de Claude
+  ou TOML de Gemini) sont dans le menu `/` du chat comme des prompts que tu relis avant d'envoyer.
+  Désactiver un plugin désactive tout cela ; le mettre à jour le récupère à nouveau ; le
+  désinstaller emporte tout ce qu'il a apporté. Les hooks et sous-agents ne tournent que dans Claude
+  Code, et la carte le dit. Rien de ce qui vient de Claude n'est réécrit dans Claude Code, qui l'a
+  déjà.
+
+### Modifié
+
+- **« Synchroniser avec Antigravity » a disparu**, remplacé par ce qui précède. Il supprimait tout
+  serveur Antigravity qu'ainess ne connaissait pas ; la nouvelle synchronisation ne touche jamais
+  aux tiens. `ainess mcp sync` synchronise maintenant tous les CLI installés.
+
+### Corrigé
+
+- **Un agent qui travaillait dans un worktree ne trouvait pas ses skills.** Elles étaient écrites
+  dans le dossier principal du projet, alors que l'agent les lisait dans le sien ; elles vont
+  maintenant là où travaille l'exécution.
+- **Arrêter n'arrêtait pas, et la zone de saisie restait bloquée.** Depuis que Claude passe par ACP
+  (0.24.0), le client qui parle à chaque exécution de Claude prenait à l'application l'écoute de
+  quand une exécution affiche et se termine : dès la première exécution de Claude, l'application
+  n'apprenait plus jamais qu'une exécution était finie. Une exécution dont le processus n'existait
+  plus restait affichée en cours, arrêter n'avait plus rien à tuer, et on ne pouvait plus rien
+  envoyer à cet agent avant de redémarrer l'application. Les deux entendent maintenant toutes les
+  exécutions. Et arrêter une exécution dont le processus a déjà disparu la ferme sur-le-champ,
+  quelle que soit la raison pour laquelle elle était restée ouverte.
+- **La connexion à Claude Code échouait avant de commencer.** Elle s'ouvre dans un PowerShell, et
+  l'application tapait le chemin du moteur entre guillemets suivi de `auth login` — que PowerShell
+  lit comme un texte et deux mots isolés, et s'arrête sur « auth ». C'est maintenant exécuté comme
+  un programme dans PowerShell, et le terminal se ferme tout seul une fois la connexion réussie,
+  pour que l'exécution qui en avait besoin continue sans fermer l'onglet à la main. Si la connexion
+  échoue, le terminal reste ouvert avec ce qu'il a dit.
+
 ## 0.25.0 — 2026-10-04
 
 ### Corrigé

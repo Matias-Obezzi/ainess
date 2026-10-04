@@ -6,6 +6,77 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.26.0 — 2026-10-04
+
+### Added
+
+- **The MCP servers you already have, brought in.** ainess now looks at what Claude Desktop
+  (including its installed extensions), Claude Code, Copilot, opencode, Gemini, Codex and
+  Antigravity already have set up, and Settings → MCP says how many of them it does not have yet.
+  One review screen lists them with where each was found, ticks what is new, and imports it for
+  every agent — or, for a server Claude Code kept for one folder, for the agents of that project.
+  An extension comes in ready to run: its folder and the values you gave it in Claude are filled
+  in. The values of variables and headers are never shown.
+- **…and kept in step, in every CLI.** The servers you enable for every agent are now also written
+  into each installed CLI's own config — Claude Code, Copilot, Gemini, Codex, opencode and
+  Antigravity — so they are there when you use that CLI on its own too. ainess only ever changes or
+  removes what it wrote itself: a server you already had there under the same name stays yours, a
+  config file with comments in it is left alone rather than rewritten, and a server meant for one
+  agent stays with that agent. Settings → MCP says what happened in each CLI, and one switch turns
+  it off.
+- **Desktop extensions.** Settings → Extensions installs a `.mcpb` file (the format Claude Desktop
+  uses, and `.dxt`, its older name): it is unpacked into ainess's own folder, the values its
+  manifest asks for are filled in on a form — secrets in password fields — and its server is there
+  for every agent and every CLI, like any other. Each one can be switched off, configured again or
+  uninstalled. The ones Claude Desktop installed show up here too once imported; ainess runs them
+  but never deletes their folder.
+- **Connectors.** Remote MCP servers — Linear, Notion, Sentry, anything with an address — get a
+  section of their own in Settings, as in the Claude app; the local ones stay under MCP. One that
+  needs a sign-in connects in your browser, the way the MCP spec lays it out, and its session goes
+  to the system keychain (Windows Credential Manager, macOS Keychain), never into ainess's
+  configuration or its logs. Every run ainess starts gets a fresh token, renewed when it is about to
+  expire. Each CLI's own config gets the address alone, so each CLI signs in by itself and no token
+  is ever written into a file. Deleting a connector takes its sign-in with it.
+- **Skills as folders, brought in and shared.** A skill can now be a folder — its SKILL.md and the
+  scripts and references beside it — uploaded as a `.zip`, added from a folder, or imported from
+  where your tools keep them: Claude Code, the ones synced from your Claude.ai account, the shared
+  `.agents` folder, Codex, Copilot, opencode and Gemini. Settings → Skills says how many it found.
+  Each run gets the whole folder, and the skills meant for every agent are also copied into Claude
+  Code's skills folder and into `.agents` (which Codex, Copilot and opencode read), with the same
+  rule as MCP: only what ainess wrote is ever changed there. Skills ainess writes itself now use the
+  SKILL.md format those tools expect.
+- **Plugins.** Settings → Plugins installs Claude Code plugins — from a GitHub repository, any git
+  address, a marketplace of them (you pick which), or a folder — and brings in the plugins Claude
+  already has, synced from your account or installed in Claude Code. What a plugin carries becomes
+  ainess's own: its skills and MCP servers show up in their sections and reach every agent and
+  every CLI, and its commands (Claude's markdown or Gemini's TOML) are in the chat's `/` menu as
+  prompts you read before sending. Switching a plugin off switches all of that off; updating it
+  fetches it again; uninstalling takes everything it brought. Hooks and subagents only run inside
+  Claude Code, and the card says so. Nothing that came from Claude is written back into Claude
+  Code, which already has it.
+
+### Changed
+
+- **"Sync with Antigravity" is gone**, replaced by the above. It removed every Antigravity server
+  ainess did not know about; the new sync never touches yours. `ainess mcp sync` now syncs every
+  installed CLI.
+
+### Fixed
+
+- **An agent working in a worktree could not find its skills.** They were written into the
+  project's main folder, while the agent read them from its own; they now go where the run works.
+- **Stop did not stop, and the composer stayed locked.** Since Claude started running through ACP
+  (0.24.0), the client talking to each Claude run took over the app's own ear for when runs print
+  and end: from the first Claude run on, the app never heard another run finish. A run whose
+  process was gone still read as running, stop had nothing left to kill, and nothing could be sent
+  to that agent until the app was restarted. Both now hear every run. And stopping a run whose
+  process is already gone closes it on the spot, whatever the reason it was left open.
+- **The Claude Code login failed before it started.** It opens in a PowerShell, and the app typed
+  the engine's quoted path followed by `auth login` — which PowerShell reads as a piece of text and
+  two stray words, and stops at "auth". It is now run as a program in PowerShell, and the terminal
+  closes on its own once the login worked, so the run that needed it carries on without the tab
+  having to be closed by hand. If the login fails, the terminal stays open with what it said.
+
 ## 0.25.0 — 2026-10-04
 
 ### Fixed

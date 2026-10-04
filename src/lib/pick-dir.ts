@@ -15,6 +15,28 @@ import { translateNow } from "@/i18n/useT";
  * caller does the same thing in each: nothing. The two that are worth telling the user about say so
  * themselves on the way out.
  */
+/**
+ * A file the user picked, or null — same three ways there is none as `pickWorkspaceDir`. `extensions`
+ * narrows the dialog to those kinds (without the dot); `directory` asks for a folder instead.
+ */
+export async function pickPath(opts: { extensions?: string[]; label?: string; directory?: boolean } = {}): Promise<string | null> {
+  if (!isTauri()) {
+    toast.error(translateNow("projectDialog.webUnavailable"));
+    return null;
+  }
+  try {
+    const selected = await open({
+      directory: opts.directory ?? false,
+      multiple: false,
+      ...(opts.extensions ? { filters: [{ name: opts.label ?? opts.extensions.join(", "), extensions: opts.extensions }] } : {}),
+    });
+    return typeof selected === "string" ? selected : null;
+  } catch {
+    toast.error(translateNow("projectDialog.dialogFailed"));
+    return null;
+  }
+}
+
 export async function pickWorkspaceDir(): Promise<string | null> {
   if (!isTauri()) {
     toast.error(translateNow("projectDialog.webUnavailable"));

@@ -10,8 +10,8 @@ export const tauriTransport: Transport = {
   killRun: async (runId) => ipc.killRun(runId),
   writeStdin: async (runId, text) => ipc.writeStdin(runId, text),
   closeStdin: async (runId) => ipc.closeStdin(runId),
-  onRunOutput: async (h) => onRunOutput(h),
-  onRunExit: async (h) => onRunExit(h),
+  onRunOutput: async (h, key) => onRunOutput(h, key),
+  onRunExit: async (h, key) => onRunExit(h, key),
   loadConfig: async () => ipc.loadConfig(),
   saveConfig: async (config) => ipc.saveConfig(config),
   detectBinaries: async () => ipc.detectBinaries(),
@@ -58,6 +58,37 @@ export const tauriTransport: Transport = {
     invoke<{ status: number; body: string }>("http_put", { url, body, headers }),
   httpGet: async (url, headers) =>
     invoke<{ status: number; body: string }>("http_get", { url, headers }),
+  installExtension: async (archivePath) => invoke<{ dir: string; manifest: string }>("install_extension", { archivePath }),
+  removeExtension: async (dir) => invoke<void>("remove_extension", { dir }),
+  oauthConnect: async (id, url, page) => invoke<{ connected: boolean; expiresAt: number | null }>("oauth_connect", { id, url, page }),
+  oauthStatus: async (id) => {
+    try {
+      return await invoke<{ connected: boolean; expiresAt: number | null }>("oauth_status", { id });
+    } catch {
+      return { connected: false, expiresAt: null };
+    }
+  },
+  oauthAccessToken: async (id) => invoke<string | null>("oauth_access_token", { id }),
+  oauthDisconnect: async (id) => invoke<void>("oauth_disconnect", { id }),
+  listDir: async (path) => {
+    try {
+      return await invoke<Array<{ name: string; isDir: boolean }> | null>("list_dir", { path });
+    } catch {
+      return null;
+    }
+  },
+  copySkillDir: async (src, dst) => invoke<void>("copy_skill_dir", { src, dst }),
+  removeSkillDir: async (path) => invoke<void>("remove_skill_dir", { path }),
+  unpackSkill: async (archivePath, name) => invoke<string>("unpack_skill", { archivePath, name }),
+  clonePluginRepo: async (repo) => invoke<string>("clone_plugin_repo", { repo }),
+  removePluginDir: async (dir) => invoke<void>("remove_plugin_dir", { dir }),
+  homeDir: async () => {
+    try {
+      return await invoke<string | null>("home_dir");
+    } catch {
+      return null;
+    }
+  },
   readHomeFile: async (relativePath) => {
     try {
       return await invoke<string | null>("read_home_file", { relativePath });

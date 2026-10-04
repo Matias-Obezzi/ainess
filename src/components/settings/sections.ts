@@ -4,7 +4,7 @@
 //
 // `SettingsSection` is imported as a type only (erased at runtime), so importing this module from
 // store.ts does not create a runtime cycle even though store.ts defines SettingsSection.
-import { Settings2, Palette, Bot, Users, User, ListChecks, Sparkles, Plug, Webhook, FileText, Smartphone, KanbanSquare, MessageCircle, Stethoscope, Info, type LucideIcon } from "lucide-react";
+import { Settings2, Palette, Bot, Users, User, ListChecks, Sparkles, Plug, Cable, Puzzle, Blocks, Webhook, FileText, Smartphone, KanbanSquare, MessageCircle, Stethoscope, Info, type LucideIcon } from "lucide-react";
 import type { SettingsSection } from "@/store";
 
 /** Sidebar groups, in the order they are shown. */
@@ -48,6 +48,9 @@ export const SETTINGS_SECTIONS_META: SettingsSectionMeta[] = [
   { id: "presets",     labelKey: "settings.section.presets",     helpKey: "settings.help.presets",     group: "automation", optionKeys: options("presets",     ["quickOrders", "newOrder"]),                                                                                                                     icon: ListChecks },
   { id: "skills",      labelKey: "settings.section.skills",      helpKey: "settings.help.skills",      group: "automation", optionKeys: options("skills",      ["agentSkills", "suggested"]),                                                                                                                    icon: Sparkles },
   { id: "mcp",         labelKey: "settings.section.mcp",         helpKey: "settings.help.mcp",         group: "automation", optionKeys: options("mcp",         ["servers", "suggested"]),                                                                                                                        icon: Plug },
+  { id: "connectors",  labelKey: "settings.section.connectors",  helpKey: "settings.help.connectors",  group: "automation", optionKeys: options("connectors",  ["add", "oauth"]),                                                                                                                                icon: Cable },
+  { id: "extensions",  labelKey: "settings.section.extensions",  helpKey: "settings.help.extensions",  group: "automation", optionKeys: options("extensions",  ["install", "configure"]),                                                                                                                        icon: Puzzle },
+  { id: "plugins",     labelKey: "settings.section.plugins",     helpKey: "settings.help.plugins",     group: "automation", optionKeys: options("plugins",     ["add", "marketplace"]),                                                                                                                           icon: Blocks },
   { id: "hooks",       labelKey: "settings.section.hooks",       helpKey: "settings.help.hooks",       group: "automation", optionKeys: options("hooks",       ["byEvent", "slackAction", "commandAction", "filter"]),                                                                                          icon: Webhook },
   { id: "context",     labelKey: "settings.section.context",     helpKey: "settings.help.context",     group: "agents",     optionKeys: options("context",     ["shared"]),                                                                                                                                      icon: FileText },
   { id: "remote",      labelKey: "settings.section.remote",      helpKey: "settings.help.remote",      group: "access",     optionKeys: options("remote",      ["lan", "port", "token", "qr", "tunnel", "tunnelProvider", "domainType", "domain", "ngrokAuthtoken", "ngrokApiKey", "installNgrok", "detectAgain"]), icon: Smartphone },

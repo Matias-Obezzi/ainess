@@ -4,12 +4,16 @@ mod console;
 mod detect;
 mod diagnostics;
 mod editors;
+mod extensions;
 mod http;
 mod logging;
+mod oauth;
+mod plugins;
 mod ports;
 mod pty;
 mod remote;
 mod repo_watch;
+mod skills;
 mod runner;
 mod tray;
 mod tunnel;
@@ -97,6 +101,19 @@ pub fn run() {
             config::config_file_stamp,
             config::delete_config_file,
             config::read_home_file,
+            config::home_dir,
+            extensions::install_extension,
+            extensions::remove_extension,
+            oauth::oauth_connect,
+            oauth::oauth_status,
+            oauth::oauth_access_token,
+            oauth::oauth_disconnect,
+            skills::list_dir,
+            skills::copy_skill_dir,
+            skills::remove_skill_dir,
+            skills::unpack_skill,
+            plugins::clone_plugin_repo,
+            plugins::remove_plugin_dir,
             config::read_file_abs,
             config::read_file_bytes,
             config::files_exist_abs,

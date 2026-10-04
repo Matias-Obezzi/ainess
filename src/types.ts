@@ -82,6 +82,51 @@ export interface Skill {
   description?: string;
   content: string;
   enabledFor: "all" | string[];
+  /**
+   * A folder skill: the absolute folder that holds its SKILL.md and whatever sits beside it
+   * (scripts, references). `content` is then the SKILL.md body, for the prompt's one line; the
+   * folder is what reaches the agents, whole.
+   */
+  dir?: string;
+  /** Where it came from: a CLI it was imported from, or an upload. */
+  source?: SkillSource;
+  /** ainess unpacked it into its own folder, so deleting the skill deletes that folder too. */
+  managed?: boolean;
+  /** The plugin it came with: it goes, and is switched on and off, with that plugin. */
+  plugin?: string;
+}
+
+export type SkillSource = "claude-code" | "claude-synced" | "agents" | "codex" | "copilot" | "opencode" | "gemini" | "upload" | "plugin";
+
+/** A command a plugin brings: a prompt the chat's `/` menu offers by name. */
+export interface PluginCommand {
+  name: string;
+  description?: string;
+  prompt: string;
+}
+
+/**
+ * A plugin (Claude Code's format, which other agents read too): a folder with a manifest and some
+ * of skills, MCP servers and commands. Its skills and servers live in `skills`/`mcpServers` like any
+ * other, tagged with this id; its commands stay here. Hooks and subagents are Claude Code's own and
+ * are only counted.
+ */
+export interface Plugin {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  author?: string;
+  dir: string;
+  source: "claude-synced" | "claude-code" | "git" | "folder";
+  /** The repository it was cloned from, to fetch it again. */
+  repo?: string;
+  /** ainess cloned it into its own folder: uninstalling deletes that folder too. */
+  managed?: boolean;
+  enabled: boolean;
+  commands: PluginCommand[];
+  hooks?: boolean;
+  agents?: number;
 }
 
 export interface McpServer {
@@ -101,6 +146,30 @@ export interface McpServer {
    */
   headers?: Record<string, string>;
   enabledFor: "all" | string[];
+  /**
+   * Set when the server comes from a desktop extension (`.mcpb`): the folder it lives in and what the
+   * user filled in for it. `command`/`args`/`env` above are already resolved from these; they are
+   * kept so the extension can be configured again or updated. `external` is an extension another app
+   * installed (Claude Desktop): ainess runs it but never deletes its folder.
+   */
+  extension?: McpExtension;
+  /**
+   * A connector that signs in with OAuth. Its tokens are in the OS keychain, never here: each run
+   * gets a fresh access token as its `Authorization` header (see `lib/connectors`), and the CLIs'
+   * own configs get the URL alone, so each CLI signs in by itself.
+   */
+  oauth?: boolean;
+  /** The plugin it came with: it goes, and is switched on and off, with that plugin. */
+  plugin?: string;
+}
+
+export interface McpExtension {
+  /** The manifest's `name`. */
+  id: string;
+  dir: string;
+  version?: string;
+  config?: Record<string, string | number | boolean | string[]>;
+  external?: boolean;
 }
 
 /**
@@ -463,6 +532,22 @@ export interface AppConfig {
    * carries on with what there is. Unset means `DEFAULT_STALL_STOP_MINUTES`; 0 means never.
    */
   stallStopMinutes?: number;
+  /**
+   * Whether the MCP servers enabled for every agent are also written into each installed CLI's own
+   * config (see `lib/mcp-native`). Unset means yes; false keeps them inside ainess.
+   */
+  mcpNativeSync?: boolean;
+  /**
+   * The server names ainess wrote into each CLI's own config, per CLI. Only these are ever changed
+   * or removed there: anything else in that file is the user's.
+   */
+  /** Installed plugins (see `lib/plugins`). */
+  plugins?: Plugin[];
+  /** Whether the skills enabled for every agent are also written into each CLI's skills folder. Unset means yes. */
+  skillsNativeSync?: boolean;
+  /** The skill folders ainess wrote into each CLI's skills folder; only these are ever changed there. */
+  skillsOwned?: Partial<Record<"claude-code" | "agents", string[]>>;
+  mcpOwned?: Partial<Record<"claude-code" | "copilot" | "gemini" | "codex" | "opencode" | "antigravity", string[]>>;
   skills: Skill[];
   mcpServers: McpServer[];
   /**

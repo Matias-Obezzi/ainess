@@ -12,6 +12,7 @@ import { compactAgent } from "@/lib/commands";
 import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
+import { withConnectorTokens } from "@/lib/connectors";
 import { readTreeState } from "@/lib/run-revert";
 import { parseReviewVerdict, pickReviewer } from "@/lib/review";
 import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
@@ -61,8 +62,8 @@ let listenersAttached = false;
 export async function attachListeners(): Promise<void> {
   if (listenersAttached) return;
   listenersAttached = true;
-  await getTransport().onRunOutput(handleOutput);
-  await getTransport().onRunExit(handleExit);
+  await getTransport().onRunOutput(handleOutput, "orchestrator");
+  await getTransport().onRunExit(handleExit, "orchestrator");
   await getTransport().onAcpSetup((e) => useAppStore.getState().setAcpSetup(e));
 }
 
@@ -822,12 +823,11 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     card,
   });
 
-  const mcpServers = selectMcpFor(store, agent.id);
+  const configuredMcp = selectMcpFor(store, agent.id);
 
   const doSpawn = async () => {
-    // Right before the run, so what the agent opens is what the settings say right now. Only the
-    // ones this agent has: the prompt names them by path and the file has to be there.
-    if (project) await writeSkillFiles(project, skills);
+    // Connectors that sign in get their token now, fresh, and only in this run's copy.
+    const mcpServers = await withConnectorTokens(configuredMcp);
 
     let mcpConfigPath: string | undefined;
     // Copilot takes a file of MCP servers for the session. Antigravity is configured machine-wide
@@ -860,6 +860,10 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     // An agent with its own worktree runs there; a worktree that cannot be prepared stops the
     // run before it starts (the rejection lands in the catch below).
     const cwd = await resolveCwd(opts.projectId, agent, project, runId);
+    // Right before the run, so what the agent opens is what the settings say right now. Only the
+    // ones this agent has: the prompt names them by path and the file has to be there — in the
+    // folder the run works in, which is its worktree when it has one.
+    await writeSkillFiles(project, skills, cwd);
 
     let baseSha: string | undefined;
     try {
@@ -3038,8 +3042,17 @@ export async function stopAgent(agentId: string, projectId: string): Promise<voi
   for (const queued of queuedRunsOf(store.runs, agentId, projectId)) cancelQueuedRun(queued.id);
   const runtime = store.runtime[projectId]?.[agentId];
   if (isAgentBusy(store, projectId, agentId) && runtime?.currentRunId) {
-    stoppedBeforeSpawn.add(runtime.currentRunId);
-    await getTransport().killRun(runtime.currentRunId);
+    const runId = runtime.currentRunId;
+    stoppedBeforeSpawn.add(runId);
+    const killed = await getTransport().killRun(runId).catch(() => false);
+    // Nothing to kill behind a run that did start: its process is gone and the exit never reached
+    // us. Left like that the button stopped nothing and the composer stayed locked on a run that
+    // was over, so the run is closed here, as the exit would have closed it.
+    const run = useAppStore.getState().runs[runId];
+    if (!killed && run?.status === "running" && run.process) {
+      stoppedBeforeSpawn.delete(runId);
+      handleExit({ runId, code: null, killed: true });
+    }
     return;
   }
   if (runtime?.currentRunId) {

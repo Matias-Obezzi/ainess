@@ -18,6 +18,7 @@ import { isChatActive, subscribeChatActivity } from "@/lib/chat";
 import { isTypedPrompt } from "@/lib/thread-turns";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
+import { commandPrompt, enabledPluginCommands } from "@/lib/plugins";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
@@ -664,7 +665,11 @@ export function Composer() {
         .map(c => ({ id: `cmd:${c.id}`, label: `/${c.name}`, hint: t(c.descriptionKey), value: c.name, command: c }));
       const presets = presetsForMenu.filter(p => p.name.toLowerCase().startsWith(q))
         .map(p => ({ id: `preset:${p.id}`, label: p.name, hint: p.prompt, value: "", preset: p }));
-      return [...cmds, ...presets];
+      // A plugin's commands are prompts: picked, they land in the box like a saved order, to be read
+      // and sent — never sent behind the user's back.
+      const fromPlugins = enabledPluginCommands(config.plugins).filter(c => c.name.toLowerCase().startsWith(q))
+        .map(c => ({ id: `plugin:${c.plugin}:${c.name}`, label: `/${c.name}`, hint: c.description ?? c.plugin, value: "", preset: { id: `plugin:${c.plugin}:${c.name}`, name: c.name, prompt: commandPrompt(c) } }));
+      return [...cmds, ...presets, ...fromPlugins];
     }
     if (completionReq.kind === "agent") {
       return agents.filter(a => a.name.toLowerCase().startsWith(q))
@@ -683,7 +688,7 @@ export function Composer() {
       .map(v => ({ id: v, label: v, hint: t(`templateVar.${v}`), value: v }));
     // `filesTick` is read for its change, not its value: it is what tells this memo the ref content moved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completionReq, agents, presetsForMenu, filesTick, t]);
+  }, [completionReq, agents, presetsForMenu, config.plugins, filesTick, t]);
 
   const menuOpen = !menuDismissed && menuOptions.length > 0;
 

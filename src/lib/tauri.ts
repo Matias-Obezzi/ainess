@@ -47,16 +47,55 @@ export async function listenOnce<T>(
   return unlisten;
 }
 
+/**
+ * Several handlers on one event, each under a key.
+ *
+ * `listenOnce` keeps one listener per event, which was right while each event had one reader. The
+ * run events have two: the orchestrator, for every run, and the ACP client, for the run it is
+ * talking to. The client registered second and so silently unregistered the orchestrator, which
+ * from the first Claude run on never heard another line or another exit — runs stayed "running"
+ * after their process was gone, stop had nothing to kill, and the composer stayed locked.
+ *
+ * So the Tauri listener is still one per event (registered through `listenOnce`, safe across hot
+ * reloads), and it hands each payload to every handler subscribed here. A key is what keeps a hot
+ * reload from stacking copies: the same key replaces, a new one adds. No key means a fresh one.
+ */
+const fanout = ((globalThis as { __ainessFanout?: Map<string, Map<string, (payload: unknown) => void>> }).__ainessFanout ??= new Map());
+
+async function subscribe<T>(event: string, handler: (payload: T) => void, key?: string): Promise<UnlistenFn> {
+  let slot = fanout.get(event);
+  if (!slot) {
+    // In the map before the await, so a second subscriber arriving meanwhile shares it.
+    const handlers = new Map<string, (payload: unknown) => void>();
+    slot = handlers;
+    fanout.set(event, handlers);
+    await listenOnce<unknown>(event, (payload) => {
+      for (const h of [...handlers.values()]) {
+        try { h(payload); } catch (e) { console.error(`[tauri] ${event} handler threw`, e); }
+      }
+    });
+  }
+  const id = key ?? crypto.randomUUID();
+  const own = handler as (payload: unknown) => void;
+  slot.set(id, own);
+  const handlers = slot;
+  return () => {
+    if (handlers.get(id) === own) handlers.delete(id);
+  };
+}
+
 export function onRunOutput(
   handler: (e: RunOutputEvent) => void,
+  key?: string,
 ): Promise<UnlistenFn> {
-  return listenOnce<RunOutputEvent>("run-output", handler);
+  return subscribe<RunOutputEvent>("run-output", handler, key);
 }
 
 export function onRunExit(
   handler: (e: RunExitEvent) => void,
+  key?: string,
 ): Promise<UnlistenFn> {
-  return listenOnce<RunExitEvent>("run-exit", handler);
+  return subscribe<RunExitEvent>("run-exit", handler, key);
 }
 
 export function onAcpSetup(

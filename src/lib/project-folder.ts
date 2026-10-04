@@ -53,9 +53,22 @@ export function skillRelativePath(skill: { id: string; name: string }): string {
   return `${FOLDER}/skills/${skillSlug(skill)}/SKILL.md`;
 }
 
-/** One skill as its own file: what it is at the top, the instructions below. */
+/**
+ * One skill as its own SKILL.md, in the format every agent that reads skills expects (the Agent
+ * Skills one Claude Code uses): `name` and `description` up top, the instructions below.
+ */
 export function skillMarkdown(skill: Skill): string {
-  const lines = [`# ${skill.name}`, ""];
+  const description = (skill.description?.trim() || skill.content.trim().split("\n")[0] || skill.name).replace(/\s+/g, " ");
+  const lines = [
+    "---",
+    `name: ${skillSlug(skill)}`,
+    // Double-quoted YAML is JSON's string syntax: whatever the description says, it stays one value.
+    `description: ${JSON.stringify(description)}`,
+    "---",
+    "",
+    `# ${skill.name}`,
+    "",
+  ];
   if (skill.description?.trim()) lines.push(`> ${skill.description.trim()}`, "");
   lines.push(skill.content.trim(), "");
   return lines.join("\n");
@@ -69,14 +82,25 @@ export function skillMarkdown(skill: Skill): string {
  * agent reads the file when the work is about that. A skill's own scripts and templates can sit
  * next to it in the same folder.
  */
-export async function writeSkillFiles(project: Project, skills: Skill[]): Promise<void> {
-  if (!project.workspaceDir) return;
+export async function writeSkillFiles(project: Project, skills: Skill[], dir: string = project.workspaceDir): Promise<void> {
+  // `dir` is where the run actually works: an agent with a worktree reads the copy in its worktree,
+  // and one written to the main checkout instead was a file the prompt promised and it never found.
+  if (!dir) return;
   const transport = getTransport();
   for (const skill of skills) {
-    if (!skill.content.trim()) continue;
-    const path = filePath(project.workspaceDir, `skills/${skillSlug(skill)}/SKILL.md`);
-    const content = skillMarkdown(skill);
+    if (!skill.content.trim() && !skill.dir) continue;
+    const path = filePath(dir, `skills/${skillSlug(skill)}/SKILL.md`);
     try {
+      if (skill.dir) {
+        // A folder skill goes whole, scripts and references included — copied again only when its
+        // SKILL.md changed, since a folder can be large.
+        const sep = skill.dir.includes("\\") ? "\\" : "/";
+        const source = await transport.readFileAbs(`${skill.dir}${sep}SKILL.md`);
+        if (source !== null && (await transport.readFileAbs(path)) === source) continue;
+        await transport.copySkillDir(skill.dir, filePath(dir, `skills/${skillSlug(skill)}`));
+        continue;
+      }
+      const content = skillMarkdown(skill);
       if ((await transport.readFileAbs(path)) === content) continue;
       await transport.writeFileAbs(path, content);
     } catch {
@@ -88,7 +112,7 @@ export async function writeSkillFiles(project: Project, skills: Skill[]): Promis
 /** Joins a workspace and a file of the folder, with the separator the workspace already uses. */
 export function filePath(workspaceDir: string, name: string): string {
   const sep = workspaceDir.includes("\\") ? "\\" : "/";
-  return `${workspaceDir.replace(/[\\/]+$/, "")}${sep}${FOLDER}${sep}${name}`;
+  return `${workspaceDir.replace(/[\\/]+$/, "")}${sep}${FOLDER}${sep}${name.replace(/[\\/]/g, sep)}`;
 }
 
 /** The board as markdown: one section per column, the archived left out. */

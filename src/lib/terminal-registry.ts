@@ -57,6 +57,22 @@ export function disposeTerminal(id: string): void {
   forgetPty(id);
 }
 
+/** Whether a tab's shell is a PowerShell (Windows PowerShell or pwsh), by the program it runs. */
+export function isPowerShell(shellPath: string): boolean {
+  return /(^|[\\/])(pwsh|powershell)(\.exe)?$/i.test(shellPath.trim());
+}
+
+/**
+ * `command` the way the tab's shell has to be typed it.
+ *
+ * PowerShell reads a line that starts with a quoted string as that string — an expression, not a
+ * program — so `"C:\…\claude.exe" auth login` failed on "auth" as an unexpected token. The call
+ * operator is what says "run this". Every other shell runs the quoted path as it is.
+ */
+export function typedFor(command: string, shellPath: string): string {
+  return isPowerShell(shellPath) && command.trimStart().startsWith('"') ? `& ${command}` : command;
+}
+
 /** Ids with a live terminal, so a view can drop the ones whose tab is gone. */
 export function liveTerminalIds(): string[] {
   return [...entries.keys()];

@@ -163,6 +163,14 @@ pub async fn read_home_file(relative_path: String) -> Result<Option<String>, Str
         .map_err(|e| e.to_string())?
 }
 
+/// The user's home folder, absolute. What a CLI's own config writes as a path (an extension's
+/// install folder, a server's working directory) is absolute, and the frontend has to be able to
+/// say it too.
+#[tauri::command]
+pub fn home_dir() -> Option<String> {
+    dirs::home_dir().map(|p| p.to_string_lossy().into_owned())
+}
+
 fn read_home_file_blocking(relative_path: String) -> Result<Option<String>, String> {
     if relative_path.contains("..") {
         return Err("Invalid path".into());

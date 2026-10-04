@@ -57,7 +57,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "connectors" | "extensions" | "plugins" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -3124,6 +3124,11 @@ async function runInit(): Promise<void> {
     // With the runs in memory, the boards can be put back in step with them.
     for (const id of toLoad) reconcileProject(id);
     history.startHistorySync();
+    // The shared MCP servers, written into each installed CLI's own config as well. The desktop app
+    // only: a CLI process is too short-lived to own that, and a phone has no CLIs to write to.
+    if (isTauri()) void import("@/lib/mcp-native").then(m => m.startNativeMcpSync()).catch(() => {});
+    // Skills too, into the skills folders of each CLI (see `lib/skills-native`).
+    if (isTauri()) void import("@/lib/skills-native").then(m => m.startNativeSkillsSync()).catch(() => {});
     // An unknown question id only means a stale draft once every project's history is in memory.
     get().pruneQuestionDrafts(toLoad.length === config.projects.length);
     // Load persisted notifications before marking the store as ready, so the bell
