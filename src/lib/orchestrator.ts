@@ -13,7 +13,7 @@ import { shouldCompact } from "@/lib/session-weight";
 import * as taskSync from "@/lib/task-sync";
 import { briefOutput, runVerification } from "@/lib/verify-commands";
 import { readTreeState } from "@/lib/run-revert";
-import { pickReviewer } from "@/lib/review";
+import { parseReviewVerdict, pickReviewer } from "@/lib/review";
 import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
 import type { AcpSessionSpec } from "@/lib/acp/session";
 import { delegationNeedsApproval } from "@/lib/approvals";
@@ -2178,7 +2178,9 @@ async function verifyAndSettle(run: Run, commands: VerifyCommand[], agent: Agent
       text: translateNow("verify.passed"),
       runId: run.id,
     });
-    maybeStartReview(run, agent);
+    // No reviewer after this: the project's own commands just passed on this work, and a reviewer
+    // re-reading it (and then the planner re-reading both) was the same check paid three times.
+    // A project with no commands still gets its review — that is the only check it has.
     verifying.delete(run.id);
     if (run.parentRunId) maybeContinueParent(run.parentRunId);
     return;
@@ -2389,6 +2391,14 @@ function maybeContinueParent(parentRunId: string) {
       const childAgent = selectAgent(store, childRun.agentId);
       const report = childReport(childRun.output);
       outputText += `### ${childAgent?.name || childRun.agentId}\n${report.text}\n`;
+
+      // Already checked by something that is not the child's word for it: said, so the planner does
+      // not read the diff again or rerun the tests — the third time the same work was checked.
+      if (childRun.verification?.status === "passed") {
+        outputText += "\n" + translateNow("prompt.results.verifiedByChecks") + "\n";
+      } else if (childRun.review && childRun.status === "done" && parseReviewVerdict(childRun.output) === "approved") {
+        outputText += "\n" + translateNow("prompt.results.approvedByReview") + "\n";
+      }
 
       // The project's own commands disagreed with whatever the child says about its work.
       if (childRun.verification?.status === "failed") {

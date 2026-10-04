@@ -1845,6 +1845,8 @@ export const en: Dictionary = {
   "project.openFolderFailed": "The folder could not be opened",
   "prompt.board.header": "## The project's board",
   "prompt.results.header": "What your agents came back with:",
+  "prompt.results.verifiedByChecks": "Already verified: the project's commands passed on this work. Do not read its diff or run its tests again.",
+  "prompt.results.approvedByReview": "Already verified: the reviewer approved this work. Do not read its diff or run its tests again.",
   "prompt.quota.spent": "> ⚠ {name} did not fail at the work: it ran out of quota on that model. You can delegate it again with a `model` field on the task, using one of these: {models}.",
   "prompt.quota.spentNoOthers": "> ⚠ {name} did not fail at the work: it ran out of quota and its CLI has no other model to switch to. Tell the user instead of retrying.",
   "prompt.board.intro": "These are the open tasks. To pick one up, delegate it with its id in the `taskId` field: the card then moves instead of a second one being created. Do not open the user's request as a new task if it is already on this list.",

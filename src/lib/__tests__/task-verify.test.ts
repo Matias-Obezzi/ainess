@@ -98,11 +98,12 @@ describe("taskOnVerified", () => {
     expect(cardStatus()).toBe("ready");
   });
 
-  // The machine checking does not replace the person: a project with a reviewer still gets one.
-  it("hands the card to the reviewer when there is one", () => {
+  // Passing the project's own commands is the check: no reviewer is asked to do it again, so the
+  // card does not wait in review for one.
+  it("settles the card as ready even when the project has a reviewer", () => {
     seed({ verify: [verifyCommand()], agents: [agent(), agent({ id: "rev", name: "Reviewer", role: "reviewer" })] });
     taskOnVerified(run(), { ok: true });
-    expect(cardStatus()).toBe("in-review");
+    expect(cardStatus()).toBe("ready");
   });
 
   it("brings the card back to you when a command failed, with what it printed", () => {

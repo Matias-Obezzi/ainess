@@ -1844,6 +1844,8 @@ export const ja: Dictionary = {
   "project.openFolderFailed": "フォルダを開けませんでした",
   "prompt.board.header": "## プロジェクトのボード",
   "prompt.results.header": "あなたのエージェントから返ってきたもの：",
+  "prompt.results.verifiedByChecks": "検証済み：この作業でプロジェクトのコマンドが通りました。diff を読み直したり、テストを再実行したりしないでください。",
+  "prompt.results.approvedByReview": "検証済み：レビュアーがこの作業を承認しました。diff を読み直したり、テストを再実行したりしないでください。",
   "prompt.quota.spent": "> ⚠ {name} は仕事に失敗したのではなく、そのモデルのクォータを使い切りました。task に `model` フィールドを付けて、次のいずれかで委譲し直せます：{models}。",
   "prompt.quota.spentNoOthers": "> ⚠ {name} は仕事に失敗したのではなく、クォータを使い切り、その CLI に切り替えられる別のモデルがありません。再試行せずユーザーに伝えてください。",
   "prompt.board.intro": "以下が未完了のタスクです。取りかかるときは `taskId` フィールドにその id を入れて委譲してください。そうすればカードは新しく作られず、そのまま移動します。ユーザーの依頼がすでにこの一覧にあるなら、新しいタスクとして起こさないでください。",

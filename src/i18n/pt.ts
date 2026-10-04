@@ -1843,6 +1843,8 @@ export const pt: Dictionary = {
   "project.openFolderFailed": "Não foi possível abrir a pasta",
   "prompt.board.header": "## Quadro do projeto",
   "prompt.results.header": "O que os seus agentes trouxeram de volta:",
+  "prompt.results.verifiedByChecks": "Já verificado: os comandos do projeto passaram neste trabalho. Não leia o diff dele nem rode os testes de novo.",
+  "prompt.results.approvedByReview": "Já verificado: o revisor aprovou este trabalho. Não leia o diff dele nem rode os testes de novo.",
   "prompt.quota.spent": "> ⚠ {name} não falhou na tarefa: ficou sem cota naquele modelo. Você pode delegá-la de novo adicionando o campo `model` à task, com um destes: {models}.",
   "prompt.quota.spentNoOthers": "> ⚠ {name} não falhou na tarefa: ficou sem cota e a CLI dele não tem outro modelo para trocar. Diga isso ao usuário em vez de tentar de novo.",
   "prompt.board.intro": "Estas são as tarefas abertas. Para assumir uma, delegue-a com o id dela no campo `taskId`: assim o cartão se move em vez de nascer outro igual. Não abra o pedido do usuário como tarefa nova se ele já está nesta lista.",

@@ -40,6 +40,10 @@ let one of them fall behind.
     picks up its own conversation instead of exploring the repo from zero again.
   - The planner reads each member's summary and checks the diff only when something is blocked,
     failed or does not add up, instead of re-reading all of the work.
+  - Work is checked once. When the project's own commands pass on what a member did, no reviewer
+    is asked to check it again and the card goes straight to ready; a project without commands
+    still gets its review. Either way the planner is told the work was already verified, and does
+    not read its diff or run its tests a third time.
   - A Claude planner can only run `git` and write its own plans in `.ainess/`, which is what its
     tool list always said. The list did not restrict anything, and planners read the repo with
     `cat` and `sed` into their own context instead of delegating.

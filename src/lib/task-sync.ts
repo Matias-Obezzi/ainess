@@ -269,9 +269,8 @@ export function taskOnVerified(run: Run, verdict: Verdict): void {
     const task = findByRun(run.projectId, run.id);
     if (!task) return;
     if (verdict.ok) {
-      useAppStore.getState().updateTask(task.id, {
-        status: hasReviewer(run.projectId) ? "in-review" : "ready",
-      });
+      // Passed is done: no reviewer is asked after the project's own commands (see `verifyAndSettle`).
+      useAppStore.getState().updateTask(task.id, { status: "ready" });
       return;
     }
     const failed = verdict.failed;

@@ -1843,6 +1843,8 @@ export const zh: Dictionary = {
   "project.openFolderFailed": "打不开这个文件夹",
   "prompt.board.header": "## 项目看板",
   "prompt.results.header": "你的智能体带回来的结果：",
+  "prompt.results.verifiedByChecks": "已验证：项目自己的命令在这项工作上通过了。不要再看它的 diff，也不要再跑它的测试。",
+  "prompt.results.approvedByReview": "已验证：审查者批准了这项工作。不要再看它的 diff，也不要再跑它的测试。",
   "prompt.quota.spent": "> ⚠ {name} 不是在任务上失败了：它在那个模型上用完了配额。你可以在 task 里加上 `model` 字段重新委派，用这些之一：{models}。",
   "prompt.quota.spentNoOthers": "> ⚠ {name} 不是在任务上失败了：它用完了配额，而它的 CLI 没有别的模型可换。告诉用户，别再重试。",
   "prompt.board.intro": "以下是未完成的任务。要接手其中一个，就在 `taskId` 字段里带上它的 id 去委派：这样卡片会移动，而不是再新建一张。如果用户的请求已经在这个列表里，就不要再开一个新任务。",

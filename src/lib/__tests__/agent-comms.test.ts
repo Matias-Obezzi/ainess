@@ -10,11 +10,15 @@ import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
 import { attachListeners, childReport } from "@/lib/orchestrator";
 import { delegationError, parseDelegations, plannerMayUse } from "@/lib/providers";
+import { createTask } from "@/lib/tasks";
+import { translateNow } from "@/i18n/useT";
 import type { Run, RunExitEvent } from "@/types";
 
 vi.mock("@/lib/hooks", () => ({ emitHookEvent: async () => {} }));
 
 let emitExit: ((e: RunExitEvent) => void) | undefined;
+/** What the project's verification command exits with. */
+let checkCode = 0;
 
 const project = {
   id: "p1",
@@ -36,13 +40,13 @@ const run = (over: Partial<Run> & Pick<Run, "id" | "agentId">): Run => ({
 const ask = 'Antes de seguir:\n\n```ask\n{"question":"¿Uso la B o la C?","options":["La B","La C"]}\n```';
 
 /** A planner turn that delegated to both members, with whatever state each child is in. */
-function setUp(runs: Run[]) {
+function setUp(runs: Run[], proj: object = project, cards: ReturnType<typeof createTask>[] = []) {
   const byId = Object.fromEntries(runs.map(r => [r.id, r]));
   useAppStore.setState({
     runs: byId,
     questions: {},
     messages: [],
-    tasks: {},
+    tasks: { p1: cards },
     approvals: {},
     activeTaskRunId: { p1: "root" },
     runtime: {
@@ -53,7 +57,7 @@ function setUp(runs: Run[]) {
       },
     },
     binaries: { claude: { path: "claude", version: "1" } },
-    config: { ...useAppStore.getState().config, maxRounds: 6, projects: [project] },
+    config: { ...useAppStore.getState().config, maxRounds: 6, projects: [proj] },
   } as never);
 }
 
@@ -75,7 +79,10 @@ beforeEach(async () => {
     ...nullTransport,
     spawnRun: async () => {},
     writeFileAbs: async () => {},
-    onRunExit: async (h: (e: RunExitEvent) => void) => { emitExit = h; return () => {}; },
+    exec: async () => ({ code: checkCode, stdout: checkCode === 0 ? "ok" : "2 failing", stderr: "" }),
+    // The first one is the orchestrator's. A delegated run started here opens an ACP client that listens
+    // for exits too, and taking the latest handler routed every later exit to it instead.
+    onRunExit: async (h: (e: RunExitEvent) => void) => { emitExit ??= h; return () => {}; },
   } as never);
   await attachListeners();
 });
@@ -190,5 +197,78 @@ describe("childReport", () => {
     expect(cut).toBe(true);
     expect(text.endsWith("FIN")).toBe(true);
     expect(text.length).toBeLessThan(7_000);
+  });
+});
+
+describe("work that was already checked", () => {
+  // A project that says what "done" means, and has a reviewer besides.
+  const checked = {
+    ...project,
+    verify: [{ id: "v1", label: "test", program: "npm", args: ["test"] }],
+    agents: [...project.agents, { id: "rev", name: "Revisor", provider: "claude", role: "reviewer", parentId: "a0", autoApprove: true }],
+  };
+  const card = (runId: string) => createTask({ id: `t-${runId}`, projectId: "p1", title: "la parte", status: "working", runId });
+  const reviewRuns = () => Object.values(useAppStore.getState().runs).filter(r => r.agentId === "rev");
+  const settle = () => new Promise(r => setTimeout(r, 20));
+
+  it("is not reviewed again once the project's commands passed, and the planner is told so", async () => {
+    checkCode = 0;
+    const ids = { parentRunId: "root-ok", rootRunId: "root-ok" };
+    setUp([
+      root({ id: "root-ok", rootRunId: "root-ok", childRunIds: ["k1"] }),
+      run({ id: "k1", agentId: "a1", ...ids }),
+    ], checked, [card("k1")]);
+
+    end("k1", "Listo, cambié el botón.");
+    await settle();
+
+    expect(reviewRuns()).toHaveLength(0);
+    expect(useAppStore.getState().tasks.p1[0].status).toBe("ready");
+    const [next] = continuations().filter(r => r.rootRunId === "root-ok");
+    expect(next.prompt).toContain(translateNow("prompt.results.verifiedByChecks"));
+  });
+
+  it("is still reviewed when the project has no commands of its own", async () => {
+    const ids = { parentRunId: "root-rev", rootRunId: "root-rev" };
+    setUp([
+      root({ id: "root-rev", rootRunId: "root-rev", childRunIds: ["n1"] }),
+      run({ id: "n1", agentId: "a1", ...ids }),
+    ], { ...checked, verify: [] }, [card("n1")]);
+
+    end("n1", "Listo.");
+    await settle();
+    expect(reviewRuns()).toHaveLength(1);
+  });
+
+  it("tells the planner a reviewer approved it", async () => {
+    const ids = { parentRunId: "root-ap", rootRunId: "root-ap" };
+    setUp([
+      root({ id: "root-ap", rootRunId: "root-ap", childRunIds: ["m1", "m2"] }),
+      run({ id: "m1", agentId: "a1", status: "done", output: "Listo.", ...ids }),
+      run({ id: "m2", agentId: "rev", review: { ofRunId: "m1", taskId: "t-m1" }, ...ids }),
+    ], { ...checked, verify: [] });
+
+    end("m2", "Está bien.\n\nVEREDICTO: APROBADO");
+    await settle();
+    const [next] = continuations().filter(r => r.rootRunId === "root-ap");
+    expect(next.prompt).toContain(translateNow("prompt.results.approvedByReview"));
+  });
+
+  it("goes back to the planner with what failed, when the commands did not pass", async () => {
+    checkCode = 1;
+    const ids = { parentRunId: "root-ko", rootRunId: "root-ko" };
+    setUp([
+      root({ id: "root-ko", rootRunId: "root-ko", childRunIds: ["f1"] }),
+      run({ id: "f1", agentId: "a1", ...ids }),
+    ], checked, [card("f1")]);
+
+    end("f1", "Listo.");
+    await settle();
+    checkCode = 0;
+
+    expect(reviewRuns()).toHaveLength(0);
+    const [next] = continuations().filter(r => r.rootRunId === "root-ko");
+    expect(next.prompt).toContain("2 failing");
+    expect(next.prompt).not.toContain(translateNow("prompt.results.verifiedByChecks"));
   });
 });

@@ -1843,6 +1843,8 @@ export const de: Dictionary = {
   "project.openFolderFailed": "Der Ordner konnte nicht geöffnet werden",
   "prompt.board.header": "## Das Board des Projekts",
   "prompt.results.header": "Was deine Agenten zurückgebracht haben:",
+  "prompt.results.verifiedByChecks": "Bereits geprüft: Die Befehle des Projekts sind bei dieser Arbeit durchgelaufen. Lies den Diff nicht noch einmal und führe die Tests nicht erneut aus.",
+  "prompt.results.approvedByReview": "Bereits geprüft: Der Reviewer hat diese Arbeit freigegeben. Lies den Diff nicht noch einmal und führe die Tests nicht erneut aus.",
   "prompt.quota.spent": "> ⚠ {name} ist nicht an der Arbeit gescheitert: dem Modell ist das Kontingent ausgegangen. Du kannst erneut delegieren und der Task ein `model`-Feld mitgeben, mit einem davon: {models}.",
   "prompt.quota.spentNoOthers": "> ⚠ {name} ist nicht an der Arbeit gescheitert: das Kontingent ist aufgebraucht und seine CLI hat kein anderes Modell zum Wechseln. Sag es dem Benutzer, statt es erneut zu versuchen.",
   "prompt.board.intro": "Das sind die offenen Aufgaben. Um eine davon zu übernehmen, delegiere sie mit ihrer id im Feld `taskId`: dann wandert die Karte, statt dass eine zweite entsteht. Öffne die Anfrage des Benutzers nicht als neue Aufgabe, wenn sie bereits in dieser Liste steht.",

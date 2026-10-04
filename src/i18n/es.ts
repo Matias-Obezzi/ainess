@@ -1845,6 +1845,8 @@ export const es: Dictionary = {
   "project.openFolderFailed": "No se pudo abrir la carpeta",
   "prompt.board.header": "## Tablero del proyecto",
   "prompt.results.header": "Resultados de tus agentes:",
+  "prompt.results.verifiedByChecks": "Ya verificado: los comandos del proyecto pasaron sobre este trabajo. No vuelvas a leer su diff ni a correr sus tests.",
+  "prompt.results.approvedByReview": "Ya verificado: el revisor aprobó este trabajo. No vuelvas a leer su diff ni a correr sus tests.",
   "prompt.quota.spent": "> ⚠ {name} no falló en la tarea: se quedó sin cuota con ese modelo. Podés volver a delegársela agregando el campo `model` a la task, con uno de estos: {models}.",
   "prompt.quota.spentNoOthers": "> ⚠ {name} no falló en la tarea: se quedó sin cuota y su CLI no tiene otro modelo al que cambiar. Decíselo al usuario en vez de reintentar.",
   "prompt.board.intro": "Estas son las tareas abiertas. Para ponerte con una, delegala con su id en el campo `taskId`: así la tarjeta se mueve en lugar de crearse otra igual. No repitas el pedido del usuario como tarea nueva si ya está en esta lista.",

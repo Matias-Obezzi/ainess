@@ -1843,6 +1843,8 @@ export const fr: Dictionary = {
   "project.openFolderFailed": "Le dossier n'a pas pu être ouvert",
   "prompt.board.header": "## Le tableau du projet",
   "prompt.results.header": "Ce que vos agents ont rapporté :",
+  "prompt.results.verifiedByChecks": "Déjà vérifié : les commandes du projet sont passées sur ce travail. Ne relis pas son diff et ne relance pas ses tests.",
+  "prompt.results.approvedByReview": "Déjà vérifié : le relecteur a approuvé ce travail. Ne relis pas son diff et ne relance pas ses tests.",
   "prompt.quota.spent": "> ⚠ {name} n'a pas échoué sur le travail : il n'a plus de quota sur ce modèle. Vous pouvez le redéléguer en ajoutant le champ `model` à la task, avec l'un de ceux-ci : {models}.",
   "prompt.quota.spentNoOthers": "> ⚠ {name} n'a pas échoué sur le travail : il n'a plus de quota et sa CLI n'a pas d'autre modèle vers lequel basculer. Dites-le à l'utilisateur au lieu de réessayer.",
   "prompt.board.intro": "Voici les tâches ouvertes. Pour en prendre une, délègue-la avec son id dans le champ `taskId` : la carte se déplace au lieu qu'une seconde soit créée. N'ouvre pas la demande de l'utilisateur comme une tâche neuve si elle est déjà dans cette liste.",
