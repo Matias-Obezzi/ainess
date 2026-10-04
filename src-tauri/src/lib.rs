@@ -12,6 +12,7 @@ mod ports;
 mod pty;
 mod remote;
 mod repo_watch;
+mod skills;
 mod runner;
 mod tray;
 mod tunnel;
@@ -106,6 +107,10 @@ pub fn run() {
             oauth::oauth_status,
             oauth::oauth_access_token,
             oauth::oauth_disconnect,
+            skills::list_dir,
+            skills::copy_skill_dir,
+            skills::remove_skill_dir,
+            skills::unpack_skill,
             config::read_file_abs,
             config::read_file_bytes,
             config::files_exist_abs,

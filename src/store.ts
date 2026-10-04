@@ -3127,6 +3127,8 @@ async function runInit(): Promise<void> {
     // The shared MCP servers, written into each installed CLI's own config as well. The desktop app
     // only: a CLI process is too short-lived to own that, and a phone has no CLIs to write to.
     if (isTauri()) void import("@/lib/mcp-native").then(m => m.startNativeMcpSync()).catch(() => {});
+    // Skills too, into the skills folders of each CLI (see `lib/skills-native`).
+    if (isTauri()) void import("@/lib/skills-native").then(m => m.startNativeSkillsSync()).catch(() => {});
     // An unknown question id only means a stale draft once every project's history is in memory.
     get().pruneQuestionDrafts(toLoad.length === config.projects.length);
     // Load persisted notifications before marking the store as ready, so the bell

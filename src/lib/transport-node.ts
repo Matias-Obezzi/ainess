@@ -532,6 +532,30 @@ export const nodeTransport: Transport = {
   oauthStatus: async () => ({ connected: false, expiresAt: null }),
   oauthAccessToken: async () => null,
   oauthDisconnect: async () => {},
+  // A run started from the CLI copies its skills into the workspace too, so these work here.
+  listDir: async (dir: string) => {
+    try {
+      return fs.readdirSync(dir).sort().map(name => {
+        let isDir = false;
+        try { isDir = fs.statSync(path.join(dir, name)).isDirectory(); } catch { /* a broken link */ }
+        return { name, isDir };
+      });
+    } catch {
+      return null;
+    }
+  },
+  copySkillDir: async (src: string, dst: string) => {
+    if (!fs.existsSync(path.join(src, "SKILL.md"))) throw new Error("not a skill folder (no SKILL.md)");
+    fs.rmSync(dst, { recursive: true, force: true });
+    fs.cpSync(src, dst, { recursive: true, dereference: true });
+  },
+  removeSkillDir: async (target: string) => {
+    if (!fs.existsSync(target)) return;
+    if (path.basename(path.dirname(target)) !== "skills" || !fs.existsSync(path.join(target, "SKILL.md"))) throw new Error("not a skill folder");
+    if (fs.lstatSync(target).isSymbolicLink()) fs.unlinkSync(target);
+    else fs.rmSync(target, { recursive: true, force: true });
+  },
+  unpackSkill: async () => null,
 
   readHomeFile: async (relativePath: string) => {
     if (relativePath.includes("..")) throw new Error("Invalid path");

@@ -82,7 +82,19 @@ export interface Skill {
   description?: string;
   content: string;
   enabledFor: "all" | string[];
+  /**
+   * A folder skill: the absolute folder that holds its SKILL.md and whatever sits beside it
+   * (scripts, references). `content` is then the SKILL.md body, for the prompt's one line; the
+   * folder is what reaches the agents, whole.
+   */
+  dir?: string;
+  /** Where it came from: a CLI it was imported from, or an upload. */
+  source?: SkillSource;
+  /** ainess unpacked it into its own folder, so deleting the skill deletes that folder too. */
+  managed?: boolean;
 }
+
+export type SkillSource = "claude-code" | "claude-synced" | "agents" | "codex" | "copilot" | "opencode" | "gemini" | "upload";
 
 export interface McpServer {
   id: string;
@@ -494,6 +506,10 @@ export interface AppConfig {
    * The server names ainess wrote into each CLI's own config, per CLI. Only these are ever changed
    * or removed there: anything else in that file is the user's.
    */
+  /** Whether the skills enabled for every agent are also written into each CLI's skills folder. Unset means yes. */
+  skillsNativeSync?: boolean;
+  /** The skill folders ainess wrote into each CLI's skills folder; only these are ever changed there. */
+  skillsOwned?: Partial<Record<"claude-code" | "agents", string[]>>;
   mcpOwned?: Partial<Record<"claude-code" | "copilot" | "gemini" | "codex" | "opencode" | "antigravity", string[]>>;
   skills: Skill[];
   mcpServers: McpServer[];

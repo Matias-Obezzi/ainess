@@ -70,6 +70,16 @@ export const tauriTransport: Transport = {
   },
   oauthAccessToken: async (id) => invoke<string | null>("oauth_access_token", { id }),
   oauthDisconnect: async (id) => invoke<void>("oauth_disconnect", { id }),
+  listDir: async (path) => {
+    try {
+      return await invoke<Array<{ name: string; isDir: boolean }> | null>("list_dir", { path });
+    } catch {
+      return null;
+    }
+  },
+  copySkillDir: async (src, dst) => invoke<void>("copy_skill_dir", { src, dst }),
+  removeSkillDir: async (path) => invoke<void>("remove_skill_dir", { path }),
+  unpackSkill: async (archivePath, name) => invoke<string>("unpack_skill", { archivePath, name }),
   homeDir: async () => {
     try {
       return await invoke<string | null>("home_dir");

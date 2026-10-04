@@ -81,6 +81,14 @@ export interface Transport {
   /** A fresh access token for a run, or null with no sign-in. Never stored or logged by the caller. */
   oauthAccessToken(id: string): Promise<string | null>;
   oauthDisconnect(id: string): Promise<void>;
+  /** A folder's entries (links followed to tell folders apart); null when it is not there. */
+  listDir(path: string): Promise<Array<{ name: string; isDir: boolean }> | null>;
+  /** `dst` replaced by a copy of the skill folder `src` (one with a SKILL.md), links followed. */
+  copySkillDir(src: string, dst: string): Promise<void>;
+  /** Removes a skill folder — only one inside a `skills` folder, holding a SKILL.md; a link loses itself only. */
+  removeSkillDir(path: string): Promise<void>;
+  /** Unpacks an uploaded skill zip into the app's own skills folder; its absolute folder, or null. */
+  unpackSkill(archivePath: string, name: string): Promise<string | null>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**

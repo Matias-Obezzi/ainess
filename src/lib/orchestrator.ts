@@ -828,9 +828,6 @@ function launchRun(runId: string, opts: StartRunOptions): void {
   const doSpawn = async () => {
     // Connectors that sign in get their token now, fresh, and only in this run's copy.
     const mcpServers = await withConnectorTokens(configuredMcp);
-    // Right before the run, so what the agent opens is what the settings say right now. Only the
-    // ones this agent has: the prompt names them by path and the file has to be there.
-    if (project) await writeSkillFiles(project, skills);
 
     let mcpConfigPath: string | undefined;
     // Copilot takes a file of MCP servers for the session. Antigravity is configured machine-wide
@@ -863,6 +860,10 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     // An agent with its own worktree runs there; a worktree that cannot be prepared stops the
     // run before it starts (the rejection lands in the catch below).
     const cwd = await resolveCwd(opts.projectId, agent, project, runId);
+    // Right before the run, so what the agent opens is what the settings say right now. Only the
+    // ones this agent has: the prompt names them by path and the file has to be there — in the
+    // folder the run works in, which is its worktree when it has one.
+    await writeSkillFiles(project, skills, cwd);
 
     let baseSha: string | undefined;
     try {
