@@ -154,8 +154,9 @@ describe("the login gate after a run that could not authenticate", () => {
 
     const id = ask();
     await vi.waitFor(() => expect(replacement(id)).toBeTruthy());
-    // Quoted, because a resolved path goes through `C:\Program Files` often enough.
-    expect(command).toBe('"C:/claude.exe" auth login');
+    // Quoted, because a resolved path goes through `C:\Program Files` often enough; and the shell
+    // (PowerShell here) closes itself once the login worked, which is what this flow waits for.
+    expect(command).toBe('"C:/claude.exe" auth login; if ($?) { exit }');
     // The terminal exiting is not proof of anything: the engine is asked afterwards.
     expect(probes).toBe(1);
   });

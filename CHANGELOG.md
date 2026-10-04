@@ -16,6 +16,11 @@ let one of them fall behind.
   process was gone still read as running, stop had nothing left to kill, and nothing could be sent
   to that agent until the app was restarted. Both now hear every run. And stopping a run whose
   process is already gone closes it on the spot, whatever the reason it was left open.
+- **The Claude Code login failed before it started.** It opens in a PowerShell, and the app typed
+  the engine's quoted path followed by `auth login` — which PowerShell reads as a piece of text and
+  two stray words, and stops at "auth". It is now run as a program in PowerShell, and the terminal
+  closes on its own once the login worked, so the run that needed it carries on without the tab
+  having to be closed by hand. If the login fails, the terminal stays open with what it said.
 
 ## 0.25.0 — 2026-10-04
 

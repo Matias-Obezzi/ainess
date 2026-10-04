@@ -11,7 +11,7 @@ import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
 import { tokenColor } from "@/lib/color";
 import { ensurePtyListeners, subscribePty } from "@/lib/pty-bus";
-import { getTerminal, pasteIntoTerminal, registerTerminal, type TerminalEntry } from "@/lib/terminal-registry";
+import { getTerminal, pasteIntoTerminal, registerTerminal, typedFor, type TerminalEntry } from "@/lib/terminal-registry";
 import type { TerminalTab } from "@/types";
 
 /**
@@ -155,7 +155,7 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
       // A tab opened from one of the project's scripts starts by running it. Written as soon as the
       // PTY exists rather than on some delay: the shell reads its input when it is ready, and the
       // typing is buffered until then, which is the same thing that happens when a person is fast.
-      if (tab.command) return transport.ptyWrite(id, `${tab.command}\r`);
+      if (tab.command) return transport.ptyWrite(id, `${typedFor(tab.command, tab.shellPath)}\r`);
     })
     .then(() => term.focus())
     .catch((e: unknown) => {

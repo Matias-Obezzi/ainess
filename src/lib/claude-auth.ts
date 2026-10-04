@@ -12,6 +12,7 @@
 // `ensureClaudeAuth()` is the gate, built like `ensureAcpRuntime()` (src/lib/acp-setup.ts), which is
 // itself built like `confirm()` (src/lib/confirm.ts): whoever needs a login awaits one answer and a
 // screen mounted near the root is the host that produces it. Nobody renders that screen to ask.
+import { isPowerShell } from "@/lib/terminal-registry";
 import { ensureAcpRuntime } from "@/lib/acp-setup";
 import { log } from "@/lib/logger";
 import { getTransport } from "@/lib/transport";
@@ -194,10 +195,13 @@ export async function loginWithClaude(): Promise<boolean> {
     return false;
   }
 
-  const before = new Set(useAppStore.getState().terminals.map(t => t.id));
-  useAppStore.getState().openTerminal({
-    command: `"${engine}" auth login`,
+  const state = useAppStore.getState();
+  const shell = state.shells[0];
+  const before = new Set(state.terminals.map(t => t.id));
+  state.openTerminal({
+    command: loginCommand(engine, shell?.path ?? ""),
     title: translateNow("claudeAuth.terminalTitle"),
+    ...(shell ? { shellId: shell.id } : {}),
   });
   const tab = useAppStore.getState().terminals.find(t => !before.has(t.id));
   if (!tab) {
@@ -209,6 +213,19 @@ export async function loginWithClaude(): Promise<boolean> {
   await terminalEnded(tab.id);
   const status = await probeClaudeAuth();
   return status !== null && status.kind !== "none";
+}
+
+/**
+ * The line typed into the login terminal: the login, then the shell's own exit — only when the
+ * login worked. This flow waits for the terminal to end (`terminalEnded`), and a shell left open
+ * after a good login kept it waiting until the tab was closed by hand; one that failed stays open,
+ * so what the engine said can still be read. The call operator PowerShell needs before a quoted
+ * path is added where the line is typed (`typedFor`).
+ */
+export function loginCommand(engine: string, shellPath: string): string {
+  const login = `"${engine}" auth login`;
+  if (isPowerShell(shellPath)) return `${login}; if ($?) { exit }`;
+  return `${login} && exit`;
 }
 
 /** Logs the engine out. Logs out every other Claude Code on this machine with it. */
