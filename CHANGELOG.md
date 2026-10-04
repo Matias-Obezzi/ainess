@@ -24,6 +24,12 @@ let one of them fall behind.
   config file with comments in it is left alone rather than rewritten, and a server meant for one
   agent stays with that agent. Settings → MCP says what happened in each CLI, and one switch turns
   it off.
+- **Desktop extensions.** Settings → Extensions installs a `.mcpb` file (the format Claude Desktop
+  uses, and `.dxt`, its older name): it is unpacked into ainess's own folder, the values its
+  manifest asks for are filled in on a form — secrets in password fields — and its server is there
+  for every agent and every CLI, like any other. Each one can be switched off, configured again or
+  uninstalled. The ones Claude Desktop installed show up here too once imported; ainess runs them
+  but never deletes their folder.
 
 ### Changed
 

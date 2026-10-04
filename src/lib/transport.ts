@@ -65,6 +65,13 @@ export interface Transport {
   readHomeFile(relativePath: string): Promise<string | null>;
   /** The user's home folder, absolute; null where there is no local machine to have one. */
   homeDir(): Promise<string | null>;
+  /**
+   * Unpacks a desktop extension (`.mcpb`/`.dxt`) into the app's own extensions folder, replacing an
+   * earlier install of it. Null where extensions cannot be installed (the CLI, the phone, a browser).
+   */
+  installExtension(archivePath: string): Promise<{ dir: string; manifest: string } | null>;
+  /** Deletes an installed extension's folder; refused for anything outside the app's own folder. */
+  removeExtension(dir: string): Promise<void>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**

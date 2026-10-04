@@ -4,6 +4,7 @@ mod console;
 mod detect;
 mod diagnostics;
 mod editors;
+mod extensions;
 mod http;
 mod logging;
 mod ports;
@@ -98,6 +99,8 @@ pub fn run() {
             config::delete_config_file,
             config::read_home_file,
             config::home_dir,
+            extensions::install_extension,
+            extensions::remove_extension,
             config::read_file_abs,
             config::read_file_bytes,
             config::files_exist_abs,

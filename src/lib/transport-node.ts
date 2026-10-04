@@ -524,6 +524,9 @@ export const nodeTransport: Transport = {
   },
 
   homeDir: async () => os.homedir(),
+  // Installing one is a desktop-app job: it asks for the values the manifest wants on screen.
+  installExtension: async () => null,
+  removeExtension: async () => {},
 
   readHomeFile: async (relativePath: string) => {
     if (relativePath.includes("..")) throw new Error("Invalid path");

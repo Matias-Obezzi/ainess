@@ -9,6 +9,7 @@
 // touches the disk.
 import type { McpServer } from "@/types";
 import { getTransport } from "@/lib/transport";
+import { extensionRecord, parseManifest, serverFromManifest, type ExtensionValue } from "@/lib/mcpb";
 
 export type McpSource =
   | "claude-desktop"
@@ -247,25 +248,14 @@ export function fromCodexToml(source: string): FoundServer[] {
   return out;
 }
 
-/** What Claude Desktop keeps about one installed extension, in `extensions-installations.json`. */
-interface InstalledExtension {
-  id: string;
-  manifest?: {
-    name?: string;
-    display_name?: string;
-    server?: { type?: string; mcp_config?: { command?: string; args?: unknown; env?: unknown } };
-    user_config?: Record<string, { default?: unknown }>;
-  };
-}
-
 /**
  * The servers behind Claude Desktop's installed extensions (`.mcpb`, formerly `.dxt`).
  *
- * An extension is a folder with a manifest that says how to start its server, in terms of
- * `${__dirname}` (that folder) and `${user_config.<key>}` (what the user filled in when installing
- * it). Both are resolved here, so what comes out runs on its own. An extension switched off in
- * Claude stays off; one that still needs a value nobody filled in is left out rather than imported
- * broken.
+ * Its registry (`extensions-installations.json`) keeps each extension's manifest; the values the user
+ * gave it live in a settings file per extension. Resolved here the same way ainess resolves the ones
+ * it installs (`lib/mcpb`), so what comes out runs on its own. One switched off in Claude stays off;
+ * one still missing a value is left out rather than imported broken. They come in marked `external`:
+ * the folder is Claude's, and removing the server from ainess never deletes it.
  */
 export function fromClaudeExtensions(
   registry: unknown,
@@ -275,50 +265,19 @@ export function fromClaudeExtensions(
 ): FoundServer[] {
   if (!isObject(registry) || !isObject(registry.extensions)) return [];
   const sep = extensionsDir.includes("\\") ? "\\" : "/";
-  // The folders the manifest format names besides its own (see the MCPB spec's variables).
-  const places: Record<string, string> = {
-    HOME: home,
-    DESKTOP: `${home}${sep}Desktop`,
-    DOCUMENTS: `${home}${sep}Documents`,
-    DOWNLOADS: `${home}${sep}Downloads`,
-    pathSeparator: sep,
-    "/": sep,
-  };
   const out: FoundServer[] = [];
   for (const raw of Object.values(registry.extensions)) {
-    const ext = raw as InstalledExtension;
-    if (!ext?.id || !ext.manifest?.server?.mcp_config?.command) continue;
-    const own = settings[ext.id];
+    if (!isObject(raw) || !text(raw.id)) continue;
+    const id = raw.id as string;
+    const manifest = parseManifest(raw.manifest);
+    if (!manifest) continue;
+    const own = settings[id];
     if (isObject(own) && own.isEnabled === false) continue;
-    const userConfig = isObject(own) && isObject(own.userConfig) ? own.userConfig : {};
-    const dir = `${extensionsDir}${sep}${ext.id}`;
-
-    let unresolved = false;
-    const resolve = (value: string) =>
-      value
-        .replace(/\$\{__dirname\}/g, dir)
-        .replace(/\$\{user_config\.([^}]+)\}/g, (_, key: string) => {
-          const given = userConfig[key] ?? ext.manifest?.user_config?.[key]?.default;
-          if (given === undefined || given === null || typeof given === "object") {
-            unresolved = true;
-            return "";
-          }
-          return String(given);
-        })
-        .replace(/\$\{(HOME|DESKTOP|DOCUMENTS|DOWNLOADS|pathSeparator|\/)\}/g, (_, key: string) => places[key]);
-
-    const config = ext.manifest.server.mcp_config;
-    const command = resolve(config.command!);
-    let args = (texts(config.args) ?? []).map(resolve);
-    const env = Object.fromEntries(Object.entries(textMap(config.env) ?? {}).map(([k, v]) => [k, resolve(v)]));
-    if (unresolved) continue;
-    // A `uv` server runs the project it is pointed at. Claude starts it from inside the extension's
-    // folder; ainess gives no working directory, so the folder goes in as uv's own `--directory`.
-    if (ext.manifest.server.type === "uv" && /(^|[\\/])uv(\.exe)?$/i.test(command) && !args.some(a => a.includes(dir))) {
-      args = ["--directory", dir, ...args];
-    }
-    const name = ext.manifest.display_name ?? ext.manifest.name ?? ext.id;
-    out.push(tidy({ name, transport: "stdio", command, args, env }));
+    const values = (isObject(own) && isObject(own.userConfig) ? own.userConfig : {}) as Record<string, ExtensionValue>;
+    const dir = `${extensionsDir}${sep}${id}`;
+    const server = serverFromManifest({ manifest, dir, home, values });
+    if (!server) continue;
+    out.push({ ...server, extension: extensionRecord(manifest, dir, values, true) });
   }
   return out;
 }

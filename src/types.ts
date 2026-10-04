@@ -101,6 +101,22 @@ export interface McpServer {
    */
   headers?: Record<string, string>;
   enabledFor: "all" | string[];
+  /**
+   * Set when the server comes from a desktop extension (`.mcpb`): the folder it lives in and what the
+   * user filled in for it. `command`/`args`/`env` above are already resolved from these; they are
+   * kept so the extension can be configured again or updated. `external` is an extension another app
+   * installed (Claude Desktop): ainess runs it but never deletes its folder.
+   */
+  extension?: McpExtension;
+}
+
+export interface McpExtension {
+  /** The manifest's `name`. */
+  id: string;
+  dir: string;
+  version?: string;
+  config?: Record<string, string | number | boolean | string[]>;
+  external?: boolean;
 }
 
 /**

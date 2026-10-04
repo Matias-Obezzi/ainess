@@ -58,6 +58,8 @@ export const tauriTransport: Transport = {
     invoke<{ status: number; body: string }>("http_put", { url, body, headers }),
   httpGet: async (url, headers) =>
     invoke<{ status: number; body: string }>("http_get", { url, headers }),
+  installExtension: async (archivePath) => invoke<{ dir: string; manifest: string }>("install_extension", { archivePath }),
+  removeExtension: async (dir) => invoke<void>("remove_extension", { dir }),
   homeDir: async () => {
     try {
       return await invoke<string | null>("home_dir");

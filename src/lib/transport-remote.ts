@@ -49,6 +49,8 @@ export const remoteTransport: Transport = {
   },
   readHomeFile: async () => null,
   homeDir: async () => null,
+  installExtension: async () => null,
+  removeExtension: async () => {},
   writeFileAbs: async () => {},
   writeFileBytes: async () => {},
   readFileAbs: async () => null,

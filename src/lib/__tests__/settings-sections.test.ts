@@ -17,6 +17,7 @@ const EXPECTED_IDS = [
   "presets",
   "skills",
   "mcp",
+  "extensions",
   "hooks",
   "context",
   "remote",

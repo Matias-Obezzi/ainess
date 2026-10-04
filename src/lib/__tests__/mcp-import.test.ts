@@ -151,6 +151,8 @@ describe("fromClaudeExtensions", () => {
       transport: "stdio",
       command: "uv",
       args: ["--directory", `${dir}\\ant.dir.gh.blender.blender-mcp`, "run", "blender-mcp"],
+      // Claude's folder, not ainess's: ainess runs it and never deletes it.
+      extension: { id: "Blender", dir: `${dir}\\ant.dir.gh.blender.blender-mcp`, external: true },
     });
   });
 

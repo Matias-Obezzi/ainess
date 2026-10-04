@@ -82,6 +82,8 @@ export function McpSection() {
     void detectMcpServers().then(found => { if (live) setDetected(found); }).catch(() => { if (live) setDetected([]); });
     return () => { live = false; };
   }, []);
+  // Extensions are listed in their own section; this one is the servers set up by hand.
+  const handMade = config.mcpServers.filter(s => !s.extension);
   const fresh = (detected ?? []).filter(d => !d.project && !alreadyKnown(config.mcpServers, d.server)).length;
 
   const banner = fresh > 0 && (
@@ -132,7 +134,7 @@ export function McpSection() {
     </>
   );
 
-  if (config.mcpServers.length === 0) {
+  if (handMade.length === 0) {
     return (
       <>
         {banner}
@@ -156,7 +158,7 @@ export function McpSection() {
       {native}
       <p className="text-xs text-muted-foreground">{t("mcp.reach")}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {config.mcpServers.map(server => (
+        {handMade.map(server => (
           <Card key={server.id}>
             <CardHeader>
               <CardTitle>{server.name}</CardTitle>
