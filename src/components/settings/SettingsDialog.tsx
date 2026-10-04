@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { lazy, Suspense, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ import { SkillsSection, SkillsSectionActions, SkillsSectionProvider } from "@/co
 import { McpSection, McpSectionActions, McpSectionProvider } from "@/components/settings/McpSection";
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
-import { RemoteSection } from "@/components/settings/RemoteSection";
+// Loaded when it is opened: it draws a QR code, and the library for that is not worth the startup.
+const RemoteSection = lazy(() => import("@/components/settings/RemoteSection").then(m => ({ default: m.RemoteSection })));
 import { BoardsSection } from "@/components/settings/BoardsSection";
 import { MessagingSection } from "@/components/settings/MessagingSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
@@ -243,7 +244,7 @@ export function SettingsDialog() {
                   must not be the thing carrying a transform. */}
               <div className="flex-1 overflow-y-auto p-6">
                 <div ref={screenIn}>
-                  <Body />
+                  <Suspense fallback={null}><Body /></Suspense>
                 </div>
               </div>
             </div>

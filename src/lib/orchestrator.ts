@@ -136,16 +136,32 @@ function finishNeverSpawned(runId: string, projectId: string, agentId: string, r
  */
 const streamBuffer = new StreamBuffer();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * The same for what is not text: each usage update gave `runs` a new identity and each tool call
+ * copied the whole feed, one write per event, and everything subscribed to either — the composer,
+ * the sidebar, the thread — rendered again for each. They wait for the flush with the text.
+ */
+const pendingUsage = new Map<string, RunUsage>();
+let pendingMessages: CommMessage[] = [];
+
+/** `addMessage`, applied with the next flush instead of now. */
+function queueMessage(msg: Omit<CommMessage, "id" | "ts">): void {
+  pendingMessages.push({ ...msg, id: crypto.randomUUID(), ts: Date.now() });
+}
 
 export function flushStream() {
   if (flushTimer !== null) {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
-  if (streamBuffer.isEmpty()) return;
+  const usage = new Map(pendingUsage);
+  pendingUsage.clear();
+  const queued = pendingMessages;
+  pendingMessages = [];
+  if (streamBuffer.isEmpty() && usage.size === 0 && queued.length === 0) return;
 
-  const deltas = streamBuffer.take();
-  if (deltas.size === 0) return;
+  const deltas = streamBuffer.isEmpty() ? new Map<string, { text: string; lines: string[] }>() : streamBuffer.take();
+  if (deltas.size === 0 && usage.size === 0 && queued.length === 0) return;
 
   // The lines go to a module of their own, not into the store. They used to be appended to
   // `runs[id].rawLines` here, which gave `runs` a new identity twelve times a second and re-rendered
@@ -154,13 +170,24 @@ export function flushStream() {
 
   useAppStore.setState(state => {
     const runs = state.runs;
+    // Usage first, and only where it moved: a report that says what the last one said is no change.
+    let nextRuns = runs;
+    for (const [runId, incoming] of usage) {
+      const r = nextRuns[runId];
+      if (!r) continue;
+      const merged = mergeUsage(r.usage, incoming);
+      if (!merged || JSON.stringify(merged) === JSON.stringify(r.usage)) continue;
+      nextRuns = { ...nextRuns, [runId]: { ...r, usage: merged } };
+    }
+    const runsUpdate = nextRuns !== runs ? { runs: nextRuns } : {};
+
     const runIdsWithText = new Set<string>();
     for (const [runId, delta] of deltas.entries()) {
       if (delta.text) runIdsWithText.add(runId);
     }
     // Nothing but lines this time, and those no longer live here: leave the store alone rather than
     // copy the whole feed to put it back unchanged.
-    if (runIdsWithText.size === 0) return state;
+    if (runIdsWithText.size === 0 && queued.length === 0) return nextRuns !== runs ? runsUpdate : state;
 
     let messagesChanged = false;
     let messages = [...state.messages];
@@ -201,12 +228,19 @@ export function flushStream() {
       }
     }
 
+    // After the text: a tool call reported in the same window came after the words leading up to it.
+    if (queued.length > 0) {
+      messages.push(...queued);
+      messagesChanged = true;
+      addedMessages += queued.length;
+    }
+
     if (addedMessages > 0 && messages.length > TRIM_MESSAGES_AT) {
       messages = trimMessagesInMemory(messages);
     }
 
-    if (!messagesChanged) return state;
-    return { messages };
+    if (!messagesChanged) return nextRuns !== runs ? runsUpdate : state;
+    return { messages, ...runsUpdate };
   });
 
   // A note is worth having while the agent is still working, which is the whole point of it, so it
@@ -1010,7 +1044,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
       const workspaceDir = store.config.projects.find(p => p.id === run.projectId)?.workspaceDir;
       const summary = summarizeTool(ev.name, ev.input, { workspaceDir });
       if (ev.failed) {
-        addMessage({
+        queueMessage({
           projectId: run.projectId,
           fromAgentId: run.agentId,
           kind: "tool",
@@ -1021,7 +1055,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
 
         const count = bumpToolFailure(toolFailures, run.id, ev.name);
         if (count === REPEATED_FAILURE_AT) {
-          addMessage({
+          queueMessage({
             projectId: run.projectId,
             fromAgentId: "system",
             toAgentId: run.agentId,
@@ -1032,7 +1066,7 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
         }
       } else {
         const text = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
-        addMessage({
+        queueMessage({
           projectId: run.projectId,
           fromAgentId: run.agentId,
           kind: "tool",
@@ -1042,21 +1076,11 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
         });
       }
     } else if (ev.type === "usage") {
-      useAppStore.setState(state => {
-        const r = state.runs[runId];
-        if (!r) return state;
-        const usage = mergeUsage(r.usage, ev.usage);
-        return {
-          runs: {
-            ...state.runs,
-            [runId]: {
-              ...r,
-              ...(usage ? { usage } : {}),
-            },
-          },
-        };
-      });
+      const merged = mergeUsage(pendingUsage.get(runId), ev.usage);
+      if (merged) pendingUsage.set(runId, merged);
     } else if (ev.type === "result") {
+      // What was queued is older than the result: applied first, so it cannot land over it.
+      flushStream();
       useAppStore.setState(state => {
         const r = state.runs[runId];
         if (!r) return state;
@@ -1224,8 +1248,13 @@ function handleExit(e: RunExitEvent) {
   // A kill that came after the turn was over is ours (the EOF the adapter ignored), not the user's.
   const killedByUser = e.killed && !acp;
   const isError = acp?.failure ? true : (e.code !== 0 && !killedByUser && !collected);
-  const status: RunStatus = killedByUser ? "killed" : isError ? "error" : "done";
-  const output = killedByUser ? translateNow("system.stoppedByUser") : collected;
+  // Stopped by the watchdog, not by you: a failure its planner hears about as one.
+  const stalledFor = stalledStops.get(e.runId);
+  stalledStops.delete(e.runId);
+  const status: RunStatus = stalledFor !== undefined ? "error" : killedByUser ? "killed" : isError ? "error" : "done";
+  const output = stalledFor !== undefined
+    ? translateNow("run.stalledStopped", { minutes: stalledFor })
+    : killedByUser ? translateNow("system.stoppedByUser") : collected;
 
   useAppStore.setState(state => ({
     // The run is closed and then the project's runs are brought back to the size the file keeps:
@@ -2367,7 +2396,13 @@ function maybeContinueParent(parentRunId: string) {
   const asking = new Set(Object.values(store.questions).filter(q => q.status === "pending").map(q => q.runId));
   const allChildrenDone = children.every(r => (r.status === "done" || r.status === "error" || r.status === "killed") && !asking.has(r.id));
 
-  if (allChildrenDone && !continuedParents.has(parentRunId)) {
+  // What the planner has not heard yet. Every child that ends calls this, and so do a verification
+  // settling and an answer coming back: only the first call that finds them all done reports them.
+  // A child retried after that (`retryRun`) is a new run of the same parent, so it is news again.
+  const reported = reportedChildren.get(parentRunId);
+  const fresh = reported ? children.filter(c => !reported.has(c.id)) : children;
+
+  if (allChildrenDone && fresh.length > 0) {
     const parentAgent = selectAgent(store, parentRun.agentId);
     if (!parentAgent) return;
 
@@ -2380,17 +2415,19 @@ function maybeContinueParent(parentRunId: string) {
       return;
     }
 
-    // Once per parent run. Every child that ends calls this, and so do a verification settling and
-    // an answer coming back; only the first call that finds them all done gets to continue it.
-    continuedParents.add(parentRunId);
+    reportedChildren.set(parentRunId, new Set(children.map(c => c.id)));
 
     const project = store.config.projects.find(p => p.id === parentRun.projectId);
 
     let outputText = translateNow("prompt.results.header") + "\n\n";
-    for (const childRun of children) {
+    for (const childRun of fresh) {
       const childAgent = selectAgent(store, childRun.agentId);
       const report = childReport(childRun.output);
       outputText += `### ${childAgent?.name || childRun.agentId}\n${report.text}\n`;
+      // Its notes are written for the planner, and the cut above keeps only the end of the turn:
+      // whatever it flagged along the way would otherwise be gone.
+      const notes = report.cut ? parseNotes(childRun.output) : [];
+      if (notes.length > 0) outputText += "\n" + notes.map(n => `> ${n.replace(/\n/g, "\n> ")}`).join("\n") + "\n";
 
       // Already checked by something that is not the child's word for it: said, so the planner does
       // not read the diff again or rerun the tests — the third time the same work was checked.
@@ -2439,7 +2476,7 @@ function maybeContinueParent(parentRunId: string) {
 
     // Delegations of this turn that reached nobody. Said here because this is the first moment the
     // planner is listening again, and the work behind them still has to be done by someone.
-    const unknown = parentRun.unknownDelegations ?? [];
+    const unknown = reported ? [] : parentRun.unknownDelegations ?? [];
     if (unknown.length > 0) {
       const roster = selectChildren(store, parentRun.projectId, parentRun.agentId);
       const valid = roster.length > 0 ? roster.map(c => c.name).join(", ") : translateNow("delegation.noChildren");
@@ -2528,8 +2565,26 @@ function lastRunWasOf(store: AppState, agentId: string, projectId: string, rootR
   return !!last && last.rootRunId === rootRunId && last.status === "done";
 }
 
-/** Parent runs already continued — see `maybeContinueParent`. In memory, like `heldContinuations`. */
-const continuedParents = new Set<string>();
+/** Runs the stall watchdog stopped, with how many quiet minutes it took. See `stopStalledRun`. */
+const stalledStops = new Map<string, number>();
+
+/**
+ * Stops a delegated run that has printed nothing for `minutes`. It ends as an error saying so, and
+ * like any child that ends, lets its planner go on — waiting on it would have been waiting forever.
+ */
+export function stopStalledRun(runId: string, minutes: number): void {
+  if (stalledStops.has(runId)) return;
+  stalledStops.set(runId, minutes);
+  void getTransport().killRun(runId).catch(() => {});
+}
+
+/**
+ * The children each parent run has already been told about — see `maybeContinueParent`.
+ *
+ * ponytail: in memory, like `heldContinuations`. After a restart a retried child reports its
+ * siblings again along with itself; persisting this on the parent run would stop that.
+ */
+const reportedChildren = new Map<string, Set<string>>();
 
 /** How much of a child's answer goes back to its planner, from the end: where the summary is. */
 const CHILD_REPORT_CHARS = 6000;
@@ -2717,7 +2772,9 @@ export function retryRun(runId: string, opts: { agentId: string; model?: string 
     agentId: opts.agentId,
     projectId: old.projectId,
     prompt: old.prompt,
-    parentRunId: null,
+    // A member's work retried is still its planner's: with no parent its result went to the user,
+    // and the planner that delegated it never heard. A root (or a root's own continuation) has none.
+    parentRunId: old.parentRunId,
     // A continuation stays drawn as one: the bubble only repeats the user's prompt on round 0.
     round: old.round,
     rootRunId: isRoot ? undefined : old.rootRunId,
@@ -2729,6 +2786,11 @@ export function retryRun(runId: string, opts: { agentId: string; model?: string 
 
   if (card) {
     useAppStore.getState().updateTask(card.id, { status: "working", runId: newRunId, agentId: opts.agentId });
+  }
+  // A delegated run's card follows its work to the retry, so the retry's ending is what settles it.
+  const delegatedCard = old.parentRunId ? taskSync.taskForRun(old.projectId, old.id) : undefined;
+  if (delegatedCard) {
+    useAppStore.getState().updateTask(delegatedCard.id, { status: "working", runId: newRunId, agentId: opts.agentId });
   }
   if (isRoot) {
     // What closes that card when the request ends (`taskOnRootFinished` looks it up by the root run

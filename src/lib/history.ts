@@ -14,6 +14,7 @@ import { rawLinesOf } from "@/lib/raw-lines";
 import { needsTrim, trimRawLines, trimRunsForDisk } from "@/lib/history-trim";
 import { runtimeAfterInterruption } from "@/lib/interrupted-runtime";
 import { isLiveRun, isFinishedRun } from "@/lib/run-queue";
+import { taskOnRunFinished } from "@/lib/task-sync";
 
 interface HistoryFile {
   version: 1;
@@ -318,6 +319,9 @@ async function mergeFromDisk(projectId: string): Promise<void> {
     }
     return changed ? { runs, messages, approvals, questions, runtime, worktrees, questionDrafts } : state;
   });
+  // Delegated work cut off by the restart: its card said "working" for good, with nothing left to
+  // move it. It comes back to you instead, and retrying it reports to its planner (see `retryRun`).
+  for (const r of interrupted) if (r.parentRunId) taskOnRunFinished(r);
   notifyInterrupted(projectId, interrupted);
 }
 

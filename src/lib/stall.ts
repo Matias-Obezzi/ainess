@@ -8,6 +8,11 @@
 export const STALL_AFTER_MS = 3 * 60_000;
 /** Quiet this long, and the bell rings once. */
 export const STALL_NOTIFY_MS = 10 * 60_000;
+/**
+ * Quiet this long, and delegated work is stopped (see `config.stallStopMinutes`). One child that
+ * never ends holds its planner forever: the round only goes on when every child is over.
+ */
+export const DEFAULT_STALL_STOP_MINUTES = 30;
 
 const lastOutput = new Map<string, number>();
 const announced = new Set<string>();

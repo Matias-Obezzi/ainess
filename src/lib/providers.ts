@@ -597,7 +597,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         // it from the app. A blacklist lets implementers keep the rest of their tools (and any
         // tool that gets introduced) while stripping out subagents. `Task` is kept for older
         // versions where that was the name for `Agent`.
-        options.disallowedTools = ["Agent", "Workflow", "Task"];
+        //
+        // Except the read-only ones: an implementer sending Explore off to search the repo keeps
+        // that search out of its own context, which is the expensive one. So the rule names the
+        // agents that can write (`Agent(<type>)` is Claude Code's own per-type deny rule) instead
+        // of the tool. ponytail: agents the user defined in ~/.claude/agents are not named here.
+        options.disallowedTools = ["Agent(general-purpose)", "Agent(statusline-setup)", "Task(general-purpose)", "Workflow"];
       }
 
       const meta: Record<string, unknown> = { claudeCode: { options } };
@@ -1316,7 +1321,41 @@ export interface ParsedQuestion {
  * line, because the text of a question can carry its own fences. Anything without a question or
  * without at least two options is dropped — a question with one answer is not a question.
  */
+/** The fences the app reads as instructions rather than as code to show. */
+const PROTOCOL_FENCE = /^(delegate|ask|note|suggest|result|task)\b/;
+
+/**
+ * `text` with every code block blanked out, except the app's own blocks.
+ *
+ * An agent explaining the format writes an example of it, and the example went out as a real
+ * delegation, question or board move. Fences are followed the way markdown draws them — inside a
+ * ```ts block a line reading ```delegate is code, and only a bare fence at least as long closes
+ * it — so what runs is exactly what the user does not see drawn as code. Lines keep their place.
+ */
+export function outsideCode(text: string): string {
+  const out: string[] = [];
+  let fence: { char: string; len: number; keep: boolean } | null = null;
+  for (const line of text.split("\n")) {
+    const m = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      const closes = !!m && m[1][0] === fence.char && m[1].length >= fence.len && m[2].trim() === "";
+      out.push(fence.keep ? line : "");
+      if (closes) fence = null;
+      continue;
+    }
+    if (m) {
+      const keep = PROTOCOL_FENCE.test(m[2].trim());
+      fence = { char: m[1][0], len: m[1].length, keep };
+      out.push(keep ? line : "");
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 export function parseQuestions(text: string): ParsedQuestion[] {
+  text = outsideCode(text);
   const out: ParsedQuestion[] = [];
   const regex = /```ask[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
   let match;
@@ -1371,6 +1410,7 @@ export function delegationTargets(text: string): string[] {
  * planner's final answer, the work went nowhere and the planner never heard why.
  */
 export function delegationError(text: string): string | null {
+  text = outsideCode(text);
   if (!/^[ \t]*\`\`\`delegate\b/m.test(text)) return null;
   if (parseDelegations(text).length > 0) return null;
   const match = /\`\`\`delegate[ \t]*\n([\s\S]*?)\n[ \t]*\`\`\`[ \t]*(?=\n|$)/.exec(text);
@@ -1384,6 +1424,7 @@ export function delegationError(text: string): string | null {
 }
 
 export function parseDelegations(text: string): Delegation[] {
+  text = outsideCode(text);
   const delegations: Delegation[] = [];
   // The closing fence must sit at the start of a line: a task's text often carries its own
   // ``` blocks inside the JSON string, and a lazy match would cut the JSON there.
@@ -1528,6 +1569,7 @@ export type ParsedTaskOp =
 const VALID_TASK_UPDATE_STATUSES = new Set(["working", "needs-you", "in-review", "ready"]);
 
 export function parseTaskOps(text: string): ParsedTaskOp[] {
+  text = outsideCode(text);
   const ops: ParsedTaskOp[] = [];
   const regex = /```task[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
   let match;

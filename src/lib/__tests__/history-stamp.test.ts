@@ -49,3 +49,24 @@ describe("saving history", () => {
     expect(reads).toBe(before + 1);
   });
 });
+
+describe("a restart in the middle of delegated work", () => {
+  it("brings its card back to you instead of leaving it working for good", async () => {
+    const { loadHistory } = await import("@/lib/history");
+    const { createTask } = await import("@/lib/tasks");
+    const live = {
+      id: "cut", projectId: "p-stamp", agentId: "a1", parentRunId: "root", rootRunId: "root",
+      prompt: "hacé tu parte", status: "running", startedAt: 1, output: "", rawLines: [], childRunIds: [], round: 1,
+    };
+    disk = JSON.stringify({ version: 1, runs: [live], messages: [], approvals: [], questions: [] });
+    useAppStore.setState({
+      runs: {},
+      tasks: { "p-stamp": [createTask({ id: "card", projectId: "p-stamp", title: "su parte", status: "working", runId: "cut" })] },
+    } as never);
+
+    await loadHistory("p-stamp");
+
+    expect(useAppStore.getState().runs.cut.status).toBe("killed");
+    expect(useAppStore.getState().tasks["p-stamp"][0].status).toBe("needs-you");
+  });
+});

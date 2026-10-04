@@ -27,6 +27,19 @@ let one of them fall behind.
   is now told they were not sent when its answer comes back.
 - **Text after a tool call was glued to the text before it** — "Let me check.Done" — and a code
   block closed right before the call stopped closing. It starts a new paragraph now.
+- **Retrying a member's work sent its result to you instead of to its planner**, which never heard
+  about it. A retry now reports to the planner that delegated the work, and the card follows it.
+- **A restart in the middle of delegated work left its cards saying "working" for good.** They
+  come back to you, and retrying the work reports to the planner as above.
+- **One member that never finished held its planner forever**, because the round only goes on
+  when every member is done. Delegated work that prints nothing for 30 minutes is now stopped and
+  reported as such, and the planner carries on. The time is in Settings → General; 0 turns it off.
+- **Members were told their notes reach the planner right away.** You see them right away; the
+  planner reads them with the results — and now it does even when the answer was long enough to
+  be cut.
+- **An example written inside a code block was executed.** An agent explaining the format of a
+  delegation, a question or a board move wrote one as an example, and the app ran it. What is
+  drawn as code is no longer read as an instruction.
 
 ### Changed
 
@@ -44,10 +57,18 @@ let one of them fall behind.
     is asked to check it again and the card goes straight to ready; a project without commands
     still gets its review. Either way the planner is told the work was already verified, and does
     not read its diff or run its tests a third time.
+  - A Claude implementer can send Claude Code's read-only Explore agent to search the repo, so the
+    search stays out of its own context. The agents that can change things are still kept out.
   - A Claude planner can only run `git` and write its own plans in `.ainess/`, which is what its
     tool list always said. The list did not restrict anything, and planners read the repo with
     `cat` and `sed` into their own context instead of delegating.
 - **Smoother while agents work.**
+  - The app starts with a quarter less to load: the terminal, the graphs and the QR code are
+    loaded the first time you open them.
+  - Token counts and tool calls reach the screen in the same batch as the text, instead of one
+    redraw of the thread, the sidebar and the composer per event.
+  - With your phone connected, what is sent to it is rebuilt every second and a half while agents
+    work instead of every 300 ms.
   - A streaming answer is parsed one paragraph at a time: past about 20,000 characters, parsing
     the whole answer on every update took longer than the update interval.
   - A chat no longer redraws every message on every keystroke or when another chat updates.

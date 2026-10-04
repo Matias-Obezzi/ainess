@@ -9,6 +9,7 @@ import { useT } from "@/i18n/useT";
 import { Button } from "@/components/ui/button";
 import { SoundDialog } from "@/components/SoundDialog";
 import { playChime, soundEnabled } from "@/lib/sound";
+import { DEFAULT_STALL_STOP_MINUTES } from "@/lib/stall";
 
 /** Value of the auto-archive select that means "never"; a Select cannot hold null. */
 const NEVER = "never";
@@ -46,6 +47,18 @@ export function GeneralSection() {
   useEffect(() => {
     setMaxConcurrentText(String(config.maxConcurrentRuns));
   }, [config.maxConcurrentRuns]);
+
+  const stallStop = config.stallStopMinutes ?? DEFAULT_STALL_STOP_MINUTES;
+  const [stallStopText, setStallStopText] = useState(String(stallStop));
+  useEffect(() => {
+    setStallStopText(String(stallStop));
+  }, [stallStop]);
+  // 0 means never, as with the run ceiling.
+  const commitStallStop = (value: string) => {
+    const n = parseInt(value, 10);
+    if (Number.isFinite(n) && n >= 0 && n <= 24 * 60) updateConfig({ stallStopMinutes: n });
+    else setStallStopText(String(stallStop));
+  };
 
   // 0 is allowed and means no ceiling, which is why this one starts at 0 and `maxRounds` at 1.
   const commitMaxConcurrentRuns = (value: string) => {
@@ -206,6 +219,19 @@ export function GeneralSection() {
               onBlur={e => commitMaxConcurrentRuns(e.target.value)}
             />
             <span className="text-sm text-muted-foreground">{t("settings.general.maxConcurrentRunsHint")}</span>
+          </div>
+          <div className="flex flex-col gap-2 pt-2 border-t">
+            <label className="text-sm font-semibold">{t("settings.option.general.stallStopMinutes")}</label>
+            <Input
+              type="number"
+              min={0}
+              max={24 * 60}
+              className="w-24"
+              value={stallStopText}
+              onChange={e => setStallStopText(e.target.value)}
+              onBlur={e => commitStallStop(e.target.value)}
+            />
+            <span className="text-sm text-muted-foreground">{t("settings.general.stallStopMinutesHint")}</span>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t">
             <Switch

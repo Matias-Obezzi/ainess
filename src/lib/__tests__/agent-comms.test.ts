@@ -8,8 +8,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore } from "@/store";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
-import { attachListeners, childReport } from "@/lib/orchestrator";
-import { delegationError, parseDelegations, plannerMayUse } from "@/lib/providers";
+import { attachListeners, childReport, retryRun, stopStalledRun } from "@/lib/orchestrator";
+import { delegationError, outsideCode, parseDelegations, parseQuestions, plannerMayUse } from "@/lib/providers";
 import { createTask } from "@/lib/tasks";
 import { translateNow } from "@/i18n/useT";
 import type { Run, RunExitEvent } from "@/types";
@@ -270,5 +270,83 @@ describe("work that was already checked", () => {
     const [next] = continuations().filter(r => r.rootRunId === "root-ko");
     expect(next.prompt).toContain("2 failing");
     expect(next.prompt).not.toContain(translateNow("prompt.results.verifiedByChecks"));
+  });
+});
+
+describe("a member's work retried", () => {
+  it("reports to the planner that delegated it, and only what is new", async () => {
+    const ids = { parentRunId: "root-re", rootRunId: "root-re" };
+    setUp([
+      root({ id: "root-re", rootRunId: "root-re", childRunIds: ["r1"] }),
+      run({ id: "r1", agentId: "a1", ...ids }),
+    ]);
+    useAppStore.setState(state => ({ runs: { ...state.runs, r1: { ...state.runs.r1, output: "se cortó la red" } } }));
+    emitExit!({ runId: "r1", code: 1, killed: false } as never);
+    await new Promise(r => setTimeout(r, 10));
+    const before = continuations().filter(r => r.rootRunId === "root-re");
+    expect(before).toHaveLength(1);
+    // The planner's continuation is over; the user retries the member's work by hand.
+    end(before[0].id, "Espero el reintento.");
+
+    retryRun("r1", { agentId: "a1" });
+    const retried = Object.values(useAppStore.getState().runs).find(r => r.agentId === "a1" && r.id !== "r1");
+    expect(retried?.parentRunId).toBe("root-re");
+    end(retried!.id, "Ahora sí, listo.");
+    await new Promise(r => setTimeout(r, 10));
+
+    const after = continuations().filter(r => r.rootRunId === "root-re" && r.id !== before[0].id);
+    expect(after).toHaveLength(1);
+    expect(after[0].prompt).toContain("Ahora sí, listo.");
+    expect(after[0].prompt).not.toContain("se cortó la red");
+  });
+});
+
+describe("a member that went quiet", () => {
+  it("is stopped as an error that says so, and the planner goes on", () => {
+    const ids = { parentRunId: "root-st", rootRunId: "root-st" };
+    setUp([
+      root({ id: "root-st", rootRunId: "root-st", childRunIds: ["q1"] }),
+      run({ id: "q1", agentId: "a1", ...ids }),
+    ]);
+    stopStalledRun("q1", 30);
+    emitExit!({ runId: "q1", code: null, killed: true } as never);
+
+    const stopped = useAppStore.getState().runs.q1;
+    expect(stopped.status).toBe("error");
+    expect(stopped.output).toContain("30");
+    expect(continuations().filter(r => r.rootRunId === "root-st")).toHaveLength(1);
+  });
+});
+
+describe("notes in a long answer", () => {
+  it("reach the planner even when the cut takes the part they were in", () => {
+    const ids = { parentRunId: "root-nt", rootRunId: "root-nt" };
+    setUp([
+      root({ id: "root-nt", rootRunId: "root-nt", childRunIds: ["t1"] }),
+      run({ id: "t1", agentId: "a1", ...ids }),
+    ]);
+    end("t1", "```note\nla API de pagos devuelve 500 en staging\n```\n\n" + "x".repeat(20_000) + "\n\nListo.");
+    const [next] = continuations().filter(r => r.rootRunId === "root-nt");
+    expect(next.prompt).toContain("la API de pagos devuelve 500 en staging");
+  });
+});
+
+describe("outsideCode", () => {
+  it("does not run an example written inside a code block", () => {
+    const text = "El formato es así:\n\n```md\n```delegate\n[{\"agent\":\"Uno\",\"task\":\"x\"}]\n```\n```\n\nNada más.";
+    expect(parseDelegations(text)).toEqual([]);
+    expect(delegationError(text)).toBeNull();
+  });
+
+  it("runs the real block next to an example", () => {
+    const text = "````md\n```ask\n{\"question\":\"¿A o B?\",\"options\":[\"A\",\"B\"]}\n```\n````\n\n```delegate\n[{\"agent\":\"Uno\",\"task\":\"hacelo\"}]\n```";
+    expect(parseQuestions(text)).toEqual([]);
+    expect(parseDelegations(text)).toEqual([{ agent: "Uno", task: "hacelo" }]);
+  });
+
+  it("keeps every line where it was", () => {
+    const text = "a\n```ts\nb\n```\nc";
+    expect(outsideCode(text).split("\n")).toHaveLength(5);
+    expect(outsideCode(text)).toBe("a\n\n\n\nc");
   });
 });
