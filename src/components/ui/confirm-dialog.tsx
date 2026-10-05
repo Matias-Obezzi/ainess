@@ -2,16 +2,17 @@
 // code can open and await. Callers never render it — they ask a question and get an answer, the
 // same shape the island gives on the phone, so a component shared by both builds stays unaware of
 // which one it is in.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useT } from "@/i18n/useT";
 
 export interface ConfirmRequest {
@@ -55,6 +56,7 @@ export function askInDialog(request: ConfirmRequest): Promise<boolean> {
 export function ConfirmDialogHost() {
   const t = useT();
   const [pending, setPending] = useState<Pending | null>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   // On every render, not once on mount: a hot reload re-runs this module with an empty
   // registration while the mounted component keeps its effects, and the app would then have no
@@ -69,33 +71,38 @@ export function ConfirmDialogHost() {
     };
   });
 
-  // Closing by any means — Escape, the overlay, the cancel button — is a no.
+  // Closing by any means other than the confirm button — Escape, the cancel button — is a no.
+  // A click outside does nothing: a question that guards something should not vanish by accident.
   const answer = (value: boolean) => {
     pending?.resolve(value);
     setPending(null);
   };
 
   return (
-    <Dialog open={!!pending} onOpenChange={open => !open && answer(false)}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{pending?.title}</DialogTitle>
-          {pending?.description && <DialogDescription>{pending.description}</DialogDescription>}
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => answer(false)}>
+    <AlertDialog open={!!pending} onOpenChange={open => !open && answer(false)}>
+      <AlertDialogContent
+        className="sm:max-w-md"
+        // The confirm button takes the focus instead of the cancel one, so Enter answers and Escape
+        // refuses without touching the mouse.
+        onOpenAutoFocus={e => { e.preventDefault(); confirmRef.current?.focus(); }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>{pending?.title}</AlertDialogTitle>
+          {pending?.description && <AlertDialogDescription>{pending.description}</AlertDialogDescription>}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => answer(false)}>
             {pending?.cancelText ?? t("common.cancel")}
-          </Button>
-          {/* Focused on open, so Enter answers and Escape refuses without touching the mouse. */}
-          <Button
-            autoFocus
+          </AlertDialogCancel>
+          <AlertDialogAction
+            ref={confirmRef}
             variant={pending?.destructive ? "destructive" : "default"}
             onClick={() => answer(true)}
           >
             {pending?.confirmText ?? t("common.accept")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

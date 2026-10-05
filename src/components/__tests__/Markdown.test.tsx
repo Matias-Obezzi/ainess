@@ -28,6 +28,15 @@ describe("Markdown", () => {
     expect((out.match(/<pre/g) || []).length).toBe(1);
   });
 
+  it("gives a fenced block a copy button and folds a long one, in the app's language", () => {
+    const short = html("```ts\nconst a = 1;\n```");
+    expect(short).toContain(`aria-label="${label("codeBlock.copy")}"`);
+    expect(short).not.toContain("Copy code");
+
+    const long = html("```\n" + Array.from({ length: 30 }, (_, i) => `line ${i}`).join("\n") + "\n```");
+    expect(long).toContain(translate(dictionaries[resolveLanguage(null)] ?? baseDictionary, baseDictionary, "codeBlock.showAll", { count: 30 }));
+  });
+
   it("turns a delegate block into a delegation card", () => {
     const out = html('```delegate\n{"tasks":[{"agent":"Obrero","task":"Arreglar tests"}]}\n```');
     expect(out).toContain(label("label.kind.delegation"));

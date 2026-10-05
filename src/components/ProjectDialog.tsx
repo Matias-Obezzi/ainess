@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgentAvatar } from "@/components/ProviderLogo";
@@ -29,6 +30,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 /** Value of the formation select when the project starts with no agents at all. */
 const NO_FORMATION = "__none__";
 
+const USD: Intl.NumberFormatOptions = { style: "currency", currency: "USD", maximumFractionDigits: 2 };
+
 export function ProjectDialog({
   isOpen,
   onOpenChange,
@@ -48,10 +51,10 @@ export function ProjectDialog({
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
-  const [dailyUsd, setDailyUsd] = useState("");
-  const [monthlyUsd, setMonthlyUsd] = useState("");
+  const [dailyUsd, setDailyUsd] = useState<number | null>(null);
+  const [monthlyUsd, setMonthlyUsd] = useState<number | null>(null);
   const [onReached, setOnReached] = useState<"warn" | "block">("warn");
-  const [perRunUsd, setPerRunUsd] = useState("");
+  const [perRunUsd, setPerRunUsd] = useState<number | null>(null);
   const [boardProvider, setBoardProvider] = useState<BoardProviderId>("local");
   const [boardSource, setBoardSource] = useState<BoardSourceDraft>(EMPTY_BOARD_SOURCE);
   const [verify, setVerify] = useState<VerifyCommand[]>([]);
@@ -67,10 +70,10 @@ export function ProjectDialog({
       setWorkspaceDir(editProject.workspaceDir);
       setRepoDir(editProject.repoDir);
       setColor(editProject.color || "#4f8cff");
-      setDailyUsd(editProject.budget?.dailyUsd ? String(editProject.budget.dailyUsd) : "");
-      setMonthlyUsd(editProject.budget?.monthlyUsd ? String(editProject.budget.monthlyUsd) : "");
+      setDailyUsd(editProject.budget?.dailyUsd ?? null);
+      setMonthlyUsd(editProject.budget?.monthlyUsd ?? null);
       setOnReached(editProject.budget?.onReached ?? "warn");
-      setPerRunUsd(editProject.budget?.perRunUsd ? String(editProject.budget.perRunUsd) : "");
+      setPerRunUsd(editProject.budget?.perRunUsd ?? null);
       setBoardProvider(editProject.board?.provider ?? "local");
       setBoardSource({
         owner: editProject.board?.owner ?? "",
@@ -87,10 +90,10 @@ export function ProjectDialog({
     setName("");
     setWorkspaceDir("");
     setColor("#4f8cff");
-    setDailyUsd("");
-    setMonthlyUsd("");
+    setDailyUsd(null);
+    setMonthlyUsd(null);
     setOnReached("warn");
-    setPerRunUsd("");
+    setPerRunUsd(null);
     // The board too: without this, opening "new project" right after editing one that lives on
     // GitHub would offer that project's provider and its owner/number as if they were defaults.
     setBoardProvider("local");
@@ -142,16 +145,12 @@ export function ProjectDialog({
   const handleSave = () => {
     if (!name || !workspaceDir || !boardReady) return;
 
-    const dUsd = parseFloat(dailyUsd);
-    const mUsd = parseFloat(monthlyUsd);
-    const rUsd = parseFloat(perRunUsd);
-    const hasDaily = !Number.isNaN(dUsd) && dUsd > 0;
-    const hasMonthly = !Number.isNaN(mUsd) && mUsd > 0;
-    const hasPerRun = !Number.isNaN(rUsd) && rUsd > 0;
-    const budget: Budget | undefined = (hasDaily || hasMonthly || hasPerRun) ? {
-      dailyUsd: hasDaily ? dUsd : undefined,
-      monthlyUsd: hasMonthly ? mUsd : undefined,
-      perRunUsd: hasPerRun ? rUsd : undefined,
+    // Zero is no limit, the same as an empty field.
+    const limit = (usd: number | null) => (usd !== null && usd > 0 ? usd : undefined);
+    const budget: Budget | undefined = (limit(dailyUsd) || limit(monthlyUsd) || limit(perRunUsd)) ? {
+      dailyUsd: limit(dailyUsd),
+      monthlyUsd: limit(monthlyUsd),
+      perRunUsd: limit(perRunUsd),
       onReached,
     } : undefined;
 
@@ -218,34 +217,40 @@ export function ProjectDialog({
               <div className="grid grid-cols-3 gap-2">
                 <div className="grid gap-1">
                   <span className="text-xs text-muted-foreground">{t("budget.daily")}</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
+                  <NumberField
+                    min={0}
+                    formatOptions={USD}
+                    className="w-full"
+                    decrementLabel={t("common.decrease")}
+                    incrementLabel={t("common.increase")}
                     value={dailyUsd}
-                    onChange={e => setDailyUsd(e.target.value)}
+                    onValueChange={setDailyUsd}
                     placeholder={t("budget.none")}
                   />
                 </div>
                 <div className="grid gap-1">
                   <span className="text-xs text-muted-foreground">{t("budget.monthly")}</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
+                  <NumberField
+                    min={0}
+                    formatOptions={USD}
+                    className="w-full"
+                    decrementLabel={t("common.decrease")}
+                    incrementLabel={t("common.increase")}
                     value={monthlyUsd}
-                    onChange={e => setMonthlyUsd(e.target.value)}
+                    onValueChange={setMonthlyUsd}
                     placeholder={t("budget.none")}
                   />
                 </div>
                 <div className="grid gap-1">
                   <span className="text-xs text-muted-foreground">{t("budget.perRun")}</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
+                  <NumberField
+                    min={0}
+                    formatOptions={USD}
+                    className="w-full"
+                    decrementLabel={t("common.decrease")}
+                    incrementLabel={t("common.increase")}
                     value={perRunUsd}
-                    onChange={e => setPerRunUsd(e.target.value)}
+                    onValueChange={setPerRunUsd}
                     placeholder={t("budget.none")}
                   />
                 </div>

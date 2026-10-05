@@ -30,6 +30,27 @@ export interface CodeBlockProps extends Omit<React.ComponentProps<'figure'>, 'ch
   copyable?: boolean
   /** Lines shown before the block collapses behind a "Show all" button. `false` never collapses. Default 20. */
   maxLines?: number | false
+  /** The words on the buttons and the region, for apps that are not in English. */
+  labels?: Partial<CodeBlockLabels>
+}
+
+export interface CodeBlockLabels {
+  wrap: string
+  copy: string
+  copied: string
+  /** Name of the code region when there is no file name. */
+  region: (language?: string) => string
+  showLess: string
+  showAll: (count: number) => string
+}
+
+const defaultLabels: CodeBlockLabels = {
+  wrap: 'Wrap lines',
+  copy: 'Copy code',
+  copied: 'Copied',
+  region: (language) => (language ? `${language} code` : 'Code'),
+  showLess: 'Show less',
+  showAll: (count) => `Show all ${count} lines`,
 }
 
 /** `"3-5,8"` → {3, 4, 5, 8}. */
@@ -74,9 +95,11 @@ function CodeBlock({
   wrapToggle = true,
   copyable = true,
   maxLines = 20,
+  labels: labelsProp,
   className,
   ...props
 }: CodeBlockProps) {
+  const labels = { ...defaultLabels, ...labelsProp }
   const id = React.useId()
   const [wrap, setWrap] = React.useState(initialWrap)
   const [expanded, setExpanded] = React.useState(false)
@@ -111,8 +134,8 @@ function CodeBlock({
         <button
           type="button"
           aria-pressed={wrap}
-          aria-label="Wrap lines"
-          title="Wrap lines"
+          aria-label={labels.wrap}
+          title={labels.wrap}
           onClick={() => setWrap((w) => !w)}
           className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-accent aria-pressed:text-foreground"
         >
@@ -122,8 +145,8 @@ function CodeBlock({
       {copyable && (
         <button
           type="button"
-          aria-label={copied ? 'Copied' : 'Copy code'}
-          title="Copy code"
+          aria-label={copied ? labels.copied : labels.copy}
+          title={labels.copy}
           onClick={copy}
           className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
@@ -172,9 +195,7 @@ function CodeBlock({
 
       <section
         id={id}
-        aria-label={
-          typeof filename === 'string' ? filename : language ? `${language} code` : 'Code'
-        }
+        aria-label={typeof filename === 'string' ? filename : labels.region(language)}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls has to be focusable, or the end of long lines is out of reach by keyboard
         tabIndex={0}
         className={cn(
@@ -262,7 +283,7 @@ function CodeBlock({
             onClick={() => setExpanded((e) => !e)}
             className="rounded-full border bg-background px-3 py-1 font-medium text-xs shadow-xs outline-none transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            {expanded ? 'Show less' : `Show all ${count} lines`}
+            {expanded ? labels.showLess : labels.showAll(count)}
           </button>
         </div>
       )}

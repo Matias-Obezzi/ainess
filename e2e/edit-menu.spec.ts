@@ -92,7 +92,7 @@ test("in a terminal the menu is copy and paste only, and copy takes what xterm h
     container.id = "term-probe";
     container.style.cssText = "position:fixed;left:200px;top:200px;width:640px;height:320px;z-index:9999;background:#000";
     document.body.appendChild(container);
-    const registry = await import("/src/lib/terminal-registry.ts");
+    const registry = await import("/src/lib/terminal-create.ts");
     const entry = registry.ensureTerminal(
       { id: "term-probe", title: "probe", shellId: "sh", shellPath: "sh", cwd: "/", projectId: null },
       container,

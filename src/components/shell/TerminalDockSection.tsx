@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore, MAX_TERMINALS } from "@/store";
 import { Button } from "@/components/ui/button";
+import { SplitButton, SplitButtonAction, SplitButtonMenu } from "@/components/ui/split-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
@@ -143,38 +144,19 @@ export function TerminalDockSection() {
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="text-sm font-semibold">{t("terminals.title")}</span>
         <div className="ml-auto flex items-center gap-0.5">
-          {/* A disabled button has `pointer-events: none`, so the tooltip lives on the wrapper. */}
-          <span title={addTitle} className="inline-flex">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              disabled={atLimit || noShells}
-              onClick={() => openTerminal()}
-            >
+          {/* A disabled button has `pointer-events: none`, so the tooltip lives on the group. */}
+          <SplitButton variant="ghost" size="sm" className="shadow-none" disabled={atLimit || noShells} title={addTitle}>
+            <SplitButtonAction className="h-7 w-7 px-0" aria-label={addTitle} onClick={() => openTerminal()}>
               <Plus className="h-4 w-4" />
-            </Button>
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-5"
-                title={t("terminals.pickShell")}
-                disabled={atLimit || noShells}
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            </SplitButtonAction>
+            <SplitButtonMenu label={t("terminals.pickShell")} triggerClassName="h-7 w-5 [&>svg]:size-3.5">
               {shells.map(shell => (
                 <DropdownMenuItem key={shell.id} onSelect={() => openTerminal({ shellId: shell.id })}>
                   <TerminalSquare className="h-3.5 w-3.5" /> {shell.label}
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </SplitButtonMenu>
+          </SplitButton>
           {/* A row of buttons meant a horizontal scrollbar in a panel that is already narrow, and a
               project with twenty scripts hid nineteen of them behind it. A menu holds them all at
               full width, in the same shape as the shell picker beside it. */}

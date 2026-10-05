@@ -48,6 +48,8 @@ export interface MultiSelectProps {
   clearLabel?: string
   /** Accessible name of a tag's remove button. Default "Remove {label}". */
   removeLabel?: (label: string) => string
+  /** What a screen reader hears for the picks. Default "None selected" or "N selected: a, b". */
+  summaryLabel?: (labels: string[]) => string
   disabled?: boolean
   /** Classes for the trigger box. */
   className?: string
@@ -84,6 +86,8 @@ function MultiSelect({
   selectAllLabel = 'Select all',
   clearLabel = 'Clear selection',
   removeLabel = (label) => `Remove ${label}`,
+  summaryLabel = (labels) =>
+    labels.length === 0 ? 'None selected' : `${labels.length} selected: ${labels.join(', ')}`,
   disabled,
   className,
   contentClassName,
@@ -152,10 +156,7 @@ function MultiSelect({
   }, [options])
 
   const ariaLabel = aria['aria-label'] ?? (aria['aria-labelledby'] ? undefined : placeholder)
-  const summary =
-    selectedOptions.length === 0
-      ? 'None selected'
-      : `${selectedOptions.length} selected: ${selectedOptions.map((o) => o.label).join(', ')}`
+  const summary = summaryLabel(selectedOptions.map((o) => o.label))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

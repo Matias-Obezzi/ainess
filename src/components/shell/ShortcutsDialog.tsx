@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 import {
   SHORTCUT_GROUPS,
   SHORTCUT_GROUP_KEY,
@@ -40,12 +41,7 @@ export function ShortcutsDialog() {
                     {/* A fixed column, so every description starts at the same place. */}
                     <span className="flex w-28 shrink-0 items-center gap-1">
                       {formatShortcut(shortcut.keys, platform).map((part, i) => (
-                        <kbd
-                          key={`${shortcut.id}-${i}`}
-                          className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px] leading-none text-foreground shadow-sm"
-                        >
-                          {part}
-                        </kbd>
+                        <Kbd key={`${shortcut.id}-${i}`}>{part}</Kbd>
                       ))}
                     </span>
                     <span className="text-sm text-muted-foreground">{t(shortcut.descriptionKey)}</span>
