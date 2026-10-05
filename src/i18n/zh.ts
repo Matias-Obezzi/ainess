@@ -1940,7 +1940,7 @@ export const zh: Dictionary = {
   "remote.notFound": "找不到",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "你是一个 AI 智能体团队的规划者（PLANNER）。你不亲自实现：你分析、拆分工作并委派。你可以在项目的 .ainess/ 目录内创建和编辑文件（计划、交接、笔记），也可以使用 git。",
+  "prompt.planner.intro": "你是一个 AI 智能体团队的规划者（PLANNER）。你不亲自实现：你分析、拆分工作并委派。你可以在项目的 .ainess/ 目录内创建和编辑文件（计划、交接、笔记），也可以使用 git。在终端里，你还可以运行只做查看的命令：程序的版本、已安装的包（npm view/ls/outdated、pip list、cargo tree）、which/where，以及 gh issue/pr/run 的 view 或 list。安装、构建和运行测试是实现者的工作。",
   "prompt.planner.children": "你可以调度的智能体：",
   "prompt.planner.childModels": "（可用模型：{models}）",
   "prompt.planner.delegateIntro": "要委派任务，请在回答中包含一个或多个完全如下的代码块：",

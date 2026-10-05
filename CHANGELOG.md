@@ -6,6 +6,27 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.27.1 — 2026-10-05
+
+### Fixed
+
+- **Antigravity and Copilot agents could fail to start at all on Windows.** Their instructions went
+  in as a command-line argument, and with a few dozen skills, the shared context and the team
+  around the task they passed the 32K characters Windows allows for one (error 206): no task
+  started, however short. The prompt now goes in through the program's input, where there is no
+  such limit.
+- **Every agent was handed tens of thousands of characters of skill descriptions on every run.**
+  Imported skills carry descriptions written for a model choosing among them, some near a thousand
+  characters long. The list now gives each skill its name, its first sentence and where to find it
+  — with 59 skills, from 27,000 characters down to under 6,000.
+- **A planner could not check a version or an installed package.** It was allowed git and nothing
+  else from the terminal, so `node --version` or `npm view` were refused and it planned blind. It
+  may now run commands that only look — versions, installed packages, `which`/`where`, and `gh`
+  issues, pull requests and runs — while installing, building and testing stay with the
+  implementers.
+- **A refused step showed as `toolu_01…` failed.** A step that had already been drawn lost its name
+  when its failure arrived; it keeps it now.
+
 ## 0.27.0 — 2026-10-05
 
 ### Changed

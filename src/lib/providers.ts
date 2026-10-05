@@ -511,18 +511,41 @@ function toAcpMcpServers(servers: McpServer[] | undefined): AcpMcpServer[] {
 }
 
 /**
- * A tool call a planner may make: git from the shell, and writing only under `.ainess/` (its plans,
- * the board). Reading, searching and fetching never reach this — they do not ask. The rest is what
- * its implementers are for.
+ * Shell commands that only look. Git, as before; and what a planner needs to plan and cannot get
+ * from reading files: which version of a program is there, what a package is at, what is installed,
+ * what an issue or a PR says. Reading files through the shell stays out — the Read tool does that
+ * without asking. Installing, building and testing is what its implementers are for.
+ */
+const LOOKS_ONLY: RegExp[] = [
+  /^git(\s|$)/,
+  /^[\w.-]+\s+(--version|-v|-V|version)$/,
+  /^(npm|pnpm|yarn|bun)\s+(view|info|show|ls|list|outdated|why|--version|-v)(\s|$)/,
+  /^(cargo\s+(tree|metadata|search)|pip3?\s+(list|show|freeze)|uv\s+pip\s+(list|show))(\s|$)/,
+  /^gh\s+(pr|issue|repo|release|run|workflow)\s+(view|list|status|diff|checks)(\s|$)/,
+  /^(which|where|where\.exe)\s/,
+];
+
+/** What a looking command may be piped into: filters, which print and change nothing. */
+const FILTER = /^(head|tail|grep|rg|wc|sort|uniq|cut|jq|findstr)(\s|$)/;
+
+/**
+ * A tool call a planner may make: commands that only look (`LOOKS_ONLY`), and writing only under
+ * `.ainess/` (its plans, the board). Reading, searching and fetching never reach this — they do not
+ * ask. The rest is what its implementers are for.
  */
 export function plannerMayUse(call: { kind?: string | null; rawInput?: unknown }): boolean {
   const input = (call.rawInput && typeof call.rawInput === "object" ? call.rawInput : {}) as Record<string, unknown>;
   if (call.kind === "execute") {
     const command = typeof input.command === "string" ? input.command : "";
-    // `git add -A && git commit …`: every command of the chain is git. What it is piped into is not
-    // checked — `git log | head` is still reading git.
-    const steps = command.split(/&&|\|\||;/).map(s => s.split("|")[0].trim()).filter(Boolean);
-    return steps.length > 0 && steps.every(s => /^git(\s|$)/.test(s));
+    // A redirect writes a file, whatever was run. Sending errors away is not one.
+    if (/>/.test(command.replace(/2>&1|2>\s*(\/dev\/null|\$null|nul)\b/gi, ""))) return false;
+    // `git add -A && git commit …`: every command of the chain has to look, and whatever it is
+    // piped into has to be a filter — `npm ls | sh` is not looking at anything.
+    const steps = command.split(/&&|\|\||;/).map(s => s.trim()).filter(Boolean);
+    return steps.length > 0 && steps.every(step => {
+      const [first, ...rest] = step.split("|").map(s => s.trim());
+      return LOOKS_ONLY.some(re => re.test(first)) && rest.every(s => FILTER.test(s));
+    });
   }
   if (call.kind === "edit" || call.kind === "delete" || call.kind === "move") {
     const path = [input.file_path, input.path, input.notebook_path].find(p => typeof p === "string") as string | undefined;
@@ -624,12 +647,16 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     defaultModels: ["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"],
     models: toModels(["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]),
     supportsSessions: true,
-    promptVia: "arg",
+    promptVia: "stdin",
     transport: "cli",
     buildCommand: (input) => {
       const prompt = withSystem(input);
+      // The prompt goes in through stdin: as an argument, the instructions, the skills and the
+      // shared context passed Windows' 32K command line and nothing started (error 206). `-p=`
+      // is print mode with no prompt of its own, which is what `--input-format stream-json` asks
+      // for; agy then runs one turn per line and exits when stdin closes.
       // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
-      const args = ["-p", prompt, "--output-format", "stream-json", "--print-timeout", "30m"];
+      const args = ["-p=", "--input-format", "stream-json", "--output-format", "stream-json", "--print-timeout", "30m"];
       // Without --add-dir agy treats an unregistered cwd as "outside of project" and
       // works in its own scratch folder instead of the workspace.
       if (input.cwd) args.push("--add-dir", input.cwd);
@@ -646,6 +673,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
         program: input.binaryPath,
         args,
         cwd: input.cwd,
+        stdinText: JSON.stringify({ event: "user", message: { role: "user", content: prompt } }) + "\n",
         env: { NO_COLOR: "1" }
       };
     },
@@ -673,15 +701,17 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       "grok-4.5", "kimi-k3"
     ]),
     supportsSessions: true,
-    promptVia: "arg",
+    promptVia: "stdin",
     transport: "cli",
     noteKey: "provider.copilotNote",
     buildCommand: (input) => {
       const prompt = withSystem(input);
-      // -p without --allow-all-tools makes every tool call fail, so it is always on;
+      // No `-p`: piped, copilot reads the prompt from stdin and runs it non-interactively, and an
+      // argument would hit Windows' 32K command line the way Antigravity's did.
+      // Without --allow-all-tools every tool call fails, so it is always on;
       // --yolo additionally lifts the path/URL checks.
       // Subagent restriction is pending: no verified CLI flag to disallow subagent tools yet.
-      const args = ["-p", prompt, "--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
+      const args = ["--output-format", "json", "-s", "--no-ask-user", "--no-color", "--no-auto-update", "--allow-all-tools"];
       if (input.agent.autoApprove) args.push("--yolo");
       if (input.agent.model) args.push("--model", input.agent.model);
       if (input.sessionId) args.push("--resume", input.sessionId);
@@ -689,7 +719,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // The same file Claude Code gets: `--additional-mcp-config` takes "a JSON string or a file
       // path (prefix with @)" and adds them on top of what ~/.copilot/mcp-config.json already has.
       if (input.mcpConfigPath) args.push("--additional-mcp-config", `@${input.mcpConfigPath}`);
-      return { program: input.binaryPath, args, cwd: input.cwd, env: { NO_COLOR: "1" } };
+      return { program: input.binaryPath, args, cwd: input.cwd, stdinText: prompt, env: { NO_COLOR: "1" } };
     },
     parseLine: parseCopilotLine,
     finalOutput: copilotFinalOutput
@@ -1125,6 +1155,18 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
+/**
+ * The first sentence of a skill's description, capped. Imported skills carry descriptions written
+ * for a model choosing among them, some near a thousand characters of trigger words; fifty of them
+ * in every run, for every agent, was tens of thousands of characters before the task began. The
+ * name and one sentence is enough to know which file to open.
+ */
+function briefly(text: string): string {
+  const sentence = /^(.+?[.!?。])(\s|$)/s.exec(text)?.[1] ?? text;
+  const flat = sentence.replace(/\s+/g, " ").trim();
+  return flat.length > 160 ? `${flat.slice(0, 159)}…` : flat;
+}
+
 export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus } }): string {
   const t = translateNow;
   let prompt = "";
@@ -1253,7 +1295,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     if (validSkills.length > 0) {
       prompt += (prompt ? "\n\n" : "") + t("prompt.skills.header") + "\n" + t("prompt.skills.intro");
       for (const skill of validSkills) {
-        const what = skill.description?.trim() || firstLine(skill.content);
+        const what = briefly(skill.description?.trim() || firstLine(skill.content));
         prompt += `\n- **${skill.name}** — ${what} → \`${skillRelativePath(skill)}\``;
       }
     }

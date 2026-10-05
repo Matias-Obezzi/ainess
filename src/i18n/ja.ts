@@ -1941,7 +1941,7 @@ export const ja: Dictionary = {
   "remote.notFound": "見つかりません",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "あなたは AI エージェントチームのプランナー（PLANNER）です。自分では実装せず、分析し、作業を分割して委譲します。プロジェクトの .ainess/ フォルダ内でのファイルの作成・編集（計画、引き継ぎ、メモ）と git の使用はできます。",
+  "prompt.planner.intro": "あなたは AI エージェントチームのプランナー（PLANNER）です。自分では実装せず、分析し、作業を分割して委譲します。プロジェクトの .ainess/ フォルダ内でのファイルの作成・編集（計画、引き継ぎ、メモ）と git の使用はできます。ターミナルでは、確認するだけのコマンドも実行できます：プログラムのバージョン、インストール済みのパッケージ（npm view/ls/outdated、pip list、cargo tree）、which/where、gh issue/pr/run の view や list。インストール、ビルド、テストの実行は実装担当の仕事です。",
   "prompt.planner.children": "あなたの指揮下にいるエージェント:",
   "prompt.planner.childModels": "（利用可能なモデル: {models}）",
   "prompt.planner.delegateIntro": "委譲するには、回答に次のとおりのブロックを 1 つ以上含めてください:",
