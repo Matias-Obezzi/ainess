@@ -9,6 +9,7 @@ import { AgentAvatar } from "@/components/ProviderLogo";
 import { QuotaRing, useProviderModels } from "@/components/QuotaRing";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PROVIDERS } from "@/lib/providers";
@@ -22,7 +23,7 @@ import { openExternal } from "@/lib/open-external";
 import { installCommandText, installerFor, installProvider, type InstallPhase } from "@/lib/install-agents";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { isTauri } from "@/lib/tauri";
-import { Download, Loader2, RefreshCw, ScanSearch } from "lucide-react";
+import { Download, RefreshCw, ScanSearch } from "lucide-react";
 
 /** Every provider that can be detected on this machine; "custom" is configured per agent. */
 const DETECTABLE = (Object.keys(PROVIDERS) as ProviderId[]).filter(p => p !== "custom");
@@ -181,7 +182,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
             title={command ?? (method.kind === "manual" ? method.url : undefined)}
             onClick={() => void install()}
           >
-            {installing ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Download className="mr-1 size-3" />}
+            {installing ? <Spinner aria-hidden className="mr-1 size-3" /> : <Download className="mr-1 size-3" />}
             {installing === "installing"
               ? t("agents.installing")
               : installing === "detecting"
@@ -196,7 +197,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
           <Button size="sm" variant="ghost" onClick={() => void clearOverride()}>{t("agents.clearOverride")}</Button>
         )}
         <Button size="sm" variant="ghost" disabled={refreshing} onClick={() => void refresh()}>
-          {refreshing ? <Loader2 className="mr-1 size-3 animate-spin" /> : <RefreshCw className="mr-1 size-3" />}
+          {refreshing ? <Spinner aria-hidden className="mr-1 size-3" /> : <RefreshCw className="mr-1 size-3" />}
           {t("agents.refreshQuota")}
         </Button>
       </div>
@@ -315,7 +316,7 @@ export function ClaudeIdentity() {
 
   const checkButton = (
     <Button variant="outline" size="sm" className="w-fit" disabled={checking} onClick={() => void probe()}>
-      {checking ? <Loader2 className="mr-1 size-3 animate-spin" /> : <RefreshCw className="mr-1 size-3" />}
+      {checking ? <Spinner aria-hidden className="mr-1 size-3" /> : <RefreshCw className="mr-1 size-3" />}
       {t("agents.claudeIdentity.check")}
     </Button>
   );

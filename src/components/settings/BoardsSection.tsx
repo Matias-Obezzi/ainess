@@ -7,7 +7,7 @@
 // the Trello board URL — and this is what it authenticates with.
 import { useState } from "react";
 import { useAppStore } from "@/store";
-import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/ui/password-field";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useT } from "@/i18n/useT";
 
@@ -51,8 +51,9 @@ export function BoardsSection() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold">{t("boards.github.token")}</label>
-            <Input
-              type="password"
+            <PasswordField
+              autoComplete="off"
+              revealLabel={t("common.showSecret")}
               value={token}
               placeholder="github_pat_…"
               onChange={e => setToken(e.target.value)}
@@ -73,8 +74,9 @@ export function BoardsSection() {
               the token, and neither one alone opens a board. */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold">{t("boards.trello.key")}</label>
-            <Input
-              type="password"
+            <PasswordField
+              autoComplete="off"
+              revealLabel={t("common.showSecret")}
               value={trelloKey}
               onChange={e => setTrelloKey(e.target.value)}
               onBlur={() => trelloKey.trim() !== savedKey && saveTrello({ key: trelloKey.trim() })}
@@ -82,8 +84,9 @@ export function BoardsSection() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold">{t("boards.trello.token")}</label>
-            <Input
-              type="password"
+            <PasswordField
+              autoComplete="off"
+              revealLabel={t("common.showSecret")}
               value={trelloToken}
               onChange={e => setTrelloToken(e.target.value)}
               onBlur={() => trelloToken.trim() !== savedToken && saveTrello({ token: trelloToken.trim() })}

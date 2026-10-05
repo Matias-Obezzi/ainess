@@ -43,6 +43,7 @@ export const zh: Dictionary = {
   "common.paste": "粘贴",
   "common.selectAll": "全选",
   "common.copyFailed": "复制失败",
+  "common.showSecret": "显示内容",
   "common.retry": "重试",
   "error.panel.title": "屏幕的这一部分崩了",
   "error.panel.body": "应用的其余部分仍在运行。完整细节已写入日志：设置 → 诊断。",

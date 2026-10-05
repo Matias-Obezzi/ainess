@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { Check } from "lucide-react";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { alreadyKnown, type DetectedMcp } from "@/lib/mcp-import";
@@ -85,18 +85,12 @@ export function ImportMcpDialog({ open, onOpenChange, detected }: Props) {
                 const isSelected = selected.has(key);
                 const project = projectOf(projects, d.project);
                 return (
-                  <button
+                  <label
                     key={key}
-                    type="button"
-                    disabled={already}
-                    aria-disabled={already}
-                    onClick={() => toggle(key)}
-                    className={`flex flex-col gap-1 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
+                    className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-left transition-colors has-[button:disabled]:cursor-not-allowed has-[button:disabled]:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className={`flex size-4 shrink-0 items-center justify-center rounded border ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
-                        {isSelected && <Check className="size-3" />}
-                      </div>
+                      <Checkbox checked={isSelected} disabled={already} onCheckedChange={() => toggle(key)} />
                       <span className="text-sm font-semibold">{d.server.name}</span>
                       {d.sources.map(source => (
                         <Badge key={source} variant="outline" className="text-[10px]">{t(`mcpImport.source.${source}`)}</Badge>
@@ -113,7 +107,7 @@ export function ImportMcpDialog({ open, onOpenChange, detected }: Props) {
                         {project ? t("mcpImport.projectKnown", { project: project.name }) : t("mcpImport.projectOther", { path: d.project })}
                       </p>
                     )}
-                  </button>
+                  </label>
                 );
               })}
             </div>

@@ -44,6 +44,7 @@ export const es: Dictionary = {
   "common.paste": "Pegar",
   "common.selectAll": "Seleccionar todo",
   "common.copyFailed": "No se pudo copiar",
+  "common.showSecret": "Mostrar el valor",
   "common.retry": "Reintentar",
   "error.panel.title": "Esta parte de la pantalla se rompió",
   "error.panel.body": "El resto de la app sigue andando. El detalle completo quedó en el registro: Configuración → Diagnóstico.",

@@ -43,6 +43,7 @@ export const pt: Dictionary = {
   "common.paste": "Colar",
   "common.selectAll": "Selecionar tudo",
   "common.copyFailed": "Não foi possível copiar",
+  "common.showSecret": "Mostrar o valor",
   "common.retry": "Tentar de novo",
   "error.panel.title": "Esta parte da tela quebrou",
   "error.panel.body": "O resto do app continua funcionando. O detalhe completo foi para o log: Configurações → Diagnóstico.",

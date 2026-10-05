@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/ui/password-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -171,8 +172,9 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
 
         <div className="flex flex-col gap-1 border-t pt-3">
           <label className="text-sm font-semibold">{t("messaging.token")}</label>
-          <Input
-            type="password"
+          <PasswordField
+            autoComplete="off"
+            revealLabel={t("common.showSecret")}
             value={token}
             placeholder={spec.tokenPlaceholder}
             onChange={e => setToken(e.target.value)}
@@ -198,8 +200,9 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
         {spec.appToken && (
           <div className="flex flex-col gap-1 border-t pt-3">
             <label className="text-sm font-semibold">{t("messaging.appToken")}</label>
-            <Input
-              type="password"
+            <PasswordField
+              autoComplete="off"
+              revealLabel={t("common.showSecret")}
               value={appToken}
               placeholder={spec.appToken.placeholder}
               onChange={e => setAppToken(e.target.value)}

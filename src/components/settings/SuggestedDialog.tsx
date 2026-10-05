@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SUGGESTED_MCP, SUGGESTED_SKILLS } from "@/lib/suggested";
 import { toast } from "@/components/ui/toast";
-import { Check } from "lucide-react";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -73,18 +73,12 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
               const already = existingNames.has(item.name);
               const isSelected = selected.has(item.name);
               return (
-                <button
+                <label
                   key={item.name}
-                  type="button"
-                  disabled={already}
-                  aria-disabled={already}
-                  onClick={() => toggle(item.name)}
-                  className={`flex flex-col gap-1 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
+                  className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-left transition-colors has-[button:disabled]:cursor-not-allowed has-[button:disabled]:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`flex size-4 shrink-0 items-center justify-center rounded border ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
-                      {isSelected && <Check className="size-3" />}
-                    </div>
+                    <Checkbox checked={isSelected} disabled={already} onCheckedChange={() => toggle(item.name)} />
                     <span className="font-semibold text-sm">{item.name}</span>
                     {already && <Badge variant="secondary" className="text-[10px]">{t("suggested.alreadyAdded")}</Badge>}
                   </div>
@@ -95,7 +89,7 @@ export function SuggestedDialog({ kind, open, onOpenChange }: Props) {
                   {item.requires && (
                     <p className="pl-6 text-[11px] text-amber-600 dark:text-amber-400">⚠ {item.requires}</p>
                   )}
-                </button>
+                </label>
               );
             })}
           </div>

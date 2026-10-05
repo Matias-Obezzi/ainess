@@ -6,6 +6,15 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Changed
+
+- **Tokens and keys can be shown while you paste them.** Every token field in Settings and on the
+  phone has an eye button, so a pasted value can be checked before it is saved.
+- **The import and suggestion lists use real checkboxes.** Clicking anywhere on an entry still ticks
+  it, and a keyboard or a screen reader now gets an actual checkbox to work with.
+
 ## 0.26.1 — 2026-10-05
 
 ### Fixed

@@ -43,6 +43,7 @@ export const de: Dictionary = {
   "common.paste": "Einfügen",
   "common.selectAll": "Alles auswählen",
   "common.copyFailed": "Kopieren fehlgeschlagen",
+  "common.showSecret": "Wert anzeigen",
   "common.retry": "Erneut versuchen",
   "error.panel.title": "Dieser Teil des Bildschirms ist kaputtgegangen",
   "error.panel.body": "Der Rest der App läuft weiter. Die vollständigen Angaben stehen im Log: Einstellungen → Diagnose.",

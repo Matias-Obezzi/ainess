@@ -15,8 +15,9 @@ import { Composer } from "@/components/shell/Composer";
 import { OrchestratorThread } from "@/components/shell/OrchestratorThread";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/ui/password-field";
 import { AgentModelSelect } from "./AgentModelSelect";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
@@ -41,7 +42,7 @@ import { readRemoteNav, writeRemoteNav, restoreNav, type Tab } from "./remote-na
 import { activeAgentsAcross } from "./active-agents";
 import {
   ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessagesSquare,
-  ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw, Loader2,
+  ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw,
   AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
@@ -264,15 +265,15 @@ function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
       <label className="text-xs font-medium text-muted-foreground" htmlFor="remote-token">
         {t("phone.token.label")}
       </label>
-      <Input
+      <PasswordField
         id="remote-token"
-        type="password"
-        inputMode="text"
         autoComplete="off"
+        revealLabel={t("common.showSecret")}
+        inputMode="text"
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
-        className="h-11"
+        inputClassName="h-11"
         placeholder={t("phone.token.placeholder")}
         value={value}
         onChange={e => setValue(e.target.value)}
@@ -808,7 +809,7 @@ function DiagnosticsSheet({ onClose }: { onClose: () => void }) {
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         <div className="flex gap-2">
           <Button className="flex-1" variant="outline" disabled={running} onClick={() => void run(false)}>
-            {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Stethoscope className="mr-2 h-4 w-4" />}
+            {running ? <Spinner aria-hidden className="mr-2 h-4 w-4" /> : <Stethoscope className="mr-2 h-4 w-4" />}
             {results ? t("settings.option.diagnostics.recheck") : t("diagnostics.run")}
           </Button>
           {results && (

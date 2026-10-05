@@ -43,6 +43,7 @@ export const fr: Dictionary = {
   "common.paste": "Coller",
   "common.selectAll": "Tout sélectionner",
   "common.copyFailed": "Impossible de copier",
+  "common.showSecret": "Afficher la valeur",
   "common.retry": "Réessayer",
   "error.panel.title": "Cette partie de l'écran a cassé",
   "error.panel.body": "Le reste de l'application tourne toujours. Le détail complet est dans le journal : Réglages → Diagnostic.",

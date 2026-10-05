@@ -43,6 +43,7 @@ export const en: Dictionary = {
   "common.paste": "Paste",
   "common.selectAll": "Select all",
   "common.copyFailed": "Couldn't copy",
+  "common.showSecret": "Show value",
   "common.retry": "Retry",
   "error.panel.title": "This part of the screen broke",
   "error.panel.body": "The rest of the app is still running. The full detail went to the log: Settings → Diagnostics.",

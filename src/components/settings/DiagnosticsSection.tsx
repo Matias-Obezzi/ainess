@@ -3,6 +3,7 @@
 // anything, and no token, authtoken or API key ever reaches the screen or the clipboard.
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,7 @@ import {
   type DiagnosticLevel,
   type DiagnosticResult,
 } from "@/lib/diagnostics";
-import { AlertTriangle, CheckCircle2, ClipboardCopy, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCopy, RefreshCw, XCircle } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 const LEVEL_ICON = { ok: CheckCircle2, warn: AlertTriangle, error: XCircle };
@@ -61,7 +62,7 @@ export function DiagnosticsSection() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" disabled={running} onClick={() => void run()}>
-          {running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
+          {running ? <Spinner aria-hidden className="mr-1 h-4 w-4" /> : <RefreshCw className="mr-1 h-4 w-4" />}
           {t("settings.option.diagnostics.recheck")}
         </Button>
         <Button variant="outline" size="sm" disabled={!results} onClick={() => void copy()}>

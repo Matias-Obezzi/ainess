@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import QRCode from "qrcode";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/ui/password-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +20,7 @@ import { TUNNEL_PROVIDERS, fixedUrl, hasFixedUrl, normalizeDomain, tunnelBinary,
 import type { TunnelConfig } from "@/types";
 import { NGROK_API_KEYS_URL, NGROK_AUTHTOKEN_URL, NGROK_DOMAINS_URL } from "@/lib/ngrok";
 import { ensureNgrokUpToDate, installNgrok, ngrokAccountStatus, ngrokReservedDomains, saveNgrokCredential, type NgrokAccountStatus, type NgrokInstallPhase, type NgrokUpdateState } from "@/lib/ngrok-account";
-import { Copy, Download, ExternalLink, Globe, Loader2, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
+import { Copy, Download, ExternalLink, Globe, RefreshCw, Smartphone, TriangleAlert } from "lucide-react";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -81,9 +83,9 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
   if (editing) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="password"
+        <PasswordField
           autoComplete="off"
+          revealLabel={t("common.showSecret")}
           autoFocus
           className="max-w-xs"
           placeholder={t("remote.ngrok.pastePlaceholder")}
@@ -95,7 +97,7 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
           }}
         />
         <Button size="sm" disabled={saving || !value.trim()} onClick={() => void save()}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} {t("common.save")}
+          {saving && <Spinner aria-hidden className="mr-1 h-4 w-4" />} {t("common.save")}
         </Button>
         <Button size="sm" variant="ghost" disabled={saving} onClick={close}>{t("common.cancel")}</Button>
       </div>
@@ -488,7 +490,7 @@ export function RemoteSection() {
               </Button>
               {provider === "ngrok" && !binaryPath && (
                 <Button size="sm" variant="secondary" disabled={!!installing} onClick={() => void install()}>
-                  {installing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                  {installing ? <Spinner aria-hidden className="mr-1 h-3.5 w-3.5" /> : <Download className="mr-1 h-3.5 w-3.5" />}
                   {t("settings.option.remote.installNgrok")}
                 </Button>
               )}
@@ -593,7 +595,7 @@ export function RemoteSection() {
                       disabled={loadingDomains}
                       onClick={() => void loadNgrokDomains()}
                     >
-                      {loadingDomains ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      {loadingDomains ? <Spinner aria-hidden className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
                     </Button>
                   </div>
                 )}

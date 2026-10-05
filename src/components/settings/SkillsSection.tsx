@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,7 +13,7 @@ import { toast } from "@/components/ui/toast";
 import { SkillDialog } from "@/components/SkillDialog";
 import { SuggestedDialog } from "@/components/settings/SuggestedDialog";
 import { Skill } from "@/types";
-import { Check, MoreHorizontal, Sparkles } from "lucide-react";
+import { MoreHorizontal, Sparkles } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
@@ -150,23 +151,18 @@ function ImportSkillsDialog({ open, onOpenChange, detected }: { open: boolean; o
                 const already = skillKnown(skills, d.name);
                 const isSelected = selected.has(d.name);
                 return (
-                  <button
+                  <label
                     key={d.name}
-                    type="button"
-                    disabled={already}
-                    onClick={() => toggle(d.name)}
-                    className={`flex flex-col gap-1 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
+                    className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-left transition-colors has-[button:disabled]:cursor-not-allowed has-[button:disabled]:opacity-60 ${isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className={`flex size-4 shrink-0 items-center justify-center rounded border ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
-                        {isSelected && <Check className="size-3" />}
-                      </div>
+                      <Checkbox checked={isSelected} disabled={already} onCheckedChange={() => toggle(d.name)} />
                       <span className="text-sm font-semibold">{d.name}</span>
                       {d.sources.map(s => <Badge key={s} variant="outline" className="text-[10px]">{t(`skills.source.${s}`)}</Badge>)}
                       {already && <Badge variant="secondary" className="text-[10px]">{t("mcpImport.already")}</Badge>}
                     </div>
                     {d.description && <p className="line-clamp-2 pl-6 text-xs text-muted-foreground">{d.description}</p>}
-                  </button>
+                  </label>
                 );
               })}
             </div>

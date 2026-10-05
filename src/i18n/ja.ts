@@ -44,6 +44,7 @@ export const ja: Dictionary = {
   "common.paste": "貼り付け",
   "common.selectAll": "すべて選択",
   "common.copyFailed": "コピーできませんでした",
+  "common.showSecret": "値を表示",
   "common.retry": "再試行",
   "error.panel.title": "画面のこの部分が壊れました",
   "error.panel.body": "アプリの他の部分は動いています。詳細はログに記録しました: 設定 → 診断。",
