@@ -21,6 +21,13 @@ import type { Plugin } from "@/types";
 import { Blocks, Check } from "lucide-react";
 
 interface PluginsApi { add: () => void }
+
+/**
+ * One empty list for "no plugins yet". `?? []` inside the selector handed zustand a new array on every
+ * read, which React takes for a store that never stops changing: the section looped until React gave
+ * up, and the whole window went black with it.
+ */
+const NO_PLUGINS: Plugin[] = [];
 const Ctx = createContext<PluginsApi | null>(null);
 const usePlugins = () => useContext(Ctx)!;
 
@@ -159,7 +166,7 @@ export function PluginsSectionActions() {
 
 export function PluginsSection() {
   const t = useT();
-  const plugins = useAppStore(state => state.config.plugins ?? []);
+  const plugins = useAppStore(state => state.config.plugins) ?? NO_PLUGINS;
   const skills = useAppStore(state => state.config.skills);
   const servers = useAppStore(state => state.config.mcpServers);
   const { add } = usePlugins();

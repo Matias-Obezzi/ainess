@@ -6,6 +6,15 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.26.1 — 2026-10-05
+
+### Fixed
+
+- **Opening Settings could turn the whole window black.** With no plugin installed, the Plugins
+  section asked for its list in a way React reads as a list that never stops changing, and looped
+  until it gave up — taking the window with it. Settings remembers the last section, so once that
+  was Plugins, every visit to Settings ended the same way.
+
 ## 0.26.0 — 2026-10-04
 
 ### Added

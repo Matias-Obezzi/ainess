@@ -2,6 +2,16 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.26.1 — 2026-10-05
+
+### Corrigé
+
+- **Ouvrir les Réglages pouvait rendre toute la fenêtre noire.** Sans aucun plugin installé, la
+  section Plugins demandait sa liste d'une façon que React lit comme une liste qui ne cesse de
+  changer, et bouclait jusqu'à abandonner — emportant la fenêtre avec elle. Les Réglages se
+  souviennent de la dernière section : une fois que c'était Plugins, chaque ouverture des Réglages
+  finissait de la même façon.
+
 ## 0.26.0 — 2026-10-04
 
 ### Nouveau
