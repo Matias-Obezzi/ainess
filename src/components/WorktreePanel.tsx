@@ -4,11 +4,12 @@
 // Everything here that writes to a repo asks first, and the merge refuses to run while either
 // side has uncommitted work (src/lib/worktree.ts decides that, not this file).
 import { useCallback, useEffect, useState } from "react";
-import { FolderOpen, GitMerge, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { FolderOpen, GitMerge, RefreshCw, Trash2 } from "lucide-react";
 import { useAppStore, selectProject, selectProjectAgents, selectProjectWorktrees } from "@/store";
 import type { AgentWorktree } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
@@ -160,7 +161,7 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-0.5">
-                          {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                          {busy && <Spinner aria-hidden className="mr-1 h-3.5 w-3.5 text-muted-foreground" />}
                           <RowAction
                             icon={FolderOpen}
                             label={t("worktrees.openFolder")}
@@ -195,7 +196,7 @@ export function WorktreePanel({ open, onOpenChange }: { open: boolean; onOpenCha
 
           <DialogFooter className="mt-2 sm:justify-between">
             <Button variant="outline" size="sm" disabled={reading || worktrees.length === 0} onClick={() => void readDirty(worktrees)}>
-              {reading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}
+              {reading ? <Spinner aria-hidden className="mr-1 h-3.5 w-3.5" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}
               {t("worktrees.refreshState")}
             </Button>
             <Button onClick={() => onOpenChange(false)}>{t("common.close")}</Button>

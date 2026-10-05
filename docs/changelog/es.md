@@ -2,6 +2,30 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.27.0 — 2026-10-05
+
+### Cambiado
+
+- **Los tokens y las claves se pueden ver mientras los pegás.** Cada campo de token en Ajustes y en
+  el teléfono tiene un botón con un ojo, así un valor pegado se puede revisar antes de guardarlo.
+- **Las listas de importar y de sugerencias usan checkboxes de verdad.** Hacer clic en cualquier
+  parte de una entrada la sigue marcando, y el teclado o un lector de pantalla ahora tienen un
+  checkbox real con el que trabajar.
+- **Los bloques de código de las respuestas se pueden copiar.** Cada uno tiene un botón para copiar
+  y otro para ajustar las líneas, y uno largo se pliega pasadas las veinte líneas en vez de empujar
+  el resto de la respuesta fuera de la pantalla.
+- **Elegir agentes para una skill o un servidor MCP dice de qué proyecto es cada uno.** Cada
+  proyecto tiene su propio planner, así que una fila de nombres iguales ahora es una lista con
+  búsqueda donde cada uno dice «Planner · Alpha».
+- **Los ajustes numéricos tienen botones para sumar y restar.** Las rondas, las corridas
+  simultáneas, el corte por inactividad y los límites de gasto aceptan las flechas y los botones
+  +/−, un valor fuera de rango se ajusta al límite más cercano, y los límites de gasto se muestran
+  en dólares.
+- **Las confirmaciones ya no se cierran con un clic perdido afuera.** Escape y Cancelar siguen
+  diciendo que no.
+- La paleta de búsqueda, el selector Renderizado/Crudo, las teclas de los atajos y el botón de nueva
+  terminal usan los componentes compartidos, con el mismo comportamiento de teclado que antes.
+
 ## 0.26.1 — 2026-10-05
 
 ### Arreglado

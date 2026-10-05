@@ -6,6 +6,25 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.27.0 — 2026-10-05
+
+### Changed
+
+- **Tokens and keys can be shown while you paste them.** Every token field in Settings and on the
+  phone has an eye button, so a pasted value can be checked before it is saved.
+- **The import and suggestion lists use real checkboxes.** Clicking anywhere on an entry still ticks
+  it, and a keyboard or a screen reader now gets an actual checkbox to work with.
+- **Code blocks in answers can be copied.** Each one has a copy button and a wrap toggle, and a long
+  one folds after twenty lines instead of pushing the rest of the answer off the screen.
+- **Choosing agents for a skill or an MCP server names their project.** Every project has its own
+  planner, so a row of identical names is now a searchable list where each reads "Planner · Alpha".
+- **Number settings have steppers.** Rounds, concurrent runs, the stall timeout and the spending
+  limits take the arrow keys and +/− buttons, and an out-of-range value snaps to the nearest limit;
+  the spending limits show as dollars.
+- **Confirmations no longer close on a stray click outside them.** Escape and Cancel still say no.
+- The search palette, the Rendered/Raw switch, the shortcut keys and the new-terminal button are
+  built on the shared components, with the same keyboard behavior as before.
+
 ## 0.26.1 — 2026-10-05
 
 ### Fixed

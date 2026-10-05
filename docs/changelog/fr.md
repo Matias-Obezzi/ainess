@@ -2,6 +2,32 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.27.0 — 2026-10-05
+
+### Modifié
+
+- **Les jetons et les clés peuvent s'afficher pendant que vous les collez.** Chaque champ de jeton
+  dans les Réglages et sur le téléphone a un bouton en forme d'œil, pour vérifier une valeur collée
+  avant de l'enregistrer.
+- **Les listes d'import et de suggestions utilisent de vraies cases à cocher.** Cliquer n'importe où
+  sur une entrée la coche toujours, et le clavier ou un lecteur d'écran ont maintenant une vraie
+  case à cocher.
+- **Les blocs de code des réponses peuvent être copiés.** Chacun a un bouton pour copier et un autre
+  pour le retour à la ligne, et un bloc long se replie après vingt lignes au lieu de pousser le
+  reste de la réponse hors de l'écran.
+- **Choisir les agents d'une skill ou d'un serveur MCP indique leur projet.** Chaque projet a son
+  propre planner : une rangée de noms identiques devient une liste avec recherche où chacun se lit «
+  Planner · Alpha ».
+- **Les réglages numériques ont des boutons pour augmenter et diminuer.** Les tours, les exécutions
+  simultanées, l'arrêt après inactivité et les limites de dépense acceptent les flèches et les
+  boutons +/−, une valeur hors limites revient à la plus proche, et les limites de dépense
+  s'affichent en dollars.
+- **Les confirmations ne se ferment plus sur un clic égaré à côté.** Échap et Annuler répondent
+  toujours non.
+- La palette de recherche, le sélecteur Rendu/Brut, les touches des raccourcis et le bouton de
+  nouveau terminal reposent sur les composants partagés, avec le même comportement au clavier
+  qu'avant.
+
 ## 0.26.1 — 2026-10-05
 
 ### Corrigé

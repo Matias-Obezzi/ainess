@@ -43,6 +43,9 @@ export const pt: Dictionary = {
   "common.paste": "Colar",
   "common.selectAll": "Selecionar tudo",
   "common.copyFailed": "Não foi possível copiar",
+  "common.decrease": "Diminuir",
+  "common.increase": "Aumentar",
+  "common.showSecret": "Mostrar o valor",
   "common.retry": "Tentar de novo",
   "error.panel.title": "Esta parte da tela quebrou",
   "error.panel.body": "O resto do app continua funcionando. O detalhe completo foi para o log: Configurações → Diagnóstico.",
@@ -271,6 +274,12 @@ export const pt: Dictionary = {
   "activity.thinking": "Pensando…",
   "markdown.invalidDelegation": "Delegação com formato inválido",
   "markdown.revealFailed": "Não foi possível mostrar o arquivo no gerenciador de arquivos",
+  "codeBlock.wrap": "Quebrar as linhas",
+  "codeBlock.copy": "Copiar o código",
+  "codeBlock.region": "Código",
+  "codeBlock.regionLang": "Código {language}",
+  "codeBlock.showLess": "Ver menos",
+  "codeBlock.showAll": "Ver as {count} linhas",
 
   // ---- Right dock ----
   "dock.dragToResize": "Arraste para mudar a largura",
@@ -1445,6 +1454,12 @@ export const pt: Dictionary = {
   "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
   "mcpDialog.headersHint": "Você pode escrever Bearer ${MI_VARIABLE}: o cliente expande a variável a partir do ambiente, então o segredo não fica salvo no arquivo de configuração.",
   "mcpDialog.enabledForAll": "Habilitado para todos os agentes",
+  "agentPicker.placeholder": "Escolha os agentes",
+  "agentPicker.search": "Buscar um agente…",
+  "agentPicker.empty": "Nenhum agente corresponde",
+  "agentPicker.clear": "Remover todos",
+  "agentPicker.remove": "Remover {name}",
+  "agentPicker.summary": "Escolhidos ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Nova ordem predefinida",
@@ -1564,6 +1579,7 @@ export const pt: Dictionary = {
   "file.openPreview": "Abrir ao lado da conversa",
   "file.rendered": "Renderizado",
   "file.raw": "Bruto",
+  "file.view": "Visualização",
   "file.reveal": "Mostrar na pasta",
   "file.loading": "Lendo…",
   "file.missing": "Não encontrado: {path}",

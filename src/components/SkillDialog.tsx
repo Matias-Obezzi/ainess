@@ -1,7 +1,8 @@
 ﻿import { useState, useEffect } from "react";
-import { useAppStore, selectAllAgents } from "@/store";
+import { useAppStore } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AgentPicker } from "@/components/AgentPicker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -17,7 +18,6 @@ interface Props {
 
 export function SkillDialog({ open, onOpenChange, skill }: Props) {
   const t = useT();
-  const agents = useAppStore(selectAllAgents);
   const upsertSkill = useAppStore(state => state.upsertSkill);
 
   const [id, setId] = useState("");
@@ -58,16 +58,6 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
     onOpenChange(false);
   };
 
-  const toggleAgent = (agentId: string) => {
-    const next = new Set(enabledAgents);
-    if (next.has(agentId)) {
-      next.delete(agentId);
-    } else {
-      next.add(agentId);
-    }
-    setEnabledAgents(next);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] flex flex-col max-w-2xl">
@@ -106,18 +96,7 @@ export function SkillDialog({ open, onOpenChange, skill }: Props) {
               </div>
 
               {!allAgents && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {agents.map(a => (
-                    <Button 
-                      key={a.id} 
-                      variant={enabledAgents.has(a.id) ? "default" : "outline"} 
-                      size="sm"
-                      onClick={() => toggleAgent(a.id)}
-                    >
-                      {a.name}
-                    </Button>
-                  ))}
-                </div>
+                <AgentPicker value={Array.from(enabledAgents)} onValueChange={ids => setEnabledAgents(new Set(ids))} />
               )}
             </div>
           </div>

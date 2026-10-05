@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Delegation } from "@/types";
 import { ChevronDown, ChevronRight, FileText, Share2 } from "lucide-react";
 import { unglueFences } from "@/lib/text";
+import { CodeBlock } from "@/components/ui/code-block";
 import { useT } from "@/i18n/useT";
 import { toast } from "@/components/ui/toast";
 import { PathChip } from "@/components/PathChip";
@@ -157,6 +158,24 @@ function withPathChips(children: ReactNode): ReactNode {
 }
 
 /**
+ * A fenced block from an agent: copyable, wrappable, and folded past twenty lines so a pasted log
+ * does not push the rest of the answer off the screen. No line numbers — a snippet in a chat is
+ * not a file, and the numbers would only suggest it is one.
+ */
+function FencedCode({ code, language }: { code: string; language?: string }) {
+  const t = useT();
+  const labels = useMemo(() => ({
+    wrap: t("codeBlock.wrap"),
+    copy: t("codeBlock.copy"),
+    copied: t("common.copied"),
+    region: (lang?: string) => (lang ? t("codeBlock.regionLang", { language: lang }) : t("codeBlock.region")),
+    showLess: t("codeBlock.showLess"),
+    showAll: (count: number) => t("codeBlock.showAll", { count }),
+  }), [t]);
+  return <CodeBlock code={code} language={language} lineNumbers={false} labels={labels} className="mb-2 bg-background/60 [&_pre]:text-xs" />;
+}
+
+/**
  * The renderers. Built per use rather than once, because one of them — the delegate block — has to
  * know whether the text it is looking at is finished or still arriving.
  */
@@ -231,11 +250,7 @@ function makeComponents(streaming: boolean): Components {
       // A `suggest` block is the reply the box offers in grey (`ghostFor`), not something the agent
       // said: printing it here would show the user their own answer before they gave it.
       if (lang === "suggest") return null;
-      return (
-        <pre className="mb-2 overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-xs">
-          <code>{text}</code>
-        </pre>
-      );
+      return <FencedCode code={text} language={lang} />;
     },
     table: ({ children }) => (
       <div className="mb-2 overflow-x-auto">

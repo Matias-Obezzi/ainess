@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, languageNames, loadLanguage, resolveLanguage, type Language } from "@/i18n";
 import { useT } from "@/i18n/useT";
@@ -29,46 +29,10 @@ export function GeneralSection() {
   const setMaxConcurrentRuns = useAppStore(state => state.setMaxConcurrentRuns);
 
   const [soundOpen, setSoundOpen] = useState(false);
-  const [maxRoundsText, setMaxRoundsText] = useState(String(config.maxRounds));
-  useEffect(() => {
-    setMaxRoundsText(String(config.maxRounds));
-  }, [config.maxRounds]);
-
-  const commitMaxRounds = (value: string) => {
-    const n = parseInt(value, 10);
-    if (Number.isFinite(n) && n >= 1 && n <= 20) {
-      setMaxRounds(n);
-    } else {
-      setMaxRoundsText(String(config.maxRounds));
-    }
-  };
-
-  const [maxConcurrentText, setMaxConcurrentText] = useState(String(config.maxConcurrentRuns));
-  useEffect(() => {
-    setMaxConcurrentText(String(config.maxConcurrentRuns));
-  }, [config.maxConcurrentRuns]);
-
   const stallStop = config.stallStopMinutes ?? DEFAULT_STALL_STOP_MINUTES;
-  const [stallStopText, setStallStopText] = useState(String(stallStop));
-  useEffect(() => {
-    setStallStopText(String(stallStop));
-  }, [stallStop]);
-  // 0 means never, as with the run ceiling.
-  const commitStallStop = (value: string) => {
-    const n = parseInt(value, 10);
-    if (Number.isFinite(n) && n >= 0 && n <= 24 * 60) updateConfig({ stallStopMinutes: n });
-    else setStallStopText(String(stallStop));
-  };
-
-  // 0 is allowed and means no ceiling, which is why this one starts at 0 and `maxRounds` at 1.
-  const commitMaxConcurrentRuns = (value: string) => {
-    const n = parseInt(value, 10);
-    if (Number.isFinite(n) && n >= 0 && n <= MAX_CONCURRENT_RUNS_LIMIT) {
-      setMaxConcurrentRuns(n);
-    } else {
-      setMaxConcurrentText(String(config.maxConcurrentRuns));
-    }
-  };
+  // The fields clamp to their bounds and commit on blur, Enter or a step; an emptied field
+  // gives null, which leaves the saved value where it was.
+  const stepperLabels = { decrementLabel: t("common.decrease"), incrementLabel: t("common.increase") };
 
   return (
     <div className="flex flex-col gap-4">
@@ -196,40 +160,39 @@ export function GeneralSection() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold">{t("settings.option.general.maxRounds")}</label>
-            <Input
-              type="number"
+            <NumberField
               min={1}
               max={20}
-              className="w-24"
-              value={maxRoundsText}
-              onChange={e => setMaxRoundsText(e.target.value)}
-              onBlur={e => commitMaxRounds(e.target.value)}
+              className="w-32"
+              {...stepperLabels}
+              value={config.maxRounds}
+              onValueChange={n => n !== null && setMaxRounds(n)}
             />
             <span className="text-sm text-muted-foreground">{t("settings.general.maxRoundsHint")}</span>
           </div>
           <div className="flex flex-col gap-2 pt-2 border-t">
             <label className="text-sm font-semibold">{t("settings.option.general.maxConcurrentRuns")}</label>
-            <Input
-              type="number"
+            {/* 0 is allowed and means no ceiling, which is why this one starts at 0 and the rounds at 1. */}
+            <NumberField
               min={0}
               max={MAX_CONCURRENT_RUNS_LIMIT}
-              className="w-24"
-              value={maxConcurrentText}
-              onChange={e => setMaxConcurrentText(e.target.value)}
-              onBlur={e => commitMaxConcurrentRuns(e.target.value)}
+              className="w-32"
+              {...stepperLabels}
+              value={config.maxConcurrentRuns}
+              onValueChange={n => n !== null && setMaxConcurrentRuns(n)}
             />
             <span className="text-sm text-muted-foreground">{t("settings.general.maxConcurrentRunsHint")}</span>
           </div>
           <div className="flex flex-col gap-2 pt-2 border-t">
             <label className="text-sm font-semibold">{t("settings.option.general.stallStopMinutes")}</label>
-            <Input
-              type="number"
+            {/* 0 means never, as with the run ceiling. */}
+            <NumberField
               min={0}
               max={24 * 60}
-              className="w-24"
-              value={stallStopText}
-              onChange={e => setStallStopText(e.target.value)}
-              onBlur={e => commitStallStop(e.target.value)}
+              className="w-32"
+              {...stepperLabels}
+              value={stallStop}
+              onValueChange={n => n !== null && updateConfig({ stallStopMinutes: n })}
             />
             <span className="text-sm text-muted-foreground">{t("settings.general.stallStopMinutesHint")}</span>
           </div>

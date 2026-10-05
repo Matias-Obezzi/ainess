@@ -4,7 +4,7 @@
 // click opened `http://localhost:30` — the half that fitted. Both ways of printing a URL are
 // covered here, because they take different paths: plain text is found by
 // `@xterm/addon-web-links`, and an OSC 8 hyperlink is found by xterm's own provider and handed to
-// `linkHandler`. Both are wired in `src/lib/terminal-registry.ts`.
+// `linkHandler`. Both are wired in `src/lib/terminal-create.ts`.
 //
 // A row xterm wrapped itself was never the problem; a row ConPTY broke with a real newline was.
 // That is the last test here, and it only means anything on Windows.
@@ -41,7 +41,7 @@ async function terminalWith(page: Page, data: string, cols = COLS): Promise<void
     container.style.cssText = "position:fixed;left:0;top:0;width:640px;height:320px;z-index:9999;background:#000";
     document.body.appendChild(container);
 
-    const registry = await import("/src/lib/terminal-registry.ts");
+    const registry = await import("/src/lib/terminal-create.ts");
     const entry = registry.ensureTerminal(
       { id: "link-probe", title: "probe", shellId: "sh", shellPath: "sh", cwd: "/", projectId: null },
       container,

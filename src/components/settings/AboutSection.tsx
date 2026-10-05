@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/toast";
@@ -12,7 +13,7 @@ import { getTransport } from "@/lib/transport";
 import { openExternal } from "@/lib/open-external";
 import { ChangelogDialog } from "@/components/settings/ChangelogDialog";
 import { Logo } from "@/components/Logo";
-import { ClipboardCopy, Download, ExternalLink, FolderOpen, Loader2, RefreshCw, ScrollText } from "lucide-react";
+import { ClipboardCopy, Download, ExternalLink, FolderOpen, RefreshCw, ScrollText } from "lucide-react";
 import { useT } from "@/i18n/useT";
 
 const REPO_URL = "https://github.com/Matias-Obezzi/ainess";
@@ -129,7 +130,7 @@ export function AboutSection() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button variant="outline" size="sm" className="self-start" disabled={checking || installing} onClick={() => void check()}>
-            {checking ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
+            {checking ? <Spinner aria-hidden className="mr-1 h-4 w-4" /> : <RefreshCw className="mr-1 h-4 w-4" />}
             {t("settings.option.about.checkUpdates")}
           </Button>
 

@@ -48,6 +48,20 @@ describe("ImportMcpDialog", () => {
     expect(servers.find(s => s.name === "Stitch")?.headers).toEqual({ "X-Goog-Api-Key": "SECRET-VALUE" });
   });
 
+  it("toggles once from anywhere on the card, and not at all for what ainess already has", async () => {
+    render(<ImportMcpDialog open onOpenChange={() => {}} detected={detected} />);
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes.map(b => b.getAttribute("aria-checked"))).toEqual(["true", "true", "false", "true", "false"]);
+    expect((boxes[2] as HTMLButtonElement).disabled).toBe(true);
+
+    await userEvent.click(screen.getByText("codegraph"));
+    expect(boxes[0].getAttribute("aria-checked")).toBe("false");
+    await userEvent.click(boxes[0]);
+    expect(boxes[0].getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(screen.getAllByText("known")[0]);
+    expect(boxes[2].getAttribute("aria-checked")).toBe("false");
+  });
+
   it("says so when it is still looking, and when there is nothing", () => {
     const { rerender } = render(<ImportMcpDialog open onOpenChange={() => {}} detected={null} />);
     expect(document.body.textContent).toContain("Buscando en tus CLIs");

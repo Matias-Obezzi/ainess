@@ -3,6 +3,7 @@ import { useAppStore, selectProjectAgents, nextAgentName } from "@/store";
 import { rootPlannerClash, descendantsOf } from "@/lib/team";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +21,6 @@ import { formatResetsAt } from "@/lib/quota";
 import { roleLabelKey } from "@/lib/labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Loader2 } from "lucide-react";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
 import { resolvedModel, costPerMillion } from "@/lib/model-cost";
 import { formatCost, runsOfProject } from "@/lib/usage";
@@ -82,7 +82,7 @@ function QuotaBlock({ provider, initialLoading }: { provider: ProviderId; initia
       <div className="flex justify-between items-center">
         <span className="font-semibold text-sm">{t("agentDialog.quotaOf", { provider: PROVIDERS[provider]?.label ?? provider })}</span>
         <Button size="sm" variant="outline" onClick={() => void handleRefresh()} disabled={loading}>
-          {loading && <Loader2 className="size-3 mr-1 animate-spin" />}
+          {loading && <Spinner aria-hidden className="size-3 mr-1" />}
           {t("agentDialog.quotaRefresh")}
         </Button>
       </div>

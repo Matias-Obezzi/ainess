@@ -2,6 +2,32 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.27.0 — 2026-10-05
+
+### Geändert
+
+- **Tokens und Schlüssel lassen sich beim Einfügen anzeigen.** Jedes Token-Feld in den Einstellungen
+  und auf dem Telefon hat einen Augen-Button, damit ein eingefügter Wert vor dem Speichern geprüft
+  werden kann.
+- **Die Import- und Vorschlagslisten verwenden echte Kontrollkästchen.** Ein Klick irgendwo auf
+  einen Eintrag hakt ihn weiterhin an, und Tastatur und Screenreader haben jetzt ein echtes
+  Kontrollkästchen.
+- **Codeblöcke in Antworten lassen sich kopieren.** Jeder hat einen Button zum Kopieren und einen
+  zum Zeilenumbruch, und ein langer klappt nach zwanzig Zeilen ein, statt den Rest der Antwort aus
+  dem Bild zu schieben.
+- **Bei der Auswahl von Agenten für eine Skill oder einen MCP-Server steht ihr Projekt dabei.**
+  Jedes Projekt hat seinen eigenen Planner, also ist aus einer Reihe gleicher Namen eine
+  durchsuchbare Liste geworden, in der jeder „Planner · Alpha“ heißt.
+- **Zahlen-Einstellungen haben Plus- und Minus-Buttons.** Runden, gleichzeitige Läufe, die
+  Stillstandsgrenze und die Ausgabenlimits nehmen die Pfeiltasten und die +/−-Buttons an, ein Wert
+  außerhalb des Bereichs springt auf die nächste Grenze, und die Ausgabenlimits erscheinen in
+  Dollar.
+- **Bestätigungen schließen sich nicht mehr durch einen verirrten Klick daneben.** Escape und
+  Abbrechen sagen weiterhin Nein.
+- Die Suchpalette, der Umschalter Gerendert/Roh, die Tasten der Tastenkürzel und der Button für ein
+  neues Terminal bauen auf den gemeinsamen Komponenten auf, mit derselben Tastaturbedienung wie
+  vorher.
+
 ## 0.26.1 — 2026-10-05
 
 ### Behoben

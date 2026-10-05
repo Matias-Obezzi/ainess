@@ -44,6 +44,9 @@ export const ja: Dictionary = {
   "common.paste": "貼り付け",
   "common.selectAll": "すべて選択",
   "common.copyFailed": "コピーできませんでした",
+  "common.decrease": "減らす",
+  "common.increase": "増やす",
+  "common.showSecret": "値を表示",
   "common.retry": "再試行",
   "error.panel.title": "画面のこの部分が壊れました",
   "error.panel.body": "アプリの他の部分は動いています。詳細はログに記録しました: 設定 → 診断。",
@@ -272,6 +275,12 @@ export const ja: Dictionary = {
   "activity.thinking": "考え中…",
   "markdown.invalidDelegation": "形式が無効な委任です",
   "markdown.revealFailed": "ファイルマネージャーでファイルを表示できませんでした",
+  "codeBlock.wrap": "行を折り返す",
+  "codeBlock.copy": "コードをコピー",
+  "codeBlock.region": "コード",
+  "codeBlock.regionLang": "{language} のコード",
+  "codeBlock.showLess": "折りたたむ",
+  "codeBlock.showAll": "全 {count} 行を表示",
 
   // ---- Right dock ----
   "dock.dragToResize": "ドラッグして幅を調整",
@@ -1446,6 +1455,12 @@ export const ja: Dictionary = {
   "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
   "mcpDialog.headersHint": "Bearer ${MI_VARIABLE} と書けます。クライアントが環境変数から値を展開するため、シークレットは設定ファイルに保存されません。",
   "mcpDialog.enabledForAll": "すべてのエージェントで有効",
+  "agentPicker.placeholder": "エージェントを選択",
+  "agentPicker.search": "エージェントを検索…",
+  "agentPicker.empty": "一致するエージェントはありません",
+  "agentPicker.clear": "すべて外す",
+  "agentPicker.remove": "{name} を外す",
+  "agentPicker.summary": "選択済み（{count}）：{names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "新しい定型オーダー",
@@ -1565,6 +1580,7 @@ export const ja: Dictionary = {
   "file.openPreview": "会話の横で開く",
   "file.rendered": "レンダリング",
   "file.raw": "生テキスト",
+  "file.view": "表示",
   "file.reveal": "フォルダーで表示",
   "file.loading": "読み込み中…",
   "file.missing": "見つかりません: {path}",

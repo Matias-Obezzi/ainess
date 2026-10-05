@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Code2, Copy, FolderOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Markdown } from "@/components/shell/Markdown";
 import { PathChip } from "@/components/PathChip";
@@ -14,7 +15,6 @@ import { openInEditor, revealPath } from "@/lib/open-external";
 import { toast } from "@/components/ui/toast";
 import { baseName, imageTypeOf, isMarkdownPath, languageOf, matchTrackedByName, MAX_IMAGE_BYTES, MAX_PREVIEW_BYTES, pathRef, shouldSearchRepo } from "@/lib/file-preview";
 import { repoDirOf } from "@/lib/repo-dir";
-import { cn } from "@/lib/utils";
 import { useCurrentProjectId } from "./project-pane";
 
 type Loaded =
@@ -176,10 +176,11 @@ export function FileDockSection() {
           <span className="mt-1 truncate text-[10px] text-muted-foreground" title={path}>{path}</span>
         </div>
         {markdown && loaded.state === "ready" && (
-          <div className="flex shrink-0 rounded-md border border-border text-[11px]">
-            <button type="button" className={cn("px-2 py-0.5", !raw && "bg-accent")} onClick={() => setRaw(false)}>{t("file.rendered")}</button>
-            <button type="button" className={cn("px-2 py-0.5", raw && "bg-accent")} onClick={() => setRaw(true)}>{t("file.raw")}</button>
-          </div>
+          <SegmentedControl size="sm" className="h-7 shrink-0 text-[11px]" aria-label={t("file.view")}
+            value={raw ? "raw" : "rendered"} onValueChange={v => setRaw(v === "raw")}>
+            <SegmentedControlItem value="rendered" className="px-2">{t("file.rendered")}</SegmentedControlItem>
+            <SegmentedControlItem value="raw" className="px-2">{t("file.raw")}</SegmentedControlItem>
+          </SegmentedControl>
         )}
         {editors.length > 0 && (
           <DropdownMenu>

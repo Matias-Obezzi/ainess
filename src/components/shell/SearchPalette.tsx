@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bot, FolderOpen, Keyboard, ListTodo, MessageCircle, Plus, Settings2, Users } from "lucide-react";
 import { useAppStore, selectAllAgents, selectProjectOfAgent, selectTasks } from "@/store";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useT } from "@/i18n/useT";
 // Single source of truth for section metadata — no component imports, bundle-safe.
 import { SETTINGS_SECTIONS_META } from "@/components/settings/sections";
@@ -71,14 +70,9 @@ export function SearchPalette() {
   const messagesOnly = searchInitialGroup === "messages";
 
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(0);
-  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (searchOpen) {
-      setQuery("");
-      setSelected(0);
-    }
+    if (searchOpen) setQuery("");
   }, [searchOpen]);
 
   const results = useMemo<Result[]>(() => {
@@ -226,92 +220,49 @@ export function SearchPalette() {
     return messagesOnly ? out.filter(r => r.group === "messages") : out;
   }, [query, projects, chats, agents, tasks, currentProjectId, searchOpen, messagesOnly, openProject, openSettings, addTask, focusTask, focusMessage, toggleShortcuts, t]);
 
-  // The query shrinks the list, so keep the cursor inside it.
-  useEffect(() => {
-    setSelected(s => (s >= results.length ? 0 : s));
-  }, [results.length]);
-
-  useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>('[data-selected="true"]');
-    el?.scrollIntoView({ block: "nearest" });
-  }, [selected, results]);
-
   const choose = (result: Result | undefined) => {
     if (!result) return;
     toggleSearch(false);
     result.run();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelected(s => (results.length === 0 ? 0 : (s + 1) % results.length));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelected(s => (results.length === 0 ? 0 : (s - 1 + results.length) % results.length));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      choose(results[selected]);
-    }
-  };
-
-  let lastGroup: Group | null = null;
+  // Groups in the order their first result came, each keeping its results in order.
+  const groups = new Map<Group, Result[]>();
+  for (const r of results) groups.set(r.group, [...(groups.get(r.group) ?? []), r]);
 
   return (
-    <Dialog open={searchOpen} onOpenChange={toggleSearch}>
-      <DialogContent
-        showCloseButton={false}
-        className="top-[15%] translate-y-0 gap-0 p-0 overflow-hidden sm:max-w-xl"
-        onKeyDown={onKeyDown}
-      >
-        <DialogTitle className="sr-only">{t("common.search")}</DialogTitle>
-        <div className="border-b border-border p-2">
-          <Input
-            autoFocus
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={messagesOnly ? t("search.placeholderMessages") : t("search.placeholder")}
-            className="border-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-          />
-        </div>
-
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-          {results.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              {messagesOnly
-                ? t("search.noMessages", { query: query.trim() })
-                : t("search.noResults", { query: query.trim() })}
-            </div>
-          )}
-          {results.map((r, i) => {
-            const header = r.group !== lastGroup ? r.group : null;
-            lastGroup = r.group;
-            const Icon = r.icon;
-            return (
-              <div key={r.key}>
-                {header && (
-                  <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t(GROUP_LABEL_KEY[header])}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  data-selected={i === selected}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
-                    i === selected ? "bg-accent text-accent-foreground" : "hover:bg-accent/60"
-                  }`}
-                  onMouseEnter={() => setSelected(i)}
-                  onClick={() => choose(r)}
-                >
+    // The results are already filtered (accent-blind, capped per group, messages searched apart),
+    // so the command menu only draws them and moves the cursor.
+    <CommandDialog
+      open={searchOpen}
+      onOpenChange={toggleSearch}
+      title={t("common.search")}
+      description={messagesOnly ? t("search.placeholderMessages") : t("search.placeholder")}
+      contentClassName="sm:max-w-xl"
+      shouldFilter={false}
+      value={query}
+      onValueChange={setQuery}
+    >
+      <CommandInput autoFocus placeholder={messagesOnly ? t("search.placeholderMessages") : t("search.placeholder")} />
+      <CommandList className="max-h-[50vh] p-2">
+        <CommandEmpty>
+          {messagesOnly ? t("search.noMessages", { query: query.trim() }) : t("search.noResults", { query: query.trim() })}
+        </CommandEmpty>
+        {[...groups].map(([group, items]) => (
+          <CommandGroup key={group} heading={t(GROUP_LABEL_KEY[group])} className="p-0">
+            {items.map(r => {
+              const Icon = r.icon;
+              return (
+                <CommandItem key={r.key} value={r.key} onSelect={() => choose(r)}>
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{r.label}</span>
                   {r.hint && <span className="ml-auto truncate text-xs text-muted-foreground">{r.hint}</span>}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </DialogContent>
-    </Dialog>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </CommandDialog>
   );
 }

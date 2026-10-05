@@ -3,6 +3,7 @@ import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -18,7 +19,7 @@ import {
   type DetectedPlugin, type MarketplaceEntry,
 } from "@/lib/plugins";
 import type { Plugin } from "@/types";
-import { Blocks, Check } from "lucide-react";
+import { Blocks } from "lucide-react";
 
 interface PluginsApi { add: () => void }
 
@@ -123,18 +124,16 @@ export function PluginsSectionProvider({ children }: { children: ReactNode }) {
               {market.entries.map(entry => {
                 const on = chosen.has(entry.name);
                 return (
-                  <button
+                  <label
                     key={entry.name}
-                    type="button"
-                    onClick={() => setChosen(prev => { const n = new Set(prev); if (n.has(entry.name)) n.delete(entry.name); else n.add(entry.name); return n; })}
-                    className={`flex flex-col gap-1 rounded-md border p-3 text-left ${on ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
+                    className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-left transition-colors has-[button:disabled]:cursor-not-allowed has-[button:disabled]:opacity-60 ${on ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
                   >
                     <div className="flex items-center gap-2">
-                      <div className={`flex size-4 items-center justify-center rounded border ${on ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>{on && <Check className="size-3" />}</div>
+                      <Checkbox checked={on} onCheckedChange={() => setChosen(prev => { const n = new Set(prev); if (n.has(entry.name)) n.delete(entry.name); else n.add(entry.name); return n; })} />
                       <span className="text-sm font-semibold">{entry.name}</span>
                     </div>
                     {entry.description && <p className="line-clamp-2 pl-6 text-xs text-muted-foreground">{entry.description}</p>}
-                  </button>
+                  </label>
                 );
               })}
             </div>

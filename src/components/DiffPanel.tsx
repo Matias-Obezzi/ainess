@@ -5,10 +5,11 @@ import { parseUnifiedDiff, DiffFile, diffTotals } from "@/lib/diff";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { EmptyState } from "@/components/ui/empty-state";
-import { GitCompare, Loader2, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
+import { GitCompare, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { repoDirOf } from "@/lib/repo-dir";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
@@ -168,7 +169,7 @@ export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } 
             </div>
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" title={t("diff.refresh")} onClick={load}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {loading ? <Spinner aria-hidden className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
         </div>
       </div>

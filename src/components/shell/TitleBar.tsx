@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ChevronLeft, ChevronRight, Copy, Loader2, MessagesSquare, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, MessagesSquare, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
 import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
@@ -39,7 +40,7 @@ function RemoteButton() {
           {/* Starting and stopping happens on the screen this opens, so the spinner is still worth
               drawing: it is the same server, and this is where its light is. */}
           {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner aria-hidden className="h-4 w-4" />
           ) : (
             <Smartphone className={running ? "h-4 w-4 text-emerald-500" : "h-4 w-4"} />
           )}

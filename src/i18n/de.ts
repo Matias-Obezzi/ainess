@@ -43,6 +43,9 @@ export const de: Dictionary = {
   "common.paste": "Einfügen",
   "common.selectAll": "Alles auswählen",
   "common.copyFailed": "Kopieren fehlgeschlagen",
+  "common.decrease": "Verringern",
+  "common.increase": "Erhöhen",
+  "common.showSecret": "Wert anzeigen",
   "common.retry": "Erneut versuchen",
   "error.panel.title": "Dieser Teil des Bildschirms ist kaputtgegangen",
   "error.panel.body": "Der Rest der App läuft weiter. Die vollständigen Angaben stehen im Log: Einstellungen → Diagnose.",
@@ -271,6 +274,12 @@ export const de: Dictionary = {
   "activity.thinking": "Denkt nach…",
   "markdown.invalidDelegation": "Delegation mit ungültigem Format",
   "markdown.revealFailed": "Die Datei konnte nicht im Dateimanager angezeigt werden",
+  "codeBlock.wrap": "Zeilen umbrechen",
+  "codeBlock.copy": "Code kopieren",
+  "codeBlock.region": "Code",
+  "codeBlock.regionLang": "{language}-Code",
+  "codeBlock.showLess": "Weniger anzeigen",
+  "codeBlock.showAll": "Alle {count} Zeilen anzeigen",
 
   // ---- Right dock ----
   "dock.dragToResize": "Ziehen, um die Breite zu ändern",
@@ -1445,6 +1454,12 @@ export const de: Dictionary = {
   "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
   "mcpDialog.headersHint": "Du kannst Bearer ${MI_VARIABLE} schreiben: Der Client löst die Variable aus der Umgebung auf, das Geheimnis landet also nicht in der Konfigurationsdatei.",
   "mcpDialog.enabledForAll": "Für alle Agenten aktiviert",
+  "agentPicker.placeholder": "Agenten auswählen",
+  "agentPicker.search": "Agent suchen…",
+  "agentPicker.empty": "Kein Agent passt",
+  "agentPicker.clear": "Alle entfernen",
+  "agentPicker.remove": "{name} entfernen",
+  "agentPicker.summary": "Ausgewählt ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Neuer vordefinierter Auftrag",
@@ -1564,6 +1579,7 @@ export const de: Dictionary = {
   "file.openPreview": "Neben der Unterhaltung öffnen",
   "file.rendered": "Gerendert",
   "file.raw": "Roh",
+  "file.view": "Ansicht",
   "file.reveal": "Im Ordner zeigen",
   "file.loading": "Lese…",
   "file.missing": "Nicht gefunden: {path}",

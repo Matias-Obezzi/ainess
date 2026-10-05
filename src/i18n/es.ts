@@ -44,6 +44,9 @@ export const es: Dictionary = {
   "common.paste": "Pegar",
   "common.selectAll": "Seleccionar todo",
   "common.copyFailed": "No se pudo copiar",
+  "common.decrease": "Restar",
+  "common.increase": "Sumar",
+  "common.showSecret": "Mostrar el valor",
   "common.retry": "Reintentar",
   "error.panel.title": "Esta parte de la pantalla se rompió",
   "error.panel.body": "El resto de la app sigue andando. El detalle completo quedó en el registro: Configuración → Diagnóstico.",
@@ -272,6 +275,12 @@ export const es: Dictionary = {
   "activity.thinking": "Pensando…",
   "markdown.invalidDelegation": "Delegación con formato inválido",
   "markdown.revealFailed": "No se pudo mostrar el archivo en el explorador",
+  "codeBlock.wrap": "Ajustar las líneas",
+  "codeBlock.copy": "Copiar el código",
+  "codeBlock.region": "Código",
+  "codeBlock.regionLang": "Código {language}",
+  "codeBlock.showLess": "Ver menos",
+  "codeBlock.showAll": "Ver las {count} líneas",
 
   // ---- Right dock ----
   "dock.dragToResize": "Arrastrá para cambiar el ancho",
@@ -1446,6 +1455,12 @@ export const es: Dictionary = {
   "mcpDialog.headersPlaceholder": "Authorization: Bearer xxx",
   "mcpDialog.headersHint": "Podés escribir Bearer ${MI_VARIABLE}: el cliente expande la variable desde el entorno y el secreto no queda guardado en el archivo de configuración.",
   "mcpDialog.enabledForAll": "Habilitado para todos los agentes",
+  "agentPicker.placeholder": "Elegí los agentes",
+  "agentPicker.search": "Buscar un agente…",
+  "agentPicker.empty": "Ningún agente coincide",
+  "agentPicker.clear": "Quitar todos",
+  "agentPicker.remove": "Quitar a {name}",
+  "agentPicker.summary": "Elegidos ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Nueva orden predefinida",
@@ -1565,6 +1580,7 @@ export const es: Dictionary = {
   "file.openPreview": "Abrir al lado de la conversación",
   "file.rendered": "Renderizado",
   "file.raw": "Crudo",
+  "file.view": "Vista",
   "file.reveal": "Mostrar en la carpeta",
   "file.loading": "Leyendo…",
   "file.missing": "No se encontró: {path}",
