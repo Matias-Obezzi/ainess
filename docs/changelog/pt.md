@@ -2,6 +2,15 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.26.1 — 2026-10-05
+
+### Corrigido
+
+- **Abrir as Configurações podia deixar a janela inteira preta.** Sem nenhum plugin instalado, a
+  seção Plugins pedia a sua lista de um jeito que o React lê como uma lista que nunca para de mudar,
+  e se repetia até desistir — levando a janela junto. As Configurações lembram a última seção, então
+  quando ela era Plugins, toda visita às Configurações terminava igual.
+
 ## 0.26.0 — 2026-10-04
 
 ### Novo

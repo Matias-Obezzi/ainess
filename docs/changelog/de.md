@@ -2,6 +2,16 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.26.1 — 2026-10-05
+
+### Behoben
+
+- **Die Einstellungen zu öffnen konnte das ganze Fenster schwarz machen.** Ohne installiertes Plugin
+  fragte der Bereich Plugins seine Liste so ab, dass React sie für eine Liste hielt, die sich
+  ständig ändert, und lief im Kreis, bis es aufgab — und das Fenster mit sich riss. Die
+  Einstellungen merken sich den letzten Bereich: War das einmal Plugins, endete jedes Öffnen der
+  Einstellungen genauso.
+
 ## 0.26.0 — 2026-10-04
 
 ### Neu

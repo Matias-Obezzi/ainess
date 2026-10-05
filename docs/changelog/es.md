@@ -2,6 +2,15 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.26.1 — 2026-10-05
+
+### Arreglado
+
+- **Abrir Ajustes podía dejar toda la ventana en negro.** Sin ningún plugin instalado, la sección
+  Plugins pedía su lista de una forma que React lee como una lista que nunca deja de cambiar, y se
+  repetía hasta rendirse — llevándose la ventana con ella. Ajustes recuerda la última sección, así
+  que una vez que esa era Plugins, cada visita a Ajustes terminaba igual.
+
 ## 0.26.0 — 2026-10-04
 
 ### Nuevo
