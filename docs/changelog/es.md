@@ -2,6 +2,27 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.27.1 — 2026-10-05
+
+### Arreglado
+
+- **Los agentes de Antigravity y Copilot podían no arrancar nunca en Windows.** Sus instrucciones
+  iban como argumento de la línea de comandos y, con unas cuantas skills, el contexto compartido y
+  el equipo alrededor de la tarea, pasaban los 32 K caracteres que Windows permite (error 206): no
+  arrancaba ninguna tarea, por corta que fuera. Ahora el prompt entra por la entrada del programa,
+  que no tiene ese límite.
+- **Cada agente recibía decenas de miles de caracteres de descripciones de skills en cada corrida.**
+  Las skills importadas traen descripciones escritas para que un modelo elija entre ellas, algunas
+  de casi mil caracteres. Ahora la lista da de cada skill el nombre, la primera oración y dónde
+  encontrarla: con 59 skills, de 27.000 caracteres a menos de 6.000.
+- **Un planner no podía consultar una versión ni un paquete instalado.** Desde la terminal solo
+  tenía permitido git, así que `node --version` o `npm view` se rechazaban y planificaba a ciegas.
+  Ahora puede correr comandos que solo miran —versiones, paquetes instalados, `which`/`where` y los
+  issues, pull requests y corridas de `gh`—, mientras instalar, compilar y correr tests sigue siendo
+  de los implementadores.
+- **Un paso rechazado aparecía como `toolu_01…` fallido.** Un paso que ya estaba dibujado perdía su
+  nombre cuando llegaba la falla; ahora lo conserva.
+
 ## 0.27.0 — 2026-10-05
 
 ### Cambiado
