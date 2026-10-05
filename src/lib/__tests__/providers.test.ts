@@ -77,9 +77,23 @@ describe("antigravity provider", () => {
     expect(cmd.args[cmd.args.indexOf("--conversation") + 1]).toBe("conv-1");
     expect(cmd.args[cmd.args.indexOf("--model") + 1]).toBe("gemini-3.1-pro-high");
     expect(cmd.args).toContain("--dangerously-skip-permissions");
-    // The system prompt is prepended to the prompt argument (agy has no flag for it).
-    expect(cmd.args[1]).toContain("SYS");
-    expect(cmd.args[1]).toContain("hola");
+    // The prompt, system prompt first (agy has no flag for it), goes in through stdin as one
+    // stream-json message: as an argument it outgrew Windows' 32K command line.
+    expect(cmd.args.slice(0, 3)).toEqual(["-p=", "--input-format", "stream-json"]);
+    expect(cmd.args.join(" ")).not.toContain("hola");
+    const message = JSON.parse(cmd.stdinText!);
+    expect(message.event).toBe("user");
+    expect(message.message.content).toContain("SYS");
+    expect(message.message.content).toContain("hola");
+  });
+
+  it("keeps a prompt past the Windows command line out of the arguments, for agy and copilot", () => {
+    const huge = "x".repeat(40_000);
+    for (const id of ["antigravity", "copilot"] as const) {
+      const cmd = cliProvider(id).buildCommand({ agent: agent({}), prompt: huge, systemPrompt: "", cwd: "C:/ws", binaryPath: "bin" });
+      expect(cmd.args.join(" ").length).toBeLessThan(2_000);
+      expect(cmd.stdinText).toContain(huge);
+    }
   });
 
   it("parses stream-json events", () => {

@@ -307,6 +307,17 @@ describe("a tool call whose arguments arrive late", () => {
       tools,
     )).toEqual([]);
   });
+
+  test("a call refused after it was drawn keeps its name, not its id", () => {
+    const tools = toolCallTracker();
+    eventsFromSessionUpdate({ sessionUpdate: "tool_call", toolCallId: "toolu_01", title: "Bash", name: "Bash", rawInput: { command: "node -v" } }, tools);
+    expect(eventsFromSessionUpdate({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "toolu_01",
+      status: "failed",
+      content: [{ type: "content", content: { type: "text", text: "User refused permission to run tool" } }],
+    }, tools)).toEqual([{ type: "tool", name: "Bash", failed: true, error: "User refused permission to run tool" }]);
+  });
 });
 
 describe("runAcpPrompt", () => {

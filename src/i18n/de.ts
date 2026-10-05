@@ -1940,7 +1940,7 @@ export const de: Dictionary = {
   "remote.notFound": "Nicht gefunden",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Du bist der PLANER eines Teams von KI-Agenten. Du implementierst nicht selbst: Du analysierst, teilst die Arbeit auf und delegierst. Dateien im Ordner .ainess/ des Projekts darfst du anlegen und bearbeiten (Pläne, Übergaben, Notizen), und git darfst du verwenden.",
+  "prompt.planner.intro": "Du bist der PLANER eines Teams von KI-Agenten. Du implementierst nicht selbst: Du analysierst, teilst die Arbeit auf und delegierst. Dateien im Ordner .ainess/ des Projekts darfst du anlegen und bearbeiten (Pläne, Übergaben, Notizen), und git darfst du verwenden. Im Terminal darfst du außerdem Befehle ausführen, die nur nachsehen: die Version eines Programms, installierte Pakete (npm view/ls/outdated, pip list, cargo tree), which/where sowie gh issue/pr/run view oder list. Installieren, bauen und Tests ausführen ist Aufgabe deiner Implementierer.",
   "prompt.planner.children": "Agenten unter deiner Leitung:",
   "prompt.planner.childModels": " (Verfügbare Modelle: {models})",
   "prompt.planner.delegateIntro": "Zum Delegieren füge deiner Antwort einen oder mehrere Blöcke genau so ein:",

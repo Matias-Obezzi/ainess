@@ -35,12 +35,15 @@ function hasArguments(input: unknown): boolean {
 export interface ToolCallTracker {
   /** Calls seen but not yet drawn, by id, with the best name they have offered so far. */
   pending: Map<string, string>;
-  /** Calls already on the timeline. */
-  drawn: Set<string>;
+  /**
+   * Calls already on the timeline, with the name they were drawn under: a failure arrives later
+   * carrying only the id, and a refused `Bash` showed up as `toolu_01…` failed.
+   */
+  drawn: Map<string, string>;
 }
 
 export function toolCallTracker(): ToolCallTracker {
-  return { pending: new Map(), drawn: new Set() };
+  return { pending: new Map(), drawn: new Map() };
 }
 
 function detailOf(input: unknown): string | undefined {
@@ -83,7 +86,7 @@ export function eventsFromSessionUpdate(update: SessionUpdate, tracker?: ToolCal
       const name = update.name || update.title || "tool";
       if (!tracker) return [{ type: "tool", name, detail: detailOf(update.rawInput), input: update.rawInput }];
       if (hasArguments(update.rawInput)) {
-        tracker.drawn.add(update.toolCallId);
+        tracker.drawn.set(update.toolCallId, name);
         return [{ type: "tool", name, detail: detailOf(update.rawInput), input: update.rawInput }];
       }
       tracker.pending.set(update.toolCallId, name);
@@ -93,14 +96,14 @@ export function eventsFromSessionUpdate(update: SessionUpdate, tracker?: ToolCal
     case "tool_call_update": {
       const failed = update.status === "failed";
       // The name gets better as the call goes on: a title arrives, then the tool's own name.
-      const known = tracker?.pending.get(update.toolCallId);
+      const known = tracker?.pending.get(update.toolCallId) ?? tracker?.drawn.get(update.toolCallId);
       const name = update.name || update.title || known || update.toolCallId;
 
       // A failure is worth a row whether or not the call ever got one: it is the outcome, not the
       // call. Whatever was waiting stops waiting here.
       if (failed) {
         tracker?.pending.delete(update.toolCallId);
-        tracker?.drawn.add(update.toolCallId);
+        tracker?.drawn.set(update.toolCallId, name);
         return [{ type: "tool", name, failed: true, error: textOfToolContent(update.content) }];
       }
 
@@ -113,7 +116,7 @@ export function eventsFromSessionUpdate(update: SessionUpdate, tracker?: ToolCal
       const done = update.status === "completed";
       if (!hasArguments(update.rawInput) && !done) return [];
       tracker.pending.delete(update.toolCallId);
-      tracker.drawn.add(update.toolCallId);
+      tracker.drawn.set(update.toolCallId, name);
       return [{ type: "tool", name, detail: detailOf(update.rawInput), input: update.rawInput }];
     }
 

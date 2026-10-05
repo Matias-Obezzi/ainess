@@ -1942,7 +1942,7 @@ export const es: Dictionary = {
   "remote.notFound": "No encontrado",
 
   // ---- System prompt handed to every agent (see src/lib/providers.ts) ----
-  "prompt.planner.intro": "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .ainess/ del proyecto (planes, handoffs, notas) y usar git.",
+  "prompt.planner.intro": "Sos el PLANIFICADOR de un equipo de agentes de IA. No implementás vos: analizás, dividís el trabajo y delegás. Sí podés crear y editar archivos dentro de la carpeta .ainess/ del proyecto (planes, handoffs, notas) y usar git. Desde la terminal también podés correr comandos que solo miran: la versión de un programa, los paquetes instalados (npm view/ls/outdated, pip list, cargo tree), which/where, y gh issue/pr/run view o list. Instalar, compilar y correr tests es trabajo de tus implementadores.",
   "prompt.planner.children": "Agentes disponibles bajo tu mando:",
   "prompt.planner.childModels": " (Modelos disponibles: {models})",
   "prompt.planner.delegateIntro": "Para delegar incluí en tu respuesta uno o más bloques exactamente así:",

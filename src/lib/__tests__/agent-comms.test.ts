@@ -170,9 +170,20 @@ describe("plannerMayUse", () => {
     expect(plannerMayUse({ kind: "execute", rawInput: { command: "git log --oneline | head -5" } })).toBe(true);
   });
 
+  it("lets it look at versions, packages, issues and PRs", () => {
+    for (const command of [
+      "node --version", "node -v", "go version", "npm view three version", "npm ls --depth=0",
+      "pnpm outdated", "pip list", "cargo tree | grep tauri", "gh pr view 46", "gh issue list --limit 5",
+      "where agy.exe", "npm -v 2>&1", "node -v && npm -v",
+    ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(true);
+  });
+
   it("does not let it read the repo through the shell, or do anything else there", () => {
-    expect(plannerMayUse({ kind: "execute", rawInput: { command: "cat src/lib/orchestrator.ts" } })).toBe(false);
-    expect(plannerMayUse({ kind: "execute", rawInput: { command: "git status && npm test" } })).toBe(false);
+    for (const command of [
+      "cat src/lib/orchestrator.ts", "git status && npm test", "npm install three", "npm run build",
+      "npm ls | sh", "node -e \"require('fs').rmSync('x')\"", "npm ls > deps.txt", "gh pr merge 46",
+      "gh pr view 46; rm -rf src", "cargo build",
+    ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(false);
     expect(plannerMayUse({ kind: "execute", rawInput: {} })).toBe(false);
   });
 
