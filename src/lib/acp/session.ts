@@ -9,7 +9,19 @@ import { AUTH_STATUS_METHOD, AcpAuthRequiredError, isAuthRequired, parseAuthStat
 import { rememberClaudeAuthStatus } from "@/lib/claude-auth";
 import { log } from "@/lib/logger";
 import type { ParsedEvent } from "@/types";
-import type { ClientContext, McpServer, PermissionOption, SessionUpdate, StopReason } from "@agentclientprotocol/sdk";
+import type {
+  ClientContext,
+  ContentBlock,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
+  McpServer,
+  PermissionOption,
+  RequestPermissionRequest,
+  RequestPermissionResponse,
+  SessionModeState,
+  SessionUpdate,
+  StopReason,
+} from "@agentclientprotocol/sdk";
 
 /**
  * Everything about the session that is not the prompt: what the agent is allowed to do, what it is
@@ -28,6 +40,12 @@ export interface AcpSessionSpec {
    * them, which is what the CLI path does with the same agent.
    */
   permit?: (call: { kind?: string | null; rawInput?: unknown }) => boolean;
+  /**
+   * The mode the session should be in (`session/set_mode`), when the agent offers it: the agent's
+   * own default otherwise — for Claude, whatever its settings file says, which is not what the
+   * user set on the agent in this app.
+   */
+  mode?: string;
 }
 
 export interface AcpPromptOptions {
@@ -53,6 +71,18 @@ export interface AcpPromptOptions {
   signal?: AbortSignal;
   /** Version reported to the agent as `clientInfo`. Omitted when the caller does not know it. */
   clientVersion?: string;
+  /**
+   * Who decides a tool call the agent asks about, once `permit` has let it through. Absent: it is
+   * granted. The turn waits on the answer.
+   */
+  askPermission?: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse["outcome"]>;
+  /**
+   * Who answers the agent's questions (`elicitation/create`, form mode). Present, the client says
+   * it can, and Claude gets its AskUserQuestion tool back; absent, the agent is told nobody will.
+   */
+  elicit?: (request: CreateElicitationRequest) => Promise<CreateElicitationResponse>;
+  /** Pictures sent with the prompt, when the agent takes images. Base64, without a data: prefix. */
+  images?: { data: string; mimeType: string }[];
 }
 
 export interface AcpPromptResult {
@@ -64,15 +94,7 @@ export interface AcpPromptResult {
   resumed: boolean;
 }
 
-/**
- * Granting every permission, on purpose and for now.
- *
- * It is what the CLI path already does today (`--permission-mode acceptEdits`, and
- * `--dangerously-skip-permissions` for an agent with `autoApprove`), so ACP is not a way around a
- * decision the user already makes elsewhere. Wiring this to the app's approval panel is the next
- * batch of this issue, and mixing the two would put the protocol client and a piece of UI in the
- * same diff.
- */
+/** What a tool call gets when nobody was named to decide it: the widest grant the agent offers. */
 function grantOption(options: PermissionOption[]): PermissionOption | undefined {
   return options.find((o) => o.kind === "allow_always") ?? options.find((o) => o.kind === "allow_once") ?? options[0];
 }
@@ -130,6 +152,7 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
   let replaying = false;
   // Set only on the resume path, where there is no `ActiveSession` routing updates for us.
   let loadedSessionId: string | null = null;
+  let loadedModes: SessionModeState | null | undefined;
 
   /**
    * Set when the adapter has told us, during this very connection, that nobody is logged in.
@@ -156,6 +179,9 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
         log.debug("acp", `run ${runId}: refusing ${params.toolCall.title ?? params.toolCall.toolCallId}`);
         return { outcome: reject ? { outcome: "selected", optionId: reject.optionId } : { outcome: "cancelled" } };
       }
+      if (options.askPermission) {
+        return options.askPermission(params).then(outcome => ({ outcome }));
+      }
       const option = grantOption(params.options);
       log.debug("acp", `run ${runId}: granting ${params.toolCall.title ?? params.toolCall.toolCallId} as ${option?.optionId ?? "(no option offered)"}`);
       if (!option) return { outcome: { outcome: "cancelled" } };
@@ -164,6 +190,14 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
     .onNotification("session/update", ({ params }) => {
       if (loadedSessionId === null || params.sessionId !== loadedSessionId || replaying) return;
       consume(params.update);
+    })
+    // Last on purpose: with SDK 1.5, a handler chained after this one was never called — the
+    // session/update one above went silent and resumed sessions came back empty.
+    .onRequest("elicitation/create", ({ params }) => {
+      // Only forms are drawn: a URL elicitation would send the user to a page this app cannot see
+      // back from. One the client never advertised is declined rather than left hanging.
+      if (!options.elicit || params.mode !== "form") return { action: "decline" } as CreateElicitationResponse;
+      return options.elicit(params);
     });
 
   try {
@@ -174,7 +208,12 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
         // file system and its own terminals so that what the agent touches is what the user sees on
         // screen. This app is not an editor: it wants the event stream, and the agent already has a
         // file system and a shell of its own and uses them when the client offers none.
-        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        clientCapabilities: {
+          fs: { readTextFile: false, writeTextFile: false },
+          terminal: false,
+          // Forms only, and only when someone is there to fill them in.
+          ...(options.elicit ? { elicitation: { form: {} } } : {}),
+        },
         ...(options.clientVersion ? { clientInfo: { name: "ainess", version: options.clientVersion } } : {}),
       });
 
@@ -182,8 +221,9 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
         if (init.agentCapabilities?.loadSession) {
           try {
             replaying = true;
-            await ctx.request("session/load", { sessionId: resumeSessionId, cwd, mcpServers, ...(meta ? { _meta: meta } : {}) });
+            const loaded = await ctx.request("session/load", { sessionId: resumeSessionId, cwd, mcpServers, ...(meta ? { _meta: meta } : {}) });
             loadedSessionId = resumeSessionId;
+            loadedModes = loaded?.modes;
           } catch (e) {
             // A session that is gone (expired, from another machine, from an agent that was
             // reinstalled) must not brick the agent: the turn goes on from zero, which is what the
@@ -197,10 +237,19 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
         }
       }
 
+      // Text first, then the pictures, when the agent says it reads them.
+      const content: ContentBlock[] = [{ type: "text", text: prompt }];
+      if (init.agentCapabilities?.promptCapabilities?.image) {
+        for (const image of options.images ?? []) content.push({ type: "image", data: image.data, mimeType: image.mimeType });
+      } else if (options.images?.length) {
+        log.info("acp", `run ${runId}: the agent takes no images; ${options.images.length} attached left as paths in the prompt`);
+      }
+
       if (loadedSessionId !== null) {
         const sessionId = loadedSessionId;
         onEvent({ type: "session", sessionId });
-        const stopReason = await promptTurn(ctx, sessionId, prompt, signal);
+        await setMode(ctx, sessionId, loadedModes, options.session?.mode, runId);
+        const stopReason = await promptTurn(ctx, sessionId, content, signal);
         onEvent({ type: "result", text: answer, sessionId });
         return { sessionId, stopReason, text: answer, resumed: true };
       }
@@ -208,6 +257,7 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
       const request = { cwd, mcpServers, ...(meta ? { _meta: meta } : {}) };
       return await ctx.buildSession(request).withSession(async (session) => {
         onEvent({ type: "session", sessionId: session.sessionId });
+        await setMode(ctx, session.sessionId, session.modes, options.session?.mode, runId);
 
         const onAbort = () => { void ctx.notify("session/cancel", { sessionId: session.sessionId }); };
         if (signal?.aborted) onAbort();
@@ -216,7 +266,7 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
         // The turn's answer arrives through `nextUpdate()` below, and so does its failure: a
         // rejected `session/prompt` is re-thrown by the queue. This handle exists only so that a
         // rejection here is never an unhandled one.
-        const turn = session.prompt(prompt);
+        const turn = session.prompt(content);
         turn.catch(() => {});
 
         try {
@@ -259,16 +309,40 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
 async function promptTurn(
   ctx: ClientContext,
   sessionId: string,
-  prompt: string,
+  prompt: ContentBlock[],
   signal: AbortSignal | undefined,
 ): Promise<StopReason> {
   const onAbort = () => { void ctx.notify("session/cancel", { sessionId }); };
   if (signal?.aborted) onAbort();
   else signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    const response = await ctx.request("session/prompt", { sessionId, prompt: [{ type: "text", text: prompt }] });
+    const response = await ctx.request("session/prompt", { sessionId, prompt });
     return response.stopReason;
   } finally {
     signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+/**
+ * Puts the session in `wanted`, when the agent has that mode and is not already in it. A mode the
+ * agent does not offer is left alone with a line in the log: the agent then decides on its own
+ * defaults, which is what happened before this was asked at all.
+ */
+async function setMode(
+  ctx: ClientContext,
+  sessionId: string,
+  modes: SessionModeState | null | undefined,
+  wanted: string | undefined,
+  runId: string,
+): Promise<void> {
+  if (!wanted || !modes || modes.currentModeId === wanted) return;
+  if (!modes.availableModes.some(m => m.id === wanted)) {
+    log.info("acp", `run ${runId}: the agent has no "${wanted}" mode (it offers ${modes.availableModes.map(m => m.id).join(", ")})`);
+    return;
+  }
+  try {
+    await ctx.request("session/set_mode", { sessionId, modeId: wanted });
+  } catch (e) {
+    log.warn("acp", `run ${runId}: could not switch to mode "${wanted}" (${e instanceof Error ? e.message : String(e)})`);
   }
 }

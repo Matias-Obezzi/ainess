@@ -1,3 +1,7 @@
+import { splitAttachments } from "@/lib/attachments";
+import { setAgentCommands } from "@/lib/agent-commands";
+import { formFields } from "@/lib/acp/form";
+import { askLive, cancelLiveRequests, onLiveRequestAdded } from "@/lib/live-requests";
 import { hasBoard } from "@/lib/board/registry";
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
@@ -17,7 +21,7 @@ import { withConnectorTokens } from "@/lib/connectors";
 import { readTreeState } from "@/lib/run-revert";
 import { parseReviewVerdict, pickReviewer } from "@/lib/review";
 import { Run, RunUsage, AgentConfig, AgentQuestion, AgentStatus, CommMessage, Delegation, ParsedEvent, Project, RunStatus, RunOutputEvent, RunExitEvent } from "@/types";
-import type { AcpSessionSpec } from "@/lib/acp/session";
+import type { AcpPromptOptions, AcpSessionSpec } from "@/lib/acp/session";
 import { delegationNeedsApproval } from "@/lib/approvals";
 import { StreamBuffer } from "@/lib/stream-buffer";
 import { appendRawLines, forgetRawLines, rawLinesOf } from "@/lib/raw-lines";
@@ -144,6 +148,10 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
  * the sidebar, the thread — rendered again for each. They wait for the flush with the text.
  */
 const pendingUsage = new Map<string, RunUsage>();
+/** Thinking that arrived since the last flush, by run. */
+const pendingThinking = new Map<string, string>();
+/** The tail of a run's thinking that is kept: enough to read what it is weighing, not a transcript. */
+const THINKING_KEEP = 6_000;
 let pendingMessages: CommMessage[] = [];
 
 /** `addMessage`, applied with the next flush instead of now. */
@@ -158,12 +166,14 @@ export function flushStream() {
   }
   const usage = new Map(pendingUsage);
   pendingUsage.clear();
+  const thinking = new Map(pendingThinking);
+  pendingThinking.clear();
   const queued = pendingMessages;
   pendingMessages = [];
-  if (streamBuffer.isEmpty() && usage.size === 0 && queued.length === 0) return;
+  if (streamBuffer.isEmpty() && usage.size === 0 && thinking.size === 0 && queued.length === 0) return;
 
   const deltas = streamBuffer.isEmpty() ? new Map<string, { text: string; lines: string[] }>() : streamBuffer.take();
-  if (deltas.size === 0 && usage.size === 0 && queued.length === 0) return;
+  if (deltas.size === 0 && usage.size === 0 && thinking.size === 0 && queued.length === 0) return;
 
   // The lines go to a module of their own, not into the store. They used to be appended to
   // `runs[id].rawLines` here, which gave `runs` a new identity twelve times a second and re-rendered
@@ -180,6 +190,11 @@ export function flushStream() {
       const merged = mergeUsage(r.usage, incoming);
       if (!merged || JSON.stringify(merged) === JSON.stringify(r.usage)) continue;
       nextRuns = { ...nextRuns, [runId]: { ...r, usage: merged } };
+    }
+    for (const [runId, more] of thinking) {
+      const r = nextRuns[runId];
+      if (!r) continue;
+      nextRuns = { ...nextRuns, [runId]: { ...r, thinking: ((r.thinking ?? "") + more).slice(-THINKING_KEEP) } };
     }
     const runsUpdate = nextRuns !== runs ? { runs: nextRuns } : {};
 
@@ -1086,6 +1101,15 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
     } else if (ev.type === "usage") {
       const merged = mergeUsage(pendingUsage.get(runId), ev.usage);
       if (merged) pendingUsage.set(runId, merged);
+    } else if (ev.type === "thinking") {
+      pendingThinking.set(runId, (pendingThinking.get(runId) ?? "") + ev.text);
+    } else if (ev.type === "plan") {
+      useAppStore.setState(state => {
+        const r = state.runs[runId];
+        return r ? { runs: { ...state.runs, [runId]: { ...r, plan: ev.entries } } } : state;
+      });
+    } else if (ev.type === "commands") {
+      setAgentCommands(run.agentId, ev.commands);
     } else if (ev.type === "result") {
       // What was queued is older than the result: applied first, so it cannot land over it.
       flushStream();
@@ -1116,6 +1140,111 @@ function applyRunEvents(runId: string, events: ParsedEvent[]): void {
   }
 
   scheduleStreamFlush();
+}
+
+// Someone is waiting on the user mid-turn: the bell and the OS say so, as they do for a question.
+onLiveRequestAdded(request => {
+  const state = useAppStore.getState();
+  const name = selectAgent(state, request.agentId)?.name ?? translateNow("notify.anAgent");
+  state.notify({
+    kind: request.kind === "permission" ? "approval" : "question",
+    title: translateNow(request.kind === "permission" ? "notify.livePermission" : "notify.liveQuestion", { name }),
+    projectId: request.projectId,
+    agentId: request.agentId,
+    runId: request.runId,
+    chatId: state.runs[request.runId]?.chatId,
+  });
+});
+
+/** Biggest picture sent to an agent as an image; a bigger one stays a path in the prompt. */
+const MAX_PROMPT_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+};
+
+/**
+ * The pictures attached to a prompt, read so they can travel as images. They also stay in the
+ * prompt as paths, which is how an agent that takes no images still finds them.
+ */
+async function attachedImages(runId: string, prompt: string): Promise<{ data: string; mimeType: string }[]> {
+  const state = useAppStore.getState();
+  const run = state.runs[runId];
+  const workspaceDir = run ? state.config.projects.find(p => p.id === run.projectId)?.workspaceDir : undefined;
+  if (!workspaceDir) return [];
+  const images: { data: string; mimeType: string }[] = [];
+  for (const path of splitAttachments(prompt).paths) {
+    const mimeType = IMAGE_TYPES[path.split(".").pop()?.toLowerCase() ?? ""];
+    if (!mimeType) continue;
+    const data = await getTransport().readFileBytes(filePath(workspaceDir, path), MAX_PROMPT_IMAGE_BYTES).catch(() => null);
+    if (data) images.push({ data, mimeType });
+  }
+  return images;
+}
+
+/** What a tool call amounts to, in one line: the command it runs or the file it touches. */
+function permissionDetail(input: unknown): string | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const o = input as Record<string, unknown>;
+  const first = [o.command, o.file_path, o.path, o.url, o.pattern].find(v => typeof v === "string");
+  if (typeof first === "string") return first;
+  try {
+    const text = JSON.stringify(input);
+    return text === "{}" ? undefined : text.slice(0, 300);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Who answers what the agent asks in the middle of a turn.
+ *
+ * Questions always go to the user. Tool calls go to the user only for an agent that is not on
+ * auto approval and is not a planner: auto approval means yes to everything, and a planner's calls
+ * are already decided by `plannerMayUse` — what reaches here has passed it, and is only looking.
+ *
+ * A project in autonomous mode stops waiting for anyone, decided when the request arrives (the
+ * mode can be turned on or off mid-turn): a tool call is allowed once, and a question is declined,
+ * so the agent goes on with its own judgement instead of waiting for someone who is not there.
+ */
+function unattended(projectId: string): boolean {
+  return isAutonomous(useAppStore.getState().config.projects.find(p => p.id === projectId));
+}
+
+function acpAsksUser(runId: string): Partial<Pick<AcpPromptOptions, "askPermission" | "elicit">> {
+  const state = useAppStore.getState();
+  const run = state.runs[runId];
+  if (!run) return {};
+  const agent = selectAgent(state, run.agentId);
+  const base = { runId, projectId: run.projectId, agentId: run.agentId };
+
+  const askPermission: AcpPromptOptions["askPermission"] = agent?.autoApprove || agent?.role === "planner"
+    ? undefined
+    : async (request) => {
+        if (unattended(run.projectId)) {
+          const allow = request.options.find(o => o.kind === "allow_once") ?? request.options.find(o => o.kind === "allow_always");
+          return allow ? { outcome: "selected", optionId: allow.optionId } : { outcome: "cancelled" };
+        }
+        const answer = await askLive({
+          ...base,
+          kind: "permission",
+          title: request.toolCall.title ?? request.toolCall.toolCallId,
+          detail: permissionDetail(request.toolCall.rawInput),
+          options: request.options.map(o => ({ id: o.optionId, name: o.name, kind: o.kind })),
+        });
+        return answer.kind === "permission" ? { outcome: "selected", optionId: answer.optionId } : { outcome: "cancelled" };
+      };
+
+  const elicit: AcpPromptOptions["elicit"] = async (request) => {
+    if (unattended(run.projectId)) return { action: "decline" };
+    const fields = "requestedSchema" in request ? formFields(request.requestedSchema as never) : [];
+    const answer = await askLive({ ...base, kind: "form", message: request.message, fields });
+    if (answer.kind === "form" && answer.action === "accept") return { action: "accept", content: answer.content };
+    if (answer.kind === "form") return { action: "decline" };
+    return { action: "cancel" };
+  };
+
+  return { ...(askPermission ? { askPermission } : {}), elicit };
 }
 
 /**
@@ -1159,6 +1288,8 @@ async function driveAcpRun(opts: {
       session: opts.session,
       resumeSessionId: opts.sessionId,
       clientVersion: __APP_VERSION__,
+      images: await attachedImages(runId, opts.prompt),
+      ...acpAsksUser(runId),
       onEvent: (event) => {
         // A run that is already over is a run the user stopped: its last event is the session
         // client noticing the process died, and that is not news worth a red box in the timeline.
@@ -1174,6 +1305,8 @@ async function driveAcpRun(opts: {
       failure = missingLogin ? translateNow("run.claudeNotLoggedIn") : errorText(e);
     }
   } finally {
+    // Whatever it still had waiting on the user goes with it: nobody answers a turn that is over.
+    cancelLiveRequests(runId);
     // A run that is already closed — the user stopped it, the spawn never got off the ground — has
     // had its exit and will get no other: leaving a verdict for it would only sit in the map.
     if (useAppStore.getState().runs[runId]?.status === "running") acpTurnEnded.set(runId, { failure });
@@ -2721,7 +2854,7 @@ export function processQueuedInstructions(agentId: string, projectId: string) {
 import { interruptedPrompt, joinQueued } from "@/lib/queued-prompt";
 import { httpMcpEnv } from "@/lib/mcp-env";
 import { recordTurn, hasHistoryFile, HISTORY_DIR, historyFileName } from "@/lib/agent-history";
-import { writeSkillFiles, FOLDER } from "@/lib/project-folder";
+import { filePath, writeSkillFiles, FOLDER } from "@/lib/project-folder";
 
 export async function submitPrompt(text: string, targetAgentId: string, projectId: string, opts?: { model?: string }): Promise<void> {
   addMessage({ projectId, fromAgentId: "user", toAgentId: targetAgentId, kind: "user", text });

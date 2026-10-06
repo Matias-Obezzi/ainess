@@ -725,6 +725,10 @@ export interface Run {
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
+  /** The agent's plan for this turn, as it last reported it (ACP agents). */
+  plan?: RunPlanEntry[];
+  /** What the agent thought before answering, the latest part of it (ACP agents). */
+  thinking?: string;
   /** Set when this run is a review of another agent's finished run. */
   review?: { ofRunId: string; taskId: string };
   /**
@@ -980,7 +984,28 @@ export type ParsedEvent =
    * subtasks run. An error the app can name comes out of the structured stream as `error`.
    */
   | { type: "stderr"; text: string }
-  | { type: "raw"; text: string };
+  | { type: "raw"; text: string }
+  /** The agent thinking out loud before it answers (ACP `agent_thought_chunk`), a delta. */
+  | { type: "thinking"; text: string }
+  /** The agent's plan for this turn, whole every time it changes (ACP `plan`). */
+  | { type: "plan"; entries: RunPlanEntry[] }
+  /** The slash commands the agent offers in this session (ACP `available_commands_update`). */
+  | { type: "commands"; commands: AgentCommand[] };
+
+/** One step of the plan an agent keeps while it works. */
+export interface RunPlanEntry {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  priority?: "high" | "medium" | "low";
+}
+
+/** A slash command an agent offers, typed as `/name` followed by `hint`. */
+export interface AgentCommand {
+  name: string;
+  description: string;
+  /** What goes after the command, when it takes anything. */
+  hint?: string;
+}
 
 // ---- Integrated terminals (see src-tauri/src/pty.rs) ----
 

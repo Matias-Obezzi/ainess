@@ -1,6 +1,7 @@
 // Rings the bell once for a run that has printed nothing for a long while. The ticker under the
 // run says it sooner and quieter (see `ActivityTicker`); this is for the run you are not looking
 // at. See `lib/stall` for what "quiet" means and why it is measured outside the store.
+import { hasLiveRequest } from "@/lib/live-requests";
 import { useEffect } from "react";
 import { useAppStore, selectAgent } from "@/store";
 import { DEFAULT_STALL_STOP_MINUTES, lastOutputAt, silenceMs, stalledRuns } from "@/lib/stall";
@@ -14,7 +15,8 @@ export function useStallWatch() {
   useEffect(() => {
     const check = () => {
       const state = useAppStore.getState();
-      const running = Object.values(state.runs).filter(r => r.status === "running");
+      // A run waiting on the user has not gone quiet: it is waiting on them, and says so.
+      const running = Object.values(state.runs).filter(r => r.status === "running" && !hasLiveRequest(r.id));
       for (const run of stalledRuns(running, Date.now())) {
         const name = selectAgent(state, run.agentId)?.name ?? translateNow("notify.anAgent");
         const minutes = Math.floor((Date.now() - run.startedAt) / 60_000);

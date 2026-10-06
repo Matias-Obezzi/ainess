@@ -216,11 +216,11 @@ describe("eventsFromSessionUpdate", () => {
     expect(eventsFromSessionUpdate({ sessionUpdate: "usage_update", used: 10, size: 100 }))
       .toEqual([{ type: "usage", usage: { contextTokens: 10 } }]);
 
-    // Its own prompt coming back, the thinking, the plan and the info notices are not the answer.
+    // Its own prompt coming back and the info notices are not the answer. The thinking and the plan
+    // are events of their own, apart from the answer (see acp-interactions.test.ts).
     expect(eventsFromSessionUpdate({ sessionUpdate: "user_message_chunk", content: { type: "text", text: "hi" } })).toEqual([]);
-    expect(eventsFromSessionUpdate({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "hmm" } })).toEqual([]);
+    expect(eventsFromSessionUpdate({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "hmm" } })).toEqual([{ type: "thinking", text: "hmm" }]);
     expect(eventsFromSessionUpdate({ sessionUpdate: "notice", severity: "info", title: "hello" })).toEqual([]);
-    expect(eventsFromSessionUpdate({ sessionUpdate: "plan", entries: [] })).toEqual([]);
   });
 
   test("a tool call is logged once, when it starts, plus its failure", () => {
@@ -330,6 +330,7 @@ describe("runAcpPrompt", () => {
     expect(result).toEqual({ sessionId: "sess-1", stopReason: "end_turn", text: "Hola \n\nmundo", resumed: false });
     expect(events).toEqual([
       { type: "session", sessionId: "sess-1" },
+      { type: "thinking", text: "thinking" },
       { type: "text", text: "Hola " },
       { type: "tool", name: "Read", detail: '{"path":"a.txt"}', input: { path: "a.txt" } },
       { type: "tool", name: "Read", failed: true, error: "no such file" },

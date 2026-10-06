@@ -6,6 +6,29 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Added
+
+- **A Claude agent asks you before a tool call, while it waits.** An agent without auto approval
+  stops on a command or an edit it needs permission for, and the card under its activity shows what
+  it wants to run with Allow, Always allow and Reject; the bell and the system notify you. Auto
+  approval still says yes to everything, a planner's own rules still decide its calls, and in
+  autonomous mode nothing waits. A run waiting on you is not counted as gone quiet.
+- **Claude can ask you questions in the middle of its work**, as a form with the options to pick
+  from and room for your own answer, instead of only at the end of its turn.
+- **The plan a Claude agent keeps shows under its activity**, ticked as it goes, and what it
+  thought before answering is one click away when you open the activity.
+- **The commands a Claude agent offers — its skills and built-ins — are in the `/` menu** of the
+  box when you write to it.
+- **Pictures attached to a message reach Claude as images**, not only as paths to the files.
+
+### Fixed
+
+- **A Claude agent ignored the permission mode set on it in the app**, and took whatever its own
+  settings file said. The mode is now set on the session: auto approval, accept edits, or — for a
+  planner — asking, which is the only way its own rules get applied.
+
 ## 0.29.0 — 2026-10-06
 
 ### Changed
