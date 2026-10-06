@@ -417,7 +417,9 @@ export function Sidebar() {
                 key={`${item.projectId}-${item.agentId}`}
                 type="button"
                 className="flex items-start gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-accent cursor-pointer group"
-                onClick={() => openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : "tasks")}
+                // Where the agent is working: its chat, or else the orchestrator's conversation, where
+                // its run is drawn as it goes. The board only had its card, if it had one at all.
+                onClick={() => openProject(item.projectId, item.chatId ?? null, "chat")}
               >
                 <AgentAvatar
                   provider={item.provider}

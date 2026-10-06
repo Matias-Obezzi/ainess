@@ -18,6 +18,8 @@ let one of them fall behind.
   needs no `claude` program installed, which the orchestrator knew, but the agent card, its panel
   and the diagnostics still looked for one and warned when they did not find it. They no longer do;
   the warning stays for the providers that do need their CLI.
+- **Clicking a working agent in the sidebar opened the project's board.** It now opens where the
+  agent is working: its chat, or the orchestrator's conversation, where its run is drawn as it goes.
 
 ## 0.27.1 — 2026-10-05
 
