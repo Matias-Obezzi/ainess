@@ -6,7 +6,7 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
-## Unreleased
+## 0.29.0 — 2026-10-06
 
 ### Changed
 

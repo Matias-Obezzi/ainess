@@ -2,6 +2,39 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.29.0 — 2026-10-06
+
+### Modifié
+
+- **Les boutons et champs qui composent l'interface parlent la langue de l'app.** Les boutons de
+  fermeture, « Copié », les boutons plus et moins d'un champ numérique, l'œil d'un champ de jeton,
+  ce qu'un lecteur d'écran entend pour un indicateur de chargement ou une liste choisie, les touches
+  des raccourcis : tout cela était dit en anglais quelle que soit la langue, et suit maintenant
+  l'app dans les sept langues, en changeant avec elle.
+- **Un agent au travail émet des ondes au lieu de clignoter**, sur sa carte, dans son panneau et
+  dans la barre latérale, et les compteurs d'agents au travail, d'approbations en attente et de
+  notifications non lues roulent jusqu'à leur nouvelle valeur au lieu de sauter.
+- **L'utilisation sur l'écran d'accueil compte vers le haut, et ses barres sur deux semaines disent
+  ce qu'a été chaque jour** quand on les survole. Le budget dans Utilisation affiche « x sur y » et
+  passe à l'ambre puis au rouge comme avant.
+- **Les arguments d'un outil, dans le détail d'un message, sont un arbre** que l'on peut ouvrir,
+  fouiller et copier, au lieu d'un bloc de JSON.
+- **Le mode d'un chat, ce sont deux boutons côte à côte** au lieu d'un menu, et la recherche de
+  tâches s'efface d'un clic.
+- **Les cartes du tableau se déplacent aussi au clavier.** Espace prend une carte, les flèches la
+  déplacent dans sa colonne et vers la suivante, Espace la pose et Échap la remet en place ; à la
+  souris, la carte suit le pointeur et la colonne en dessous s'éclaire. Entrée ouvre toujours la
+  tâche.
+- **La cloche est un centre de notifications** : toutes ou seulement les non lues, groupées par
+  jour, chacune marquée comme lue quand on l'ouvre, ou toutes d'un coup. Ouvrir le panneau ne marque
+  plus tout comme lu de lui-même.
+- **Supprimer un projet ou un chat demande de maintenir le bouton enfoncé**, pour qu'un clic égaré
+  ou un Entrée par habitude ne le fasse pas.
+- **Le diff a un index de ce qui a changé**, par dossier, avec les lignes ajoutées et supprimées de
+  chaque fichier ; en choisir un ouvre ses changements et y fait défiler.
+- **La ligne qui dit ce que fait un agent se transforme en l'étape suivante** au lieu de la faire
+  glisser.
+
 ## 0.28.0 — 2026-10-05
 
 ### Nouveau
