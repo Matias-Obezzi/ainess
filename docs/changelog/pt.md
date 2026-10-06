@@ -2,6 +2,30 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.28.0 — 2026-10-05
+
+### Novo
+
+- **Um projeto pode não ter quadro.** «Sem quadro», nas configurações do projeto, não registra
+  nenhuma tarefa em lugar nenhum: nenhum cartão é criado por uma mensagem, uma delegação ou uma nota
+  de um agente, nada é gravado em disco nem num quadro remoto, não há `BOARD.md` e os agentes não
+  ouvem falar de nenhum. O projeto abre na sua conversa, e somem a visão de Tarefas, «criar tarefa»
+  e a parte do prompt sobre o quadro.
+
+### Corrigido
+
+- **A sugestão em linha do PowerShell podia cair na linha de baixo, levando junto o que você
+  digitava.** Enquanto o shell iniciava, o terminal continuava se ajustando ao painel e esses
+  tamanhos se perdiam: o shell ficava com a largura com que iniciou, mais estreita que a da tela, e
+  quebrava linhas que cabiam. Agora o shell recebe o tamanho da tela assim que existe.
+- **Agentes do Claude diziam «CLI not found» enquanto trabalhavam.** O Claude roda pelo seu
+  adaptador ACP e não precisa do programa `claude` instalado, o que o orquestrador já sabia, mas o
+  cartão do agente, o painel e o diagnóstico continuavam procurando por ele e avisavam ao não
+  encontrar. Não mais; o aviso fica para os provedores que precisam do seu CLI.
+- **Clicar num agente trabalhando, na barra lateral, abria o quadro do projeto.** Agora abre onde o
+  agente está trabalhando: o chat dele, ou a conversa do orquestrador, onde a execução aparece
+  enquanto avança.
+
 ## 0.27.1 — 2026-10-05
 
 ### Corrigido

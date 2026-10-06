@@ -2,6 +2,32 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.28.0 — 2026-10-05
+
+### Nouveau
+
+- **Un projet peut ne pas avoir de tableau.** « Pas de tableau », dans les réglages du projet,
+  n'enregistre aucune tâche nulle part : aucune carte n'est créée pour un message, une délégation ou
+  une note d'agent, rien n'est écrit sur le disque ni sur un tableau distant, il n'y a pas de
+  `BOARD.md` et les agents n'en entendent pas parler. Le projet s'ouvre sur sa conversation, et la
+  vue Tâches, « créer une tâche » et la partie du prompt sur le tableau disparaissent.
+
+### Corrigé
+
+- **La suggestion en ligne de PowerShell pouvait passer à la ligne du dessous, en emportant ce que
+  vous tapiez.** Pendant que le shell démarrait, le terminal continuait de s'ajuster à son panneau
+  et ces tailles se perdaient : le shell gardait la largeur de son démarrage, plus étroite que celle
+  de l'écran, et coupait des lignes qui tenaient. Le shell reçoit maintenant la taille de l'écran
+  dès qu'il existe.
+- **Les agents Claude affichaient « CLI not found » pendant qu'ils travaillaient.** Claude passe par
+  son adaptateur ACP et n'a pas besoin du programme `claude` installé, ce que l'orchestrateur
+  savait, mais la carte de l'agent, son panneau et le diagnostic le cherchaient encore et
+  prévenaient en ne le trouvant pas. Plus maintenant ; l'avertissement reste pour les fournisseurs
+  qui ont besoin de leur CLI.
+- **Cliquer sur un agent au travail, dans la barre latérale, ouvrait le tableau du projet.** Cela
+  ouvre maintenant l'endroit où l'agent travaille : son chat, ou la conversation de l'orchestrateur,
+  où son exécution s'affiche au fur et à mesure.
+
 ## 0.27.1 — 2026-10-05
 
 ### Corrigé
