@@ -1492,8 +1492,9 @@ export const de: Dictionary = {
 
   // ---- Board provider ----
   "board.source": "Board",
-  "board.source.hint": "Woher das Board dieses Projekts kommt. Das lokale ist eine Datei auf diesem Rechner; die anderen kommen noch.",
+  "board.source.hint": "Wo das Board dieses Projekts liegt: eine Datei auf diesem Rechner, GitHub Projects oder Trello. Ohne Board wird nirgends eine Aufgabe erfasst, und die Agenten bekommen keins.",
   "board.provider.local": "Auf diesem Rechner",
+  "board.provider.none": "Kein Board (es werden keine Aufgaben erfasst)",
   "board.provider.github-projects": "GitHub Projects",
   "board.provider.trello": "Trello",
   "board.provider.jira": "Jira",

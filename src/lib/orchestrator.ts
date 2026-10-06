@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
@@ -801,6 +802,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
   const cardTask = taskSync.cardForNextRun({ projectId: opts.projectId, agentId: opts.agentId, rootRunId: opts.rootRunId });
   const card = cardTask ? { id: cardTask.id, title: cardTask.title, status: cardTask.status } : undefined;
 
+  const noBoard = !hasBoard(project);
   const systemPrompt = opts.systemPromptOverride ?? buildSystemPrompt(agent, children, {
     // No parent run means the user is talking to this agent itself, which is worth saying: an
     // implementer told to do something by its planner and by the user reads the same prompt.
@@ -811,7 +813,8 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     autoModel: store.config.autoModel,
     // What there is to do. The board used to be something only the app could see, so a planner
     // asked to work off it answered that there was nothing there.
-    tasks: store.tasks[opts.projectId] ?? [],
+    // A project with no board gets none: no listing, no ```task block, no card of its own.
+    tasks: noBoard ? undefined : store.tasks[opts.projectId] ?? [],
     agentName: (id) => selectAgent(store, id)?.name,
     // Who else is in this project, for the planner that has nobody under it.
     others: selectProjectAgents(store, opts.projectId).filter(a => a.parentId !== agent.id),
@@ -820,7 +823,8 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     historyFile: !sessionId && hasPast ? `${FOLDER}/${HISTORY_DIR}/${historyFileName(agent)}` : undefined,
     teammates: teammates.length > 0 ? teammates : undefined,
     canNote: opts.parentRunId !== null,
-    card,
+    card: noBoard ? undefined : card,
+    noBoard,
   });
 
   const configuredMcp = selectMcpFor(store, agent.id);

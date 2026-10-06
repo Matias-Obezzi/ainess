@@ -1493,8 +1493,9 @@ export const ja: Dictionary = {
 
   // ---- Board provider ----
   "board.source": "ボード",
-  "board.source.hint": "このプロジェクトのボードがどこにあるか。ローカルのボードはこのマシン上のファイルです。ほかは準備中です。",
+  "board.source.hint": "このプロジェクトのボードの場所：このマシン上のファイル、GitHub Projects、または Trello。ボードなしにすると、タスクはどこにも記録されず、エージェントにもボードは渡されません。",
   "board.provider.local": "このマシン上",
+  "board.provider.none": "ボードなし（タスクは記録されません）",
   "board.provider.github-projects": "GitHub Projects",
   "board.provider.trello": "Trello",
   "board.provider.jira": "Jira",

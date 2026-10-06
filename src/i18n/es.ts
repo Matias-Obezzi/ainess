@@ -1493,8 +1493,9 @@ export const es: Dictionary = {
 
   // ---- Board provider ----
   "board.source": "Tablero",
-  "board.source.hint": "De dónde sale el tablero de este proyecto. El local es un archivo en esta máquina; los demás están en camino.",
+  "board.source.hint": "Dónde vive el tablero de este proyecto: un archivo en esta máquina, GitHub Projects o Trello. Sin tablero, no se registra ninguna tarea en ningún lado y los agentes no reciben ninguno.",
   "board.provider.local": "En esta máquina",
+  "board.provider.none": "Sin tablero (no se registran tareas)",
   "board.provider.github-projects": "GitHub Projects",
   "board.provider.trello": "Trello",
   "board.provider.jira": "Jira",

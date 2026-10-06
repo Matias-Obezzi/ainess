@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { AttachmentStrip } from "@/components/AttachmentStrip";
 import { splitAttachments } from "@/lib/attachments";
@@ -375,8 +376,8 @@ const ChatBubble = memo(function ChatBubble({ message, projectId }: { message: C
       disabled: !message.text || !hasMarkdown(message.text),
       onSelect: () => void copyText(message.text, t("message.markdownCopied")),
     },
-    // A chat outside a project has no board to put the card on.
-    ...(projectId
+    // A chat outside a project, or in one with no board, has nowhere to put the card.
+    ...(projectId && hasBoard(useAppStore.getState().config.projects.find(p => p.id === projectId))
       ? [
           {
             key: "task",

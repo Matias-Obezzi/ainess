@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { useEffect, useMemo, useState } from "react";
 import { Bot, FolderOpen, Keyboard, ListTodo, MessageCircle, Plus, Settings2, Users } from "lucide-react";
 import { useAppStore, selectAllAgents, selectProjectOfAgent, selectTasks } from "@/store";
@@ -147,7 +148,7 @@ export function SearchPalette() {
     const typed = query.trim();
     // Offering to create what already exists would only duplicate a card.
     const exact = liveTasks.some(task => normalize(task.title) === normalize(typed));
-    if (typed !== "" && currentProjectId && !exact) {
+    if (typed !== "" && currentProjectId && !exact && hasBoard(projects.find(p => p.id === currentProjectId))) {
       out.push({
         key: "action:new-task",
         group: "actions",

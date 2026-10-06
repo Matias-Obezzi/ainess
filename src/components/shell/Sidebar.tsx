@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
@@ -322,7 +323,7 @@ export function Sidebar() {
           { mode: "chat", icon: Bot, label: t("sidebar.orchestrator") },
           { mode: "tasks", icon: ListTodo, label: t("projectScreen.tasks") },
           { mode: "graph", icon: GitBranch, label: t("projectScreen.hierarchy") },
-        ] as const).map(row => {
+        ] as const).filter(row => row.mode !== "tasks" || hasBoard(p)).map(row => {
           // A chat of its own is showing: none of the three is where you are, not even the
           // orchestrator, whose row means "the project's own thread".
           const here = isOpenProject && currentChatId === null && projectMode === row.mode;

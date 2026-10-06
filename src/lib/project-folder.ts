@@ -11,6 +11,7 @@
 // The app is the one that writes them: they are a view, never the source of truth. A card moves
 // when a delegation names it (see `task-sync.ts`), not when somebody edits the markdown — which is
 // why every generated file says so on its first line.
+import { hasBoard } from "@/lib/board/registry";
 import { getTransport } from "@/lib/transport";
 import { translateNow } from "@/i18n/useT";
 import { shortTaskId } from "@/lib/providers";
@@ -192,7 +193,8 @@ export async function writeProjectFolder(
   if (!project.workspaceDir) return;
   const transport = getTransport();
   const files: Array<[string, string]> = [
-    ["BOARD.md", boardMarkdown(project, tasks, agents)],
+    // No board, no BOARD.md: a project that opted out of one keeps no list of tasks anywhere.
+    ...(hasBoard(project) ? [["BOARD.md", boardMarkdown(project, tasks, agents)] as [string, string]] : []),
     ["AGENTS.md", agentsMarkdown(project, agents)],
     ["README.md", readmeMarkdown(project)],
   ];

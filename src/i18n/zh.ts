@@ -1492,8 +1492,9 @@ export const zh: Dictionary = {
 
   // ---- Board provider ----
   "board.source": "看板",
-  "board.source.hint": "这个项目的看板从哪里来。本地看板是这台机器上的一个文件；其余的还在路上。",
+  "board.source.hint": "这个项目的看板放在哪里：这台机器上的一个文件、GitHub Projects 或 Trello。不使用看板时，任何地方都不会记录任务，智能体也不会收到看板。",
   "board.provider.local": "在这台机器上",
+  "board.provider.none": "不使用看板（不记录任何任务）",
   "board.provider.github-projects": "GitHub Projects",
   "board.provider.trello": "Trello",
   "board.provider.jira": "Jira",

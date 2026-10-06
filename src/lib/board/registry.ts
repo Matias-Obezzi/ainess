@@ -16,13 +16,22 @@ export interface BoardProviderMeta {
 /** Every provider the app knows about, in the order the picker shows them. */
 export const BOARD_PROVIDERS: BoardProviderMeta[] = [
   { id: "local", labelKey: "board.provider.local", available: true },
+  { id: "none", labelKey: "board.provider.none", available: true },
   { id: "github-projects", labelKey: "board.provider.github-projects", available: true },
   { id: "trello", labelKey: "board.provider.trello", available: true },
   { id: "jira", labelKey: "board.provider.jira", available: false },
 ];
 
 /** The ones that can read and write. An id missing here is declared and not yet built. */
+/** No board: nothing to read, nowhere to write. */
+const noBoardProvider: BoardProvider = {
+  id: "none",
+  load: async () => [],
+  save: async () => [],
+};
+
 const IMPLEMENTED: Partial<Record<BoardProviderId, BoardProvider>> = {
+  none: noBoardProvider,
   local: localBoardProvider,
   "github-projects": githubProjectsBoardProvider,
   trello: trelloBoardProvider,
@@ -35,6 +44,14 @@ const IMPLEMENTED: Partial<Record<BoardProviderId, BoardProvider>> = {
  * board. So anything missing, unknown or unavailable falls back to the local one — which is also
  * what `Project.board === undefined` means, for every project that existed before this seam.
  */
+/**
+ * Whether a project keeps a board at all. One that does not records no task anywhere: not in
+ * memory, not on disk, not on a remote board, and its agents are not told there is one.
+ */
+export function hasBoard(project: Project | undefined): boolean {
+  return project?.board?.provider !== "none";
+}
+
 export function boardProviderFor(project: Project | undefined): BoardProvider {
   const id = project?.board?.provider;
   if (!id) return localBoardProvider;

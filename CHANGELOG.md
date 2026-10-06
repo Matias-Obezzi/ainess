@@ -8,6 +8,13 @@ let one of them fall behind.
 
 ## Unreleased
 
+### Added
+
+- **A project can have no board.** "No board" in the project's settings records no task anywhere:
+  no card is created for a prompt, a delegation or an agent's note, nothing is written to disk or to
+  a remote board, there is no `BOARD.md`, and the agents are not told about one. The project opens
+  on its conversation, and the Tasks view, "create task" and the board's part of the prompt go away.
+
 ### Fixed
 
 - **PowerShell's inline suggestion could land on the line below, taking what you typed with it.**

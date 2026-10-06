@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { create } from "zustand";
 import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase, ClaudeAuthStatus } from "@/types";
 import { getTransport } from "@/lib/transport";
@@ -1235,7 +1236,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // Asking for a chat lands on the chat; anything else lands where this project was left. Not
     // where the *last* project was left: that is what made opening B in the hierarchy and coming
     // back to A show A's hierarchy too, when A had been a conversation all along.
-    const nextMode: ProjectMode = mode ?? (nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks"));
+    const asked: ProjectMode = mode ?? (nextChatId ? "chat" : (state.projectModes[projectId] ?? "tasks"));
+    // A project with no board has no board to open on.
+    const nextMode: ProjectMode = asked === "tasks" && !hasBoard(state.config.projects.find(p => p.id === projectId)) ? "chat" : asked;
     if (!sameProject) state.setCurrentProject(projectId);
     set({
       currentChatId: nextChatId,
@@ -1299,9 +1302,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ settingsOpen: false });
   },
 
-  setProjectMode: (mode, projectId) => {
+  setProjectMode: (asked, projectId) => {
     const state = get();
     const target = projectId ?? state.currentProjectId;
+    // `/tasks`, a task found by search: a project with no board shows its conversation instead.
+    const mode = asked === "tasks" && !hasBoard(state.config.projects.find(p => p.id === target)) ? "chat" : asked;
     const focused = target === state.currentProjectId;
     set(s => ({
       // The scalar and the back/forward stack are the focused pane's; another pane changing its
@@ -2530,6 +2535,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
       status,
       order: partial?.order ?? taskLogic.sortColumn(list, status).length,
     });
+    // A project with no board writes nothing down. Every way a card is made — a prompt, a
+    // delegation, an agent's ```task block, the menus — comes through here, so this is the one
+    // place that says no; the caller still gets the card it asked for, kept nowhere, and the
+    // updates that follow find nothing to update.
+    if (!hasBoard(state.config.projects.find(p => p.id === projectId))) return task;
     set(s => ({ tasks: { ...s.tasks, [projectId]: [...(s.tasks[projectId] ?? []), task] } }));
     return task;
   },
@@ -3321,9 +3331,12 @@ export function selectProject(state: AppState, id: string | null | undefined): P
 
 /** The view a project is on: its board, its hierarchy or its conversation. */
 export function selectProjectMode(state: AppState, projectId: string | null | undefined): ProjectMode {
-  if (!projectId) return state.projectMode;
-  return state.projectModes[projectId]
-    ?? (projectId === state.currentProjectId ? state.projectMode : "tasks");
+  const mode = !projectId
+    ? state.projectMode
+    : state.projectModes[projectId] ?? (projectId === state.currentProjectId ? state.projectMode : "tasks");
+  // A project with no board has no board to be on: its conversation stands in.
+  const project = state.config.projects.find(p => p.id === (projectId ?? state.currentProjectId));
+  return mode === "tasks" && !hasBoard(project) ? "chat" : mode;
 }
 
 /** The chat a project is left in, or null for its orchestrator thread. */
