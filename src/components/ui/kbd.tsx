@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 /** A key as shown on screen, and as read out. */
@@ -11,52 +12,112 @@ export interface KeyLabel {
   name: string
 }
 
-// [mac symbol, mac name, other symbol, other name]
-const KEYS: Record<string, [string, string, string, string]> = {
-  mod: ['⌘', 'Command', 'Ctrl', 'Control'],
-  cmd: ['⌘', 'Command', 'Win', 'Windows'],
-  command: ['⌘', 'Command', 'Win', 'Windows'],
-  meta: ['⌘', 'Command', 'Win', 'Windows'],
-  ctrl: ['⌃', 'Control', 'Ctrl', 'Control'],
-  control: ['⌃', 'Control', 'Ctrl', 'Control'],
-  alt: ['⌥', 'Option', 'Alt', 'Alt'],
-  option: ['⌥', 'Option', 'Alt', 'Alt'],
-  opt: ['⌥', 'Option', 'Alt', 'Alt'],
-  shift: ['⇧', 'Shift', 'Shift', 'Shift'],
-  enter: ['↵', 'Return', 'Enter', 'Enter'],
-  return: ['↵', 'Return', 'Enter', 'Enter'],
-  backspace: ['⌫', 'Delete', 'Backspace', 'Backspace'],
-  delete: ['⌦', 'Forward Delete', 'Del', 'Delete'],
-  del: ['⌦', 'Forward Delete', 'Del', 'Delete'],
-  esc: ['Esc', 'Escape', 'Esc', 'Escape'],
-  escape: ['Esc', 'Escape', 'Esc', 'Escape'],
-  tab: ['⇥', 'Tab', 'Tab', 'Tab'],
-  space: ['Space', 'Space', 'Space', 'Space'],
-  capslock: ['⇪', 'Caps Lock', 'Caps Lock', 'Caps Lock'],
-  up: ['↑', 'Up Arrow', '↑', 'Up Arrow'],
-  arrowup: ['↑', 'Up Arrow', '↑', 'Up Arrow'],
-  down: ['↓', 'Down Arrow', '↓', 'Down Arrow'],
-  arrowdown: ['↓', 'Down Arrow', '↓', 'Down Arrow'],
-  left: ['←', 'Left Arrow', '←', 'Left Arrow'],
-  arrowleft: ['←', 'Left Arrow', '←', 'Left Arrow'],
-  right: ['→', 'Right Arrow', '→', 'Right Arrow'],
-  arrowright: ['→', 'Right Arrow', '→', 'Right Arrow'],
-  pageup: ['PgUp', 'Page Up', 'PgUp', 'Page Up'],
-  pagedown: ['PgDn', 'Page Down', 'PgDn', 'Page Down'],
-  home: ['Home', 'Home', 'Home', 'Home'],
-  end: ['End', 'End', 'End', 'End'],
-  plus: ['+', 'Plus', '+', 'Plus'],
+/** What screen readers say for each key, in place of its symbol. */
+export interface KbdLabels {
+  command: string
+  control: string
+  windows: string
+  option: string
+  alt: string
+  shift: string
+  return: string
+  enter: string
+  delete: string
+  forwardDelete: string
+  backspace: string
+  escape: string
+  tab: string
+  /** Also written on the space cap. */
+  space: string
+  capsLock: string
+  upArrow: string
+  downArrow: string
+  leftArrow: string
+  rightArrow: string
+  pageUp: string
+  pageDown: string
+  home: string
+  end: string
+  plus: string
+}
+
+export const defaultKbdLabels: KbdLabels = {
+  command: 'Command',
+  control: 'Control',
+  windows: 'Windows',
+  option: 'Option',
+  alt: 'Alt',
+  shift: 'Shift',
+  return: 'Return',
+  enter: 'Enter',
+  delete: 'Delete',
+  forwardDelete: 'Forward Delete',
+  backspace: 'Backspace',
+  escape: 'Escape',
+  tab: 'Tab',
+  space: 'Space',
+  capsLock: 'Caps Lock',
+  upArrow: 'Up Arrow',
+  downArrow: 'Down Arrow',
+  leftArrow: 'Left Arrow',
+  rightArrow: 'Right Arrow',
+  pageUp: 'Page Up',
+  pageDown: 'Page Down',
+  home: 'Home',
+  end: 'End',
+  plus: 'Plus',
+}
+
+type Name = keyof KbdLabels
+
+// [mac symbol, mac name, other symbol, other name]. A symbol of null is the name itself.
+const KEYS: Record<string, [string | null, Name, string | null, Name]> = {
+  mod: ['⌘', 'command', 'Ctrl', 'control'],
+  cmd: ['⌘', 'command', 'Win', 'windows'],
+  command: ['⌘', 'command', 'Win', 'windows'],
+  meta: ['⌘', 'command', 'Win', 'windows'],
+  ctrl: ['⌃', 'control', 'Ctrl', 'control'],
+  control: ['⌃', 'control', 'Ctrl', 'control'],
+  alt: ['⌥', 'option', 'Alt', 'alt'],
+  option: ['⌥', 'option', 'Alt', 'alt'],
+  opt: ['⌥', 'option', 'Alt', 'alt'],
+  shift: ['⇧', 'shift', 'Shift', 'shift'],
+  enter: ['↵', 'return', 'Enter', 'enter'],
+  return: ['↵', 'return', 'Enter', 'enter'],
+  backspace: ['⌫', 'delete', 'Backspace', 'backspace'],
+  delete: ['⌦', 'forwardDelete', 'Del', 'delete'],
+  del: ['⌦', 'forwardDelete', 'Del', 'delete'],
+  esc: ['Esc', 'escape', 'Esc', 'escape'],
+  escape: ['Esc', 'escape', 'Esc', 'escape'],
+  tab: ['⇥', 'tab', 'Tab', 'tab'],
+  space: [null, 'space', null, 'space'],
+  capslock: ['⇪', 'capsLock', 'Caps Lock', 'capsLock'],
+  up: ['↑', 'upArrow', '↑', 'upArrow'],
+  arrowup: ['↑', 'upArrow', '↑', 'upArrow'],
+  down: ['↓', 'downArrow', '↓', 'downArrow'],
+  arrowdown: ['↓', 'downArrow', '↓', 'downArrow'],
+  left: ['←', 'leftArrow', '←', 'leftArrow'],
+  arrowleft: ['←', 'leftArrow', '←', 'leftArrow'],
+  right: ['→', 'rightArrow', '→', 'rightArrow'],
+  arrowright: ['→', 'rightArrow', '→', 'rightArrow'],
+  pageup: ['PgUp', 'pageUp', 'PgUp', 'pageUp'],
+  pagedown: ['PgDn', 'pageDown', 'PgDn', 'pageDown'],
+  home: ['Home', 'home', 'Home', 'home'],
+  end: ['End', 'end', 'End', 'end'],
+  plus: ['+', 'plus', '+', 'plus'],
 }
 
 /**
  * Turn one key name into what to show and what to say. Known names ("mod", "shift", "enter",
  * "up"…) become symbols on a Mac and words elsewhere; anything else is shown as written,
- * a single letter in capitals.
+ * a single letter in capitals. `labels` changes what is said.
  */
-function formatKey(key: string, mac: boolean): KeyLabel {
+function formatKey(key: string, mac: boolean, labels: KbdLabels = defaultKbdLabels): KeyLabel {
   const known = KEYS[key.toLowerCase()]
-  if (known)
-    return mac ? { symbol: known[0], name: known[1] } : { symbol: known[2], name: known[3] }
+  if (known) {
+    const [symbol, name] = mac ? [known[0], known[1]] : [known[2], known[3]]
+    return { symbol: symbol ?? labels[name], name: labels[name] }
+  }
   const symbol = key.length === 1 ? key.toUpperCase() : key
   return { symbol, name: symbol }
 }
@@ -115,17 +176,28 @@ export interface KbdGroupProps extends React.ComponentProps<'kbd'> {
   separator?: React.ReactNode
   /** Force the Mac or the other spelling instead of detecting it. */
   platform?: 'mac' | 'other'
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<KbdLabels>
 }
 
 /**
  * A key combination. Pass `keys="mod+k"` for platform aware caps (⌘ K on a Mac, Ctrl + K
  * elsewhere), or `Kbd` children to compose it yourself.
  */
-function KbdGroup({ keys, separator, platform, className, children, ...props }: KbdGroupProps) {
+function KbdGroup({
+  keys,
+  separator,
+  platform,
+  labels: labelsProp,
+  className,
+  children,
+  ...props
+}: KbdGroupProps) {
+  const labels = useLabels('kbd', defaultKbdLabels, labelsProp)
   const detected = useIsMac()
   const mac = platform ? platform === 'mac' : detected
   const between = separator === undefined ? (mac ? null : '+') : separator
-  const parts = keys ? parseShortcut(keys).map((key) => formatKey(key, mac)) : null
+  const parts = keys ? parseShortcut(keys).map((key) => formatKey(key, mac, labels)) : null
   return (
     <kbd
       data-slot="kbd-group"

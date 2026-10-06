@@ -174,7 +174,7 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
           <label className="text-sm font-semibold">{t("messaging.token")}</label>
           <PasswordField
             autoComplete="off"
-            revealLabel={t("common.showSecret")}
+            labels={{ reveal: t("common.showSecret") }}
             value={token}
             placeholder={spec.tokenPlaceholder}
             onChange={e => setToken(e.target.value)}
@@ -202,7 +202,7 @@ function ChannelCard({ spec }: { spec: ChannelSpec }) {
             <label className="text-sm font-semibold">{t("messaging.appToken")}</label>
             <PasswordField
               autoComplete="off"
-              revealLabel={t("common.showSecret")}
+              labels={{ reveal: t("common.showSecret") }}
               value={appToken}
               placeholder={spec.appToken.placeholder}
               onChange={e => setAppToken(e.target.value)}

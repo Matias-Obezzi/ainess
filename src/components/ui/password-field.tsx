@@ -1,5 +1,8 @@
+'use client'
+
 import { CheckIcon, EyeIcon, EyeOffIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 export interface PasswordStrength {
@@ -18,7 +21,53 @@ export interface PasswordRule {
   test: (password: string) => boolean
 }
 
-const LEVELS = ['', 'Weak', 'Fair', 'Good', 'Strong'] as const
+export interface PasswordFieldLabels {
+  /** Name of the eye button. It stays the same and `aria-pressed` says the state. */
+  reveal: string
+  /** Name of the strength meter. */
+  strength: string
+  /** What the meter reads for an empty password. */
+  empty: string
+  /** The four levels. */
+  weak: string
+  fair: string
+  good: string
+  strong: string
+  /** The hints of the built in scorer, the one that would help most first. */
+  avoidCommon: string
+  useLength: string
+  avoidSequences: string
+  avoidRepeats: string
+  mixCharacters: string
+  addLength: string
+  /** The default rules. Your own rules keep their own `label`. */
+  ruleLength: string
+  ruleCase: string
+  ruleNumber: string
+  ruleSymbol: string
+}
+
+export const defaultPasswordFieldLabels: PasswordFieldLabels = {
+  reveal: 'Show password',
+  strength: 'Password strength',
+  empty: 'Empty',
+  weak: 'Weak',
+  fair: 'Fair',
+  good: 'Good',
+  strong: 'Strong',
+  avoidCommon: 'Avoid common passwords and words.',
+  useLength: 'Use at least 12 characters.',
+  avoidSequences: 'Avoid runs like abcd or 1234.',
+  avoidRepeats: 'Avoid repeating the same character.',
+  mixCharacters: 'Mix in capitals, numbers or symbols.',
+  addLength: 'A few more characters would make it strong.',
+  ruleLength: 'At least 12 characters',
+  ruleCase: 'A lowercase and an uppercase letter',
+  ruleNumber: 'A number',
+  ruleSymbol: 'A symbol',
+}
+
+const LEVELS = ['', 'weak', 'fair', 'good', 'strong'] as const
 
 // The handful everyone tries first. A real check against breached passwords belongs on the
 // server; this only catches the obvious ones while typing.
@@ -70,7 +119,10 @@ function hasSequence(password: string, length = 4) {
  * common words, keyboard runs and repeats. Good enough to guide someone while they type; it
  * is not a substitute for checking against breached passwords on the server.
  */
-function getPasswordStrength(password: string): PasswordStrength {
+function getPasswordStrength(
+  password: string,
+  labels: PasswordFieldLabels = defaultPasswordFieldLabels,
+): PasswordStrength {
   if (!password) return { score: 0, label: '' }
 
   const length = password.length
@@ -96,14 +148,15 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (common) score = 1
 
   let hint: string | undefined
-  if (common) hint = 'Avoid common passwords and words.'
-  else if (length < 12) hint = 'Use at least 12 characters.'
-  else if (sequence) hint = 'Avoid runs like abcd or 1234.'
-  else if (repeats) hint = 'Avoid repeating the same character.'
-  else if (classes < 3) hint = 'Mix in capitals, numbers or symbols.'
-  else if (score < 4) hint = 'A few more characters would make it strong.'
+  if (common) hint = labels.avoidCommon
+  else if (length < 12) hint = labels.useLength
+  else if (sequence) hint = labels.avoidSequences
+  else if (repeats) hint = labels.avoidRepeats
+  else if (classes < 3) hint = labels.mixCharacters
+  else if (score < 4) hint = labels.addLength
 
-  return { score, label: LEVELS[score], hint }
+  const level = LEVELS[score]
+  return { score, label: level ? labels[level] : '', hint }
 }
 
 /** A sensible checklist to start from. */
@@ -113,6 +166,14 @@ const defaultPasswordRules: PasswordRule[] = [
   { label: 'A number', test: (p) => /\d/.test(p) },
   { label: 'A symbol', test: (p) => /[^a-zA-Z\d]/.test(p) },
 ]
+
+/** The label key of each default rule, so the default checklist follows the labels. */
+const ruleKeys = new Map<PasswordRule, keyof PasswordFieldLabels>(
+  (['ruleLength', 'ruleCase', 'ruleNumber', 'ruleSymbol'] as const).map((key, i) => [
+    defaultPasswordRules[i] as PasswordRule,
+    key,
+  ]),
+)
 
 const barColor = ['', 'bg-destructive', 'bg-amber-500', 'bg-lime-500', 'bg-emerald-500']
 
@@ -126,8 +187,8 @@ export interface PasswordFieldProps
   onValueChange?: (value: string) => void
   /** Show the strength meter and hint under the field. */
   strength?: boolean
-  /** Replace the built in scorer, for zxcvbn or your own rules. */
-  getStrength?: (password: string) => PasswordStrength
+  /** Replace the built in scorer, for zxcvbn or your own rules. Gets the labels as well. */
+  getStrength?: (password: string, labels: PasswordFieldLabels) => PasswordStrength
   /** Show a checklist under the field. `true` uses the default rules. */
   rules?: boolean | PasswordRule[]
   /** Controlled reveal state. */
@@ -140,6 +201,8 @@ export interface PasswordFieldProps
   revealLabel?: string
   /** Classes for the input itself. `className` goes on the outer wrapper. */
   inputClassName?: string
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<PasswordFieldLabels>
 }
 
 /**
@@ -157,7 +220,8 @@ function PasswordField({
   revealed: revealedProp,
   defaultRevealed = false,
   onRevealedChange,
-  revealLabel = 'Show password',
+  revealLabel: revealProp,
+  labels: labelsProp,
   className,
   inputClassName,
   id,
@@ -168,6 +232,8 @@ function PasswordField({
   'aria-describedby': describedBy,
   ...props
 }: PasswordFieldProps) {
+  const labels = useLabels('password-field', defaultPasswordFieldLabels, labelsProp)
+  const revealLabel = revealProp ?? labels.reveal
   const [uncontrolled, setUncontrolled] = React.useState(defaultValue)
   const value = valueProp ?? uncontrolled
   const [revealedState, setRevealedState] = React.useState(defaultRevealed)
@@ -197,7 +263,11 @@ function PasswordField({
   }, [revealedProp])
 
   const ruleList = rules === true ? defaultPasswordRules : rules || []
-  const result = strength ? getStrength(value) : null
+  const ruleLabel = (rule: PasswordRule) => {
+    const key = ruleKeys.get(rule)
+    return key ? labels[key] : rule.label
+  }
+  const result = strength ? getStrength(value, labels) : null
 
   return (
     <div data-slot="password-field" className={cn('flex w-full min-w-0 flex-col gap-2', className)}>
@@ -267,7 +337,9 @@ function PasswordField({
         </button>
       </div>
 
-      {result && <PasswordStrengthMeter id={meterId} strength={result} hidden={!value} />}
+      {result && (
+        <PasswordStrengthMeter id={meterId} strength={result} labels={labelsProp} hidden={!value} />
+      )}
 
       {ruleList.length > 0 && (
         <ul id={rulesId} data-slot="password-field-rules" className="grid gap-1 text-sm">
@@ -290,7 +362,7 @@ function PasswordField({
                 >
                   {met ? <CheckIcon strokeWidth={3} /> : <XIcon strokeWidth={3} />}
                 </span>
-                {rule.label}
+                {ruleLabel(rule)}
                 <span className="sr-only">{met ? ', done' : ', not yet'}</span>
               </li>
             )
@@ -304,9 +376,15 @@ function PasswordField({
 /** The four segment bar with its label and hint. Exported for a meter placed elsewhere. */
 function PasswordStrengthMeter({
   strength,
+  labels: labelsProp,
   className,
   ...props
-}: React.ComponentProps<'div'> & { strength: PasswordStrength }) {
+}: React.ComponentProps<'div'> & {
+  strength: PasswordStrength
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<PasswordFieldLabels>
+}) {
+  const labels = useLabels('password-field', defaultPasswordFieldLabels, labelsProp)
   const { score, label, hint } = strength
   return (
     <div
@@ -318,11 +396,11 @@ function PasswordStrengthMeter({
       {/* biome-ignore lint/a11y/useSemanticElements: four separate segments, which a native meter cannot draw */}
       <div
         role="meter"
-        aria-label="Password strength"
+        aria-label={labels.strength}
         aria-valuemin={0}
         aria-valuemax={4}
         aria-valuenow={score}
-        aria-valuetext={label || 'Empty'}
+        aria-valuetext={label || labels.empty}
         className="grid grid-cols-4 gap-1"
       >
         {[1, 2, 3, 4].map((level) => (

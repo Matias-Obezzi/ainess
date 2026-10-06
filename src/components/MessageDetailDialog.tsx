@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { kindLabelKey } from "@/lib/labels";
+import { kindLabelKey } from "@/lib/status-labels";
 import { useT, useLocale } from "@/i18n/useT";
 import { messageRawText } from "@/lib/message-raw";
 import { copyText } from "@/lib/clipboard";

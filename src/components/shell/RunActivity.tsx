@@ -15,7 +15,7 @@ import { Markdown } from "@/components/shell/Markdown";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { InlineApproval } from "@/components/InlineApproval";
 import { toolIcon } from "@/lib/tool-summary";
-import { runDotStatus, runStatusLabelKey } from "@/lib/labels";
+import { runDotStatus, runStatusLabelKey } from "@/lib/status-labels";
 import { activityView } from "@/lib/activity-view";
 import { lastOutputAt, silenceMs, STALL_AFTER_MS } from "@/lib/stall";
 import { useT } from "@/i18n/useT";

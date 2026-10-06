@@ -29,7 +29,7 @@ import { RunActivity, useActivityCount, useRunTranscript } from "@/components/sh
 import { runAnswer } from "@/lib/run-answer";
 import { QuestionGroup } from "@/components/InlineQuestion";
 import { runUsageText } from "@/components/UsageDialog";
-import { runStatusLabelKey } from "@/lib/labels";
+import { runStatusLabelKey } from "@/lib/status-labels";
 import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";

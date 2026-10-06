@@ -4,7 +4,7 @@ import { useAppStore, selectAllAgents } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { kindLabelKey } from "@/lib/labels";
+import { kindLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";

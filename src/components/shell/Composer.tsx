@@ -26,7 +26,7 @@ import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode,
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
-import { roleLabelKey } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { ChevronDown, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";

@@ -43,8 +43,6 @@ export const zh: Dictionary = {
   "common.paste": "粘贴",
   "common.selectAll": "全选",
   "common.copyFailed": "复制失败",
-  "common.decrease": "减少",
-  "common.increase": "增加",
   "common.showSecret": "显示内容",
   "common.retry": "重试",
   "error.panel.title": "屏幕的这一部分崩了",
@@ -274,12 +272,6 @@ export const zh: Dictionary = {
   "activity.thinking": "思考中…",
   "markdown.invalidDelegation": "委派格式无效",
   "markdown.revealFailed": "无法在文件管理器中显示该文件",
-  "codeBlock.wrap": "自动换行",
-  "codeBlock.copy": "复制代码",
-  "codeBlock.region": "代码",
-  "codeBlock.regionLang": "{language} 代码",
-  "codeBlock.showLess": "收起",
-  "codeBlock.showAll": "显示全部 {count} 行",
 
   // ---- Right dock ----
   "dock.dragToResize": "拖动以调整宽度",
@@ -1457,9 +1449,6 @@ export const zh: Dictionary = {
   "agentPicker.placeholder": "选择智能体",
   "agentPicker.search": "搜索智能体…",
   "agentPicker.empty": "没有匹配的智能体",
-  "agentPicker.clear": "全部移除",
-  "agentPicker.remove": "移除 {name}",
-  "agentPicker.summary": "已选（{count}）：{names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "新建预设指令",

@@ -18,7 +18,7 @@ import { useModelChoices } from "@/hooks/useModelChoices";
 import { modelChoices } from "@/lib/models";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
-import { roleLabelKey } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/status-labels";
 import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useCurrentProjectId } from "@/components/shell/project-pane";

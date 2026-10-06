@@ -13,7 +13,7 @@ import { projectNameFromDir } from "@/lib/home-start";
 import { useAppStore, cloneAgents } from "@/store";
 import { PROVIDERS } from "@/lib/providers";
 import { BOARD_PROVIDERS } from "@/lib/board/registry";
-import { roleLabelKey } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { AgentConfig, Project, Budget, BoardProviderId, VerifyCommand } from "@/types";
 import { VerifySection } from "@/components/VerifySection";
@@ -221,8 +221,6 @@ export function ProjectDialog({
                     min={0}
                     formatOptions={USD}
                     className="w-full"
-                    decrementLabel={t("common.decrease")}
-                    incrementLabel={t("common.increase")}
                     value={dailyUsd}
                     onValueChange={setDailyUsd}
                     placeholder={t("budget.none")}
@@ -234,8 +232,6 @@ export function ProjectDialog({
                     min={0}
                     formatOptions={USD}
                     className="w-full"
-                    decrementLabel={t("common.decrease")}
-                    incrementLabel={t("common.increase")}
                     value={monthlyUsd}
                     onValueChange={setMonthlyUsd}
                     placeholder={t("budget.none")}
@@ -247,8 +243,6 @@ export function ProjectDialog({
                     min={0}
                     formatOptions={USD}
                     className="w-full"
-                    decrementLabel={t("common.decrease")}
-                    incrementLabel={t("common.increase")}
                     value={perRunUsd}
                     onValueChange={setPerRunUsd}
                     placeholder={t("budget.none")}

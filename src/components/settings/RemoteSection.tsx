@@ -85,7 +85,7 @@ function NgrokCredential({ configured, dashboardUrl, disabled, onSave }: {
       <div className="flex flex-wrap items-center gap-2">
         <PasswordField
           autoComplete="off"
-          revealLabel={t("common.showSecret")}
+          labels={{ reveal: t("common.showSecret") }}
           autoFocus
           className="max-w-xs"
           placeholder={t("remote.ngrok.pastePlaceholder")}

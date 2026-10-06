@@ -44,8 +44,6 @@ export const es: Dictionary = {
   "common.paste": "Pegar",
   "common.selectAll": "Seleccionar todo",
   "common.copyFailed": "No se pudo copiar",
-  "common.decrease": "Restar",
-  "common.increase": "Sumar",
   "common.showSecret": "Mostrar el valor",
   "common.retry": "Reintentar",
   "error.panel.title": "Esta parte de la pantalla se rompió",
@@ -275,12 +273,6 @@ export const es: Dictionary = {
   "activity.thinking": "Pensando…",
   "markdown.invalidDelegation": "Delegación con formato inválido",
   "markdown.revealFailed": "No se pudo mostrar el archivo en el explorador",
-  "codeBlock.wrap": "Ajustar las líneas",
-  "codeBlock.copy": "Copiar el código",
-  "codeBlock.region": "Código",
-  "codeBlock.regionLang": "Código {language}",
-  "codeBlock.showLess": "Ver menos",
-  "codeBlock.showAll": "Ver las {count} líneas",
 
   // ---- Right dock ----
   "dock.dragToResize": "Arrastrá para cambiar el ancho",
@@ -1458,9 +1450,6 @@ export const es: Dictionary = {
   "agentPicker.placeholder": "Elegí los agentes",
   "agentPicker.search": "Buscar un agente…",
   "agentPicker.empty": "Ningún agente coincide",
-  "agentPicker.clear": "Quitar todos",
-  "agentPicker.remove": "Quitar a {name}",
-  "agentPicker.summary": "Elegidos ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Nueva orden predefinida",

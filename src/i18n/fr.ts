@@ -43,8 +43,6 @@ export const fr: Dictionary = {
   "common.paste": "Coller",
   "common.selectAll": "Tout sélectionner",
   "common.copyFailed": "Impossible de copier",
-  "common.decrease": "Diminuer",
-  "common.increase": "Augmenter",
   "common.showSecret": "Afficher la valeur",
   "common.retry": "Réessayer",
   "error.panel.title": "Cette partie de l'écran a cassé",
@@ -274,12 +272,6 @@ export const fr: Dictionary = {
   "activity.thinking": "Réflexion…",
   "markdown.invalidDelegation": "Délégation au format invalide",
   "markdown.revealFailed": "Impossible d'afficher le fichier dans le gestionnaire de fichiers",
-  "codeBlock.wrap": "Retour à la ligne",
-  "codeBlock.copy": "Copier le code",
-  "codeBlock.region": "Code",
-  "codeBlock.regionLang": "Code {language}",
-  "codeBlock.showLess": "Voir moins",
-  "codeBlock.showAll": "Voir les {count} lignes",
 
   // ---- Right dock ----
   "dock.dragToResize": "Fais glisser pour changer la largeur",
@@ -1457,9 +1449,6 @@ export const fr: Dictionary = {
   "agentPicker.placeholder": "Choisissez les agents",
   "agentPicker.search": "Chercher un agent…",
   "agentPicker.empty": "Aucun agent ne correspond",
-  "agentPicker.clear": "Tout retirer",
-  "agentPicker.remove": "Retirer {name}",
-  "agentPicker.summary": "Choisis ({count}) : {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Nouvelle consigne prédéfinie",

@@ -6,6 +6,15 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Changed
+
+- **The buttons and fields the interface is built from speak the app's language.** Close buttons,
+  "Copied", the steppers of a number field, the eye of a token field, what a screen reader hears for
+  a spinner or a picked list, the keys in the shortcuts — they said it in English whatever language
+  the app was in, and now follow it in all seven, switching with it.
+
 ## 0.28.0 — 2026-10-05
 
 ### Added

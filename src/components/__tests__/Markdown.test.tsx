@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Markdown } from "@/components/shell/Markdown";
+import { LabelsProvider } from "@/lib/labels";
+import { es } from "@/lib/labels-es";
 import { baseDictionary, dictionaries, resolveLanguage, translate } from "@/i18n";
 
 // The card's header comes from the dictionary. Rendered on the server, the store hands back its
@@ -28,13 +30,14 @@ describe("Markdown", () => {
     expect((out.match(/<pre/g) || []).length).toBe(1);
   });
 
-  it("gives a fenced block a copy button and folds a long one, in the app's language", () => {
-    const short = html("```ts\nconst a = 1;\n```");
-    expect(short).toContain(`aria-label="${label("codeBlock.copy")}"`);
+  it("gives a fenced block a copy button and folds a long one, in the language of the labels above it", () => {
+    const inSpanish = (text: string) => renderToStaticMarkup(<LabelsProvider labels={es}><Markdown text={text} /></LabelsProvider>);
+    const short = inSpanish("```ts\nconst a = 1;\n```");
+    expect(short).toContain(`aria-label="${es["code-block"].copy}"`);
     expect(short).not.toContain("Copy code");
 
-    const long = html("```\n" + Array.from({ length: 30 }, (_, i) => `line ${i}`).join("\n") + "\n```");
-    expect(long).toContain(translate(dictionaries[resolveLanguage(null)] ?? baseDictionary, baseDictionary, "codeBlock.showAll", { count: 30 }));
+    const long = inSpanish("```\n" + Array.from({ length: 30 }, (_, i) => `line ${i}`).join("\n") + "\n```");
+    expect(long).toContain(es["code-block"].showAll(30));
   });
 
   it("turns a delegate block into a delegation card", () => {

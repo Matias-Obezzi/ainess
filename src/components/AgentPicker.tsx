@@ -15,6 +15,11 @@ export function AgentPicker({ value, onValueChange }: { value: string[]; onValue
     () => projects.flatMap(p => (p.agents ?? []).map(a => ({ value: a.id, label: `${a.name} · ${p.name}`, keywords: [a.provider] }))),
     [projects],
   );
+  // Only what is about agents: the rest of the picker's words come from the app's LabelsProvider.
+  const labels = useMemo(
+    () => ({ placeholder: t("agentPicker.placeholder"), search: t("agentPicker.search"), empty: t("agentPicker.empty") }),
+    [t],
+  );
   return (
     <MultiSelect
       options={options}
@@ -22,12 +27,7 @@ export function AgentPicker({ value, onValueChange }: { value: string[]; onValue
       onValueChange={onValueChange}
       // "All agents" is the switch above, which also covers the ones created later.
       selectAll={false}
-      placeholder={t("agentPicker.placeholder")}
-      searchPlaceholder={t("agentPicker.search")}
-      emptyText={t("agentPicker.empty")}
-      clearLabel={t("agentPicker.clear")}
-      removeLabel={name => t("agentPicker.remove", { name })}
-      summaryLabel={names => (names.length ? t("agentPicker.summary", { count: names.length, names: names.join(", ") }) : t("common.none"))}
+      labels={labels}
       className="w-full"
     />
   );

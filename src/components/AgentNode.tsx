@@ -9,7 +9,7 @@ import { useAppStore, selectWorktree } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
-import { statusLabelKey, roleLabelKey } from "@/lib/labels";
+import { statusLabelKey, roleLabelKey } from "@/lib/status-labels";
 import { activityByRun } from "@/components/shell/RunActivity";
 import { useT, type TFunction } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";

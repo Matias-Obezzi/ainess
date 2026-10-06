@@ -5,7 +5,7 @@ import type { AcpSessionSpec } from "@/lib/acp/session";
 import type { McpServer as AcpMcpServer } from "@agentclientprotocol/sdk";
 import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
-import { roleLabelKey } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/status-labels";
 
 /**
  * What Claude Code accepts after `--model`.

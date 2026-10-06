@@ -2,7 +2,37 @@
 
 import { CheckIcon, ChevronsUpDownIcon, MinusIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+
+export interface MultiSelectLabels {
+  /** Shown in the trigger while nothing is picked. */
+  placeholder: string
+  /** Placeholder of the search field. */
+  search: string
+  /** Shown when nothing matches the search. */
+  empty: string
+  selectAll: string
+  clear: string
+  /** Name of a tag's remove button. */
+  remove: (label: string) => string
+  /** What the trigger reads as when nothing is picked. */
+  noneSelected: string
+  /** What the trigger reads as, with the picked labels joined. */
+  selected: (count: number, labels: string) => string
+}
+
+export const defaultMultiSelectLabels: MultiSelectLabels = {
+  placeholder: 'Select…',
+  search: 'Search…',
+  empty: 'No results.',
+  selectAll: 'Select all',
+  clear: 'Clear selection',
+  remove: (label) => `Remove ${label}`,
+  noneSelected: 'None selected',
+  selected: (count, labels) => `${count} selected: ${labels}`,
+}
+
 import {
   Command,
   CommandEmpty,
@@ -48,8 +78,6 @@ export interface MultiSelectProps {
   clearLabel?: string
   /** Accessible name of a tag's remove button. Default "Remove {label}". */
   removeLabel?: (label: string) => string
-  /** What a screen reader hears for the picks. Default "None selected" or "N selected: a, b". */
-  summaryLabel?: (labels: string[]) => string
   disabled?: boolean
   /** Classes for the trigger box. */
   className?: string
@@ -66,6 +94,8 @@ export interface MultiSelectProps {
   'aria-labelledby'?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean | 'true' | 'false'
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<MultiSelectLabels>
 }
 
 /**
@@ -78,16 +108,15 @@ function MultiSelect({
   value: valueProp,
   defaultValue,
   onValueChange,
-  placeholder = 'Select…',
-  searchPlaceholder = 'Search…',
-  emptyText = 'No results.',
+  placeholder: placeholderProp,
+  searchPlaceholder: searchProp,
+  emptyText: emptyProp,
   maxShown = 3,
   selectAll = true,
-  selectAllLabel = 'Select all',
-  clearLabel = 'Clear selection',
-  removeLabel = (label) => `Remove ${label}`,
-  summaryLabel = (labels) =>
-    labels.length === 0 ? 'None selected' : `${labels.length} selected: ${labels.join(', ')}`,
+  selectAllLabel: selectAllProp,
+  clearLabel: clearProp,
+  removeLabel: removeProp,
+  labels: labelsProp,
   disabled,
   className,
   contentClassName,
@@ -98,6 +127,13 @@ function MultiSelect({
   id,
   ...aria
 }: MultiSelectProps) {
+  const labels = useLabels('multi-select', defaultMultiSelectLabels, labelsProp)
+  const placeholder = placeholderProp ?? labels.placeholder
+  const searchPlaceholder = searchProp ?? labels.search
+  const emptyText = emptyProp ?? labels.empty
+  const selectAllLabel = selectAllProp ?? labels.selectAll
+  const clearLabel = clearProp ?? labels.clear
+  const removeLabel = removeProp ?? labels.remove
   const [uncontrolled, setUncontrolled] = React.useState<string[]>(defaultValue ?? [])
   const selected = valueProp ?? uncontrolled
   const [openState, setOpenState] = React.useState(false)
@@ -156,7 +192,10 @@ function MultiSelect({
   }, [options])
 
   const ariaLabel = aria['aria-label'] ?? (aria['aria-labelledby'] ? undefined : placeholder)
-  const summary = summaryLabel(selectedOptions.map((o) => o.label))
+  const summary =
+    selectedOptions.length === 0
+      ? labels.noneSelected
+      : labels.selected(selectedOptions.length, selectedOptions.map((o) => o.label).join(', '))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PROVIDERS } from "@/lib/providers";
-import { roleLabelKey } from "@/lib/labels";
+import { roleLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { confirmDelete } from "@/lib/confirm";

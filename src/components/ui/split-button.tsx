@@ -1,9 +1,8 @@
-'use client'
-
 import type { VariantProps } from 'class-variance-authority'
 import { ChevronDownIcon } from 'lucide-react'
 import type { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { Button, type ButtonProps, buttonVariants } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -87,6 +86,15 @@ const triggerWidth: Record<NonNullable<SplitSize>, string> = {
   lg: 'w-9',
 }
 
+export interface SplitButtonLabels {
+  /** Name of the chevron. */
+  more: string
+}
+
+export const defaultSplitButtonLabels: SplitButtonLabels = {
+  more: 'More options',
+}
+
 export interface SplitButtonMenuProps
   extends React.ComponentProps<typeof DropdownMenuPrimitive.Root> {
   /** Accessible name of the chevron. Default "More options". */
@@ -101,11 +109,14 @@ export interface SplitButtonMenuProps
   contentClassName?: string
   /** Disable only the menu, keeping the main action. */
   disabled?: boolean
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<SplitButtonLabels>
 }
 
 /** The chevron and its menu. Children are `DropdownMenuItem`s and friends. */
 function SplitButtonMenu({
-  label = 'More options',
+  label: labelProp,
+  labels: labelsProp,
   icon,
   align = 'end',
   triggerClassName,
@@ -114,6 +125,8 @@ function SplitButtonMenu({
   children,
   ...props
 }: SplitButtonMenuProps) {
+  const labels = useLabels('split-button', defaultSplitButtonLabels, labelsProp)
+  const label = labelProp ?? labels.more
   const ctx = React.useContext(SplitButtonContext)
   const size = ctx.size ?? 'default'
   const outline = ctx.variant === 'outline'

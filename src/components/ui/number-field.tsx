@@ -1,8 +1,19 @@
-'use client'
-
 import { MinusIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
+import { useLabels, useLocale } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+
+export interface NumberFieldLabels {
+  /** Name of the minus button. */
+  decrement: string
+  /** Name of the plus button. */
+  increment: string
+}
+
+export const defaultNumberFieldLabels: NumberFieldLabels = {
+  decrement: 'Decrease',
+  increment: 'Increase',
+}
 
 export interface NumberFieldProps
   extends Omit<
@@ -35,6 +46,8 @@ export interface NumberFieldProps
   incrementLabel?: string
   /** Classes for the input itself. `className` goes on the outer box. */
   inputClassName?: string
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<NumberFieldLabels>
 }
 
 /** Delay before a held button starts repeating, then the pace of the repeat. */
@@ -97,10 +110,11 @@ function NumberField({
   step = 1,
   largeStep,
   formatOptions,
-  locale,
+  locale: localeProp,
   allowWheel = false,
-  decrementLabel = 'Decrease',
-  incrementLabel = 'Increase',
+  decrementLabel: decrementProp,
+  incrementLabel: incrementProp,
+  labels: labelsProp,
   className,
   inputClassName,
   id,
@@ -113,6 +127,10 @@ function NumberField({
   onFocus,
   ...props
 }: NumberFieldProps) {
+  const labels = useLabels('number-field', defaultNumberFieldLabels, labelsProp)
+  const locale = useLocale(localeProp)
+  const decrementLabel = decrementProp ?? labels.decrement
+  const incrementLabel = incrementProp ?? labels.increment
   const [uncontrolled, setUncontrolled] = React.useState<number | null>(defaultValue)
   const controlled = valueProp !== undefined
   const value = controlled ? valueProp : uncontrolled

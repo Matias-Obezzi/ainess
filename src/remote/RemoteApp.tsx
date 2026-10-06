@@ -23,7 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
 import { useKeyboardInset } from "./useKeyboardInset";
 import { Toaster, toast } from "@/components/ui/toast";
-import { roleLabelKey, statusLabelKey } from "@/lib/labels";
+import { roleLabelKey, statusLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -268,7 +268,7 @@ function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
       <PasswordField
         id="remote-token"
         autoComplete="off"
-        revealLabel={t("common.showSecret")}
+        labels={{ reveal: t("common.showSecret") }}
         inputMode="text"
         autoCapitalize="none"
         autoCorrect="off"
