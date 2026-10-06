@@ -91,6 +91,11 @@ describe("checkAgentClis", () => {
     expect(result.hint).toBe("diagnostics.clis.hintMissing");
   });
 
+  it("does not count Claude as missing: it runs through the ACP adapter, with or without its CLI", () => {
+    const result = checkAgentClis(input({ usedProviders: ["claude"], binaries: { claude: null, copilot: { path: "C:\\copilot.exe" } } }), t);
+    expect(result.level).toBe("ok");
+  });
+
   it("ignores providers that are only detected but not used", () => {
     const result = checkAgentClis(input({
       binaries: { claude: { path: "C:\\claude.exe" }, gemini: { path: "C:\\gemini.exe" } },

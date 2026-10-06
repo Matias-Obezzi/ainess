@@ -24,7 +24,8 @@ export function AgentInspector({ agent, onClose }: { agent: AgentConfig; onClose
   const t = useT();
   const locale = useLocale();
   const actions = useAgentActions(agent);
-  const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
+  // A provider that runs over ACP brings its own adapter: no CLI to find, nothing missing.
+  const binaryInfo = useAppStore(state => (PROVIDERS[agent.provider]?.transport === "acp" ? undefined : state.binaries[agent.provider]));
   const currentProjectId = useCurrentProjectId();
   const worktree = useAppStore(state => selectWorktree(state, currentProjectId, agent.id));
   const preparing = useAppStore(state =>

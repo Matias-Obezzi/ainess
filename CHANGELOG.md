@@ -14,6 +14,10 @@ let one of them fall behind.
   A terminal kept being fitted to its panel while the shell was starting, and those sizes were lost:
   the shell kept the width it started with, narrower than the one on screen, so it wrapped lines
   that fitted. The shell now gets the size on screen as soon as it exists.
+- **Claude agents said "CLI not found" while working.** Claude runs through its ACP adapter and
+  needs no `claude` program installed, which the orchestrator knew, but the agent card, its panel
+  and the diagnostics still looked for one and warned when they did not find it. They no longer do;
+  the warning stays for the providers that do need their CLI.
 
 ## 0.27.1 — 2026-10-05
 
