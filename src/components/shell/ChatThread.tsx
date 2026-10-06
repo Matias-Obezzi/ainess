@@ -213,6 +213,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
       title: t("sidebar.deleteChat.title"),
       description: t("sidebar.deleteChat.body", { name: chat.name }),
       destructive: true,
+      hold: true,
     });
     if (!confirmed) return;
     const projectId = chat.projectId;

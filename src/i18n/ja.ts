@@ -44,6 +44,7 @@ export const ja: Dictionary = {
   "common.paste": "貼り付け",
   "common.selectAll": "すべて選択",
   "common.copyFailed": "コピーできませんでした",
+  "confirm.holdHint": "ボタンを長押しして確定します。",
   "common.showSecret": "値を表示",
   "common.retry": "再試行",
   "error.panel.title": "画面のこの部分が壊れました",
@@ -284,6 +285,7 @@ export const ja: Dictionary = {
   "diff.mode.working": "未コミット",
   "diff.mode.staged": "ステージ済み",
   "diff.mode.head": "最新のコミット",
+  "diff.files": "変更されたファイル",
   "diff.refresh": "更新",
   "diff.files.one": "{n} ファイル",
   "diff.files.other": "{n} ファイル",
@@ -305,10 +307,7 @@ export const ja: Dictionary = {
   "notifications.unread.one": "未読の通知が{n}件",
   "notifications.unread.other": "未読の通知が{n}件",
   "notifications.markAllRead": "すべて既読にする",
-  "notifications.clearAll": "通知をすべて削除",
   "notifications.clear": "削除",
-  "notifications.empty.title": "特に何もありません",
-  "notifications.empty.body": "承認待ちの項目や完了したタスクがここに表示されます。",
 
   // ---- Search palette ----
   "search.placeholder": "プロジェクト、タスク、チャット、エージェント、設定を検索…",

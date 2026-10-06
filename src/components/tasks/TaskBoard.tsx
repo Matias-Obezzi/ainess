@@ -1,9 +1,9 @@
-// The kanban board: one column per status, cards dragged with the native HTML5 events, and the
-// archived tasks folded away at the bottom. Every derived list is memoized, so a board with a
+// The kanban board: one column per status, cards moved by pointer or keyboard (`ui/kanban`), and
+// the archived tasks folded away at the bottom. Every derived list is memoized, so a board with a
 // couple of hundred cards does not recompute anything while the user drags one around.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent } from "react";
-import { edgeScrollStep } from "@/lib/edge-scroll";
+import { useCallback, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { Kanban, KanbanCard, KanbanColumn } from "@/components/ui/kanban";
 import { useAppStore, selectProject, selectTasks } from "@/store";
 import { repoDirOf } from "@/lib/repo-dir";
 import type { GitCommit } from "@/lib/git";
@@ -18,17 +18,6 @@ import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/types";
 import { ChevronDown, ChevronRight, ListTodo } from "lucide-react";
 import { useLocale, useT } from "@/i18n/useT";
-
-interface DropTarget {
-  status: TaskStatus;
-  /** Position inside the column, counting the cards as they are drawn right now. */
-  index: number;
-  /**
-   * The same spot counted over the whole column, filtered cards included. With no filter it is the
-   * same number as `index`; with one, it is what `moveTask` has to be told.
-   */
-  target: number;
-}
 
 export function TaskBoard({
   projectId,
@@ -53,8 +42,6 @@ export function TaskBoard({
     return project ? repoDirOf(project) : "";
   });
 
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<DropTarget | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const filtering = isFiltering(filter);
@@ -104,98 +91,43 @@ export function TaskBoard({
     return map;
   }, [tasks, runs, repoCommits, repoDir]);
 
+  // What the board shows, as the kanban wants it: each column's visible cards, in order.
+  const groups = useMemo(
+    () => Object.fromEntries(columns.map(c => [c.status, c.items.map(task => task.id)])) as Record<string, string[]>,
+    [columns],
+  );
+  const byId = useMemo(() => new Map(tasks.map(task => [task.id, task])), [tasks]);
+
   /**
-   * Holding a card near an edge scrolls: sideways for the columns off screen, and down the column
-   * under the pointer for the cards below its fold. Same ramp for both — see `edgeScrollStep`.
-   *
-   * Two things make this less obvious than it sounds. The card handlers call `stopPropagation`, so
-   * a listener on the container hears nothing while the pointer is over a card — hence the capture
-   * phase, which runs on the way down. And `dragover` only fires while the pointer moves, so
-   * holding still at the edge would deliver one event and then silence: the pointer's last position
-   * is remembered and a frame loop does the scrolling, until the drag ends.
+   * A card dropped somewhere new. The kanban counts the cards it draws, and with a filter on that is
+   * not the whole column: the card lands before the visible one now after it, counted over the whole
+   * column without the card itself — which is what `moveTask` takes.
    */
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const onMove = useCallback((next: Record<string, string[]>, change: { id: string; to: { containerId: string; index: number } }) => {
+    const status = change.to.containerId as TaskStatus;
+    const after = next[status]?.[change.to.index + 1];
+    const column = sortColumn(tasks, status).filter(task => task.id !== change.id);
+    const index = after ? column.findIndex(task => task.id === after) : column.length;
+    moveTask(change.id, status, index < 0 ? column.length : index);
+  }, [tasks, moveTask]);
 
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!dragId || !scroller) return;
-
-    const track = (e: globalThis.DragEvent) => { pointerRef.current = { x: e.clientX, y: e.clientY }; };
-    scroller.addEventListener("dragover", track, true);
-
-    let frame = requestAnimationFrame(function step() {
-      const at = pointerRef.current;
-      if (at) {
-        const board = scroller.getBoundingClientRect();
-        const across = edgeScrollStep(at.x, { start: board.left, end: board.right });
-        if (across !== 0) scroller.scrollLeft += across;
-
-        // The column under the pointer, found rather than held: each one is drawn inside a `map`,
-        // so there is no single ref to keep, and which one matters changes as you cross the board.
-        const under = document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>("[data-column-scroll]");
-        if (under) {
-          const column = under.getBoundingClientRect();
-          const down = edgeScrollStep(at.y, { start: column.top, end: column.bottom });
-          if (down !== 0) under.scrollTop += down;
-        }
-      }
-      frame = requestAnimationFrame(step);
-    });
-
-    return () => {
-      scroller.removeEventListener("dragover", track, true);
-      cancelAnimationFrame(frame);
-      pointerRef.current = null;
-    };
-  }, [dragId]);
-
-  const onDragStart = useCallback((e: DragEvent<HTMLElement>, task: Task) => {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", task.id);
-    setDragId(task.id);
-  }, []);
-
-  const onDragEnd = useCallback(() => {
-    setDragId(null);
-    setOver(null);
-  }, []);
-
-  /** Over a card: the insertion point is before or after it, depending on which half we are on. */
-  const onCardDragOver = useCallback((e: DragEvent<HTMLElement>, task: Task) => {
-    if (!dragId) return;
+  // Enter opens the card the keyboard is on. Space is the kanban's: it picks the card up.
+  const onCardKey = useCallback((e: KeyboardEvent<HTMLElement>) => {
+    if (e.key !== "Enter") return;
+    const card = (e.target as HTMLElement).closest<HTMLElement>("[data-task-id]");
+    if (!card || card.hasAttribute("data-dragging")) return;
     e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    const rect = e.currentTarget.getBoundingClientRect();
-    const after = e.clientY > rect.top + rect.height / 2;
-    const index = sortColumn(visible, task.status).findIndex(t => t.id === task.id) + (after ? 1 : 0);
-    const target = sortColumn(tasks, task.status).findIndex(t => t.id === task.id) + (after ? 1 : 0);
-    setOver(prev => (prev?.status === task.status && prev.index === index ? prev : { status: task.status, index, target }));
-  }, [dragId, tasks, visible]);
+    onOpenTask(card.dataset.taskId!);
+  }, [onOpenTask]);
 
-  /** Over the empty part of a column: drop at the end. */
-  const onColumnDragOver = useCallback((e: DragEvent<HTMLElement>, status: TaskStatus, count: number) => {
-    if (!dragId) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const target = sortColumn(tasks, status).length;
-    setOver(prev => (prev?.status === status && prev.index === count ? prev : { status, index: count, target }));
-  }, [dragId, tasks]);
-
-  const onDrop = useCallback((e: DragEvent<HTMLElement>, status: TaskStatus) => {
-    e.preventDefault();
-    const id = dragId ?? e.dataTransfer.getData("text/plain");
-    setDragId(null);
-    setOver(null);
-    if (!id) return;
-    // The drawn index counts the dragged card itself, so moving it down its own column would
-    // otherwise land one slot too far.
-    const items = sortColumn(tasks, status);
-    const target = over && over.status === status ? over.target : items.length;
-    const current = items.findIndex(t => t.id === id);
-    moveTask(id, status, current >= 0 && target > current ? target - 1 : target);
-  }, [dragId, over, tasks, moveTask]);
+  const renderCard = (task: Task) => (
+    <TaskCard
+      task={task}
+      blocked={blocked.get(task.id) ?? 0}
+      cost={costs.get(task.id)}
+      commit={commits.get(task.id)}
+    />
+  );
 
   if (tasks.length === 0) {
     return (
@@ -210,43 +142,56 @@ export function TaskBoard({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div ref={scrollerRef} className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-3">
-        {columns.map(({ status, items, total }) => {
-          const meta = taskStatusMeta[status];
+      <Kanban
+        groups={groups}
+        order={TASK_STATUSES}
+        onChange={onMove}
+        className="min-h-0 flex-1 items-stretch gap-3 p-3"
+        // The card alone follows the pointer, not its column.
+        overlay={id => {
+          const task = byId.get(id);
+          return task ? <div className="w-72">{renderCard(task)}</div> : null;
+        }}
+      >
+        {(status, ids) => {
+          const meta = taskStatusMeta[status as TaskStatus];
+          const column = columns.find(c => c.status === status)!;
           return (
-            <section
-              key={status}
-              className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/30"
-              onDragOver={e => onColumnDragOver(e, status, items.length)}
-              onDrop={e => onDrop(e, status)}
-            >
+            <section key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/30">
               <header className="flex items-center gap-2 px-3 py-2">
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", meta.dot)} />
                 <h3 className="truncate text-xs font-semibold uppercase tracking-wide">{t(meta.labelKey)}</h3>
                 <Badge variant="outline" className="ml-auto text-[10px]">
-                  {filtering ? `${items.length} / ${total}` : total}
+                  {filtering ? `${column.items.length} / ${column.total}` : column.total}
                 </Badge>
               </header>
 
-              <div data-column-scroll className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-3">
-                {items.map((task, i) => (
-                  <div key={task.id}>
-                    {over?.status === status && over.index === i && <DropLine />}
-                    <TaskCard
-                      task={task}
-                      blocked={blocked.get(task.id) ?? 0}
-                      cost={costs.get(task.id)}
-                      commit={commits.get(task.id)}
-                      dragging={dragId === task.id}
-                      onOpen={onOpenTask}
-                      onDragStart={onDragStart}
-                      onDragOver={onCardDragOver}
-                      onDragEnd={onDragEnd}
-                    />
-                  </div>
-                ))}
-                {over?.status === status && over.index >= items.length && <DropLine />}
-                {items.length === 0 && !over && (filtering ? (
+              <KanbanColumn
+                id={status}
+                data-column-scroll
+                aria-label={t(meta.labelKey)}
+                onKeyDown={onCardKey}
+                className="min-h-0 w-auto flex-1 gap-0 overflow-y-auto rounded-none border-0 bg-transparent px-2 pt-0 pb-3 data-[over]:bg-accent/40"
+              >
+                {ids.map(id => {
+                  const task = byId.get(id);
+                  if (!task) return null;
+                  return (
+                    <KanbanCard
+                      key={id}
+                      id={id}
+                      data-task-id={id}
+                      aria-label={task.title}
+                      // Here and not on the card inside: the drag holds the pointer, so the click
+                      // that follows a press lands on this element.
+                      onClick={() => onOpenTask(id)}
+                      className="block rounded-lg border-0 bg-transparent p-0 shadow-none"
+                    >
+                      {renderCard(task)}
+                    </KanbanCard>
+                  );
+                })}
+                {ids.length === 0 && (filtering ? (
                   <p className="rounded-lg border border-dashed border-border py-4 text-center text-xs text-muted-foreground">
                     {t("tasks.noMatches")}
                   </p>
@@ -254,16 +199,16 @@ export function TaskBoard({
                   <button
                     type="button"
                     className="w-full rounded-lg border border-dashed border-border py-4 text-xs text-muted-foreground transition-colors hover:border-ring/50 hover:text-foreground"
-                    onClick={() => onNewTask(status)}
+                    onClick={() => onNewTask(status as TaskStatus)}
                   >
                     {t("tasks.addOne")}
                   </button>
                 ))}
-              </div>
+              </KanbanColumn>
             </section>
           );
-        })}
-      </div>
+        }}
+      </Kanban>
 
       {archived.length > 0 && (
         <div className="shrink-0 border-t border-border">
@@ -293,9 +238,4 @@ export function TaskBoard({
       )}
     </div>
   );
-}
-
-/** Where the card would land. */
-function DropLine() {
-  return <div className="mb-2 h-0.5 rounded-full bg-primary" />;
 }

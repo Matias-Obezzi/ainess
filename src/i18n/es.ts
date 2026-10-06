@@ -44,6 +44,7 @@ export const es: Dictionary = {
   "common.paste": "Pegar",
   "common.selectAll": "Seleccionar todo",
   "common.copyFailed": "No se pudo copiar",
+  "confirm.holdHint": "Mantené apretado el botón para confirmar.",
   "common.showSecret": "Mostrar el valor",
   "common.retry": "Reintentar",
   "error.panel.title": "Esta parte de la pantalla se rompió",
@@ -284,6 +285,7 @@ export const es: Dictionary = {
   "diff.mode.working": "Sin commitear",
   "diff.mode.staged": "Preparado",
   "diff.mode.head": "Último commit",
+  "diff.files": "Archivos cambiados",
   "diff.refresh": "Actualizar",
   "diff.files.one": "{n} archivo",
   "diff.files.other": "{n} archivos",
@@ -305,10 +307,7 @@ export const es: Dictionary = {
   "notifications.unread.one": "{n} notificación sin leer",
   "notifications.unread.other": "{n} notificaciones sin leer",
   "notifications.markAllRead": "Marcar todas como leídas",
-  "notifications.clearAll": "Vaciar notificaciones",
   "notifications.clear": "Vaciar",
-  "notifications.empty.title": "Todo tranquilo",
-  "notifications.empty.body": "Acá van a aparecer las aprobaciones pendientes y las tareas que terminen.",
 
   // ---- Search palette ----
   "search.placeholder": "Buscar proyectos, tareas, chats, agentes, configuración…",

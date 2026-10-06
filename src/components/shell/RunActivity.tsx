@@ -8,7 +8,7 @@
 // below — and clicking it opens the history above. See `lib/activity-view` for what folds and why.
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { transcriptOf } from "@/lib/run-answer";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore, selectAllAgents } from "@/store";
 import { StatusDot } from "@/components/StatusDot";
 import { Markdown } from "@/components/shell/Markdown";
@@ -24,6 +24,7 @@ import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
 import { ChevronDown, ChevronUp, CornerDownRight, Info, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TextMorph } from "@/components/ui/text-morph";
 import { RetryRunDialog } from "@/components/RetryRunDialog";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
@@ -44,9 +45,6 @@ const COMPACT_ROWS = 6;
  * everything, so folding it again behind a second one would be asking twice.
  */
 export type ActivityMode = "live" | "full";
-
-/** How long the leaving step stays mounted. Matches `step-out` in index.css. */
-const STEP_EXIT_MS = 260;
 
 /**
  * How much of a step the tooltip will show.
@@ -319,12 +317,14 @@ function TickerLine({ step, running }: { step: CommMessage | null; running: bool
   // A failed call says so: its summary describes the call, not what became of it.
   const label = truncate(failed ? step.text : (step.meta?.summary ?? step.text), 90);
 
+  // The text morphs into the next step's: the letters two steps share stay and slide, the rest fade.
+  const text = <TextMorph>{label}</TextMorph>;
   return (
     <>
       <Icon className={cn("h-3.5 w-3.5 shrink-0", failed && "text-amber-600 dark:text-amber-400")} />
       {running
-        ? <Shimmer className="truncate">{label}</Shimmer>
-        : <span className={cn("truncate", failed && "text-amber-600 dark:text-amber-400")}>{label}</span>}
+        ? <Shimmer className="truncate">{text}</Shimmer>
+        : <span className={cn("truncate", failed && "text-amber-600 dark:text-amber-400")}>{text}</span>}
     </>
   );
 }
@@ -332,11 +332,9 @@ function TickerLine({ step, running }: { step: CommMessage | null; running: bool
 /**
  * The one line that stands for everything the agent is doing, and the handle for the rest.
  *
- * The window is a single row tall with its overflow hidden, so a new step arriving pushes the last
- * one out through the top. The movement is the point: a line that swaps its text in place looks
- * the same whether it changed once or forty times, and "is this thing still going" was the
- * question people were asking of a wall of static text. The step on its way out stays mounted for
- * as long as it takes to leave and not a frame longer.
+ * A new step morphs the line into its own text. The movement is the point: a line that swaps its
+ * text in place looks the same whether it changed once or forty times, and "is this thing still
+ * going" was the question people were asking of a wall of static text.
  */
 function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggle, label }: {
   runId: string;
@@ -349,19 +347,6 @@ function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggl
   label: string;
 }) {
   const t = useT();
-  const [leaving, setLeaving] = useState<CommMessage | null>(null);
-  const previous = useRef<CommMessage | null>(step);
-
-  // Layout, not effect: the outgoing step has to be in the same paint as the incoming one, or it
-  // flashes back into the row it already left before starting to animate away.
-  useLayoutEffect(() => {
-    const before = previous.current;
-    previous.current = step;
-    if (!before || !step || before.id === step.id) return;
-    setLeaving(before);
-    const timer = setTimeout(() => setLeaving(null), STEP_EXIT_MS);
-    return () => clearTimeout(timer);
-  }, [step?.id]);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -387,21 +372,8 @@ function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggl
       className="group flex w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground"
     >
       <StepTooltip text={full}>
-        <span className="relative block h-4 min-w-0 flex-1 overflow-hidden">
-          {leaving && (
-            <span
-              key={`out-${leaving.id}`}
-              className="animate-step-out absolute inset-x-0 top-0 flex h-4 items-center gap-1.5 font-mono leading-4"
-            >
-              <TickerLine step={leaving} running={false} />
-            </span>
-          )}
-          <span
-            key={`in-${step?.id ?? "idle"}`}
-            className="animate-step-in absolute inset-x-0 top-0 flex h-4 items-center gap-1.5 font-mono leading-4"
-          >
-            <TickerLine step={step} running={running} />
-          </span>
+        <span className="flex h-4 min-w-0 flex-1 items-center gap-1.5 overflow-hidden font-mono leading-4">
+          <TickerLine step={step} running={running} />
         </span>
       </StepTooltip>
 

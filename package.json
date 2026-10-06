@@ -32,6 +32,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.11.0",
     "@types/qrcode": "^1.5.6",
+    "@uiness/dnd": "^0.1.2",
     "@uiness/island": "^0.1.0",
     "@uiness/toast": "^0.2.0",
     "@xterm/addon-fit": "^0.11.0",

@@ -43,6 +43,7 @@ export const de: Dictionary = {
   "common.paste": "Einfügen",
   "common.selectAll": "Alles auswählen",
   "common.copyFailed": "Kopieren fehlgeschlagen",
+  "confirm.holdHint": "Halte die Schaltfläche gedrückt, um zu bestätigen.",
   "common.showSecret": "Wert anzeigen",
   "common.retry": "Erneut versuchen",
   "error.panel.title": "Dieser Teil des Bildschirms ist kaputtgegangen",
@@ -283,6 +284,7 @@ export const de: Dictionary = {
   "diff.mode.working": "Nicht comittet",
   "diff.mode.staged": "Vorgemerkt",
   "diff.mode.head": "Letzter Commit",
+  "diff.files": "Geänderte Dateien",
   "diff.refresh": "Aktualisieren",
   "diff.files.one": "{n} Datei",
   "diff.files.other": "{n} Dateien",
@@ -304,10 +306,7 @@ export const de: Dictionary = {
   "notifications.unread.one": "{n} ungelesene Benachrichtigung",
   "notifications.unread.other": "{n} ungelesene Benachrichtigungen",
   "notifications.markAllRead": "Alle als gelesen markieren",
-  "notifications.clearAll": "Benachrichtigungen leeren",
   "notifications.clear": "Leeren",
-  "notifications.empty.title": "Alles ruhig",
-  "notifications.empty.body": "Hier erscheinen offene Freigaben und fertige Aufgaben.",
 
   // ---- Search palette ----
   "search.placeholder": "Projekte, Aufgaben, Chats, Agenten, Einstellungen suchen…",

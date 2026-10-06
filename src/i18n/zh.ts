@@ -43,6 +43,7 @@ export const zh: Dictionary = {
   "common.paste": "粘贴",
   "common.selectAll": "全选",
   "common.copyFailed": "复制失败",
+  "confirm.holdHint": "按住按钮以确认。",
   "common.showSecret": "显示内容",
   "common.retry": "重试",
   "error.panel.title": "屏幕的这一部分崩了",
@@ -283,6 +284,7 @@ export const zh: Dictionary = {
   "diff.mode.working": "未提交",
   "diff.mode.staged": "已暂存",
   "diff.mode.head": "最新提交",
+  "diff.files": "已更改的文件",
   "diff.refresh": "刷新",
   "diff.files.one": "{n} 个文件",
   "diff.files.other": "{n} 个文件",
@@ -304,10 +306,7 @@ export const zh: Dictionary = {
   "notifications.unread.one": "{n} 条未读通知",
   "notifications.unread.other": "{n} 条未读通知",
   "notifications.markAllRead": "全部标为已读",
-  "notifications.clearAll": "清空通知",
   "notifications.clear": "清空",
-  "notifications.empty.title": "一切安静",
-  "notifications.empty.body": "待审批的委派和完成的任务会显示在这里。",
 
   // ---- Search palette ----
   "search.placeholder": "搜索项目、任务、聊天、智能体、设置…",

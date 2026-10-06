@@ -180,6 +180,7 @@ export function Sidebar() {
       title: t("sidebar.deleteProject.title"),
       description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,
+      hold: true,
     });
     if (confirmed) removeProject(p.id);
   };
@@ -208,6 +209,7 @@ export function Sidebar() {
       title: t("sidebar.deleteChat.title"),
       description: t("sidebar.deleteChat.body", { name }),
       destructive: true,
+      hold: true,
     });
     if (!confirmed) return;
     const wasCurrent = useAppStore.getState().currentChatId === chatId;

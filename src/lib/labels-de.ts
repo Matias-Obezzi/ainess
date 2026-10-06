@@ -7,6 +7,31 @@ import type { LabelsPack } from '@/lib/labels'
  */
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+/** What the drag and drop components tell screen readers, the shape of `AnnouncementContext`. */
+interface DragContext {
+  id: string
+  from: { containerId: string; index: number }
+  to: { containerId: string; index: number }
+  count: number
+  delta: { x: number; y: number }
+}
+
+const place = ({ to, from, count, delta }: DragContext) => {
+  if (count <= 0) return `${Math.round(delta.x)}, ${Math.round(delta.y)} Pixel vom Start`
+  const at = `Position ${to.index + 1} von ${count}`
+  return to.containerId && to.containerId !== from.containerId ? `${at} in ${to.containerId}` : at
+}
+
+const drag = {
+  start: (context: DragContext) =>
+    context.count > 0
+      ? `${context.id} aufgenommen, ${place(context)}. Mit den Pfeiltasten verschieben, mit Leertaste oder Eingabe ablegen, mit Escape abbrechen.`
+      : `${context.id} aufgenommen. Mit den Pfeiltasten verschieben, mit Leertaste oder Eingabe ablegen, mit Escape abbrechen.`,
+  move: (context: DragContext) => `${context.id} verschoben auf ${place(context)}.`,
+  drop: (context: DragContext) => `${context.id} abgelegt auf ${place(context)}.`,
+  cancel: (context: DragContext) => `Ziehen von ${context.id} abgebrochen, zurück auf ${place(context)}.`,
+}
+
 export const de = {
   'alert-dialog': {
     confirm: 'Fortfahren',
@@ -144,5 +169,29 @@ export const de = {
     almostFull: 'fast voll',
     overLimit: (overage: string) => `um ${overage} über dem Limit`,
     free: 'Frei',
+  },
+  'hold-to-confirm': {
+    hint: 'Zum Bestätigen gedrückt halten.',
+    confirmed: 'Bestätigt',
+  },
+  kanban: {
+    card: 'sortierbares Element',
+    ...drag,
+  },
+  'notification-center': {
+    title: 'Benachrichtigungen',
+    unread: (label: string, count: number) => `${label}, ${count} ungelesen`,
+    markAsRead: 'Als gelesen markieren',
+    unreadDot: 'Ungelesen',
+    allTab: 'Alle',
+    unreadTab: 'Ungelesen',
+    markAllAsRead: 'Alle als gelesen markieren',
+    caughtUp: 'Du bist auf dem neuesten Stand',
+    caughtUpHint: 'Nichts Neues seit dem letzten Blick.',
+    empty: 'Keine Benachrichtigungen',
+    emptyHint: 'Neue Aktivität erscheint hier.',
+  },
+  'tree-view': {
+    loadFailed: 'konnte nicht geladen werden, zum Wiederholen öffnen',
   },
 } satisfies LabelsPack

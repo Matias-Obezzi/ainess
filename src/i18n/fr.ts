@@ -43,6 +43,7 @@ export const fr: Dictionary = {
   "common.paste": "Coller",
   "common.selectAll": "Tout sélectionner",
   "common.copyFailed": "Impossible de copier",
+  "confirm.holdHint": "Maintenez le bouton enfoncé pour confirmer.",
   "common.showSecret": "Afficher la valeur",
   "common.retry": "Réessayer",
   "error.panel.title": "Cette partie de l'écran a cassé",
@@ -283,6 +284,7 @@ export const fr: Dictionary = {
   "diff.mode.working": "Non commité",
   "diff.mode.staged": "Préparé",
   "diff.mode.head": "Dernier commit",
+  "diff.files": "Fichiers modifiés",
   "diff.refresh": "Actualiser",
   "diff.files.one": "{n} fichier",
   "diff.files.other": "{n} fichiers",
@@ -304,10 +306,7 @@ export const fr: Dictionary = {
   "notifications.unread.one": "{n} notification non lue",
   "notifications.unread.other": "{n} notifications non lues",
   "notifications.markAllRead": "Tout marquer comme lu",
-  "notifications.clearAll": "Vider les notifications",
   "notifications.clear": "Vider",
-  "notifications.empty.title": "Tout est calme",
-  "notifications.empty.body": "Les approbations en attente et les tâches terminées apparaîtront ici.",
 
   // ---- Search palette ----
   "search.placeholder": "Rechercher des projets, tâches, chats, agents, paramètres…",

@@ -5,6 +5,31 @@ import type { LabelsPack } from '@/lib/labels'
  * components installed here. A component added later and missing from this file speaks English
  * in Japanese until its entry is written: `src/lib/labels-en.ts` has every key to translate.
  */
+/** What the drag and drop components tell screen readers, the shape of `AnnouncementContext`. */
+interface DragContext {
+  id: string
+  from: { containerId: string; index: number }
+  to: { containerId: string; index: number }
+  count: number
+  delta: { x: number; y: number }
+}
+
+const place = ({ to, from, count, delta }: DragContext) => {
+  if (count <= 0) return `開始位置から ${Math.round(delta.x)}, ${Math.round(delta.y)} ピクセル`
+  const at = `${count} 件中 ${to.index + 1} 番目`
+  return to.containerId && to.containerId !== from.containerId ? `${to.containerId} の ${at}` : at
+}
+
+const drag = {
+  start: (context: DragContext) =>
+    context.count > 0
+      ? `${context.id} をつかみました（${place(context)}）。矢印キーで移動、スペースかエンターで置く、エスケープで取り消します。`
+      : `${context.id} をつかみました。矢印キーで移動、スペースかエンターで置く、エスケープで取り消します。`,
+  move: (context: DragContext) => `${context.id} を ${place(context)} に移動しました。`,
+  drop: (context: DragContext) => `${context.id} を ${place(context)} に置きました。`,
+  cancel: (context: DragContext) => `${context.id} の移動を取り消し、${place(context)} に戻しました。`,
+}
+
 export const ja = {
   'alert-dialog': {
     confirm: '続行',
@@ -141,5 +166,29 @@ export const ja = {
     almostFull: 'もうすぐ上限',
     overLimit: (overage: string) => `上限を ${overage} 超過`,
     free: '空き',
+  },
+  'hold-to-confirm': {
+    hint: '長押しして確定します。',
+    confirmed: '確定しました',
+  },
+  kanban: {
+    card: '並べ替えできる項目',
+    ...drag,
+  },
+  'notification-center': {
+    title: '通知',
+    unread: (label: string, count: number) => `${label}、未読 ${count} 件`,
+    markAsRead: '既読にする',
+    unreadDot: '未読',
+    allTab: 'すべて',
+    unreadTab: '未読',
+    markAllAsRead: 'すべて既読にする',
+    caughtUp: 'すべて確認済みです',
+    caughtUpHint: '前回から新しいものはありません。',
+    empty: '通知はありません',
+    emptyHint: '新しい動きがあるとここに表示されます。',
+  },
+  'tree-view': {
+    loadFailed: '読み込めませんでした。開いて再試行してください',
   },
 } satisfies LabelsPack

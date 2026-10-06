@@ -43,6 +43,7 @@ export const en: Dictionary = {
   "common.paste": "Paste",
   "common.selectAll": "Select all",
   "common.copyFailed": "Couldn't copy",
+  "confirm.holdHint": "Press and hold the button to confirm.",
   "common.showSecret": "Show value",
   "common.retry": "Retry",
   "error.panel.title": "This part of the screen broke",
@@ -284,6 +285,7 @@ export const en: Dictionary = {
   "diff.mode.working": "Uncommitted",
   "diff.mode.staged": "Staged",
   "diff.mode.head": "Last commit",
+  "diff.files": "Changed files",
   "diff.refresh": "Refresh",
   "diff.files.one": "{n} file",
   "diff.files.other": "{n} files",
@@ -305,10 +307,7 @@ export const en: Dictionary = {
   "notifications.unread.one": "{n} unread notification",
   "notifications.unread.other": "{n} unread notifications",
   "notifications.markAllRead": "Mark all as read",
-  "notifications.clearAll": "Clear notifications",
   "notifications.clear": "Clear",
-  "notifications.empty.title": "All quiet",
-  "notifications.empty.body": "Pending approvals and finished tasks will show up here.",
 
   // ---- Search palette ----
   "search.placeholder": "Search projects, tasks, chats, agents, settings…",
