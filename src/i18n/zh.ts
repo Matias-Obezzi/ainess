@@ -43,8 +43,7 @@ export const zh: Dictionary = {
   "common.paste": "粘贴",
   "common.selectAll": "全选",
   "common.copyFailed": "复制失败",
-  "common.decrease": "减少",
-  "common.increase": "增加",
+  "confirm.holdHint": "按住按钮以确认。",
   "common.showSecret": "显示内容",
   "common.retry": "重试",
   "error.panel.title": "屏幕的这一部分崩了",
@@ -274,12 +273,6 @@ export const zh: Dictionary = {
   "activity.thinking": "思考中…",
   "markdown.invalidDelegation": "委派格式无效",
   "markdown.revealFailed": "无法在文件管理器中显示该文件",
-  "codeBlock.wrap": "自动换行",
-  "codeBlock.copy": "复制代码",
-  "codeBlock.region": "代码",
-  "codeBlock.regionLang": "{language} 代码",
-  "codeBlock.showLess": "收起",
-  "codeBlock.showAll": "显示全部 {count} 行",
 
   // ---- Right dock ----
   "dock.dragToResize": "拖动以调整宽度",
@@ -291,6 +284,7 @@ export const zh: Dictionary = {
   "diff.mode.working": "未提交",
   "diff.mode.staged": "已暂存",
   "diff.mode.head": "最新提交",
+  "diff.files": "已更改的文件",
   "diff.refresh": "刷新",
   "diff.files.one": "{n} 个文件",
   "diff.files.other": "{n} 个文件",
@@ -312,10 +306,7 @@ export const zh: Dictionary = {
   "notifications.unread.one": "{n} 条未读通知",
   "notifications.unread.other": "{n} 条未读通知",
   "notifications.markAllRead": "全部标为已读",
-  "notifications.clearAll": "清空通知",
   "notifications.clear": "清空",
-  "notifications.empty.title": "一切安静",
-  "notifications.empty.body": "待审批的委派和完成的任务会显示在这里。",
 
   // ---- Search palette ----
   "search.placeholder": "搜索项目、任务、聊天、智能体、设置…",
@@ -1457,9 +1448,6 @@ export const zh: Dictionary = {
   "agentPicker.placeholder": "选择智能体",
   "agentPicker.search": "搜索智能体…",
   "agentPicker.empty": "没有匹配的智能体",
-  "agentPicker.clear": "全部移除",
-  "agentPicker.remove": "移除 {name}",
-  "agentPicker.summary": "已选（{count}）：{names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "新建预设指令",

@@ -2,6 +2,38 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.29.0 — 2026-10-06
+
+### Cambiado
+
+- **Los botones y campos con los que está hecha la interfaz hablan el idioma de la app.** Los
+  botones de cerrar, «Copiado», los botones para sumar y restar de un campo numérico, el ojo de un
+  campo de token, lo que escucha un lector de pantalla en un indicador de carga o en una lista
+  elegida, las teclas de los atajos: lo decían en inglés en cualquier idioma, y ahora siguen a la
+  app en los siete y cambian con ella.
+- **Un agente trabajando emite anillos en vez de parpadear**, en su tarjeta, en su panel y en la
+  barra lateral, y los contadores de agentes trabajando, aprobaciones pendientes y notificaciones
+  sin leer giran hasta su nuevo valor en vez de saltar.
+- **El uso en la pantalla de inicio cuenta hacia arriba, y sus barras de dos semanas dicen cuánto
+  fue cada día** cuando pasás por encima. El tope de gasto en Uso dice «x de y» y se pone ámbar y
+  después rojo como antes.
+- **Los argumentos de una herramienta, en el detalle de un mensaje, son un árbol** que podés abrir,
+  buscar y copiar, en vez de un bloque de JSON.
+- **El modo de un chat son dos botones lado a lado** en vez de un menú, y la búsqueda de tareas se
+  limpia con un clic.
+- **Las tarjetas del tablero también se mueven con el teclado.** Espacio levanta una tarjeta, las
+  flechas la llevan dentro de su columna y a la siguiente, Espacio la suelta y Escape la devuelve;
+  con el mouse, la tarjeta lo sigue y se ilumina la columna de abajo. Enter sigue abriendo la tarea.
+- **La campana es un centro de notificaciones**: todas o solo las sin leer, agrupadas por día, cada
+  una marcada como leída al abrirla o todas juntas. Abrir el panel ya no marca todo como leído por
+  su cuenta.
+- **Eliminar un proyecto o un chat pide mantener apretado el botón**, así no lo hace un clic perdido
+  ni un Enter por costumbre.
+- **El diff tiene un índice de lo que cambió**, por carpeta, con las líneas agregadas y quitadas de
+  cada archivo; elegir uno abre sus cambios y salta a ellos.
+- **La línea que dice qué está haciendo un agente se transforma en el paso siguiente** en vez de
+  entrar deslizándose.
+
 ## 0.28.0 — 2026-10-05
 
 ### Nuevo

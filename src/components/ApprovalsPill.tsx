@@ -8,6 +8,7 @@ import { ShieldCheck } from "lucide-react";
 import { useAppStore } from "@/store";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { Button } from "@/components/ui/button";
+import { Odometer } from "@/components/ui/odometer";
 import { MovingBorder } from "@/components/ui/moving-border";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { pendingApprovals } from "@/lib/approvals";
@@ -47,7 +48,7 @@ export function ApprovalsPill({ className }: { className?: string }) {
             title={label}
           >
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{pending.length}</span>
+            <Odometer value={pending.length} />
           </Button>
         </PopoverTrigger>
       </MovingBorder>

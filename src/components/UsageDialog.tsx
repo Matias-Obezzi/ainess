@@ -7,6 +7,7 @@ import { AgentAvatar } from "@/components/ProviderLogo";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { UsageMeter } from "@/components/ui/usage-meter";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,8 +25,7 @@ import { useT, useLocale, type TFunction } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import type { Run } from "@/types";
 import { Coins } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { budgetState } from "@/lib/budget";
+import { BUDGET_WARN_AT, budgetState } from "@/lib/budget";
 import { COMPACT_AT_TOKENS, sessionWeight } from "@/lib/session-weight";
 
 /** Days of the bar chart. */
@@ -138,44 +138,27 @@ export function UsageDialog({
               <TotalsCard label={t("usage.month")} totals={month} locale={locale} labels={labels} t={t} />
             </div>
 
-            {bState.limit && (
-              <div className="space-y-1.5 rounded-lg border border-border p-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium">
-                    {bState.limit.kind === "daily" ? t("budget.daily") : t("budget.monthly")}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-medium tabular-nums",
-                      bState.exceeded
-                        ? "text-rose-600 dark:text-rose-400"
-                        : bState.warning
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-emerald-600 dark:text-emerald-400"
-                    )}
-                  >
-                    {Math.round((bState.ratio ?? 0) * 100)}% ·{" "}
-                    {t("budget.spentOf", {
-                      spent: formatCost(bState.limit.kind === "monthly" ? bState.spentMonth : bState.spentToday, locale),
-                      limit: formatCost(bState.limit.usd, locale),
-                    })}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      bState.exceeded
-                        ? "bg-rose-600 dark:bg-rose-500"
-                        : bState.warning
-                          ? "bg-amber-500"
-                          : "bg-emerald-600 dark:bg-emerald-500"
-                    )}
-                    style={{ width: `${Math.min(100, Math.max(0, Math.round((bState.ratio ?? 0) * 100)))}%` }}
-                  />
-                </div>
-              </div>
-            )}
+            {bState.limit && (() => {
+              const spent = bState.limit.kind === "monthly" ? bState.spentMonth : bState.spentToday;
+              return (
+                // The meter says "x of y", turns amber at the same point the budget warns and red past
+                // the limit; the colors are the ones the budget used before it.
+                <UsageMeter
+                  className="rounded-lg border border-border p-3"
+                  label={bState.limit.kind === "daily" ? t("budget.daily") : t("budget.monthly")}
+                  segments={[{
+                    key: "spent",
+                    label: bState.limit.kind === "daily" ? t("budget.daily") : t("budget.monthly"),
+                    value: spent,
+                    color: bState.exceeded ? "var(--color-rose-500, #f43f5e)" : bState.warning ? "var(--color-amber-500, #f59e0b)" : "var(--color-emerald-500, #10b981)",
+                  }]}
+                  limit={bState.limit.usd}
+                  warnAt={BUDGET_WARN_AT}
+                  showLegend={false}
+                  format={value => formatCost(value, locale)}
+                />
+              );
+            })()}
 
             <Separator />
 

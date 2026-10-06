@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { ComponentLabels } from "@/i18n/ComponentLabels";
 import "./index.css";
 import { installConsoleCapture, log } from "@/lib/logger";
 
@@ -33,6 +34,8 @@ if (import.meta.env.DEV) {
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <ComponentLabels>
+      <App />
+    </ComponentLabels>
   </React.StrictMode>,
 );

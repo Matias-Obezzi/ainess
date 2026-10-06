@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
+import { Odometer } from "@/components/ui/odometer";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgentAvatar } from "@/components/ProviderLogo";
@@ -179,6 +180,7 @@ export function Sidebar() {
       title: t("sidebar.deleteProject.title"),
       description: t("sidebar.deleteProject.body", { name: p.name }),
       destructive: true,
+      hold: true,
     });
     if (confirmed) removeProject(p.id);
   };
@@ -207,6 +209,7 @@ export function Sidebar() {
       title: t("sidebar.deleteChat.title"),
       description: t("sidebar.deleteChat.body", { name }),
       destructive: true,
+      hold: true,
     });
     if (!confirmed) return;
     const wasCurrent = useAppStore.getState().currentChatId === chatId;
@@ -359,7 +362,7 @@ export function Sidebar() {
                     ? <Users className="h-3.5 w-3.5 shrink-0" />
                     : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
                   <span className="truncate flex-1">{chat.name}</span>
-                  {active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+                  {active && <StatusDot status="working" className="h-1.5 w-1.5 shrink-0" />}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -405,7 +408,7 @@ export function Sidebar() {
       <PopoverContent align="start" side="top" className="w-80 p-3">
         <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
           <span className="text-xs font-semibold">{t("sidebar.activeAgents")}</span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">{totalRunning}</span>
+          <Odometer value={totalRunning} className="text-[10px] text-muted-foreground" />
         </div>
         <div className="mt-2 flex flex-col gap-2 max-h-72 overflow-y-auto">
           {activeAgentsList.length === 0 ? (

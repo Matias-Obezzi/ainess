@@ -2,6 +2,37 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.29.0 — 2026-10-06
+
+### Alterado
+
+- **Os botões e campos de que a interface é feita falam o idioma do app.** Botões de fechar,
+  «Copiado», os botões de somar e subtrair de um campo numérico, o olho de um campo de token, o que
+  um leitor de tela ouve num indicador de carregamento ou numa lista escolhida, as teclas dos
+  atalhos: diziam em inglês em qualquer idioma, e agora seguem o app nos sete e mudam com ele.
+- **Um agente trabalhando emite anéis em vez de piscar**, no seu cartão, no seu painel e na barra
+  lateral, e os contadores de agentes trabalhando, aprovações pendentes e notificações não lidas
+  rolam até o novo valor em vez de pular.
+- **O uso na tela inicial conta para cima, e as barras de duas semanas dizem quanto foi cada dia**
+  quando você passa por cima. O orçamento em Uso diz «x de y» e fica âmbar e depois vermelho como
+  antes.
+- **Os argumentos de uma ferramenta, no detalhe de uma mensagem, são uma árvore** que você pode
+  abrir, buscar e copiar, em vez de um bloco de JSON.
+- **O modo de um chat são dois botões lado a lado** em vez de um menu, e a busca de tarefas se limpa
+  com um clique.
+- **Os cartões do quadro também se movem pelo teclado.** Espaço pega um cartão, as setas o levam
+  dentro da coluna e para a próxima, Espaço o solta e Esc o devolve; com o mouse, o cartão o
+  acompanha e a coluna embaixo se ilumina. Enter continua abrindo a tarefa.
+- **O sino é uma central de notificações**: todas ou só as não lidas, agrupadas por dia, cada uma
+  marcada como lida ao abri-la ou todas de uma vez. Abrir o painel não marca mais tudo como lido
+  sozinho.
+- **Excluir um projeto ou um chat pede para manter o botão pressionado**, para que um clique perdido
+  ou um Enter por hábito não o façam.
+- **O diff tem um índice do que mudou**, por pasta, com as linhas adicionadas e removidas de cada
+  arquivo; escolher um abre as mudanças dele e rola até elas.
+- **A linha que diz o que um agente está fazendo se transforma no passo seguinte** em vez de entrar
+  deslizando.
+
 ## 0.28.0 — 2026-10-05
 
 ### Novo

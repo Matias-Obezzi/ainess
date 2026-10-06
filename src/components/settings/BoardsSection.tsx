@@ -53,7 +53,7 @@ export function BoardsSection() {
             <label className="text-sm font-semibold">{t("boards.github.token")}</label>
             <PasswordField
               autoComplete="off"
-              revealLabel={t("common.showSecret")}
+              labels={{ reveal: t("common.showSecret") }}
               value={token}
               placeholder="github_pat_…"
               onChange={e => setToken(e.target.value)}
@@ -76,7 +76,7 @@ export function BoardsSection() {
             <label className="text-sm font-semibold">{t("boards.trello.key")}</label>
             <PasswordField
               autoComplete="off"
-              revealLabel={t("common.showSecret")}
+              labels={{ reveal: t("common.showSecret") }}
               value={trelloKey}
               onChange={e => setTrelloKey(e.target.value)}
               onBlur={() => trelloKey.trim() !== savedKey && saveTrello({ key: trelloKey.trim() })}
@@ -86,7 +86,7 @@ export function BoardsSection() {
             <label className="text-sm font-semibold">{t("boards.trello.token")}</label>
             <PasswordField
               autoComplete="off"
-              revealLabel={t("common.showSecret")}
+              labels={{ reveal: t("common.showSecret") }}
               value={trelloToken}
               onChange={e => setTrelloToken(e.target.value)}
               onBlur={() => trelloToken.trim() !== savedToken && saveTrello({ token: trelloToken.trim() })}

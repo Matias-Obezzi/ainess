@@ -6,6 +6,35 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.29.0 — 2026-10-06
+
+### Changed
+
+- **The buttons and fields the interface is built from speak the app's language.** Close buttons,
+  "Copied", the steppers of a number field, the eye of a token field, what a screen reader hears for
+  a spinner or a picked list, the keys in the shortcuts — they said it in English whatever language
+  the app was in, and now follow it in all seven, switching with it.
+- **A working agent sends out rings instead of blinking**, on its card, in its panel and in the
+  sidebar, and the counts of working agents, pending approvals and unread notifications roll to
+  their new value instead of jumping.
+- **The usage on the home screen counts up, and its two weeks of bars say what each day was** when
+  you point at one. The budget in Usage reads "x of y", turning amber and then red the way it did.
+- **A tool's arguments in a message's details are a tree** you can open, search and copy from,
+  instead of a block of JSON.
+- **A chat's mode is two buttons side by side** rather than a menu, and the task search clears with
+  one click.
+- **The board's cards move from the keyboard too.** Space picks a card up, the arrows carry it within
+  its column and across to the next, Space drops it and Escape puts it back; with a pointer, the
+  card follows it and the column under it lights up. Enter still opens the task.
+- **The bell is a notification center**: all or only the unread, grouped by day, each one marked read
+  when you open it or all at once. Opening the panel no longer marks everything read on its own.
+- **Deleting a project or a chat asks you to hold the button**, so a stray click or an Enter out of
+  habit cannot do it.
+- **The diff has an index of what changed**, by folder, with each file's added and removed lines;
+  picking one opens its changes and scrolls to them.
+- **The line that says what an agent is doing morphs into the next step** instead of scrolling it
+  in.
+
 ## 0.28.0 — 2026-10-05
 
 ### Added

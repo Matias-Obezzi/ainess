@@ -43,8 +43,7 @@ export const pt: Dictionary = {
   "common.paste": "Colar",
   "common.selectAll": "Selecionar tudo",
   "common.copyFailed": "Não foi possível copiar",
-  "common.decrease": "Diminuir",
-  "common.increase": "Aumentar",
+  "confirm.holdHint": "Mantenha o botão pressionado para confirmar.",
   "common.showSecret": "Mostrar o valor",
   "common.retry": "Tentar de novo",
   "error.panel.title": "Esta parte da tela quebrou",
@@ -274,12 +273,6 @@ export const pt: Dictionary = {
   "activity.thinking": "Pensando…",
   "markdown.invalidDelegation": "Delegação com formato inválido",
   "markdown.revealFailed": "Não foi possível mostrar o arquivo no gerenciador de arquivos",
-  "codeBlock.wrap": "Quebrar as linhas",
-  "codeBlock.copy": "Copiar o código",
-  "codeBlock.region": "Código",
-  "codeBlock.regionLang": "Código {language}",
-  "codeBlock.showLess": "Ver menos",
-  "codeBlock.showAll": "Ver as {count} linhas",
 
   // ---- Right dock ----
   "dock.dragToResize": "Arraste para mudar a largura",
@@ -291,6 +284,7 @@ export const pt: Dictionary = {
   "diff.mode.working": "Não commitado",
   "diff.mode.staged": "Preparado",
   "diff.mode.head": "Último commit",
+  "diff.files": "Arquivos alterados",
   "diff.refresh": "Atualizar",
   "diff.files.one": "{n} arquivo",
   "diff.files.other": "{n} arquivos",
@@ -312,10 +306,7 @@ export const pt: Dictionary = {
   "notifications.unread.one": "{n} notificação não lida",
   "notifications.unread.other": "{n} notificações não lidas",
   "notifications.markAllRead": "Marcar todas como lidas",
-  "notifications.clearAll": "Limpar notificações",
   "notifications.clear": "Limpar",
-  "notifications.empty.title": "Tudo tranquilo",
-  "notifications.empty.body": "As aprovações pendentes e as tarefas concluídas vão aparecer aqui.",
 
   // ---- Search palette ----
   "search.placeholder": "Buscar projetos, tarefas, chats, agentes, configurações…",
@@ -1457,9 +1448,6 @@ export const pt: Dictionary = {
   "agentPicker.placeholder": "Escolha os agentes",
   "agentPicker.search": "Buscar um agente…",
   "agentPicker.empty": "Nenhum agente corresponde",
-  "agentPicker.clear": "Remover todos",
-  "agentPicker.remove": "Remover {name}",
-  "agentPicker.summary": "Escolhidos ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Nova ordem predefinida",

@@ -1,6 +1,26 @@
 import { CheckIcon, CopyIcon, WrapTextIcon } from 'lucide-react'
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+
+export interface CodeBlockLabels {
+  wrap: string
+  copy: string
+  copied: string
+  /** Name of the code region, from the language when there is one and no file name. */
+  code: (language?: string) => string
+  showLess: string
+  showAll: (lines: number) => string
+}
+
+export const defaultCodeBlockLabels: CodeBlockLabels = {
+  wrap: 'Wrap lines',
+  copy: 'Copy code',
+  copied: 'Copied',
+  code: (language) => (language ? `${language} code` : 'Code'),
+  showLess: 'Show less',
+  showAll: (lines) => `Show all ${lines} lines`,
+}
 
 export interface CodeBlockProps extends Omit<React.ComponentProps<'figure'>, 'children'> {
   /** The source. Copied as it is, and shown in plain monospace when nothing highlighted is given. */
@@ -30,27 +50,8 @@ export interface CodeBlockProps extends Omit<React.ComponentProps<'figure'>, 'ch
   copyable?: boolean
   /** Lines shown before the block collapses behind a "Show all" button. `false` never collapses. Default 20. */
   maxLines?: number | false
-  /** The words on the buttons and the region, for apps that are not in English. */
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
   labels?: Partial<CodeBlockLabels>
-}
-
-export interface CodeBlockLabels {
-  wrap: string
-  copy: string
-  copied: string
-  /** Name of the code region when there is no file name. */
-  region: (language?: string) => string
-  showLess: string
-  showAll: (count: number) => string
-}
-
-const defaultLabels: CodeBlockLabels = {
-  wrap: 'Wrap lines',
-  copy: 'Copy code',
-  copied: 'Copied',
-  region: (language) => (language ? `${language} code` : 'Code'),
-  showLess: 'Show less',
-  showAll: (count) => `Show all ${count} lines`,
 }
 
 /** `"3-5,8"` → {3, 4, 5, 8}. */
@@ -99,7 +100,7 @@ function CodeBlock({
   className,
   ...props
 }: CodeBlockProps) {
-  const labels = { ...defaultLabels, ...labelsProp }
+  const labels = useLabels('code-block', defaultCodeBlockLabels, labelsProp)
   const id = React.useId()
   const [wrap, setWrap] = React.useState(initialWrap)
   const [expanded, setExpanded] = React.useState(false)
@@ -195,7 +196,7 @@ function CodeBlock({
 
       <section
         id={id}
-        aria-label={typeof filename === 'string' ? filename : labels.region(language)}
+        aria-label={typeof filename === 'string' ? filename : labels.code(language)}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls has to be focusable, or the end of long lines is out of reach by keyboard
         tabIndex={0}
         className={cn(

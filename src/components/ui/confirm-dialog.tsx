@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { HoldToConfirm } from "@/components/ui/hold-to-confirm";
 import { useT } from "@/i18n/useT";
 
 export interface ConfirmRequest {
@@ -21,6 +22,11 @@ export interface ConfirmRequest {
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
+  /**
+   * For what cannot be taken back: the confirm button has to be held down, so neither a stray
+   * click nor an Enter pressed out of habit gets through. The phone's island ignores it.
+   */
+  hold?: boolean;
 }
 
 interface Pending extends ConfirmRequest {
@@ -89,18 +95,25 @@ export function ConfirmDialogHost() {
         <AlertDialogHeader>
           <AlertDialogTitle>{pending?.title}</AlertDialogTitle>
           {pending?.description && <AlertDialogDescription>{pending.description}</AlertDialogDescription>}
+          {pending?.hold && <p className="text-xs text-muted-foreground">{t("confirm.holdHint")}</p>}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => answer(false)}>
             {pending?.cancelText ?? t("common.cancel")}
           </AlertDialogCancel>
-          <AlertDialogAction
-            ref={confirmRef}
-            variant={pending?.destructive ? "destructive" : "default"}
-            onClick={() => answer(true)}
-          >
-            {pending?.confirmText ?? t("common.accept")}
-          </AlertDialogAction>
+          {pending?.hold ? (
+            <HoldToConfirm ref={confirmRef} onConfirm={() => answer(true)} resetAfter={false}>
+              {pending.confirmText ?? t("common.delete")}
+            </HoldToConfirm>
+          ) : (
+            <AlertDialogAction
+              ref={confirmRef}
+              variant={pending?.destructive ? "destructive" : "default"}
+              onClick={() => answer(true)}
+            >
+              {pending?.confirmText ?? t("common.accept")}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

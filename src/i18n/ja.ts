@@ -44,8 +44,7 @@ export const ja: Dictionary = {
   "common.paste": "貼り付け",
   "common.selectAll": "すべて選択",
   "common.copyFailed": "コピーできませんでした",
-  "common.decrease": "減らす",
-  "common.increase": "増やす",
+  "confirm.holdHint": "ボタンを長押しして確定します。",
   "common.showSecret": "値を表示",
   "common.retry": "再試行",
   "error.panel.title": "画面のこの部分が壊れました",
@@ -275,12 +274,6 @@ export const ja: Dictionary = {
   "activity.thinking": "考え中…",
   "markdown.invalidDelegation": "形式が無効な委任です",
   "markdown.revealFailed": "ファイルマネージャーでファイルを表示できませんでした",
-  "codeBlock.wrap": "行を折り返す",
-  "codeBlock.copy": "コードをコピー",
-  "codeBlock.region": "コード",
-  "codeBlock.regionLang": "{language} のコード",
-  "codeBlock.showLess": "折りたたむ",
-  "codeBlock.showAll": "全 {count} 行を表示",
 
   // ---- Right dock ----
   "dock.dragToResize": "ドラッグして幅を調整",
@@ -292,6 +285,7 @@ export const ja: Dictionary = {
   "diff.mode.working": "未コミット",
   "diff.mode.staged": "ステージ済み",
   "diff.mode.head": "最新のコミット",
+  "diff.files": "変更されたファイル",
   "diff.refresh": "更新",
   "diff.files.one": "{n} ファイル",
   "diff.files.other": "{n} ファイル",
@@ -313,10 +307,7 @@ export const ja: Dictionary = {
   "notifications.unread.one": "未読の通知が{n}件",
   "notifications.unread.other": "未読の通知が{n}件",
   "notifications.markAllRead": "すべて既読にする",
-  "notifications.clearAll": "通知をすべて削除",
   "notifications.clear": "削除",
-  "notifications.empty.title": "特に何もありません",
-  "notifications.empty.body": "承認待ちの項目や完了したタスクがここに表示されます。",
 
   // ---- Search palette ----
   "search.placeholder": "プロジェクト、タスク、チャット、エージェント、設定を検索…",
@@ -1458,9 +1449,6 @@ export const ja: Dictionary = {
   "agentPicker.placeholder": "エージェントを選択",
   "agentPicker.search": "エージェントを検索…",
   "agentPicker.empty": "一致するエージェントはありません",
-  "agentPicker.clear": "すべて外す",
-  "agentPicker.remove": "{name} を外す",
-  "agentPicker.summary": "選択済み（{count}）：{names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "新しい定型オーダー",

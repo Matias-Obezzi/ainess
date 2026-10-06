@@ -32,7 +32,6 @@ export function GeneralSection() {
   const stallStop = config.stallStopMinutes ?? DEFAULT_STALL_STOP_MINUTES;
   // The fields clamp to their bounds and commit on blur, Enter or a step; an emptied field
   // gives null, which leaves the saved value where it was.
-  const stepperLabels = { decrementLabel: t("common.decrease"), incrementLabel: t("common.increase") };
 
   return (
     <div className="flex flex-col gap-4">
@@ -164,7 +163,6 @@ export function GeneralSection() {
               min={1}
               max={20}
               className="w-32"
-              {...stepperLabels}
               value={config.maxRounds}
               onValueChange={n => n !== null && setMaxRounds(n)}
             />
@@ -177,7 +175,6 @@ export function GeneralSection() {
               min={0}
               max={MAX_CONCURRENT_RUNS_LIMIT}
               className="w-32"
-              {...stepperLabels}
               value={config.maxConcurrentRuns}
               onValueChange={n => n !== null && setMaxConcurrentRuns(n)}
             />
@@ -190,7 +187,6 @@ export function GeneralSection() {
               min={0}
               max={24 * 60}
               className="w-32"
-              {...stepperLabels}
               value={stallStop}
               onValueChange={n => n !== null && updateConfig({ stallStopMinutes: n })}
             />

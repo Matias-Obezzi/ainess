@@ -43,8 +43,7 @@ export const de: Dictionary = {
   "common.paste": "Einfügen",
   "common.selectAll": "Alles auswählen",
   "common.copyFailed": "Kopieren fehlgeschlagen",
-  "common.decrease": "Verringern",
-  "common.increase": "Erhöhen",
+  "confirm.holdHint": "Halte die Schaltfläche gedrückt, um zu bestätigen.",
   "common.showSecret": "Wert anzeigen",
   "common.retry": "Erneut versuchen",
   "error.panel.title": "Dieser Teil des Bildschirms ist kaputtgegangen",
@@ -274,12 +273,6 @@ export const de: Dictionary = {
   "activity.thinking": "Denkt nach…",
   "markdown.invalidDelegation": "Delegation mit ungültigem Format",
   "markdown.revealFailed": "Die Datei konnte nicht im Dateimanager angezeigt werden",
-  "codeBlock.wrap": "Zeilen umbrechen",
-  "codeBlock.copy": "Code kopieren",
-  "codeBlock.region": "Code",
-  "codeBlock.regionLang": "{language}-Code",
-  "codeBlock.showLess": "Weniger anzeigen",
-  "codeBlock.showAll": "Alle {count} Zeilen anzeigen",
 
   // ---- Right dock ----
   "dock.dragToResize": "Ziehen, um die Breite zu ändern",
@@ -291,6 +284,7 @@ export const de: Dictionary = {
   "diff.mode.working": "Nicht comittet",
   "diff.mode.staged": "Vorgemerkt",
   "diff.mode.head": "Letzter Commit",
+  "diff.files": "Geänderte Dateien",
   "diff.refresh": "Aktualisieren",
   "diff.files.one": "{n} Datei",
   "diff.files.other": "{n} Dateien",
@@ -312,10 +306,7 @@ export const de: Dictionary = {
   "notifications.unread.one": "{n} ungelesene Benachrichtigung",
   "notifications.unread.other": "{n} ungelesene Benachrichtigungen",
   "notifications.markAllRead": "Alle als gelesen markieren",
-  "notifications.clearAll": "Benachrichtigungen leeren",
   "notifications.clear": "Leeren",
-  "notifications.empty.title": "Alles ruhig",
-  "notifications.empty.body": "Hier erscheinen offene Freigaben und fertige Aufgaben.",
 
   // ---- Search palette ----
   "search.placeholder": "Projekte, Aufgaben, Chats, Agenten, Einstellungen suchen…",
@@ -1457,9 +1448,6 @@ export const de: Dictionary = {
   "agentPicker.placeholder": "Agenten auswählen",
   "agentPicker.search": "Agent suchen…",
   "agentPicker.empty": "Kein Agent passt",
-  "agentPicker.clear": "Alle entfernen",
-  "agentPicker.remove": "{name} entfernen",
-  "agentPicker.summary": "Ausgewählt ({count}): {names}",
 
   // ---- Preset dialog ----
   "presetDialog.new": "Neuer vordefinierter Auftrag",

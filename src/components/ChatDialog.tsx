@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppStore, selectProjectAgents } from "@/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -202,15 +203,18 @@ export function ChatDialog({ open, onOpenChange, editChatId }: Props) {
 
           <div>
             <Label>{t("chatDialog.mode")}</Label>
-            <Select value={participants.length > 1 ? mode : "individual"} onValueChange={(v: "individual" | "shared") => setMode(v)} disabled={participants.length <= 1}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="individual">{t("chat.individual")}</SelectItem>
-                <SelectItem value="shared">{t("chat.shared")}</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Two choices, both visible: a single participant can only be talked to on their own. */}
+            <SegmentedControl
+              fullWidth
+              className="mt-1"
+              aria-label={t("chatDialog.mode")}
+              value={participants.length > 1 ? mode : "individual"}
+              onValueChange={v => setMode(v as "individual" | "shared")}
+              disabled={participants.length <= 1}
+            >
+              <SegmentedControlItem value="individual">{t("chat.individual")}</SegmentedControlItem>
+              <SegmentedControlItem value="shared">{t("chat.shared")}</SegmentedControlItem>
+            </SegmentedControl>
           </div>
 
           <div>

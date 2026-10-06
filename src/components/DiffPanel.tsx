@@ -5,6 +5,8 @@ import { parseUnifiedDiff, DiffFile, diffTotals } from "@/lib/diff";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TreeView, type TreeNode } from "@/components/ui/tree-view";
+import { diffTree, type DiffTreeNode } from "@/lib/diff-tree";
 import { GitCompare, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +15,25 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { repoDirOf } from "@/lib/repo-dir";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
+
+
+/** The tree's rows: a name and the lines it adds and removes, in the cards' colors. */
+function toTreeNodes(nodes: DiffTreeNode[]): TreeNode[] {
+  return nodes.map(n => ({
+    id: n.id,
+    textValue: n.name,
+    label: (
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="truncate font-mono">{n.name}</span>
+        <span className="ml-auto flex shrink-0 gap-1.5 text-[10px] tabular-nums">
+          {n.additions > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{n.additions}</span>}
+          {n.deletions > 0 && <span className="text-rose-600 dark:text-rose-400">−{n.deletions}</span>}
+        </span>
+      </span>
+    ),
+    children: n.children ? toTreeNodes(n.children) : undefined,
+  }));
+}
 
 export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } = {}) {
   const t = useT();
@@ -111,6 +132,10 @@ export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } 
   };
 
   const totals = useMemo(() => diffTotals(files), [files]);
+  const tree = useMemo(() => diffTree(files), [files]);
+  const treeNodes = useMemo(() => toTreeNodes(tree), [tree]);
+  // Every folder open: the index is short, and a closed folder would hide the file you came for.
+  const treeFolders = useMemo(() => tree.flatMap(function dirs(n): string[] { return n.children ? [n.id, ...n.children.flatMap(dirs)] : []; }), [tree]);
 
   // A run with nothing to compare against, and one whose diff git refused to give: both are the
   // same thing to read — there is no before. Telling someone their project is not a repository
@@ -187,12 +212,36 @@ export function DiffPanel({ run }: { run?: { cwd?: string; baseSha?: string } } 
               <div className="text-xs text-muted-foreground">{t("diff.truncated")}</div>
             )}
             
+            {/* An index of what changed, by folder: picking a file opens its card and scrolls to it.
+                One file needs no index. */}
+            {files.length > 1 && (
+              <TreeView
+                className="rounded-md border border-border bg-card p-1 text-xs"
+                aria-label={t("diff.files")}
+                data={treeNodes}
+                defaultExpanded={treeFolders}
+                onAction={node => {
+                  if (!node.id.startsWith("file:")) return;
+                  const path = node.id.slice("file:".length);
+                  setCollapsedPaths(prev => {
+                    if (!prev.has(path)) return prev;
+                    const next = new Set(prev);
+                    next.delete(path);
+                    return next;
+                  });
+                  requestAnimationFrame(() => {
+                    document.querySelector(`[data-diff-path="${CSS.escape(path)}"]`)?.scrollIntoView({ block: "start" });
+                  });
+                }}
+              />
+            )}
+
             {files.map(f => {
               const isCollapsed = collapsedPaths.has(f.path);
               const displayName = f.status === "renamed" ? `${f.oldPath} → ${f.path}` : f.path;
               
               return (
-                <div key={f.path} className="flex flex-col rounded-md border border-border bg-card overflow-hidden">
+                <div key={f.path} data-diff-path={f.path} className="flex flex-col rounded-md border border-border bg-card overflow-hidden">
                   <button
                     className="flex w-full items-center gap-2 bg-muted/30 px-2 py-1.5 text-left hover:bg-muted/50"
                     onClick={() => toggleCollapsed(f.path)}

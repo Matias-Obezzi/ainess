@@ -1,7 +1,7 @@
 // The bell in the window bar: the session's history of everything that asked for attention.
 // It is not the toast system (`components/ui/toast`), which only says things in the moment, nor
 // the OS notifications of `hooks/useSystemNotifications`: this is what is left afterwards.
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Bell,
   CircleAlert,
@@ -17,13 +17,13 @@ import type { LucideIcon } from "lucide-react";
 import type { AppNotification, NotificationKind } from "@/types";
 import { useAppStore } from "@/store";
 import { unreadBadge, unreadCount } from "@/lib/notifications";
-import { formatTimeAgo } from "@/lib/format";
-import { useT, useLocale } from "@/i18n/useT";
+import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { Odometer } from "@/components/ui/odometer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
+import { NotificationPanel, type NotificationData } from "@/components/ui/notification-center";
 import { RunDetailDialog } from "@/components/RunDetailDialog";
 import { cn } from "@/lib/utils";
 
@@ -49,49 +49,17 @@ const COLORS: Record<NotificationKind, string> = {
   info: "text-muted-foreground",
 };
 
-/** One row of the panel. Clickable only when it knows where to take the user. */
-function NotificationRow({
-  item,
-  now,
-  onOpen,
-}: {
-  item: AppNotification;
-  now: number;
-  onOpen: (item: AppNotification) => void;
-}) {
-  const locale = useLocale();
+/** A notification of the app as the panel draws it: its kind's icon and color, its time, its text. */
+function toPanelItem(item: AppNotification): NotificationData {
   const Icon = ICONS[item.kind] ?? Info;
-  const goes = Boolean(item.projectId || item.runId);
-
-  const body = (
-    <>
-      <Icon className={cn("mt-0.5 size-4 shrink-0", COLORS[item.kind] ?? COLORS.info)} />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-2">
-          <span className={cn("min-w-0 flex-1 truncate text-xs", item.read ? "font-normal" : "font-semibold")}>
-            {item.title}
-          </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{formatTimeAgo(item.ts, now, locale)}</span>
-        </span>
-        {item.body && <span className="block truncate text-[11px] text-muted-foreground">{item.body}</span>}
-      </span>
-      {!item.read && <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden />}
-    </>
-  );
-
-  const className = cn(
-    "flex w-full items-start gap-2 px-3 py-2 text-left",
-    goes && "hover:bg-accent",
-    !item.read && "bg-accent/40",
-  );
-
-  if (!goes) return <div className={className}>{body}</div>;
-
-  return (
-    <button type="button" className={className} onClick={() => onOpen(item)}>
-      {body}
-    </button>
-  );
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.body,
+    createdAt: item.ts,
+    read: item.read,
+    icon: <Icon className={cn("size-4", COLORS[item.kind] ?? COLORS.info)} />,
+  };
 }
 
 /** Bell + panel. Always visible, with or without an open project. */
@@ -105,20 +73,11 @@ export function NotificationBell() {
   const clearNotifications = useAppStore(state => state.clearNotifications);
   const openProject = useAppStore(state => state.openProject);
 
-  /**
-   * Opening the panel is reading it.
-   *
-   * Everything the bell holds is on screen at once, so the badge asking for attention after you
-   * have looked is asking twice. Anything that lands while the panel is open is read too — it is
-   * just as much in front of you as the rest.
-   */
-  useEffect(() => {
-    if (!open) return;
-    if (items.some(n => !n.read)) markNotificationsRead();
-  }, [open, items, markNotificationsRead]);
+  // Read is something you do: opening one, or "mark all as read". Opening the panel used to read
+  // everything in it, which left the Unread tab empty the moment there was something in it.
 
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => new Date());
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -146,16 +105,20 @@ export function NotificationBell() {
   // The relative times only need to move while somebody is looking at them.
   useEffect(() => {
     if (!open) return;
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
   }, [open]);
 
   const unread = unreadCount(items);
   const badge = unreadBadge(unread);
 
+  const panelItems = useMemo(() => items.map(toPanelItem), [items]);
+
   const goTo = (item: AppNotification) => {
     markNotificationRead(item.id);
+    // One that knows no place to take you is only read.
+    if (!item.projectId && !item.runId) return;
     toggleNotifications(false);
     if (item.projectId) openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : undefined);
     if (item.runId) setDetailRunId(item.runId);
@@ -177,7 +140,8 @@ export function NotificationBell() {
                 <Bell className={cn("h-4 w-4", unread === 0 && "text-muted-foreground")} />
                 {badge && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] leading-none font-semibold text-primary-foreground tabular-nums">
-                    {badge}
+                    {/* "9+" stays a word; a count rolls to its new value. */}
+                    {unread > 9 ? badge : <Odometer value={unread} />}
                   </span>
                 )}
               </Button>
@@ -191,39 +155,22 @@ export function NotificationBell() {
         {/* The window bar always paints on top (z-60): the offset keeps the panel clear of it. */}
         {/* We prevent auto-focus because it falls on the first icon button, making its tooltip appear on its own. */}
         <PopoverContent ref={contentRef} align="end" sideOffset={10} className="w-[360px] p-0" onOpenAutoFocus={e => e.preventDefault()}>
-          <div className="flex items-center gap-1 border-b border-border px-3 py-2">
-            <span className="flex-1 text-xs font-semibold">{t("notifications.title")}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  aria-label={t("notifications.clearAll")}
-                  disabled={items.length === 0}
-                  onClick={() => clearNotifications()}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t("notifications.clear")}</TooltipContent>
-            </Tooltip>
-          </div>
-
-          {items.length === 0 ? (
-            <EmptyState
-              icon={Bell}
-              title={t("notifications.empty.title")}
-              description={t("notifications.empty.body")}
-              className="py-8"
-            />
-          ) : (
-            <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
-              {items.map(item => (
-                <NotificationRow key={item.id} item={item} now={now} onOpen={goTo} />
-              ))}
-            </div>
-          )}
+          <NotificationPanel
+            className="max-h-[70vh]"
+            notifications={panelItems}
+            now={now}
+            onRead={markNotificationRead}
+            onReadAll={unread > 0 ? markNotificationsRead : undefined}
+            onSelect={selected => {
+              const item = items.find(n => n.id === selected.id);
+              if (item) goTo(item);
+            }}
+            footer={items.length > 0 ? (
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => clearNotifications()}>
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> {t("notifications.clear")}
+              </Button>
+            ) : undefined}
+          />
         </PopoverContent>
       </Popover>
 

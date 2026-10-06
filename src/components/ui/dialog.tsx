@@ -1,7 +1,17 @@
 import { XIcon } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import type * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+
+export interface DialogLabels {
+  /** Read out for the close button. */
+  close: string
+}
+
+export const defaultDialogLabels: DialogLabels = {
+  close: 'Close',
+}
 
 function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -46,10 +56,14 @@ function DialogContent({
   children,
   showCloseButton = true,
   onInteractOutside,
+  labels: labelsProp,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<DialogLabels>
 }) {
+  const labels = useLabels('dialog', defaultDialogLabels, labelsProp)
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -78,7 +92,7 @@ function DialogContent({
             className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{labels.close}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

@@ -163,16 +163,7 @@ function withPathChips(children: ReactNode): ReactNode {
  * not a file, and the numbers would only suggest it is one.
  */
 function FencedCode({ code, language }: { code: string; language?: string }) {
-  const t = useT();
-  const labels = useMemo(() => ({
-    wrap: t("codeBlock.wrap"),
-    copy: t("codeBlock.copy"),
-    copied: t("common.copied"),
-    region: (lang?: string) => (lang ? t("codeBlock.regionLang", { language: lang }) : t("codeBlock.region")),
-    showLess: t("codeBlock.showLess"),
-    showAll: (count: number) => t("codeBlock.showAll", { count }),
-  }), [t]);
-  return <CodeBlock code={code} language={language} lineNumbers={false} labels={labels} className="mb-2 bg-background/60 [&_pre]:text-xs" />;
+  return <CodeBlock code={code} language={language} lineNumbers={false} className="mb-2 bg-background/60 [&_pre]:text-xs" />;
 }
 
 /**

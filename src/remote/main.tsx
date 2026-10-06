@@ -6,10 +6,15 @@ import { markRemoteBuild } from "@/lib/platform";
 import { setTransport } from "@/lib/transport";
 import { remoteTransport } from "@/lib/transport-remote";
 import { RemoteApp } from "./RemoteApp";
+import { ComponentLabels } from "@/i18n/ComponentLabels";
 
 // Before the store is ever touched: nothing here may spawn, read or persist anything.
 setTransport(remoteTransport);
 // A confirmation here is the island, not a dialog in the middle of the screen (lib/confirm.ts).
 markRemoteBuild();
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<RemoteApp />);
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <ComponentLabels>
+    <RemoteApp />
+  </ComponentLabels>,
+);

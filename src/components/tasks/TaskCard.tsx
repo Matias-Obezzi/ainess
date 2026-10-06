@@ -1,8 +1,6 @@
-// One card on the board: who is on it, what it is, and whether anything holds it back. Dragging
-// uses the native HTML5 events (no drag-and-drop library), so the card only has to say it is
-// draggable and hand its id to the board.
+// One card on the board: who is on it, what it is, and whether anything holds it back. The board
+// wraps it in the `KanbanCard` that is dragged and focused, so the card itself only draws and opens.
 import { memo } from "react";
-import type { DragEvent } from "react";
 import { useAppStore, selectAgent, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { Badge } from "@/components/ui/badge";
@@ -41,14 +39,9 @@ interface Props {
    * is honest, one that names the wrong commit is not.
    */
   commit?: GitCommit;
-  dragging: boolean;
-  onOpen(id: string): void;
-  onDragStart(e: DragEvent<HTMLElement>, task: Task): void;
-  onDragOver(e: DragEvent<HTMLElement>, task: Task): void;
-  onDragEnd(): void;
 }
 
-export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit, dragging, onOpen, onDragStart, onDragOver, onDragEnd }: Props) {
+export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit }: Props) {
   const t = useT();
   const locale = useLocale();
   const agent = useAppStore(state => (task.agentId ? selectAgent(state, task.agentId) : undefined));
@@ -61,24 +54,7 @@ export const TaskCard = memo(function TaskCard({ task, blocked, cost, commit, dr
   return (
     <TaskContextMenu task={task}>
       <article
-        draggable
-        role="button"
-        tabIndex={0}
-        aria-label={task.title}
-        onDragStart={e => onDragStart(e, task)}
-        onDragOver={e => onDragOver(e, task)}
-        onDragEnd={onDragEnd}
-        onClick={() => onOpen(task.id)}
-        onKeyDown={e => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpen(task.id);
-          }
-        }}
-        className={cn(
-          "group cursor-grab rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-          dragging && "opacity-40"
-        )}
+        className="group w-full rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-sm transition-colors hover:border-ring/50"
       >
         <div className="flex items-start gap-2">
           {agent ? (

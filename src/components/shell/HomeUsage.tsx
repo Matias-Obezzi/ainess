@@ -11,21 +11,28 @@ import { formatCompact, formatCost, totalTokens, totalsByDay, totalsSince } from
 import { workSince } from "@/lib/recent-work";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
-import { cn } from "@/lib/utils";
+import { MetricCard } from "@/components/ui/metric-card";
+import { Sparkline } from "@/components/ui/sparkline";
 
 /** The window every number on this panel is about. Two weeks: long enough to have a shape. */
 const DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** A tile whose figure counts up to each new value; compact, to sit three to a row. */
+function Stat({ label, value, format, hint }: { label: string; value: number | string; format?: Intl.NumberFormatOptions; hint?: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg border border-border bg-card px-3 py-2">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="truncate text-lg font-semibold tabular-nums">{value}</span>
-      {hint && <span className="truncate text-[11px] text-muted-foreground">{hint}</span>}
-    </div>
+    <MetricCard
+      label={label}
+      value={value}
+      format={format}
+      comparison={hint}
+      className="flex-1 gap-0.5 rounded-lg px-3 py-2 shadow-none [&_[data-slot=metric-card-label]]:text-[11px] [&_[data-slot=metric-card-value]]:text-lg"
+    />
   );
 }
+
+const COMPACT: Intl.NumberFormatOptions = { notation: "compact", maximumFractionDigits: 1 };
+const USD: Intl.NumberFormatOptions = { style: "currency", currency: "USD", maximumFractionDigits: 2 };
 
 export function HomeUsage() {
   const t = useT();
@@ -60,32 +67,40 @@ export function HomeUsage() {
       <div className="flex flex-wrap gap-2">
         <Stat
           label={t("home.usage.tasks")}
-          value={String(work.tasks)}
+          value={work.tasks}
           hint={work.failed > 0
             ? t("home.usage.failed", { n: work.failed })
             : plural(work.projects, t("home.usage.projects.one", { n: work.projects }), t("home.usage.projects.other", { n: work.projects }))}
         />
         <Stat
           label={t("home.usage.tokens")}
-          value={tokens > 0 ? formatCompact(tokens, locale) : "—"}
+          value={tokens > 0 ? tokens : "—"}
+          format={COMPACT}
           hint={totals.unreported > 0 ? t("home.usage.unreported", { n: totals.unreported }) : undefined}
         />
-        {totals.costUsd > 0 && <Stat label={t("home.usage.cost")} value={formatCost(totals.costUsd, locale)} />}
+        {totals.costUsd > 0 && (
+          <Stat
+            label={t("home.usage.cost")}
+            // Under a cent the tile would read $0.00: the exact figure stays as text.
+            value={totals.costUsd < 0.01 ? formatCost(totals.costUsd, locale) : totals.costUsd}
+            format={USD}
+          />
+        )}
       </div>
 
       {/* One bar per day, oldest on the left. Deliberately unlabelled: it is a shape, not a chart,
           and the numbers it would be read off are in the tiles above it. */}
       {peak > 0 ? (
-        <div className="flex h-10 items-end gap-[3px]" aria-hidden>
-          {perDay.map((value, i) => (
-            <div
-              key={days[i].day}
-              title={`${days[i].day} · ${formatCompact(value, locale)}`}
-              className={cn("min-h-[2px] flex-1 rounded-sm", value > 0 ? "bg-primary/70" : "bg-muted")}
-              style={{ height: `${Math.max(4, (value / peak) * 100)}%` }}
-            />
-          ))}
-        </div>
+        <Sparkline
+          variant="bar"
+          data={perDay}
+          labels={days.map(d => d.day)}
+          format={value => formatCompact(value, locale)}
+          tooltip
+          height={40}
+          min={0}
+          color="var(--primary)"
+        />
       ) : (
         <p className="text-xs text-muted-foreground">{t("home.usage.noneReported")}</p>
       )}

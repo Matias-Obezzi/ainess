@@ -9,7 +9,7 @@ import { useAppStore, selectWorktree } from "@/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "./StatusDot";
-import { statusLabelKey, roleLabelKey } from "@/lib/labels";
+import { statusLabelKey, roleLabelKey } from "@/lib/status-labels";
 import { activityByRun } from "@/components/shell/RunActivity";
 import { useT, type TFunction } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
@@ -237,7 +237,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                     <TooltipContent>{t("agentNode.cliMissing")}</TooltipContent>
                   </Tooltip>
                 )}
-                <StatusDot status={status} className={cn("h-2.5 w-2.5", status === "working" && "animate-pulse")} />
+                <StatusDot status={status} className="h-2.5 w-2.5" />
               </div>
             </div>
 

@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusDot } from "@/components/StatusDot";
 import { RunActivity } from "@/components/shell/RunActivity";
 import { AgentActionDialogs, AgentContextMenu, useAgentActions } from "@/components/agent-actions";
-import { statusLabelKey, roleLabelKey, runDotStatus, runStatusLabelKey } from "@/lib/labels";
+import { statusLabelKey, roleLabelKey, runDotStatus, runStatusLabelKey } from "@/lib/status-labels";
 import { useT, useLocale } from "@/i18n/useT";
 import { PROVIDERS } from "@/lib/providers";
 import { worktreeBranch } from "@/lib/worktree";

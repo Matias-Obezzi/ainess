@@ -1,5 +1,8 @@
+'use client'
+
 import { CheckIcon, CopyIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
+import { useLabels } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -31,6 +34,21 @@ async function copyToClipboard(text: string) {
   }
 }
 
+export interface CopyButtonLabels {
+  /** Accessible name, and the tooltip text at rest. */
+  copy: string
+  /** Said and shown after a copy. */
+  copied: string
+  /** Said and shown when the copy fails. */
+  failed: string
+}
+
+export const defaultCopyButtonLabels: CopyButtonLabels = {
+  copy: 'Copy',
+  copied: 'Copied',
+  failed: 'Copy failed',
+}
+
 export interface CopyButtonProps extends Omit<ButtonProps, 'value' | 'onCopy' | 'onError'> {
   /** What to copy: text, or a function that returns it (or a promise of it) at click time. */
   value: string | (() => string | Promise<string>)
@@ -48,6 +66,8 @@ export interface CopyButtonProps extends Omit<ButtonProps, 'value' | 'onCopy' | 
   copiedLabel?: string
   /** Said and shown when the copy fails. Default "Copy failed". */
   errorLabel?: string
+  /** Words to use instead of the English ones. A `LabelsProvider` sets them for the whole app. */
+  labels?: Partial<CopyButtonLabels>
 }
 
 /**
@@ -60,9 +80,10 @@ function CopyButton({
   onCopyError,
   timeout = 2000,
   tooltip = false,
-  label = 'Copy',
-  copiedLabel = 'Copied',
-  errorLabel = 'Copy failed',
+  label: labelProp,
+  copiedLabel: copiedProp,
+  errorLabel: errorProp,
+  labels: labelsProp,
   variant = 'ghost',
   size,
   className,
@@ -70,6 +91,10 @@ function CopyButton({
   onClick,
   ...props
 }: CopyButtonProps) {
+  const labels = useLabels('copy-button', defaultCopyButtonLabels, labelsProp)
+  const label = labelProp ?? labels.copy
+  const copiedLabel = copiedProp ?? labels.copied
+  const errorLabel = errorProp ?? labels.failed
   const [state, setState] = React.useState<CopyState>('idle')
   const [hovered, setHovered] = React.useState(false)
   const timer = React.useRef<ReturnType<typeof setTimeout>>(undefined)

@@ -117,6 +117,8 @@ function scan(dir, out, used) {
     }
     if (!/\.(ts|tsx)$/.test(entry.name)) continue;
     const rel = path.relative(root, full).replace(/\\/g, "/");
+    // The `ui/` components' own dictionaries, one per language (src/i18n/ComponentLabels.tsx).
+    if (/^src\/lib\/labels-[a-z]+\.ts$/.test(rel)) continue;
     const lines = fs.readFileSync(full, "utf8").split(/\r?\n/);
     lines.forEach((line, i) => {
       if (isComment(line)) return;

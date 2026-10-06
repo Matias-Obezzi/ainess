@@ -2,6 +2,40 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.29.0 — 2026-10-06
+
+### Geändert
+
+- **Die Schaltflächen und Felder, aus denen die Oberfläche besteht, sprechen die Sprache der App.**
+  Schließen-Schaltflächen, „Kopiert“, die Plus- und Minus-Schaltflächen eines Zahlenfelds, das Auge
+  eines Token-Felds, was ein Screenreader bei einem Ladeindikator oder einer Auswahlliste hört, die
+  Tasten der Tastenkürzel: Das stand auf Englisch, egal in welcher Sprache die App war, und folgt
+  ihr jetzt in allen sieben und wechselt mit ihr.
+- **Ein arbeitender Agent sendet Ringe aus, statt zu blinken**, auf seiner Karte, in seinem Panel
+  und in der Seitenleiste, und die Zähler für arbeitende Agenten, offene Freigaben und ungelesene
+  Benachrichtigungen rollen zum neuen Wert, statt zu springen.
+- **Die Nutzung auf dem Startbildschirm zählt hoch, und ihre Balken über zwei Wochen sagen, was
+  jeder Tag war**, wenn man darauf zeigt. Das Budget in Nutzung zeigt „x von y“ und wird wie bisher
+  erst gelb, dann rot.
+- **Die Argumente eines Werkzeugs sind in den Details einer Nachricht ein Baum**, den man
+  aufklappen, durchsuchen und kopieren kann, statt eines JSON-Blocks.
+- **Der Modus eines Chats sind zwei Schaltflächen nebeneinander** statt eines Menüs, und die
+  Aufgabensuche lässt sich mit einem Klick leeren.
+- **Die Karten des Boards lassen sich auch mit der Tastatur bewegen.** Die Leertaste nimmt eine
+  Karte auf, die Pfeiltasten tragen sie innerhalb der Spalte und in die nächste, die Leertaste legt
+  sie ab und Escape legt sie zurück; mit der Maus folgt die Karte dem Zeiger und die Spalte darunter
+  leuchtet auf. Eingabe öffnet weiterhin die Aufgabe.
+- **Die Glocke ist eine Benachrichtigungszentrale**: alle oder nur die ungelesenen, nach Tagen
+  gruppiert, jede als gelesen markiert, wenn man sie öffnet, oder alle auf einmal. Das Öffnen des
+  Panels markiert nicht mehr von selbst alles als gelesen.
+- **Ein Projekt oder einen Chat zu löschen verlangt, die Schaltfläche gedrückt zu halten**, damit
+  weder ein verirrter Klick noch ein Eingabe aus Gewohnheit es tut.
+- **Der Diff hat ein Verzeichnis dessen, was sich geändert hat**, nach Ordnern, mit den
+  hinzugefügten und entfernten Zeilen jeder Datei; wählt man eine, öffnen sich ihre Änderungen und
+  die Ansicht springt dorthin.
+- **Die Zeile, die sagt, was ein Agent gerade tut, verwandelt sich in den nächsten Schritt**, statt
+  ihn hereinzuschieben.
+
 ## 0.28.0 — 2026-10-05
 
 ### Neu

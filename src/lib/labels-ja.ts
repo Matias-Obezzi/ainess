@@ -1,0 +1,194 @@
+import type { LabelsPack } from '@/lib/labels'
+
+/*
+ * The registry ships no Japanese pack, so this one is ainess's own, and it covers only the
+ * components installed here. A component added later and missing from this file speaks English
+ * in Japanese until its entry is written: `src/lib/labels-en.ts` has every key to translate.
+ */
+/** What the drag and drop components tell screen readers, the shape of `AnnouncementContext`. */
+interface DragContext {
+  id: string
+  from: { containerId: string; index: number }
+  to: { containerId: string; index: number }
+  count: number
+  delta: { x: number; y: number }
+}
+
+const place = ({ to, from, count, delta }: DragContext) => {
+  if (count <= 0) return `開始位置から ${Math.round(delta.x)}, ${Math.round(delta.y)} ピクセル`
+  const at = `${count} 件中 ${to.index + 1} 番目`
+  return to.containerId && to.containerId !== from.containerId ? `${to.containerId} の ${at}` : at
+}
+
+const drag = {
+  start: (context: DragContext) =>
+    context.count > 0
+      ? `${context.id} をつかみました（${place(context)}）。矢印キーで移動、スペースかエンターで置く、エスケープで取り消します。`
+      : `${context.id} をつかみました。矢印キーで移動、スペースかエンターで置く、エスケープで取り消します。`,
+  move: (context: DragContext) => `${context.id} を ${place(context)} に移動しました。`,
+  drop: (context: DragContext) => `${context.id} を ${place(context)} に置きました。`,
+  cancel: (context: DragContext) => `${context.id} の移動を取り消し、${place(context)} に戻しました。`,
+}
+
+export const ja = {
+  'alert-dialog': {
+    confirm: '続行',
+    cancel: 'キャンセル',
+  },
+  'code-block': {
+    wrap: '行を折り返す',
+    copy: 'コードをコピー',
+    copied: 'コピーしました',
+    code: (language?: string) => (language ? `${language} のコード` : 'コード'),
+    showLess: '折りたたむ',
+    showAll: (lines: number) => `全 ${lines} 行を表示`,
+  },
+  command: {
+    title: 'コマンドメニュー',
+    description: 'コマンドやページを検索',
+  },
+  'copy-button': {
+    copy: 'コピー',
+    copied: 'コピーしました',
+    failed: 'コピーできませんでした',
+  },
+  dialog: {
+    close: '閉じる',
+  },
+  kbd: {
+    command: 'コマンド',
+    control: 'コントロール',
+    windows: 'Windows',
+    option: 'オプション',
+    alt: 'Alt',
+    shift: 'シフト',
+    return: 'リターン',
+    enter: 'エンター',
+    delete: '削除',
+    forwardDelete: '前方削除',
+    backspace: 'バックスペース',
+    escape: 'エスケープ',
+    tab: 'タブ',
+    space: 'スペース',
+    capsLock: 'Caps Lock',
+    upArrow: '上矢印',
+    downArrow: '下矢印',
+    leftArrow: '左矢印',
+    rightArrow: '右矢印',
+    pageUp: 'Page Up',
+    pageDown: 'Page Down',
+    home: 'Home',
+    end: 'End',
+    plus: 'プラス',
+  },
+  'multi-select': {
+    placeholder: '選択…',
+    search: '検索…',
+    empty: '結果がありません。',
+    selectAll: 'すべて選択',
+    clear: '選択を解除',
+    remove: (label: string) => `${label} を外す`,
+    noneSelected: '未選択',
+    selected: (count: number, labels: string) => `${count} 件選択：${labels}`,
+  },
+  'number-field': {
+    decrement: '減らす',
+    increment: '増やす',
+  },
+  'password-field': {
+    reveal: 'パスワードを表示',
+    strength: 'パスワードの強度',
+    empty: '空',
+    weak: '弱い',
+    fair: '普通',
+    good: '良い',
+    strong: '強い',
+    avoidCommon: 'よく使われるパスワードや単語は避けてください。',
+    useLength: '12 文字以上にしてください。',
+    avoidSequences: 'abcd や 1234 のような並びは避けてください。',
+    avoidRepeats: '同じ文字の繰り返しは避けてください。',
+    mixCharacters: '大文字、数字、記号を混ぜてください。',
+    addLength: 'あと数文字で強くなります。',
+    ruleLength: '12 文字以上',
+    ruleCase: '小文字と大文字',
+    ruleNumber: '数字',
+    ruleSymbol: '記号',
+  },
+  spinner: {
+    loading: '読み込み中',
+  },
+  'split-button': {
+    more: 'その他のオプション',
+  },
+  toast: {
+    region: '通知',
+    close: '閉じる',
+  },
+  'json-viewer': {
+    search: 'キーと値を検索',
+    match: (current: number, total: number) => `${current} / ${total}`,
+    noMatches: '一致なし',
+    expandAll: 'すべて展開',
+    collapseAll: 'すべて折りたたむ',
+    tree: 'JSON',
+    size: (count: number, type: 'array' | 'object') => (type === 'array' ? `${count} 件` : `${count} キー`),
+    array: '配列',
+    object: 'オブジェクト',
+    showMore: (count: number) => `さらに ${count} 件を表示`,
+    left: (count: number) => `残り ${count} 件`,
+    copyValue: (path: string) => `${path} の値をコピー`,
+    copyPath: (path: string) => `パス ${path} をコピー`,
+    copyValueHint: '値をコピー (c)',
+    copyPathHint: 'パスをコピー (p)',
+    valueCopied: '値をコピーしました',
+    pathCopied: 'パスをコピーしました',
+  },
+  'metric-card': {
+    loading: '読み込み中',
+    up: '増加',
+    down: '減少',
+    noChange: '変化なし',
+  },
+  'search-field': {
+    placeholder: '検索…',
+    clear: '検索をクリア',
+  },
+  sparkline: {
+    summary: ({ count, first, last, low, high }: { count: number; first?: string; last?: string; low: string; high: string }) =>
+      `${count} 件の推移${first !== undefined && last !== undefined ? `、${first} から ${last}` : ''}、最小 ${low}、最大 ${high}`,
+    empty: 'データなし',
+  },
+  'usage-meter': {
+    warning: 'もうすぐ上限',
+    over: (overage: string) => `${overage} 超過`,
+    amount: (used: string, limit: string) => `${used} / ${limit}`,
+    valueText: (used: string, limit: string) => `${limit} のうち ${used} を使用`,
+    almostFull: 'もうすぐ上限',
+    overLimit: (overage: string) => `上限を ${overage} 超過`,
+    free: '空き',
+  },
+  'hold-to-confirm': {
+    hint: '長押しして確定します。',
+    confirmed: '確定しました',
+  },
+  kanban: {
+    card: '並べ替えできる項目',
+    ...drag,
+  },
+  'notification-center': {
+    title: '通知',
+    unread: (label: string, count: number) => `${label}、未読 ${count} 件`,
+    markAsRead: '既読にする',
+    unreadDot: '未読',
+    allTab: 'すべて',
+    unreadTab: '未読',
+    markAllAsRead: 'すべて既読にする',
+    caughtUp: 'すべて確認済みです',
+    caughtUpHint: '前回から新しいものはありません。',
+    empty: '通知はありません',
+    emptyHint: '新しい動きがあるとここに表示されます。',
+  },
+  'tree-view': {
+    loadFailed: '読み込めませんでした。開いて再試行してください',
+  },
+} satisfies LabelsPack
