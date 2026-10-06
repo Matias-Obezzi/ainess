@@ -6,6 +6,15 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **PowerShell's inline suggestion could land on the line below, taking what you typed with it.**
+  A terminal kept being fitted to its panel while the shell was starting, and those sizes were lost:
+  the shell kept the width it started with, narrower than the one on screen, so it wrapped lines
+  that fitted. The shell now gets the size on screen as soon as it exists.
+
 ## 0.27.1 — 2026-10-05
 
 ### Fixed
