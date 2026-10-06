@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { JsonViewer } from "@/components/ui/json-viewer";
 import { Button } from "@/components/ui/button";
 import { kindLabelKey } from "@/lib/status-labels";
 import { useT, useLocale } from "@/i18n/useT";
@@ -112,9 +113,15 @@ export function MessageDetailDialog({
                     <h4 className="font-semibold text-xs mb-1 text-muted-foreground">
                       {t("messageDetail.toolInput")}
                     </h4>
-                    <pre className="p-2 rounded bg-background border overflow-auto max-h-60 font-mono text-xs whitespace-pre-wrap break-words">
-                      {formatMetaInput(message.meta.input)}
-                    </pre>
+                    {/* A tool's arguments are usually an object: a tree to open, search and copy from.
+                        A plain string is shown as it is. */}
+                    {typeof message.meta.input === "string" || message.meta.input === null ? (
+                      <pre className="p-2 rounded bg-background border overflow-auto max-h-60 font-mono text-xs whitespace-pre-wrap break-words">
+                        {formatMetaInput(message.meta.input)}
+                      </pre>
+                    ) : (
+                      <JsonViewer data={message.meta.input} defaultExpandDepth={2} maxHeight={240} className="text-xs" />
+                    )}
                   </div>
                 )}
 

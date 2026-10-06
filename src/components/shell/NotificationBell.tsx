@@ -21,6 +21,7 @@ import { formatTimeAgo } from "@/lib/format";
 import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { Odometer } from "@/components/ui/odometer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -177,7 +178,8 @@ export function NotificationBell() {
                 <Bell className={cn("h-4 w-4", unread === 0 && "text-muted-foreground")} />
                 {badge && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] leading-none font-semibold text-primary-foreground tabular-nums">
-                    {badge}
+                    {/* "9+" stays a word; a count rolls to its new value. */}
+                    {unread > 9 ? badge : <Odometer value={unread} />}
                   </span>
                 )}
               </Button>

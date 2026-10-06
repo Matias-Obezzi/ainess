@@ -237,7 +237,7 @@ export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; se
                     <TooltipContent>{t("agentNode.cliMissing")}</TooltipContent>
                   </Tooltip>
                 )}
-                <StatusDot status={status} className={cn("h-2.5 w-2.5", status === "working" && "animate-pulse")} />
+                <StatusDot status={status} className="h-2.5 w-2.5" />
               </div>
             </div>
 

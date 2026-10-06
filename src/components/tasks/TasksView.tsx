@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore, selectTasks, selectProjectAgents } from "@/store";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskBoard } from "./TaskBoard";
@@ -20,7 +20,7 @@ import { reconcileProject } from "@/lib/task-reconcile";
 import { toast } from "@/components/ui/toast";
 import { useAutoArchive } from "@/hooks/useAutoArchive";
 import type { TaskStatus } from "@/types";
-import { ClipboardCopy, Plus, RefreshCw, Search, X } from "lucide-react";
+import { ClipboardCopy, Plus, RefreshCw, X } from "lucide-react";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 
@@ -96,16 +96,14 @@ export function TasksView({ projectId }: { projectId: string }) {
           so a row built out of all three came out with two different corner radii side by side. */}
       {tasks.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="h-7 w-56 rounded-md pl-7 text-xs"
-              placeholder={t("tasks.searchPlaceholder")}
-              aria-label={t("tasks.search")}
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            />
-          </div>
+          <SearchField
+            className="w-56"
+            inputClassName="h-7 rounded-md text-xs"
+            placeholder={t("tasks.searchPlaceholder")}
+            aria-label={t("tasks.search")}
+            value={query}
+            onValueChange={setQuery}
+          />
           <Select value={agentId ?? ALL_AGENTS} onValueChange={value => setAgentId(value === ALL_AGENTS ? null : value)}>
             <SelectTrigger size="sm" className="h-7 w-44 rounded-md text-xs" aria-label={t("tasks.filterByAgent")}>
               <SelectValue />

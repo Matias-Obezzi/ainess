@@ -14,6 +14,15 @@ let one of them fall behind.
   "Copied", the steppers of a number field, the eye of a token field, what a screen reader hears for
   a spinner or a picked list, the keys in the shortcuts — they said it in English whatever language
   the app was in, and now follow it in all seven, switching with it.
+- **A working agent sends out rings instead of blinking**, on its card, in its panel and in the
+  sidebar, and the counts of working agents, pending approvals and unread notifications roll to
+  their new value instead of jumping.
+- **The usage on the home screen counts up, and its two weeks of bars say what each day was** when
+  you point at one. The budget in Usage reads "x of y", turning amber and then red the way it did.
+- **A tool's arguments in a message's details are a tree** you can open, search and copy from,
+  instead of a block of JSON.
+- **A chat's mode is two buttons side by side** rather than a menu, and the task search clears with
+  one click.
 
 ## 0.28.0 — 2026-10-05
 

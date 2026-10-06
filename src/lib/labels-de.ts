@@ -5,6 +5,8 @@ import type { LabelsPack } from '@/lib/labels'
  * components installed here. A component added later and missing from this file speaks English
  * in German until its entry is written: `src/lib/labels-en.ts` has every key to translate.
  */
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
 export const de = {
   'alert-dialog': {
     confirm: 'Fortfahren',
@@ -98,5 +100,49 @@ export const de = {
   toast: {
     region: 'Benachrichtigungen',
     close: 'Schließen',
+  },
+  'json-viewer': {
+    search: 'Schlüssel und Werte durchsuchen',
+    match: (current: number, total: number) => `${current} von ${total}`,
+    noMatches: 'Keine Treffer',
+    expandAll: 'Alle aufklappen',
+    collapseAll: 'Alle zuklappen',
+    tree: 'JSON',
+    size: (count: number, type: 'array' | 'object') =>
+      type === 'array' ? plural(count, 'Element', 'Elemente') : plural(count, 'Schlüssel', 'Schlüssel'),
+    array: 'Array',
+    object: 'Objekt',
+    showMore: (count: number) => `${count} weitere anzeigen`,
+    left: (count: number) => `noch ${count}`,
+    copyValue: (path: string) => `Wert von ${path} kopieren`,
+    copyPath: (path: string) => `Pfad ${path} kopieren`,
+    copyValueHint: 'Wert kopieren (c)',
+    copyPathHint: 'Pfad kopieren (p)',
+    valueCopied: 'Wert kopiert',
+    pathCopied: 'Pfad kopiert',
+  },
+  'metric-card': {
+    loading: 'Wird geladen',
+    up: 'Gestiegen',
+    down: 'Gesunken',
+    noChange: 'Keine Änderung',
+  },
+  'search-field': {
+    placeholder: 'Suchen…',
+    clear: 'Suche leeren',
+  },
+  sparkline: {
+    summary: ({ count, first, last, low, high }: { count: number; first?: string; last?: string; low: string; high: string }) =>
+      `Verlauf von ${count} Werten${first !== undefined && last !== undefined ? `, von ${first} bis ${last}` : ''}, Minimum ${low}, Maximum ${high}`,
+    empty: 'Keine Daten',
+  },
+  'usage-meter': {
+    warning: 'Fast voll',
+    over: (overage: string) => `Um ${overage} überschritten`,
+    amount: (used: string, limit: string) => `${used} von ${limit}`,
+    valueText: (used: string, limit: string) => `${used} von ${limit} verbraucht`,
+    almostFull: 'fast voll',
+    overLimit: (overage: string) => `um ${overage} über dem Limit`,
+    free: 'Frei',
   },
 } satisfies LabelsPack
