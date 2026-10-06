@@ -1167,7 +1167,7 @@ function briefly(text: string): string {
   return flat.length > 160 ? `${flat.slice(0, 159)}…` : flat;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus } }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus }; noBoard?: boolean }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -1221,7 +1221,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
       if (extras.canNote) {
         parts.push(noteSection());
         parts.push(resultSection());
-        parts.push(taskSection(extras.card, agent.role === "planner"));
+        if (!extras.noBoard) parts.push(taskSection(extras.card, agent.role === "planner"));
       }
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
@@ -1328,7 +1328,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
   if (extras?.canNote) {
     prompt += (prompt ? "\n\n" : "") + noteSection();
     prompt += (prompt ? "\n\n" : "") + resultSection();
-    prompt += (prompt ? "\n\n" : "") + taskSection(extras.card, agent.role === "planner");
+    if (!extras.noBoard) prompt += (prompt ? "\n\n" : "") + taskSection(extras.card, agent.role === "planner");
   }
 
   if (agent.systemPrompt) {

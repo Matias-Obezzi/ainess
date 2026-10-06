@@ -2,6 +2,31 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.28.0 — 2026-10-05
+
+### Nuevo
+
+- **Un proyecto puede no tener tablero.** «Sin tablero», en la configuración del proyecto, no
+  registra ninguna tarea en ningún lado: no se crea una tarjeta por un mensaje, una delegación ni
+  una nota de un agente, no se escribe nada en disco ni en un tablero remoto, no hay `BOARD.md` y a
+  los agentes no se les habla de ninguno. El proyecto abre en su conversación, y desaparecen la
+  vista de Tareas, «crear tarea» y la parte del prompt sobre el tablero.
+
+### Arreglado
+
+- **La sugerencia en línea de PowerShell podía caer en la línea de abajo, llevándose lo que
+  escribías.** Mientras arrancaba el shell, la terminal se seguía ajustando a su panel y esos
+  tamaños se perdían: el shell se quedaba con el ancho con el que arrancó, más angosto que el de la
+  pantalla, y partía líneas que entraban. Ahora el shell recibe el tamaño de la pantalla apenas
+  existe.
+- **Los agentes de Claude decían «CLI not found» mientras trabajaban.** Claude corre a través de su
+  adaptador ACP y no necesita el programa `claude` instalado, cosa que el orquestador ya sabía, pero
+  la tarjeta del agente, su panel y el diagnóstico lo seguían buscando y avisaban al no encontrarlo.
+  Ya no; el aviso queda para los proveedores que sí necesitan su CLI.
+- **Hacer clic en un agente trabajando, en la barra lateral, abría el tablero del proyecto.** Ahora
+  abre donde está trabajando el agente: su chat, o la conversación del orquestador, donde se dibuja
+  su corrida a medida que avanza.
+
 ## 0.27.1 — 2026-10-05
 
 ### Arreglado

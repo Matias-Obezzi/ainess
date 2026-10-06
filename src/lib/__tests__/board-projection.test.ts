@@ -18,6 +18,7 @@ let save: (projectId: string, tasks: Task[]) => Promise<Task[]>;
 
 // A board that is not the local one, to prove the projection does not depend on the provider.
 vi.mock("@/lib/board/registry", () => ({
+  hasBoard: () => true,
   boardProviderFor: () => ({
     id: "github-projects",
     load: async () => [],

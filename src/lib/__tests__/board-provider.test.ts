@@ -62,13 +62,13 @@ describe("boardProviderFor", () => {
 describe("BOARD_PROVIDERS", () => {
   it("offers the providers that are built, in the order the picker shows them", () => {
     const available = BOARD_PROVIDERS.filter(p => p.available);
-    expect(available.map(p => p.id)).toEqual(["local", "github-projects", "trello"]);
+    expect(available.map(p => p.id)).toEqual(["local", "none", "github-projects", "trello"]);
   });
 
-  it("declares the four ids once each, with a label key for every one", () => {
+  it("declares the five ids once each, with a label key for every one", () => {
     const ids = BOARD_PROVIDERS.map(p => p.id);
-    expect(ids).toHaveLength(4);
-    expect(new Set(ids).size).toBe(4);
+    expect(ids).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
     for (const meta of BOARD_PROVIDERS) expect(meta.labelKey).toMatch(/^board\.provider\./);
   });
 });

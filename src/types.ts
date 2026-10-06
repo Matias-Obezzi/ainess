@@ -207,7 +207,8 @@ export interface Budget {
  * seam and the picker are real and a provider can be added without reshaping anything. See
  * `lib/board/`.
  */
-export type BoardProviderId = "local" | "github-projects" | "trello" | "jira";
+/** `none` is a project with no board at all: no card is created, saved or shown. */
+export type BoardProviderId = "none" | "local" | "github-projects" | "trello" | "jira";
 
 export interface BoardSource {
   provider: BoardProviderId;

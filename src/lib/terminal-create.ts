@@ -151,6 +151,11 @@ export function ensureTerminal(tab: TerminalTab, parent: HTMLElement): TerminalE
       if (pty) term.options.windowsPty = pty;
     })
     .then(() => transport.ptySpawn({ id, shell: tab.shellPath, cwd: tab.cwd, cols: term.cols, rows: term.rows }))
+    // Fitting goes on while the shell starts (the dock opening, the panel settling), and a resize
+    // for a PTY that does not exist yet is dropped. The shell then kept the width it was spawned
+    // with: PowerShell wrapped its inline prediction onto a row of its own and redrew the line
+    // there. So the size it starts with is the one on screen once it exists.
+    .then(() => transport.ptyResize(id, term.cols, term.rows))
     .then(() => {
       // A tab opened from one of the project's scripts starts by running it. Written as soon as the
       // PTY exists rather than on some delay: the shell reads its input when it is ready, and the

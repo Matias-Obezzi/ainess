@@ -10,6 +10,7 @@
 import { plural } from "@/i18n";
 import { isTauri } from "@/lib/tauri";
 import { maskSecrets } from "@/lib/logger";
+import { PROVIDERS } from "@/lib/providers";
 import type { Binaries, ProviderId, ProviderQuota, StorageStat, TunnelProviderId } from "@/types";
 
 export type DiagnosticLevel = "ok" | "warn" | "error";
@@ -115,7 +116,8 @@ export function checkAgentClis(input: DiagnosticsInput, t: Translate): Diagnosti
       const version = input.binaries[p]?.version?.trim().replace(/\.+$/, "");
       return version ? `${p} ${version}` : p;
     });
-  const missing = input.usedProviders.filter(p => !input.binaries[p]?.path);
+  // A provider that runs over ACP brings its own adapter, so not finding its CLI is not missing it.
+  const missing = input.usedProviders.filter(p => PROVIDERS[p]?.transport !== "acp" && !input.binaries[p]?.path);
   const detail = detected.length > 0
     ? t("diagnostics.clis.detected", { list: list(detected) })
     : t("diagnostics.clis.none");

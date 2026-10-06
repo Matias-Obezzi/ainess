@@ -160,7 +160,7 @@ export function ProjectDialog({
 
     // Local is the default and what `undefined` already means, so it is not written down: a
     // project nobody configured keeps a config with nothing to migrate later.
-    const board = boardProvider === "local" ? undefined : {
+    const board = boardProvider === "local" ? undefined : boardProvider === "none" ? { provider: "none" as const } : {
       provider: boardProvider,
       owner: boardSource.owner.trim() || undefined,
       number: boardNumber(boardSource),

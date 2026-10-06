@@ -1492,8 +1492,9 @@ export const fr: Dictionary = {
 
   // ---- Board provider ----
   "board.source": "Tableau",
-  "board.source.hint": "D'où vient le tableau de ce projet. Le tableau local est un fichier sur cette machine ; les autres arrivent.",
+  "board.source.hint": "Où se trouve le tableau de ce projet : un fichier sur cette machine, GitHub Projects ou Trello. Sans tableau, aucune tâche n'est enregistrée nulle part et les agents n'en reçoivent aucun.",
   "board.provider.local": "Sur cette machine",
+  "board.provider.none": "Pas de tableau (aucune tâche n'est enregistrée)",
   "board.provider.github-projects": "GitHub Projects",
   "board.provider.trello": "Trello",
   "board.provider.jira": "Jira",

@@ -6,6 +6,28 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.28.0 — 2026-10-05
+
+### Added
+
+- **A project can have no board.** "No board" in the project's settings records no task anywhere:
+  no card is created for a prompt, a delegation or an agent's note, nothing is written to disk or to
+  a remote board, there is no `BOARD.md`, and the agents are not told about one. The project opens
+  on its conversation, and the Tasks view, "create task" and the board's part of the prompt go away.
+
+### Fixed
+
+- **PowerShell's inline suggestion could land on the line below, taking what you typed with it.**
+  A terminal kept being fitted to its panel while the shell was starting, and those sizes were lost:
+  the shell kept the width it started with, narrower than the one on screen, so it wrapped lines
+  that fitted. The shell now gets the size on screen as soon as it exists.
+- **Claude agents said "CLI not found" while working.** Claude runs through its ACP adapter and
+  needs no `claude` program installed, which the orchestrator knew, but the agent card, its panel
+  and the diagnostics still looked for one and warned when they did not find it. They no longer do;
+  the warning stays for the providers that do need their CLI.
+- **Clicking a working agent in the sidebar opened the project's board.** It now opens where the
+  agent is working: its chat, or the orchestrator's conversation, where its run is drawn as it goes.
+
 ## 0.27.1 — 2026-10-05
 
 ### Fixed

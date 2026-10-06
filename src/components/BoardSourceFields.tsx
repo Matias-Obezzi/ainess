@@ -136,7 +136,7 @@ const PLATFORMS: Partial<Record<BoardProviderId, Platform>> = {
  * without the six, so the dialog refuses to write it.
  */
 export function isBoardSourceComplete(provider: BoardProviderId, draft: BoardSourceDraft): boolean {
-  if (provider === "local") return true;
+  if (provider === "local" || provider === "none") return true;
   const platform = PLATFORMS[provider];
   // A provider with no form here is one that is declared and not built: nothing can be filled in
   // for it, so nothing about it is complete.

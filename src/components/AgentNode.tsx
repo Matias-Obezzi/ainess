@@ -151,7 +151,8 @@ export function agentActionItems(actions: AgentActions, t: TFunction) {
 export function AgentNode({ data, selected }: { data: { agent: AgentConfig }; selected?: boolean }) {
   const { agent } = data;
   const t = useT();
-  const binaryInfo = useAppStore(state => state.binaries[agent.provider]);
+  // A provider that runs over ACP brings its own adapter: no CLI to find, nothing missing.
+  const binaryInfo = useAppStore(state => (PROVIDERS[agent.provider]?.transport === "acp" ? undefined : state.binaries[agent.provider]));
   const currentProjectId = useCurrentProjectId();
   const runStartedAt = useAppStore(state => {
     const projectId = currentProjectId;

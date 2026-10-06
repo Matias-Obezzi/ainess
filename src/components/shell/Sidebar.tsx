@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
@@ -322,7 +323,7 @@ export function Sidebar() {
           { mode: "chat", icon: Bot, label: t("sidebar.orchestrator") },
           { mode: "tasks", icon: ListTodo, label: t("projectScreen.tasks") },
           { mode: "graph", icon: GitBranch, label: t("projectScreen.hierarchy") },
-        ] as const).map(row => {
+        ] as const).filter(row => row.mode !== "tasks" || hasBoard(p)).map(row => {
           // A chat of its own is showing: none of the three is where you are, not even the
           // orchestrator, whose row means "the project's own thread".
           const here = isOpenProject && currentChatId === null && projectMode === row.mode;
@@ -417,7 +418,9 @@ export function Sidebar() {
                 key={`${item.projectId}-${item.agentId}`}
                 type="button"
                 className="flex items-start gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-accent cursor-pointer group"
-                onClick={() => openProject(item.projectId, item.chatId ?? null, item.chatId ? "chat" : "tasks")}
+                // Where the agent is working: its chat, or else the orchestrator's conversation, where
+                // its run is drawn as it goes. The board only had its card, if it had one at all.
+                onClick={() => openProject(item.projectId, item.chatId ?? null, "chat")}
               >
                 <AgentAvatar
                   provider={item.provider}

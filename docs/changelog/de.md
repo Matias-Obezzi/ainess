@@ -2,6 +2,33 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.28.0 — 2026-10-05
+
+### Neu
+
+- **Ein Projekt kann ohne Board auskommen.** „Kein Board“ in den Projekteinstellungen erfasst
+  nirgends eine Aufgabe: Für eine Nachricht, eine Delegation oder die Notiz eines Agenten entsteht
+  keine Karte, nichts wird auf die Festplatte oder in ein entferntes Board geschrieben, es gibt
+  keine `BOARD.md`, und den Agenten wird von keinem erzählt. Das Projekt öffnet sich in seiner
+  Unterhaltung, und die Aufgabenansicht, „Aufgabe erstellen“ und der Board-Teil des Prompts fallen
+  weg.
+
+### Behoben
+
+- **Der Inline-Vorschlag von PowerShell konnte in die Zeile darunter rutschen und das Getippte
+  mitnehmen.** Während die Shell startete, wurde das Terminal weiter an sein Panel angepasst, und
+  diese Größen gingen verloren: Die Shell behielt die Breite, mit der sie gestartet war, schmaler
+  als die auf dem Bildschirm, und brach Zeilen um, die passten. Jetzt bekommt die Shell die
+  Bildschirmgröße, sobald es sie gibt.
+- **Claude-Agenten meldeten „CLI not found“, während sie arbeiteten.** Claude läuft über seinen
+  ACP-Adapter und braucht kein installiertes `claude`-Programm, was der Orchestrator wusste, aber
+  die Agentenkarte, ihr Panel und die Diagnose suchten es trotzdem und warnten, wenn sie es nicht
+  fanden. Das tun sie nicht mehr; die Warnung bleibt für die Anbieter, die ihr CLI wirklich
+  brauchen.
+- **Ein Klick auf einen arbeitenden Agenten in der Seitenleiste öffnete das Board des Projekts.**
+  Jetzt öffnet er, wo der Agent arbeitet: seinen Chat oder die Unterhaltung des Orchestrators, in
+  der sein Lauf fortlaufend erscheint.
+
 ## 0.27.1 — 2026-10-05
 
 ### Behoben

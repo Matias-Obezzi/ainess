@@ -1,3 +1,4 @@
+import { hasBoard } from "@/lib/board/registry";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentAvatar } from "@/components/ProviderLogo";
 import { ProjectMascot } from "@/components/ProjectMascot";
@@ -475,14 +476,15 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
       disabled: !output || !hasMarkdown(output),
       onSelect: () => void copyText(output, t("message.markdownCopied")),
     },
-    {
+    // A project with no board has nowhere to put the card.
+    ...(hasBoard(useAppStore.getState().config.projects.find(p => p.id === run.projectId)) ? [{
       key: "task",
       label: t("message.createTask"),
       icon: ListTodo,
       separatorBefore: true,
       disabled: !output,
       onSelect: () => createTaskFromMessage({ projectId: run.projectId, text: output, agentId: run.agentId, runId: run.id }),
-    },
+    } satisfies MenuAction] : []),
     { key: "detail", label: t("message.viewDetail"), icon: FileText, onSelect: () => setDetailOpen(true) },
     // Retrying only means something on a run the app cut short.
     ...(interrupted ? [{ key: "retry", label: t("common.retry"), icon: RotateCw, onSelect: retry } satisfies MenuAction] : []),
