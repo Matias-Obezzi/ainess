@@ -1290,6 +1290,11 @@ async function driveAcpRun(opts: {
       clientVersion: __APP_VERSION__,
       images: await attachedImages(runId, opts.prompt),
       ...acpAsksUser(runId),
+      onModels: (models) => {
+        const state = useAppStore.getState();
+        const provider = selectAgent(state, state.runs[runId]?.agentId ?? "")?.provider;
+        if (provider) state.reportModels(provider, models);
+      },
       onEvent: (event) => {
         // A run that is already over is a run the user stopped: its last event is the session
         // client noticing the process died, and that is not news worth a red box in the timeline.

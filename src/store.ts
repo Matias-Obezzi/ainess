@@ -387,6 +387,8 @@ export interface AppState {
   ensureModels(provider: ProviderId): Promise<void>;
   /** Remembers a hand-typed model id for a provider, capped at 10, persisted. */
   rememberModel(provider: ProviderId, id: string): void;
+  /** What an agent's own session said it can run: shown in pickers and kept for the next start. */
+  reportModels(provider: ProviderId, models: ModelInfo[]): void;
   /** `force` skips the shared cache: it is the user asking on purpose. */
   refreshQuota(provider: ProviderId, opts?: { force?: boolean }): Promise<ProviderQuota>;
   loadQuotaMarks(): Promise<void>;
@@ -1071,7 +1073,7 @@ function findTaskProject(state: AppState, taskId: string): [string, Task[]] | un
   return undefined;
 }
 
-const ASKABLE_PROVIDERS: ProviderId[] = ["antigravity", "opencode", "ollama"];
+const ASKABLE_PROVIDERS: ProviderId[] = ["antigravity", "copilot", "opencode", "ollama"];
 const MODELS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const modelsInFlight = new Map<ProviderId, Promise<void>>();
 
@@ -2365,6 +2367,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     });
   },
 
+  reportModels: (provider, models) => {
+    setDiscoveredModels(provider, models);
+    set(state => ({ models: { ...state.models, [provider]: models } }));
+    const saved = get().config.reportedModels?.[provider];
+    if (JSON.stringify(saved) === JSON.stringify(models)) return;
+    get().updateConfig({ reportedModels: { ...get().config.reportedModels, [provider]: models } });
+  },
+
   refreshQuota: async (provider, opts) => {
     // opencode is asked through its own binary, so it needs the path that was detected.
     const result = await quota.fetchQuota(provider, get().binaries, opts);
@@ -3151,6 +3161,10 @@ async function runInit(): Promise<void> {
     // anything new and ends up with two agents in the same workspace.
     void recovery.reapAfterCrash();
 
+    // What agents reported last time, until they report again; then ask the CLIs that can be asked.
+    for (const [p, models] of Object.entries(get().config.reportedModels ?? {})) {
+      if (models?.length) get().reportModels(p as ProviderId, models);
+    }
     // Query askable CLIs for available models in the background so pickers have them ready.
     for (const p of ASKABLE_PROVIDERS) {
       void get().ensureModels(p);

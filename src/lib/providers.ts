@@ -10,13 +10,14 @@ import { roleLabelKey } from "@/lib/status-labels";
 /**
  * What Claude Code accepts after `--model`.
  *
- * This static list is now the fallback: providers that expose model-discovery subcommands
- * (antigravity, opencode, ollama) are queried dynamically via their CLI, and any model typed
+ * This static list is now the fallback, until a session reports the models the account really has
+ * (see `onModels` in src/lib/acp/session.ts). Providers that expose model-discovery subcommands
+ * (antigravity, copilot, opencode, ollama) are queried dynamically via their CLI, and any model typed
  * by hand in a picker is remembered so it can be picked again without retyping.
  */
 const CLAUDE_MODELS = [
   "opus", "sonnet", "haiku",
-  "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1", "claude-opus-5", "claude-sonnet-5",
+  "claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5",
 ];
 
 /** What a CLI said it can run when it was asked (`agy models`, `opencode models`…). The store fills it in. */

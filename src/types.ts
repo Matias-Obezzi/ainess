@@ -588,6 +588,8 @@ export interface AppConfig {
   screenAnimations?: boolean;
   /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
   rememberedModels?: Partial<Record<ProviderId, string[]>>;
+  /** The models an agent offered in its own session (Claude over ACP), kept so pickers show them from startup. */
+  reportedModels?: Partial<Record<ProviderId, ModelInfo[]>>;
 }
 
 export interface AgentRuntime {

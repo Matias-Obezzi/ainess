@@ -10,8 +10,10 @@ let one of them fall behind.
 
 ### Fixed
 
-- **Opus 5.5 and Sonnet 5.5 were missing from Claude's models**, so the only way to pick them was
-  typing an id Claude does not know (`claude-opus-5.5`), and the run failed. Haiku 5.5 is there too.
+- **The model picker of a Claude agent offers the models your account really has**, named the way
+  Claude names them (Opus 5.5, Fable 5.1, Sonnet 5…), as its sessions report them. It used to be a
+  fixed list without Opus 5.5, so the only way to pick it was typing an id Claude does not know
+  (`claude-opus-5.5`), and the run failed. Copilot's picker reads its list from the CLI too.
 - **A planner asking for one of Antigravity's newer models was ignored.** The pick was checked
   against a built-in list that no longer matched what `agy models` reports, and a planner writing
   the name the CLI shows ("Claude Opus 5.5 (High)") instead of its id was turned away. Both count
