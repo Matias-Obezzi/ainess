@@ -8,7 +8,7 @@ import { eventsFromSessionUpdate, toolCallTracker } from "@/lib/acp/events";
 import { AUTH_STATUS_METHOD, AcpAuthRequiredError, isAuthRequired, parseAuthStatus } from "@/lib/acp/auth";
 import { rememberClaudeAuthStatus } from "@/lib/claude-auth";
 import { log } from "@/lib/logger";
-import type { ParsedEvent } from "@/types";
+import type { ModelInfo, ParsedEvent } from "@/types";
 import type {
   ClientContext,
   ContentBlock,
@@ -18,6 +18,7 @@ import type {
   PermissionOption,
   RequestPermissionRequest,
   RequestPermissionResponse,
+  SessionConfigOption,
   SessionModeState,
   SessionUpdate,
   StopReason,
@@ -83,6 +84,19 @@ export interface AcpPromptOptions {
   elicit?: (request: CreateElicitationRequest) => Promise<CreateElicitationResponse>;
   /** Pictures sent with the prompt, when the agent takes images. Base64, without a data: prefix. */
   images?: { data: string; mimeType: string }[];
+  /** Told the models the session offers, when it offers a choice: what this account can really run. */
+  onModels?: (models: ModelInfo[]) => void;
+}
+
+/**
+ * The models in a session's `model` select, which is the agent's own picker. "default" is left out:
+ * an agent with no model already gets it.
+ */
+export function sessionModels(configOptions: SessionConfigOption[] | null | undefined): ModelInfo[] {
+  const select = configOptions?.find(o => o.id === "model");
+  if (!select || select.type !== "select") return [];
+  const flat = select.options.flatMap(o => ("group" in o ? o.options : [o]));
+  return flat.filter(o => o.value !== "default").map(o => ({ id: o.value, label: o.name }));
 }
 
 export interface AcpPromptResult {
@@ -164,6 +178,11 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
    */
   let loggedOut = false;
 
+  const reportModels = (configOptions: SessionConfigOption[] | null | undefined) => {
+    const models = sessionModels(configOptions);
+    if (models.length > 0) options.onModels?.(models);
+  };
+
   const app = client({ name: "ainess" })
     .onNotification(AUTH_STATUS_METHOD, (params: unknown) => params, ({ params }) => {
       const status = parseAuthStatus(params);
@@ -224,6 +243,7 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
             const loaded = await ctx.request("session/load", { sessionId: resumeSessionId, cwd, mcpServers, ...(meta ? { _meta: meta } : {}) });
             loadedSessionId = resumeSessionId;
             loadedModes = loaded?.modes;
+            reportModels(loaded?.configOptions);
           } catch (e) {
             // A session that is gone (expired, from another machine, from an agent that was
             // reinstalled) must not brick the agent: the turn goes on from zero, which is what the
@@ -257,6 +277,7 @@ export async function runAcpPrompt(options: AcpPromptOptions): Promise<AcpPrompt
       const request = { cwd, mcpServers, ...(meta ? { _meta: meta } : {}) };
       return await ctx.buildSession(request).withSession(async (session) => {
         onEvent({ type: "session", sessionId: session.sessionId });
+        reportModels(session.newSessionResponse.configOptions);
         await setMode(ctx, session.sessionId, session.modes, options.session?.mode, runId);
 
         const onAbort = () => { void ctx.notify("session/cancel", { sessionId: session.sessionId }); };

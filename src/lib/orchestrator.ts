@@ -6,7 +6,7 @@ import { hasBoard } from "@/lib/board/registry";
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
-import { PROVIDERS, buildSystemPrompt, parseDelegations, delegationError, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, resolveModelName, parseDelegations, delegationError, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -1290,6 +1290,11 @@ async function driveAcpRun(opts: {
       clientVersion: __APP_VERSION__,
       images: await attachedImages(runId, opts.prompt),
       ...acpAsksUser(runId),
+      onModels: (models) => {
+        const state = useAppStore.getState();
+        const provider = selectAgent(state, state.runs[runId]?.agentId ?? "")?.provider;
+        if (provider) state.reportModels(provider, models);
+      },
       onEvent: (event) => {
         // A run that is already over is a run the user stopped: its last event is the session
         // client noticing the process died, and that is not news worth a red box in the timeline.
@@ -1671,12 +1676,8 @@ function onRunFinished(runId: string) {
             // own ran out of quota was silently started on the same one again.
             let modelToUse: string | undefined = undefined;
             if (task.model) {
-              const providerSpec = PROVIDERS[childAgent.provider];
-              const allowed = new Set(providerSpec?.defaultModels || []);
-              if (childAgent.model) allowed.add(childAgent.model);
-              if (allowed.has(task.model)) {
-                modelToUse = task.model;
-              } else {
+              modelToUse = resolveModelName(childAgent.provider, task.model, childAgent.model);
+              if (!modelToUse) {
                 addMessage({ projectId: run.projectId, fromAgentId: "system", toAgentId: agent.id, kind: "system", text: translateNow("system.modelUnavailable", { model: task.model, name: childAgent.name }), runId });
               }
             }

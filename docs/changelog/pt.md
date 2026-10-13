@@ -2,6 +2,20 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.30.1 — 2026-10-13
+
+### Corrigido
+
+- **O seletor de modelo de um agente do Claude oferece os modelos que a sua conta realmente tem**,
+  com os nomes que o Claude dá a eles (Opus 5.5, Fable 5.1, Sonnet 5…), conforme as sessões dele
+  informam. Antes era uma lista fixa sem o Opus 5.5, então o único jeito de escolhê-lo era digitar
+  um id que o Claude não conhece (`claude-opus-5.5`), e a execução falhava. O seletor do Copilot
+  também lê a lista dele do CLI.
+- **Um planejador que pedia um dos modelos novos do Antigravity era ignorado.** A escolha era
+  conferida com uma lista embutida que não batia mais com o que `agy models` informa, e um
+  planejador que escrevia o nome que o CLI mostra ("Claude Opus 5.5 (High)") em vez do id era
+  recusado. Agora os dois valem.
+
 ## 0.30.0 — 2026-10-13
 
 ### Novo

@@ -10,14 +10,38 @@ import { roleLabelKey } from "@/lib/status-labels";
 /**
  * What Claude Code accepts after `--model`.
  *
- * This static list is now the fallback: providers that expose model-discovery subcommands
- * (antigravity, opencode, ollama) are queried dynamically via their CLI, and any model typed
+ * This static list is now the fallback, until a session reports the models the account really has
+ * (see `onModels` in src/lib/acp/session.ts). Providers that expose model-discovery subcommands
+ * (antigravity, copilot, opencode, ollama) are queried dynamically via their CLI, and any model typed
  * by hand in a picker is remembered so it can be picked again without retyping.
  */
 const CLAUDE_MODELS = [
   "opus", "sonnet", "haiku",
-  "claude-opus-5", "claude-sonnet-5", "claude-fable-5-1", "claude-haiku-4-5-20251001",
+  "claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5",
 ];
+
+/** What a CLI said it can run when it was asked (`agy models`, `opencode models`…). The store fills it in. */
+const discovered: Partial<Record<ProviderId, ModelInfo[]>> = {};
+
+export function setDiscoveredModels(provider: ProviderId, models: ModelInfo[]): void {
+  discovered[provider] = models;
+}
+
+/** The models a provider can run: what its CLI reported, or the built-in list when it was never asked. */
+export function providerModels(provider: ProviderId): ModelInfo[] {
+  const found = discovered[provider];
+  return found && found.length > 0 ? found : (PROVIDERS[provider]?.models ?? []);
+}
+
+/**
+ * The model id a planner meant, or undefined when the provider cannot run it. It may write the id
+ * or the name the CLI shows next to it («Claude Opus 5.5 (High)» for `claude-opus-5-5-high`).
+ */
+export function resolveModelName(provider: ProviderId, name: string, own?: string): string | undefined {
+  if (name === own) return name;
+  const wanted = name.trim().toLowerCase();
+  return providerModels(provider).find(m => m.id.toLowerCase() === wanted || m.label.toLowerCase() === wanted)?.id;
+}
 
 /** Turns a plain list of model ids into `ModelInfo[]` (no friendly label known). */
 function toModels(ids: string[]): ModelInfo[] {
@@ -649,8 +673,8 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   antigravity: {
     id: "antigravity",
     label: "Antigravity",
-    defaultModels: ["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"],
-    models: toModels(["gemini-3.1-pro-high", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]),
+    defaultModels: ["gemini-3.8-flash-high", "claude-opus-5-5-high", "claude-sonnet-5-5-high", "gpt-oss-120b-medium"],
+    models: toModels(["gemini-3.8-flash-high", "claude-opus-5-5-high", "claude-sonnet-5-5-high", "gpt-oss-120b-medium"]),
     supportsSessions: true,
     promptVia: "stdin",
     transport: "cli",
@@ -1239,8 +1263,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
         for (const child of children) {
           let childModelsInfo = "";
           if (extras?.autoModel) {
-            const providerSpec = PROVIDERS[child.provider];
-            const models = new Set(providerSpec?.defaultModels || []);
+            const models = new Set(providerModels(child.provider).map(m => m.id));
             if (child.model) models.add(child.model);
             const modelsList = Array.from(models).join(", ");
             if (modelsList) {
