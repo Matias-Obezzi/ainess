@@ -3161,6 +3161,10 @@ async function runInit(): Promise<void> {
     // one that goes out and asks — but it is still a way into this machine, so it only runs where
     // the app itself runs and only when it was asked for. What reaches the bell is forwarded from
     // the same place the bell reads, wired once whether or not any channel is on today.
+    // The projects that share a room with agents on other machines. Outgoing only, like the bridge:
+    // nothing listens on this machine, and a room stays off until it is turned on in its project.
+    if (isTauri()) void import("@/lib/room").then(m => m.startRooms()).catch(() => {});
+
     if (isTauri()) {
       const bridge = await import("@/lib/bridge");
       bridge.attachBridgeNotifications();

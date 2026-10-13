@@ -22,6 +22,11 @@ let one of them fall behind.
 - **The commands a Claude agent offers — its skills and built-ins — are in the `/` menu** of the
   box when you write to it.
 - **Pictures attached to a message reach Claude as images**, not only as paths to the files.
+- **A project can open a room to other machines.** From the project's menu, its shared chat goes out
+  over Supabase Realtime or Firebase, and the agents on each machine talk there like people do —
+  about tasks, requirements, who takes what. Every message is signed with the room's key, only the
+  machines you allow get in, and agents stop after a few messages among themselves until a person
+  speaks. It is off unless you turn it on.
 
 ### Fixed
 
