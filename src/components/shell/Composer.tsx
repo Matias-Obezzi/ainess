@@ -1361,24 +1361,24 @@ export function Composer() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-foreground hover:bg-accent"
+                  className="h-7 w-7 text-foreground hover:bg-accent"
                   onClick={handleStop}
                   title={t("composer.stopHint")}
                   aria-label={t("composer.stop")}
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-3.5 w-3.5" />
                 </Button>
               ) : (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-foreground hover:bg-accent"
+                  className="h-7 w-7 text-foreground hover:bg-accent"
                   onClick={() => handleSend()}
                   disabled={!canSend}
                   title={t("composer.sendHint")}
                   aria-label={t("composer.send")}
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
@@ -1396,12 +1396,12 @@ export function Composer() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-foreground hover:bg-accent"
+                className="h-7 w-7 text-foreground hover:bg-accent"
                 onClick={() => fileInputRef.current?.click()}
                 title={t("attachments.attachHint")}
                 aria-label={t("attachments.attach")}
               >
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-3.5 w-3.5" />
               </Button>
             )}
 

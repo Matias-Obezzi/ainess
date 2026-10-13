@@ -28,7 +28,8 @@ let one of them fall behind.
   whole box.
 - **A picture attached to a message shows as a thumbnail inside the box**, above the text, the way
   it will read once sent.
-- **Buttons are a size smaller** across the app.
+- **Buttons are a size smaller** across the app, and so are the send, stop and attach icons of the
+  box.
 
 ### Fixed
 
