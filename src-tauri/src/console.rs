@@ -29,6 +29,11 @@ pub fn share_console() {
     use windows_sys::Win32::System::Console::{AllocConsole, GetConsoleWindow};
     use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
 
+    if alloc_console_without_window() {
+        SHARED.store(true, Ordering::Relaxed);
+        return;
+    }
+
     // SAFETY: three calls with no arguments to hand over and no memory to keep. `AllocConsole`
     // fails when this process already has one, which is the debug build with its dev console —
     // there is nothing to do then, and its console is the one children will inherit anyway.
@@ -43,6 +48,44 @@ pub fn share_console() {
             ShowWindow(window, SW_HIDE);
         }
         SHARED.store(true, Ordering::Relaxed);
+    }
+}
+
+/// A console with no window at all (`AllocConsoleWithOptions`, Windows 11 24H2 and later).
+///
+/// `AllocConsole` + `SW_HIDE` is not enough where Windows Terminal is the default console host, as
+/// it is out of the box on Windows 11: the console then lives in a Terminal window of its own that
+/// `ShowWindow` never reaches, and the first agent that draws to it brings it up on screen. Looked
+/// up at run time so older Windows, which lacks the function, falls back to hiding.
+#[cfg(windows)]
+fn alloc_console_without_window() -> bool {
+    use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
+
+    #[repr(C)]
+    struct AllocConsoleOptions {
+        mode: i32,
+        use_show_window: i32,
+        show_window: u16,
+    }
+    const ALLOC_CONSOLE_MODE_NO_WINDOW: i32 = 2;
+    const ALLOC_CONSOLE_RESULT_NEW_CONSOLE: i32 = 1;
+    type AllocConsoleWithOptions = unsafe extern "system" fn(*const AllocConsoleOptions, *mut i32) -> i32;
+
+    let kernel32: Vec<u16> = "kernel32.dll\0".encode_utf16().collect();
+    // SAFETY: kernel32 is loaded in every process; the pointer, when there is one, is the function
+    // with the signature documented for it, called with a struct laid out as the C one.
+    unsafe {
+        let module = GetModuleHandleW(kernel32.as_ptr());
+        if module == 0 {
+            return false;
+        }
+        let Some(proc) = GetProcAddress(module, b"AllocConsoleWithOptions\0".as_ptr()) else {
+            return false;
+        };
+        let alloc: AllocConsoleWithOptions = std::mem::transmute(proc);
+        let options = AllocConsoleOptions { mode: ALLOC_CONSOLE_MODE_NO_WINDOW, use_show_window: 0, show_window: 0 };
+        let mut result = 0;
+        alloc(&options, &mut result) >= 0 && result == ALLOC_CONSOLE_RESULT_NEW_CONSOLE
     }
 }
 

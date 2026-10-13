@@ -145,9 +145,16 @@ export function visibleActivityRows<T extends { kind: string }>(rows: T[], limit
   return rows.filter((m, i) => i >= rows.length - limit || m.kind === "text");
 }
 
-export function RunActivity({ runId, compact = false, mode = "live" }: { runId: string; compact?: boolean; mode?: ActivityMode }) {
+export function RunActivity({ runId, compact = false, mode = "live", withText = true }: {
+  runId: string;
+  compact?: boolean;
+  mode?: ActivityMode;
+  /** False where what the agent said is already drawn as the answer beside it: shown twice otherwise. */
+  withText?: boolean;
+}) {
   const t = useT();
-  const rows = useRunMessages(runId);
+  const all = useRunMessages(runId);
+  const rows = useMemo(() => (withText ? all : all.filter(m => m.kind !== "text")), [all, withText]);
   const run = useAppStore(state => state.runs[runId]);
   /** Whether the ticker's history is open. */
   const [open, setOpen] = useState(false);

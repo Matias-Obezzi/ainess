@@ -562,7 +562,7 @@ export const RunBubble = memo(function RunBubble({ run }: { run: Run }) {
                       </div>
                       {activityOpen && steps > 0 && (
                         <div className="rounded-md border border-border bg-muted/40 p-2">
-                          <RunActivity runId={run.id} mode="full" />
+                          <RunActivity runId={run.id} mode="full" withText={false} />
                         </div>
                       )}
                     </div>

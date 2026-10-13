@@ -113,9 +113,13 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
   const flush = () => {
     if (boxIndex === -1) return;
     nodes.push(
-      // Out to the edges of the composer: the layer's own padding is undone on each side and put
-      // back inside, so the text keeps its column and the background reaches the border.
-      <span key={`fence-${boxIndex}`} className="block -ml-3 -mr-12 rounded-sm bg-muted pl-3 pr-12">
+      // A rounded card a little wider than the code, drawn behind it: the text keeps the column the
+      // textarea puts it in. It sits inside the opener's and the closer's lines rather than across
+      // them, which are blank once their backticks are hidden, so it reads as a box, not a band.
+      <span
+        key={`fence-${boxIndex}`}
+        className="relative isolate block before:absolute before:-inset-x-1.5 before:top-[0.3lh] before:bottom-[0.3lh] before:-z-10 before:rounded-md before:bg-muted before:content-['']"
+      >
         {box}
       </span>,
     );
@@ -226,6 +230,26 @@ function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
+
+  // A picture is shown as one, big enough to recognise the screenshot it is; its name says nothing.
+  if (url) {
+    return (
+      <div className="group relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+        <img src={url} alt={file.name} title={file.name} className="h-full w-full object-cover" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="absolute right-1 top-1 h-6 w-6 rounded-full opacity-80 shadow-sm hover:opacity-100"
+          onClick={onRemove}
+          title={t("attachments.remove")}
+          aria-label={t("attachments.remove")}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 rounded-md border border-border bg-card py-1 pl-1 pr-1.5 text-xs">
@@ -1181,19 +1205,6 @@ export function Composer() {
           </div>
         )}
 
-        {/* What is going with the message, before it goes. */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((file, i) => (
-              <AttachmentChip
-                key={`${file.name}-${i}`}
-                file={file}
-                onRemove={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
-              />
-            ))}
-          </div>
-        )}
-
         {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
         {/* Out of the box and its question alike: the paperclip that opens it lives in the bar
             below, which is on screen either way, and a hidden input inside a branch that vanishes
@@ -1251,6 +1262,22 @@ export function Composer() {
                 ))}
               </div>
             )}
+            {/* The border is the box's, not the textarea's: what goes with the message sits inside it,
+                above the text, the way it will read once sent. The textarea keeps a transparent
+                one-pixel border so the layer's `inset-px` still lines its words up with the caret. */}
+            <div className="rounded-lg border border-input shadow-xs transition-colors focus-within:border-ring dark:bg-input/30">
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {attachments.map((file, i) => (
+                  <AttachmentChip
+                    key={`${file.name}-${i}`}
+                    file={file}
+                    onRemove={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="relative">
             {/* The text you read: same font metrics and padding as the textarea on top of it, so
                 every character sits where the textarea's (invisible) one does. This layer draws the
                 words, the code boxes and the grey suggestion; the textarea draws the caret and the
@@ -1309,7 +1336,7 @@ export function Composer() {
               // No halo around the box: three pixels of ring on the one control that is always on
               // screen read as an error. The focus is still said — the border turns to the ring
               // colour, which the base Textarea already does — it is just said once.
-              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
@@ -1354,6 +1381,8 @@ export function Composer() {
                   <Send className="h-4 w-4" />
                 </Button>
               )}
+            </div>
+            </div>
             </div>
           </div>
         )}

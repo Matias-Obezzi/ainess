@@ -22,6 +22,22 @@ let one of them fall behind.
 - **Typing ``` in the box writes the closing ``` too**, with a line after it, so the down arrow
   walks out of the block and you can keep writing below it.
 
+### Changed
+
+- **A block of code in the box is a rounded card** inside the text, instead of a band across the
+  whole box.
+- **A picture attached to a message shows as a thumbnail inside the box**, above the text, the way
+  it will read once sent.
+- **Buttons are a size smaller** across the app.
+
+### Fixed
+
+- **A terminal window kept opening while agents worked** on Windows 11, where Windows Terminal is
+  the default console: the hidden console the agents share lived in a Terminal window that could
+  not be hidden. On Windows 11 24H2 and later it is now a console with no window at all.
+- **A finished turn showed what the agent said twice** with its activity open: once in the activity
+  and once as the answer below it.
+
 ## 0.30.1 — 2026-10-13
 
 ### Fixed
