@@ -6,6 +6,17 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **Opus 5.5 and Sonnet 5.5 were missing from Claude's models**, so the only way to pick them was
+  typing an id Claude does not know (`claude-opus-5.5`), and the run failed. Haiku 5.5 is there too.
+- **A planner asking for one of Antigravity's newer models was ignored.** The pick was checked
+  against a built-in list that no longer matched what `agy models` reports, and a planner writing
+  the name the CLI shows ("Claude Opus 5.5 (High)") instead of its id was turned away. Both count
+  now.
+
 ## 0.30.0 — 2026-10-13
 
 ### Added

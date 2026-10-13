@@ -1,5 +1,5 @@
 import type { AgentConfig, Run } from "@/types";
-import { PROVIDERS } from "@/lib/providers";
+import { providerModels } from "@/lib/providers";
 
 /**
  * The models offered when retrying with `agent`, with the agent's own included.
@@ -8,7 +8,7 @@ import { PROVIDERS } from "@/lib/providers";
  * provider reads one `sort` or `push` away from whoever asked for it.
  */
 export function retryModels(agent: AgentConfig): string[] {
-  const defaults = PROVIDERS[agent.provider]?.defaultModels ?? [];
+  const defaults = providerModels(agent.provider).map(m => m.id);
   if (agent.model && !defaults.includes(agent.model)) return [...defaults, agent.model];
   return [...defaults];
 }

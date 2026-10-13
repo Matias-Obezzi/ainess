@@ -34,7 +34,7 @@ import { MAX_PROJECT_PANES } from "@/lib/project-panes";
 import { DEFAULT_MAX_CONCURRENT_RUNS } from "@/lib/run-queue";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 import type { QuestionChoice } from "@/lib/question-choice";
-import { PROVIDERS } from "@/lib/providers";
+import { PROVIDERS, setDiscoveredModels } from "@/lib/providers";
 import { isRemoteBuild } from "@/lib/platform";
 
 /** The channels the messaging config actually has a slot for today. */
@@ -2316,6 +2316,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   refreshModels: async (provider) => {
     const models = await quota.listModels(provider, get().binaries);
+    setDiscoveredModels(provider, models);
     set(state => ({
       models: { ...state.models, [provider]: models },
       modelsFetchedAt: { ...state.modelsFetchedAt, [provider]: Date.now() },

@@ -4,7 +4,7 @@ import { Binaries, ModelInfo, ProviderId, ProviderQuota, QuotaItem } from "@/typ
 import { getTransport } from "@/lib/transport";
 import { execUnlessMissing } from "@/lib/missing-binary";
 import { activeLocale, translateNow } from "@/i18n/useT";
-import { PROVIDERS } from "@/lib/providers";
+import { PROVIDERS, providerModels } from "@/lib/providers";
 
 // ---------------------------------------------------------------------------------------------
 // Antigravity: models (agy models) + quota inferred from run outcomes, persisted on disk.
@@ -120,7 +120,7 @@ export function outOfQuota(text: string): boolean {
  * quota is spent per family, so the next gemini after a gemini ran out is the same wall again.
  */
 export function alternativeModels(provider: ProviderId, failed: string | undefined): string[] {
-  const all = PROVIDERS[provider]?.defaultModels ?? [];
+  const all = providerModels(provider).map(m => m.id);
   const deadPool = failed ? poolOf(failed) : null;
   return all.filter(model => model !== failed && (!deadPool || poolOf(model) !== deadPool));
 }
