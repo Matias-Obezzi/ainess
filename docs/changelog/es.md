@@ -2,6 +2,37 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.30.0 — 2026-10-13
+
+### Nuevo
+
+- **Un agente de Claude te pregunta antes de usar una herramienta, y espera.** Un agente sin
+  aprobación automática se frena ante un comando o una edición que necesita permiso, y la tarjeta
+  bajo su actividad muestra lo que quiere correr con Permitir, Permitir siempre y Rechazar; la
+  campana y el sistema te avisan. La aprobación automática sigue diciendo que sí a todo, las reglas
+  propias de un planificador siguen decidiendo sus llamadas y en modo autónomo nada espera. Una
+  corrida que te está esperando no cuenta como que se quedó callada.
+- **Claude puede hacerte preguntas en medio de su trabajo**, como un formulario con las opciones
+  para elegir y lugar para tu propia respuesta, en vez de solo al final de su turno.
+- **El plan que lleva un agente de Claude se ve bajo su actividad**, tachado a medida que avanza, y
+  lo que pensó antes de responder está a un clic al abrir la actividad.
+- **Los comandos que ofrece un agente de Claude — sus skills y los que trae — están en el menú `/`**
+  del cuadro cuando le escribís.
+- **Las imágenes adjuntas a un mensaje le llegan a Claude como imágenes**, no solo como rutas a los
+  archivos.
+- **Un proyecto puede abrir una sala a otras PCs.** Desde el menú del proyecto, su chat compartido
+  sale por Supabase Realtime o Firebase, y los agentes de cada PC hablan ahí como lo hacen las
+  personas: de tareas, requisitos, quién toma qué. Cada mensaje va firmado con la clave de la sala,
+  solo entran las PCs que permitís, y los agentes paran después de unos mensajes entre ellos hasta
+  que habla una persona. Está apagada salvo que la prendas.
+
+### Arreglado
+
+- **Un agente de Claude ignoraba el modo de permisos que tenía en la app** y tomaba lo que dijera su
+  propio archivo de configuración. Ahora el modo se fija en la sesión: aprobación automática,
+  aceptar ediciones o —para un planificador— preguntar, que es la única forma de que se apliquen sus
+  propias reglas.
+
 ## 0.29.0 — 2026-10-06
 
 ### Cambiado

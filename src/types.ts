@@ -244,6 +244,8 @@ export interface Project {
    * migrated for it and `AppConfig.version` stays where it is. See `lib/board/`.
    */
   board?: BoardSource;
+  /** A room shared with agents on other machines (see src/lib/room). Off unless turned on. */
+  room?: RoomConfig;
   /**
    * What this project calls "done": run after an agent finishes delegated work, in the folder it
    * worked in. Missing or empty means nothing is checked, which is how it behaved before.
@@ -494,6 +496,8 @@ export interface MessagingChannelConfig {
 
 export interface AppConfig {
   version: 14;
+  /** This machine as rooms see it (see `RoomConfig`): made up once, the name editable. */
+  machine?: { id: string; name: string };
   /** UI language; null follows the system. */
   language: Language | null;
   /** Every delegation waits for approval (app, CLI or phone) before the child runs. */
@@ -725,6 +729,10 @@ export interface Run {
   chatId?: string;
   /** What the CLI said the run consumed. Absent when the provider reported nothing. */
   usage?: RunUsage;
+  /** The agent's plan for this turn, as it last reported it (ACP agents). */
+  plan?: RunPlanEntry[];
+  /** What the agent thought before answering, the latest part of it (ACP agents). */
+  thinking?: string;
   /** Set when this run is a review of another agent's finished run. */
   review?: { ofRunId: string; taskId: string };
   /**
@@ -797,6 +805,33 @@ export interface ChatMessage {
   text: string;
   runId?: string;
   status?: "pending" | "done" | "error";
+  /** Set on a message that came from another machine through the project's room. */
+  room?: { machine: string; kind: "human" | "agent" };
+}
+
+/**
+ * A project's room: a shared chat whose messages travel between machines over Supabase Realtime or
+ * a Firebase Realtime Database, signed with `secret` so only those who know it can speak. Same
+ * channel, format and signature as ai-connector, so both apps can share a room.
+ */
+export interface RoomConfig {
+  enabled: boolean;
+  backend: "supabase" | "firebase";
+  /** The room's name; every machine that joins uses the same. */
+  room: string;
+  /** Signs every message. Without it the room does not connect. */
+  secret: string;
+  supabaseUrl?: string;
+  supabaseKey?: string;
+  firebaseUrl?: string;
+  /** Optional: the database secret or an ID token, when the rules ask for one. */
+  firebaseToken?: string;
+  /** The shared chat the room speaks through. */
+  chatId?: string;
+  /** Machines allowed to speak in it, by id, with the name they last gave. */
+  allowed: Record<string, string>;
+  /** Agent messages in a row, with no person in between, before everyone stops. Default 6. */
+  maxTurns?: number;
 }
 
 /** What one folder of the app's own storage holds (see `Transport.storageStat`). */
@@ -980,7 +1015,28 @@ export type ParsedEvent =
    * subtasks run. An error the app can name comes out of the structured stream as `error`.
    */
   | { type: "stderr"; text: string }
-  | { type: "raw"; text: string };
+  | { type: "raw"; text: string }
+  /** The agent thinking out loud before it answers (ACP `agent_thought_chunk`), a delta. */
+  | { type: "thinking"; text: string }
+  /** The agent's plan for this turn, whole every time it changes (ACP `plan`). */
+  | { type: "plan"; entries: RunPlanEntry[] }
+  /** The slash commands the agent offers in this session (ACP `available_commands_update`). */
+  | { type: "commands"; commands: AgentCommand[] };
+
+/** One step of the plan an agent keeps while it works. */
+export interface RunPlanEntry {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  priority?: "high" | "medium" | "low";
+}
+
+/** A slash command an agent offers, typed as `/name` followed by `hint`. */
+export interface AgentCommand {
+  name: string;
+  description: string;
+  /** What goes after the command, when it takes anything. */
+  hint?: string;
+}
 
 // ---- Integrated terminals (see src-tauri/src/pty.rs) ----
 

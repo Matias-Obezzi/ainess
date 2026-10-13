@@ -2,6 +2,39 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.30.0 — 2026-10-13
+
+### Neu
+
+- **Ein Claude-Agent fragt dich vor einem Werkzeugaufruf und wartet.** Ein Agent ohne automatische
+  Freigabe hält bei einem Befehl oder einer Änderung an, die eine Erlaubnis braucht, und die Karte
+  unter seiner Aktivität zeigt, was er ausführen will, mit Erlauben, Immer erlauben und Ablehnen;
+  die Glocke und das System benachrichtigen dich. Die automatische Freigabe sagt weiter zu allem ja,
+  die eigenen Regeln eines Planers entscheiden weiter über seine Aufrufe, und im autonomen Modus
+  wartet nichts. Ein Lauf, der auf dich wartet, gilt nicht als verstummt.
+- **Claude kann dir mitten in der Arbeit Fragen stellen**, als Formular mit Optionen zur Auswahl und
+  Platz für deine eigene Antwort, statt nur am Ende seines Zugs.
+- **Der Plan, den ein Claude-Agent führt, steht unter seiner Aktivität** und wird abgehakt, während
+  er vorankommt; was er vor der Antwort gedacht hat, ist einen Klick entfernt, wenn du die Aktivität
+  öffnest.
+- **Die Befehle, die ein Claude-Agent anbietet — seine Skills und die eingebauten —, stehen im
+  `/`-Menü** des Eingabefelds, wenn du ihm schreibst.
+- **An eine Nachricht angehängte Bilder kommen bei Claude als Bilder an**, nicht nur als Pfade zu
+  den Dateien.
+- **Ein Projekt kann einen Raum für andere Rechner öffnen.** Über das Projektmenü geht sein
+  gemeinsamer Chat über Supabase Realtime oder Firebase hinaus, und die Agenten auf jedem Rechner
+  reden dort wie Menschen: über Aufgaben, Anforderungen, wer was übernimmt. Jede Nachricht ist mit
+  dem Schlüssel des Raums signiert, nur die Rechner, die du erlaubst, kommen herein, und die Agenten
+  hören nach ein paar Nachrichten untereinander auf, bis ein Mensch spricht. Er ist aus, bis du ihn
+  einschaltest.
+
+### Behoben
+
+- **Ein Claude-Agent ignorierte den Berechtigungsmodus, der in der App für ihn eingestellt war**,
+  und nahm, was seine eigene Einstellungsdatei sagte. Der Modus wird jetzt in der Sitzung gesetzt:
+  automatische Freigabe, Änderungen annehmen oder — bei einem Planer — fragen, denn nur so werden
+  seine eigenen Regeln angewendet.
+
 ## 0.29.0 — 2026-10-06
 
 ### Geändert

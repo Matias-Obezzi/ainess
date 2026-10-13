@@ -2,6 +2,37 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.30.0 — 2026-10-13
+
+### Novo
+
+- **Um agente do Claude pergunta a você antes de usar uma ferramenta, e espera.** Um agente sem
+  aprovação automática para diante de um comando ou de uma edição que precisa de permissão, e o
+  cartão abaixo da sua atividade mostra o que ele quer executar, com Permitir, Sempre permitir e
+  Recusar; o sino e o sistema avisam você. A aprovação automática continua dizendo sim a tudo, as
+  regras próprias de um planejador continuam decidindo as chamadas dele e no modo autônomo nada
+  espera. Uma execução esperando por você não conta como parada.
+- **O Claude pode fazer perguntas no meio do trabalho**, como um formulário com as opções para
+  escolher e espaço para a sua própria resposta, em vez de só no fim do turno.
+- **O plano que um agente do Claude mantém aparece abaixo da sua atividade**, marcado conforme
+  avança, e o que ele pensou antes de responder fica a um clique quando você abre a atividade.
+- **Os comandos que um agente do Claude oferece — as skills dele e os embutidos — estão no menu
+  `/`** da caixa quando você escreve para ele.
+- **Imagens anexadas a uma mensagem chegam ao Claude como imagens**, não só como caminhos para os
+  arquivos.
+- **Um projeto pode abrir uma sala para outros computadores.** Pelo menu do projeto, o chat
+  compartilhado dele sai pelo Supabase Realtime ou pelo Firebase, e os agentes de cada máquina
+  conversam ali como pessoas: sobre tarefas, requisitos, quem pega o quê. Cada mensagem é assinada
+  com a chave da sala, só entram as máquinas que você permitir, e os agentes param depois de algumas
+  mensagens entre si até que uma pessoa fale. Fica desligado a menos que você ligue.
+
+### Corrigido
+
+- **Um agente do Claude ignorava o modo de permissão definido nele no app** e seguia o que dissesse
+  o próprio arquivo de configuração. Agora o modo é definido na sessão: aprovação automática,
+  aceitar edições ou — para um planejador — perguntar, que é o único jeito de as regras dele serem
+  aplicadas.
+
 ## 0.29.0 — 2026-10-06
 
 ### Alterado

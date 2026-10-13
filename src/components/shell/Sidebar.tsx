@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ContextActionItems, DropdownActionItems, type MenuAction } from "@/components/menu-actions";
 import { ProjectDialog } from "@/components/ProjectDialog";
+import { RoomDialog } from "@/components/RoomDialog";
 import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
 import { toast } from "@/components/ui/toast";
@@ -38,27 +39,7 @@ import { plural } from "@/i18n";
 import { pendingApprovals } from "@/lib/approvals";
 import { isAutonomous } from "@/lib/autonomous";
 import type { Chat, Project, ProviderId, AgentRole } from "@/types";
-import { FolderOpen,
-  Bot,
-  Bug,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  GitBranch,
-  Home,
-  ListTodo,
-  Moon,
-  MessageCircle,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Settings,
-  Trash2,
-  Users,
-  Code2,
-  Columns2,
-} from "lucide-react";
+import { Bot, Bug, ChevronDown, ChevronRight, Code2, Columns2, Copy, FolderOpen, GitBranch, Globe, Home, ListTodo, MessageCircle, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Settings, Trash2, Users } from "lucide-react";
 
 /** The collapsed strip: one avatar wide, plus the room a focus ring needs around it. */
 const RAIL_WIDTH = 52;
@@ -99,6 +80,7 @@ export function Sidebar() {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
+  const [roomProjectId, setRoomProjectId] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | undefined>(undefined);
 
   // A chat's "is it answering right now" lives outside the store. Subscribed to rather than polled:
@@ -228,6 +210,7 @@ export function Sidebar() {
   const projectActions = (p: Project): MenuAction[] => [
     { key: "edit", label: t("sidebar.editProject"), icon: Pencil, onSelect: () => editProject(p) },
     { key: "new-chat", label: t("sidebar.newChat"), icon: Plus, onSelect: () => newChat(p.id) },
+    { key: "room", label: t("room.menu"), icon: Globe, onSelect: () => setRoomProjectId(p.id) },
     {
       key: "open-in-pane",
       label: t("sidebar.openInNewPane"),
@@ -784,6 +767,7 @@ export function Sidebar() {
       />
     )}
 
+    <RoomDialog projectId={roomProjectId} open={roomProjectId !== null} onOpenChange={o => { if (!o) setRoomProjectId(null); }} />
     <ProjectDialog
       isOpen={projectDialogOpen}
       onOpenChange={setProjectDialogOpen}

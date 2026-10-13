@@ -19,6 +19,7 @@ import { isTypedPrompt } from "@/lib/thread-turns";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
 import { commandPrompt, enabledPluginCommands } from "@/lib/plugins";
+import { useAgentCommands } from "@/lib/agent-commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
@@ -657,6 +658,9 @@ export function Composer() {
     return () => { cancelled = true; };
   }, [completionReq?.kind, repoDir]);
 
+  // The slash commands the agent being written to offered in its last session.
+  const targetCommands = useAgentCommands(targetAgent?.id);
+
   const menuOptions = useMemo<MenuOption[]>(() => {
     if (!completionReq) return [];
     const q = completionReq.query.toLowerCase();
@@ -669,7 +673,19 @@ export function Composer() {
       // and sent — never sent behind the user's back.
       const fromPlugins = enabledPluginCommands(config.plugins).filter(c => c.name.toLowerCase().startsWith(q))
         .map(c => ({ id: `plugin:${c.plugin}:${c.name}`, label: `/${c.name}`, hint: c.description ?? c.plugin, value: "", preset: { id: `plugin:${c.plugin}:${c.name}`, name: c.name, prompt: commandPrompt(c) } }));
-      return [...cmds, ...presets, ...fromPlugins];
+      // What the agent itself says it takes (its skills, its built-ins): typed as it is, the agent
+      // reads a prompt that starts with /name as that command. The app's own commands win a clash.
+      const ownNames = new Set(cmds.map(c => c.value));
+      const fromAgent = targetCommands
+        .filter(c => c.name.toLowerCase().startsWith(q) && !ownNames.has(c.name))
+        .map(c => ({
+          id: `agent:${c.name}`,
+          label: `/${c.name}`,
+          hint: c.hint ? `${c.description} · ${c.hint}` : c.description,
+          value: "",
+          preset: { id: `agent:${c.name}`, name: c.name, prompt: `/${c.name} ` },
+        }));
+      return [...cmds, ...presets, ...fromPlugins, ...fromAgent];
     }
     if (completionReq.kind === "agent") {
       return agents.filter(a => a.name.toLowerCase().startsWith(q))
@@ -688,7 +704,7 @@ export function Composer() {
       .map(v => ({ id: v, label: v, hint: t(`templateVar.${v}`), value: v }));
     // `filesTick` is read for its change, not its value: it is what tells this memo the ref content moved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completionReq, agents, presetsForMenu, config.plugins, filesTick, t]);
+  }, [completionReq, agents, presetsForMenu, config.plugins, targetCommands, filesTick, t]);
 
   const menuOpen = !menuDismissed && menuOptions.length > 0;
 

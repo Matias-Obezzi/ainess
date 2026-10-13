@@ -128,6 +128,26 @@ export function eventsFromSessionUpdate(update: SessionUpdate, tracker?: ToolCal
       return [{ type: "usage", usage: { contextTokens: update.used, ...(costUsd !== undefined ? { costUsd } : {}) } }];
     }
 
+    case "agent_thought_chunk":
+      // What the model thinks before it answers. Kept apart from the answer: it is not something
+      // the agent said, and the planner must never read it as a delegation or a question.
+      return update.content.type === "text" && update.content.text !== ""
+        ? [{ type: "thinking", text: update.content.text }]
+        : [];
+
+    case "plan":
+      return [{ type: "plan", entries: update.entries.map(e => ({ content: e.content, status: e.status, priority: e.priority })) }];
+
+    case "available_commands_update":
+      return [{
+        type: "commands",
+        commands: update.availableCommands.map(c => ({
+          name: c.name,
+          description: c.description,
+          ...(c.input && "hint" in c.input && c.input.hint ? { hint: c.input.hint } : {}),
+        })),
+      }];
+
     case "notice":
       // An advisory from the agent, in its own words. Only the ones it marks as errors become
       // errors; info and warning are chatter and would read as failures in the timeline.
@@ -136,8 +156,8 @@ export function eventsFromSessionUpdate(update: SessionUpdate, tracker?: ToolCal
         : [];
 
     default:
-      // `user_message_chunk` is our own prompt coming back, `agent_thought_chunk` is thinking
-      // (which `parseClaudeLine` drops too), and plans, modes and commands are IDE furniture.
+      // `user_message_chunk` is our own prompt coming back. Modes, config options, sub-agents and
+      // compaction are the agent's bookkeeping; nothing here acts on them.
       return [];
   }
 }

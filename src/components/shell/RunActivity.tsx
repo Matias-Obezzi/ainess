@@ -6,6 +6,9 @@
 // the top of the screen and buried the one line worth reading. The steps run through a ticker
 // instead — one line tall, the finished step leaving through the top as the new one arrives from
 // below — and clicking it opens the history above. See `lib/activity-view` for what folds and why.
+import { LiveRequests } from "@/components/shell/LiveRequestCard";
+import { useLiveRequests } from "@/lib/live-requests";
+import type { RunPlanEntry } from "@/types";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { transcriptOf } from "@/lib/run-answer";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +25,7 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
-import { ChevronDown, ChevronUp, CornerDownRight, Info, Sparkles } from "lucide-react";
+import { Brain, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Info, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextMorph } from "@/components/ui/text-morph";
 import { RetryRunDialog } from "@/components/RetryRunDialog";
@@ -177,7 +180,12 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
         </button>
       )}
 
+      {/* What the agent was weighing: only once the activity is opened, or read in full. */}
+      {run?.thinking && (open || !live) && <RunThinking text={run.thinking} />}
+
       {shown.map(msg => <ActivityRow key={msg.id} msg={msg} parentRunId={runId} mode={mode} streaming={!!isRunning} />)}
+
+      {run?.plan && run.plan.length > 0 && <RunPlan entries={run.plan} />}
 
       {/* Last, always: the ticker is the floor of the run, and the history opens above it so the
           line you were reading does not move out from under the pointer when you click it. */}
@@ -193,6 +201,45 @@ export function RunActivity({ runId, compact = false, mode = "live" }: { runId: 
           label={open ? t("activity.collapse") : t("activity.expand")}
         />
       )}
+
+      {/* Under everything: the agent is stopped until this is answered. */}
+      {isRunning && <LiveRequests runId={runId} />}
+    </div>
+  );
+}
+
+const PLAN_ICON = { completed: CheckCircle2, in_progress: CircleDot, pending: Circle } as const;
+
+/** The agent's plan for the turn, as a checklist it ticks as it goes. */
+function RunPlan({ entries }: { entries: RunPlanEntry[] }) {
+  const t = useT();
+  return (
+    <div role="list" aria-label={t("activity.plan")} className="flex flex-col gap-0.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-xs">
+      {entries.map((entry, i) => {
+        const Icon = PLAN_ICON[entry.status] ?? Circle;
+        return (
+          <div role="listitem" key={i} className={cn("flex items-start gap-1.5", entry.status === "completed" && "text-muted-foreground line-through", entry.status === "in_progress" && "font-medium")}>
+            <Icon className={cn("mt-px h-3.5 w-3.5 shrink-0", entry.status === "in_progress" ? "text-primary" : "text-muted-foreground")} />
+            <span className="min-w-0 break-words">{entry.content}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** What the agent thought before answering, folded and quiet: it is not what it said. */
+function RunThinking({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-xs text-muted-foreground">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} className="flex items-center gap-1 hover:text-foreground">
+        <Brain className="h-3.5 w-3.5" />
+        {t("activity.reasoning")}
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </button>
+      {open && <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap border-l-2 border-border pl-2 italic">{text}</p>}
     </div>
   );
 }
@@ -362,7 +409,8 @@ function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggl
   // A run that has printed nothing for a while looks exactly like one thinking hard. Read on the
   // same tick as the clock, so it appears the second it becomes true.
   const quietFor = running ? silenceMs(lastOutputAt(runId), startedAt, now) : 0;
-  const quiet = quietFor >= STALL_AFTER_MS;
+  const waiting = useLiveRequests().some(r => r.runId === runId);
+  const quiet = !waiting && quietFor >= STALL_AFTER_MS;
 
   return (
     <button
@@ -383,6 +431,7 @@ function ActivityTicker({ runId, step, running, startedAt, open, hidden, onToggl
           {plural(hidden, t("activity.stepsHidden.one", { n: hidden }), t("activity.stepsHidden.other", { n: hidden }))}
         </span>
       )}
+      {waiting && <span className="shrink-0 font-medium text-amber-600 dark:text-amber-400">{t("live.waiting")}</span>}
       {quiet && (
         <span className="shrink-0 text-amber-600 dark:text-amber-400">
           {t("activity.quietFor", { time: formatElapsed(quietFor / 1000) })}

@@ -2,6 +2,39 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.30.0 — 2026-10-13
+
+### Nouveau
+
+- **Un agent Claude vous demande avant d'utiliser un outil, et attend.** Un agent sans approbation
+  automatique s'arrête sur une commande ou une modification qui demande une permission, et la carte
+  sous son activité montre ce qu'il veut exécuter, avec Autoriser, Toujours autoriser et Refuser ;
+  la cloche et le système vous préviennent. L'approbation automatique dit toujours oui à tout, les
+  règles propres d'un planificateur décident toujours de ses appels, et en mode autonome rien
+  n'attend. Une exécution qui vous attend n'est pas comptée comme silencieuse.
+- **Claude peut vous poser des questions en plein travail**, sous forme de formulaire avec les
+  options à choisir et de la place pour votre propre réponse, au lieu de seulement à la fin de son
+  tour.
+- **Le plan que tient un agent Claude s'affiche sous son activité**, coché au fur et à mesure, et ce
+  qu'il a pensé avant de répondre est à un clic quand vous ouvrez l'activité.
+- **Les commandes qu'offre un agent Claude — ses skills et ses commandes intégrées — sont dans le
+  menu `/`** de la zone de saisie quand vous lui écrivez.
+- **Les images jointes à un message arrivent à Claude comme des images**, et plus seulement comme
+  des chemins vers les fichiers.
+- **Un projet peut ouvrir un salon à d'autres machines.** Depuis le menu du projet, son chat partagé
+  passe par Supabase Realtime ou Firebase, et les agents de chaque machine y parlent comme des
+  personnes : de tâches, d'exigences, de qui prend quoi. Chaque message est signé avec la clé du
+  salon, seules les machines que vous autorisez entrent, et les agents s'arrêtent après quelques
+  messages entre eux jusqu'à ce qu'une personne parle. Il reste éteint tant que vous ne l'allumez
+  pas.
+
+### Corrigé
+
+- **Un agent Claude ignorait le mode de permission réglé dans l'app** et suivait ce que disait son
+  propre fichier de réglages. Le mode est désormais fixé sur la session : approbation automatique,
+  accepter les modifications ou — pour un planificateur — demander, seule façon pour ses propres
+  règles de s'appliquer.
+
 ## 0.29.0 — 2026-10-06
 
 ### Modifié

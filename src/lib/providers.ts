@@ -638,7 +638,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // above restricted nothing, and planners read the repo with `cat` and `sed` into the most
       // expensive context of the task. What they may do is decided here, when they ask.
       const permit = input.agent.role === "planner" ? plannerMayUse : undefined;
-      return { mcpServers: toAcpMcpServers(input.mcpServers), meta, ...(permit ? { permit } : {}) };
+      // The same mode, said where the adapter listens: it takes `permissionMode` from Claude's own
+      // settings file and not from the options above, so it is set on the session itself. A planner
+      // stays in "default", where every call outside its allowed tools comes to ask — and asking is
+      // the only moment `plannerMayUse` gets a say; bypassing would let it do anything.
+      const mode = input.agent.role === "planner" ? "default" : (options.permissionMode as string);
+      return { mcpServers: toAcpMcpServers(input.mcpServers), meta, mode, ...(permit ? { permit } : {}) };
     },
   },
   antigravity: {
