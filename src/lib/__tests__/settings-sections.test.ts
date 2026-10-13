@@ -22,6 +22,7 @@ const EXPECTED_IDS = [
   "plugins",
   "hooks",
   "context",
+  "permissions",
   "remote",
   "boards",
   "messaging",

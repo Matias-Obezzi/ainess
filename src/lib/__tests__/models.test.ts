@@ -31,8 +31,8 @@ describe("modelChoices", () => {
     expect(choices).toEqual([
       { id: "d1", label: "Dynamic 1" },
       { id: "d2", label: "Dynamic 2" },
-      { id: "custom-new", label: "custom-new" },
-      { id: "custom-old", label: "custom-old" },
+      { id: "custom-new", label: "custom-new", remembered: true },
+      { id: "custom-old", label: "custom-old", remembered: true },
     ]);
   });
 
@@ -44,8 +44,8 @@ describe("modelChoices", () => {
 
     expect(choices).toEqual([
       ...staticClaude,
-      { id: "custom-x", label: "custom-x" },
-      { id: "custom-y", label: "custom-y" },
+      { id: "custom-x", label: "custom-x", remembered: true },
+      { id: "custom-y", label: "custom-y", remembered: true },
     ]);
   });
 
@@ -53,7 +53,7 @@ describe("modelChoices", () => {
     // Provider without static models (or custom)
     const choices = modelChoices("custom", undefined, ["my-model"]);
     expect(choices).toEqual([
-      { id: "my-model", label: "my-model" },
+      { id: "my-model", label: "my-model", remembered: true },
     ]);
   });
 });

@@ -3,6 +3,7 @@ import { AgentAvatar, ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
 import { useModelChoices } from "@/hooks/useModelChoices";
+import { ForgetModelButton } from "@/components/ForgetModelButton";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { AgentConfig, ChatParticipant, Preset } from "@/types";
@@ -23,7 +24,7 @@ import { useAgentCommands } from "@/lib/agent-commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { closeFence, continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
@@ -306,7 +307,7 @@ function ChatParticipantModel({ chatId, participants, index, agent, name }: {
         <SelectContent>
           <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
           {options.map(m => (
-            <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+            <SelectItem key={m.id} value={m.id} action={<ForgetModelButton provider={agent?.provider} model={m} />}>{m.label}</SelectItem>
           ))}
           {unlisted && <SelectItem value={unlisted}>{unlisted}</SelectItem>}
         </SelectContent>
@@ -1279,7 +1280,18 @@ export function Composer() {
               ref={attachBox}
               data-testid="composer-input"
               value={text}
-              onChange={e => { setText(e.target.value); noteTyping(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
+              onChange={e => {
+                // Typing the third backtick of an opener writes the closer too (see `closeFence`).
+                const closed = closeFence(text, e.target.value, e.target.selectionStart);
+                if (closed) {
+                  // Written into the box right away: React then finds the value it already has and
+                  // leaves the caret where it is put here, on the opener.
+                  e.target.value = closed.text;
+                  e.target.setSelectionRange(closed.start, closed.end);
+                }
+                const value = e.target.value;
+                setText(value); noteTyping(value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart);
+              }}
               onKeyDown={handleKeyDown}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
@@ -1424,7 +1436,7 @@ export function Composer() {
                     <SelectContent>
                       <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
                       {modelOptions.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                        <SelectItem key={m.id} value={m.id} action={<ForgetModelButton provider={targetAgent?.provider} model={m} />}>{m.label}</SelectItem>
                       ))}
                       <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                     </SelectContent>

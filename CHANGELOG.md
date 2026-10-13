@@ -6,6 +6,22 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Added
+
+- **You choose what a planner may run on its own**, in Settings → Permissions: groups of commands
+  you turn on or off (git, checking versions, moving around and reading in the shell, tests,
+  builds, installing, editing project files, anything), commands of your own to allow, and
+  commands to always block, which win over everything else. Moving around and reading are on by
+  default, so `cd x && git pull` is no longer refused for the `cd`. Claude's planners follow it,
+  since they ask before every command.
+- **A delegation in the planner's thread opens that agent's run in the side panel**, to watch what
+  it is doing step by step while the conversation stays where it is.
+- **A model typed by hand in a picker has an ✕** to stop offering it.
+- **Typing ``` in the box writes the closing ``` too**, with a line after it, so the down arrow
+  walks out of the block and you can keep writing below it.
+
 ## 0.30.1 — 2026-10-13
 
 ### Fixed

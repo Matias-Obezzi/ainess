@@ -137,3 +137,21 @@ export function exitCodeBlock(text: string, start: number, end: number): TextEdi
   const caret = text.length + 1;
   return { text: `${text}\n`, start: caret, end: caret };
 }
+
+/**
+ * The closing ``` for a fence just opened by typing its third backtick, and a line after it, so
+ * the down arrow walks out of the block and there is somewhere to keep writing. The caret stays on
+ * the opener, where the language goes. Null for anything else, a closing ``` included.
+ */
+export function closeFence(prev: string, next: string, caret: number): TextEdit | null {
+  if (next.length <= prev.length || prev.slice(0, caret) === next.slice(0, caret)) return null;
+  const lineStart = next.lastIndexOf("\n", caret - 1) + 1;
+  const breakAt = next.indexOf("\n", caret);
+  const lineEnd = breakAt === -1 ? next.length : breakAt;
+  if (lineEnd !== caret || !/^\s*```$/.test(next.slice(lineStart, caret))) return null;
+  if (!fenceRegions(next).some(r => r.start === lineStart && !r.closed)) return null;
+  const indent = /^\s*/.exec(next.slice(lineStart, caret))![0];
+  const after = next.slice(caret);
+  const text = next.slice(0, caret) + "\n" + indent + "```" + (after.startsWith("\n") ? "" : "\n") + after;
+  return { text, start: caret, end: caret };
+}

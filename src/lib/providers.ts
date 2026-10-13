@@ -6,6 +6,9 @@ import type { McpServer as AcpMcpServer } from "@agentclientprotocol/sdk";
 import { truncate } from "@/lib/format";
 import { skillRelativePath } from "@/lib/project-folder";
 import { roleLabelKey } from "@/lib/status-labels";
+import { plannerMayUse, type PlannerPermissions } from "@/lib/planner-permissions";
+
+export { plannerMayUse };
 
 /**
  * What Claude Code accepts after `--model`.
@@ -66,6 +69,8 @@ export interface BuildInput {
   mcpConfigPath?: string;
   /** The same servers as objects, for a provider that declares them in the protocol instead. */
   mcpServers?: McpServer[];
+  /** What a planner may do on its own (Settings → Permisos), for a provider that asks per call. */
+  plannerPermissions?: PlannerPermissions;
 }
 
 interface ProviderSpecBase {
@@ -534,50 +539,6 @@ function toAcpMcpServers(servers: McpServer[] | undefined): AcpMcpServer[] {
   );
 }
 
-/**
- * Shell commands that only look. Git, as before; and what a planner needs to plan and cannot get
- * from reading files: which version of a program is there, what a package is at, what is installed,
- * what an issue or a PR says. Reading files through the shell stays out — the Read tool does that
- * without asking. Installing, building and testing is what its implementers are for.
- */
-const LOOKS_ONLY: RegExp[] = [
-  /^git(\s|$)/,
-  /^[\w.-]+\s+(--version|-v|-V|version)$/,
-  /^(npm|pnpm|yarn|bun)\s+(view|info|show|ls|list|outdated|why|--version|-v)(\s|$)/,
-  /^(cargo\s+(tree|metadata|search)|pip3?\s+(list|show|freeze)|uv\s+pip\s+(list|show))(\s|$)/,
-  /^gh\s+(pr|issue|repo|release|run|workflow)\s+(view|list|status|diff|checks)(\s|$)/,
-  /^(which|where|where\.exe)\s/,
-];
-
-/** What a looking command may be piped into: filters, which print and change nothing. */
-const FILTER = /^(head|tail|grep|rg|wc|sort|uniq|cut|jq|findstr)(\s|$)/;
-
-/**
- * A tool call a planner may make: commands that only look (`LOOKS_ONLY`), and writing only under
- * `.ainess/` (its plans, the board). Reading, searching and fetching never reach this — they do not
- * ask. The rest is what its implementers are for.
- */
-export function plannerMayUse(call: { kind?: string | null; rawInput?: unknown }): boolean {
-  const input = (call.rawInput && typeof call.rawInput === "object" ? call.rawInput : {}) as Record<string, unknown>;
-  if (call.kind === "execute") {
-    const command = typeof input.command === "string" ? input.command : "";
-    // A redirect writes a file, whatever was run. Sending errors away is not one.
-    if (/>/.test(command.replace(/2>&1|2>\s*(\/dev\/null|\$null|nul)\b/gi, ""))) return false;
-    // `git add -A && git commit …`: every command of the chain has to look, and whatever it is
-    // piped into has to be a filter — `npm ls | sh` is not looking at anything.
-    const steps = command.split(/&&|\|\||;/).map(s => s.trim()).filter(Boolean);
-    return steps.length > 0 && steps.every(step => {
-      const [first, ...rest] = step.split("|").map(s => s.trim());
-      return LOOKS_ONLY.some(re => re.test(first)) && rest.every(s => FILTER.test(s));
-    });
-  }
-  if (call.kind === "edit" || call.kind === "delete" || call.kind === "move") {
-    const path = [input.file_path, input.path, input.notebook_path].find(p => typeof p === "string") as string | undefined;
-    return !!path && /(^|[\\/])\.ainess[\\/]/.test(path);
-  }
-  return true;
-}
-
 function withSystem(input: { systemPrompt: string; prompt: string }): string {
   if (!input.systemPrompt.trim()) return input.prompt;
   return `${translateNow("prompt.systemHeading")}\n${input.systemPrompt}\n\n${translateNow("prompt.taskHeading")}\n${input.prompt}`;
@@ -661,7 +622,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // (it takes its permission mode from Claude Code's settings, not from `options`) — so the list
       // above restricted nothing, and planners read the repo with `cat` and `sed` into the most
       // expensive context of the task. What they may do is decided here, when they ask.
-      const permit = input.agent.role === "planner" ? plannerMayUse : undefined;
+      const permit = input.agent.role === "planner"
+        ? (call: Parameters<typeof plannerMayUse>[0]) => plannerMayUse(call, input.plannerPermissions)
+        : undefined;
       // The same mode, said where the adapter listens: it takes `permissionMode` from Claude's own
       // settings file and not from the options above, so it is set on the session itself. A planner
       // stays in "default", where every call outside its allowed tools comes to ask — and asking is

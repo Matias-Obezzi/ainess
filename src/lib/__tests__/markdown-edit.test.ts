@@ -1,7 +1,7 @@
 // The box helps you write markdown: a list carries on when you ask for a new line, and the keys
 // every editor uses for bold, italic, code and links do that to the selection.
 import { describe, it, expect } from "vitest";
-import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
+import { closeFence, continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
 
 describe("continueList", () => {
   it("carries a bullet on to the next line, indentation and all", () => {
@@ -155,5 +155,18 @@ describe("exitCodeBlock", () => {
   it("leaves the second of two blocks, not the first", () => {
     const text = "```\na\n```\n```\nb\n```";
     expect(exitCodeBlock(text, text.length, text.length)?.text).toBe(`${text}\n`);
+  });
+});
+
+describe("closeFence", () => {
+  it("writes the closer and a line after it when the third backtick opens a fence", () => {
+    expect(closeFence("hola\n``", "hola\n```", 8)).toEqual({ text: "hola\n```\n```\n", start: 8, end: 8 });
+  });
+
+  it("leaves a closer, a deletion and a backtick in the middle of a line alone", () => {
+    const open = "```ts\nconst a = 1;\n``";
+    expect(closeFence(open, open + "`", open.length + 1)).toBeNull();
+    expect(closeFence("````", "```", 3)).toBeNull();
+    expect(closeFence("a ``", "a ```", 5)).toBeNull();
   });
 });

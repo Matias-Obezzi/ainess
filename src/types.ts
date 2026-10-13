@@ -1,5 +1,6 @@
 // Shared types for the AIS orchestrator. Keep in sync with PLAN.md and src-tauri/src/*.rs.
 import type { Language } from "@/i18n";
+import type { PlannerPermissions } from "@/lib/planner-permissions";
 
 export type ProviderId =
   | "claude"
@@ -588,6 +589,8 @@ export interface AppConfig {
   screenAnimations?: boolean;
   /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
   rememberedModels?: Partial<Record<ProviderId, string[]>>;
+  /** What planners may do on their own: groups of commands on or off, and the user's own patterns. */
+  plannerPermissions?: PlannerPermissions;
   /** The models an agent offered in its own session (Claude over ACP), kept so pickers show them from startup. */
   reportedModels?: Partial<Record<ProviderId, ModelInfo[]>>;
 }
@@ -933,6 +936,8 @@ export interface EditorInfo {
 export interface ModelInfo {
   id: string;
   label: string;
+  /** Typed by hand in a picker and remembered: the user can make the app forget it. */
+  remembered?: boolean;
 }
 
 export interface QuotaItem {
@@ -1147,7 +1152,7 @@ export interface Task {
   external?: { provider: BoardProviderId; id: string; url?: string };
 }
 /** The sections of the right dock. */
-export type DockSectionId = "comm" | "diff" | "term" | "file";
+export type DockSectionId = "comm" | "diff" | "term" | "file" | "live";
 
 /** A file an agent named, open beside the conversation. Session-only. See `lib/file-preview.ts`. */
 export interface FilePreview {

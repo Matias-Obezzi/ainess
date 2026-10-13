@@ -94,8 +94,12 @@ function SelectLabel({ className, ...props }: React.ComponentProps<typeof Select
 function SelectItem({
   className,
   children,
+  action,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & {
+  /** Drawn after the text and outside it, so the trigger showing the chosen item does not repeat it. */
+  action?: React.ReactNode
+}) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -111,6 +115,7 @@ function SelectItem({
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {action && <span className="ml-auto">{action}</span>}
     </SelectPrimitive.Item>
   )
 }

@@ -925,6 +925,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       binaryPath: binary?.path ?? "",
       mcpConfigPath,
       mcpServers,
+      plannerPermissions: useAppStore.getState().config.plannerPermissions,
     };
 
     if (provider.transport === "acp") {
