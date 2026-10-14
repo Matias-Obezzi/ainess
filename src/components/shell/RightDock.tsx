@@ -1,11 +1,12 @@
 import React, { lazy, Suspense, useCallback, useRef, useState } from "react";
-import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH, selectPanelOpen, selectPreviewFile } from "@/store";
+import { useAppStore, PANE_MIN_WIDTH, PANE_MAX_WIDTH, selectPanelOpen, selectPreviewFile, selectLiveRun } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { CommDockSection } from "./CommDockSection";
 import { DiffDockSection } from "./DiffDockSection";
 // xterm and its addons load with the panel, not with the app (see `lib/terminal-create`).
 const TerminalDockSection = lazy(() => import("./TerminalDockSection").then(m => ({ default: m.TerminalDockSection })));
 import { FileDockSection } from "./FileDockSection";
+import { LiveDockSection } from "./LiveDockSection";
 import { useCurrentProjectId } from "./project-pane";
 import { useT } from "@/i18n/useT";
 import type { DockSectionId } from "@/types";
@@ -33,6 +34,7 @@ export function RightDock() {
   const diffPanelOpen = useAppStore(state => selectPanelOpen(state, projectId, "diff"));
   const termPanelOpen = useAppStore(state => selectPanelOpen(state, projectId, "term"));
   const previewOpen = useAppStore(state => selectPreviewFile(state, projectId) !== null);
+  const liveOpen = useAppStore(state => selectLiveRun(state, projectId) !== null);
   const dockSizes = useAppStore(state => state.dockSizes);
   const savedWidth = useAppStore(state => state.paneWidths.dock);
   const setPaneWidth = useAppStore(state => state.setPaneWidth);
@@ -50,7 +52,7 @@ export function RightDock() {
     return () => observer.disconnect();
   }, []);
   
-  const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null, file: null });
+  const sectionsRef = useRef<Record<DockSectionId, HTMLDivElement | null>>({ comm: null, diff: null, term: null, file: null, live: null });
 
   const onDividerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, idA: DockSectionId, idB: DockSectionId) => {
     e.preventDefault();
@@ -96,6 +98,7 @@ export function RightDock() {
     { id: "diff", component: <DiffDockSection />, open: diffPanelOpen },
     { id: "term", component: <Suspense fallback={null}><TerminalDockSection /></Suspense>, open: termPanelOpen },
     { id: "file", component: <FileDockSection />, open: previewOpen },
+    { id: "live", component: <LiveDockSection />, open: liveOpen },
   ];
   
   const openSections = sections.filter(s => s.open);

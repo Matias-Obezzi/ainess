@@ -20,6 +20,7 @@ import { ConnectorsSection, ConnectorsSectionActions, ConnectorsSectionProvider 
 import { PluginsSection, PluginsSectionActions, PluginsSectionProvider } from "@/components/settings/PluginsSection";
 import { HooksSection, HooksSectionActions, HooksSectionProvider } from "@/components/settings/HooksSection";
 import { ContextSection, ContextSectionActions, ContextSectionProvider } from "@/components/settings/ContextSection";
+import { PermissionsSection } from "@/components/settings/PermissionsSection";
 // Loaded when it is opened: it draws a QR code, and the library for that is not worth the startup.
 const RemoteSection = lazy(() => import("@/components/settings/RemoteSection").then(m => ({ default: m.RemoteSection })));
 import { BoardsSection } from "@/components/settings/BoardsSection";
@@ -70,6 +71,7 @@ const SECTION_UI: Record<SettingsSection, SectionUI> = {
   plugins:     { component: PluginsSection,    actions: PluginsSectionActions,    provider: PluginsSectionProvider },
   hooks:       { component: HooksSection,     actions: HooksSectionActions,    provider: HooksSectionProvider },
   context:     { component: ContextSection,   actions: ContextSectionActions,  provider: ContextSectionProvider },
+  permissions: { component: PermissionsSection },
   remote:      { component: RemoteSection },
   boards:      { component: BoardsSection },
   messaging:   { component: MessagingSection },

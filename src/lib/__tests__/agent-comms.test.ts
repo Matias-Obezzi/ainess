@@ -178,11 +178,40 @@ describe("plannerMayUse", () => {
     ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(true);
   });
 
-  it("does not let it read the repo through the shell, or do anything else there", () => {
+  it("lets it move around and read through the shell, which is how it chains a git pull", () => {
     for (const command of [
-      "cat src/lib/orchestrator.ts", "git status && npm test", "npm install three", "npm run build",
+      "cat src/lib/orchestrator.ts", "cd /c/p/ui && git checkout main && git pull origin main 2>&1 | tail -3 && ls packages",
+      "git pull -q --rebase origin dev 2>/dev/null; sed -n '/## Working/,/## Backlog/p' .ainess/BOARD.md | head -20",
+    ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(true);
+    expect(plannerMayUse({ kind: "execute", rawInput: { command: "find . -name x -delete" } })).toBe(false);
+  });
+
+  it("follows the groups and the patterns the user set", () => {
+    const run = (command: string, perms: Parameters<typeof plannerMayUse>[1]) => plannerMayUse({ kind: "execute", rawInput: { command } }, perms);
+    expect(run("npm test", { presets: { test: true } })).toBe(true);
+    expect(run("cat x", { presets: { browse: false } })).toBe(false);
+    expect(run("docker ps -a", { allow: ["docker ps"] })).toBe(true);
+    expect(run("make release", { allow: ["make *"] })).toBe(true);
+    expect(run("git push origin main", { deny: ["git push"] })).toBe(false);
+    expect(run("rm -rf build", { presets: { anything: true } })).toBe(true);
+    expect(run("rm -rf build", { presets: { anything: true }, deny: ["rm *"] })).toBe(false);
+    expect(plannerMayUse({ kind: "edit", rawInput: { file_path: "/p/src/main.ts" } }, { presets: { edit: true } })).toBe(true);
+  });
+
+  it("lets it test, build and install unless the user turned those off", () => {
+    for (const command of ["git status && npm test", "npm install three", "npm run build", "cargo build"]) {
+      expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(true);
+    }
+    const off = { presets: { test: false, build: false, install: false } };
+    for (const command of ["git status && npm test", "npm install three", "npm run build", "cargo build"]) {
+      expect(plannerMayUse({ kind: "execute", rawInput: { command } }, off), command).toBe(false);
+    }
+  });
+
+  it("does not let it do anything else there", () => {
+    for (const command of [
       "npm ls | sh", "node -e \"require('fs').rmSync('x')\"", "npm ls > deps.txt", "gh pr merge 46",
-      "gh pr view 46; rm -rf src", "cargo build",
+      "gh pr view 46; rm -rf src",
     ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(false);
     expect(plannerMayUse({ kind: "execute", rawInput: {} })).toBe(false);
   });

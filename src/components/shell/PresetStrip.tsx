@@ -76,7 +76,7 @@ export function PresetStrip({ presets, onPick, className }: Props) {
               <button
                 type="button"
                 onClick={() => onPick(preset)}
-                className="shrink-0 max-w-[180px] truncate rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="shrink-0 max-w-[180px] truncate rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 {preset.name}
               </button>

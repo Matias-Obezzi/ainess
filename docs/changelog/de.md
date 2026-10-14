@@ -2,6 +2,50 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## 0.31.0 — 2026-10-13
+
+### Neu
+
+- **Du legst fest, was ein Planer selbst ausführen darf**, unter Einstellungen → Berechtigungen:
+  Befehlsgruppen zum Ein- und Ausschalten (Git, Versionen abfragen, im Terminal navigieren und
+  lesen, Tests, Bauen, Installieren, Projektdateien bearbeiten, jeder Befehl), eigene Befehle zum
+  Erlauben und Befehle, die immer gesperrt sind und allem anderen vorgehen. Alles ist an außer
+  Projektdateien bearbeiten und jeder Befehl, also wird `cd x && git pull` nicht mehr wegen des `cd`
+  abgelehnt und `npm test` nicht, weil es ein Test ist. Claudes Planer halten sich daran, weil sie
+  vor jedem Befehl fragen.
+- **Eine Delegation im Verlauf des Planers öffnet den Lauf dieses Agenten im Seitenbereich**, um
+  Schritt für Schritt zu sehen, was er tut, ohne das Gespräch zu verlassen.
+- **Ein von Hand eingetipptes Modell in einer Auswahl hat ein ✕**, um es nicht mehr anzubieten.
+- **Ein Codeblock im Eingabefeld verhält sich wie einer.** ```` ``` ```` zu tippen schreibt auch das
+  schließende ```` ``` ```` und setzt dich hinein; die Pfeiltasten verlassen den Block nach oben und
+  unten und legen die leere Zeile an, wenn keine da ist, und der Cursor bleibt nie auf den
+  versteckten Zeilen der Backticks stehen, nicht einmal kurz; die Backticks bleiben beim Markieren
+  verborgen; und der Block lässt sich nicht zerreißen: Er verschwindet nur leer, mit Rücktaste in
+  seiner Zeile.
+
+### Geändert
+
+- **Ein Codeblock im Eingabefeld ist eine abgerundete Karte nur um den Code**, ohne Zeile für die
+  Sprache und ohne Band über die ganze Breite.
+- **Ein angehängtes Bild erscheint als Vorschaubild im Eingabefeld**, über dem Text, so wie es nach
+  dem Senden aussieht.
+- **Schaltflächen und Auswahlfelder sind eine Größe kleiner** in der ganzen App, das Eingabefeld
+  beginnt einzeilig und wächst beim Schreiben, und die Leiste darunter ist kompakt: kleine Symbole,
+  kleine graue Beschriftungen für Agent, Modell und Kontingent, und kleinere gespeicherte Aufträge
+  darüber.
+
+### Behoben
+
+- **Ein Terminalfenster öffnete sich, während Agenten arbeiteten**, unter Windows 11, wo Windows
+  Terminal die Standardkonsole ist: Die versteckte Konsole, die sich die Agenten teilen, lebte in
+  einem Terminal-Fenster, das sich nicht verstecken ließ. Unter Windows 11 24H2 und neuer ist sie
+  jetzt eine Konsole ganz ohne Fenster.
+- **Einstellungen → Agenten meldete Claude Code als nicht gefunden** auf einem Rechner ohne die
+  `claude`-CLI, während die Agenten liefen: Sie nutzen die Kopie, die der ACP-Adapter mitbringt. Die
+  Karte zeigt jetzt, dass es bereit ist, und bietet keine unnötige Installation an.
+- **Ein beendeter Zug zeigte zweimal, was der Agent gesagt hatte**, wenn die Aktivität offen war:
+  einmal in der Aktivität und einmal als Antwort darunter.
+
 ## 0.30.1 — 2026-10-13
 
 ### Behoben

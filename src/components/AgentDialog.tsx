@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
 import { availableProviders, defaultAgentDescription, isDefaultProviderName, PROVIDERS } from "@/lib/providers";
 import { useModelChoices } from "@/hooks/useModelChoices";
+import { ForgetModelButton } from "@/components/ForgetModelButton";
 import { modelChoices } from "@/lib/models";
 import { worktreeBranch } from "@/lib/worktree";
 import { formatResetsAt } from "@/lib/quota";
@@ -536,7 +537,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                         const cpm = costPerMillion(projectRuns, m.id);
                         const costText = cpm !== undefined ? t("agentDialog.costPerMillion", { cost: formatCost(cpm, locale) }) : null;
                         return (
-                          <SelectItem key={m.id} value={m.id} className="[&>span:last-child]:w-full">
+                          <SelectItem key={m.id} value={m.id} className="[&>span:last-child]:w-full" action={<ForgetModelButton provider={provider} model={m} />}>
                             <span className="flex w-full items-center justify-between gap-2">
                               <span className="truncate">
                                 {m.label}{m.label !== m.id ? ` (${m.id})` : ""}{quotaSuffixFor(m.id)}

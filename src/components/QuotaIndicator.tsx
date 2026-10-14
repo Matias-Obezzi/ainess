@@ -69,11 +69,11 @@ export function QuotaIndicator({ agent, className }: { agent: AgentConfig; class
           type="button"
           variant="ghost"
           size="sm"
-          className={cn("h-8 gap-1.5 px-2 text-xs", className)}
+          className={cn("h-6 gap-1 px-1.5 text-xs", className)}
           aria-label={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
           title={t("quota.ofAgent", { name: agent.name, detail: quota.detail })}
         >
-          <QuotaRing remaining={quota.fraction} label={quota.label} size={16} />
+          <QuotaRing remaining={quota.fraction} label={quota.label} size={12} />
           {quota.fraction !== null && (
             <span className="text-muted-foreground tabular-nums">{quota.label}</span>
           )}

@@ -137,3 +137,127 @@ export function exitCodeBlock(text: string, start: number, end: number): TextEdi
   const caret = text.length + 1;
   return { text: `${text}\n`, start: caret, end: caret };
 }
+
+/**
+ * The closing ``` for a fence just opened by typing its third backtick. The caret goes to an empty
+ * line inside, where the code is what gets typed next — left on the opener, the first word read as
+ * the language and was drawn grey. Null for anything else, a closing ``` included.
+ */
+export function closeFence(prev: string, next: string, caret: number): TextEdit | null {
+  if (next.length <= prev.length || prev.slice(0, caret) === next.slice(0, caret)) return null;
+  const lineStart = next.lastIndexOf("\n", caret - 1) + 1;
+  const breakAt = next.indexOf("\n", caret);
+  const lineEnd = breakAt === -1 ? next.length : breakAt;
+  if (lineEnd !== caret || !/^\s*```$/.test(next.slice(lineStart, caret))) return null;
+  if (!fenceRegions(next).some(r => r.start === lineStart && !r.closed)) return null;
+  const indent = /^\s*/.exec(next.slice(lineStart, caret))![0];
+  // Nothing is added around the block: the line above or below it is made when an arrow leaves the
+  // block that way and finds none (see `fenceArrow`).
+  const text = next.slice(0, caret) + "\n" + indent + "\n" + indent + "```" + next.slice(caret);
+  const inside = caret + 1 + indent.length;
+  return { text, start: inside, end: inside };
+}
+
+/** The lines a closed fence is drawn with: its hidden opener and closer, and the code between. */
+function fenceLines(text: string, r: { start: number; end: number }) {
+  const openerEnd = text.indexOf("\n", r.start);
+  const closerStart = text.lastIndexOf("\n", r.end - 1) + 1;
+  return { openerEnd, bodyStart: openerEnd + 1, bodyEnd: closerStart - 1, closerStart };
+}
+
+/**
+ * Where the caret goes when it lands on a fence's opener or closer, which are not drawn: out of the
+ * block the way it was moving — up past the opener, down past the closer — and into the code
+ * otherwise. A line is made when there is none to go to. Null when the caret is somewhere it can be.
+ */
+export function snapOutOfFence(text: string, caret: number, previous: number): TextEdit | null {
+  for (const r of fenceRegions(text)) {
+    if (caret < r.start || caret > r.end) continue;
+    const openerEnd = text.indexOf("\n", r.start);
+    if (openerEnd === -1) return null;
+    if (caret <= openerEnd) {
+      if (previous > caret || previous === -1 && caret === r.start) {
+        if (r.start === 0) return { text: `\n${text}`, start: 0, end: 0 };
+        return { text, start: r.start - 1, end: r.start - 1 };
+      }
+      return { text, start: openerEnd + 1, end: openerEnd + 1 };
+    }
+    if (!r.closed) return null;
+    const { bodyEnd, closerStart } = fenceLines(text, r);
+    if (caret < closerStart) return null;
+    if (previous < caret) {
+      if (r.end === text.length) return { text: `${text}\n`, start: text.length + 1, end: text.length + 1 };
+      return { text, start: r.end + 1, end: r.end + 1 };
+    }
+    return { text, start: bodyEnd, end: bodyEnd };
+  }
+  return null;
+}
+
+/**
+ * What Backspace or Delete does at the edge of a block: the block is never torn. Backspace at the
+ * start of an empty block's line takes the whole block; at the start of a block with code in it,
+ * nothing. Backspace right after the closer steps into the code, and Delete at the end of the code
+ * or right before the opener does nothing. `"stop"` means swallow the key; null, let it through.
+ */
+export function guardFenceKey(text: string, caret: number, key: "Backspace" | "Delete"): TextEdit | "stop" | null {
+  for (const r of fenceRegions(text)) {
+    if (!r.closed) continue;
+    const { bodyStart, bodyEnd } = fenceLines(text, r);
+    if (key === "Backspace") {
+      if (caret === bodyStart) {
+        if (bodyEnd > bodyStart) return "stop";
+        // The empty block goes, and the newline that put it on a line of its own with it.
+        if (r.start > 0) return { text: text.slice(0, r.start - 1) + text.slice(r.end), start: r.start - 1, end: r.start - 1 };
+        const after = text[r.end] === "\n" ? r.end + 1 : r.end;
+        return { text: text.slice(after), start: 0, end: 0 };
+      }
+      if (caret === r.end + 1 && text[r.end] === "\n") return { text, start: bodyEnd, end: bodyEnd };
+    } else if (caret === bodyEnd || (r.start > 0 && caret === r.start - 1)) {
+      return "stop";
+    }
+  }
+  return null;
+}
+
+/**
+ * Where an arrow key takes the caret when its next stop would be a fence line, decided before the
+ * key moves it, so the caret never shows on the hidden opener or closer for a frame. `firstRow` and
+ * `lastRow` say whether the caret is on the first or the last row its line wraps into: up and down
+ * only leave the line from there. Null when the arrow can do what it always does.
+ */
+export function fenceArrow(
+  text: string,
+  caret: number,
+  key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+  firstRow: boolean,
+  lastRow: boolean,
+): TextEdit | null {
+  const at = (i: number): TextEdit => ({ text, start: i, end: i });
+  const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+  const breakAt = text.indexOf("\n", caret);
+  const lineEnd = breakAt === -1 ? text.length : breakAt;
+  for (const r of fenceRegions(text)) {
+    if (!r.closed) continue;
+    const { bodyStart, bodyEnd } = fenceLines(text, r);
+    const above = r.start - 1;
+    const below = r.end + 1;
+    // Out of the block.
+    if (key === "ArrowUp" && firstRow && lineStart === bodyStart) {
+      return r.start === 0 ? { text: `\n${text}`, start: 0, end: 0 } : at(above);
+    }
+    if (key === "ArrowDown" && lastRow && lineEnd === bodyEnd) {
+      return r.end === text.length ? { text: `${text}\n`, start: text.length + 1, end: text.length + 1 } : at(below);
+    }
+    if (key === "ArrowLeft" && caret === bodyStart) return r.start === 0 ? { text: `\n${text}`, start: 0, end: 0 } : at(above);
+    if (key === "ArrowRight" && caret === bodyEnd) {
+      return r.end === text.length ? { text: `${text}\n`, start: text.length + 1, end: text.length + 1 } : at(below);
+    }
+    // Into it, from the line above or below.
+    if (key === "ArrowDown" && lastRow && r.start > 0 && lineEnd === above) return at(bodyStart);
+    if (key === "ArrowUp" && firstRow && below <= text.length && lineStart === below) return at(bodyEnd);
+    if (key === "ArrowRight" && r.start > 0 && caret === above) return at(bodyStart);
+    if (key === "ArrowLeft" && below <= text.length && caret === below) return at(bodyEnd);
+  }
+  return null;
+}

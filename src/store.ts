@@ -58,7 +58,7 @@ export type Screen = "home" | "project";
 export type ProjectMode = "tasks" | "chat" | "graph";
 /** How the tasks of a project are shown: kanban columns or dependency graph. */
 /** Which section of the settings dialog's sidebar is open. */
-export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "connectors" | "extensions" | "plugins" | "hooks" | "context" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
+export type SettingsSection = "general" | "appearance" | "agents" | "teams" | "profile" | "presets" | "skills" | "mcp" | "connectors" | "extensions" | "plugins" | "hooks" | "context" | "permissions" | "remote" | "boards" | "messaging" | "diagnostics" | "about";
 /** One visited view in the shell back/forward history. */
 export interface NavEntry {
   screen: Screen;
@@ -224,6 +224,8 @@ export interface AppState {
   dockSizes: Record<DockSectionId, number>;
   /** projectId -> the file open beside that project's conversation. Not persisted. */
   previewFiles: Record<string, FilePreview>;
+  /** projectId -> the run followed live beside that project's conversation (a delegation's). Not persisted. */
+  liveRuns: Record<string, string>;
   /** Width in px of the two side panes, as the user dragged them. */
   paneWidths: Record<PaneId, number>;
   /** Settings is a modal, not a screen: whether it's currently open. Not persisted. */
@@ -304,6 +306,9 @@ export interface AppState {
   /** Opens a file an agent mentioned beside the conversation: a path as written, relative to the project. */
   openPreview(ref: string, projectId?: string | null): void;
   closePreview(projectId?: string | null): void;
+  /** Follows a run in the side panel of the project it belongs to. */
+  openLiveRun(runId: string): void;
+  closeLiveRun(projectId?: string | null): void;
   setDockSizes(sizes: Partial<Record<DockSectionId, number>>): void;
   setPaneWidth(pane: PaneId, width: number): void;
   toggleSidebarProject(projectId: string): void;
@@ -387,6 +392,8 @@ export interface AppState {
   ensureModels(provider: ProviderId): Promise<void>;
   /** Remembers a hand-typed model id for a provider, capped at 10, persisted. */
   rememberModel(provider: ProviderId, id: string): void;
+  /** Drops a hand-typed model id from the ones remembered for a provider. */
+  forgetModel(provider: ProviderId, id: string): void;
   /** What an agent's own session said it can run: shown in pickers and kept for the next start. */
   reportModels(provider: ProviderId, models: ModelInfo[]): void;
   /** `force` skips the shared cache: it is the user asking on purpose. */
@@ -822,7 +829,7 @@ const defaultUiPrefs: UiPrefs = {
   diffPanelOpen: false,
   termPanelOpen: false,
   presetsVisible: true,
-  dockSizes: { comm: 1, diff: 1, term: 1, file: 1 },
+  dockSizes: { comm: 1, diff: 1, term: 1, file: 1, live: 1 },
   paneWidths: { ...PANE_DEFAULT_WIDTH },
   settingsSection: "general",
   sidebarCollapsed: {},
@@ -916,6 +923,7 @@ function loadUiPrefs(): UiPrefs {
         diff: clampDockSize(saved(parsed.dockSizes, "diff")),
         term: clampDockSize(saved(parsed.dockSizes, "term")),
         file: clampDockSize(saved(parsed.dockSizes, "file")),
+        live: clampDockSize(saved(parsed.dockSizes, "live")),
       };
     }
 
@@ -1201,7 +1209,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   ...(() => {
     const prefs = loadUiPrefs();
     // The saved screen is only restored once the project list is known (see runInit).
-    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFiles: {} };
+    return { ...prefs, screen: "home" as Screen, settingsOpen: false, previewFiles: {}, liveRuns: {} };
   })(),
 
   openHome: () => {
@@ -1358,6 +1366,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
       : [...new Set(bases.map(base => resolvePath(path, base)))];
     set(s => ({ previewFiles: { ...s.previewFiles, [target]: { ref, candidates, line } } }));
   },
+  openLiveRun: (runId) => {
+    const projectId = get().runs[runId]?.projectId;
+    if (projectId) set(s => ({ liveRuns: { ...s.liveRuns, [projectId]: runId } }));
+  },
+  closeLiveRun: (projectId) => {
+    const target = projectId ?? get().currentProjectId;
+    if (!target) return;
+    set(s => {
+      const next = { ...s.liveRuns };
+      delete next[target];
+      return { liveRuns: next };
+    });
+  },
   closePreview: (projectId) => {
     const target = projectId ?? get().currentProjectId;
     if (!target) return;
@@ -1378,7 +1399,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const diff = sizes.diff !== undefined ? clampDockSize(sizes.diff) : s.dockSizes.diff;
       const term = sizes.term !== undefined ? clampDockSize(sizes.term) : s.dockSizes.term;
       const file = sizes.file !== undefined ? clampDockSize(sizes.file) : s.dockSizes.file;
-      return { dockSizes: { comm, diff, term, file } };
+      const live = sizes.live !== undefined ? clampDockSize(sizes.live) : s.dockSizes.live;
+      return { dockSizes: { comm, diff, term, file, live } };
     });
     saveUiPrefs();
   },
@@ -2365,6 +2387,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         [provider]: next,
       },
     });
+  },
+
+  forgetModel: (provider, id) => {
+    const current = get().config.rememberedModels?.[provider] ?? [];
+    get().updateConfig({ rememberedModels: { ...get().config.rememberedModels, [provider]: current.filter(m => m !== id) } });
   },
 
   reportModels: (provider, models) => {
@@ -3382,6 +3409,10 @@ export function selectProjectPanels(
 const NO_PANELS = { comm: false, diff: false, term: false };
 
 /** The file one project has open beside its conversation, if any. */
+export function selectLiveRun(state: AppState, projectId: string | null | undefined): string | null {
+  return (projectId ? state.liveRuns[projectId] : undefined) ?? null;
+}
+
 export function selectPreviewFile(state: AppState, projectId: string | null | undefined): FilePreview | null {
   return (projectId ? state.previewFiles[projectId] : undefined) ?? null;
 }

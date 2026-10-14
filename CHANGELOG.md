@@ -6,6 +6,46 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.31.0 — 2026-10-13
+
+### Added
+
+- **You choose what a planner may run on its own**, in Settings → Permissions: groups of commands
+  you turn on or off (git, checking versions, moving around and reading in the shell, tests,
+  builds, installing, editing project files, anything), commands of your own to allow, and
+  commands to always block, which win over everything else. Everything but editing project files
+  and any command is on by default, so `cd x && git pull` is no longer refused for the `cd`, nor
+  `npm test` for being a test. Claude's planners follow it, since they ask before every command.
+- **A delegation in the planner's thread opens that agent's run in the side panel**, to watch what
+  it is doing step by step while the conversation stays where it is.
+- **A model typed by hand in a picker has an ✕** to stop offering it.
+- **A block of code in the box behaves like one.** Typing ```` ``` ```` writes the closing ```` ```
+  ```` too and puts you inside; the arrows walk out of the block above and below it, making the
+  empty line to land on when there is none, and the caret never stops on the hidden fence lines, not
+  even for a frame; the backticks stay hidden when the text is selected; and the block cannot be
+  torn: it goes only once it is empty, with Backspace on its line.
+
+### Changed
+
+- **A block of code in the box is a rounded card around the code alone**, with no line for the
+  language and no band across the whole box.
+- **A picture attached to a message shows as a thumbnail inside the box**, above the text, the way
+  it will read once sent.
+- **Buttons and selects are a size smaller** across the app, the box starts one line tall and
+  grows as you write, and the bar under it is a compact one: small icons, small grey labels for
+  the agent, the model and the quota, and smaller saved orders above it.
+
+### Fixed
+
+- **A terminal window kept opening while agents worked** on Windows 11, where Windows Terminal is
+  the default console: the hidden console the agents share lived in a Terminal window that could
+  not be hidden. On Windows 11 24H2 and later it is now a console with no window at all.
+- **Settings → Agents said Claude Code was not detected** on a machine without the `claude` CLI,
+  while the agents worked: they run on the copy the ACP adapter brings. The card says it is ready
+  now, and offers no install for what is not needed.
+- **A finished turn showed what the agent said twice** with its activity open: once in the activity
+  and once as the answer below it.
+
 ## 0.30.1 — 2026-10-13
 
 ### Fixed

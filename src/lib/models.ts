@@ -29,7 +29,7 @@ export function modelChoices(
     const id = rawId.trim();
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    appended.push({ id, label: id });
+    appended.push({ id, label: id, remembered: true });
   }
 
   return [...base, ...appended];

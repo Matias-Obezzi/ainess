@@ -7,16 +7,15 @@ test.beforeEach(async ({ page }) => {
   await openDemo(page, "chat");
 });
 
-test("a ``` fence is a box the width of the composer, as tall as its lines", async ({ page }) => {
+test("a ``` fence is a box as tall as its lines", async ({ page }) => {
   const { input, layer } = composer(page);
   await input.click();
-  await input.pressSequentially("```ts");
-  // Enter on the opener closes the fence and leaves the caret inside it.
-  await input.press("Enter");
+  // The third backtick writes the closer and puts the caret inside, on a line of its own.
+  await input.pressSequentially("```");
   await input.pressSequentially("const a = 1;");
   await input.press("Enter");
   await input.pressSequentially("const b = 2;");
-  await expect(input).toHaveValue("```ts\nconst a = 1;\nconst b = 2;\n```");
+  await expect(input).toHaveValue("```\nconst a = 1;\nconst b = 2;\n```");
 
   // Same content height on both sides: the layer's lines land where the textarea's do.
   const heights = await page.evaluate(() => {
@@ -29,10 +28,6 @@ test("a ``` fence is a box the width of the composer, as tall as its lines", asy
 
   const box = layer.locator("span.block").first();
   const boxRect = (await box.boundingBox())!;
-  const layerRect = (await layer.boundingBox())!;
-  // Edge to edge, not hugging the text.
-  expect(Math.abs(boxRect.x - layerRect.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(boxRect.x + boxRect.width - (layerRect.x + layerRect.width))).toBeLessThanOrEqual(1);
   // Four lines: the opener, two of code, the closer. Not a row more.
   expect(Math.round(boxRect.height / heights.line)).toBe(4);
 
@@ -45,13 +40,9 @@ test("the words after a fence sit on the right line", async ({ page }) => {
   await input.pressSequentially("antes");
   await input.press("Shift+Enter");
   await input.pressSequentially("```");
-  await input.press("Enter");
   await input.pressSequentially("x");
-  // Past the closing fence, on a line of its own.
-  await input.press("End");
+  // Down walks out of the block, and with nothing under it, makes the line it walks onto.
   await input.press("ArrowDown");
-  await input.press("End");
-  await input.press("Shift+Enter");
   await input.pressSequentially("después");
   await expect(input).toHaveValue("antes\n```\nx\n```\ndespués");
 

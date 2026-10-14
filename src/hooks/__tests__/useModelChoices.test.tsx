@@ -39,7 +39,7 @@ describe("useModelChoices", () => {
     const { result } = renderHook(() => useModelChoices("antigravity"));
     expect(result.current).toEqual([
       { id: "dynamic-1", label: "Dynamic 1" },
-      { id: "custom-model-1", label: "custom-model-1" },
+      { id: "custom-model-1", label: "custom-model-1", remembered: true },
     ]);
   });
 
@@ -54,7 +54,7 @@ describe("useModelChoices", () => {
 
     expect(result.current).toEqual([
       ...PROVIDERS.claude.models,
-      { id: "claude-custom-special", label: "claude-custom-special" },
+      { id: "claude-custom-special", label: "claude-custom-special", remembered: true },
     ]);
   });
 });

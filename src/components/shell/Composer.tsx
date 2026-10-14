@@ -3,6 +3,7 @@ import { AgentAvatar, ProviderLogo } from "@/components/ProviderLogo";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { isRemoteBuild } from "@/lib/platform";
 import { useModelChoices } from "@/hooks/useModelChoices";
+import { ForgetModelButton } from "@/components/ForgetModelButton";
 import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { AgentConfig, ChatParticipant, Preset } from "@/types";
@@ -23,7 +24,7 @@ import { useAgentCommands } from "@/lib/agent-commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { closeFence, continueList, exitCodeBlock, fenceArrow, guardFenceKey, snapOutOfFence, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
@@ -66,7 +67,7 @@ interface MenuOption {
  * and the same grey under the pointer. They sit next to the box all day and pick something you
  * rarely change — a framed control for that is a frame around nothing.
  */
-const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
+const FLAT_SELECT = "h-6 data-[size=default]:h-6 gap-1 border-0 bg-transparent px-1.5 text-xs text-muted-foreground shadow-none hover:bg-accent hover:text-foreground dark:bg-transparent dark:hover:bg-accent";
 
 /**
  * And the width of whatever they are showing, the way the quota button beside them takes the room
@@ -104,22 +105,60 @@ function fencePartOf(line: string): { ticks: string; tag: string; rest: string }
   return tagIsWholeLine ? { ticks, tag, rest: after } : { ticks, tag: "", rest: tag + after };
 }
 
+/**
+ * How far down the layer the character at `offset` sits. The layer wraps the text exactly as the
+ * box does, so it is where the rows of a long line can be told apart. Null when it cannot be read.
+ */
+function topInLayer(layer: HTMLElement, offset: number): number | null {
+  const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+  let left = offset;
+  let last: Text | null = null;
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    last = node;
+    if (left < node.data.length) {
+      const range = document.createRange();
+      range.setStart(node, left);
+      range.setEnd(node, left + 1);
+      return range.getClientRects()[0]?.top ?? range.getBoundingClientRect().top;
+    }
+    left -= node.data.length;
+  }
+  if (!last) return null;
+  const range = document.createRange();
+  range.setStart(last, last.data.length);
+  return range.getBoundingClientRect().top;
+}
+
 function renderComposerText(text: string, regions: ReturnType<typeof fenceRegions>, ghost?: string) {
   const segments = fenceSegments(text, regions);
   const nodes: React.ReactNode[] = [];
   let box: React.ReactNode[] = [];
   let boxIndex = -1;
+  /** Words on the opener line (a language, or text typed after the backticks), which the card keeps inside. */
+  let openerWords = false;
+  let closed = false;
   const flush = () => {
     if (boxIndex === -1) return;
     nodes.push(
-      // Out to the edges of the composer: the layer's own padding is undone on each side and put
-      // back inside, so the text keeps its column and the background reaches the border.
-      <span key={`fence-${boxIndex}`} className="block -ml-3 -mr-12 rounded-sm bg-muted pl-3 pr-12">
+      // A rounded card a little wider than the code, drawn behind it: the text keeps the column the
+      // textarea puts it in. It wraps the code lines with a small margin and leaves out the opener
+      // and the closer, which are blank once their backticks are hidden — no language line, only
+      // the code, the way Claude draws it. An opener with words on it keeps them inside the card.
+      <span
+        key={`fence-${boxIndex}`}
+        className={cn(
+          "relative isolate block before:absolute before:-inset-x-1.5 before:-z-10 before:rounded-md before:bg-muted before:content-['']",
+          openerWords ? "before:top-[0.3lh]" : "before:top-[calc(1lh_-_6px)]",
+          closed ? "before:bottom-[calc(1lh_-_6px)]" : "before:bottom-0",
+        )}
+      >
         {box}
       </span>,
     );
     box = [];
     boxIndex = -1;
+    openerWords = false;
+    closed = false;
   };
   const dim = (key: React.Key, body: string) => <span key={key} className="text-muted-foreground/50">{body}</span>;
   // The backticks themselves are not drawn: the box is what says "code". They keep their width —
@@ -159,8 +198,10 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
       // is the user's own words and reads like them. Dimming the whole line made "```" followed by
       // a sentence look as if the sentence had been swallowed.
       const { ticks, tag, rest } = fencePartOf(body);
+      openerWords = (tag + rest).trim() !== "";
       box.push(hidden(`${i}-ticks`, ticks), dim(`${i}-tag`, tag), rest, ...tail);
     } else {
+      closed = true;
       box.push(hidden(i, body), ...tail);
     }
   });
@@ -225,6 +266,26 @@ function AttachmentChip({ file, onRemove }: { file: File; onRemove(): void }) {
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
+
+  // A picture is shown as one, big enough to recognise the screenshot it is; its name says nothing.
+  if (url) {
+    return (
+      <div className="group relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+        <img src={url} alt={file.name} title={file.name} className="h-full w-full object-cover" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="absolute right-1 top-1 h-6 w-6 rounded-full opacity-80 shadow-sm hover:opacity-100"
+          onClick={onRemove}
+          title={t("attachments.remove")}
+          aria-label={t("attachments.remove")}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 rounded-md border border-border bg-card py-1 pl-1 pr-1.5 text-xs">
@@ -293,7 +354,7 @@ function ChatParticipantModel({ chatId, participants, index, agent, name }: {
 
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={18} />}
+      {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={14} />}
       <span className="min-w-0 max-w-[10rem] truncate text-xs text-muted-foreground">{name}</span>
       <Select value={model || "none"} onValueChange={pick}>
         <SelectTrigger
@@ -306,7 +367,7 @@ function ChatParticipantModel({ chatId, participants, index, agent, name }: {
         <SelectContent>
           <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
           {options.map(m => (
-            <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+            <SelectItem key={m.id} value={m.id} action={<ForgetModelButton provider={agent?.provider} model={m} />}>{m.label}</SelectItem>
           ))}
           {unlisted && <SelectItem value={unlisted}>{unlisted}</SelectItem>}
         </SelectContent>
@@ -345,6 +406,8 @@ export function Composer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  /** Where the caret was before it last moved: which way it went decides where it leaves a block. */
+  const lastCaret = useRef(-1);
 
   // What this conversation has already said, for the grey suggestion below. Read from the
   // conversation on screen and from nowhere else: a message typed in another project has no
@@ -921,9 +984,19 @@ export function Composer() {
     const applyEdit = (edit: TextEdit) => {
       e.preventDefault();
       e.stopPropagation();
+      // Into the box right away, caret included: React then finds the value it already has and
+      // leaves the caret alone, with no frame to wait for (one that never comes in a hidden window).
+      e.currentTarget.value = edit.text;
+      e.currentTarget.setSelectionRange(edit.start, edit.end);
       setText(edit.text);
-      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(edit.start, edit.end));
     };
+    // A block of code is torn only one way: emptied, then Backspace on its line (see `guardFenceKey`).
+    if ((e.key === "Backspace" || e.key === "Delete") && !e.ctrlKey && !e.metaKey && !e.altKey
+      && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
+      const guarded = guardFenceKey(text, e.currentTarget.selectionStart, e.key);
+      if (guarded === "stop") { e.preventDefault(); return; }
+      if (guarded) return applyEdit(guarded);
+    }
     if ((e.ctrlKey || e.metaKey) && !e.altKey) {
       const { selectionStart: s, selectionEnd: n } = e.currentTarget;
       const key = e.key.toLowerCase();
@@ -952,14 +1025,11 @@ export function Composer() {
         if (/^\s*```[^`]*$/.test(line)) {
           const stillOpen = fenceRegions(text).some(r => r.start === lineStart && r.end === text.length);
           if (stillOpen) {
-            e.preventDefault();
             const indent = lineIndent(text, caret);
             const before = text.slice(0, caret);
             const after = text.slice(e.currentTarget.selectionEnd);
-            setText(before + "\n" + indent + "\n" + indent + "```" + after);
             const newCaret = caret + 1 + indent.length;
-            requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-            return;
+            return applyEdit({ text: before + "\n" + indent + "\n" + indent + "```" + after, start: newCaret, end: newCaret });
           }
         }
       }
@@ -974,24 +1044,18 @@ export function Composer() {
         const indent = lineIndent(text, caret);
         const before = text.slice(0, caret);
         const after = text.slice(e.currentTarget.selectionEnd);
-        setText(before + "\n" + indent + after);
         const newCaret = caret + 1 + indent.length;
-        requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-        return;
+        return applyEdit({ text: before + "\n" + indent + after, start: newCaret, end: newCaret });
       }
       e.preventDefault();
       handleSend({ queue: e.ctrlKey || e.metaKey });
       return;
     }
     if (e.key === "Tab" && insideFence(text, e.currentTarget.selectionStart)) {
-      e.preventDefault();
       const caret = e.currentTarget.selectionStart;
       const before = text.slice(0, caret);
       const after = text.slice(e.currentTarget.selectionEnd);
-      setText(before + "  " + after);
-      const newCaret = caret + 2;
-      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-      return;
+      return applyEdit({ text: before + "  " + after, start: caret + 2, end: caret + 2 });
     }
     // Tab, once the menu (which owns it while open) and a ``` fence (where it indents) are out of
     // the way. Enter is left alone: accepting and sending are two decisions, and joining them would
@@ -1005,6 +1069,25 @@ export function Composer() {
       e.preventDefault();
       handleStop();
       return;
+    }
+    // Around a ``` block the arrows step over its hidden fence lines, decided here, before the key
+    // moves the caret: moved first and corrected after, it showed on the fence line for a frame.
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight")
+      && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
+      && e.currentTarget.selectionStart === e.currentTarget.selectionEnd && fenceHighlightRegions.length > 0) {
+      const caret = e.currentTarget.selectionStart;
+      const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+      const breakAt = text.indexOf("\n", caret);
+      const lineEnd = breakAt === -1 ? text.length : breakAt;
+      const layer = highlightRef.current;
+      const top = (offset: number) => (layer ? topInLayer(layer, offset) : null);
+      const here = top(caret);
+      const sameRow = (offset: number) => {
+        const there = top(offset);
+        return here === null || there === null || Math.abs(here - there) < 2;
+      };
+      const step = fenceArrow(text, caret, e.key, sameRow(lineStart), sameRow(lineEnd));
+      if (step) return applyEdit(step);
     }
     // Out of a ``` block that ends the message: under its closing fence there is no line for the
     // arrow to land on, so it makes one. Only there — everywhere else the arrow is the arrow, and
@@ -1180,19 +1263,6 @@ export function Composer() {
           </div>
         )}
 
-        {/* What is going with the message, before it goes. */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((file, i) => (
-              <AttachmentChip
-                key={`${file.name}-${i}`}
-                file={file}
-                onRemove={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
-              />
-            ))}
-          </div>
-        )}
-
         {/* The send button lives inside the box, so the text stops short of it (`pr-12`). */}
         {/* Out of the box and its question alike: the paperclip that opens it lives in the bar
             below, which is on screen either way, and a hidden input inside a branch that vanishes
@@ -1250,6 +1320,22 @@ export function Composer() {
                 ))}
               </div>
             )}
+            {/* The border is the box's, not the textarea's: what goes with the message sits inside it,
+                above the text, the way it will read once sent. The textarea keeps a transparent
+                one-pixel border so the layer's `inset-px` still lines its words up with the caret. */}
+            <div className="rounded-lg border border-input shadow-xs transition-colors focus-within:border-ring dark:bg-input/30">
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {attachments.map((file, i) => (
+                  <AttachmentChip
+                    key={`${file.name}-${i}`}
+                    file={file}
+                    onRemove={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="relative">
             {/* The text you read: same font metrics and padding as the textarea on top of it, so
                 every character sits where the textarea's (invisible) one does. This layer draws the
                 words, the code boxes and the grey suggestion; the textarea draws the caret and the
@@ -1268,7 +1354,7 @@ export function Composer() {
               // than the box, the grey suggestion is drawn here and nowhere else, and that line
               // was enough to give it a scrollbar the box did not have, take the room from its own
               // lines, and slide every word away from the caret.
-              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] box-border overflow-hidden font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
+              className="pointer-events-none absolute inset-px min-h-[38px] max-h-[198px] box-border overflow-hidden font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
             >
               {/* The suggestion travels inside: it has to sit before the trailing newline the layer
                   appends, on the line the caret is on, whatever that line is part of. */}
@@ -1279,8 +1365,36 @@ export function Composer() {
               ref={attachBox}
               data-testid="composer-input"
               value={text}
-              onChange={e => { setText(e.target.value); noteTyping(e.target.value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart); }}
+              onChange={e => {
+                // Typing the third backtick of an opener writes the closer too (see `closeFence`).
+                const closed = closeFence(text, e.target.value, e.target.selectionStart);
+                if (closed) {
+                  // Written into the box right away: React then finds the value it already has and
+                  // leaves the caret where it is put here, on the opener.
+                  e.target.value = closed.text;
+                  e.target.setSelectionRange(closed.start, closed.end);
+                }
+                const value = e.target.value;
+                setText(value); noteTyping(value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart);
+              }}
               onKeyDown={handleKeyDown}
+              // The opener and the closer of a block are not drawn, so the caret never stays on
+              // them: it goes on out the way it was moving, or into the code (see `snapOutOfFence`).
+              onSelect={e => {
+                const box = e.currentTarget;
+                const caret = box.selectionStart;
+                if (caret === box.selectionEnd) {
+                  const snap = snapOutOfFence(box.value, caret, lastCaret.current);
+                  if (snap) {
+                    if (snap.text !== box.value) {
+                      box.value = snap.text;
+                      setText(snap.text);
+                    }
+                    box.setSelectionRange(snap.start, snap.end);
+                  }
+                }
+                lastCaret.current = box.selectionStart;
+              }}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
@@ -1292,12 +1406,12 @@ export function Composer() {
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
-              rows={2}
+              rows={1}
               // Transparent text, a caret and a selection: the layer underneath draws the words.
               // No halo around the box: three pixels of ring on the one control that is always on
               // screen read as an error. The focus is still said — the border turns to the ring
               // colour, which the base Textarea already does — it is just said once.
-              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="relative resize-none min-h-[40px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary/30 selection:text-transparent dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
@@ -1317,31 +1431,33 @@ export function Composer() {
             {/* No filled shape sitting on the text: the icon carries it, and the only colour is the
                 grey the rest of the app uses to say "your pointer is here". A square and a paper
                 plane are already two different things without painting one of them red. */}
-            <div className="absolute bottom-2 right-2">
+            <div className="absolute bottom-2 right-2 flex">
               {busy ? (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-foreground hover:bg-accent"
+                  className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={handleStop}
                   title={t("composer.stopHint")}
                   aria-label={t("composer.stop")}
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-3.5 w-3.5" />
                 </Button>
               ) : (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-foreground hover:bg-accent"
+                  className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => handleSend()}
                   disabled={!canSend}
                   title={t("composer.sendHint")}
                   aria-label={t("composer.send")}
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 </Button>
               )}
+            </div>
+            </div>
             </div>
           </div>
         )}
@@ -1349,24 +1465,24 @@ export function Composer() {
         {/* The row used to be dropped in a chat on a phone with no quota ring to show, back when
             it had nothing else in it. It says which model each participant runs on now. */}
         {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
-          <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex gap-1 items-center flex-wrap">
             {!compact && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-foreground hover:bg-accent"
+                className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => fileInputRef.current?.click()}
                 title={t("attachments.attachHint")}
                 aria-label={t("attachments.attach")}
               >
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-3.5 w-3.5" />
               </Button>
             )}
 
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}
-            <div className="ml-auto flex items-center gap-2 flex-wrap">
+            <div className="ml-auto flex items-center gap-1 flex-wrap">
               {chatMode ? (
                 /* One row per member: the member itself as a name and a logo, and the model as the
                    only thing you can change from here. See `ChatParticipantModel`. */
@@ -1391,7 +1507,7 @@ export function Composer() {
                     <SelectContent>
                       {agents.map(a => (
                         <SelectItem key={a.id} value={a.id}>
-                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={12} />{a.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1404,7 +1520,7 @@ export function Composer() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 min-w-0 gap-1.5 px-2 text-xs"
+                      className="h-6 min-w-0 gap-1 px-1.5 text-xs text-muted-foreground"
                       aria-label={t("composer.pickModel")}
                       title={activeModelLabel}
                       onClick={() => setShowModel(v => !v)}
@@ -1424,7 +1540,7 @@ export function Composer() {
                     <SelectContent>
                       <SelectItem value="none">{t("composer.defaultModel")}</SelectItem>
                       {modelOptions.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                        <SelectItem key={m.id} value={m.id} action={<ForgetModelButton provider={targetAgent?.provider} model={m} />}>{m.label}</SelectItem>
                       ))}
                       <SelectItem value="custom">{t("composer.otherModel")}</SelectItem>
                     </SelectContent>

@@ -25,7 +25,7 @@ import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { clip, formatElapsed, truncate } from "@/lib/format";
 import type { CommMessage } from "@/types";
-import { Brain, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Info, Sparkles } from "lucide-react";
+import { Brain, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Info, PanelRightOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextMorph } from "@/components/ui/text-morph";
 import { RetryRunDialog } from "@/components/RetryRunDialog";
@@ -145,9 +145,16 @@ export function visibleActivityRows<T extends { kind: string }>(rows: T[], limit
   return rows.filter((m, i) => i >= rows.length - limit || m.kind === "text");
 }
 
-export function RunActivity({ runId, compact = false, mode = "live" }: { runId: string; compact?: boolean; mode?: ActivityMode }) {
+export function RunActivity({ runId, compact = false, mode = "live", withText = true }: {
+  runId: string;
+  compact?: boolean;
+  mode?: ActivityMode;
+  /** False where what the agent said is already drawn as the answer beside it: shown twice otherwise. */
+  withText?: boolean;
+}) {
   const t = useT();
-  const rows = useRunMessages(runId);
+  const all = useRunMessages(runId);
+  const rows = useMemo(() => (withText ? all : all.filter(m => m.kind !== "text")), [all, withText]);
   const run = useAppStore(state => state.runs[runId]);
   /** Whether the ticker's history is open. */
   const [open, setOpen] = useState(false);
@@ -306,6 +313,7 @@ function DelegationRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRun
   const t = useT();
   const agents = useAppStore(selectAllAgents);
   const runs = useAppStore(state => state.runs);
+  const openLiveRun = useAppStore(state => state.openLiveRun);
 
   const childRun = useMemo(() => {
     if (!msg.toAgentId) return undefined;
@@ -337,6 +345,18 @@ function DelegationRow({ msg, parentRunId, mode }: { msg: CommMessage; parentRun
         </StepTooltip>
         {childRun && childRun.status !== "running" && (
           <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{t(runStatusLabelKey[childRun.status])}</span>
+        )}
+        {childRun && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-5 w-5 shrink-0", childRun.status === "running" && "ml-auto")}
+            aria-label={t("activity.openLive", { name })}
+            title={t("activity.openLive", { name })}
+            onClick={() => openLiveRun(childRun.id)}
+          >
+            <PanelRightOpen className="h-3.5 w-3.5" />
+          </Button>
         )}
       </div>
       {/* Under the line it is about, across the whole card: beside it, the question and the task it

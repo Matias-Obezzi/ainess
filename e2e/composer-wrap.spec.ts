@@ -10,7 +10,6 @@ test("a long word inside a fence wraps where the textarea wraps it", async ({ pa
   await input.click();
   const long = "a".repeat(220);
   await input.pressSequentially("```");
-  await input.press("Enter");
   await input.pressSequentially(long);
   await expect(input).toHaveValue("```\n" + long + "\n```");
   await snap(page, "composer-wrap", page.locator('[data-testid="composer-layer"]').locator(".."));
@@ -76,14 +75,15 @@ test("the layer's words sit exactly where the textarea puts its own", async ({ p
   void layer;
 });
 
-test("words typed right after the backticks are not dimmed as a language tag", async ({ page }) => {
+test("words typed right after the backticks go into the block, not into a language tag", async ({ page }) => {
   await openDemo(page, "chat");
   const { input, layer } = composer(page);
   await input.click();
   await input.pressSequentially("```una frase entera");
-  // Only the backticks are the fence's — and they are not drawn; the sentence is, like any other.
-  const hidden = await layer.locator("span.text-transparent").allTextContents();
-  expect(hidden).toEqual(["```"]);
+  // The backticks of the opener and of the closer are the fence's — and they are not drawn; the
+  // sentence is the code, drawn like any other.
+  const hidden = (await layer.locator("span.text-transparent").allTextContents()).map(s => s.trim());
+  expect(hidden).toEqual(["```", "```"]);
   const dimmed = (await layer.locator("span.text-muted-foreground\\/50").allTextContents()).filter(Boolean);
   expect(dimmed).toEqual([]);
   await expect(layer).toContainText("una frase entera");
