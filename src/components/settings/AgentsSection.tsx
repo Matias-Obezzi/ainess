@@ -75,6 +75,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
   const [installing, setInstalling] = useState<InstallPhase | null>(null);
 
   const spec = PROVIDERS[provider];
+  // Over ACP the adapter brings its own copy of the CLI: one on the machine is a preference, not a need.
+  const viaAcp = spec?.transport === "acp";
   const summary = summarizeAgentQuota(quota, { allModels });
   const hasOverride = !!overrides?.[provider];
 
@@ -138,8 +140,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
           {spec?.label || provider}
         </div>
         <div className="flex items-center gap-2">
-          {binary?.path
-            ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{t("agents.found")}</Badge>
+          {binary?.path || viaAcp
+            ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{t(binary?.path ? "agents.found" : "agents.ready")}</Badge>
             : <Badge variant="outline" className="border-destructive/40 text-destructive">{t("agents.notFound")}</Badge>}
           <span
             className="flex items-center gap-1 text-xs text-muted-foreground"
@@ -155,9 +157,9 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
         <div className="break-all">
           {binary?.path
             ? <span>{binary.path}{binary.version ? ` (${binary.version})` : ""}</span>
-            : <span>{t("agents.installHint")}</span>}
+            : <span>{t(viaAcp ? "agents.acpBundled" : "agents.installHint")}</span>}
         </div>
-        {!binary?.path && command && (
+        {!binary?.path && !viaAcp && command && (
           <div className="text-xs">
             <code className="rounded bg-muted px-1 py-0.5">{command}</code>
           </div>
@@ -175,7 +177,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
 
       <div className="mt-auto flex flex-wrap gap-2 pt-2">
         {/* Only what is missing gets an install button, and it says what it is about to run. */}
-        {!binary?.path && method && (
+        {!binary?.path && !viaAcp && method && (
           <Button
             size="sm"
             disabled={installing !== null}

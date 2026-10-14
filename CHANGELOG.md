@@ -41,6 +41,9 @@ let one of them fall behind.
 - **A terminal window kept opening while agents worked** on Windows 11, where Windows Terminal is
   the default console: the hidden console the agents share lived in a Terminal window that could
   not be hidden. On Windows 11 24H2 and later it is now a console with no window at all.
+- **Settings → Agents said Claude Code was not detected** on a machine without the `claude` CLI,
+  while the agents worked: they run on the copy the ACP adapter brings. The card says it is ready
+  now, and offers no install for what is not needed.
 - **A finished turn showed what the agent said twice** with its activity open: once in the activity
   and once as the answer below it.
 
