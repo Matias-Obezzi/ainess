@@ -19,8 +19,10 @@ let one of them fall behind.
 - **A delegation in the planner's thread opens that agent's run in the side panel**, to watch what
   it is doing step by step while the conversation stays where it is.
 - **A model typed by hand in a picker has an ✕** to stop offering it.
-- **Typing ``` in the box writes the closing ``` too** and puts you inside the block, with a line
-  after it, so the down arrow walks out of the block and you can keep writing below it.
+- **A block of code in the box behaves like one.** Typing ``` writes the closing ``` too and puts
+  you inside; the up and down arrows walk out of the block above and below it, and the caret never
+  stops on the hidden fence lines; and the block cannot be torn: it goes only once it is empty,
+  with Backspace on its line.
 
 ### Changed
 

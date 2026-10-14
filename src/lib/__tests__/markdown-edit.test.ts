@@ -1,7 +1,7 @@
 // The box helps you write markdown: a list carries on when you ask for a new line, and the keys
 // every editor uses for bold, italic, code and links do that to the selection.
 import { describe, it, expect } from "vitest";
-import { closeFence, continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
+import { closeFence, continueList, guardFenceKey, snapOutOfFence, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
 
 describe("continueList", () => {
   it("carries a bullet on to the next line, indentation and all", () => {
@@ -168,5 +168,32 @@ describe("closeFence", () => {
     expect(closeFence(open, open + "`", open.length + 1)).toBeNull();
     expect(closeFence("````", "```", 3)).toBeNull();
     expect(closeFence("a ``", "a ```", 5)).toBeNull();
+  });
+});
+
+describe("the caret and a code block", () => {
+  const text = "hola\n```\ncodigo\n```\nchau";
+  // hola 0-4 | ``` 5-8 | codigo 9-15 | ``` 16-19 | chau 20-24
+  it("leaves the block upwards or downwards instead of stopping on a fence line", () => {
+    expect(snapOutOfFence(text, 8, 12)).toEqual({ text, start: 4, end: 4 });
+    expect(snapOutOfFence(text, 18, 12)).toEqual({ text, start: 20, end: 20 });
+    expect(snapOutOfFence(text, 6, 2)).toEqual({ text, start: 9, end: 9 });
+    expect(snapOutOfFence(text, 17, 22)).toEqual({ text, start: 15, end: 15 });
+    expect(snapOutOfFence(text, 12, 11)).toBeNull();
+  });
+
+  it("makes the line it leaves to when there is none", () => {
+    expect(snapOutOfFence("```\na\n```", 2, 4)).toEqual({ text: "\n```\na\n```", start: 0, end: 0 });
+    expect(snapOutOfFence("```\na\n```", 7, 5)).toEqual({ text: "```\na\n```\n", start: 10, end: 10 });
+  });
+
+  it("only lets an empty block go, from its line, with Backspace", () => {
+    expect(guardFenceKey(text, 9, "Backspace")).toBe("stop");
+    expect(guardFenceKey("hola\n```\n\n```\nchau", 9, "Backspace")).toEqual({ text: "hola\nchau", start: 4, end: 4 });
+    expect(guardFenceKey("```\n\n```\nchau", 4, "Backspace")).toEqual({ text: "chau", start: 0, end: 0 });
+    expect(guardFenceKey(text, 20, "Backspace")).toEqual({ text, start: 15, end: 15 });
+    expect(guardFenceKey(text, 15, "Delete")).toBe("stop");
+    expect(guardFenceKey(text, 4, "Delete")).toBe("stop");
+    expect(guardFenceKey(text, 12, "Backspace")).toBeNull();
   });
 });

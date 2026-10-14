@@ -157,3 +157,65 @@ export function closeFence(prev: string, next: string, caret: number): TextEdit 
   const inside = caret + 1 + indent.length;
   return { text, start: inside, end: inside };
 }
+
+/** The lines a closed fence is drawn with: its hidden opener and closer, and the code between. */
+function fenceLines(text: string, r: { start: number; end: number }) {
+  const openerEnd = text.indexOf("\n", r.start);
+  const closerStart = text.lastIndexOf("\n", r.end - 1) + 1;
+  return { openerEnd, bodyStart: openerEnd + 1, bodyEnd: closerStart - 1, closerStart };
+}
+
+/**
+ * Where the caret goes when it lands on a fence's opener or closer, which are not drawn: out of the
+ * block the way it was moving — up past the opener, down past the closer — and into the code
+ * otherwise. A line is made when there is none to go to. Null when the caret is somewhere it can be.
+ */
+export function snapOutOfFence(text: string, caret: number, previous: number): TextEdit | null {
+  for (const r of fenceRegions(text)) {
+    if (caret < r.start || caret > r.end) continue;
+    const openerEnd = text.indexOf("\n", r.start);
+    if (openerEnd === -1) return null;
+    if (caret <= openerEnd) {
+      if (previous > caret || previous === -1 && caret === r.start) {
+        if (r.start === 0) return { text: `\n${text}`, start: 0, end: 0 };
+        return { text, start: r.start - 1, end: r.start - 1 };
+      }
+      return { text, start: openerEnd + 1, end: openerEnd + 1 };
+    }
+    if (!r.closed) return null;
+    const { bodyEnd, closerStart } = fenceLines(text, r);
+    if (caret < closerStart) return null;
+    if (previous < caret) {
+      if (r.end === text.length) return { text: `${text}\n`, start: text.length + 1, end: text.length + 1 };
+      return { text, start: r.end + 1, end: r.end + 1 };
+    }
+    return { text, start: bodyEnd, end: bodyEnd };
+  }
+  return null;
+}
+
+/**
+ * What Backspace or Delete does at the edge of a block: the block is never torn. Backspace at the
+ * start of an empty block's line takes the whole block; at the start of a block with code in it,
+ * nothing. Backspace right after the closer steps into the code, and Delete at the end of the code
+ * or right before the opener does nothing. `"stop"` means swallow the key; null, let it through.
+ */
+export function guardFenceKey(text: string, caret: number, key: "Backspace" | "Delete"): TextEdit | "stop" | null {
+  for (const r of fenceRegions(text)) {
+    if (!r.closed) continue;
+    const { bodyStart, bodyEnd } = fenceLines(text, r);
+    if (key === "Backspace") {
+      if (caret === bodyStart) {
+        if (bodyEnd > bodyStart) return "stop";
+        // The empty block goes, and the newline that put it on a line of its own with it.
+        if (r.start > 0) return { text: text.slice(0, r.start - 1) + text.slice(r.end), start: r.start - 1, end: r.start - 1 };
+        const after = text[r.end] === "\n" ? r.end + 1 : r.end;
+        return { text: text.slice(after), start: 0, end: 0 };
+      }
+      if (caret === r.end + 1 && text[r.end] === "\n") return { text, start: bodyEnd, end: bodyEnd };
+    } else if (caret === bodyEnd || (r.start > 0 && caret === r.start - 1)) {
+      return "stop";
+    }
+  }
+  return null;
+}

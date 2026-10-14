@@ -24,7 +24,7 @@ import { useAgentCommands } from "@/lib/agent-commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { closeFence, continueList, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { closeFence, continueList, exitCodeBlock, guardFenceKey, snapOutOfFence, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
@@ -382,6 +382,8 @@ export function Composer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  /** Where the caret was before it last moved: which way it went decides where it leaves a block. */
+  const lastCaret = useRef(-1);
 
   // What this conversation has already said, for the grey suggestion below. Read from the
   // conversation on screen and from nowhere else: a message typed in another project has no
@@ -958,9 +960,19 @@ export function Composer() {
     const applyEdit = (edit: TextEdit) => {
       e.preventDefault();
       e.stopPropagation();
+      // Into the box right away, caret included: React then finds the value it already has and
+      // leaves the caret alone, with no frame to wait for (one that never comes in a hidden window).
+      e.currentTarget.value = edit.text;
+      e.currentTarget.setSelectionRange(edit.start, edit.end);
       setText(edit.text);
-      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(edit.start, edit.end));
     };
+    // A block of code is torn only one way: emptied, then Backspace on its line (see `guardFenceKey`).
+    if ((e.key === "Backspace" || e.key === "Delete") && !e.ctrlKey && !e.metaKey && !e.altKey
+      && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
+      const guarded = guardFenceKey(text, e.currentTarget.selectionStart, e.key);
+      if (guarded === "stop") { e.preventDefault(); return; }
+      if (guarded) return applyEdit(guarded);
+    }
     if ((e.ctrlKey || e.metaKey) && !e.altKey) {
       const { selectionStart: s, selectionEnd: n } = e.currentTarget;
       const key = e.key.toLowerCase();
@@ -989,14 +1001,11 @@ export function Composer() {
         if (/^\s*```[^`]*$/.test(line)) {
           const stillOpen = fenceRegions(text).some(r => r.start === lineStart && r.end === text.length);
           if (stillOpen) {
-            e.preventDefault();
             const indent = lineIndent(text, caret);
             const before = text.slice(0, caret);
             const after = text.slice(e.currentTarget.selectionEnd);
-            setText(before + "\n" + indent + "\n" + indent + "```" + after);
             const newCaret = caret + 1 + indent.length;
-            requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-            return;
+            return applyEdit({ text: before + "\n" + indent + "\n" + indent + "```" + after, start: newCaret, end: newCaret });
           }
         }
       }
@@ -1011,24 +1020,18 @@ export function Composer() {
         const indent = lineIndent(text, caret);
         const before = text.slice(0, caret);
         const after = text.slice(e.currentTarget.selectionEnd);
-        setText(before + "\n" + indent + after);
         const newCaret = caret + 1 + indent.length;
-        requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-        return;
+        return applyEdit({ text: before + "\n" + indent + after, start: newCaret, end: newCaret });
       }
       e.preventDefault();
       handleSend({ queue: e.ctrlKey || e.metaKey });
       return;
     }
     if (e.key === "Tab" && insideFence(text, e.currentTarget.selectionStart)) {
-      e.preventDefault();
       const caret = e.currentTarget.selectionStart;
       const before = text.slice(0, caret);
       const after = text.slice(e.currentTarget.selectionEnd);
-      setText(before + "  " + after);
-      const newCaret = caret + 2;
-      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
-      return;
+      return applyEdit({ text: before + "  " + after, start: caret + 2, end: caret + 2 });
     }
     // Tab, once the menu (which owns it while open) and a ``` fence (where it indents) are out of
     // the way. Enter is left alone: accepting and sending are two decisions, and joining them would
@@ -1332,6 +1335,23 @@ export function Composer() {
                 setText(value); noteTyping(value); setHistoryIndex(null); setMenuCaret(e.target.selectionStart);
               }}
               onKeyDown={handleKeyDown}
+              // The opener and the closer of a block are not drawn, so the caret never stays on
+              // them: it goes on out the way it was moving, or into the code (see `snapOutOfFence`).
+              onSelect={e => {
+                const box = e.currentTarget;
+                const caret = box.selectionStart;
+                if (caret === box.selectionEnd) {
+                  const snap = snapOutOfFence(box.value, caret, lastCaret.current);
+                  if (snap) {
+                    if (snap.text !== box.value) {
+                      box.value = snap.text;
+                      setText(snap.text);
+                    }
+                    box.setSelectionRange(snap.start, snap.end);
+                  }
+                }
+                lastCaret.current = box.selectionStart;
+              }}
               onKeyUp={e => setMenuCaret(e.currentTarget.selectionStart)}
               onClick={e => setMenuCaret(e.currentTarget.selectionStart)}
               onPaste={handlePaste}
