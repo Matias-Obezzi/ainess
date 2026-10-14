@@ -139,10 +139,9 @@ export function exitCodeBlock(text: string, start: number, end: number): TextEdi
 }
 
 /**
- * The closing ``` for a fence just opened by typing its third backtick, and a line after it, so
- * the down arrow walks out of the block and there is somewhere to keep writing. The caret goes to
- * an empty line inside, where the code is what gets typed next — left on the opener, the first
- * word read as the language and was drawn grey. Null for anything else, a closing ``` included.
+ * The closing ``` for a fence just opened by typing its third backtick. The caret goes to an empty
+ * line inside, where the code is what gets typed next — left on the opener, the first word read as
+ * the language and was drawn grey. Null for anything else, a closing ``` included.
  */
 export function closeFence(prev: string, next: string, caret: number): TextEdit | null {
   if (next.length <= prev.length || prev.slice(0, caret) === next.slice(0, caret)) return null;
@@ -152,8 +151,9 @@ export function closeFence(prev: string, next: string, caret: number): TextEdit 
   if (lineEnd !== caret || !/^\s*```$/.test(next.slice(lineStart, caret))) return null;
   if (!fenceRegions(next).some(r => r.start === lineStart && !r.closed)) return null;
   const indent = /^\s*/.exec(next.slice(lineStart, caret))![0];
-  const after = next.slice(caret);
-  const text = next.slice(0, caret) + "\n" + indent + "\n" + indent + "```" + (after.startsWith("\n") ? "" : "\n") + after;
+  // Nothing is added around the block: the line above or below it is made when an arrow leaves the
+  // block that way and finds none (see `fenceArrow`).
+  const text = next.slice(0, caret) + "\n" + indent + "\n" + indent + "```" + next.slice(caret);
   const inside = caret + 1 + indent.length;
   return { text, start: inside, end: inside };
 }

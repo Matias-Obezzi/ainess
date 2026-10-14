@@ -11,7 +11,7 @@ test("a long word inside a fence wraps where the textarea wraps it", async ({ pa
   const long = "a".repeat(220);
   await input.pressSequentially("```");
   await input.pressSequentially(long);
-  await expect(input).toHaveValue("```\n" + long + "\n```\n");
+  await expect(input).toHaveValue("```\n" + long + "\n```");
   await snap(page, "composer-wrap", page.locator('[data-testid="composer-layer"]').locator(".."));
   const heights = await page.evaluate(() => {
     const ta = document.querySelector('[data-testid="composer-input"]') as HTMLTextAreaElement;

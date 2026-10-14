@@ -15,7 +15,7 @@ test("a ``` fence is a box as tall as its lines", async ({ page }) => {
   await input.pressSequentially("const a = 1;");
   await input.press("Enter");
   await input.pressSequentially("const b = 2;");
-  await expect(input).toHaveValue("```\nconst a = 1;\nconst b = 2;\n```\n");
+  await expect(input).toHaveValue("```\nconst a = 1;\nconst b = 2;\n```");
 
   // Same content height on both sides: the layer's lines land where the textarea's do.
   const heights = await page.evaluate(() => {
@@ -41,7 +41,7 @@ test("the words after a fence sit on the right line", async ({ page }) => {
   await input.press("Shift+Enter");
   await input.pressSequentially("```");
   await input.pressSequentially("x");
-  // Down walks out of the block, onto the line the closer left after itself.
+  // Down walks out of the block, and with nothing under it, makes the line it walks onto.
   await input.press("ArrowDown");
   await input.pressSequentially("después");
   await expect(input).toHaveValue("antes\n```\nx\n```\ndespués");

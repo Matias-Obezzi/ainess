@@ -159,8 +159,11 @@ describe("exitCodeBlock", () => {
 });
 
 describe("closeFence", () => {
-  it("writes the closer and a line after it when the third backtick opens a fence", () => {
-    expect(closeFence("hola\n``", "hola\n```", 8)).toEqual({ text: "hola\n```\n\n```\n", start: 9, end: 9 });
+  it("writes the closer when the third backtick opens a fence, and puts the caret inside", () => {
+    expect(closeFence("hola\n``", "hola\n```", 8)).toEqual({ text: "hola\n```\n\n```", start: 9, end: 9 });
+    // Nothing around it: the arrows make the lines above and below when they need them.
+    expect(closeFence("``", "```", 3)).toEqual({ text: "```\n\n```", start: 4, end: 4 });
+    expect(closeFence("``\nchau", "```\nchau", 3)).toEqual({ text: "```\n\n```\nchau", start: 4, end: 4 });
   });
 
   it("leaves a closer, a deletion and a backtick in the middle of a line alone", () => {

@@ -20,7 +20,8 @@ let one of them fall behind.
   it is doing step by step while the conversation stays where it is.
 - **A model typed by hand in a picker has an ✕** to stop offering it.
 - **A block of code in the box behaves like one.** Typing ``` writes the closing ``` too and puts
-  you inside; the arrows walk out of the block above and below it, and the caret never stops on
+  you inside; the arrows walk out of the block above and below it, making the empty line to land
+  on when there is none, and the caret never stops on
   the hidden fence lines, not even for a frame; the backticks stay hidden when the text is
   selected; and the block cannot be torn: it goes only once it is empty, with Backspace on its
   line.
