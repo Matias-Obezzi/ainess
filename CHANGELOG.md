@@ -24,8 +24,8 @@ let one of them fall behind.
 
 ### Changed
 
-- **A block of code in the box is a rounded card** inside the text, instead of a band across the
-  whole box.
+- **A block of code in the box is a rounded card around the code alone**, with no line for the
+  language and no band across the whole box.
 - **A picture attached to a message shows as a thumbnail inside the box**, above the text, the way
   it will read once sent.
 - **Buttons and selects are a size smaller** across the app, the box starts one line tall and

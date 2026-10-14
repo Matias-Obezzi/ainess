@@ -110,21 +110,31 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
   const nodes: React.ReactNode[] = [];
   let box: React.ReactNode[] = [];
   let boxIndex = -1;
+  /** Words on the opener line (a language, or text typed after the backticks), which the card keeps inside. */
+  let openerWords = false;
+  let closed = false;
   const flush = () => {
     if (boxIndex === -1) return;
     nodes.push(
       // A rounded card a little wider than the code, drawn behind it: the text keeps the column the
-      // textarea puts it in. It sits inside the opener's and the closer's lines rather than across
-      // them, which are blank once their backticks are hidden, so it reads as a box, not a band.
+      // textarea puts it in. It wraps the code lines with a small margin and leaves out the opener
+      // and the closer, which are blank once their backticks are hidden — no language line, only
+      // the code, the way Claude draws it. An opener with words on it keeps them inside the card.
       <span
         key={`fence-${boxIndex}`}
-        className="relative isolate block before:absolute before:-inset-x-1.5 before:top-[0.3lh] before:bottom-[0.3lh] before:-z-10 before:rounded-md before:bg-muted before:content-['']"
+        className={cn(
+          "relative isolate block before:absolute before:-inset-x-1.5 before:-z-10 before:rounded-md before:bg-muted before:content-['']",
+          openerWords ? "before:top-[0.3lh]" : "before:top-[calc(1lh_-_6px)]",
+          closed ? "before:bottom-[calc(1lh_-_6px)]" : "before:bottom-0",
+        )}
       >
         {box}
       </span>,
     );
     box = [];
     boxIndex = -1;
+    openerWords = false;
+    closed = false;
   };
   const dim = (key: React.Key, body: string) => <span key={key} className="text-muted-foreground/50">{body}</span>;
   // The backticks themselves are not drawn: the box is what says "code". They keep their width —
@@ -164,8 +174,10 @@ function renderComposerText(text: string, regions: ReturnType<typeof fenceRegion
       // is the user's own words and reads like them. Dimming the whole line made "```" followed by
       // a sentence look as if the sentence had been swallowed.
       const { ticks, tag, rest } = fencePartOf(body);
+      openerWords = (tag + rest).trim() !== "";
       box.push(hidden(`${i}-ticks`, ticks), dim(`${i}-tag`, tag), rest, ...tail);
     } else {
+      closed = true;
       box.push(hidden(i, body), ...tail);
     }
   });
