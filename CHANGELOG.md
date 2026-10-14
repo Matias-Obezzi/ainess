@@ -13,9 +13,9 @@ let one of them fall behind.
 - **You choose what a planner may run on its own**, in Settings → Permissions: groups of commands
   you turn on or off (git, checking versions, moving around and reading in the shell, tests,
   builds, installing, editing project files, anything), commands of your own to allow, and
-  commands to always block, which win over everything else. Moving around and reading are on by
-  default, so `cd x && git pull` is no longer refused for the `cd`. Claude's planners follow it,
-  since they ask before every command.
+  commands to always block, which win over everything else. Everything but editing project files
+  and any command is on by default, so `cd x && git pull` is no longer refused for the `cd`, nor
+  `npm test` for being a test. Claude's planners follow it, since they ask before every command.
 - **A delegation in the planner's thread opens that agent's run in the side panel**, to watch what
   it is doing step by step while the conversation stays where it is.
 - **A model typed by hand in a picker has an ✕** to stop offering it.

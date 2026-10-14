@@ -48,7 +48,7 @@ export const PLANNER_PRESETS: Preset[] = [
   },
   {
     id: "test",
-    on: false,
+    on: true,
     commands: [
       /^(npm|pnpm|yarn|bun)\s+(test|run\s+test[\w:-]*)(\s|$)/,
       /^npx\s+(vitest|jest|playwright\s+test)(\s|$)/,
@@ -57,7 +57,7 @@ export const PLANNER_PRESETS: Preset[] = [
   },
   {
     id: "build",
-    on: false,
+    on: true,
     commands: [
       /^(npm|pnpm|yarn|bun)\s+run\s+(build|lint|typecheck|check)[\w:-]*(\s|$)/,
       /^npx\s+(tsc|eslint)(\s|$)/,
@@ -66,7 +66,7 @@ export const PLANNER_PRESETS: Preset[] = [
   },
   {
     id: "install",
-    on: false,
+    on: true,
     commands: [
       /^(npm\s+(install|i|ci|add)|pnpm\s+(install|i|add)|yarn(\s+(install|add))?|bun\s+(install|i|add))(\s|$)/,
       /^(pip3?\s+install|uv\s+(pip\s+install|add|sync)|cargo\s+add)(\s|$)/,

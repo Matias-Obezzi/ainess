@@ -198,11 +198,20 @@ describe("plannerMayUse", () => {
     expect(plannerMayUse({ kind: "edit", rawInput: { file_path: "/p/src/main.ts" } }, { presets: { edit: true } })).toBe(true);
   });
 
+  it("lets it test, build and install unless the user turned those off", () => {
+    for (const command of ["git status && npm test", "npm install three", "npm run build", "cargo build"]) {
+      expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(true);
+    }
+    const off = { presets: { test: false, build: false, install: false } };
+    for (const command of ["git status && npm test", "npm install three", "npm run build", "cargo build"]) {
+      expect(plannerMayUse({ kind: "execute", rawInput: { command } }, off), command).toBe(false);
+    }
+  });
+
   it("does not let it do anything else there", () => {
     for (const command of [
-      "git status && npm test", "npm install three", "npm run build",
       "npm ls | sh", "node -e \"require('fs').rmSync('x')\"", "npm ls > deps.txt", "gh pr merge 46",
-      "gh pr view 46; rm -rf src", "cargo build",
+      "gh pr view 46; rm -rf src",
     ]) expect(plannerMayUse({ kind: "execute", rawInput: { command } }), command).toBe(false);
     expect(plannerMayUse({ kind: "execute", rawInput: {} })).toBe(false);
   });
