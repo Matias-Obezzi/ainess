@@ -1,7 +1,7 @@
 // The box helps you write markdown: a list carries on when you ask for a new line, and the keys
 // every editor uses for bold, italic, code and links do that to the selection.
 import { describe, it, expect } from "vitest";
-import { closeFence, continueList, guardFenceKey, snapOutOfFence, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
+import { closeFence, continueList, fenceArrow, guardFenceKey, snapOutOfFence, exitCodeBlock, linkSelection, looksLikeCode, pasteAsCode, wrapSelection } from "@/lib/markdown-edit";
 
 describe("continueList", () => {
   it("carries a bullet on to the next line, indentation and all", () => {
@@ -195,5 +195,26 @@ describe("the caret and a code block", () => {
     expect(guardFenceKey(text, 15, "Delete")).toBe("stop");
     expect(guardFenceKey(text, 4, "Delete")).toBe("stop");
     expect(guardFenceKey(text, 12, "Backspace")).toBeNull();
+  });
+});
+
+describe("arrows around a code block", () => {
+  const text = "hola\n```\ncodigo\n```\nchau";
+  // hola 0-4 | ``` 5-8 | codigo 9-15 | ``` 16-19 | chau 20-24
+  it("steps over the fence lines instead of stopping on them", () => {
+    expect(fenceArrow(text, 12, "ArrowUp", true, true)).toEqual({ text, start: 4, end: 4 });
+    expect(fenceArrow(text, 12, "ArrowDown", true, true)).toEqual({ text, start: 20, end: 20 });
+    expect(fenceArrow(text, 2, "ArrowDown", true, true)).toEqual({ text, start: 9, end: 9 });
+    expect(fenceArrow(text, 22, "ArrowUp", true, true)).toEqual({ text, start: 15, end: 15 });
+    expect(fenceArrow(text, 9, "ArrowLeft", true, true)).toEqual({ text, start: 4, end: 4 });
+    expect(fenceArrow(text, 15, "ArrowRight", true, true)).toEqual({ text, start: 20, end: 20 });
+    expect(fenceArrow(text, 4, "ArrowRight", true, true)).toEqual({ text, start: 9, end: 9 });
+    expect(fenceArrow(text, 20, "ArrowLeft", true, true)).toEqual({ text, start: 15, end: 15 });
+  });
+
+  it("leaves a wrapped line to the arrow until its first or last row", () => {
+    expect(fenceArrow(text, 12, "ArrowUp", false, true)).toBeNull();
+    expect(fenceArrow(text, 12, "ArrowDown", true, false)).toBeNull();
+    expect(fenceArrow(text, 12, "ArrowLeft", true, true)).toBeNull();
   });
 });

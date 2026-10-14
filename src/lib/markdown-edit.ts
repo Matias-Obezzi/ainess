@@ -219,3 +219,45 @@ export function guardFenceKey(text: string, caret: number, key: "Backspace" | "D
   }
   return null;
 }
+
+/**
+ * Where an arrow key takes the caret when its next stop would be a fence line, decided before the
+ * key moves it, so the caret never shows on the hidden opener or closer for a frame. `firstRow` and
+ * `lastRow` say whether the caret is on the first or the last row its line wraps into: up and down
+ * only leave the line from there. Null when the arrow can do what it always does.
+ */
+export function fenceArrow(
+  text: string,
+  caret: number,
+  key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+  firstRow: boolean,
+  lastRow: boolean,
+): TextEdit | null {
+  const at = (i: number): TextEdit => ({ text, start: i, end: i });
+  const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+  const breakAt = text.indexOf("\n", caret);
+  const lineEnd = breakAt === -1 ? text.length : breakAt;
+  for (const r of fenceRegions(text)) {
+    if (!r.closed) continue;
+    const { bodyStart, bodyEnd } = fenceLines(text, r);
+    const above = r.start - 1;
+    const below = r.end + 1;
+    // Out of the block.
+    if (key === "ArrowUp" && firstRow && lineStart === bodyStart) {
+      return r.start === 0 ? { text: `\n${text}`, start: 0, end: 0 } : at(above);
+    }
+    if (key === "ArrowDown" && lastRow && lineEnd === bodyEnd) {
+      return r.end === text.length ? { text: `${text}\n`, start: text.length + 1, end: text.length + 1 } : at(below);
+    }
+    if (key === "ArrowLeft" && caret === bodyStart) return r.start === 0 ? { text: `\n${text}`, start: 0, end: 0 } : at(above);
+    if (key === "ArrowRight" && caret === bodyEnd) {
+      return r.end === text.length ? { text: `${text}\n`, start: text.length + 1, end: text.length + 1 } : at(below);
+    }
+    // Into it, from the line above or below.
+    if (key === "ArrowDown" && lastRow && r.start > 0 && lineEnd === above) return at(bodyStart);
+    if (key === "ArrowUp" && firstRow && below <= text.length && lineStart === below) return at(bodyEnd);
+    if (key === "ArrowRight" && r.start > 0 && caret === above) return at(bodyStart);
+    if (key === "ArrowLeft" && below <= text.length && caret === below) return at(bodyEnd);
+  }
+  return null;
+}

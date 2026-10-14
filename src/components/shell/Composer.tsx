@@ -24,7 +24,7 @@ import { useAgentCommands } from "@/lib/agent-commands";
 import { activeCompletion, applyCompletion } from "@/lib/completion";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import { fenceRegions, fenceSegments, insideFence, lineIndent } from "@/lib/fences";
-import { closeFence, continueList, exitCodeBlock, guardFenceKey, snapOutOfFence, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
+import { closeFence, continueList, exitCodeBlock, fenceArrow, guardFenceKey, snapOutOfFence, linkSelection, looksLikeCode, pasteAsCode, wrapSelection, type TextEdit } from "@/lib/markdown-edit";
 import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
@@ -103,6 +103,30 @@ function fencePartOf(line: string): { ticks: string; tag: string; rest: string }
   const [, ticks, tag, after] = m;
   const tagIsWholeLine = after.trim() === "" && tag.length <= MAX_TAG;
   return tagIsWholeLine ? { ticks, tag, rest: after } : { ticks, tag: "", rest: tag + after };
+}
+
+/**
+ * How far down the layer the character at `offset` sits. The layer wraps the text exactly as the
+ * box does, so it is where the rows of a long line can be told apart. Null when it cannot be read.
+ */
+function topInLayer(layer: HTMLElement, offset: number): number | null {
+  const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+  let left = offset;
+  let last: Text | null = null;
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    last = node;
+    if (left < node.data.length) {
+      const range = document.createRange();
+      range.setStart(node, left);
+      range.setEnd(node, left + 1);
+      return range.getClientRects()[0]?.top ?? range.getBoundingClientRect().top;
+    }
+    left -= node.data.length;
+  }
+  if (!last) return null;
+  const range = document.createRange();
+  range.setStart(last, last.data.length);
+  return range.getBoundingClientRect().top;
 }
 
 function renderComposerText(text: string, regions: ReturnType<typeof fenceRegions>, ghost?: string) {
@@ -1046,6 +1070,25 @@ export function Composer() {
       handleStop();
       return;
     }
+    // Around a ``` block the arrows step over its hidden fence lines, decided here, before the key
+    // moves the caret: moved first and corrected after, it showed on the fence line for a frame.
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight")
+      && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
+      && e.currentTarget.selectionStart === e.currentTarget.selectionEnd && fenceHighlightRegions.length > 0) {
+      const caret = e.currentTarget.selectionStart;
+      const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+      const breakAt = text.indexOf("\n", caret);
+      const lineEnd = breakAt === -1 ? text.length : breakAt;
+      const layer = highlightRef.current;
+      const top = (offset: number) => (layer ? topInLayer(layer, offset) : null);
+      const here = top(caret);
+      const sameRow = (offset: number) => {
+        const there = top(offset);
+        return here === null || there === null || Math.abs(here - there) < 2;
+      };
+      const step = fenceArrow(text, caret, e.key, sameRow(lineStart), sameRow(lineEnd));
+      if (step) return applyEdit(step);
+    }
     // Out of a ``` block that ends the message: under its closing fence there is no line for the
     // arrow to land on, so it makes one. Only there — everywhere else the arrow is the arrow, and
     // ArrowUp is left alone entirely.
@@ -1368,7 +1411,7 @@ export function Composer() {
               // No halo around the box: three pixels of ring on the one control that is always on
               // screen read as an error. The focus is still said — the border turns to the ring
               // colour, which the base Textarea already does — it is just said once.
-              className="relative resize-none min-h-[40px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="relative resize-none min-h-[40px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary/30 selection:text-transparent dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
