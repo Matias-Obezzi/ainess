@@ -28,8 +28,9 @@ let one of them fall behind.
   whole box.
 - **A picture attached to a message shows as a thumbnail inside the box**, above the text, the way
   it will read once sent.
-- **Buttons are a size smaller** across the app, and so are the send, stop and attach icons of the
-  box.
+- **Buttons and selects are a size smaller** across the app, the box starts one line tall and
+  grows as you write, and the bar under it is a compact one: small icons, small grey labels for
+  the agent, the model and the quota, and smaller saved orders above it.
 
 ### Fixed
 

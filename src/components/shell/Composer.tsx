@@ -67,7 +67,7 @@ interface MenuOption {
  * and the same grey under the pointer. They sit next to the box all day and pick something you
  * rarely change — a framed control for that is a frame around nothing.
  */
-const FLAT_SELECT = "h-8 border-0 bg-transparent text-xs shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent";
+const FLAT_SELECT = "h-6 data-[size=default]:h-6 gap-1 border-0 bg-transparent px-1.5 text-xs text-muted-foreground shadow-none hover:bg-accent hover:text-foreground dark:bg-transparent dark:hover:bg-accent";
 
 /**
  * And the width of whatever they are showing, the way the quota button beside them takes the room
@@ -318,7 +318,7 @@ function ChatParticipantModel({ chatId, participants, index, agent, name }: {
 
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={18} />}
+      {agent && <AgentAvatar provider={agent.provider} color={agent.color} size={14} />}
       <span className="min-w-0 max-w-[10rem] truncate text-xs text-muted-foreground">{name}</span>
       <Select value={model || "none"} onValueChange={pick}>
         <SelectTrigger
@@ -1296,7 +1296,7 @@ export function Composer() {
               // than the box, the grey suggestion is drawn here and nowhere else, and that line
               // was enough to give it a scrollbar the box did not have, take the room from its own
               // lines, and slide every word away from the caret.
-              className="pointer-events-none absolute inset-px min-h-[58px] max-h-[198px] box-border overflow-hidden font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
+              className="pointer-events-none absolute inset-px min-h-[38px] max-h-[198px] box-border overflow-hidden font-sans text-base leading-normal tracking-normal text-foreground md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word]"
             >
               {/* The suggestion travels inside: it has to sit before the trailing newline the layer
                   appends, on the line the caret is on, whatever that line is part of. */}
@@ -1331,12 +1331,12 @@ export function Composer() {
               onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }}
               placeholder={rotating || ghostInstead ? "" : hint}
               aria-label={placeholder}
-              rows={2}
+              rows={1}
               // Transparent text, a caret and a selection: the layer underneath draws the words.
               // No halo around the box: three pixels of ring on the one control that is always on
               // screen read as an error. The focus is still said — the border turns to the ring
               // colour, which the base Textarea already does — it is just said once.
-              className="relative resize-none min-h-[60px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="relative resize-none min-h-[40px] max-h-[200px] box-border overflow-y-auto font-sans text-base leading-normal tracking-normal md:text-sm pl-3 py-2 pr-12 whitespace-pre-wrap break-words [overflow-wrap:break-word] [word-break:break-word] border-transparent shadow-none bg-transparent text-transparent caret-foreground selection:bg-primary selection:text-primary-foreground dark:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {/* The real placeholder of a textarea cannot move, so this sits on top of the empty box.
                 Nothing to click through, nothing to read out: the label above is what is announced. */}
@@ -1356,12 +1356,12 @@ export function Composer() {
             {/* No filled shape sitting on the text: the icon carries it, and the only colour is the
                 grey the rest of the app uses to say "your pointer is here". A square and a paper
                 plane are already two different things without painting one of them red. */}
-            <div className="absolute bottom-2 right-2">
+            <div className="absolute bottom-2 right-2 flex">
               {busy ? (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-foreground hover:bg-accent"
+                  className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={handleStop}
                   title={t("composer.stopHint")}
                   aria-label={t("composer.stop")}
@@ -1372,7 +1372,7 @@ export function Composer() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-foreground hover:bg-accent"
+                  className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => handleSend()}
                   disabled={!canSend}
                   title={t("composer.sendHint")}
@@ -1390,13 +1390,13 @@ export function Composer() {
         {/* The row used to be dropped in a chat on a phone with no quota ring to show, back when
             it had nothing else in it. It says which model each participant runs on now. */}
         {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
-          <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex gap-1 items-center flex-wrap">
             {!compact && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-foreground hover:bg-accent"
+                className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => fileInputRef.current?.click()}
                 title={t("attachments.attachHint")}
                 aria-label={t("attachments.attach")}
@@ -1407,7 +1407,7 @@ export function Composer() {
 
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}
-            <div className="ml-auto flex items-center gap-2 flex-wrap">
+            <div className="ml-auto flex items-center gap-1 flex-wrap">
               {chatMode ? (
                 /* One row per member: the member itself as a name and a logo, and the model as the
                    only thing you can change from here. See `ChatParticipantModel`. */
@@ -1432,7 +1432,7 @@ export function Composer() {
                     <SelectContent>
                       {agents.map(a => (
                         <SelectItem key={a.id} value={a.id}>
-                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={14} />{a.name}</span>
+                          <span className="inline-flex items-center gap-1.5"><ProviderLogo provider={a.provider} size={12} />{a.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1445,7 +1445,7 @@ export function Composer() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 min-w-0 gap-1.5 px-2 text-xs"
+                      className="h-6 min-w-0 gap-1 px-1.5 text-xs text-muted-foreground"
                       aria-label={t("composer.pickModel")}
                       title={activeModelLabel}
                       onClick={() => setShowModel(v => !v)}
