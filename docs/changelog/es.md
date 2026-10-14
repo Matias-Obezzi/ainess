@@ -2,6 +2,49 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.31.0 — 2026-10-13
+
+### Nuevo
+
+- **Elegís qué puede correr un planificador por su cuenta**, en Configuración → Permisos: grupos de
+  comandos que prendés o apagás (git, consultar versiones, moverse y leer por la terminal, tests,
+  compilar, instalar, editar archivos del proyecto, cualquier comando), comandos propios para
+  permitir y comandos para bloquear siempre, que ganan sobre todo lo demás. Todo viene prendido
+  salvo editar archivos del proyecto y cualquier comando, así que `cd x && git pull` ya no se
+  rechaza por el `cd`, ni `npm test` por ser un test. Lo respetan los planificadores de Claude, que
+  preguntan antes de cada comando.
+- **Una delegación en el hilo del planificador abre la corrida de ese agente en el panel lateral**,
+  para ver paso a paso qué está haciendo sin moverte de la conversación.
+- **Un modelo escrito a mano en un selector tiene una ✕** para dejar de ofrecerlo.
+- **Un bloque de código en la caja se comporta como tal.** Al escribir ```` ``` ```` se agrega
+  también el cierre y quedás adentro; las flechas salen del bloque hacia arriba y hacia abajo,
+  creando la línea vacía si no hay ninguna, y el cursor nunca se para en las líneas ocultas de las
+  comillas, ni por un instante; las comillas siguen ocultas al seleccionar el texto; y el bloque no
+  se puede romper: solo se va cuando está vacío, con Backspace en su línea.
+
+### Cambiado
+
+- **Un bloque de código en la caja es una tarjeta redondeada alrededor del código solo**, sin línea
+  para el lenguaje y sin una franja de lado a lado.
+- **Una imagen adjunta se ve como miniatura dentro de la caja**, arriba del texto, como se va a ver
+  una vez enviada.
+- **Los botones y los selectores son un tamaño más chicos** en toda la app, la caja arranca con una
+  línea y crece a medida que escribís, y la barra de abajo es compacta: íconos chicos, etiquetas
+  chicas y grises para el agente, el modelo y la cuota, y las órdenes guardadas de arriba más
+  chicas.
+
+### Arreglado
+
+- **Se abría una ventana de terminal mientras trabajaban los agentes** en Windows 11, donde Windows
+  Terminal es la consola por defecto: la consola oculta que comparten los agentes vivía en una
+  ventana de Terminal que no se podía ocultar. En Windows 11 24H2 o posterior ahora es una consola
+  sin ninguna ventana.
+- **Configuración → Agentes decía que Claude Code no estaba detectado** en una máquina sin el CLI
+  `claude`, mientras los agentes funcionaban: corren con la copia que trae el adaptador ACP. Ahora
+  la tarjeta dice que está listo y no ofrece instalar lo que no hace falta.
+- **Un turno terminado mostraba dos veces lo que dijo el agente** con la actividad abierta: una en
+  la actividad y otra como respuesta abajo.
+
 ## 0.30.1 — 2026-10-13
 
 ### Arreglado

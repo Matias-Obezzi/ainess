@@ -2,6 +2,52 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## 0.31.0 — 2026-10-13
+
+### Nouveau
+
+- **Vous choisissez ce qu'un planificateur peut exécuter seul**, dans Paramètres → Permissions : des
+  groupes de commandes à activer ou désactiver (git, consulter les versions, se déplacer et lire
+  dans le terminal, tests, compilation, installation, modifier les fichiers du projet, n'importe
+  quelle commande), vos propres commandes à autoriser et des commandes à toujours bloquer, qui
+  l'emportent sur tout le reste. Tout est activé sauf modifier les fichiers du projet et n'importe
+  quelle commande, donc `cd x && git pull` n'est plus refusé à cause du `cd`, ni `npm test` parce
+  que c'est un test. Les planificateurs Claude en tiennent compte, car ils demandent avant chaque
+  commande.
+- **Une délégation dans le fil du planificateur ouvre l'exécution de cet agent dans le panneau
+  latéral**, pour suivre pas à pas ce qu'il fait sans quitter la conversation.
+- **Un modèle saisi à la main dans un sélecteur a une ✕** pour ne plus le proposer.
+- **Un bloc de code dans la zone de saisie se comporte comme tel.** Taper ```` ``` ```` écrit aussi
+  la fermeture et vous place dedans ; les flèches sortent du bloc vers le haut et vers le bas, en
+  créant la ligne vide s'il n'y en a pas, et le curseur ne s'arrête jamais sur les lignes cachées
+  des backticks, pas même un instant ; les backticks restent cachés quand le texte est sélectionné ;
+  et le bloc ne peut pas être déchiré : il ne part qu'une fois vide, avec Retour arrière sur sa
+  ligne.
+
+### Modifié
+
+- **Un bloc de code dans la zone de saisie est une carte arrondie autour du seul code**, sans ligne
+  pour le langage ni bande sur toute la largeur.
+- **Une image jointe s'affiche en vignette dans la zone de saisie**, au-dessus du texte, comme elle
+  apparaîtra une fois envoyée.
+- **Les boutons et les sélecteurs sont d'une taille plus petits** dans toute l'app, la zone de
+  saisie commence sur une ligne et grandit au fil de la frappe, et la barre en dessous est compacte
+  : petites icônes, petites étiquettes grises pour l'agent, le modèle et le quota, et des ordres
+  enregistrés plus petits au-dessus.
+
+### Corrigé
+
+- **Une fenêtre de terminal s'ouvrait pendant que les agents travaillaient** sous Windows 11, où
+  Windows Terminal est la console par défaut : la console cachée que partagent les agents vivait
+  dans une fenêtre Terminal impossible à masquer. Sous Windows 11 24H2 et plus récent, c'est
+  désormais une console sans aucune fenêtre.
+- **Paramètres → Agents disait que Claude Code n'était pas détecté** sur une machine sans le CLI
+  `claude`, alors que les agents fonctionnaient : ils tournent sur la copie fournie par l'adaptateur
+  ACP. La carte indique maintenant qu'il est prêt et ne propose plus d'installer ce qui n'est pas
+  nécessaire.
+- **Un tour terminé affichait deux fois ce qu'avait dit l'agent** avec l'activité ouverte : une fois
+  dans l'activité et une fois comme réponse en dessous.
+
 ## 0.30.1 — 2026-10-13
 
 ### Corrigé

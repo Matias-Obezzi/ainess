@@ -2,6 +2,48 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.31.0 — 2026-10-13
+
+### Novo
+
+- **Você escolhe o que um planejador pode executar sozinho**, em Configurações → Permissões: grupos
+  de comandos que você liga ou desliga (git, consultar versões, navegar e ler pelo terminal, testes,
+  compilar, instalar, editar arquivos do projeto, qualquer comando), comandos próprios para permitir
+  e comandos para bloquear sempre, que valem mais que todo o resto. Tudo vem ligado, exceto editar
+  arquivos do projeto e qualquer comando, então `cd x && git pull` não é mais recusado por causa do
+  `cd`, nem `npm test` por ser um teste. Os planejadores do Claude seguem isto, porque perguntam
+  antes de cada comando.
+- **Uma delegação na conversa do planejador abre a execução desse agente no painel lateral**, para
+  ver passo a passo o que ele está fazendo sem sair da conversa.
+- **Um modelo digitado à mão num seletor tem um ✕** para deixar de oferecê-lo.
+- **Um bloco de código na caixa se comporta como tal.** Digitar ```` ``` ```` escreve também o
+  fechamento e coloca você dentro; as setas saem do bloco para cima e para baixo, criando a linha
+  vazia quando não há nenhuma, e o cursor nunca para nas linhas ocultas das crases, nem por um
+  instante; as crases continuam ocultas ao selecionar o texto; e o bloco não pode ser quebrado: só
+  sai quando está vazio, com Backspace na sua linha.
+
+### Alterado
+
+- **Um bloco de código na caixa é um cartão arredondado só em volta do código**, sem linha para a
+  linguagem e sem uma faixa de lado a lado.
+- **Uma imagem anexada aparece como miniatura dentro da caixa**, acima do texto, como vai aparecer
+  depois de enviada.
+- **Botões e seletores ficaram um tamanho menores** em todo o app, a caixa começa com uma linha e
+  cresce conforme você escreve, e a barra embaixo dela é compacta: ícones pequenos, rótulos pequenos
+  e cinzas para o agente, o modelo e a cota, e as ordens salvas acima menores.
+
+### Corrigido
+
+- **Uma janela de terminal abria enquanto os agentes trabalhavam** no Windows 11, onde o Windows
+  Terminal é o console padrão: o console oculto que os agentes compartilham vivia numa janela do
+  Terminal que não podia ser escondida. No Windows 11 24H2 ou posterior agora é um console sem
+  nenhuma janela.
+- **Configurações → Agentes dizia que o Claude Code não foi detectado** numa máquina sem o CLI
+  `claude`, enquanto os agentes funcionavam: eles rodam na cópia que vem com o adaptador ACP. O
+  cartão agora diz que está pronto e não oferece instalar o que não é necessário.
+- **Um turno terminado mostrava duas vezes o que o agente disse** com a atividade aberta: uma na
+  atividade e outra como resposta abaixo.
+
 ## 0.30.1 — 2026-10-13
 
 ### Corrigido
