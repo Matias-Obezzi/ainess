@@ -160,7 +160,7 @@ describe("exitCodeBlock", () => {
 
 describe("closeFence", () => {
   it("writes the closer and a line after it when the third backtick opens a fence", () => {
-    expect(closeFence("hola\n``", "hola\n```", 8)).toEqual({ text: "hola\n```\n```\n", start: 8, end: 8 });
+    expect(closeFence("hola\n``", "hola\n```", 8)).toEqual({ text: "hola\n```\n\n```\n", start: 9, end: 9 });
   });
 
   it("leaves a closer, a deletion and a backtick in the middle of a line alone", () => {
