@@ -179,3 +179,44 @@ describe("AgentDialog - provider and name synchronization", () => {
     expect(nameInput.value).toBe("Antigravity");
   });
 });
+
+describe("AgentDialog - reasoning effort", () => {
+  beforeEach(() => {
+    resetStore();
+    window.HTMLElement.prototype.hasPointerCapture = () => false;
+    window.HTMLElement.prototype.setPointerCapture = () => {};
+    window.HTMLElement.prototype.releasePointerCapture = () => {};
+    window.HTMLElement.prototype.scrollIntoView = () => {};
+    useAppStore.setState(state => ({
+      binaries: {
+        ...state.binaries,
+        claude: { path: "C:/claude.exe" },
+        antigravity: { path: "C:/antigravity.exe" },
+      },
+    }));
+  });
+
+  it("offers the effort for a provider that takes it and hides it for one that does not", () => {
+    const { unmount } = render(<AgentDialog open={true} onOpenChange={() => {}} agent={baseAgent} agents={[baseAgent]} onSave={vi.fn()} />);
+    expect(screen.queryByText(/^(esfuerzo|effort)$/i)).not.toBeNull();
+    unmount();
+
+    const agy: AgentConfig = { ...baseAgent, provider: "antigravity", name: "Antigravity" };
+    render(<AgentDialog open={true} onOpenChange={() => {}} agent={agy} agents={[agy]} onSave={vi.fn()} />);
+    expect(screen.queryByText(/^(esfuerzo|effort)$/i)).toBeNull();
+  });
+
+  it("keeps the saved effort, and drops it when the provider changes to one without it", () => {
+    const withEffort: AgentConfig = { ...baseAgent, effort: "high" };
+    const onSave = vi.fn();
+    render(<AgentDialog open={true} onOpenChange={() => {}} agent={withEffort} agents={[withEffort]} onSave={onSave} />);
+    const saveButton = screen.getByRole("button", { name: /guardar|save/i });
+    fireEvent.click(saveButton);
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ effort: "high" }));
+
+    fireEvent.keyDown(screen.getAllByRole("combobox")[0], { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: /Antigravity/i }));
+    fireEvent.click(saveButton);
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ provider: "antigravity", effort: undefined }));
+  });
+});

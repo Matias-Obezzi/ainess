@@ -2,6 +2,36 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## 0.32.0 — 2026-10-22
+
+### Novo
+
+- **O remoto tem uma visão de desktop.** Abrir `/desktop` num computador mostra a mesma interface
+  do app (barra lateral, projetos, quadro), controlando o computador anfitrião como a página do
+  celular faz; a página do celular continua leve como antes.
+- **Dá para anexar arquivos pelo celular.** A caixa do remoto envia os anexos ao anfitrião, que os
+  guarda dentro do projeto como os anexados no desktop.
+- **Chats e projetos pelo remoto.** Começar um chat com um agente, renomear um chat, mudar quem
+  participa e apagá-lo agora também funcionam pelo remoto, assim como reiniciar a sessão de um
+  agente, o modo autônomo e limpar as mensagens de um projeto; as configurações e os projetos
+  continuam sendo editados no desktop.
+- **Você escolhe o que o Esc faz enquanto um agente trabalha**, em Configurações → Geral →
+  Teclado: pará-lo na hora (como até agora), pará-lo só com dois Esc seguidos ou nada. O Esc
+  continua fechando menus e diálogos, e o botão de parar funciona com qualquer uma das três.
+- **Cada agente pode ter seu próprio esforço de raciocínio**, ao lado do modelo no diálogo do
+  agente: de baixo a máximo, ou o padrão do provedor. Por enquanto só o Claude Code aceita; nos
+  provedores que não aceitam, a opção não aparece.
+
+### Corrigido
+
+- **No Windows, os atalhos de CLI e as verificações de `--version` que falham voltam ao motor.** O
+  executor segue os atalhos `.cmd` do npm e `.nodejs` do NVM até o binário real da versão ativa do
+  Node, e ignora binários no PATH cuja verificação de `--version` falhou, assim as execuções voltam
+  ao ambiente que o app gerencia.
+- **Pelo ACP, o Claude Code roda na cópia do adaptador a menos que você escolha uma à mão** em
+  Configurações → Agentes, e o cartão diz qual: o caminho que você escolheu, ou que usa a do
+  adaptador. Um `claude` encontrado no PATH não é mais repassado por conta própria.
+
 ## 0.31.0 — 2026-10-13
 
 ### Novo

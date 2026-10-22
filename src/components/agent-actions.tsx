@@ -72,7 +72,7 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
   const busy = status === "working" || status === "waiting";
 
   // Opens (or creates) this agent's individual chat and switches the project screen to it.
-  const openChat = () => {
+  const openChat = async () => {
     const state = useAppStore.getState();
     if (!currentProjectId) return;
     const existing = state.config.chats.find(
@@ -84,14 +84,16 @@ export function useAgentActions(agent: AgentConfig): AgentActions {
     );
     const chatId = existing
       ? existing.id
-      : state.createChat({
+      : await state.createChat({
           projectId: currentProjectId,
           name: agent.name,
           mode: "individual",
           participants: [{ agentId: agent.id, role: "asistente" }]
         });
-    state.openProject(currentProjectId, chatId);
-    state.setProjectMode("chat", currentProjectId);
+    if (chatId) {
+      state.openProject(currentProjectId, chatId);
+      state.setProjectMode("chat", currentProjectId);
+    }
   };
 
   return {

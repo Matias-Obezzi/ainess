@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "ainess"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -46,6 +46,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tokio",
  "tokio-stream",
+ "tower",
  "webview2-com",
  "which",
  "windows-core 0.61.2",

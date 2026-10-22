@@ -271,6 +271,32 @@ fn read_file_abs_blocking(path: String) -> Result<Option<String>, String> {
     }
 }
 
+/// Resolves the real canonical path of a file or folder, following symlinks/junctions.
+/// If the file does not exist yet (e.g. for write), resolves the parent directory.
+#[tauri::command]
+pub async fn real_path(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let p = std::path::Path::new(&path);
+        if let Ok(c) = p.canonicalize() {
+            let s = c.to_string_lossy().into_owned();
+            let s = s.strip_prefix(r"\\?\").unwrap_or(&s).to_string();
+            return s;
+        }
+        if let Some(parent) = p.parent() {
+            if let Ok(cp) = parent.canonicalize() {
+                if let Some(file_name) = p.file_name() {
+                    let s = cp.join(file_name).to_string_lossy().into_owned();
+                    let s = s.strip_prefix(r"\\?\").unwrap_or(&s).to_string();
+                    return s;
+                }
+            }
+        }
+        path
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 /// Which of `paths` exist. Read-only, and it never reads a byte of them.
 ///
 /// The caller wants to know which lockfile a project has, and a `pnpm-lock.yaml` can be several

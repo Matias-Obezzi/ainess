@@ -39,11 +39,11 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
   const set = (patch: Partial<RoomConfig>) => setDraft(d => ({ ...d, ...patch }));
   const saved = project.room;
 
-  const save = () => {
+  const save = async () => {
     let chatId = draft.chatId;
     // The room speaks through a shared chat with the project's agents; the first time, it gets one.
     if (draft.enabled && !(chatId && useAppStore.getState().config.chats.some(c => c.id === chatId))) {
-      chatId = createChat({
+      chatId = await createChat({
         projectId: project.id,
         name: t("room.chatName", { room: draft.room.trim() }),
         mode: "shared",

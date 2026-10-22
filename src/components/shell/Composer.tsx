@@ -8,7 +8,7 @@ import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { AgentConfig, ChatParticipant, Preset } from "@/types";
 import { useAppStore, selectAllAgents, selectProjectAgents, selectProjectChatId } from "@/store";
-import { instructAgent } from "@/lib/orchestrator";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import { questionsForComposer } from "@/lib/pending-question";
 import { useDraft } from "@/hooks/useDraft";
 import { ghostFor, ghostTakesPlaceholder } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
+import { escapeShouldStop } from "@/lib/escape-stop";
 import { Typewriter } from "@/components/ui/typewriter";
 import { cn } from "@/lib/utils";
 import {
@@ -388,6 +389,7 @@ export function Composer() {
   const runtime = useAppStore(state => state.runtime);
   const currentChatId = useAppStore(state => selectProjectChatId(state, currentProjectId));
   const submitPrompt = useAppStore(state => state.submitPrompt);
+  const instructAgent = useAppStore(state => state.instructAgent);
   const sendChatMessage = useAppStore(state => state.sendChatMessage);
   const stopChat = useAppStore(state => state.stopChat);
   const queueChatMessage = useAppStore(state => state.queueChatMessage);
@@ -935,21 +937,32 @@ export function Composer() {
     else if (currentProjectId) void stopAll(currentProjectId);
   };
 
+  // The previous Escape that did not stop anything, for the "twice" setting (see lib/escape-stop.ts).
+  const escapeArmedAt = useRef<number | null>(null);
+  /** Escape while busy, from either path: stops, or not, as Settings → General says. */
+  const handleEscapeStop = () => {
+    const mode = config.escapeStops;
+    const { stop, armedAt } = escapeShouldStop(mode, escapeArmedAt.current, Date.now());
+    escapeArmedAt.current = armedAt;
+    if (stop) handleStop();
+    else if (mode === "twice") toast.info(t("composer.escapeAgain"));
+  };
+
   // Escape stops the running turn/task from anywhere in the project screen (dialogs keep it).
   useEffect(() => {
-    if (!busy) return;
+    if (!busy || config.escapeStops === "never") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       // Escape belongs to the shell running in a terminal, to open dialogs and to the
       // hierarchy inspector (there it just closes the panel).
       if ((e.target as HTMLElement | null)?.closest?.("[role=dialog], [data-inspector], .xterm")) return;
       e.preventDefault();
-      handleStop();
+      handleEscapeStop();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, chatMode, currentChatId, currentProjectId]);
+  }, [busy, chatMode, currentChatId, currentProjectId, config.escapeStops]);
 
   // These keys belong to the composer, so they are handled here rather than by the window
   // listener in App.tsx, but they are still declared in src/lib/shortcuts.ts (group "composer"),
@@ -1065,9 +1078,11 @@ export function Composer() {
       acceptGhost();
       return;
     }
-    if (e.key === "Escape" && busy) {
+    if (e.key === "Escape" && busy && config.escapeStops !== "never") {
       e.preventDefault();
-      handleStop();
+      // The window listener would see this same press and count it a second time.
+      e.stopPropagation();
+      handleEscapeStop();
       return;
     }
     // Around a ``` block the arrows step over its hidden fence lines, decided here, before the key
@@ -1120,7 +1135,8 @@ export function Composer() {
   const noTeam = !chatMode && agents.length === 0;
   // On a phone there is no Ctrl+Enter to mention, and the room the hint takes is room the thread
   // does not get. `compact` is the phone page (see lib/platform.ts), not a screen width.
-  const compact = isRemoteBuild();
+  const remoteLayout = useAppStore(state => state.remoteLayout);
+  const compact = isRemoteBuild() && remoteLayout !== "desktop";
   const [showModel, setShowModel] = useState(false);
   const placeholder = chatMode
     ? t("composer.placeholder.chat", { name: chat?.name ?? t("composer.theChat") })
@@ -1438,7 +1454,7 @@ export function Composer() {
                   size="icon"
                   className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={handleStop}
-                  title={t("composer.stopHint")}
+                  title={t(config.escapeStops === "never" ? "composer.stop" : "composer.stopHint")}
                   aria-label={t("composer.stop")}
                 >
                   <Square className="h-3.5 w-3.5" />
@@ -1466,19 +1482,17 @@ export function Composer() {
             it had nothing else in it. It says which model each participant runs on now. */}
         {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
           <div className="flex gap-1 items-center flex-wrap">
-            {!compact && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
-                onClick={() => fileInputRef.current?.click()}
-                title={t("attachments.attachHint")}
-                aria-label={t("attachments.attach")}
-              >
-                <Paperclip className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              title={t("attachments.attachHint")}
+              aria-label={t("attachments.attach")}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </Button>
 
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}

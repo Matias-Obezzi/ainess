@@ -2,6 +2,36 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## 0.32.0 — 2026-10-22
+
+### Nuevo
+
+- **El remoto tiene una vista de escritorio.** Al abrir `/desktop` desde una computadora se ve la
+  misma interfaz que en la app (barra lateral, proyectos, tablero), manejando el equipo anfitrión
+  como lo hace la página del teléfono; la página del teléfono sigue tan liviana como antes.
+- **Se pueden adjuntar archivos desde el teléfono.** La caja del remoto manda los adjuntos al
+  anfitrión, que los guarda dentro del proyecto como los que se adjuntan en el escritorio.
+- **Chats y proyectos desde el remoto.** Empezar un chat con un agente, renombrar un chat, cambiar
+  quién participa y borrarlo ahora también funcionan desde el remoto, igual que reiniciar la sesión
+  de un agente, el modo autónomo y vaciar los mensajes de un proyecto; la configuración y los
+  proyectos se siguen editando en el escritorio.
+- **Elegís qué hace Esc mientras un agente trabaja**, en Configuración → General → Teclado:
+  frenarlo en el acto (como hasta ahora), frenarlo solo con dos Esc seguidos o nada. Esc sigue
+  cerrando menús y diálogos, y el botón de frenar funciona con cualquiera de las tres.
+- **Cada agente puede tener su propio esfuerzo de razonamiento**, al lado del modelo en el diálogo
+  del agente: de bajo a máximo, o el del proveedor. Por ahora solo lo toma Claude Code; en los
+  proveedores que no lo aceptan la opción no aparece.
+
+### Arreglado
+
+- **En Windows, los atajos de los CLI y las pruebas de `--version` que fallan vuelven al motor.**
+  El ejecutor sigue los atajos `.cmd` de npm y `.nodejs` de NVM hasta el binario real de la versión
+  de Node activa, e ignora los binarios del PATH cuya prueba de `--version` falló, así las corridas
+  vuelven al entorno que administra la app.
+- **Por ACP, Claude Code corre con la copia del adaptador salvo que elijas una a mano** en
+  Configuración → Agentes, y la tarjeta dice cuál: la ruta que elegiste o que usa la del adaptador.
+  Un `claude` encontrado en el PATH ya no se pasa por su cuenta.
+
 ## 0.31.0 — 2026-10-13
 
 ### Nuevo

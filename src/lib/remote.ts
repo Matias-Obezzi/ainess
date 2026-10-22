@@ -4,7 +4,8 @@
 import { useAppStore, selectRoots, selectProjectAgents } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
-import type { AgentConfig, AgentQuestion, AgentStatus, Approval, Binaries, Chat, ChatMessage, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
+import type { AgentConfig, AgentQuestion, AgentStatus, Approval, Binaries, BoardSource, Chat, ChatMessage, ChatParticipant, CommMessage, Run, Task, TaskStatus, ProviderId, ProviderQuota } from "@/types";
+import type { RepoState } from "@/lib/git-repo";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { pendingApprovals } from "@/lib/approvals";
 import { isForUser } from "@/lib/pending-question";
@@ -19,7 +20,7 @@ export interface RemoteSnapshot {
   serverTime: number;
   /** Already resolved: the phone shows the same language as the app, whatever its own system says. */
   language: Language;
-  projects: Array<{ id: string; name: string; workspaceDir: string; color?: string; createdAt: number; activeTaskRunId: string | null; running: number }>;
+  projects: Array<{ id: string; name: string; workspaceDir: string; repoDir?: string; color?: string; createdAt: number; activeTaskRunId: string | null; running: number; board?: BoardSource; autonomous?: { until: number } }>;
   /** Every project's team, flattened; `projectId` says which one each agent belongs to. */
   agents: Array<Pick<AgentConfig, "id" | "name" | "provider" | "role" | "parentId" | "model" | "description" | "color"> & { projectId: string }>;
   runtime: Record<string, Record<string, { status: AgentStatus; currentTask?: string }>>;
@@ -40,6 +41,8 @@ export interface RemoteSnapshot {
   tasks: Task[];
   /** Latest quota fetched per provider, if any. */
   quota: Partial<Record<ProviderId, ProviderQuota>>;
+  /** Cached git repository status per project so branch badges and diff panels work remotely. */
+  repoState?: Record<string, RepoState>;
 }
 
 export interface RemoteCommand {
@@ -139,6 +142,9 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
       createdAt: p.createdAt,
       activeTaskRunId: s.activeTaskRunId[p.id] ?? null,
       running: runningByProject[p.id] ?? 0,
+      repoDir: p.repoDir,
+      board: p.board,
+      autonomous: p.autonomous,
     })),
     agents: s.config.projects.flatMap(p => (p.agents ?? []).map(a => ({
       id: a.id, name: a.name, provider: a.provider, role: a.role, parentId: a.parentId,
@@ -155,6 +161,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     activeChats,
     tasks: Object.values(s.tasks).flat(),
     quota: s.quota,
+    repoState: s.repoState,
   };
 }
 
@@ -186,6 +193,69 @@ export function buildSnapshot(): RemoteSnapshot {
  */
 export function buildSnapshotJson(): string {
   return snapshotAndJson().json;
+}
+
+const SAFE_GIT_SUBCOMMANDS = new Set(["diff", "status", "ls-files", "log", "rev-parse", "branch", "show"]);
+const SAFE_BRANCH_FLAGS = new Set(["--show-current", "--list", "-a", "-r", "-v", "-vv", "--all"]);
+
+export function isSafeGitArgs(args: string[]): boolean {
+  if (!Array.isArray(args) || args.length === 0) return false;
+  const subcmd = args[0];
+  if (!SAFE_GIT_SUBCOMMANDS.has(subcmd)) return false;
+
+  for (const arg of args) {
+    if (typeof arg !== "string") return false;
+    if (arg === "-o" || arg === "--output" || arg.startsWith("--output=")) {
+      return false;
+    }
+    // `diff --no-index` compares any two paths on disk, wherever `cwd` is.
+    if (arg === "--no-index") {
+      return false;
+    }
+  }
+
+  if (subcmd === "branch") {
+    const extra = args.slice(1);
+    for (const arg of extra) {
+      if (!SAFE_BRANCH_FLAGS.has(arg)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function normFsPath(p: string): string {
+  let forward = p.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (forward.startsWith("//?/")) forward = forward.slice(4);
+  return /^[A-Za-z]:(\/|$)/.test(forward) ? forward[0].toLowerCase() + forward.slice(1) : forward;
+}
+
+export function isAllowedWorkspacePath(targetPath: string, allowedRoots: string[]): boolean {
+  if (!targetPath || typeof targetPath !== "string") return false;
+  const forward = targetPath.replace(/\\/g, "/");
+  if (/(^|\/)\.\.(\/|$)/.test(forward)) return false;
+  const normTarget = normFsPath(forward);
+  return allowedRoots.some(root => {
+    if (!root) return false;
+    const normRoot = normFsPath(root);
+    return normTarget === normRoot || normTarget.startsWith(`${normRoot}/`);
+  });
+}
+
+export function isAllowedAttachmentWritePath(targetPath: string, workspaceDirs: string[]): boolean {
+  if (!targetPath || typeof targetPath !== "string") return false;
+  const forward = targetPath.replace(/\\/g, "/");
+  if (/(^|\/)\.\.(\/|$)/.test(forward)) return false;
+  const normTarget = normFsPath(forward);
+  return workspaceDirs.some(dir => {
+    if (!dir) return false;
+    const prefix = `${normFsPath(dir)}/.ainess/attachments/`;
+    if (!normTarget.startsWith(prefix)) return false;
+    const rest = normTarget.slice(prefix.length);
+    return rest.length > 0 && !rest.includes("/");
+  });
 }
 
 /** Executes a command coming from the phone page. Never throws: errors are returned. */
@@ -265,6 +335,22 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         return { ok: true };
       }
       case "answer": {
+        if (Array.isArray(payload.items)) {
+          const valid: Array<{ questionId: string; answer: string[] }> = [];
+          for (const raw of payload.items as unknown[]) {
+            if (!raw || typeof raw !== "object") continue;
+            const entry = raw as Record<string, unknown>;
+            const qid = typeof entry.questionId === "string" ? entry.questionId : undefined;
+            const ans = Array.isArray(entry.answer)
+              ? (entry.answer as unknown[]).filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+              : [];
+            const q = qid ? s.questions[qid] : undefined;
+            if (q && isForUser(q) && ans.length > 0) valid.push({ questionId: q.id, answer: ans });
+          }
+          if (valid.length === 0) return { error: translateNow("remote.err.missingAnswer") };
+          s.answerQuestions(valid);
+          return { ok: true };
+        }
         const id = str("questionId");
         const answer = Array.isArray(payload.answer)
           ? (payload.answer as unknown[]).filter((a): a is string => typeof a === "string" && a.trim().length > 0)
@@ -299,12 +385,142 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         return { ok: true };
       }
       case "chat": {
+        const op = str("op");
+        if (op === "create") {
+          const projectId = str("projectId");
+          const name = str("name")?.trim();
+          const mode = (str("mode") ?? "individual") as Chat["mode"];
+          const participants = Array.isArray(payload.participants) ? (payload.participants as ChatParticipant[]) : [];
+          if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+          if (!name || participants.length === 0) return { error: translateNow("remote.err.missingData") };
+          const projectAgents = new Set(selectProjectAgents(s, projectId).map(a => a.id));
+          const valid = participants.every(p => p && typeof p === "object" && typeof p.agentId === "string" && projectAgents.has(p.agentId));
+          if (!valid) return { error: translateNow("remote.err.invalidAgent") };
+          const id = await s.createChat({ projectId, name, mode, participants });
+          return { ok: true, chatId: id };
+        }
+        if (op === "update") {
+          const chatId = str("chatId");
+          const chat = s.config.chats.find(c => c.id === chatId);
+          if (!chatId || !chat) return { error: translateNow("remote.err.noChat") };
+          const rawPatch = (payload.patch && typeof payload.patch === "object" ? payload.patch : {}) as Record<string, unknown>;
+          const cleanPatch: Partial<Pick<Chat, "name" | "participants">> = {};
+          if (typeof rawPatch.name === "string" && rawPatch.name.trim()) {
+            cleanPatch.name = rawPatch.name.trim();
+          }
+          if (Array.isArray(rawPatch.participants)) {
+            const projectAgents = new Set(selectProjectAgents(s, chat.projectId).map(a => a.id));
+            const parts = rawPatch.participants as ChatParticipant[];
+            const valid = parts.length > 0 && parts.every(p => p && typeof p === "object" && typeof p.agentId === "string" && projectAgents.has(p.agentId));
+            if (!valid) return { error: translateNow("remote.err.invalidAgent") };
+            cleanPatch.participants = parts;
+          }
+          s.updateChat(chatId, cleanPatch);
+          return { ok: true };
+        }
+        if (op === "delete") {
+          const chatId = str("chatId");
+          if (!chatId || !s.config.chats.some(c => c.id === chatId)) return { error: translateNow("remote.err.noChat") };
+          s.removeChat(chatId);
+          return { ok: true };
+        }
         const chatId = str("chatId");
         const text = str("text")?.trim();
         if (!chatId || !text) return { error: translateNow("remote.err.missingData") };
         if (!s.config.chats.some(c => c.id === chatId)) return { error: translateNow("remote.err.noChat") };
         await s.sendChatMessage(chatId, text);
         return { ok: true };
+      }
+      case "project": {
+        const op = str("op");
+        const projectId = str("projectId");
+        if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+        if (op === "resetSession") {
+          const agentId = str("agentId");
+          if (agentId) {
+            s.resetSession(agentId, projectId);
+          } else {
+            for (const a of selectProjectAgents(s, projectId)) s.resetSession(a.id, projectId);
+          }
+          return { ok: true };
+        }
+        if (op === "setAutonomous") {
+          const until = typeof payload.until === "number" ? payload.until : null;
+          s.setAutonomous(projectId, until);
+          return { ok: true };
+        }
+        if (op === "clearMessages") {
+          s.clearMessages(projectId);
+          return { ok: true };
+        }
+        return { error: translateNow("remote.err.unknownAction", { action: `project:${op ?? ""}` }) };
+      }
+      case "fs": {
+        const op = str("op");
+        const workspaceDirs = s.config.projects.map(p => p.workspaceDir).filter(Boolean);
+        const allowedRoots = [
+          ...workspaceDirs,
+          ...s.config.projects.map(p => p.repoDir).filter((d): d is string => !!d),
+          ...Object.values(s.worktrees).flat().map(w => w.path).filter(Boolean),
+        ];
+        const realRoots = await Promise.all(allowedRoots.map(r => getTransport().realPath(r)));
+        const realWorkspaces = await Promise.all(workspaceDirs.map(w => getTransport().realPath(w)));
+
+        if (op === "writeBytes") {
+          const path = str("path");
+          const base64 = str("base64");
+          if (!path || base64 === undefined) {
+            return { error: translateNow("remote.err.missingData") };
+          }
+          const real = await getTransport().realPath(path);
+          if (!isAllowedAttachmentWritePath(path, workspaceDirs) || !isAllowedAttachmentWritePath(real, realWorkspaces)) {
+            return { error: translateNow("remote.err.missingData") };
+          }
+          await getTransport().writeFileBytes(path, base64);
+          return { ok: true };
+        }
+        if (op === "readBytes") {
+          const path = str("path");
+          const maxBytes = typeof payload.maxBytes === "number" ? Math.min(payload.maxBytes, 25 * 1024 * 1024) : 4 * 1024 * 1024;
+          if (!path) return { ok: true, data: null };
+          const real = await getTransport().realPath(path);
+          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, data: null };
+          const data = await getTransport().readFileBytes(path, maxBytes);
+          return { ok: true, data };
+        }
+        if (op === "readText") {
+          const path = str("path");
+          if (!path) return { ok: true, text: null };
+          const real = await getTransport().realPath(path);
+          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, text: null };
+          const text = await getTransport().readFileAbs(path);
+          return { ok: true, text };
+        }
+        if (op === "exists") {
+          const rawPaths = Array.isArray(payload.paths) ? (payload.paths as unknown[]).filter((p): p is string => typeof p === "string") : [];
+          const checked: string[] = [];
+          for (const p of rawPaths) {
+            const real = await getTransport().realPath(p);
+            if (isAllowedWorkspacePath(p, allowedRoots) && isAllowedWorkspacePath(real, realRoots)) {
+              checked.push(p);
+            }
+          }
+          const paths = checked.length > 0 ? await getTransport().filesExistAbs(checked) : [];
+          return { ok: true, paths };
+        }
+        if (op === "git") {
+          const cwd = str("cwd");
+          const args = Array.isArray(payload.args) ? (payload.args as unknown[]).filter((a): a is string => typeof a === "string") : [];
+          const timeoutSecs = typeof payload.timeoutSecs === "number" ? Math.min(payload.timeoutSecs, 30) : 10;
+          if (!cwd) return { ok: true, code: 1, stdout: "", stderr: "Denied" };
+          const realCwd = await getTransport().realPath(cwd);
+          if (!isAllowedWorkspacePath(cwd, allowedRoots) || !isAllowedWorkspacePath(realCwd, realRoots) || !isSafeGitArgs(args)) {
+            return { ok: true, code: 1, stdout: "", stderr: "Denied" };
+          }
+          const res = await getTransport().exec("git", args, cwd, timeoutSecs);
+          return { ok: true, code: res.code, stdout: res.stdout, stderr: res.stderr };
+        }
+        return { error: translateNow("remote.err.unknownAction", { action: `fs:${op ?? ""}` }) };
       }
       case "state":
         return buildSnapshot() as unknown as Record<string, unknown>;
@@ -411,7 +627,8 @@ export async function attachRemote(): Promise<void> {
   useAppStore.subscribe((state, prev) => {
     if (state.runs !== prev.runs || state.messages !== prev.messages || state.runtime !== prev.runtime ||
         state.approvals !== prev.approvals || state.activeTaskRunId !== prev.activeTaskRunId ||
-        state.chatMessages !== prev.chatMessages || state.binaries !== prev.binaries || state.config !== prev.config) {
+        state.chatMessages !== prev.chatMessages || state.binaries !== prev.binaries || state.config !== prev.config ||
+        state.tasks !== prev.tasks || state.questions !== prev.questions || state.repoState !== prev.repoState) {
       schedulePush();
     }
   });

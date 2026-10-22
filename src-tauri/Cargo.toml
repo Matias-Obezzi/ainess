@@ -1,6 +1,6 @@
 [package]
 name = "ainess"
-version = "0.31.0"
+version = "0.32.0"
 description = "Orquestador local de agentes de IA"
 authors = ["you"]
 edition = "2021"
@@ -52,6 +52,10 @@ sha2 = "0.10"
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 getrandom = "0.3"
 
+
+[dev-dependencies]
+# Sends a request straight to the remote's router in its tests (src/remote.rs), no socket.
+tower = { version = "0.5", features = ["util"] }
 
 # Just enough of the Win32 API to take one console for the app and hide it, so that nothing an
 # agent starts underneath us ever asks Windows for a visible one of its own (see src/console.rs).

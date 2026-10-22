@@ -82,6 +82,11 @@ async function bootAndSeed() {
     deleteFile: async (path: string) => { deleted.push(path); },
   });
   const store = await import("@/store");
+  // `removeProject` loads `@/lib/chat` fire-and-forget. Left to itself, that import is still being
+  // evaluated when the next test calls `vi.resetModules()`, and it lands half-initialised in the
+  // next test's module graph (a TDZ error in `translateNow` during `init`). Loading it here, inside
+  // this test's graph, turns that later import into a cache hit.
+  await import("@/lib/chat");
   await store.useAppStore.getState().init();
 
   store.useAppStore.setState(state => ({

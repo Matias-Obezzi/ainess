@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ChevronLeft, ChevronRight, Copy, MessagesSquare, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
 import { useAppStore, canGoBack, canGoForward } from "@/store";
@@ -158,7 +158,7 @@ function WindowControls() {
 }
 
 /** Custom title bar: drag region, sidebar toggle, search, back/forward and the window controls. */
-export function TitleBar() {
+export function TitleBar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
   const t = useT();
   const sidebarMode = useAppStore(state => state.sidebarMode);
   const cycleSidebar = useAppStore(state => state.cycleSidebar);
@@ -252,8 +252,8 @@ export function TitleBar() {
 
       <div className="flex items-center">
         <NotificationBell />
-        <BridgeIndicator />
-        <RemoteButton />
+        {rightSlot ? rightSlot : <BridgeIndicator />}
+        {!rightSlot && <RemoteButton />}
         {isTauri() ? <WindowControls /> : <div className="w-2" />}
       </div>
     </div>

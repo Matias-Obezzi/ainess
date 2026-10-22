@@ -72,7 +72,7 @@ fn needs_shim_unwrap(program: &str, args: &[String]) -> bool {
     if !(lower.ends_with(".cmd") || lower.ends_with(".bat")) {
         return false;
     }
-    args.iter().any(|a| a.contains('\n') || a.contains('\r'))
+    args.iter().any(|a| a.contains('\n') || a.contains('\r') || a.contains('"'))
 }
 
 /// The two shapes of shim we can see through.
@@ -586,8 +586,13 @@ fn exec_capture_blocking(
 ) -> Result<ExecResult, String> {
     // Installers and updaters legitimately take longer than a version probe.
     let timeout = timeout_secs.map(Duration::from_secs).unwrap_or(EXEC_TIMEOUT);
-    let mut cmd = Command::new(&program);
-    cmd.args(&args)
+    let unwrapped = unwrap_shim(&program, &args);
+    let (prog, prog_args) = match &unwrapped {
+        Some((p, a)) => (p.as_str(), a.as_slice()),
+        None => (program.as_str(), args.as_slice()),
+    };
+    let mut cmd = Command::new(prog);
+    cmd.args(prog_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     
@@ -1001,6 +1006,20 @@ two");
         );
         assert_eq!(out, args);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unwraps_a_shim_when_an_argument_has_quotes() {
+        let (shim, script) = temp_shim("claude-mcp", "node_modules/pkg/cli.js");
+        let args = vec!["mcp".to_string(), "add-json".to_string(), "{\"type\":\"stdio\"}".to_string()];
+        let (program, out) = super::unwrap_shim(shim.to_str().unwrap(), &args).expect("shim");
+        assert!(program.ends_with("node.exe") || program == "node", "{program}");
+        assert_eq!(
+            std::fs::canonicalize(&out[0]).unwrap(),
+            std::fs::canonicalize(&script).unwrap(),
+        );
+        assert_eq!(&out[1..], &args[..]);
+        let _ = std::fs::remove_dir_all(shim.parent().unwrap());
     }
 
     #[test]

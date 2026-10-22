@@ -6,6 +6,35 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## 0.32.0 — 2026-10-22
+
+### Added
+
+- **The remote has a desktop view.** Opening `/desktop` from a computer shows the same shell as the
+  app (sidebar, projects, board), driving the host like the phone page does; the phone page stays
+  as light as before.
+- **Files can be attached from the phone.** The remote composer sends attachments to the host,
+  which saves them inside the project like the ones attached on the desktop.
+- **Chats and projects from the remote.** Starting a chat with an agent, renaming a chat, changing
+  who is in it and deleting it now work from the remote too, and so do resetting an agent's
+  session, the autonomous mode and clearing a project's messages; editing settings and projects
+  still happens on the desktop.
+- **You choose what Esc does while an agent is working**, in Settings → General → Keyboard: stop
+  it right away (as until now), stop it only on two Esc in a row, or nothing at all. Esc still
+  closes menus and dialogs, and the stop button works with any of the three.
+- **Each agent can have its own reasoning effort**, next to its model in the agent dialog: from
+  low to max, or the provider's default. For now only Claude Code takes it; the choice is not shown
+  for providers that do not.
+
+### Fixed
+
+- **Windows CLI shims and broken `--version` probes fall back to the engine.** The runner unwraps
+  npm `.cmd` and NVM `.nodejs` shims to the real binary under the active Node version, and ignores
+  binaries on PATH whose `--version` probe failed so runs fall back to the managed runtime.
+- **Over ACP, Claude Code runs on the adapter's own copy unless you set one by hand** in Settings →
+  Agents, and the card says which: the path you picked, or that it uses the adapter's. A `claude`
+  found on the PATH is no longer passed on by itself.
+
 ## 0.31.0 — 2026-10-13
 
 ### Added

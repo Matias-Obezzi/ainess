@@ -188,6 +188,7 @@ export interface AppState {
    * in the app (and the CLI) the real answer lives in `lib/chat.ts`, in this process's memory.
    */
   remoteActiveChats: string[];
+  remoteLayout?: "desktop" | "mobile";
 
   /** Tasks per project, loaded from disk on demand (see src/lib/task-store.ts). */
   tasks: Record<string, Task[]>;
@@ -491,7 +492,7 @@ export interface AppState {
   refreshTunnelStatus(): Promise<void>;
 
   // Chat actions
-  createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
+  createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string | Promise<string>;
   updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
   removeChat(id: string): void;
   /** Opens a chat (null = the orchestrator thread) in a pane; without one, in the focused project. */

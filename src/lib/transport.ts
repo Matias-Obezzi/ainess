@@ -93,6 +93,8 @@ export interface Transport {
   clonePluginRepo(repo: string): Promise<string | null>;
   /** Removes a plugin the app cloned (the whole clone it is in); refused outside the app's plugins folder. */
   removePluginDir(dir: string): Promise<void>;
+  /** Resolves the real canonical path of a file or folder, following symlinks and junctions. */
+  realPath(path: string): Promise<string>;
   /** Reads a file by absolute path (read-only). Null when missing or unreadable. */
   readFileAbs(path: string): Promise<string | null>;
   /**
