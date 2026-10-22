@@ -743,7 +743,7 @@ export const en: Dictionary = {
   "agents.executable": "Executable",
   "agents.found": "Detected",
   "agents.ready": "Ready",
-  "agents.acpBundled": "Uses the Claude Code the ACP adapter brings: nothing to install. One installed on this machine is used instead.",
+  "agents.acpBundled": "Uses the Claude Code the ACP adapter brings: nothing to install. To use another one, set it manually.",
   "agents.notFound": "Not detected",
   "agents.installHint": "Install it or set the path manually to be able to use it.",
   "agents.install": "Install",

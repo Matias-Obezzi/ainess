@@ -27,6 +27,7 @@ const MANAGED: AcpManagedStatus = {
 beforeEach(() => {
   useAppStore.setState(state => ({
     config: { ...state.config, binaryOverrides: {} },
+    binaries: {},
     claudeAuth: { status: null, open: false, hasEngine: true, failed: false },
   }));
   setTransport(nullTransport);
@@ -124,6 +125,18 @@ describe("resolveClaudeEngine", () => {
 
   it("falls back to the engine the managed runtime brought", async () => {
     setTransport({ ...nullTransport, whichProgram: async () => null, acpManagedStatus: async () => MANAGED });
+    expect(await resolveClaudeEngine()).toBe("/acp/node_modules/.bin/claude");
+  });
+
+  it("skips a PATH binary whose version probe failed and falls back to the managed engine", async () => {
+    useAppStore.setState(state => ({
+      binaries: { ...state.binaries, claude: { path: "C:/broken/claude.exe", version: null } },
+    }));
+    setTransport({
+      ...nullTransport,
+      whichProgram: async () => "C:/broken/claude.exe",
+      acpManagedStatus: async () => MANAGED,
+    });
     expect(await resolveClaudeEngine()).toBe("/acp/node_modules/.bin/claude");
   });
 
