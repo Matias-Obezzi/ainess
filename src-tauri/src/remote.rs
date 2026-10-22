@@ -3,7 +3,7 @@
 //! orchestrator state) through Tauri events. Same protocol as src/lib/remote-node.ts.
 
 use axum::{
-    extract::{DefaultBodyLimit, Query, State},
+    extract::{DefaultBodyLimit, State},
     http::{header, HeaderMap, StatusCode},
     response::{sse::{Event, KeepAlive, Sse}, Html, IntoResponse, Json, Response},
     routing::{get, post},

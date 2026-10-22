@@ -280,18 +280,18 @@ pub async fn real_path(path: String) -> Result<String, String> {
         if let Ok(c) = p.canonicalize() {
             let s = c.to_string_lossy().into_owned();
             let s = s.strip_prefix(r"\\?\").unwrap_or(&s).to_string();
-            return Ok(s);
+            return s;
         }
         if let Some(parent) = p.parent() {
             if let Ok(cp) = parent.canonicalize() {
                 if let Some(file_name) = p.file_name() {
                     let s = cp.join(file_name).to_string_lossy().into_owned();
                     let s = s.strip_prefix(r"\\?\").unwrap_or(&s).to_string();
-                    return Ok(s);
+                    return s;
                 }
             }
         }
-        Ok(path)
+        path
     })
     .await
     .map_err(|e| e.to_string())
