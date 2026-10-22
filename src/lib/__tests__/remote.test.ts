@@ -267,6 +267,11 @@ describe("remote snapshot and commands", () => {
       expect(isSafeGitArgs(["show", "--output", "file", "HEAD"])).toBe(false);
     });
 
+    it("rejects --no-index, which reads any two paths on disk", () => {
+      expect(isSafeGitArgs(["diff", "--no-index", "/dev/null", "C:/Windows/win.ini"])).toBe(false);
+      expect(isSafeGitArgs(["diff", "--stat", "--no-index", "a", "b"])).toBe(false);
+    });
+
     it("rejects mutating branch subcommands and positional branch arguments", () => {
       expect(isSafeGitArgs(["branch", "-D", "main"])).toBe(false);
       expect(isSafeGitArgs(["branch", "-d", "feature"])).toBe(false);

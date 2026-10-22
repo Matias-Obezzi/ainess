@@ -11,7 +11,7 @@ use axum::{
 };
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -75,20 +75,8 @@ pub struct RemoteStatus {
     pub clients: usize,
 }
 
-#[derive(Deserialize)]
-struct TokenQuery {
-    token: Option<String>,
-}
-
-fn authorized(inner: &Inner, headers: &HeaderMap, q: &TokenQuery) -> bool {
-    authorized_parts(&inner.token, headers, q.token.as_deref())
-}
-
 fn authorized_parts(token: &str, headers: &HeaderMap, query_or_token: Option<&str>) -> bool {
     if let Some(q) = query_or_token {
-        if q == token {
-            return true;
-        }
         for pair in q.split('&') {
             if let Some((k, v)) = pair.split_once('=') {
                 if k == "token" && v == token {
@@ -347,7 +335,7 @@ fn local_ip() -> String {
         .unwrap_or_else(|_| "127.0.0.1".to_string())
 }
 
-pub fn build_router(inner: Arc<Inner>) -> Router {
+fn build_router(inner: Arc<Inner>) -> Router {
     let api_routes = Router::new()
         .route("/state", get(state_handler))
         .route("/events", get(events))
@@ -508,7 +496,7 @@ mod tests {
         let token = "my-secret-123";
         let empty_headers = HeaderMap::new();
 
-        assert!(super::authorized_parts(token, &empty_headers, Some("my-secret-123")));
+        assert!(!super::authorized_parts(token, &empty_headers, Some("my-secret-123")));
         assert!(super::authorized_parts(token, &empty_headers, Some("token=my-secret-123")));
         assert!(super::authorized_parts(token, &empty_headers, Some("foo=bar&token=my-secret-123")));
         assert!(!super::authorized_parts(token, &empty_headers, Some("token=wrong")));
@@ -525,9 +513,12 @@ mod tests {
 
     #[tokio::test]
     async fn unauthenticated_request_rejected_without_reading_large_body() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
         use std::collections::HashMap;
         use std::sync::{Arc, Mutex, RwLock};
         use tokio::sync::broadcast;
+        use tower::ServiceExt;
 
         let (tx, _rx) = broadcast::channel::<String>(16);
         let inner = Arc::new(super::Inner {
@@ -538,22 +529,17 @@ mod tests {
             app: None,
         });
         let router = super::build_router(inner);
-        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
-        let port = listener.local_addr().unwrap().port();
-        tokio::spawn(async move {
-            let _ = axum::serve(listener, router).await;
-        });
 
-        let client = reqwest::Client::new();
-        let large_body = vec![b'a'; 5 * 1024 * 1024];
-        let res = client
-            .post(format!("http://127.0.0.1:{port}/api/fs"))
+        // Sent to the router directly: a real socket and an HTTP client in the test binary keep
+        // it from loading on Windows.
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/fs")
             .header("Content-Type", "application/json")
-            .body(large_body)
-            .send()
-            .await
+            .body(Body::from(vec![b'a'; 5 * 1024 * 1024]))
             .unwrap();
+        let res = router.oneshot(request).await.unwrap();
 
-        assert_eq!(res.status(), reqwest::StatusCode::UNAUTHORIZED);
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
     }
 }

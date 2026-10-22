@@ -10,18 +10,15 @@ let one of them fall behind.
 
 ### Added
 
-- **Dedicated desktop remote view** at `/desktop`: tablets and desktop browsers can access the full workspace interface with editor panes, sidebar, and palettes while mobile browsers retain a lightweight, single-column phone interface at `/`. Both views feature seamless one-click switching.
-
-### Changed
-
-- **Split remote client bundles**: reduced mobile remote bundle (`dist-remote/index.html`) from ~10 MB raw / ~2.28 MB gzip down to ~2.3 MB raw / ~702 kB gzip by isolating desktop shell components into `dist-remote/desktop.html`.
-
-### Security
-
-- **Hardened read-only git execution**: blocked mutating arguments such as `--output`, `-o`, and branch manipulation flags/positional arguments across all remote git invocations.
-- **Early authentication enforcement**: validate auth tokens before buffering request payloads in both Axum and Node remote servers, preventing unauthenticated large body memory consumption.
-- **Filesystem symlink resolution**: resolved real paths before workspace boundary checks in remote filesystem operations to prevent symlink traversal.
-- **Remote chat input validation**: sanitized `updateChat` payloads and strictly validated participant agent existence against project metadata.
+- **The remote has a desktop view.** Opening `/desktop` from a computer shows the same shell as the
+  app (sidebar, projects, board), driving the host like the phone page does; the phone page stays
+  as light as before.
+- **Files can be attached from the phone.** The remote composer sends attachments to the host,
+  which saves them inside the project like the ones attached on the desktop.
+- **Chats and projects from the remote.** Starting a chat with an agent, renaming a chat, changing
+  who is in it and deleting it now work from the remote too, and so do resetting an agent's
+  session, the autonomous mode and clearing a project's messages; editing settings and projects
+  still happens on the desktop.
 
 ## 0.31.0 — 2026-10-13
 

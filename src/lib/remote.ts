@@ -208,6 +208,10 @@ export function isSafeGitArgs(args: string[]): boolean {
     if (arg === "-o" || arg === "--output" || arg.startsWith("--output=")) {
       return false;
     }
+    // `diff --no-index` compares any two paths on disk, wherever `cwd` is.
+    if (arg === "--no-index") {
+      return false;
+    }
   }
 
   if (subcmd === "branch") {
