@@ -2,10 +2,20 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
-## Non publié
+## 0.32.0 — 2026-10-22
 
 ### Nouveau
 
+- **L'accès distant a une vue bureau.** Ouvrir `/desktop` depuis un ordinateur affiche la même
+  interface que l'application (barre latérale, projets, tableau), en pilotant la machine hôte comme
+  le fait la page du téléphone ; la page du téléphone reste aussi légère qu'avant.
+- **On peut joindre des fichiers depuis le téléphone.** La zone de saisie de l'accès distant envoie
+  les pièces jointes à l'hôte, qui les enregistre dans le projet comme celles jointes sur le
+  bureau.
+- **Les conversations et les projets depuis l'accès distant.** Démarrer une conversation avec un
+  agent, renommer une conversation, changer qui y participe et la supprimer fonctionnent désormais
+  aussi à distance, tout comme réinitialiser la session d'un agent, le mode autonome et vider les
+  messages d'un projet ; les paramètres et les projets se modifient toujours sur le bureau.
 - **Vous choisissez ce que fait Échap pendant qu'un agent travaille**, dans Paramètres → Général →
   Clavier : l'arrêter tout de suite (comme jusqu'ici), l'arrêter seulement avec deux Échap de suite,
   ou rien. Échap ferme toujours les menus et les boîtes de dialogue, et le bouton d'arrêt
@@ -13,6 +23,16 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 - **Chaque agent peut avoir son propre effort de raisonnement**, à côté de son modèle dans la
   boîte de l'agent : de faible à maximum, ou celui du fournisseur. Pour l'instant seul Claude Code
   le prend ; le choix n'apparaît pas pour les fournisseurs qui ne le prennent pas.
+
+### Corrigé
+
+- **Sous Windows, les raccourcis des CLI et les tests `--version` en échec se rabattent sur le
+  moteur.** L'exécuteur suit les raccourcis `.cmd` de npm et `.nodejs` de NVM jusqu'au vrai binaire
+  de la version de Node active, et ignore les binaires du PATH dont le test `--version` a échoué,
+  pour que les exécutions se rabattent sur l'environnement géré par l'application.
+- **Via ACP, Claude Code tourne sur la copie de l'adaptateur sauf si vous en choisissez une à la
+  main** dans Paramètres → Agents, et la carte indique laquelle : le chemin choisi, ou celle de
+  l'adaptateur. Un `claude` trouvé dans le PATH n'est plus transmis de lui-même.
 
 ## 0.31.0 — 2026-10-13
 

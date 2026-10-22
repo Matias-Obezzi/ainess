@@ -2,10 +2,19 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
-## Unveröffentlicht
+## 0.32.0 — 2026-10-22
 
 ### Neu
 
+- **Der Fernzugriff hat eine Desktop-Ansicht.** `/desktop` auf einem Computer geöffnet zeigt
+  dieselbe Oberfläche wie die App (Seitenleiste, Projekte, Board) und steuert den Host wie die
+  Handy-Seite; die Handy-Seite bleibt so leicht wie bisher.
+- **Dateien lassen sich vom Handy anhängen.** Das Eingabefeld des Fernzugriffs schickt Anhänge an
+  den Host, der sie im Projekt speichert wie die am Desktop angehängten.
+- **Chats und Projekte aus dem Fernzugriff.** Einen Chat mit einem Agenten beginnen, einen Chat
+  umbenennen, ändern, wer dabei ist, und ihn löschen geht jetzt auch aus der Ferne, ebenso das
+  Zurücksetzen der Sitzung eines Agenten, der autonome Modus und das Leeren der Nachrichten eines
+  Projekts; Einstellungen und Projekte werden weiterhin am Desktop bearbeitet.
 - **Du wählst, was Esc tut, während ein Agent arbeitet**, unter Einstellungen → Allgemein →
   Tastatur: ihn sofort stoppen (wie bisher), nur bei zweimal Esc hintereinander stoppen oder gar
   nichts. Esc schließt weiterhin Menüs und Dialoge, und die Stopp-Schaltfläche funktioniert bei
@@ -13,6 +22,16 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 - **Jeder Agent kann seinen eigenen Denkaufwand haben**, neben seinem Modell im Agentendialog:
   von niedrig bis maximal oder der Standard des Anbieters. Vorerst nimmt ihn nur Claude Code an;
   bei Anbietern ohne ihn wird die Auswahl nicht angezeigt.
+
+### Behoben
+
+- **Unter Windows fallen CLI-Shims und fehlgeschlagene `--version`-Prüfungen auf die Engine
+  zurück.** Der Runner folgt den `.cmd`-Shims von npm und den `.nodejs`-Shims von NVM bis zur
+  echten Binärdatei der aktiven Node-Version und ignoriert Binärdateien im PATH, deren
+  `--version`-Prüfung fehlschlug, sodass Läufe auf die von der App verwaltete Laufzeit zurückfallen.
+- **Über ACP läuft Claude Code mit der Kopie des Adapters, außer du legst eine von Hand fest**,
+  unter Einstellungen → Agenten, und die Karte sagt, welche: den gewählten Pfad oder dass sie die
+  des Adapters nutzt. Ein im PATH gefundenes `claude` wird nicht mehr von selbst weitergegeben.
 
 ## 0.31.0 — 2026-10-13
 
