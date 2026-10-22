@@ -97,12 +97,15 @@ fn unauthorized() -> Response {
     (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Token inválido" }))).into_response()
 }
 
+/// The token check in front of `/api/`, before any body is read. It takes the token alone, not
+/// `Inner`: a test of it then links no `AppHandle`, and with one the Windows test binary does not
+/// load at all (0xc0000139) — Tauri needs the app's manifest, which only the app binary has.
 async fn auth_middleware(
-    State(inner): State<Arc<Inner>>,
+    State(token): State<Arc<str>>,
     req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Response {
-    if !authorized_parts(&inner.token, req.headers(), req.uri().query()) {
+    if !authorized_parts(&token, req.headers(), req.uri().query()) {
         return unauthorized();
     }
     next.run(req).await
@@ -350,7 +353,7 @@ fn build_router(inner: Arc<Inner>) -> Router {
         .route("/diagnostics", post(cmd_diagnostics))
         .route("/fs", post(cmd_fs).layer(DefaultBodyLimit::max(40 * 1024 * 1024)))
         .route("/project", post(cmd_project))
-        .layer(axum::middleware::from_fn_with_state(inner.clone(), auth_middleware));
+        .layer(axum::middleware::from_fn_with_state(Arc::<str>::from(inner.token.as_str()), auth_middleware));
 
     Router::new()
         .route("/", get(page))
@@ -514,32 +517,35 @@ mod tests {
     #[tokio::test]
     async fn unauthenticated_request_rejected_without_reading_large_body() {
         use axum::body::Body;
+        use axum::extract::DefaultBodyLimit;
         use axum::http::{Request, StatusCode};
-        use std::collections::HashMap;
-        use std::sync::{Arc, Mutex, RwLock};
-        use tokio::sync::broadcast;
+        use axum::routing::post;
+        use std::sync::Arc;
         use tower::ServiceExt;
 
-        let (tx, _rx) = broadcast::channel::<String>(16);
-        let inner = Arc::new(super::Inner {
-            token: "secret-token".to_string(),
-            snapshot: RwLock::new("{}".to_string()),
-            tx,
-            pending: Mutex::new(HashMap::new()),
-            app: None,
-        });
-        let router = super::build_router(inner);
+        // The middleware in front of a stand-in route, as `build_router` puts it in front of
+        // `/api/fs`. Not the real router: its handlers reach the `AppHandle`, and linking that
+        // keeps the Windows test binary from loading (see `auth_middleware`).
+        let router = axum::Router::new()
+            .route("/api/fs", post(|| async { "read" }).layer(DefaultBodyLimit::max(40 * 1024 * 1024)))
+            .layer(axum::middleware::from_fn_with_state(Arc::<str>::from("secret-token"), super::auth_middleware));
 
-        // Sent to the router directly: a real socket and an HTTP client in the test binary keep
-        // it from loading on Windows.
         let request = Request::builder()
             .method("POST")
             .uri("/api/fs")
             .header("Content-Type", "application/json")
             .body(Body::from(vec![b'a'; 5 * 1024 * 1024]))
             .unwrap();
-        let res = router.oneshot(request).await.unwrap();
-
+        let res = router.clone().oneshot(request).await.unwrap();
         assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+        // And with the token it goes through: the check is the token, not a door that stays shut.
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/fs?token=secret-token")
+            .body(Body::from("{}"))
+            .unwrap();
+        let res = router.oneshot(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
     }
 }
