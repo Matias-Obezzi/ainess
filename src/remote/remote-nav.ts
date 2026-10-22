@@ -3,6 +3,31 @@
 // its last-known position separate under ainess.remote.ui.
 
 export type Tab = "tasks" | "conversations" | "approvals" | "agents";
+export type RemoteLayout = "desktop" | "mobile";
+
+export const REMOTE_LAYOUT_KEY = "ainess.remote.layout";
+export const DESKTOP_MIN_WIDTH = 768;
+
+export function defaultRemoteLayout(viewportWidth: number): RemoteLayout {
+  return viewportWidth >= DESKTOP_MIN_WIDTH ? "desktop" : "mobile";
+}
+
+export function readRemoteLayout(storage: Storage): RemoteLayout | null {
+  try {
+    const raw = storage.getItem(REMOTE_LAYOUT_KEY);
+    return raw === "desktop" || raw === "mobile" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeRemoteLayout(storage: Storage, layout: RemoteLayout): void {
+  try {
+    storage.setItem(REMOTE_LAYOUT_KEY, layout);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export interface RemoteNav {
   projectId: string | null;

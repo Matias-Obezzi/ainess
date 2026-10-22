@@ -1862,6 +1862,8 @@ export const en: Dictionary = {
   "phone.noChats": "This project has no chats",
   "phone.answering": "Answering…",
   "phone.noAgents": "No agents configured",
+  "phone.desktopView": "Desktop view",
+  "phone.mobileView": "Mobile view",
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} was left half-done",

@@ -50,7 +50,7 @@ function json(res: http.ServerResponse, status: number, body: unknown): void {
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let data = "";
-    req.on("data", (c) => { data += c; if (data.length > 1_000_000) req.destroy(); });
+    req.on("data", (c) => { data += c; if (data.length > 40_000_000) req.destroy(); });
     req.on("end", () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
     req.on("error", () => resolve({}));
   });
@@ -65,6 +65,9 @@ const ACTIONS: Record<string, string> = {
   "/api/task": "task",
   "/api/answer": "answer",
   "/api/agent": "agent",
+  "/api/diagnostics": "diagnostics",
+  "/api/fs": "fs",
+  "/api/project": "project",
 };
 
 /** Whether the client asked for gzip; one that did not gets the page as it is. */

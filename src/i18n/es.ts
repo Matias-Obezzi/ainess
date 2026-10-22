@@ -1862,6 +1862,8 @@ export const es: Dictionary = {
   "phone.noChats": "Este proyecto no tiene chats",
   "phone.answering": "Respondiendo…",
   "phone.noAgents": "No hay agentes configurados",
+  "phone.desktopView": "Vista de escritorio",
+  "phone.mobileView": "Vista móvil",
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} quedó a medias",

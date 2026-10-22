@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/store";
 import { pickWorkspaceDir } from "@/lib/pick-dir";
+import { isRemoteBuild } from "@/lib/platform";
 import { plannerOf, projectForDir, startBlockers, startTarget } from "@/lib/home-start";
 import { shortenPath } from "@/lib/format";
 import { useT } from "@/i18n/useT";
@@ -122,17 +123,36 @@ export function HomeComposer() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 max-w-[18rem] gap-1.5 text-xs"
-          onClick={() => void chooseDir()}
-          title={workspaceDir || t("home.start.pickFolder")}
-        >
-          <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{workspaceDir ? shortenPath(workspaceDir, 34) : t("home.start.pickFolder")}</span>
-        </Button>
+        {isRemoteBuild() && projects.length > 0 ? (
+          <Select
+            value={existing?.id ?? ""}
+            onValueChange={id => {
+              const found = projects.find(p => p.id === id);
+              if (found) setWorkspaceDir(found.workspaceDir);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[14rem] text-xs">
+              <SelectValue placeholder={t("home.start.pickFolder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 max-w-[18rem] gap-1.5 text-xs"
+            onClick={() => void chooseDir()}
+            title={workspaceDir || t("home.start.pickFolder")}
+          >
+            <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{workspaceDir ? shortenPath(workspaceDir, 34) : t("home.start.pickFolder")}</span>
+          </Button>
+        )}
 
         {/* An existing folder states its team; a new one asks for one. The same slot either way, so
             the row does not jump when a folder turns out to be a project already. */}

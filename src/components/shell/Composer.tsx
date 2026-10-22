@@ -8,7 +8,7 @@ import { ApprovalsPill } from "@/components/ApprovalsPill";
 import { PresetStrip } from "@/components/shell/PresetStrip";
 import type { AgentConfig, ChatParticipant, Preset } from "@/types";
 import { useAppStore, selectAllAgents, selectProjectAgents, selectProjectChatId } from "@/store";
-import { instructAgent } from "@/lib/orchestrator";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -388,6 +388,7 @@ export function Composer() {
   const runtime = useAppStore(state => state.runtime);
   const currentChatId = useAppStore(state => selectProjectChatId(state, currentProjectId));
   const submitPrompt = useAppStore(state => state.submitPrompt);
+  const instructAgent = useAppStore(state => state.instructAgent);
   const sendChatMessage = useAppStore(state => state.sendChatMessage);
   const stopChat = useAppStore(state => state.stopChat);
   const queueChatMessage = useAppStore(state => state.queueChatMessage);
@@ -1120,7 +1121,8 @@ export function Composer() {
   const noTeam = !chatMode && agents.length === 0;
   // On a phone there is no Ctrl+Enter to mention, and the room the hint takes is room the thread
   // does not get. `compact` is the phone page (see lib/platform.ts), not a screen width.
-  const compact = isRemoteBuild();
+  const remoteLayout = useAppStore(state => state.remoteLayout);
+  const compact = isRemoteBuild() && remoteLayout !== "desktop";
   const [showModel, setShowModel] = useState(false);
   const placeholder = chatMode
     ? t("composer.placeholder.chat", { name: chat?.name ?? t("composer.theChat") })
@@ -1466,7 +1468,7 @@ export function Composer() {
             it had nothing else in it. It says which model each participant runs on now. */}
         {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
           <div className="flex gap-1 items-center flex-wrap">
-            {!compact && (
+            {(true || !compact) && (
               <Button
                 type="button"
                 variant="ghost"

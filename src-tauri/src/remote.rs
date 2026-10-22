@@ -3,7 +3,7 @@
 //! orchestrator state) through Tauri events. Same protocol as src/lib/remote-node.ts.
 
 use axum::{
-    extract::{Query, State},
+    extract::{DefaultBodyLimit, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{sse::{Event, KeepAlive, Sse}, Html, IntoResponse, Json, Response},
     routing::{get, post},
@@ -279,6 +279,9 @@ command_route!(cmd_chat, "chat");
 command_route!(cmd_task, "task");
 command_route!(cmd_answer, "answer");
 command_route!(cmd_agent, "agent");
+command_route!(cmd_diagnostics, "diagnostics");
+command_route!(cmd_fs, "fs");
+command_route!(cmd_project, "project");
 
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, Json(json!({ "error": "No encontrado" }))).into_response()
@@ -323,6 +326,10 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
         .route("/api/answer", post(cmd_answer))
         .route("/api/task", post(cmd_task))
         .route("/api/agent", post(cmd_agent))
+        .route("/api/diagnostics", post(cmd_diagnostics))
+        .route("/api/fs", post(cmd_fs))
+        .route("/api/project", post(cmd_project))
+        .layer(DefaultBodyLimit::max(40 * 1024 * 1024))
         .fallback(not_found)
         .with_state(inner.clone());
 

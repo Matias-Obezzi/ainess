@@ -1861,6 +1861,8 @@ export const zh: Dictionary = {
   "phone.noChats": "这个项目没有聊天",
   "phone.answering": "正在回复…",
   "phone.noAgents": "没有配置任何智能体",
+  "phone.desktopView": "桌面视图",
+  "phone.mobileView": "移动视图",
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} 做到一半停下了",

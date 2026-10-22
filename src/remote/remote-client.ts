@@ -265,7 +265,8 @@ export function hydrate(snapshot: RemoteSnapshot): void {
   for (const p of snapshot.projects) {
     activeTaskRunId[p.id] = p.activeTaskRunId;
     projects.push({
-      id: p.id, name: p.name, workspaceDir: p.workspaceDir, color: p.color, createdAt: p.createdAt,
+      id: p.id, name: p.name, workspaceDir: p.workspaceDir, repoDir: p.repoDir, color: p.color, createdAt: p.createdAt,
+      board: p.board, autonomous: p.autonomous,
       agents: agentsByProject.get(p.id) ?? [],
     });
   }
@@ -289,6 +290,7 @@ export function hydrate(snapshot: RemoteSnapshot): void {
     remoteActiveChats: snapshot.activeChats,
     tasks,
     quota: snapshot.quota ?? {},
+    repoState: snapshot.repoState ?? state.repoState,
     // Nothing is ever read from disk here, so no skeleton should ever be waiting for it.
     historyLoading: {},
     chatLoading: {},
@@ -317,6 +319,7 @@ export function installRemoteActions(): void {
     stopAgent: (agentId, projectId) => call("/api/stop", { projectId, agentId }),
     stopAll: (projectId) => call("/api/stop", { projectId }),
     answerQuestion: (questionId, answer) => { void call("/api/answer", { questionId, answer }); },
+    answerQuestions: (items) => { void call("/api/answer", { items }); },
     approve: (approvalId, note) => call("/api/approve", { approvalId, decision: "approve", note }),
     reject: (approvalId, note) => call("/api/approve", { approvalId, decision: "reject", note }),
     sendChatMessage: (chatId, text) => call("/api/chat", { chatId, text }),
@@ -339,9 +342,32 @@ export function installRemoteActions(): void {
     saveConfig: async () => {},
     loadChatMessages: async () => {},
     // Configuration stays on the desktop app (see "Fuera de alcance" in the plan).
-    createChat: () => { refuse(); return ""; },
-    updateChat: refuse,
-    removeChat: refuse,
+    createChat: (opts) => {
+      const tempId = crypto.randomUUID();
+      void call("/api/chat", { op: "create", ...opts });
+      return tempId;
+    },
+    updateChat: (chatId, patch) => {
+      void call("/api/chat", { op: "update", chatId, patch });
+    },
+    removeChat: (chatId) => {
+      void call("/api/chat", { op: "delete", chatId });
+    },
+    resetSession: (agentId, projectId) => {
+      void call("/api/project", { op: "resetSession", projectId, agentId });
+    },
+    setAutonomous: (projectId, until) => {
+      void call("/api/project", { op: "setAutonomous", projectId, until });
+    },
+    endAutonomous: (projectId) => {
+      void call("/api/project", { op: "setAutonomous", projectId, until: null });
+    },
+    clearMessages: (projectId) => {
+      if (projectId) void call("/api/project", { op: "clearMessages", projectId });
+    },
+    addProject: refuse,
+    updateProject: refuse,
+    removeProject: refuse,
   });
 }
 

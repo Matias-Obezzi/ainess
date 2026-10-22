@@ -188,6 +188,7 @@ export interface AppState {
    * in the app (and the CLI) the real answer lives in `lib/chat.ts`, in this process's memory.
    */
   remoteActiveChats: string[];
+  remoteLayout?: "desktop" | "mobile";
 
   /** Tasks per project, loaded from disk on demand (see src/lib/task-store.ts). */
   tasks: Record<string, Task[]>;

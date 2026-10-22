@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   REMOTE_NAV_KEY,
+  REMOTE_LAYOUT_KEY,
+  DESKTOP_MIN_WIDTH,
+  defaultRemoteLayout,
+  readRemoteLayout,
+  writeRemoteLayout,
   readRemoteNav,
   writeRemoteNav,
   restoreNav,
@@ -272,5 +277,29 @@ describe("restoreNav", () => {
         });
       }
     }
+  });
+});
+
+
+describe("remote layout selection and persistence", () => {
+  it("defaults to desktop at or above 768px and mobile below 768px", () => {
+    expect(defaultRemoteLayout(DESKTOP_MIN_WIDTH)).toBe("desktop");
+    expect(defaultRemoteLayout(1440)).toBe("desktop");
+    expect(defaultRemoteLayout(DESKTOP_MIN_WIDTH - 1)).toBe("mobile");
+    expect(defaultRemoteLayout(390)).toBe("mobile");
+  });
+
+  it("round-trips layout preference through storage and ignores invalid values", () => {
+    const storage = new MemoryStorage();
+    expect(readRemoteLayout(storage)).toBeNull();
+
+    writeRemoteLayout(storage, "desktop");
+    expect(readRemoteLayout(storage)).toBe("desktop");
+
+    writeRemoteLayout(storage, "mobile");
+    expect(readRemoteLayout(storage)).toBe("mobile");
+
+    storage.setItem(REMOTE_LAYOUT_KEY, "tablet");
+    expect(readRemoteLayout(storage)).toBeNull();
   });
 });

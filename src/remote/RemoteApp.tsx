@@ -1,6 +1,7 @@
-// The phone UI: the same React components as the desktop app, laid out for one column and a
-// thumb. The store is filled by the snapshot (see remote-client.ts) and every action that runs
-// something is an HTTP call to the PC.
+// The remote UI: renders the full desktop shell on wide screens (PC/tablet) and a thumb-friendly
+// single-column layout on narrow screens (phone), with a manual toggle in the header so the user
+// can switch between Desktop and Mobile views at any time. The store is filled by the snapshot
+// (see remote-client.ts) and every action that runs something is an HTTP call to the host PC.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
@@ -13,6 +14,15 @@ import { InstructDialog } from "@/components/InstructDialog";
 import { ChatThread } from "@/components/shell/ChatThread";
 import { Composer } from "@/components/shell/Composer";
 import { OrchestratorThread } from "@/components/shell/OrchestratorThread";
+import { Sidebar } from "@/components/shell/Sidebar";
+import { TitleBar } from "@/components/shell/TitleBar";
+import { SearchPalette } from "@/components/shell/SearchPalette";
+import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
+import { HomeScreen } from "@/components/shell/HomeScreen";
+import { ProjectPanes } from "@/components/shell/ProjectPanes";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { EditContextMenu } from "@/components/EditContextMenu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -23,6 +33,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Island } from "@/components/ui/island";
 import { useKeyboardInset } from "./useKeyboardInset";
 import { Toaster, toast } from "@/components/ui/toast";
+import { useNotifications } from "@/hooks/useNotifications";
+import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
 import { roleLabelKey, statusLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
@@ -38,11 +50,20 @@ import { truncate } from "@/lib/format";
 import { isTypedPrompt } from "@/lib/thread-turns";
 import type { RemoteSnapshot } from "@/lib/remote";
 import { api, connectEvents, forgetToken, getToken, hydrate, installRemoteActions, rememberToken, RemoteError, runDiagnostics } from "./remote-client";
-import { readRemoteNav, writeRemoteNav, restoreNav, type Tab } from "./remote-nav";
+import {
+  readRemoteNav,
+  writeRemoteNav,
+  restoreNav,
+  defaultRemoteLayout,
+  readRemoteLayout,
+  writeRemoteLayout,
+  type Tab,
+  type RemoteLayout,
+} from "./remote-nav";
 import { activeAgentsAcross } from "./active-agents";
 import {
   ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessagesSquare,
-  ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw,
+  Monitor, ShieldCheck, Smartphone, Square, Users, WifiOff, Stethoscope, RefreshCw,
   AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
@@ -51,13 +72,31 @@ import type { DiagnosticResult } from "@/lib/diagnostics";
 
 type Phase = "loading" | "no-token" | "unauthorized" | "ready";
 
+function initialLayout(): RemoteLayout {
+  if (typeof localStorage !== "undefined") {
+    const saved = readRemoteLayout(localStorage);
+    if (saved) return saved;
+  }
+  const width = typeof window !== "undefined" ? window.innerWidth : 1024;
+  return defaultRemoteLayout(width);
+}
+
 /** Straight to the store: the phone has no back/forward stack and nothing to persist. */
 function goHome(): void {
-  useAppStore.setState({ currentProjectId: null, currentChatId: null });
+  useAppStore.setState({ screen: "home", currentProjectId: null, currentChatId: null });
 }
 
 function openProject(projectId: string): void {
-  useAppStore.setState({ currentProjectId: projectId, currentChatId: null });
+  const state = useAppStore.getState();
+  const openProjects = state.openProjects.includes(projectId)
+    ? state.openProjects
+    : [...state.openProjects, projectId];
+  useAppStore.setState({
+    screen: "project",
+    currentProjectId: projectId,
+    currentChatId: null,
+    openProjects,
+  });
 }
 
 export function RemoteApp() {
@@ -66,6 +105,8 @@ export function RemoteApp() {
   const [connected, setConnected] = useState(false);
   // Bumped by the token form: it is what makes the effect below try again with the new token.
   const [attempt, setAttempt] = useState(0);
+  const [layout, setLayout] = useState<RemoteLayout>(() => initialLayout());
+  const screen = useAppStore(state => state.screen);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
   // Lifted from ProjectView so switching between home and projects or reloading preserves where you were.
@@ -75,17 +116,121 @@ export function RemoteApp() {
   // Guard the persistence effect so the initial un-restored state never overwrites saved storage.
   const restoredRef = useRef(false);
 
+  // Sync layout choice to store so shared components (like Composer) can adapt to desktop vs mobile.
+  useEffect(() => {
+    useAppStore.setState({ remoteLayout: layout });
+  }, [layout]);
+
+  // Follow viewport width changes automatically until the user explicitly picks a layout.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => {
+      if (typeof localStorage !== "undefined" && readRemoteLayout(localStorage)) return;
+      const next = defaultRemoteLayout(window.innerWidth);
+      setLayout(prev => (prev === next ? prev : next));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Prevent unhandled drag/drop from navigating the browser window when dragging cards or files.
+  useEffect(() => {
+    const swallow = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
+
+  // Global keyboard shortcuts for desktop remote view.
+  useEffect(() => {
+    if (layout !== "desktop") return;
+    const platform = shortcutPlatform();
+    const handler = (e: KeyboardEvent) => {
+      const shortcut = resolveGlobalShortcut(e, platform);
+      if (!shortcut) return;
+      e.preventDefault();
+      const state = useAppStore.getState();
+      switch (shortcut.id) {
+        case "settings":
+          state.openSettings();
+          break;
+        case "palette":
+          state.toggleSearch();
+          break;
+        case "find":
+          state.toggleSearch(true, "messages");
+          break;
+        case "sidebar":
+          state.cycleSidebar();
+          break;
+        case "shortcuts":
+          state.toggleShortcuts();
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [layout]);
+
   // What needs you, on the phone's own notifications: only while the page is not in front, and
   // only once it has been allowed from the bell.
   useWebNotifications();
+  useNotifications();
+
+  const switchLayout = (next: RemoteLayout) => {
+    if (typeof localStorage !== "undefined") {
+      writeRemoteLayout(localStorage, next);
+    }
+    const state = useAppStore.getState();
+    if (next === "desktop") {
+      if (state.currentProjectId) {
+        const pid = state.currentProjectId;
+        const openProjects = state.openProjects.includes(pid)
+          ? state.openProjects
+          : [...state.openProjects, pid];
+        const mode = tab === "conversations" && (threadOpen || Boolean(state.currentChatId))
+          ? "chat"
+          : state.projectMode;
+        useAppStore.setState({
+          remoteLayout: next,
+          screen: "project",
+          openProjects,
+          projectMode: mode,
+        });
+      } else {
+        useAppStore.setState({ remoteLayout: next, screen: "home" });
+      }
+    } else {
+      if (state.screen === "home") {
+        useAppStore.setState({ remoteLayout: next, currentProjectId: null, currentChatId: null });
+      } else if (state.currentProjectId) {
+        const mode = state.projectMode;
+        if (mode === "chat") {
+          setTab("conversations");
+          setThreadOpen(!state.currentChatId);
+        } else if (tab === "conversations") {
+          setTab("tasks");
+          setThreadOpen(false);
+        }
+        useAppStore.setState({ remoteLayout: next });
+      } else {
+        useAppStore.setState({ remoteLayout: next });
+      }
+    }
+    setLayout(next);
+  };
 
   // Persist navigation on every change, but only after initial restore has run.
   useEffect(() => {
     if (!restoredRef.current) return;
     try {
       if (typeof localStorage !== "undefined") {
+        const activeProjectId = layout === "desktop" && screen === "home" ? null : currentProjectId;
         writeRemoteNav(localStorage, {
-          projectId: currentProjectId,
+          projectId: activeProjectId,
           chatId: currentChatId,
           tab,
           threadOpen,
@@ -94,7 +239,7 @@ export function RemoteApp() {
     } catch {
       // Storage unavailable or disabled
     }
-  }, [currentProjectId, currentChatId, tab, threadOpen]);
+  }, [layout, screen, currentProjectId, currentChatId, tab, threadOpen]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -116,9 +261,19 @@ export function RemoteApp() {
             const saved = readRemoteNav(localStorage);
             const state = useAppStore.getState();
             const restored = restoreNav(saved, state.config.projects, state.config.chats);
+            const pid = restored.projectId;
+            const openProjects = pid
+              ? (state.openProjects.includes(pid) ? state.openProjects : [...state.openProjects, pid])
+              : state.openProjects;
+            const mode = restored.tab === "conversations" && (restored.threadOpen || Boolean(restored.chatId))
+              ? "chat"
+              : "tasks";
             useAppStore.setState({
-              currentProjectId: restored.projectId,
+              screen: pid ? "project" : "home",
+              currentProjectId: pid,
               currentChatId: restored.chatId,
+              openProjects,
+              projectMode: pid ? mode : state.projectMode,
             });
             setTab(restored.tab);
             setThreadOpen(restored.threadOpen);
@@ -199,6 +354,55 @@ export function RemoteApp() {
     );
   }
 
+  if (layout === "desktop") {
+    return (
+      <div
+        className="h-screen flex flex-col bg-background text-foreground overflow-hidden relative"
+        data-testid="remote-desktop-shell"
+      >
+        <TitleBar
+          rightSlot={
+            <div className="flex items-center gap-0.5">
+              <LayoutSwitchButton layout="desktop" onSwitch={() => switchLayout("mobile")} compact />
+              <AlertsButton compact />
+              <DiagnosticsButton compact />
+            </div>
+          }
+        />
+        {!connected && (
+          <div className="shrink-0 flex items-center justify-center gap-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs py-1.5">
+            <WifiOff className="h-3.5 w-3.5" /> {t("phone.reconnecting")}
+          </div>
+        )}
+
+        <div className="flex-1 min-h-0 flex relative">
+          <Island position="top" idle={false} />
+          <Toaster position="bottom-right" richColors />
+          <ConfirmDialogHost />
+          <EditContextMenu />
+
+          <Sidebar />
+
+          <main className="flex-1 min-w-0 flex flex-col relative">
+            {screen === "home" && (
+              <>
+                <div className="px-6 pt-4 empty:hidden">
+                  <ApprovalsPanel all />
+                </div>
+                <HomeScreen />
+              </>
+            )}
+            {screen === "project" && <ProjectPanes />}
+          </main>
+        </div>
+
+        <SettingsDialog />
+        <SearchPalette />
+        <ShortcutsDialog />
+      </div>
+    );
+  }
+
   return (
     <Shell>
       <Island position="top" idle={false} />
@@ -215,11 +419,13 @@ export function RemoteApp() {
           setTab={setTab}
           threadOpen={threadOpen}
           setThreadOpen={setThreadOpen}
+          onSwitchLayout={() => switchLayout("desktop")}
         />
       ) : (
         <HomeView
           onOpenProject={handleOpenProject}
           onOpenActiveAgent={handleOpenActiveAgent}
+          onSwitchLayout={() => switchLayout("desktop")}
         />
       )}
     </Shell>
@@ -237,6 +443,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="w-full mx-auto max-w-screen-sm flex flex-col bg-background text-foreground overflow-hidden"
+      data-testid="remote-mobile-shell"
       // Shortened by whatever the keyboard is covering, so the box being typed in stays visible.
       style={{ height: "calc(100svh - var(--kb, 0px))" }}
     >
@@ -289,9 +496,11 @@ function TokenForm({ onSubmit }: { onSubmit(token: string): void }) {
 function HomeView({
   onOpenProject,
   onOpenActiveAgent,
+  onSwitchLayout,
 }: {
   onOpenProject(projectId: string): void;
   onOpenActiveAgent(projectId: string): void;
+  onSwitchLayout(): void;
 }) {
   const t = useT();
   const projects = useAppStore(state => state.config.projects);
@@ -311,7 +520,7 @@ function HomeView({
       <header className="shrink-0 flex items-center gap-2 px-4 h-14 border-b border-border">
         <Logo size={20} />
         <h1 className="font-semibold">ainess</h1>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1">
           {pending.length > 0 && (
             <Button
               variant="outline"
@@ -323,6 +532,7 @@ function HomeView({
               {plural(pending.length, t("phone.approvals.one", { n: pending.length }), t("phone.approvals.other", { n: pending.length }))}
             </Button>
           )}
+          <LayoutSwitchButton layout="mobile" onSwitch={onSwitchLayout} />
           <AlertsButton />
           <DiagnosticsButton />
         </div>
@@ -421,12 +631,14 @@ function ProjectView({
   setTab,
   threadOpen,
   setThreadOpen,
+  onSwitchLayout,
 }: {
   projectId: string;
   tab: Tab;
   setTab: (tab: Tab) => void;
   threadOpen: boolean;
   setThreadOpen: (open: boolean) => void;
+  onSwitchLayout(): void;
 }) {
   const t = useT();
   const project = useAppStore(state => state.config.projects.find(p => p.id === projectId));
@@ -461,6 +673,7 @@ function ProjectView({
         </Button>
         <ProjectAvatar name={project.name} color={project.color} size={28} />
         <span className="font-semibold truncate flex-1">{project.name}</span>
+        <LayoutSwitchButton layout="mobile" onSwitch={onSwitchLayout} />
         <AlertsButton />
         <DiagnosticsButton />
       </header>
@@ -712,7 +925,6 @@ function AgentsTab({ projectId }: { projectId: string }) {
   );
 }
 
-
 const LEVEL_ICON = { ok: CheckCircle2, warn: AlertTriangle, error: XCircle };
 const LEVEL_COLOR = {
   ok: "text-emerald-600 dark:text-emerald-400",
@@ -720,11 +932,37 @@ const LEVEL_COLOR = {
   error: "text-destructive",
 };
 
+function LayoutSwitchButton({
+  layout,
+  onSwitch,
+  compact = false,
+}: {
+  layout: RemoteLayout;
+  onSwitch(): void;
+  compact?: boolean;
+}) {
+  const t = useT();
+  const label = layout === "desktop" ? t("phone.mobileView") : t("phone.desktopView");
+  const Icon = layout === "desktop" ? Smartphone : Monitor;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(compact ? "h-7 w-7 rounded" : "h-10 w-10", "text-muted-foreground hover:text-foreground")}
+      aria-label={label}
+      title={label}
+      onClick={onSwitch}
+    >
+      <Icon className={compact ? "h-3.5 w-3.5" : "h-5 w-5"} />
+    </Button>
+  );
+}
+
 /**
  * Turns on the notifications of this phone. It has to be a button: the browser only takes the
  * request from a gesture, and iOS only from an app installed to the home screen.
  */
-function AlertsButton() {
+function AlertsButton({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const [state, setState] = useState<NotificationState>(() => notificationState());
 
@@ -743,27 +981,36 @@ function AlertsButton() {
   }[state];
 
   const off = state !== "default";
+  const iconClass = compact ? "h-3.5 w-3.5" : "h-5 w-5";
   return (
     <Button
       variant="ghost"
       size="icon"
-      className={cn("h-10 w-10", state === "granted" ? "text-emerald-500" : "text-muted-foreground")}
+      className={cn(
+        compact ? "h-7 w-7 rounded" : "h-10 w-10",
+        state === "granted" ? "text-emerald-500" : "text-muted-foreground",
+      )}
       aria-label={`${t("phone.alerts.label")}: ${label}`}
       title={label}
       disabled={off && state !== "granted"}
       onClick={() => { if (!off) void askForNotifications().then(setState); }}
     >
-      {state === "granted" ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+      {state === "granted" ? <Bell className={iconClass} /> : <BellOff className={iconClass} />}
     </Button>
   );
 }
 
-function DiagnosticsButton() {
+function DiagnosticsButton({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => setOpen(true)}>
-        <Stethoscope className="h-5 w-5" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(compact ? "h-7 w-7 rounded" : "h-10 w-10", "text-muted-foreground hover:text-foreground")}
+        onClick={() => setOpen(true)}
+      >
+        <Stethoscope className={compact ? "h-3.5 w-3.5" : "h-5 w-5"} />
       </Button>
       {open && <DiagnosticsSheet onClose={() => setOpen(false)} />}
     </>
