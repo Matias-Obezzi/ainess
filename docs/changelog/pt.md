@@ -2,6 +2,17 @@
 
 As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório.
 
+## Não publicado
+
+### Novo
+
+- **Você escolhe o que o Esc faz enquanto um agente trabalha**, em Configurações → Geral →
+  Teclado: pará-lo na hora (como até agora), pará-lo só com dois Esc seguidos ou nada. O Esc
+  continua fechando menus e diálogos, e o botão de parar funciona com qualquer uma das três.
+- **Cada agente pode ter seu próprio esforço de raciocínio**, ao lado do modelo no diálogo do
+  agente: de baixo a máximo, ou o padrão do provedor. Por enquanto só o Claude Code aceita; nos
+  provedores que não aceitam, a opção não aparece.
+
 ## 0.31.0 — 2026-10-13
 
 ### Novo

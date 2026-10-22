@@ -28,6 +28,9 @@ export interface CustomCommand {
   args: string[];
 }
 
+/** Reasoning effort levels, lowest to highest. A provider may accept only some of them. */
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface AgentConfig {
   id: string;
   name: string;
@@ -36,6 +39,11 @@ export interface AgentConfig {
   /** null = root of the hierarchy */
   parentId: string | null;
   model?: string;
+  /**
+   * How hard the model thinks before answering. Missing leaves it to the provider. Only providers
+   * that list it in their `efforts` (see src/lib/providers.ts) pass it on; the rest ignore it.
+   */
+  effort?: Effort;
   /** Skip permission prompts (Claude: --dangerously-skip-permissions, agy: idem). */
   autoApprove: boolean;
   /** Shown to the parent planner when listing available agents. */
@@ -495,6 +503,8 @@ export interface MessagingChannelConfig {
   projectId: string | null;
 }
 
+export type EscapeStops = "always" | "twice" | "never";
+
 export interface AppConfig {
   version: 14;
   /** This machine as rooms see it (see `RoomConfig`): made up once, the name editable. */
@@ -587,6 +597,12 @@ export interface AppConfig {
    * how the app ships; `prefers-reduced-motion: reduce` turns it off whatever this says.
    */
   screenAnimations?: boolean;
+  /**
+   * What Escape does while an agent is working: stop it on the first press ("always", what
+   * missing means), only on a second press within a moment ("twice"), or nothing ("never"; the
+   * stop button still works). See `lib/escape-stop.ts`.
+   */
+  escapeStops?: EscapeStops;
   /** Models typed by hand in pickers, remembered per provider so they don't have to be retyped. */
   rememberedModels?: Partial<Record<ProviderId, string[]>>;
   /** What planners may do on their own: groups of commands on or off, and the user's own patterns. */
