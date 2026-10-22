@@ -922,7 +922,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       systemPrompt,
       sessionId,
       cwd,
-      binaryPath: binary?.path ?? "",
+      binaryPath: provider.transport === "acp" ? (useAppStore.getState().config.binaryOverrides?.[effectiveAgent.provider]?.trim() || (binary?.version ? binary.path : "")) : (binary?.path ?? ""),
       mcpConfigPath,
       mcpServers,
       plannerPermissions: useAppStore.getState().config.plannerPermissions,
