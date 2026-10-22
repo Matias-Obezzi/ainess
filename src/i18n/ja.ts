@@ -748,7 +748,7 @@ export const ja: Dictionary = {
   "agents.deleteFormation": "チームを削除しますか?",
   "agents.desktopOnly": "デスクトップアプリでのみ利用可能",
   "agents.executable": "実行ファイル",
-  "agents.found": "検出済み",
+  "agents.found": "検出済み",
   "agents.ready": "準備完了",
   "agents.acpBundled": "ACP アダプターに同梱の Claude Code を使います。インストールは不要です。別のものを使うには手動で指定してください。",
   "agents.notFound": "未検出",

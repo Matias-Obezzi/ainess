@@ -748,7 +748,7 @@ export const es: Dictionary = {
   "agents.deleteFormation": "¿Eliminar el equipo?",
   "agents.desktopOnly": "Solo disponible en la app de escritorio",
   "agents.executable": "Ejecutable",
-  "agents.found": "Detectado",
+  "agents.found": "Detectado",
   "agents.ready": "Listo",
   "agents.acpBundled": "Usa el Claude Code que trae el adaptador ACP: no hace falta instalarlo. Para usar otro, elegilo a mano.",
   "agents.notFound": "No detectado",

@@ -747,7 +747,7 @@ export const zh: Dictionary = {
   "agents.deleteFormation": "删除这个团队？",
   "agents.desktopOnly": "仅在桌面应用中可用",
   "agents.executable": "可执行文件",
-  "agents.found": "已检测到",
+  "agents.found": "已检测到",
   "agents.ready": "就绪",
   "agents.acpBundled": "使用 ACP 适配器自带的 Claude Code，无需安装。如需使用其他版本，请手动指定。",
   "agents.notFound": "未检测到",
