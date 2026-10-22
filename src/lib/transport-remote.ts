@@ -1,5 +1,9 @@
 import { Transport } from "./transport";
 import { translateNow } from "@/i18n/useT";
+async function remoteApi(path: string, body?: Record<string, unknown>) {
+  const { api } = await import("@/remote/remote-client");
+  return api(path, body);
+}
 
 const notAvailable = () => translateNow("app.desktopOnly");
 
@@ -30,7 +34,19 @@ export const remoteTransport: Transport = {
   writeTextFile: async (path) => path,
   readTextFile: async () => null,
   configFileStamp: async () => null,
-  exec: async () => ({ code: null, stdout: "", stderr: "" }),
+  exec: async (program, args, cwd, timeoutSecs) => {
+    if (program !== "git" || !cwd) return { code: null, stdout: "", stderr: "" };
+    try {
+      const res = await remoteApi("/api/fs", { op: "git", args, cwd, timeoutSecs });
+      return {
+        code: typeof res.code === "number" ? res.code : null,
+        stdout: typeof res.stdout === "string" ? res.stdout : "",
+        stderr: typeof res.stderr === "string" ? res.stderr : "",
+      };
+    } catch {
+      return { code: null, stdout: "", stderr: "" };
+    }
+  },
   httpPost: async (url, body, headers) => {
     const res = await fetch(url, { method: "POST", headers, body });
     return { status: res.status, body: await res.text() };
@@ -61,11 +77,35 @@ export const remoteTransport: Transport = {
   unpackSkill: async () => null,
   clonePluginRepo: async () => null,
   removePluginDir: async () => {},
+  realPath: async (path) => path,
   writeFileAbs: async () => {},
-  writeFileBytes: async () => {},
-  readFileAbs: async () => null,
-  readFileBytes: async () => null,
-  filesExistAbs: async () => [],
+  writeFileBytes: async (path, base64) => {
+    await remoteApi("/api/fs", { op: "writeBytes", path, base64 });
+  },
+  readFileAbs: async (path) => {
+    try {
+      const res = await remoteApi("/api/fs", { op: "readText", path });
+      return typeof res.text === "string" ? res.text : null;
+    } catch {
+      return null;
+    }
+  },
+  readFileBytes: async (path, maxBytes) => {
+    try {
+      const res = await remoteApi("/api/fs", { op: "readBytes", path, maxBytes });
+      return typeof res.data === "string" ? res.data : null;
+    } catch {
+      return null;
+    }
+  },
+  filesExistAbs: async (paths) => {
+    try {
+      const res = await remoteApi("/api/fs", { op: "exists", paths });
+      return Array.isArray(res.paths) ? (res.paths as string[]) : [];
+    } catch {
+      return [];
+    }
+  },
   listSubdirs: async () => [],
   detectEditors: async () => [],
   openInEditor: async () => {},

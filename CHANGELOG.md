@@ -10,6 +10,15 @@ let one of them fall behind.
 
 ### Added
 
+- **The remote has a desktop view.** Opening `/desktop` from a computer shows the same shell as the
+  app (sidebar, projects, board), driving the host like the phone page does; the phone page stays
+  as light as before.
+- **Files can be attached from the phone.** The remote composer sends attachments to the host,
+  which saves them inside the project like the ones attached on the desktop.
+- **Chats and projects from the remote.** Starting a chat with an agent, renaming a chat, changing
+  who is in it and deleting it now work from the remote too, and so do resetting an agent's
+  session, the autonomous mode and clearing a project's messages; editing settings and projects
+  still happens on the desktop.
 - **You choose what Esc does while an agent is working**, in Settings → General → Keyboard: stop
   it right away (as until now), stop it only on two Esc in a row, or nothing at all. Esc still
   closes menus and dialogs, and the stop button works with any of the three.

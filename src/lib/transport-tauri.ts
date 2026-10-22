@@ -96,6 +96,13 @@ export const tauriTransport: Transport = {
       return null;
     }
   },
+  realPath: async (path) => {
+    try {
+      return await invoke<string>("real_path", { path });
+    } catch {
+      return path;
+    }
+  },
   writeFileAbs: async (path, content) => invoke<void>("write_file_abs", { path, content }),
   writeFileBytes: async (path, dataB64) => invoke<void>("write_file_bytes", { path, dataB64 }),
 

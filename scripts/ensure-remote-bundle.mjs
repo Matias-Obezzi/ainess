@@ -17,10 +17,11 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = join(root, "dist-remote", "index.html");
+const desktopBundle = join(root, "dist-remote", "desktop.html");
 
-if (existsSync(bundle)) process.exit(0);
+if (existsSync(bundle) && existsSync(desktopBundle)) process.exit(0);
 
-console.log("Falta dist-remote/index.html (lo importa src/lib/remote-node.ts): lo construyo primero.");
+console.log("Faltan bundles en dist-remote/ (los importa src/lib/remote-node.ts): los construyo primero.");
 
 // Through npm itself — the same `build:remote` the rest of the repo runs, so this cannot drift from
 // it — and through `node` on npm's own entry point rather than the `npm`/`npm.cmd` on PATH, which on
@@ -32,7 +33,7 @@ const args = npmCli
   : [join(root, "node_modules", "vite", "bin", "vite.js"), "build", "--config", "vite.remote.config.ts"];
 const built = spawnSync(process.execPath, args, { cwd: root, stdio: "inherit" });
 
-if (built.status !== 0 || !existsSync(bundle)) {
-  console.error("No se pudo construir dist-remote/index.html. Corré `npm run build:remote` para ver el error.");
+if (built.status !== 0 || !existsSync(bundle) || !existsSync(desktopBundle)) {
+  console.error("No se pudieron construir los bundles en dist-remote/. Corré `npm run build:remote` para ver el error.");
   process.exit(built.status || 1);
 }

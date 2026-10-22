@@ -1875,6 +1875,8 @@ export const fr: Dictionary = {
   "phone.noChats": "Ce projet n'a aucun chat",
   "phone.answering": "Réponse en cours…",
   "phone.noAgents": "Aucun agent configuré",
+  "phone.desktopView": "Vue bureau",
+  "phone.mobileView": "Vue mobile",
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} est resté à moitié fait",

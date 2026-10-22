@@ -45,6 +45,7 @@ export const nullTransport: Transport = {
   removePluginDir: async () => {},
   writeFileAbs: async () => {},
   writeFileBytes: async () => {},
+  realPath: async (path) => path,
   readFileAbs: async () => null,
   readFileBytes: async () => null,
   filesExistAbs: async () => [],

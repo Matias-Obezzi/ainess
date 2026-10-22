@@ -1184,7 +1184,7 @@ async function main() {
         error(isSend ? t("cli.chatNotFound", { name: chatName ?? "" }) : t("cli.chatNeedsAgent"));
       }
       const names = participants.map(p => agentById(p.agentId)?.name).join(", ");
-      const id = store.createChat({
+      const id = await store.createChat({
         projectId,
         name: chatName || `CLI: ${names}`,
         mode: participants.length > 1 ? "shared" : "individual",

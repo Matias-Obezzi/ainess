@@ -1876,6 +1876,8 @@ export const ja: Dictionary = {
   "phone.noChats": "このプロジェクトにはチャットがありません",
   "phone.answering": "応答中…",
   "phone.noAgents": "設定されたエージェントがありません",
+  "phone.desktopView": "デスクトップ表示",
+  "phone.mobileView": "モバイル表示",
 
   // ---- Interrupted runs ----
   "notify.leftHalfway": "{name} が中断されました",
