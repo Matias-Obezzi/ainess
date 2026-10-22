@@ -6,6 +6,12 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Fixed
+
+- **Windows CLI shims and broken `--version` probes fall back to the engine.** The runner unwraps npm `.cmd` and NVM `.nodejs` shims to the real binary under the active Node version, and ignores binaries on PATH whose `--version` probe failed so runs fall back to the managed runtime.
+
 ## 0.31.0 — 2026-10-13
 
 ### Added

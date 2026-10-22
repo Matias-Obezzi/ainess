@@ -916,13 +916,18 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       return;
     }
 
+    // An ACP adapter only gets a binary the user pointed at explicitly; otherwise it resolves its
+    // own engine. The other transports spawn the detected binary.
+    const override = useAppStore.getState().config.binaryOverrides?.[effectiveAgent.provider]?.trim() ?? "";
+    const binaryPath = provider.transport === "acp" ? override : (binary?.path ?? "");
+
     const buildInput = {
       agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
       cwd,
-      binaryPath: binary?.path ?? "",
+      binaryPath,
       mcpConfigPath,
       mcpServers,
       plannerPermissions: useAppStore.getState().config.plannerPermissions,
