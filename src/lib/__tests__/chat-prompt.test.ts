@@ -1,12 +1,17 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildSystemPrompt } from "@/lib/providers";
-import { loadLanguage, resolveLanguage } from "@/i18n";
+import { loadLanguage } from "@/i18n";
+import { useAppStore } from "@/store";
 import type { AgentConfig, Task } from "@/types";
 
-// `translateNow` (which `buildSystemPrompt` uses) falls back to Spanish for a language that is
-// not loaded yet. Nothing here sets `config.language`, so it resolves to whatever the test
-// environment's system language is (Node reports "en-US"); load it before relying on its text.
-beforeAll(() => loadLanguage(resolveLanguage(null)));
+// The assertions below are written against the English prompt. `translateNow` (which
+// `buildSystemPrompt` uses) reads `config.language` and, when it is unset, follows the system
+// language, so pin English explicitly and load its dictionary: the result must not depend on
+// the machine's locale.
+beforeAll(async () => {
+  useAppStore.setState(state => ({ config: { ...state.config, language: "en" } }));
+  await loadLanguage("en");
+});
 
 const planner: AgentConfig = { id: "p", name: "Orquestador", provider: "claude", role: "planner", parentId: null, autoApprove: false, systemPrompt: "Sos groso." };
 const worker: AgentConfig = { id: "w", name: "Obrero", provider: "antigravity", role: "implementer", parentId: "p", autoApprove: true };

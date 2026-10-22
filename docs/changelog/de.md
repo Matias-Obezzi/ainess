@@ -2,6 +2,18 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unveröffentlicht
+
+### Neu
+
+- **Du wählst, was Esc tut, während ein Agent arbeitet**, unter Einstellungen → Allgemein →
+  Tastatur: ihn sofort stoppen (wie bisher), nur bei zweimal Esc hintereinander stoppen oder gar
+  nichts. Esc schließt weiterhin Menüs und Dialoge, und die Stopp-Schaltfläche funktioniert bei
+  allen drei.
+- **Jeder Agent kann seinen eigenen Denkaufwand haben**, neben seinem Modell im Agentendialog:
+  von niedrig bis maximal oder der Standard des Anbieters. Vorerst nimmt ihn nur Claude Code an;
+  bei Anbietern ohne ihn wird die Auswahl nicht angezeigt.
+
 ## 0.31.0 — 2026-10-13
 
 ### Neu

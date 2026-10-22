@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AgentConfig, ProviderId, AgentRole, QuotaItem } from "@/types";
+import { AgentConfig, ProviderId, AgentRole, QuotaItem, Effort } from "@/types";
 import { availableProviders, defaultAgentDescription, isDefaultProviderName, PROVIDERS } from "@/lib/providers";
 import { useModelChoices } from "@/hooks/useModelChoices";
 import { ForgetModelButton } from "@/components/ForgetModelButton";
@@ -185,6 +185,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const [parentId, setParentId] = useState<string | null>(null);
   const [modelOption, setModelOption] = useState<string>(DEFAULT_MODEL_OPTION);
   const [otherModel, setOtherModel] = useState("");
+  const [effort, setEffort] = useState<Effort | undefined>(undefined);
   // A headless agent nobody can answer should not sit blocked asking for permission, so a new
   // one is born auto-approving its tools. Editing an existing one keeps whatever it had.
   const [autoApprove, setAutoApprove] = useState(true);
@@ -228,6 +229,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         const remembered = rememberedModels?.[agent.provider] ?? [];
         const choices = modelChoices(agent.provider, models[agent.provider], remembered);
         setModelFromAgent(agent.provider, agent.model, choices);
+        setEffort(agent.effort);
         setAutoApprove(agent.autoApprove);
         setApprovalMode(agent.requireApproval === undefined ? "inherit" : agent.requireApproval ? "always" : "never");
         setWorktree(agent.worktree ?? false);
@@ -252,6 +254,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setParentId(null);
         setModelOption(DEFAULT_MODEL_OPTION);
         setOtherModel("");
+        setEffort(undefined);
         setAutoApprove(true);
         setApprovalMode("inherit");
         setWorktree(false);
@@ -312,6 +315,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const handleProviderChange = (value: ProviderId) => {
     setProvider(value);
+    // A level the new provider does not take would be passed to a CLI that refuses it.
+    if (effort && !PROVIDERS[value]?.efforts?.includes(effort)) setEffort(undefined);
     const shouldUpdateName =
       name.trim() === "" ||
       name === suggestedName ||
@@ -327,6 +332,8 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
   const effectiveModel = modelOption === DEFAULT_MODEL_OPTION ? undefined : modelOption === OTHER_MODEL_OPTION ? otherModel : modelOption;
 
+  const efforts = PROVIDERS[provider]?.efforts;
+
   const handleSave = () => {
     if (modelOption === OTHER_MODEL_OPTION && otherModel.trim()) {
       rememberModel(provider, otherModel);
@@ -338,6 +345,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       role,
       parentId,
       model: effectiveModel || undefined,
+      effort: effort && efforts?.includes(effort) ? effort : undefined,
       autoApprove,
       requireApproval: approvalMode === "inherit" ? undefined : approvalMode === "always",
       worktree: worktree || undefined,
@@ -570,6 +578,27 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                 )}
               </div>
             </div>
+
+            {efforts && (
+              <div className="grid grid-cols-2 gap-4">
+                <div />
+                <div className="space-y-1">
+                  <Label>{t("agentDialog.effort")}</Label>
+                  <Select value={effort ?? DEFAULT_MODEL_OPTION} onValueChange={v => setEffort(v === DEFAULT_MODEL_OPTION ? undefined : v as Effort)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_MODEL_OPTION}>{t("agentDialog.providerDefault")}</SelectItem>
+                      {efforts.map(level => (
+                        <SelectItem key={level} value={level}>{t(`effort.${level}`)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t("agentDialog.effortHint")}</p>
+                </div>
+              </div>
+            )}
 
             {provider !== "custom" && <QuotaBlock provider={provider} initialLoading={modelsLoading} />}
 
