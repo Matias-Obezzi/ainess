@@ -27,6 +27,8 @@ use crate::logging;
 /// The phone page, built by `npm run build:remote` into one self-contained HTML file.
 /// `build.rs` leaves a placeholder there when it is missing, so a fresh clone still compiles.
 const PAGE: &str = include_str!("../../dist-remote/index.html");
+/// The desktop shell page, built into a separate single-file bundle.
+const DESKTOP_PAGE: &str = include_str!("../../dist-remote/desktop.html");
 /// What an installed app needs beside the page: the manifest, the icon it names, and the service
 /// worker that shows a notification and knows where to take you when it is tapped. They are plain
 /// files (nothing to bundle), so they come straight from the source tree.
@@ -42,7 +44,7 @@ struct Inner {
     snapshot: RwLock<String>,
     tx: broadcast::Sender<String>,
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
-    app: AppHandle,
+    app: Option<AppHandle>,
 }
 
 struct Server {
@@ -79,19 +81,43 @@ struct TokenQuery {
 }
 
 fn authorized(inner: &Inner, headers: &HeaderMap, q: &TokenQuery) -> bool {
-    if q.token.as_deref() == Some(inner.token.as_str()) {
-        return true;
+    authorized_parts(&inner.token, headers, q.token.as_deref())
+}
+
+fn authorized_parts(token: &str, headers: &HeaderMap, query_or_token: Option<&str>) -> bool {
+    if let Some(q) = query_or_token {
+        if q == token {
+            return true;
+        }
+        for pair in q.split('&') {
+            if let Some((k, v)) = pair.split_once('=') {
+                if k == "token" && v == token {
+                    return true;
+                }
+            }
+        }
     }
     headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .map(|t| t == inner.token)
+        .map(|t| t == token)
         .unwrap_or(false)
 }
 
 fn unauthorized() -> Response {
     (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Token inválido" }))).into_response()
+}
+
+async fn auth_middleware(
+    State(inner): State<Arc<Inner>>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    if !authorized_parts(&inner.token, req.headers(), req.uri().query()) {
+        return unauthorized();
+    }
+    next.run(req).await
 }
 
 /// The page is served to whoever asks, unlike everything under `/api/`.
@@ -178,18 +204,44 @@ fn gzipped_page() -> &'static Vec<u8> {
     })
 }
 
-async fn state_handler(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
-    if !authorized(&inner, &headers, &q) {
-        return unauthorized();
+fn gzipped_desktop_page() -> &'static Vec<u8> {
+    static COMPRESSED: OnceLock<Vec<u8>> = OnceLock::new();
+    COMPRESSED.get_or_init(|| {
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        let _ = encoder.write_all(DESKTOP_PAGE.as_bytes());
+        encoder.finish().unwrap_or_else(|_| DESKTOP_PAGE.as_bytes().to_vec())
+    })
+}
+
+async fn desktop_page(headers: HeaderMap) -> Response {
+    if accepts_gzip(&headers) {
+        return (
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CONTENT_ENCODING, "gzip"),
+                (header::CACHE_CONTROL, "no-store"),
+                (header::VARY, "Accept-Encoding"),
+            ],
+            gzipped_desktop_page().clone(),
+        )
+            .into_response();
     }
+    (
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        Html(DESKTOP_PAGE),
+    )
+        .into_response()
+}
+
+async fn state_handler(State(inner): State<Arc<Inner>>) -> Response {
     let snap = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
     ([(header::CONTENT_TYPE, "application/json; charset=utf-8")], snap).into_response()
 }
 
-async fn events(State(inner): State<Arc<Inner>>, headers: HeaderMap, Query(q): Query<TokenQuery>) -> Response {
-    if !authorized(&inner, &headers, &q) {
-        return unauthorized();
-    }
+async fn events(State(inner): State<Arc<Inner>>) -> Response {
     let first = inner.snapshot.read().map(|s| s.clone()).unwrap_or_else(|_| "null".into());
     let rx = inner.tx.subscribe();
     let initial = tokio_stream::once(Ok::<Event, Infallible>(Event::default().event("state").data(first)));
@@ -218,7 +270,14 @@ async fn dispatch(inner: &Inner, action: &str, payload: Value) -> Value {
     let (tx, rx) = oneshot::channel::<Value>();
     inner.pending.lock().unwrap().insert(id.clone(), tx);
     let cmd = json!({ "id": id, "action": action, "payload": payload });
-    if let Err(e) = inner.app.emit("remote-command", cmd) {
+    let app = match &inner.app {
+        Some(a) => a,
+        None => {
+            inner.pending.lock().unwrap().remove(&id);
+            return json!({ "error": "App no disponible" });
+        }
+    };
+    if let Err(e) = app.emit("remote-command", cmd) {
         inner.pending.lock().unwrap().remove(&id);
         return json!({ "error": format!("No se pudo enviar el comando a la app: {e}") });
     }
@@ -256,13 +315,8 @@ macro_rules! command_route {
     ($name:ident, $action:literal) => {
         async fn $name(
             State(inner): State<Arc<Inner>>,
-            headers: HeaderMap,
-            Query(q): Query<TokenQuery>,
             body: Option<Json<Value>>,
         ) -> Response {
-            if !authorized(&inner, &headers, &q) {
-                return unauthorized();
-            }
             let payload = body.map(|Json(v)| v).unwrap_or_else(|| json!({}));
             let result = dispatch(&inner, $action, payload).await;
             let status = if result.get("error").is_some() { StatusCode::BAD_REQUEST } else { StatusCode::OK };
@@ -293,6 +347,36 @@ fn local_ip() -> String {
         .unwrap_or_else(|_| "127.0.0.1".to_string())
 }
 
+pub fn build_router(inner: Arc<Inner>) -> Router {
+    let api_routes = Router::new()
+        .route("/state", get(state_handler))
+        .route("/events", get(events))
+        .route("/prompt", post(cmd_prompt))
+        .route("/instruct", post(cmd_instruct))
+        .route("/stop", post(cmd_stop))
+        .route("/approve", post(cmd_approve))
+        .route("/chat", post(cmd_chat))
+        .route("/answer", post(cmd_answer))
+        .route("/task", post(cmd_task))
+        .route("/agent", post(cmd_agent))
+        .route("/diagnostics", post(cmd_diagnostics))
+        .route("/fs", post(cmd_fs).layer(DefaultBodyLimit::max(40 * 1024 * 1024)))
+        .route("/project", post(cmd_project))
+        .layer(axum::middleware::from_fn_with_state(inner.clone(), auth_middleware));
+
+    Router::new()
+        .route("/", get(page))
+        .route("/desktop", get(desktop_page))
+        // Open, like the page: a manifest behind a token is a manifest the browser cannot read,
+        // and without it what you install to the home screen is a bookmark.
+        .route("/manifest.webmanifest", get(manifest))
+        .route("/sw.js", get(service_worker))
+        .route("/icon.png", get(icon))
+        .nest("/api", api_routes)
+        .fallback(not_found)
+        .with_state(inner)
+}
+
 #[tauri::command]
 pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, port: u16, token: String) -> Result<RemoteInfo, String> {
     if let Some(s) = state.server.lock().unwrap().as_ref() {
@@ -307,37 +391,17 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
         snapshot: RwLock::new("null".to_string()),
         tx,
         pending: Mutex::new(HashMap::new()),
-        app,
+        app: Some(app),
     });
-    let router = Router::new()
-        .route("/", get(page))
-        // Open, like the page: a manifest behind a token is a manifest the browser cannot read,
-        // and without it what you install to the home screen is a bookmark.
-        .route("/manifest.webmanifest", get(manifest))
-        .route("/sw.js", get(service_worker))
-        .route("/icon.png", get(icon))
-        .route("/api/state", get(state_handler))
-        .route("/api/events", get(events))
-        .route("/api/prompt", post(cmd_prompt))
-        .route("/api/instruct", post(cmd_instruct))
-        .route("/api/stop", post(cmd_stop))
-        .route("/api/approve", post(cmd_approve))
-        .route("/api/chat", post(cmd_chat))
-        .route("/api/answer", post(cmd_answer))
-        .route("/api/task", post(cmd_task))
-        .route("/api/agent", post(cmd_agent))
-        .route("/api/diagnostics", post(cmd_diagnostics))
-        .route("/api/fs", post(cmd_fs))
-        .route("/api/project", post(cmd_project))
-        .layer(DefaultBodyLimit::max(40 * 1024 * 1024))
-        .fallback(not_found)
-        .with_state(inner.clone());
+    let router = build_router(inner.clone());
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .map_err(|e| {
             let msg = if e.kind() == std::io::ErrorKind::AddrInUse { format!("El puerto {port} está ocupado") } else { e.to_string() };
-            logging::append(&inner.app, "error", "remote", &format!("could not listen on port {port}: {msg}"));
+            if let Some(app) = &inner.app {
+                logging::append(app, "error", "remote", &format!("could not listen on port {port}: {msg}"));
+            }
             msg
         })?;
     let task = tauri::async_runtime::spawn(async move {
@@ -345,7 +409,9 @@ pub async fn remote_start(app: AppHandle, state: TauriState<'_, RemoteState>, po
     });
     let ip = local_ip();
     let url = format!("http://{ip}:{port}/?token={}", urlencode(&token));
-    logging::append(&inner.app, "info", "remote", &format!("servidor remoto escuchando en {ip}:{port}"));
+    if let Some(app) = &inner.app {
+        logging::append(app, "info", "remote", &format!("servidor remoto escuchando en {ip}:{port}"));
+    }
     *state.server.lock().unwrap() = Some(Server { inner, task, url: url.clone(), ip: ip.clone() });
     Ok(RemoteInfo { url, ip })
 }
@@ -435,5 +501,59 @@ mod tests {
         assert_eq!(decoded, PAGE);
         // Worth the trouble: the bundle is a megabyte and it travels to a phone.
         assert!(compressed.len() < PAGE.len() / 2, "{} vs {}", compressed.len(), PAGE.len());
+    }
+
+    #[test]
+    fn authorized_parts_validates_token_header_and_query() {
+        let token = "my-secret-123";
+        let empty_headers = HeaderMap::new();
+
+        assert!(super::authorized_parts(token, &empty_headers, Some("my-secret-123")));
+        assert!(super::authorized_parts(token, &empty_headers, Some("token=my-secret-123")));
+        assert!(super::authorized_parts(token, &empty_headers, Some("foo=bar&token=my-secret-123")));
+        assert!(!super::authorized_parts(token, &empty_headers, Some("token=wrong")));
+        assert!(!super::authorized_parts(token, &empty_headers, None));
+
+        let mut auth_headers = HeaderMap::new();
+        auth_headers.insert(header::AUTHORIZATION, HeaderValue::from_str("Bearer my-secret-123").unwrap());
+        assert!(super::authorized_parts(token, &auth_headers, None));
+
+        let mut bad_headers = HeaderMap::new();
+        bad_headers.insert(header::AUTHORIZATION, HeaderValue::from_str("Bearer wrong").unwrap());
+        assert!(!super::authorized_parts(token, &bad_headers, None));
+    }
+
+    #[tokio::test]
+    async fn unauthenticated_request_rejected_without_reading_large_body() {
+        use std::collections::HashMap;
+        use std::sync::{Arc, Mutex, RwLock};
+        use tokio::sync::broadcast;
+
+        let (tx, _rx) = broadcast::channel::<String>(16);
+        let inner = Arc::new(super::Inner {
+            token: "secret-token".to_string(),
+            snapshot: RwLock::new("{}".to_string()),
+            tx,
+            pending: Mutex::new(HashMap::new()),
+            app: None,
+        });
+        let router = super::build_router(inner);
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, router).await;
+        });
+
+        let client = reqwest::Client::new();
+        let large_body = vec![b'a'; 5 * 1024 * 1024];
+        let res = client
+            .post(format!("http://127.0.0.1:{port}/api/fs"))
+            .header("Content-Type", "application/json")
+            .body(large_body)
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), reqwest::StatusCode::UNAUTHORIZED);
     }
 }

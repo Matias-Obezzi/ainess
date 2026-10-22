@@ -16,5 +16,14 @@ fn main() {
     }
     println!("cargo:rerun-if-changed=../dist-remote/index.html");
 
+    let desktop_page = Path::new("../dist-remote/desktop.html");
+    if !desktop_page.exists() {
+        if let Some(dir) = desktop_page.parent() {
+            let _ = fs::create_dir_all(dir);
+        }
+        let _ = fs::write(desktop_page, REMOTE_PAGE_PLACEHOLDER);
+    }
+    println!("cargo:rerun-if-changed=../dist-remote/desktop.html");
+
     tauri_build::build()
 }

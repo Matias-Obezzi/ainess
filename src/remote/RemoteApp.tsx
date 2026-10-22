@@ -1,7 +1,7 @@
-// The remote UI: renders the full desktop shell on wide screens (PC/tablet) and a thumb-friendly
-// single-column layout on narrow screens (phone), with a manual toggle in the header so the user
-// can switch between Desktop and Mobile views at any time. The store is filled by the snapshot
-// (see remote-client.ts) and every action that runs something is an HTTP call to the host PC.
+// The remote UI: renders a thumb-friendly single-column layout on mobile,
+// with a button in the header so the user can switch to the Desktop view (/desktop).
+// The store is filled by the snapshot (see remote-client.ts) and every action that
+// runs something is an HTTP call to the host PC.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, selectAllAgents, selectProjectAgents } from "@/store";
 import { AgentAvatar } from "@/components/ProviderLogo";
@@ -14,15 +14,6 @@ import { InstructDialog } from "@/components/InstructDialog";
 import { ChatThread } from "@/components/shell/ChatThread";
 import { Composer } from "@/components/shell/Composer";
 import { OrchestratorThread } from "@/components/shell/OrchestratorThread";
-import { Sidebar } from "@/components/shell/Sidebar";
-import { TitleBar } from "@/components/shell/TitleBar";
-import { SearchPalette } from "@/components/shell/SearchPalette";
-import { ShortcutsDialog } from "@/components/shell/ShortcutsDialog";
-import { HomeScreen } from "@/components/shell/HomeScreen";
-import { ProjectPanes } from "@/components/shell/ProjectPanes";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
-import { EditContextMenu } from "@/components/EditContextMenu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -34,7 +25,6 @@ import { Island } from "@/components/ui/island";
 import { useKeyboardInset } from "./useKeyboardInset";
 import { Toaster, toast } from "@/components/ui/toast";
 import { useNotifications } from "@/hooks/useNotifications";
-import { resolveGlobalShortcut, shortcutPlatform } from "@/lib/shortcuts";
 import { roleLabelKey, statusLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { plural } from "@/i18n";
@@ -54,16 +44,13 @@ import {
   readRemoteNav,
   writeRemoteNav,
   restoreNav,
-  defaultRemoteLayout,
-  readRemoteLayout,
   writeRemoteLayout,
   type Tab,
-  type RemoteLayout,
 } from "./remote-nav";
 import { activeAgentsAcross } from "./active-agents";
 import {
   ArrowLeft, Bell, BellOff, Bot, ChevronRight, FolderOpen, ListTodo, MessagesSquare,
-  Monitor, ShieldCheck, Smartphone, Square, Users, WifiOff, Stethoscope, RefreshCw,
+  Monitor, ShieldCheck, Square, Users, WifiOff, Stethoscope, RefreshCw,
   AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
 import { summarizeAgentQuota } from "@/lib/quota-summary";
@@ -71,15 +58,6 @@ import { QuotaRing } from "@/components/QuotaRing";
 import type { DiagnosticResult } from "@/lib/diagnostics";
 
 type Phase = "loading" | "no-token" | "unauthorized" | "ready";
-
-function initialLayout(): RemoteLayout {
-  if (typeof localStorage !== "undefined") {
-    const saved = readRemoteLayout(localStorage);
-    if (saved) return saved;
-  }
-  const width = typeof window !== "undefined" ? window.innerWidth : 1024;
-  return defaultRemoteLayout(width);
-}
 
 /** Straight to the store: the phone has no back/forward stack and nothing to persist. */
 function goHome(): void {
@@ -105,7 +83,6 @@ export function RemoteApp() {
   const [connected, setConnected] = useState(false);
   // Bumped by the token form: it is what makes the effect below try again with the new token.
   const [attempt, setAttempt] = useState(0);
-  const [layout, setLayout] = useState<RemoteLayout>(() => initialLayout());
   const screen = useAppStore(state => state.screen);
   const currentProjectId = useAppStore(state => state.currentProjectId);
   const currentChatId = useAppStore(state => state.currentChatId);
@@ -116,21 +93,8 @@ export function RemoteApp() {
   // Guard the persistence effect so the initial un-restored state never overwrites saved storage.
   const restoredRef = useRef(false);
 
-  // Sync layout choice to store so shared components (like Composer) can adapt to desktop vs mobile.
   useEffect(() => {
-    useAppStore.setState({ remoteLayout: layout });
-  }, [layout]);
-
-  // Follow viewport width changes automatically until the user explicitly picks a layout.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onResize = () => {
-      if (typeof localStorage !== "undefined" && readRemoteLayout(localStorage)) return;
-      const next = defaultRemoteLayout(window.innerWidth);
-      setLayout(prev => (prev === next ? prev : next));
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    useAppStore.setState({ remoteLayout: "mobile" });
   }, []);
 
   // Prevent unhandled drag/drop from navigating the browser window when dragging cards or files.
@@ -144,83 +108,18 @@ export function RemoteApp() {
     };
   }, []);
 
-  // Global keyboard shortcuts for desktop remote view.
-  useEffect(() => {
-    if (layout !== "desktop") return;
-    const platform = shortcutPlatform();
-    const handler = (e: KeyboardEvent) => {
-      const shortcut = resolveGlobalShortcut(e, platform);
-      if (!shortcut) return;
-      e.preventDefault();
-      const state = useAppStore.getState();
-      switch (shortcut.id) {
-        case "settings":
-          state.openSettings();
-          break;
-        case "palette":
-          state.toggleSearch();
-          break;
-        case "find":
-          state.toggleSearch(true, "messages");
-          break;
-        case "sidebar":
-          state.cycleSidebar();
-          break;
-        case "shortcuts":
-          state.toggleShortcuts();
-          break;
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [layout]);
-
   // What needs you, on the phone's own notifications: only while the page is not in front, and
   // only once it has been allowed from the bell.
   useWebNotifications();
   useNotifications();
 
-  const switchLayout = (next: RemoteLayout) => {
+  const goToDesktop = () => {
     if (typeof localStorage !== "undefined") {
-      writeRemoteLayout(localStorage, next);
+      writeRemoteLayout(localStorage, "desktop");
     }
-    const state = useAppStore.getState();
-    if (next === "desktop") {
-      if (state.currentProjectId) {
-        const pid = state.currentProjectId;
-        const openProjects = state.openProjects.includes(pid)
-          ? state.openProjects
-          : [...state.openProjects, pid];
-        const mode = tab === "conversations" && (threadOpen || Boolean(state.currentChatId))
-          ? "chat"
-          : state.projectMode;
-        useAppStore.setState({
-          remoteLayout: next,
-          screen: "project",
-          openProjects,
-          projectMode: mode,
-        });
-      } else {
-        useAppStore.setState({ remoteLayout: next, screen: "home" });
-      }
-    } else {
-      if (state.screen === "home") {
-        useAppStore.setState({ remoteLayout: next, currentProjectId: null, currentChatId: null });
-      } else if (state.currentProjectId) {
-        const mode = state.projectMode;
-        if (mode === "chat") {
-          setTab("conversations");
-          setThreadOpen(!state.currentChatId);
-        } else if (tab === "conversations") {
-          setTab("tasks");
-          setThreadOpen(false);
-        }
-        useAppStore.setState({ remoteLayout: next });
-      } else {
-        useAppStore.setState({ remoteLayout: next });
-      }
-    }
-    setLayout(next);
+    const token = getToken();
+    const search = window.location.search || (token ? `?token=${encodeURIComponent(token)}` : "");
+    window.location.href = `/desktop${search}`;
   };
 
   // Persist navigation on every change, but only after initial restore has run.
@@ -228,9 +127,8 @@ export function RemoteApp() {
     if (!restoredRef.current) return;
     try {
       if (typeof localStorage !== "undefined") {
-        const activeProjectId = layout === "desktop" && screen === "home" ? null : currentProjectId;
         writeRemoteNav(localStorage, {
-          projectId: activeProjectId,
+          projectId: currentProjectId,
           chatId: currentChatId,
           tab,
           threadOpen,
@@ -239,7 +137,7 @@ export function RemoteApp() {
     } catch {
       // Storage unavailable or disabled
     }
-  }, [layout, screen, currentProjectId, currentChatId, tab, threadOpen]);
+  }, [screen, currentProjectId, currentChatId, tab, threadOpen]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -354,55 +252,6 @@ export function RemoteApp() {
     );
   }
 
-  if (layout === "desktop") {
-    return (
-      <div
-        className="h-screen flex flex-col bg-background text-foreground overflow-hidden relative"
-        data-testid="remote-desktop-shell"
-      >
-        <TitleBar
-          rightSlot={
-            <div className="flex items-center gap-0.5">
-              <LayoutSwitchButton layout="desktop" onSwitch={() => switchLayout("mobile")} compact />
-              <AlertsButton compact />
-              <DiagnosticsButton compact />
-            </div>
-          }
-        />
-        {!connected && (
-          <div className="shrink-0 flex items-center justify-center gap-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs py-1.5">
-            <WifiOff className="h-3.5 w-3.5" /> {t("phone.reconnecting")}
-          </div>
-        )}
-
-        <div className="flex-1 min-h-0 flex relative">
-          <Island position="top" idle={false} />
-          <Toaster position="bottom-right" richColors />
-          <ConfirmDialogHost />
-          <EditContextMenu />
-
-          <Sidebar />
-
-          <main className="flex-1 min-w-0 flex flex-col relative">
-            {screen === "home" && (
-              <>
-                <div className="px-6 pt-4 empty:hidden">
-                  <ApprovalsPanel all />
-                </div>
-                <HomeScreen />
-              </>
-            )}
-            {screen === "project" && <ProjectPanes />}
-          </main>
-        </div>
-
-        <SettingsDialog />
-        <SearchPalette />
-        <ShortcutsDialog />
-      </div>
-    );
-  }
-
   return (
     <Shell>
       <Island position="top" idle={false} />
@@ -419,13 +268,13 @@ export function RemoteApp() {
           setTab={setTab}
           threadOpen={threadOpen}
           setThreadOpen={setThreadOpen}
-          onSwitchLayout={() => switchLayout("desktop")}
+          onSwitchLayout={goToDesktop}
         />
       ) : (
         <HomeView
           onOpenProject={handleOpenProject}
           onOpenActiveAgent={handleOpenActiveAgent}
-          onSwitchLayout={() => switchLayout("desktop")}
+          onSwitchLayout={goToDesktop}
         />
       )}
     </Shell>
@@ -933,17 +782,15 @@ const LEVEL_COLOR = {
 };
 
 function LayoutSwitchButton({
-  layout,
   onSwitch,
   compact = false,
 }: {
-  layout: RemoteLayout;
+  layout?: string;
   onSwitch(): void;
   compact?: boolean;
 }) {
   const t = useT();
-  const label = layout === "desktop" ? t("phone.mobileView") : t("phone.desktopView");
-  const Icon = layout === "desktop" ? Smartphone : Monitor;
+  const label = t("phone.desktopView");
   return (
     <Button
       variant="ghost"
@@ -953,7 +800,7 @@ function LayoutSwitchButton({
       title={label}
       onClick={onSwitch}
     >
-      <Icon className={compact ? "h-3.5 w-3.5" : "h-5 w-5"} />
+      <Monitor className={compact ? "h-3.5 w-3.5" : "h-5 w-5"} />
     </Button>
   );
 }

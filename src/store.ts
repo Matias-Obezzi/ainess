@@ -492,7 +492,7 @@ export interface AppState {
   refreshTunnelStatus(): Promise<void>;
 
   // Chat actions
-  createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string;
+  createChat(opts: { projectId: string; name: string; mode: "individual" | "shared"; participants: ChatParticipant[] }): string | Promise<string>;
   updateChat(id: string, patch: Partial<Pick<Chat, "name" | "participants">>): void;
   removeChat(id: string): void;
   /** Opens a chat (null = the orchestrator thread) in a pane; without one, in the focused project. */

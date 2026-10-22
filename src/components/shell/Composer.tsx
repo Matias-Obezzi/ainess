@@ -1468,19 +1468,17 @@ export function Composer() {
             it had nothing else in it. It says which model each participant runs on now. */}
         {(!chatMode || chatParticipants.length > 0 || quotaAgent || !compact) && (
           <div className="flex gap-1 items-center flex-wrap">
-            {(true || !compact) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
-                onClick={() => fileInputRef.current?.click()}
-                title={t("attachments.attachHint")}
-                aria-label={t("attachments.attach")}
-              >
-                <Paperclip className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              title={t("attachments.attachHint")}
+              aria-label={t("attachments.attach")}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </Button>
 
             {/* Everything you set or watch lives at the right end: who answers, on which model,
                 what is waiting for you and what is left to spend. The left is for the box itself. */}

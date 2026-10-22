@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && npm run build:remote",
-    "build:remote": "vite build --config vite.remote.config.ts",
+    "build:remote": "vite build --config vite.remote.config.ts && vite build --config vite.remote-desktop.config.ts",
     "build:cli": "npm run build:remote && vite build --config vite.cli.config.ts",
     "cli": "node bin/ainess.js",
     "preview": "vite preview",

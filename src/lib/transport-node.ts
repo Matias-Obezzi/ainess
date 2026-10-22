@@ -579,6 +579,20 @@ export const nodeTransport: Transport = {
     fs.writeFileSync(absPath, Buffer.from(dataB64, "base64"));
   },
 
+  realPath: async (absPath: string) => {
+    try {
+      return (fs.realpathSync.native ? fs.realpathSync.native(absPath) : fs.realpathSync(absPath)) as string;
+    } catch {
+      try {
+        const parent = path.dirname(absPath);
+        const realParent = (fs.realpathSync.native ? fs.realpathSync.native(parent) : fs.realpathSync(parent)) as string;
+        return path.join(realParent, path.basename(absPath));
+      } catch {
+        return absPath;
+      }
+    }
+  },
+
   readFileAbs: async (absPath: string) => {
     try {
       return fs.readFileSync(absPath, "utf-8");

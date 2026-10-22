@@ -116,6 +116,7 @@ pub fn run() {
             plugins::remove_plugin_dir,
             config::read_file_abs,
             config::read_file_bytes,
+            config::real_path,
             config::files_exist_abs,
             config::write_file_abs,
             config::write_file_bytes,

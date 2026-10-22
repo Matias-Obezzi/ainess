@@ -4,6 +4,7 @@ import {
   handleRemoteCommand,
   isAllowedWorkspacePath,
   isAllowedAttachmentWritePath,
+  isSafeGitArgs,
 } from "@/lib/remote";
 
 // Mock @/lib/diagnostics since we want to test handleRemoteCommand wiring, not the actual system diagnostics
@@ -238,5 +239,139 @@ describe("remote snapshot and commands", () => {
 
     expect(await handleRemoteCommand("project", { op: "clearMessages", projectId: "p1" })).toEqual({ ok: true });
     expect(clearMessages).toHaveBeenCalledWith("p1");
+  });
+
+  describe("isSafeGitArgs security enforcement", () => {
+    it("allows safe read-only subcommands and flags", () => {
+      expect(isSafeGitArgs(["status"])).toBe(true);
+      expect(isSafeGitArgs(["diff", "HEAD~1"])).toBe(true);
+      expect(isSafeGitArgs(["ls-files", "-m"])).toBe(true);
+      expect(isSafeGitArgs(["log", "-n", "10", "--oneline"])).toBe(true);
+      expect(isSafeGitArgs(["rev-parse", "HEAD"])).toBe(true);
+      expect(isSafeGitArgs(["show", "HEAD:src/index.ts"])).toBe(true);
+      expect(isSafeGitArgs(["branch"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "--show-current"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "-a"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "-r"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "-v"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "--list"])).toBe(true);
+      expect(isSafeGitArgs(["branch", "--all"])).toBe(true);
+    });
+
+    it("rejects --output and -o flags in any position across subcommands", () => {
+      expect(isSafeGitArgs(["diff", "--output=malicious.txt"])).toBe(false);
+      expect(isSafeGitArgs(["diff", "--output", "/tmp/pwn"])).toBe(false);
+      expect(isSafeGitArgs(["diff", "-o", "overwrite.bin"])).toBe(false);
+      expect(isSafeGitArgs(["log", "--output=leak.txt"])).toBe(false);
+      expect(isSafeGitArgs(["show", "HEAD", "-o", "out.txt"])).toBe(false);
+      expect(isSafeGitArgs(["show", "--output", "file", "HEAD"])).toBe(false);
+    });
+
+    it("rejects mutating branch subcommands and positional branch arguments", () => {
+      expect(isSafeGitArgs(["branch", "-D", "main"])).toBe(false);
+      expect(isSafeGitArgs(["branch", "-d", "feature"])).toBe(false);
+      expect(isSafeGitArgs(["branch", "-m", "old", "new"])).toBe(false);
+      expect(isSafeGitArgs(["branch", "-f", "main", "HEAD"])).toBe(false);
+      expect(isSafeGitArgs(["branch", "new-branch-name"])).toBe(false);
+      expect(isSafeGitArgs(["branch", "feature/foo"])).toBe(false);
+    });
+
+    it("rejects non-whitelisted git subcommands", () => {
+      expect(isSafeGitArgs(["checkout", "main"])).toBe(false);
+      expect(isSafeGitArgs(["commit", "-m", "bad"])).toBe(false);
+      expect(isSafeGitArgs(["push", "origin", "main"])).toBe(false);
+      expect(isSafeGitArgs(["pull"])).toBe(false);
+      expect(isSafeGitArgs(["clean", "-fd"])).toBe(false);
+      expect(isSafeGitArgs(["reset", "--hard"])).toBe(false);
+      expect(isSafeGitArgs([])).toBe(false);
+    });
+  });
+
+  describe("remote input validation and symlink traversal prevention", () => {
+    it("rejects createChat when participant agent does not exist in project", async () => {
+      useAppStore.setState({
+        config: {
+          ...useAppStore.getState().config,
+          projects: [{ id: "p1", name: "P1", workspaceDir: "/work/p1", agents: [{ id: "a1" }] } as any],
+        },
+      });
+
+      const res = await handleRemoteCommand("chat", {
+        op: "create",
+        projectId: "p1",
+        name: "Malicious Chat",
+        participants: [{ agentId: "non-existent-agent", role: "hacker" }],
+      });
+
+      expect(res).toHaveProperty("error");
+    });
+
+    it("sanitizes updateChat payload to allow only whitelisted fields", async () => {
+      const updateChat = vi.fn();
+      useAppStore.setState({
+        config: {
+          ...useAppStore.getState().config,
+          projects: [{ id: "p1", name: "P1", workspaceDir: "/work/p1", agents: [{ id: "a1" }] } as any],
+          chats: [{ id: "c1", projectId: "p1", name: "Existing", mode: "individual", participants: [] } as any],
+        },
+        updateChat,
+      } as any);
+
+      const res = await handleRemoteCommand("chat", {
+        op: "update",
+        chatId: "c1",
+        patch: {
+          name: "Updated Name",
+          dangerousInjection: "DROP TABLE",
+          id: "fake-id",
+        },
+      });
+
+      expect(res).toEqual({ ok: true });
+      expect(updateChat).toHaveBeenCalledWith("c1", { name: "Updated Name" });
+    });
+
+    it("blocks fs read/write operations when symlink escapes workspace root", async () => {
+      useAppStore.setState({
+        config: {
+          ...useAppStore.getState().config,
+          projects: [{ id: "p1", name: "P1", workspaceDir: "/work/p1", agents: [] } as any],
+        },
+      });
+
+      const transport = getTransport();
+      const readSpy = vi.spyOn(transport, "readFileBytes").mockResolvedValue("SECRET");
+      const writeSpy = vi.spyOn(transport, "writeFileBytes").mockResolvedValue(undefined);
+      const execSpy = vi.spyOn(transport, "exec").mockResolvedValue({ code: 0, stdout: "ok", stderr: "" });
+
+      // Mock realPath resolving symlink outside workspace to /etc/shadow
+      vi.spyOn(transport, "realPath").mockImplementation(async (p: string) => {
+        if (p.includes("symlink")) return "/etc/shadow";
+        return p;
+      });
+
+      const readRes = await handleRemoteCommand("fs", {
+        op: "readBytes",
+        path: "/work/p1/symlink",
+      });
+      expect(readRes).toEqual({ ok: true, data: null });
+      expect(readSpy).not.toHaveBeenCalled();
+
+      const writeRes = await handleRemoteCommand("fs", {
+        op: "writeBytes",
+        path: "/work/p1/.ainess/attachments/symlink",
+        base64: "QUJD",
+      });
+      expect(writeRes).toHaveProperty("error");
+      expect(writeSpy).not.toHaveBeenCalled();
+
+      const gitRes = await handleRemoteCommand("fs", {
+        op: "git",
+        cwd: "/work/p1/symlink",
+        args: ["status"],
+      });
+      expect(gitRes).toEqual({ ok: true, code: 1, stdout: "", stderr: "Denied" });
+      expect(execSpy).not.toHaveBeenCalled();
+    });
   });
 });

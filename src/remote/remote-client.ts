@@ -342,10 +342,36 @@ export function installRemoteActions(): void {
     saveConfig: async () => {},
     loadChatMessages: async () => {},
     // Configuration stays on the desktop app (see "Fuera de alcance" in the plan).
-    createChat: (opts) => {
-      const tempId = crypto.randomUUID();
-      void call("/api/chat", { op: "create", ...opts });
-      return tempId;
+    createChat: async (opts) => {
+      try {
+        const res = await api("/api/chat", { op: "create", ...opts });
+        const chatId = typeof res.chatId === "string" ? res.chatId : "";
+        if (chatId) {
+          const currentChats = useAppStore.getState().config.chats;
+          if (!currentChats.some(c => c.id === chatId)) {
+            useAppStore.setState({
+              config: {
+                ...useAppStore.getState().config,
+                chats: [
+                  ...currentChats,
+                  {
+                    id: chatId,
+                    projectId: opts.projectId,
+                    name: opts.name,
+                    mode: opts.mode,
+                    participants: opts.participants,
+                    createdAt: Date.now(),
+                  },
+                ],
+              },
+            });
+          }
+        }
+        return chatId;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+        return "";
+      }
     },
     updateChat: (chatId, patch) => {
       void call("/api/chat", { op: "update", chatId, patch });
@@ -365,6 +391,7 @@ export function installRemoteActions(): void {
     clearMessages: (projectId) => {
       if (projectId) void call("/api/project", { op: "clearMessages", projectId });
     },
+    updateConfig: refuse,
     addProject: refuse,
     updateProject: refuse,
     removeProject: refuse,

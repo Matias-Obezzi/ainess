@@ -196,9 +196,35 @@ export function buildSnapshotJson(): string {
 }
 
 const SAFE_GIT_SUBCOMMANDS = new Set(["diff", "status", "ls-files", "log", "rev-parse", "branch", "show"]);
+const SAFE_BRANCH_FLAGS = new Set(["--show-current", "--list", "-a", "-r", "-v", "-vv", "--all"]);
+
+export function isSafeGitArgs(args: string[]): boolean {
+  if (!Array.isArray(args) || args.length === 0) return false;
+  const subcmd = args[0];
+  if (!SAFE_GIT_SUBCOMMANDS.has(subcmd)) return false;
+
+  for (const arg of args) {
+    if (typeof arg !== "string") return false;
+    if (arg === "-o" || arg === "--output" || arg.startsWith("--output=")) {
+      return false;
+    }
+  }
+
+  if (subcmd === "branch") {
+    const extra = args.slice(1);
+    for (const arg of extra) {
+      if (!SAFE_BRANCH_FLAGS.has(arg)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 
 function normFsPath(p: string): string {
-  const forward = p.replace(/\\/g, "/").replace(/\/+$/, "");
+  let forward = p.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (forward.startsWith("//?/")) forward = forward.slice(4);
   return /^[A-Za-z]:(\/|$)/.test(forward) ? forward[0].toLowerCase() + forward.slice(1) : forward;
 }
 
@@ -363,14 +389,29 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           const participants = Array.isArray(payload.participants) ? (payload.participants as ChatParticipant[]) : [];
           if (!projectId || !s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
           if (!name || participants.length === 0) return { error: translateNow("remote.err.missingData") };
-          const id = s.createChat({ projectId, name, mode, participants });
+          const projectAgents = new Set(selectProjectAgents(s, projectId).map(a => a.id));
+          const valid = participants.every(p => p && typeof p === "object" && typeof p.agentId === "string" && projectAgents.has(p.agentId));
+          if (!valid) return { error: translateNow("remote.err.invalidAgent") };
+          const id = await s.createChat({ projectId, name, mode, participants });
           return { ok: true, chatId: id };
         }
         if (op === "update") {
           const chatId = str("chatId");
-          if (!chatId || !s.config.chats.some(c => c.id === chatId)) return { error: translateNow("remote.err.noChat") };
-          const patch = (payload.patch && typeof payload.patch === "object" ? payload.patch : {}) as Partial<Chat>;
-          s.updateChat(chatId, patch);
+          const chat = s.config.chats.find(c => c.id === chatId);
+          if (!chatId || !chat) return { error: translateNow("remote.err.noChat") };
+          const rawPatch = (payload.patch && typeof payload.patch === "object" ? payload.patch : {}) as Record<string, unknown>;
+          const cleanPatch: Partial<Pick<Chat, "name" | "participants">> = {};
+          if (typeof rawPatch.name === "string" && rawPatch.name.trim()) {
+            cleanPatch.name = rawPatch.name.trim();
+          }
+          if (Array.isArray(rawPatch.participants)) {
+            const projectAgents = new Set(selectProjectAgents(s, chat.projectId).map(a => a.id));
+            const parts = rawPatch.participants as ChatParticipant[];
+            const valid = parts.length > 0 && parts.every(p => p && typeof p === "object" && typeof p.agentId === "string" && projectAgents.has(p.agentId));
+            if (!valid) return { error: translateNow("remote.err.invalidAgent") };
+            cleanPatch.participants = parts;
+          }
+          s.updateChat(chatId, cleanPatch);
           return { ok: true };
         }
         if (op === "delete") {
@@ -418,10 +459,17 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           ...s.config.projects.map(p => p.repoDir).filter((d): d is string => !!d),
           ...Object.values(s.worktrees).flat().map(w => w.path).filter(Boolean),
         ];
+        const realRoots = await Promise.all(allowedRoots.map(r => getTransport().realPath(r)));
+        const realWorkspaces = await Promise.all(workspaceDirs.map(w => getTransport().realPath(w)));
+
         if (op === "writeBytes") {
           const path = str("path");
           const base64 = str("base64");
-          if (!path || base64 === undefined || !isAllowedAttachmentWritePath(path, workspaceDirs)) {
+          if (!path || base64 === undefined) {
+            return { error: translateNow("remote.err.missingData") };
+          }
+          const real = await getTransport().realPath(path);
+          if (!isAllowedAttachmentWritePath(path, workspaceDirs) || !isAllowedAttachmentWritePath(real, realWorkspaces)) {
             return { error: translateNow("remote.err.missingData") };
           }
           await getTransport().writeFileBytes(path, base64);
@@ -430,28 +478,39 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         if (op === "readBytes") {
           const path = str("path");
           const maxBytes = typeof payload.maxBytes === "number" ? Math.min(payload.maxBytes, 25 * 1024 * 1024) : 4 * 1024 * 1024;
-          if (!path || !isAllowedWorkspacePath(path, allowedRoots)) return { ok: true, data: null };
+          if (!path) return { ok: true, data: null };
+          const real = await getTransport().realPath(path);
+          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, data: null };
           const data = await getTransport().readFileBytes(path, maxBytes);
           return { ok: true, data };
         }
         if (op === "readText") {
           const path = str("path");
-          if (!path || !isAllowedWorkspacePath(path, allowedRoots)) return { ok: true, text: null };
+          if (!path) return { ok: true, text: null };
+          const real = await getTransport().realPath(path);
+          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, text: null };
           const text = await getTransport().readFileAbs(path);
           return { ok: true, text };
         }
         if (op === "exists") {
           const rawPaths = Array.isArray(payload.paths) ? (payload.paths as unknown[]).filter((p): p is string => typeof p === "string") : [];
-          const allowed = rawPaths.filter(p => isAllowedWorkspacePath(p, allowedRoots));
-          const paths = allowed.length > 0 ? await getTransport().filesExistAbs(allowed) : [];
+          const checked: string[] = [];
+          for (const p of rawPaths) {
+            const real = await getTransport().realPath(p);
+            if (isAllowedWorkspacePath(p, allowedRoots) && isAllowedWorkspacePath(real, realRoots)) {
+              checked.push(p);
+            }
+          }
+          const paths = checked.length > 0 ? await getTransport().filesExistAbs(checked) : [];
           return { ok: true, paths };
         }
         if (op === "git") {
           const cwd = str("cwd");
           const args = Array.isArray(payload.args) ? (payload.args as unknown[]).filter((a): a is string => typeof a === "string") : [];
           const timeoutSecs = typeof payload.timeoutSecs === "number" ? Math.min(payload.timeoutSecs, 30) : 10;
-          const subcmd = args[0] ?? "";
-          if (!cwd || !isAllowedWorkspacePath(cwd, allowedRoots) || !SAFE_GIT_SUBCOMMANDS.has(subcmd)) {
+          if (!cwd) return { ok: true, code: 1, stdout: "", stderr: "Denied" };
+          const realCwd = await getTransport().realPath(cwd);
+          if (!isAllowedWorkspacePath(cwd, allowedRoots) || !isAllowedWorkspacePath(realCwd, realRoots) || !isSafeGitArgs(args)) {
             return { ok: true, code: 1, stdout: "", stderr: "Denied" };
           }
           const res = await getTransport().exec("git", args, cwd, timeoutSecs);

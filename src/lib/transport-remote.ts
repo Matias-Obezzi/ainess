@@ -77,6 +77,7 @@ export const remoteTransport: Transport = {
   unpackSkill: async () => null,
   clonePluginRepo: async () => null,
   removePluginDir: async () => {},
+  realPath: async (path) => path,
   writeFileAbs: async () => {},
   writeFileBytes: async (path, base64) => {
     await remoteApi("/api/fs", { op: "writeBytes", path, base64 });
