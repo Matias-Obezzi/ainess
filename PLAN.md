@@ -551,6 +551,9 @@ mismo color.
    - `Composer.tsx` — textarea (Ctrl+Enter para enviar, flecha arriba recupera el último prompt).
      Sin chat abierto manda `submitPrompt` con selects de destino, modelo y órdenes predefinidas;
      con un chat abierto manda `sendChatMessage`. Mientras algo corre, el botón pasa a Detener.
+     Esc también detiene, según `AppConfig.escapeStops` (Configuración → General → Teclado):
+     `"always"` (o ausente) al primer Esc, `"twice"` con un segundo Esc antes de 1,5 s, `"never"`
+     nunca. Las dos vías (el listener de `window` y el textarea) pasan por `lib/escape-stop.ts`.
 4. **Dock derecho** — `components/shell/RightDock.tsx` (380px a la derecha, se superpone bajo
    1100px) aloja dos secciones y se muestra si `(commPanelOpen || termPanelOpen) && screen ===
    "project"`. Con una sola abierta ocupa todo el alto; con las dos, una columna con la sección de
@@ -587,7 +590,9 @@ mismo color.
      `onSave`, sin tocar el store): nombre, provider, rol, padre, modelo —`Select` con la lista real
      de modelos del proveedor y la cuota que le queda (skeleton mientras se cargan modelos/cuota la
      primera vez; el `Select` se reemplaza por un placeholder "Cargando modelos…" deshabilitado),
-     más "Otro…" para un id libre—, autoApprove, descripción, systemPrompt, comando custom, y una
+     más "Otro…" para un id libre—, esfuerzo de razonamiento (`AgentConfig.effort`, solo si el
+     provider declara `efforts` en `lib/providers.ts`; hoy solo Claude, como `Options.effort` del
+     Agent SDK vía ACP), autoApprove, descripción, systemPrompt, comando custom, y una
      sección "Ejecutable" con la ruta detectada y "Cargar a mano"/"Limpiar override".
    - **Perfil** (`ProfileSection.tsx` + acción "Guardar" en el header): nombre/sobre vos/preferencias
      en un borrador local que se persiste solo al guardar.

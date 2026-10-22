@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SoundDialog } from "@/components/SoundDialog";
 import { playChime, soundEnabled } from "@/lib/sound";
 import { DEFAULT_STALL_STOP_MINUTES } from "@/lib/stall";
+import type { EscapeStops } from "@/types";
 
 /** Value of the auto-archive select that means "never"; a Select cannot hold null. */
 const NEVER = "never";
@@ -237,6 +238,29 @@ export function GeneralSection() {
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground">{t("settings.general.autoArchiveHint")}</span>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.general.keyboardTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <label className="text-sm font-semibold">{t("settings.option.general.escapeStops")}</label>
+          <Select
+            value={config.escapeStops ?? "always"}
+            onValueChange={value => updateConfig({ escapeStops: value as EscapeStops })}
+          >
+            <SelectTrigger className="w-[280px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="always">{t("settings.general.escapeStopsAlways")}</SelectItem>
+              <SelectItem value="twice">{t("settings.general.escapeStopsTwice")}</SelectItem>
+              <SelectItem value="never">{t("settings.general.escapeStopsNever")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">{t("settings.general.escapeStopsHint")}</span>
         </CardContent>
       </Card>
 

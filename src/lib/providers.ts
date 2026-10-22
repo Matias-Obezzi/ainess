@@ -1,4 +1,4 @@
-import { AgentConfig, AgentRole, Binaries, McpServer, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, ModelTokenUsage, Task, TaskStatus } from "@/types";
+import { AgentConfig, AgentRole, Binaries, Effort, McpServer, ProviderId, SpawnOptions, ParsedEvent, Delegation, Skill, ModelInfo, RunUsage, ModelTokenUsage, Task, TaskStatus } from "@/types";
 import { translateNow } from "@/i18n/useT";
 import { resolveAcpAdapter } from "@/lib/acp/adapter";
 import type { AcpSessionSpec } from "@/lib/acp/session";
@@ -83,6 +83,12 @@ interface ProviderSpecBase {
   promptVia: "stdin" | "arg";
   /** Dictionary key of a line of help about this provider (see `provider.*` in src/i18n). */
   noteKey?: string;
+  /**
+   * The reasoning effort levels this provider passes on, lowest first. Missing means it takes none
+   * and the agent dialog does not offer the choice. Only listed where the flag was checked against
+   * the installed CLI or SDK: a guessed flag fails the run, it does not get ignored.
+   */
+  efforts?: Effort[];
 }
 
 /**
@@ -556,6 +562,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     models: toModels(CLAUDE_MODELS),
     supportsSessions: true,
     promptVia: "stdin",
+    efforts: ["low", "medium", "high", "xhigh", "max"],
     // Claude Code runs through the ACP adapter, not through `claude -p`. Everything the argv path
     // used to say is said in `session/new` instead (see `buildAcpSession` below), and what comes
     // back is a stream of notifications rather than lines of JSON — the same events, one protocol
@@ -584,6 +591,9 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
       // as the flags the CLI took.
       const options: Record<string, unknown> = {};
       if (input.agent.model) options.model = input.agent.model;
+      // `--effort`: the SDK's `Options.effort`, which the adapter also seeds its effort selector
+      // from. A model that does not take the level is downgraded by Claude Code, not refused.
+      if (input.agent.effort) options.effort = input.agent.effort;
 
       if (input.agent.autoApprove) {
         // `--dangerously-skip-permissions`, as two options: the SDK refuses the bypass mode unless

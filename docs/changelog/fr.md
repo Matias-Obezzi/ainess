@@ -2,6 +2,18 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Non publié
+
+### Nouveau
+
+- **Vous choisissez ce que fait Échap pendant qu'un agent travaille**, dans Paramètres → Général →
+  Clavier : l'arrêter tout de suite (comme jusqu'ici), l'arrêter seulement avec deux Échap de suite,
+  ou rien. Échap ferme toujours les menus et les boîtes de dialogue, et le bouton d'arrêt
+  fonctionne avec les trois.
+- **Chaque agent peut avoir son propre effort de raisonnement**, à côté de son modèle dans la
+  boîte de l'agent : de faible à maximum, ou celui du fournisseur. Pour l'instant seul Claude Code
+  le prend ; le choix n'apparaît pas pour les fournisseurs qui ne le prennent pas.
+
 ## 0.31.0 — 2026-10-13
 
 ### Nouveau

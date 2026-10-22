@@ -2,6 +2,17 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Sin publicar
+
+### Nuevo
+
+- **Elegís qué hace Esc mientras un agente trabaja**, en Configuración → General → Teclado:
+  frenarlo en el acto (como hasta ahora), frenarlo solo con dos Esc seguidos o nada. Esc sigue
+  cerrando menús y diálogos, y el botón de frenar funciona con cualquiera de las tres.
+- **Cada agente puede tener su propio esfuerzo de razonamiento**, al lado del modelo en el diálogo
+  del agente: de bajo a máximo, o el del proveedor. Por ahora solo lo toma Claude Code; en los
+  proveedores que no lo aceptan la opción no aparece.
+
 ## 0.31.0 — 2026-10-13
 
 ### Nuevo

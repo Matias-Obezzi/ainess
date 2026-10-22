@@ -19,6 +19,12 @@ let one of them fall behind.
   who is in it and deleting it now work from the remote too, and so do resetting an agent's
   session, the autonomous mode and clearing a project's messages; editing settings and projects
   still happens on the desktop.
+- **You choose what Esc does while an agent is working**, in Settings → General → Keyboard: stop
+  it right away (as until now), stop it only on two Esc in a row, or nothing at all. Esc still
+  closes menus and dialogs, and the stop button works with any of the three.
+- **Each agent can have its own reasoning effort**, next to its model in the agent dialog: from
+  low to max, or the provider's default. For now only Claude Code takes it; the choice is not shown
+  for providers that do not.
 
 ### Fixed
 

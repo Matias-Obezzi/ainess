@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { acpProvider, cliProvider, availableProviders, isDefaultProviderName, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage, type BuildInput } from "@/lib/providers";
+import { PROVIDERS, acpProvider, cliProvider, availableProviders, isDefaultProviderName, parseDelegations, finalOutputFromLines, buildSystemPrompt, claudeUsage, antigravityUsage, copilotUsage, type BuildInput } from "@/lib/providers";
 import { forgetAcpAdapter, resolveAcpAdapter } from "@/lib/acp/adapter";
 import { setTransport } from "@/lib/transport";
 import { nullTransport } from "@/lib/transport-null";
@@ -163,6 +163,11 @@ describe("claude provider over ACP", () => {
   it("passes the model when the agent has one", () => {
     expect(optionsOf(session({ model: "claude-opus-5" }).meta).model).toBe("claude-opus-5");
     expect(optionsOf(session().meta).model).toBeUndefined();
+  });
+
+  it("passes the effort when the agent has one, and leaves it to Claude Code when not", () => {
+    expect(optionsOf(session({ effort: "xhigh" }).meta).effort).toBe("xhigh");
+    expect(optionsOf(session().meta)).not.toHaveProperty("effort");
   });
 
   it("starts the adapter with stdin open, and with the configured CLI in the environment", async () => {
@@ -628,5 +633,24 @@ describe("isDefaultProviderName", () => {
   it("rejects names belonging to a different provider", () => {
     expect(isDefaultProviderName("Antigravity", "claude")).toBe(false);
     expect(isDefaultProviderName("Claude Code", "antigravity")).toBe(false);
+  });
+});
+
+describe("reasoning effort per provider", () => {
+  // Only Claude Code's was checked against what is installed (`Options.effort` in the Agent SDK,
+  // `--effort` in `claude --help`). The rest stay without it until someone checks theirs.
+  it("is offered only where the flag was verified", () => {
+    const offering = Object.values(PROVIDERS).filter(p => p.efforts).map(p => p.id);
+    expect(offering).toEqual(["claude"]);
+    expect(PROVIDERS.claude.efforts).toEqual(["low", "medium", "high", "xhigh", "max"]);
+  });
+
+  it("never reaches the command line of a CLI that does not declare it", () => {
+    for (const id of ["antigravity", "copilot", "codex", "opencode", "gemini", "aider"] as const) {
+      const input = { prompt: "t", systemPrompt: "", binaryPath: `${id}.exe`, cwd: "C:/ws" };
+      const without = cliProvider(id).buildCommand({ agent: agent({ provider: id }), ...input });
+      const withEffort = cliProvider(id).buildCommand({ agent: agent({ provider: id, effort: "high" }), ...input });
+      expect(withEffort.args).toEqual(without.args);
+    }
   });
 });
