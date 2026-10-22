@@ -100,6 +100,17 @@ fn find_winget(name: &str) -> Option<BinaryInfo> {
     })
 }
 
+/// `canonicalize` answers `\\?\C:\…` on Windows; the plain form is the one the rest of the app
+/// compares and the one Settings shows. A `\\?\UNC\` path is left as it is.
+fn plain(path: PathBuf) -> PathBuf {
+    if let Some(rest) = path.to_str().and_then(|s| s.strip_prefix(r"\\?\")) {
+        if !rest.starts_with(r"UNC\") {
+            return PathBuf::from(rest);
+        }
+    }
+    path
+}
+
 /// Resolves an npm `.cmd` shim or an Author Software NVM `.nodejs` shim for `claude` directly to
 /// the underlying `node_modules/@anthropic-ai/claude-code/bin/claude.exe` binary when present.
 /// Running the real binary avoids `cmd.exe /c` quote-stripping when paths contain spaces and
@@ -108,7 +119,7 @@ fn unwrap_claude_shim(shim: &Path) -> Option<PathBuf> {
     let dir = shim.parent()?;
     let bin_name = if cfg!(windows) { "claude.exe" } else { "claude" };
     if dir.file_name().is_some_and(|n| n.eq_ignore_ascii_case(".nodejs")) {
-        let Ok(active) = std::fs::canonicalize(dir) else {
+        let Ok(active) = std::fs::canonicalize(dir).map(plain) else {
             return None;
         };
         let candidate = active
@@ -444,7 +455,7 @@ fn registry_path_candidates(name: &str) -> Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::unwrap_claude_shim;
+    use super::{plain, unwrap_claude_shim};
 
     #[test]
     fn unwraps_direct_npm_prefix_shim() {
@@ -511,9 +522,9 @@ mod tests {
         std::fs::write(&shim, "shim").unwrap();
 
         let resolved = unwrap_claude_shim(&shim);
-        let expected = std::fs::canonicalize(&older).unwrap();
+        let expected = plain(std::fs::canonicalize(&older).unwrap());
         assert_eq!(resolved, Some(expected));
-        assert_ne!(resolved, Some(std::fs::canonicalize(&newer).unwrap()));
+        assert!(!resolved.unwrap().to_string_lossy().starts_with(r"\\?\"));
 
         #[cfg(windows)]
         {

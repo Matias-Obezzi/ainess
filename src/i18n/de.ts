@@ -742,7 +742,7 @@ export const de: Dictionary = {
   "agents.executable": "Programmdatei",
   "agents.found": "Gefunden",
   "agents.ready": "Bereit",
-  "agents.acpBundled": "Nutzt das Claude Code, das der ACP-Adapter mitbringt: nichts zu installieren. Ist eines installiert, wird das verwendet.",
+  "agents.acpBundled": "Nutzt das Claude Code, das der ACP-Adapter mitbringt: nichts zu installieren. Für ein anderes wähle es von Hand.",
   "agents.notFound": "Nicht gefunden",
   "agents.installHint": "Installiere es oder trag den Pfad von Hand ein, um es nutzen zu können.",
   "agents.install": "Installieren",

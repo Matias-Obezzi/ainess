@@ -79,6 +79,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
   const viaAcp = spec?.transport === "acp";
   const summary = summarizeAgentQuota(quota, { allModels });
   const hasOverride = !!overrides?.[provider];
+  // What runs: over ACP, the binary picked by hand if there is one, the adapter's own otherwise.
+  const shown = viaAcp && !hasOverride ? undefined : binary;
 
   const pickExecutable = async () => {
     if (!isTauri()) {
@@ -140,8 +142,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
           {spec?.label || provider}
         </div>
         <div className="flex items-center gap-2">
-          {binary?.path || viaAcp
-            ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{t(binary?.path ? "agents.found" : "agents.ready")}</Badge>
+          {shown?.path || viaAcp
+            ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{t(shown?.path ? "agents.found" : "agents.ready")}</Badge>
             : <Badge variant="outline" className="border-destructive/40 text-destructive">{t("agents.notFound")}</Badge>}
           <span
             className="flex items-center gap-1 text-xs text-muted-foreground"
@@ -155,8 +157,8 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
 
       <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
         <div className="break-all">
-          {binary?.path
-            ? <span>{binary.path}{binary.version ? ` (${binary.version})` : ""}</span>
+          {shown?.path
+            ? <span>{shown.path}{shown.version ? ` (${shown.version})` : ""}</span>
             : <span>{t(viaAcp ? "agents.acpBundled" : "agents.installHint")}</span>}
         </div>
         {!binary?.path && !viaAcp && command && (

@@ -10,7 +10,12 @@ let one of them fall behind.
 
 ### Fixed
 
-- **Windows CLI shims and broken `--version` probes fall back to the engine.** The runner unwraps npm `.cmd` and NVM `.nodejs` shims to the real binary under the active Node version, and ignores binaries on PATH whose `--version` probe failed so runs fall back to the managed runtime.
+- **Windows CLI shims and broken `--version` probes fall back to the engine.** The runner unwraps
+  npm `.cmd` and NVM `.nodejs` shims to the real binary under the active Node version, and ignores
+  binaries on PATH whose `--version` probe failed so runs fall back to the managed runtime.
+- **Over ACP, Claude Code runs on the adapter's own copy unless you set one by hand** in Settings →
+  Agents, and the card says which: the path you picked, or that it uses the adapter's. A `claude`
+  found on the PATH is no longer passed on by itself.
 
 ## 0.31.0 — 2026-10-13
 
