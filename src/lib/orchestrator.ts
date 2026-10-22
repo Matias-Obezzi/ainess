@@ -916,13 +916,19 @@ function launchRun(runId: string, opts: StartRunOptions): void {
       return;
     }
 
+    const override = useAppStore.getState().config.binaryOverrides?.[effectiveAgent.provider]?.trim();
+    const detected = binary?.version ? binary.path : undefined;
+    const binaryPath = provider.transport === "acp"
+      ? (override || detected || "")
+      : (binary?.path ?? "");
+
     const buildInput = {
       agent: effectiveAgent,
       prompt: opts.prompt,
       systemPrompt,
       sessionId,
       cwd,
-      binaryPath: provider.transport === "acp" ? (useAppStore.getState().config.binaryOverrides?.[effectiveAgent.provider]?.trim() ?? "") : (binary?.path ?? ""),
+      binaryPath,
       mcpConfigPath,
       mcpServers,
       plannerPermissions: useAppStore.getState().config.plannerPermissions,

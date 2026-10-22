@@ -78,7 +78,9 @@ export async function resolveClaudeEngine(): Promise<string | null> {
   const transport = getTransport();
   try {
     const onPath = await transport.whichProgram("claude");
-    if (onPath && (!useAppStore.getState().binaries.claude || useAppStore.getState().binaries.claude?.version !== null || useAppStore.getState().binaries.claude?.path !== onPath)) return onPath;
+    const detected = useAppStore.getState().binaries.claude;
+    const brokenShim = detected?.version === null && detected.path === onPath;
+    if (onPath && !brokenShim) return onPath;
   } catch (e) {
     log.warn("claude-auth", `could not look for claude on PATH: ${errorText(e)}`);
   }

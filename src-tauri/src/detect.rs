@@ -107,6 +107,21 @@ fn find_winget(name: &str) -> Option<BinaryInfo> {
 fn unwrap_claude_shim(shim: &Path) -> Option<PathBuf> {
     let dir = shim.parent()?;
     let bin_name = if cfg!(windows) { "claude.exe" } else { "claude" };
+    if dir.file_name().is_some_and(|n| n.eq_ignore_ascii_case(".nodejs")) {
+        let Ok(active) = std::fs::canonicalize(dir) else {
+            return None;
+        };
+        let candidate = active
+            .join("node_modules")
+            .join("@anthropic-ai")
+            .join("claude-code")
+            .join("bin")
+            .join(bin_name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+        return None;
+    }
     let direct = dir
         .join("node_modules")
         .join("@anthropic-ai")
@@ -115,34 +130,6 @@ fn unwrap_claude_shim(shim: &Path) -> Option<PathBuf> {
         .join(bin_name);
     if direct.is_file() {
         return Some(direct);
-    }
-    if dir.file_name().is_some_and(|n| n.eq_ignore_ascii_case(".nodejs")) {
-        let nvm_root = dir.parent()?;
-        let installs = nvm_root.join("installs");
-        let mut best: Option<(Vec<u32>, PathBuf)> = None;
-        if let Ok(entries) = std::fs::read_dir(installs) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let ver_str = name.to_string_lossy();
-                let ver_clean = ver_str.trim_start_matches(['v', 'V']);
-                let Some(ver) = parse_semver(ver_clean) else { continue };
-                let candidate = entry
-                    .path()
-                    .join("node_modules")
-                    .join("@anthropic-ai")
-                    .join("claude-code")
-                    .join("bin")
-                    .join(bin_name);
-                if candidate.is_file() {
-                    if best.as_ref().is_none_or(|(b, _)| &ver > b) {
-                        best = Some((ver, candidate));
-                    }
-                }
-            }
-        }
-        if let Some((_, found)) = best {
-            return Some(found);
-        }
     }
     None
 }
@@ -247,7 +234,7 @@ fn detect_antigravity() -> Option<BinaryInfo> {
 
     // The two places it lands, in the order they became a thing: the CLI that comes with the
     // Antigravity app, and the one its own installer (`irm .../cli/install.ps1 | iex`) drops into
-    // %LOCALAPPDATA% gy in. That second one adds itself to the PATH, which this process already
+    // %LOCALAPPDATA%\agy\bin. That second one adds itself to the PATH, which this process already
     // read at startup, so looking only at `which` finds nothing until the app restarts.
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(home) = dirs::home_dir().or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from)) {
@@ -480,21 +467,19 @@ mod tests {
     }
 
     #[test]
-    fn unwraps_nvm_nodejs_shim_to_latest_installed_version() {
+    fn unwraps_nvm_nodejs_shim_to_active_version_not_latest() {
         let dir = std::env::temp_dir().join(format!("ainess-claude-nvm-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let bin_name = if cfg!(windows) { "claude.exe" } else { "claude" };
-        let older = dir
-            .join("installs")
-            .join("v20.10.0")
+        let older_dir = dir.join("installs").join("v20.10.0");
+        let newer_dir = dir.join("installs").join("v22.22.2");
+        let older = older_dir
             .join("node_modules")
             .join("@anthropic-ai")
             .join("claude-code")
             .join("bin")
             .join(bin_name);
-        let newer = dir
-            .join("installs")
-            .join("v22.22.2")
+        let newer = newer_dir
             .join("node_modules")
             .join("@anthropic-ai")
             .join("claude-code")
@@ -506,11 +491,48 @@ mod tests {
         std::fs::write(&newer, "new").unwrap();
 
         let shim_dir = dir.join(".nodejs");
-        std::fs::create_dir_all(&shim_dir).unwrap();
-        let shim = shim_dir.join("claude.exe");
+        #[cfg(windows)]
+        {
+            if std::os::windows::fs::symlink_dir(&older_dir, &shim_dir).is_err() {
+                let status = std::process::Command::new("cmd")
+                    .args(["/c", "mklink", "/J"])
+                    .arg(&shim_dir)
+                    .arg(&older_dir)
+                    .status();
+                assert!(status.map(|s| s.success()).unwrap_or(false), "failed to create junction for .nodejs");
+            }
+        }
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&older_dir, &shim_dir).expect("symlink");
+        }
+
+        let shim = shim_dir.join("claude.cmd");
         std::fs::write(&shim, "shim").unwrap();
 
-        assert_eq!(unwrap_claude_shim(&shim), Some(newer));
+        let resolved = unwrap_claude_shim(&shim);
+        let expected = std::fs::canonicalize(&older).unwrap();
+        assert_eq!(resolved, Some(expected));
+        assert_ne!(resolved, Some(std::fs::canonicalize(&newer).unwrap()));
+
+        #[cfg(windows)]
+        {
+            let _ = std::fs::remove_file(shim_dir.join("claude.cmd"));
+            let _ = std::fs::remove_dir(&shim_dir);
+        }
+        #[cfg(unix)]
+        {
+            let _ = std::fs::remove_file(&shim_dir);
+        }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn does_not_unwrap_nvm_nodejs_shim_when_canonicalize_fails() {
+        let dir = std::env::temp_dir().join(format!("ainess-claude-nvm-broken-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let shim_dir = dir.join(".nodejs");
+        let shim = shim_dir.join("claude.cmd");
+        assert_eq!(unwrap_claude_shim(&shim), None);
     }
 }
