@@ -115,7 +115,7 @@ export function RemoteDesktopApp() {
     }
     const token = getToken();
     const search = window.location.search || (token ? `?token=${encodeURIComponent(token)}` : "");
-    window.location.href = `/${search}`;
+    window.location.href = `/${search}${window.location.hash}`;
   };
 
   // Persist navigation on every change, but only after initial restore has run.

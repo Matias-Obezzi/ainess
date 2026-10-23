@@ -3,7 +3,8 @@ import {
   REMOTE_NAV_KEY,
   REMOTE_LAYOUT_KEY,
   DESKTOP_MIN_WIDTH,
-  defaultRemoteLayout,
+  pickRemoteLayout,
+  desktopHref,
   readRemoteLayout,
   writeRemoteLayout,
   readRemoteNav,
@@ -282,11 +283,29 @@ describe("restoreNav", () => {
 
 
 describe("remote layout selection and persistence", () => {
-  it("defaults to desktop at or above 768px and mobile below 768px", () => {
-    expect(defaultRemoteLayout(DESKTOP_MIN_WIDTH)).toBe("desktop");
-    expect(defaultRemoteLayout(1440)).toBe("desktop");
-    expect(defaultRemoteLayout(DESKTOP_MIN_WIDTH - 1)).toBe("mobile");
-    expect(defaultRemoteLayout(390)).toBe("mobile");
+  const computer = { finePointer: true, hover: true, width: 1440 };
+
+  it("opens the desktop view on a computer and the phone page on anything else", () => {
+    expect(pickRemoteLayout(null, computer)).toBe("desktop");
+    expect(pickRemoteLayout(null, { ...computer, width: DESKTOP_MIN_WIDTH })).toBe("desktop");
+    // A narrow window on a computer is still better served by the phone page.
+    expect(pickRemoteLayout(null, { ...computer, width: DESKTOP_MIN_WIDTH - 1 })).toBe("mobile");
+    // A phone, and a tablet however wide: coarse pointer, no hover.
+    expect(pickRemoteLayout(null, { finePointer: false, hover: false, width: 390 })).toBe("mobile");
+    expect(pickRemoteLayout(null, { finePointer: false, hover: false, width: 1366 })).toBe("mobile");
+    // A touch screen with a stylus that hovers, or a mouse with no hover: not enough.
+    expect(pickRemoteLayout(null, { ...computer, finePointer: false })).toBe("mobile");
+    expect(pickRemoteLayout(null, { ...computer, hover: false })).toBe("mobile");
+  });
+
+  it("follows the view chosen with the switch button over the device", () => {
+    expect(pickRemoteLayout("mobile", computer)).toBe("mobile");
+    expect(pickRemoteLayout("desktop", { finePointer: false, hover: false, width: 390 })).toBe("desktop");
+  });
+
+  it("keeps the token, the query and the hash on the way to the desktop view", () => {
+    expect(desktopHref({ search: "?token=abc%20d&x=1", hash: "#tasks" })).toBe("/desktop?token=abc%20d&x=1#tasks");
+    expect(desktopHref({ search: "", hash: "" })).toBe("/desktop");
   });
 
   it("round-trips layout preference through storage and ignores invalid values", () => {
