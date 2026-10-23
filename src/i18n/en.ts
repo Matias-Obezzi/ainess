@@ -884,6 +884,7 @@ export const en: Dictionary = {
   "extensions.missingValues": "Values the extension needs to start are missing.",
   "extensions.empty.title": "No extensions yet",
   "extensions.empty.body": "An extension is an MCP server packaged in a .mcpb file: install it, fill in what it asks for and it is there for every agent. The ones you installed in Claude Desktop show up under MCP → Import.",
+  "extensions.empty.bodyRemote": "An extension is an MCP server packaged in a .mcpb file. Extensions are installed, and the ones from Claude Desktop imported, from the desktop app; once there, they show up here.",
   "extensions.reach": "Each extension is one more MCP server: agents get it like the ones in the MCP section and, when it is on for everyone, so does each installed CLI.",
   "extensions.enabled": "Enabled",
   "extensions.uninstall": "Uninstall",

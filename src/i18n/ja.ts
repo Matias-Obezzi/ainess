@@ -884,6 +884,7 @@ export const ja: Dictionary = {
   "extensions.missingValues": "拡張機能の起動に必要な値が足りません。",
   "extensions.empty.title": "拡張機能はまだありません",
   "extensions.empty.body": "拡張機能は .mcpb ファイルにまとめられた MCP サーバーです。インストールして求められた値を入力すると、すべてのエージェントで使えます。Claude Desktop でインストールしたものは MCP → 取り込み に表示されます。",
+  "extensions.empty.bodyRemote": "拡張機能は .mcpb ファイルにまとめられた MCP サーバーです。インストールや Claude Desktop からの取り込みはデスクトップアプリで行います。追加されるとここに表示されます。",
   "extensions.reach": "拡張機能はそれぞれ 1 つの MCP サーバーです。MCP セクションのものと同じようにエージェントに渡され、全員に有効なら各 CLI にも渡されます。",
   "extensions.enabled": "有効",
   "extensions.uninstall": "アンインストール",

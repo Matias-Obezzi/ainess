@@ -883,6 +883,7 @@ export const zh: Dictionary = {
   "extensions.missingValues": "缺少扩展启动所需的值。",
   "extensions.empty.title": "还没有扩展",
   "extensions.empty.body": "扩展是打包在 .mcpb 文件里的 MCP 服务器：安装、填写它要求的信息，所有智能体就都能用了。你在 Claude Desktop 里安装的扩展会出现在 MCP → 导入 中。",
+  "extensions.empty.bodyRemote": "扩展是打包在 .mcpb 文件里的 MCP 服务器。扩展在桌面应用中安装，Claude Desktop 里的扩展也在那里导入；添加后会显示在这里。",
   "extensions.reach": "每个扩展都是一个 MCP 服务器：智能体会像 MCP 部分里的服务器一样收到它；如果对所有人启用，每个已安装的 CLI 也会收到。",
   "extensions.enabled": "已启用",
   "extensions.uninstall": "卸载",

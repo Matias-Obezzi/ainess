@@ -883,6 +883,7 @@ export const pt: Dictionary = {
   "extensions.missingValues": "Faltam valores de que a extensão precisa para iniciar.",
   "extensions.empty.title": "Ainda não há extensões",
   "extensions.empty.body": "Uma extensão é um servidor MCP empacotado num arquivo .mcpb: instale-a, preencha o que ela pedir e ela fica disponível para todos os agentes. As que você instalou no Claude Desktop aparecem em MCP → Importar.",
+  "extensions.empty.bodyRemote": "Uma extensão é um servidor MCP empacotado num arquivo .mcpb. As extensões são instaladas, e as do Claude Desktop importadas, pelo app de desktop; depois disso, aparecem aqui.",
   "extensions.reach": "Cada extensão é mais um servidor MCP: os agentes a recebem como os da seção MCP e, se estiver ativa para todos, cada CLI instalada também.",
   "extensions.enabled": "Ativa",
   "extensions.uninstall": "Desinstalar",

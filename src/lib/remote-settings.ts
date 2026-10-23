@@ -421,12 +421,18 @@ function restore(next: unknown, prev: unknown): unknown {
   return next;
 }
 
-/** What a masked secret is tied to: change any of these and the secret does not follow. */
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * What a masked secret is tied to: change any of these and the secret does not follow. An anchor
+ * can itself hold a mask (an extension puts a secret in `args`), so it is compared once restored:
+ * the masked places take the host's value, everything else, order included, has to match.
+ */
 function sameAnchors(next: Record<string, unknown>, prev: Record<string, unknown> | undefined, anchors: string[]): boolean {
   if (!prev) return false;
   return anchors.every(path => {
     const get = (o: Record<string, unknown>) => path.split(".").reduce<unknown>((acc, k) => (isPlainObject(acc) ? acc[k] : undefined), o);
-    return get(next) === get(prev);
+    return sameJson(restore(get(next), get(prev)), get(prev));
   });
 }
 
@@ -445,8 +451,6 @@ function restoreItems(next: unknown[], prev: unknown[] | undefined, anchors: str
 
 // ---------------------------------------------------------------------------------------------
 // What may not change from the page
-
-const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * The fields that tie an item to a folder on the host. A skill pointing at another folder would be
@@ -517,7 +521,7 @@ export function prepareRemotePatch(raw: unknown, host: AppConfig): PatchResult {
     if (!fits(schema, value, legacyKeys(schema, host[k]))) return fail("invalid", key);
     let next: unknown = value;
     if (k === "mcpServers") {
-      next = restoreItems(value as unknown[], host.mcpServers, ["transport", "url", "command"]);
+      next = restoreItems(value as unknown[], host.mcpServers, ["transport", "url", "command", "args"]);
     } else if (k === "hooks") {
       next = restoreItems(value as unknown[], host.hooks, ["action.type", "action.url"]);
     } else if (k === "boards") {

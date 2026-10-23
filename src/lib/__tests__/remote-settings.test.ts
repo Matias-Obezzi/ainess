@@ -147,6 +147,36 @@ describe("what the remote page may send back", () => {
     expect(hooks.ok && (hooks.patch.config.hooks![0].action as { webhookUrl: string }).webhookUrl).toBe("https://hooks.slack.com/T/B/secret");
   });
 
+  it("does not let a masked secret follow a stdio server to other arguments", () => {
+    const host = hostConfig();
+    const view = remoteConfigView(host);
+    const swapped = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, args: ["-y", "some-other-package"] } : s));
+    expect(prepareRemotePatch({ config: { mcpServers: swapped } }, host)).toMatchObject({ ok: false, error: "secret" });
+    // Same arguments in another order are other arguments too.
+    const reordered = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, args: ["server", "-y"] } : s));
+    expect(prepareRemotePatch({ config: { mcpServers: reordered } }, host)).toMatchObject({ ok: false, error: "secret" });
+    // With the secret typed again, the new arguments are fine.
+    const retyped = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, args: ["-y", "other"], env: { GITHUB_TOKEN: "ghp_new", HOME_REF: "${HOME}" } } : s));
+    const result = prepareRemotePatch({ config: { mcpServers: retyped } }, host);
+    expect(result.ok && result.patch.config.mcpServers![0]).toMatchObject({ args: ["-y", "other"], env: { GITHUB_TOKEN: "ghp_new" } });
+    // Unchanged arguments still get the secret back.
+    const same = prepareRemotePatch({ config: { mcpServers: view.mcpServers } }, host);
+    expect(same.ok && same.patch.config.mcpServers![0]).toMatchObject({ args: ["-y", "server"], env: { GITHUB_TOKEN: "ghp_env" } });
+  });
+
+  it("puts back an extension secret that sits in the arguments, as long as the rest stays", () => {
+    const host = hostConfig();
+    host.mcpServers.push({
+      id: "e1", name: "Ext", transport: "stdio", command: "node", args: ["index.js", "sk-live"], enabledFor: "all",
+      extension: { id: "ext", dir: "C:\\ext", config: { api_key: "sk-live" } },
+    });
+    const view = remoteConfigView(host, { e1: new Set(["api_key"]) });
+    const kept = prepareRemotePatch({ config: { mcpServers: view.mcpServers } }, host);
+    expect(kept.ok && kept.patch.config.mcpServers!.find(s => s.id === "e1")!.args).toEqual(["index.js", "sk-live"]);
+    const changed = view.mcpServers!.map(s => (s.id === "e1" ? { ...s, args: ["evil.js", SECRET_MASK] } : s));
+    expect(prepareRemotePatch({ config: { mcpServers: changed } }, host)).toMatchObject({ ok: false, error: "secret" });
+  });
+
   it("leaves the fields that point at a folder on the host to the host", () => {
     const host = hostConfig();
     const moved = [{ ...host.skills[0], dir: "C:\\Windows" }];

@@ -144,7 +144,7 @@ export function ExtensionsSection() {
       <EmptyState
         icon={Puzzle}
         title={t("extensions.empty.title")}
-        description={t("extensions.empty.body")}
+        description={t(isRemoteBuild() ? "extensions.empty.bodyRemote" : "extensions.empty.body")}
         action={isRemoteBuild() ? undefined : { label: t("extensions.install"), onClick: install }}
       />
     );
