@@ -12,6 +12,11 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   variáveis e headers de MCP) chegam mascarados: podem ser mantidos ou substituídos, nunca lidos.
 - **A visão de desktop do remoto tem seu próprio tema.** Mudá-lo em Aparência vale só para aquele
   navegador e deixa o tema do anfitrião como está.
+- **Pelo remoto não dá para mudar nada que roda no anfitrião.** Servidores MCP locais (comando,
+  argumentos, ambiente), valores das extensões, hooks de comando, o comando dos agentes
+  personalizados, executáveis e os comandos de verificação e rápidos de um projeto ficam somente
+  leitura ali, e o anfitrião os recusa. Permissões, aprovações e salas só podem ser restringidas:
+  a aprovação automática desliga, nunca liga.
 
 ### Alterado
 
@@ -21,6 +26,9 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 - **A visão de desktop do remoto esconde o que só funciona no anfitrião.** Mensagens e Remoto não
   aparecem, nem instalar extensões ou plugins, importar de outros CLIs, escolher arquivos ou
   pastas, conectar conectores, ou detectar e instalar CLIs.
+- **O remoto abre na visão que combina com o aparelho.** O navegador de um computador vai direto
+  para a visão de desktop e um telefone ou tablet fica na página do telefone. O botão de trocar de
+  visão manda, e aquele navegador lembra dele.
 
 ## 0.32.0 — 2026-10-22
 

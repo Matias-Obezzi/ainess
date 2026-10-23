@@ -25,6 +25,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useCurrentProjectId } from "@/components/shell/project-pane";
 import { resolvedModel, costPerMillion } from "@/lib/model-cost";
 import { formatCost, runsOfProject } from "@/lib/usage";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 interface Props {
   open: boolean;
@@ -177,6 +179,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
   const projectIsRepo = useAppStore(state => (targetProjectId ? state.repoState[targetProjectId]?.isRepo : undefined));
   const refreshRepoState = useAppStore(state => state.refreshRepoState);
   const approveDelegations = useAppStore(state => state.config.approveDelegations);
+  // From the remote page an agent may ask for more, never for less: skipping permission prompts or
+  // approvals, and what program a custom agent is, are the host's to set (see remote-settings.ts).
+  const locked = isRemoteBuild();
+  const waitedBefore = agent?.requireApproval ?? approveDelegations;
+  const widensApproval = (mode: "inherit" | "always" | "never") =>
+    locked && waitedBefore && !(mode === "always" || (mode === "inherit" && approveDelegations));
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -255,7 +263,7 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
         setModelOption(DEFAULT_MODEL_OPTION);
         setOtherModel("");
         setEffort(undefined);
-        setAutoApprove(true);
+        setAutoApprove(!isRemoteBuild());
         setApprovalMode("inherit");
         setWorktree(false);
         setRetryOnQuota(false);
@@ -354,7 +362,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
       systemPrompt: systemPrompt || undefined,
       color
     };
-    if (provider === "custom") {
+    if (locked) {
+      if (agent?.customCommand) newAgent.customCommand = agent.customCommand;
+    } else if (provider === "custom") {
       newAgent.customCommand = {
         program: customProgram,
         args: customArgs.split(" ").filter(s => s.trim() !== "")
@@ -604,10 +614,11 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
 
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" />
+                <Switch checked={autoApprove} onCheckedChange={setAutoApprove} id="auto-approve" disabled={locked && !agent?.autoApprove} />
                 <Label htmlFor="auto-approve">{t("agentDialog.autoApprove")}</Label>
               </div>
               <span className="text-sm text-muted-foreground block">{t("agentDialog.autoApproveHint")}</span>
+              {!agent?.autoApprove && <RemoteLockedHint restrict />}
             </div>
 
             <div className="space-y-1">
@@ -617,9 +628,9 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inherit">{t("agentDialog.approvalMode.inherit")}</SelectItem>
+                  <SelectItem value="inherit" disabled={widensApproval("inherit")}>{t("agentDialog.approvalMode.inherit")}</SelectItem>
                   <SelectItem value="always">{t("agentDialog.approvalMode.always")}</SelectItem>
-                  <SelectItem value="never">{t("agentDialog.approvalMode.never")}</SelectItem>
+                  <SelectItem value="never" disabled={widensApproval("never")}>{t("agentDialog.approvalMode.never")}</SelectItem>
                 </SelectContent>
               </Select>
               {approvalMode === "inherit" && (
@@ -677,12 +688,13 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
               <div className="grid grid-cols-2 gap-4 p-4 border rounded">
                 <div className="space-y-1">
                   <Label>{t("agentDialog.program")}</Label>
-                  <Input value={customProgram} onChange={e => setCustomProgram(e.target.value)} />
+                  <Input value={customProgram} onChange={e => setCustomProgram(e.target.value)} disabled={locked} />
                 </div>
                 <div className="space-y-1">
                   <Label>{t("agentDialog.args")}</Label>
-                  <Input value={customArgs} onChange={e => setCustomArgs(e.target.value)} placeholder="agy --prompt {prompt}" />
+                  <Input value={customArgs} onChange={e => setCustomArgs(e.target.value)} placeholder="agy --prompt {prompt}" disabled={locked} />
                 </div>
+                <RemoteLockedHint className="col-span-2" />
               </div>
             )}
 
@@ -694,12 +706,12 @@ export function AgentDialog({ open: dialogOpen, onOpenChange, agent, projectId, 
                     ? <span>{currentBinary.path}{currentBinary.version ? ` (${currentBinary.version})` : ""}</span>
                     : <span className="text-destructive">{t("agents.notFound")}</span>}
                 </div>
-                <div className="flex gap-2 items-center">
+                {locked ? <RemoteLockedHint /> : <div className="flex gap-2 items-center">
                   <Button size="sm" variant="outline" onClick={() => void handlePickExecutable()}>{t("agents.setPath")}</Button>
                   {hasOverride && (
                     <Button size="sm" variant="ghost" onClick={() => void handleClearOverride()}>{t("agents.clearOverride")}</Button>
                   )}
-                </div>
+                </div>}
               </div>
             )}
             

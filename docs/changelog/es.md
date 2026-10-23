@@ -13,6 +13,11 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   nunca se leen.
 - **La vista de escritorio del remoto tiene su propio tema.** Cambiarlo en Apariencia afecta solo a
   ese navegador y deja el del anfitrión como está.
+- **Desde el remoto no se puede cambiar nada que se ejecute en el anfitrión.** Los servidores MCP
+  locales (comando, argumentos, entorno), los valores de las extensiones, los hooks de comando, el
+  comando de los agentes personalizados, los ejecutables y los comandos de verificación y rápidos
+  de un proyecto se ven ahí de solo lectura, y el anfitrión los rechaza. Permisos, aprobaciones y
+  salas solo se pueden restringir: la autoaprobación se apaga, nunca se prende.
 
 ### Cambiado
 
@@ -22,6 +27,9 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 - **La vista de escritorio del remoto oculta lo que solo funciona en el anfitrión.** Mensajería y
   Remoto no aparecen, ni instalar extensiones o plugins, importar de otros CLIs, elegir archivos o
   carpetas, conectar conectores, o detectar e instalar CLIs.
+- **El remoto abre en la vista que corresponde al dispositivo.** El navegador de una computadora
+  va directo a la vista de escritorio y un teléfono o una tablet se quedan en la página del
+  teléfono. El botón para cambiar de vista manda, y ese navegador lo recuerda.
 
 ## 0.32.0 — 2026-10-22
 

@@ -121,9 +121,9 @@ describe("what the remote page may send back", () => {
     expect(kept.patch.config.mcpServers![0]).toMatchObject({ name: "GitHub 2", env: { GITHUB_TOKEN: "ghp_env" } });
     expect(kept.patch.config.mcpServers![1].headers).toEqual({ Authorization: "Bearer xyz" });
 
-    const replaced = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, env: { GITHUB_TOKEN: "ghp_new" } } : s));
+    const replaced = view.mcpServers!.map(s => (s.id === "m2" ? { ...s, headers: { Authorization: "Bearer new" } } : s));
     const result = prepareRemotePatch({ config: { mcpServers: replaced } }, host);
-    expect(result.ok && result.patch.config.mcpServers![0].env).toEqual({ GITHUB_TOKEN: "ghp_new" });
+    expect(result.ok && result.patch.config.mcpServers![1].headers).toEqual({ Authorization: "Bearer new" });
 
     const boards = prepareRemotePatch({ config: { boards: view.boards } }, host);
     expect(boards.ok && boards.patch.config.boards).toEqual({ github: { token: "ghp_secret" } });
@@ -155,10 +155,9 @@ describe("what the remote page may send back", () => {
     // Same arguments in another order are other arguments too.
     const reordered = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, args: ["server", "-y"] } : s));
     expect(prepareRemotePatch({ config: { mcpServers: reordered } }, host)).toMatchObject({ ok: false, error: "secret" });
-    // With the secret typed again, the new arguments are fine.
+    // With the secret typed again, the new arguments are still the desktop app's to set.
     const retyped = view.mcpServers!.map(s => (s.id === "m1" ? { ...s, args: ["-y", "other"], env: { GITHUB_TOKEN: "ghp_new", HOME_REF: "${HOME}" } } : s));
-    const result = prepareRemotePatch({ config: { mcpServers: retyped } }, host);
-    expect(result.ok && result.patch.config.mcpServers![0]).toMatchObject({ args: ["-y", "other"], env: { GITHUB_TOKEN: "ghp_new" } });
+    expect(prepareRemotePatch({ config: { mcpServers: retyped } }, host)).toMatchObject({ ok: false, error: "locked", field: "mcpServers.args" });
     // Unchanged arguments still get the secret back.
     const same = prepareRemotePatch({ config: { mcpServers: view.mcpServers } }, host);
     expect(same.ok && same.patch.config.mcpServers![0]).toMatchObject({ args: ["-y", "server"], env: { GITHUB_TOKEN: "ghp_env" } });
@@ -206,6 +205,152 @@ describe("what the remote page may send back", () => {
     // Null is a value of its own for the language (follow the system); the skills cannot go.
     expect(prepareRemotePatch({ config: { language: null } }, hostConfig())).toMatchObject({ ok: true, patch: { config: { language: null } } });
     expect(prepareRemotePatch({ config: { skills: null } }, hostConfig())).toMatchObject({ ok: false, error: "invalid" });
+  });
+});
+
+describe("what only the desktop app may change", () => {
+  /** The fixture, plus one of each thing that runs something on the host. */
+  function host(): AppConfig {
+    const config = hostConfig();
+    config.approveDelegations = true;
+    config.mcpServers.push({ id: "m4", name: "Local", transport: "stdio", command: "node", args: ["server.js"], enabledFor: "all" });
+    config.hooks.push({ id: "h2", name: "Script", event: "task.finished", enabled: true, action: { type: "command", program: "notify.exe", args: ["{summary}"], cwd: "workspace" } });
+    config.plannerPermissions = { presets: { git: true, install: false }, allow: ["docker ps"], deny: ["git push"] };
+    config.formations = [{ id: "f1", name: "Equipo", agents: [{ ...agent }] }];
+    const project = config.projects[0];
+    project.agents.push({ id: "a2", name: "Custom", provider: "custom", role: "implementer", parentId: "a1", autoApprove: true, customCommand: { program: "agy", args: ["--prompt", "{prompt}"] } });
+    project.verify = [{ id: "v1", label: "test", program: "npm", args: ["test"] }];
+    project.commands = [{ id: "c1", label: "dev", command: "npm run dev" }];
+    project.room!.enabled = false;
+    project.room!.allowed = { mA: "Laptop" };
+    return config;
+  }
+
+  const send = (patch: unknown, config = host()) => prepareRemotePatch(patch, config);
+  const view = (config = host()) => remoteConfigView(config);
+  const servers = (map: (s: McpServer) => McpServer | null, config = host()) =>
+    view(config).mcpServers!.map(map).filter((s): s is McpServer => s !== null);
+
+  it("lets every locked field go back as it was: the page sends whole objects", () => {
+    const config = host();
+    const shown = remoteConfigView(config);
+    const project = shown.projects[0];
+    const result = send({
+      config: {
+        mcpServers: shown.mcpServers, hooks: shown.hooks, plannerPermissions: shown.plannerPermissions,
+        formations: shown.formations, approveDelegations: shown.approveDelegations,
+      },
+      projects: [{ id: "p1", agents: project.agents, verify: project.verify, commands: project.commands, room: project.room }],
+    }, config);
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("does not add a local MCP server nor change what one runs", () => {
+    const stdio = { id: "m5", name: "Nuevo", transport: "stdio", command: "calc.exe", enabledFor: "all" };
+    expect(send({ config: { mcpServers: [...view().mcpServers!, stdio] } })).toMatchObject({ ok: false, error: "locked", field: "mcpServers.transport" });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? { ...s, command: "evil.exe" } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.command" });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? { ...s, args: ["other.js"] } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.args" });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? { ...s, transport: "http", url: "https://x" } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.transport" });
+    // The environment is locked whole, not only its secrets: NODE_OPTIONS runs code too.
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? { ...s, env: { NODE_OPTIONS: "--require C:\\evil.js" } } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.env" });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m1" ? { ...s, env: { ...s.env, EXTRA: "1" } } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.env" });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m2" ? { ...s, env: { PATH: "C:\\evil" } } : s)) } })).toMatchObject({ error: "locked", field: "mcpServers.env" });
+  });
+
+  it("does not change what an extension is given", () => {
+    const config = host();
+    config.mcpServers.push({ id: "e1", name: "Ext", transport: "stdio", command: "node", args: ["index.js"], enabledFor: "all", extension: { id: "ext", dir: "C:\\ext", config: { folder: "C:\\data" } } });
+    const changed = servers(s => (s.id === "e1" ? { ...s, extension: { ...s.extension!, config: { folder: "C:\\" } } } : s), config);
+    expect(send({ config: { mcpServers: changed } }, config)).toMatchObject({ error: "locked", field: "mcpServers.extension.config" });
+  });
+
+  it("still renames, switches off, deletes and adds remote MCP servers", () => {
+    const renamed = servers(s => (s.id === "m4" ? { ...s, name: "Otro", enabledFor: [] } : s));
+    expect(send({ config: { mcpServers: renamed } })).toMatchObject({ ok: true });
+    expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? null : s)) } })).toMatchObject({ ok: true });
+    const http = { id: "m5", name: "Hosted 2", transport: "http", url: "https://mcp2.example.com", headers: { Authorization: "Bearer typed" }, enabledFor: "all" };
+    expect(send({ config: { mcpServers: [...view().mcpServers!, http] } })).toMatchObject({ ok: true });
+    // A new address, with its secret typed again, as before.
+    const moved = servers(s => (s.id === "m2" ? { ...s, url: "https://other.example", headers: { Authorization: "Bearer typed" } } : s));
+    expect(send({ config: { mcpServers: moved } })).toMatchObject({ ok: true });
+  });
+
+  it("does not create a command hook nor change what one runs, but switches it off or deletes it", () => {
+    const hooks = () => view().hooks!;
+    const created = [...hooks(), { id: "h3", name: "Run", event: "task.finished", enabled: true, action: { type: "command", program: "calc.exe", args: [] } }];
+    expect(send({ config: { hooks: created } })).toMatchObject({ ok: false, error: "locked", field: "hooks.command" });
+    const edited = hooks().map(h => (h.id === "h2" ? { ...h, action: { type: "command", program: "notify.exe", args: ["{summary}", "--more"], cwd: "workspace" } } : h));
+    expect(send({ config: { hooks: edited } })).toMatchObject({ error: "locked", field: "hooks.command" });
+    // A Slack hook turned into a command is a command hook created.
+    const turned = hooks().map(h => (h.id === "h1" ? { ...h, action: { type: "command", program: "calc.exe", args: [] } } : h));
+    expect(send({ config: { hooks: turned } })).toMatchObject({ error: "locked", field: "hooks.command" });
+
+    expect(send({ config: { hooks: hooks().map(h => (h.id === "h2" ? { ...h, enabled: false, name: "Off" } : h)) } })).toMatchObject({ ok: true });
+    expect(send({ config: { hooks: hooks().filter(h => h.id !== "h2") } })).toMatchObject({ ok: true });
+    const notify = hooks().map(h => (h.id === "h2" ? { ...h, action: { type: "notify", title: "x", template: "y" } } : h));
+    expect(send({ config: { hooks: notify } })).toMatchObject({ ok: true });
+  });
+
+  it("does not change a custom agent's command, nor let an agent skip its approvals", () => {
+    const agents = () => view().projects[0].agents;
+    const withAgent = (id: string, patch: Record<string, unknown>) => ({ projects: [{ id: "p1", agents: agents().map(a => (a.id === id ? { ...a, ...patch } : a)) }] });
+    expect(send(withAgent("a2", { customCommand: { program: "evil.exe", args: [] } }))).toMatchObject({ error: "locked", field: "projects.agents.customCommand" });
+    expect(send(withAgent("a1", { autoApprove: true }))).toMatchObject({ error: "locked", field: "projects.agents.autoApprove" });
+    const fresh = { id: "a3", name: "Nuevo", provider: "claude", role: "implementer", parentId: "a1", autoApprove: true };
+    expect(send({ projects: [{ id: "p1", agents: [...agents(), fresh] }] })).toMatchObject({ error: "locked", field: "projects.agents.autoApprove" });
+    const custom = { ...fresh, autoApprove: false, provider: "custom", customCommand: { program: "calc.exe", args: [] } };
+    expect(send({ projects: [{ id: "p1", agents: [...agents(), custom] }] })).toMatchObject({ error: "locked", field: "projects.agents.customCommand" });
+    // Delegations wait for approval on this host: an agent cannot opt out, nor the host as a whole.
+    expect(send(withAgent("a1", { requireApproval: false }))).toMatchObject({ error: "locked", field: "projects.agents.requireApproval" });
+    expect(send({ config: { approveDelegations: false } })).toMatchObject({ error: "locked", field: "approveDelegations" });
+    // A formation's agents follow the same rules.
+    const formations = view().formations!.map(f => ({ ...f, agents: f.agents.map(a => ({ ...a, autoApprove: true })) }));
+    expect(send({ config: { formations } })).toMatchObject({ error: "locked", field: "formations.agents.autoApprove" });
+
+    // What only restricts goes through.
+    expect(send(withAgent("a2", { autoApprove: false, name: "Renombrado", model: "x" }))).toMatchObject({ ok: true });
+    expect(send(withAgent("a1", { requireApproval: true }))).toMatchObject({ ok: true });
+    expect(send({ projects: [{ id: "p1", agents: [...agents(), { ...fresh, autoApprove: false }] }] })).toMatchObject({ ok: true });
+    const relaxed = host();
+    relaxed.approveDelegations = false;
+    expect(send({ config: { approveDelegations: true } }, relaxed)).toMatchObject({ ok: true });
+  });
+
+  it("only tightens the planners' permissions", () => {
+    const perms = host().plannerPermissions!;
+    const sendPerms = (plannerPermissions: unknown) => send({ config: { plannerPermissions } });
+    expect(sendPerms({ ...perms, presets: { ...perms.presets, install: true } })).toMatchObject({ error: "locked", field: "plannerPermissions.presets" });
+    // `anything` is off by default: turning it on widens even when the host never wrote it.
+    expect(sendPerms({ ...perms, presets: { ...perms.presets, anything: true } })).toMatchObject({ error: "locked", field: "plannerPermissions.presets" });
+    expect(sendPerms({ ...perms, allow: ["docker ps", "rm *"] })).toMatchObject({ error: "locked", field: "plannerPermissions.allow" });
+    expect(sendPerms({ ...perms, deny: [] })).toMatchObject({ error: "locked", field: "plannerPermissions.deny" });
+    // Taking the setting away puts the defaults back: wider than this host's.
+    expect(sendPerms(null)).toMatchObject({ error: "locked" });
+
+    expect(sendPerms({ ...perms, presets: { ...perms.presets, git: false } })).toMatchObject({ ok: true });
+    expect(sendPerms({ ...perms, allow: [] })).toMatchObject({ ok: true });
+    expect(sendPerms({ ...perms, deny: ["git push", "npm publish"] })).toMatchObject({ ok: true });
+  });
+
+  it("does not change what a project runs, but relabels and deletes it", () => {
+    const verify = [{ id: "v1", label: "test", program: "npm", args: ["run", "evil"] }];
+    expect(send({ projects: [{ id: "p1", verify }] })).toMatchObject({ error: "locked", field: "projects.verify" });
+    expect(send({ projects: [{ id: "p1", verify: [...host().projects[0].verify!, { id: "v2", label: "x", program: "calc.exe", args: [] }] }] })).toMatchObject({ error: "locked", field: "projects.verify" });
+    expect(send({ projects: [{ id: "p1", commands: [{ id: "c1", label: "dev", command: "calc.exe" }] }] })).toMatchObject({ error: "locked", field: "projects.commands" });
+
+    expect(send({ projects: [{ id: "p1", verify: [{ id: "v1", label: "tests", program: "npm", args: ["test"] }] }] })).toMatchObject({ ok: true });
+    expect(send({ projects: [{ id: "p1", verify: [], commands: [] }] })).toMatchObject({ ok: true });
+    expect(send({ projects: [{ id: "p1", verify: null }] })).toMatchObject({ ok: true });
+  });
+
+  it("does not open a project's room nor let another machine in, but closes it", () => {
+    const room = () => view().projects[0].room!;
+    expect(send({ projects: [{ id: "p1", room: { ...room(), enabled: true } }] })).toMatchObject({ error: "locked", field: "projects.room.enabled" });
+    expect(send({ projects: [{ id: "p1", room: { ...room(), allowed: { mA: "Laptop", mB: "Intruso" } } }] })).toMatchObject({ error: "locked", field: "projects.room.allowed" });
+    expect(send({ projects: [{ id: "p1", room: { ...room(), allowed: {} } }] })).toMatchObject({ ok: true });
+    const open = host();
+    open.projects[0].room!.enabled = true;
+    expect(send({ projects: [{ id: "p1", room: { ...remoteConfigView(open).projects[0].room!, enabled: false } }] }, open)).toMatchObject({ ok: true });
   });
 });
 

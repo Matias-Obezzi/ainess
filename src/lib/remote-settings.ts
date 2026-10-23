@@ -6,6 +6,8 @@
 // trusted: a key it may not change is refused, a value of the wrong shape is refused, and a secret
 // it was shown masked can only be kept as it is or replaced, never read back nor moved somewhere
 // else (a server whose address changed loses its masked secrets instead of carrying them along).
+// And whatever decides what runs on the host, or widens what agents may do, stays the host's (see
+// `REMOTE_CONFIG_LOCKS`).
 import { useAppStore } from "@/store";
 import { getTransport } from "@/lib/transport";
 import { log } from "@/lib/logger";
@@ -13,7 +15,8 @@ import { LANGUAGES } from "@/i18n";
 import { PROVIDERS } from "@/lib/providers";
 import { TASK_STATUSES } from "@/lib/tasks";
 import { parseManifest } from "@/lib/mcpb";
-import type { AgentConfig, AppConfig, McpServer, Plugin, Project, Skill } from "@/types";
+import { PLANNER_PRESETS, type PlannerPermissions, type PlannerPresetId } from "@/lib/planner-permissions";
+import type { AgentConfig, AppConfig, Formation, Hook, McpServer, Plugin, Project, RoomConfig, Skill, VerifyCommand } from "@/types";
 import {
   REMOTE_CONFIG_KEYS,
   REMOTE_PROJECT_KEYS,
@@ -497,6 +500,178 @@ function pluginsFromToggles(next: Array<Pick<Plugin, "id" | "enabled">>, host: A
 }
 
 // ---------------------------------------------------------------------------------------------
+// What only the desktop app may change
+
+/**
+ * The rule: from the remote, a plain setting may change (allow by default), but nothing that decides
+ * WHAT RUNS on the host or WIDENS what agents may do. Holding the remote token must not be enough to
+ * run a program on the host, point it at a new executable, script or secret-receiving address, nor
+ * let agents do more without asking. Changes that only restrict (switching something off, removing an
+ * allow pattern, adding a block pattern) and changes that leave a locked field as it was (the page
+ * sends whole objects back) pass.
+ *
+ * Every rule below is one locked field. A new config field is allowed unless it is added here, so a
+ * field that spawns, loads or widens anything has to be listed when it is introduced. The page draws
+ * these same fields read-only (the settings forms, under `isRemoteBuild()`); this is the check that counts.
+ *
+ * Already the host's elsewhere, and kept so: keys outside `REMOTE_CONFIG_KEYS` (binary overrides,
+ * the remote server, messaging), project folders (`REMOTE_PROJECT_KEYS`), folders of skills,
+ * extensions and plugins (`guardHostFields`), and plugins beyond on/off (`pluginsFromToggles`).
+ */
+interface ConfigLock {
+  key: RemoteConfigKey;
+  field: string;
+  /** Whether `next` (secrets already put back) changes the locked field against the host's config. */
+  changes(next: unknown, host: AppConfig, ctx: LockContext): boolean;
+}
+
+interface ProjectLock {
+  key: RemoteProjectKey;
+  field: string;
+  changes(next: unknown, project: Project, host: AppConfig, ctx: LockContext): boolean;
+}
+
+interface LockContext {
+  /** `approveDelegations` as it will be once the patch lands: what an agent's "inherit" resolves to. */
+  approveDelegations: boolean;
+}
+
+/** Empty and missing are the same thing here: the forms drop an empty list or record when saving. */
+const blank = (v: unknown) =>
+  v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0) || (isPlainObject(v) && Object.keys(v).length === 0);
+const sameValue = (a: unknown, b: unknown) => (blank(a) && blank(b)) || sameJson(a, b);
+
+function byId<T extends { id: string }>(items: T[] | undefined): Map<string, T> {
+  return new Map((items ?? []).map(i => [i.id, i] as const));
+}
+
+/** Whether any item of `next` has one of `fields` different from the host's item of the same id (none: a new item). */
+function itemsChange<T extends { id: string }>(next: T[], prev: T[] | undefined, fields: string[]): boolean {
+  const before = byId(prev);
+  return next.some(item => {
+    const old = before.get(item.id) as Record<string, unknown> | undefined;
+    return fields.some(f => !sameValue((item as unknown as Record<string, unknown>)[f], old?.[f]));
+  });
+}
+
+/** Whether a delegation to this agent waits for approval: its own setting, or the global one. */
+const waitsForApproval = (agent: AgentConfig | undefined, global: boolean) => agent?.requireApproval ?? global;
+
+/**
+ * The locks on an agent, wherever it is (a project's team, or a formation, which is copied into
+ * projects as it is). `old` is the host's agent of the same id; a new agent is held against none.
+ */
+const AGENT_LOCKS: ReadonlyArray<{ field: string; changes(next: AgentConfig, old: AgentConfig | undefined, host: AppConfig, ctx: LockContext): boolean }> = [
+  // The program a custom agent is.
+  { field: "customCommand", changes: (next, old) => !sameValue(next.customCommand, old?.customCommand) },
+  // Skipping permission prompts: off from here, never on.
+  { field: "autoApprove", changes: (next, old) => next.autoApprove && !old?.autoApprove },
+  // Delegations to it that waited for approval keep waiting.
+  { field: "requireApproval", changes: (next, old, host, ctx) => waitsForApproval(old, host.approveDelegations) && !waitsForApproval(next, ctx.approveDelegations) },
+];
+
+function agentsChange(next: AgentConfig[], prev: AgentConfig[] | undefined, lock: (typeof AGENT_LOCKS)[number], host: AppConfig, ctx: LockContext): boolean {
+  const before = byId(prev);
+  return next.some(agent => lock.changes(agent, before.get(agent.id), host, ctx));
+}
+
+const presetOn = (perms: PlannerPermissions | undefined, id: PlannerPresetId) =>
+  perms?.presets?.[id] ?? PLANNER_PRESETS.find(p => p.id === id)!.on;
+
+export const REMOTE_CONFIG_LOCKS: readonly ConfigLock[] = [
+  // MCP servers: what is spawned and with what. A stdio server is a program; an http one may come
+  // in (its address takes its secret only when typed again, see `restoreItems`). `env` is locked
+  // whole, secret or not: `NODE_OPTIONS` or `PATH` decide what a command runs as much as the command.
+  {
+    key: "mcpServers", field: "mcpServers.transport",
+    changes: (next, host) => {
+      const before = byId(host.mcpServers);
+      return (next as McpServer[]).some(s => {
+        const old = before.get(s.id);
+        return old ? s.transport !== old.transport : s.transport === "stdio";
+      });
+    },
+  },
+  { key: "mcpServers", field: "mcpServers.command", changes: (next, host) => itemsChange(next as McpServer[], host.mcpServers, ["command", "cwd"]) },
+  { key: "mcpServers", field: "mcpServers.args", changes: (next, host) => itemsChange(next as McpServer[], host.mcpServers, ["args"]) },
+  { key: "mcpServers", field: "mcpServers.env", changes: (next, host) => itemsChange(next as McpServer[], host.mcpServers, ["env"]) },
+  // An extension's values go into its command line and its environment, paths included.
+  {
+    key: "mcpServers", field: "mcpServers.extension.config",
+    changes: (next, host) => {
+      const before = byId(host.mcpServers);
+      return (next as McpServer[]).some(s => !sameValue(s.extension?.config, before.get(s.id)?.extension?.config));
+    },
+  },
+  // Hooks: a command hook runs a program. Creating one or touching what it runs is the host's;
+  // turning it into another kind of hook, switching it off or deleting it is not.
+  {
+    key: "hooks", field: "hooks.command",
+    changes: (next, host) => {
+      const before = byId(host.hooks);
+      return (next as Hook[]).some(hook => {
+        if (hook.action.type !== "command") return false;
+        const old = before.get(hook.id)?.action;
+        if (old?.type !== "command") return true;
+        return !sameValue(hook.action.program, old.program) || !sameValue(hook.action.args, old.args) || !sameValue(hook.action.cwd, old.cwd);
+      });
+    },
+  },
+  // Approvals and permissions only tighten from here.
+  { key: "approveDelegations", field: "approveDelegations", changes: (next, host) => host.approveDelegations && next !== true },
+  {
+    key: "plannerPermissions", field: "plannerPermissions.presets",
+    changes: (next, host) => PLANNER_PRESETS.some(p => presetOn(next as PlannerPermissions | undefined, p.id) && !presetOn(host.plannerPermissions, p.id)),
+  },
+  {
+    key: "plannerPermissions", field: "plannerPermissions.allow",
+    changes: (next, host) => {
+      const before = new Set(host.plannerPermissions?.allow ?? []);
+      return ((next as PlannerPermissions | undefined)?.allow ?? []).some(p => !before.has(p));
+    },
+  },
+  {
+    key: "plannerPermissions", field: "plannerPermissions.deny",
+    changes: (next, host) => {
+      const after = new Set((next as PlannerPermissions | undefined)?.deny ?? []);
+      return (host.plannerPermissions?.deny ?? []).some(p => !after.has(p));
+    },
+  },
+  // Agents of a formation, copied into projects as they are.
+  ...AGENT_LOCKS.map((lock): ConfigLock => ({
+    key: "formations", field: `formations.agents.${lock.field}`,
+    changes: (next, host, ctx) => {
+      const before = byId(host.formations);
+      return (next as Formation[]).some(f => agentsChange(f.agents, before.get(f.id)?.agents, lock, host, ctx));
+    },
+  })),
+];
+
+export const REMOTE_PROJECT_LOCKS: readonly ProjectLock[] = [
+  ...AGENT_LOCKS.map((lock): ProjectLock => ({
+    key: "agents", field: `projects.agents.${lock.field}`,
+    changes: (next, project, host, ctx) => agentsChange(next as AgentConfig[], project.agents, lock, host, ctx),
+  })),
+  // What a project runs to check itself, and its saved commands: programs, as they are spawned.
+  { key: "verify", field: "projects.verify", changes: (next, project) => itemsChange(next as VerifyCommand[], project.verify, ["program", "args"]) },
+  { key: "commands", field: "projects.commands", changes: (next, project) => itemsChange(next as NonNullable<Project["commands"]>, project.commands, ["command"]) },
+  // A room lets other machines speak to this project's agents: whether it is open, and who may.
+  { key: "room", field: "projects.room.enabled", changes: (next, project) => !!(next as RoomConfig | undefined)?.enabled && !project.room?.enabled },
+  {
+    key: "room", field: "projects.room.allowed",
+    changes: (next, project) => Object.keys((next as RoomConfig | undefined)?.allowed ?? {}).some(id => !(id in (project.room?.allowed ?? {}))),
+  },
+];
+
+function lockedConfigField(key: RemoteConfigKey, next: unknown, host: AppConfig, ctx: LockContext): string | null {
+  return REMOTE_CONFIG_LOCKS.find(lock => lock.key === key && lock.changes(next, host, ctx))?.field ?? null;
+}
+
+function lockedProjectField(key: RemoteProjectKey, next: unknown, project: Project, host: AppConfig, ctx: LockContext): string | null {
+  return REMOTE_PROJECT_LOCKS.find(lock => lock.key === key && lock.changes(next, project, host, ctx))?.field ?? null;
+}
+
+// ---------------------------------------------------------------------------------------------
 // The patch
 
 /**
@@ -510,6 +685,9 @@ export function prepareRemotePatch(raw: unknown, host: AppConfig): PatchResult {
   const rawConfig = raw.config ?? {};
   if (!isPlainObject(rawConfig)) return fail("invalid", "config");
   for (const key of Object.keys(raw)) if (key !== "config" && key !== "projects") return fail("unknown", key);
+  const ctx: LockContext = {
+    approveDelegations: typeof rawConfig.approveDelegations === "boolean" ? rawConfig.approveDelegations : host.approveDelegations,
+  };
 
   for (const [key, value] of Object.entries(rawConfig)) {
     if (!(REMOTE_CONFIG_KEYS as readonly string[]).includes(key)) return fail("unknown", key);
@@ -517,7 +695,13 @@ export function prepareRemotePatch(raw: unknown, host: AppConfig): PatchResult {
     const schema = schemas().configSchemas[k];
     // JSON has no undefined: null is how the page says a setting was taken away. For the keys
     // where null is a value of its own (follow the system language, no default team), it is that.
-    if (value === null && schema.t !== "null" && UNSETTABLE.has(k)) { config[k] = undefined; continue; }
+    if (value === null && schema.t !== "null" && UNSETTABLE.has(k)) {
+      // Taking a setting away puts its defaults back, and those can be wider than what it was.
+      const locked = lockedConfigField(k, undefined, host, ctx);
+      if (locked) return fail("locked", locked);
+      config[k] = undefined;
+      continue;
+    }
     if (!fits(schema, value, legacyKeys(schema, host[k]))) return fail("invalid", key);
     let next: unknown = value;
     if (k === "mcpServers") {
@@ -534,6 +718,8 @@ export function prepareRemotePatch(raw: unknown, host: AppConfig): PatchResult {
     if ((next === null && value !== null) || hasMask(next)) return fail("secret", key);
     const guarded = guardHostFields(k, next, host);
     if (guarded) return fail("hostOnly", guarded);
+    const locked = lockedConfigField(k, next, host, ctx);
+    if (locked) return fail("locked", locked);
     config[k] = next;
   }
 
@@ -566,6 +752,8 @@ export function prepareRemotePatch(raw: unknown, host: AppConfig): PatchResult {
           ids.add(a.id);
         }
       }
+      const locked = lockedProjectField(k, next, hostProject, host, ctx);
+      if (locked) return fail("locked", locked);
       out[k] = next;
     }
     projects.push(out as RemoteConfigPatch["projects"][number]);

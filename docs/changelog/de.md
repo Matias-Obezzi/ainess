@@ -13,6 +13,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   oder ersetzen, aber nie auslesen.
 - **Die Desktop-Ansicht des Fernzugriffs hat ihr eigenes Theme.** Eine Änderung unter Darstellung
   gilt nur für diesen Browser und lässt das Theme des Hosts unberührt.
+- **Was auf dem Host läuft, lässt sich im Fernzugriff nicht ändern.** Lokale MCP-Server (Befehl,
+  Argumente, Umgebung), Werte von Erweiterungen, Befehls-Hooks, der Befehl eigener Agenten,
+  ausführbare Dateien sowie Prüf- und Schnellbefehle eines Projekts sind dort schreibgeschützt,
+  und der Host lehnt sie ab. Berechtigungen, Freigaben und Räume lassen sich nur einschränken:
+  Auto-Freigabe geht aus, nie an.
 
 ### Geändert
 
@@ -22,6 +27,9 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 - **Die Desktop-Ansicht des Fernzugriffs blendet aus, was nur auf dem Host geht.** Nachrichten und
   Fernzugriff fehlen dort, ebenso Erweiterungen oder Plugins installieren, aus anderen CLIs
   importieren, Dateien oder Ordner wählen, Konnektoren anmelden und CLIs erkennen oder installieren.
+- **Der Fernzugriff öffnet in der Ansicht, die zum Gerät passt.** Der Browser eines Computers geht
+  direkt zur Desktop-Ansicht, Telefon und Tablet bleiben auf der Telefonseite. Der Umschaltknopf
+  in beiden Ansichten hat Vorrang, und der Browser merkt ihn sich.
 
 ## 0.32.0 — 2026-10-22
 

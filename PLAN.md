@@ -821,7 +821,15 @@ Piezas:
 - `src/remote/index.html`: el tema sigue a `prefers-color-scheme` (script inline que pone la clase
   `dark` en `<html>`), `viewport-fit=cover`.
 - `src/remote/main.tsx`: instala `remoteTransport` **antes** de tocar el store y monta `RemoteApp`.
-  No hay `installConsoleCapture()`: en el celular no hay archivo de log.
+  No hay `installConsoleCapture()`: en el celular no hay archivo de log. Antes de dibujar nada
+  elige la vista: `pickRemoteLayout` (`src/remote/remote-nav.ts`) devuelve la que el navegador
+  eligió con el botón de cambio (`localStorage` `ainess.remote.layout` = `desktop` | `mobile`) y,
+  si no eligió, `desktop` cuando hay `(pointer: fine)`, `(hover: hover)` y `innerWidth >= 1024`
+  (una tablet, puntero grueso, se queda en el celular). Con `desktop` hace `location.replace` a
+  `/desktop` con la misma query (el token) y el hash (`desktopHref`). Solo esta página redirige:
+  `/desktop` nunca manda de vuelta, así que no hay bucle y abrirla directo siempre funciona. Los
+  botones de cambio (`Monitor` en la cabecera del celular, `Smartphone` en la barra de título del
+  escritorio, con `title`/`aria-label` `phone.desktopView`/`phone.mobileView`) guardan la elección.
 - `src/lib/transport-remote.ts`: `Transport` inerte (como `transport-null.ts`) salvo `httpGet`/
   `httpPost`, que son `fetch` reales. Nada spawnea, lee ni persiste: el orquestador vive en la PC.
 - `src/remote/remote-client.ts`: `getToken()` (de `?token=`, guardado en `sessionStorage` y borrado
@@ -908,6 +916,35 @@ sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` si
   del anfitrión). `null` quita una clave opcional. `applyRemotePatch` aplica con las mismas
   acciones del store (`add/update/removeAgent`, `updateProject`, `updateConfig`) y después limpia
   lo borrado: carpetas de skills y plugins administrados, extensiones propias, tokens OAuth.
+- **Lo que decide qué corre en el anfitrión no se cambia desde el remoto** (error `locked`). Regla:
+  una opción común se puede cambiar (permitido por defecto), pero nada que decida QUÉ SE EJECUTA en
+  el anfitrión o AMPLÍE lo que pueden hacer los agentes; lo que solo restringe, y un campo
+  bloqueado que vuelve igual (la página manda objetos enteros), pasa. La lista explícita está en
+  `REMOTE_CONFIG_LOCKS`/`REMOTE_PROJECT_LOCKS` de `remote-settings.ts` (un campo nuevo que spawnea,
+  carga código o amplía permisos se agrega ahí):
+  - MCP: agregar un servidor stdio, y cambiar `transport`, `command`/`cwd`, `args`, `env` (entero,
+    secreto o no: `NODE_OPTIONS` también corre código) y `extension.config`. Un http nuevo, la
+    `url` y los `headers` con el secreto reescrito, renombrar, `enabledFor` y borrar siguen.
+  - Hooks: crear uno `command` o cambiar su `program`/`args`/`cwd` (pasar otro hook a `command`
+    cuenta como crearlo). Pasarlo a otro tipo, apagarlo o borrarlo sigue.
+  - Agentes (de proyectos y de formaciones): `customCommand`; `autoApprove` solo se apaga; y la
+    aprobación efectiva de delegaciones (`requireApproval ?? approveDelegations`) no se afloja.
+    `approveDelegations` global solo se prende.
+  - `plannerPermissions`: prender un grupo (contra su default si falta), agregar un `allow`, sacar
+    un `deny`; quitar la clave entera (vuelven los defaults) también se rechaza si amplía.
+  - Proyecto: `verify` (`program`/`args`) y `commands` (`command`) nuevos o cambiados; la etiqueta
+    y borrar siguen. Sala: prenderla y agregar máquinas a `allowed`; apagarla y sacar máquinas sigue.
+  - Ya eran del anfitrión: claves fuera de `REMOTE_CONFIG_KEYS` (`binaryOverrides` incluido),
+    carpetas de proyecto, `dir`/`source` de skills, la `extension` de un MCP y los plugins más allá
+    de prender/apagar.
+  En la página esos campos se dibujan de solo lectura con la leyenda `remote.locked.hint` (o
+  `remote.locked.restrictHint` donde se puede restringir), vía `RemoteLockedHint`: `McpDialog`
+  (comando, transporte, entorno; "Nuevo" y "Sugeridos" ocultos en MCP), `ExtensionsSection` (sin
+  "Configurar"), `HookDialog` (tipo `command` deshabilitado si no lo era), `AgentDialog`
+  (auto-aprobar solo se apaga, los modos de aprobación que aflojan deshabilitados, programa custom y
+  ejecutable), `GeneralSection`, `PermissionsSection` (un borrador que amplía vuelve atrás con
+  aviso), `VerifySection`, `QuickCommandsDialog` y `RoomDialog`. El control que cuenta es el del
+  anfitrión.
 - `src/remote/remote-settings-client.ts` (solo `desktop.html`): `hydrateWithSettings` hidrata y
   después pone la config del anfitrión sobre la copia liviana de los proyectos que trae el
   snapshot. `installRemoteSettings` devuelve al store sus acciones de edición (`updateConfig`,

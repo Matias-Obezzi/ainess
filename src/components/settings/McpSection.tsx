@@ -19,6 +19,7 @@ import { Plug, MoreHorizontal } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
 import { useT } from "@/i18n/useT";
 import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 const McpDialogCtx = createDialogContext<McpServer>();
 const SuggestedCtx = createToggleContext();
@@ -60,11 +61,12 @@ export function McpSectionActions() {
         <DropdownMenuContent align="end">
           {/* The other tools' configs are files on the host: not on the remote page. */}
           {!isRemoteBuild() && <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>}
-          <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>
+          {/* Every one of them is a program to run on the host: added from the desktop app. */}
+          {!isRemoteBuild() && <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>}
           <DropdownMenuItem onSelect={() => void handleSync()}>{t("mcpNative.syncNow")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button size="sm" onClick={openCreate}>{t("mcp.new")}</Button>
+      {!isRemoteBuild() && <Button size="sm" onClick={openCreate}>{t("mcp.new")}</Button>}
     </div>
   );
 }
@@ -148,8 +150,9 @@ export function McpSection() {
           icon={Plug}
           title={t("mcp.empty.title")}
           description={`${t("mcp.empty.body")} ${t("mcp.reach")}`}
-          action={{ label: t("mcp.empty.action"), onClick: showSuggested }}
+          action={isRemoteBuild() ? undefined : { label: t("mcp.empty.action"), onClick: showSuggested }}
         />
+        <RemoteLockedHint />
         {dialogs}
       </>
     );
@@ -162,6 +165,7 @@ export function McpSection() {
       {banner}
       {native}
       <p className="text-xs text-muted-foreground">{t("mcp.reach")}</p>
+      <RemoteLockedHint />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {handMade.map(server => (
           <Card key={server.id}>

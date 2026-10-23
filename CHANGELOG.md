@@ -16,6 +16,10 @@ let one of them fall behind.
   can be kept or replaced, never read back.
 - **The remote desktop view keeps its own theme.** Changing it in Appearance applies to that
   browser only and leaves the host's theme alone.
+- **Nothing that runs on the host can be changed from the remote.** Local MCP servers (command,
+  arguments, environment), extension values, command hooks, custom agent commands, executables,
+  and a project's verify and quick commands are read-only there, and the host refuses them.
+  Permissions, approvals and rooms can only be tightened: auto-approve goes off, never on.
 
 ### Changed
 
@@ -24,6 +28,9 @@ let one of them fall behind.
 - **The remote desktop view hides what only works on the host.** Messaging and Remote are not
   offered there, nor are installing extensions or plugins, importing from other CLIs, picking files
   or folders, signing connectors in, or detecting and installing CLIs.
+- **The remote opens in the view that fits the device.** A computer's browser goes straight to the
+  desktop view and a phone or tablet stays on the phone page. The switch button in either view
+  wins, and that browser remembers it.
 
 ## 0.32.0 — 2026-10-22
 

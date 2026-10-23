@@ -11,6 +11,8 @@ import { SoundDialog } from "@/components/SoundDialog";
 import { playChime, soundEnabled } from "@/lib/sound";
 import { DEFAULT_STALL_STOP_MINUTES } from "@/lib/stall";
 import type { EscapeStops } from "@/types";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 /** Value of the auto-archive select that means "never"; a Select cannot hold null. */
 const NEVER = "never";
@@ -207,10 +209,13 @@ export function GeneralSection() {
             <Switch
               checked={config.approveDelegations}
               onCheckedChange={(checked) => updateConfig({ approveDelegations: checked })}
+              // Turning approvals off from the remote page lets agents run more without asking.
+              disabled={isRemoteBuild() && config.approveDelegations}
             />
             <div className="flex flex-col">
               <label className="text-sm font-semibold">{t("settings.option.general.approveDelegations")}</label>
               <span className="text-sm text-muted-foreground">{t("settings.general.approveDelegationsHint")}</span>
+              {config.approveDelegations && <RemoteLockedHint restrict />}
             </div>
           </div>
         </CardContent>

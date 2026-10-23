@@ -15,6 +15,8 @@ import { PasswordField } from "@/components/ui/password-field";
 import { NumberField } from "@/components/ui/number-field";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import type { RoomConfig } from "@/types";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 const EMPTY: RoomConfig = { enabled: false, backend: "supabase", room: "", secret: "", allowed: {} };
 
@@ -38,6 +40,9 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
   if (!project) return null;
   const set = (patch: Partial<RoomConfig>) => setDraft(d => ({ ...d, ...patch }));
   const saved = project.room;
+  // Opening the room and letting a machine in are the host's to decide (see remote-settings.ts):
+  // from the remote page a room is closed and machines are removed, no more.
+  const remote = isRemoteBuild();
 
   const save = async () => {
     let chatId = draft.chatId;
@@ -84,7 +89,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
 
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2">
-            <Switch checked={draft.enabled} onCheckedChange={enabled => set({ enabled })} />
+            <Switch checked={draft.enabled} onCheckedChange={enabled => set({ enabled })} disabled={remote && !saved?.enabled} />
             <span className="text-sm font-medium">{t("room.enabled")}</span>
             {saved?.enabled && (
               <Badge variant={connected ? "default" : "outline"} className="ml-auto text-[10px]">
@@ -92,6 +97,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
               </Badge>
             )}
           </label>
+          {!saved?.enabled && <RemoteLockedHint className="-mt-2" />}
           {saved?.enabled && state?.status === "error" && state.detail && <p className="text-xs text-destructive break-words">{state.detail}</p>}
 
           <div className="grid gap-1.5">
@@ -157,7 +163,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
               <div key={id} className="flex items-center gap-2 text-sm">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                 <span className="min-w-0 flex-1 truncate">{name} <span className="text-xs text-muted-foreground">· {t("room.notAllowed")}</span></span>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => allow(id, name)}>{t("room.allow")}</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={remote} onClick={() => allow(id, name)}>{t("room.allow")}</Button>
               </div>
             ))}
           </div>
