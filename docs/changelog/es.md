@@ -2,6 +2,27 @@
 
 Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repositorio.
 
+## Unreleased
+
+### Nuevo
+
+- **La configuración funciona desde la vista de escritorio del remoto.** Equipos, Perfil,
+  Contexto, Órdenes, Skills, MCP, Conectores, Extensiones, Plugins y el resto cargan la
+  configuración del anfitrión y guardan en ella. El anfitrión revisa cada cambio, y los secretos
+  (tokens, API keys, variables y headers de MCP) llegan enmascarados: se conservan o se reemplazan,
+  nunca se leen.
+- **La vista de escritorio del remoto tiene su propio tema.** Cambiarlo en Apariencia afecta solo a
+  ese navegador y deja el del anfitrión como está.
+
+### Cambiado
+
+- **Configuración → Remoto reemplaza al botón del teléfono en la barra de la ventana.** Su entrada
+  se ilumina mientras el servidor corre y la sección avisa cuando está arrancando o apagándose, así
+  que el botón ya no está.
+- **La vista de escritorio del remoto oculta lo que solo funciona en el anfitrión.** Mensajería y
+  Remoto no aparecen, ni instalar extensiones o plugins, importar de otros CLIs, elegir archivos o
+  carpetas, conectar conectores, o detectar e instalar CLIs.
+
 ## 0.32.0 — 2026-10-22
 
 ### Nuevo

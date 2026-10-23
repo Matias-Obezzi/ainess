@@ -2,6 +2,27 @@
 
 Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
+## Unreleased
+
+### Neu
+
+- **Die Einstellungen funktionieren in der Desktop-Ansicht des Fernzugriffs.** Teams, Profil,
+  Kontext, Befehle, Skills, MCP, Konnektoren, Erweiterungen, Plugins und der Rest laden die
+  Konfiguration des Hosts und speichern dort. Der Host prüft jede Änderung, und Geheimnisse
+  (Tokens, API-Schlüssel, MCP-Variablen und -Header) kommen maskiert an: Sie lassen sich behalten
+  oder ersetzen, aber nie auslesen.
+- **Die Desktop-Ansicht des Fernzugriffs hat ihr eigenes Theme.** Eine Änderung unter Darstellung
+  gilt nur für diesen Browser und lässt das Theme des Hosts unberührt.
+
+### Geändert
+
+- **Einstellungen → Fernzugriff ersetzt den Telefon-Knopf in der Fensterleiste.** Der Eintrag
+  leuchtet, solange der Server läuft, und der Bereich zeigt an, wenn er startet oder stoppt; der
+  Knopf entfällt.
+- **Die Desktop-Ansicht des Fernzugriffs blendet aus, was nur auf dem Host geht.** Nachrichten und
+  Fernzugriff fehlen dort, ebenso Erweiterungen oder Plugins installieren, aus anderen CLIs
+  importieren, Dateien oder Ordner wählen, Konnektoren anmelden und CLIs erkennen oder installieren.
+
 ## 0.32.0 — 2026-10-22
 
 ### Neu

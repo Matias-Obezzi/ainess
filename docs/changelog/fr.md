@@ -2,6 +2,26 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Unreleased
+
+### Nouveau
+
+- **Les réglages fonctionnent depuis la vue bureau du distant.** Équipes, Profil, Contexte,
+  Ordres, Skills, MCP, Connecteurs, Extensions, Plugins et le reste chargent la configuration de
+  l'hôte et l'enregistrent. L'hôte vérifie chaque changement, et les secrets (jetons, clés d'API,
+  variables et en-têtes MCP) arrivent masqués : on les garde ou on les remplace, jamais on les lit.
+- **La vue bureau du distant a son propre thème.** Le changer dans Apparence ne touche que ce
+  navigateur et laisse celui de l'hôte tel quel.
+
+### Modifié
+
+- **Réglages → Distant remplace le bouton du téléphone dans la barre de la fenêtre.** Son entrée
+  s'allume tant que le serveur tourne et la section indique quand il démarre ou s'arrête : le bouton
+  disparaît.
+- **La vue bureau du distant masque ce qui ne marche que sur l'hôte.** Messagerie et Distant n'y
+  figurent pas, pas plus qu'installer des extensions ou des plugins, importer depuis d'autres CLI,
+  choisir des fichiers ou dossiers, connecter des connecteurs, ou détecter et installer des CLI.
+
 ## 0.32.0 — 2026-10-22
 
 ### Nouveau

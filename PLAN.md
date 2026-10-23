@@ -847,7 +847,8 @@ renderizar sin leer el disco: `projects` (con `activeTaskRunId` y `running`), `a
 los proyectos, cada uno con su `projectId`), `runtime`,
 `messages` (últimos 800, con `meta` y `runId`, texto recortado a 8000), `approvals` pendientes con
 `payload`, `runs` (últimos 60 por proyecto, sin `rawLines`, `prompt`/`output` a 20 000), `chats`,
-`chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`) y `activeChats`. Si el JSON
+`chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`), `activeChats` y `configVersion`
+(ver "Configuración desde la vista de escritorio"). Si el JSON
 pasa 1 MB se rearma con 400 mensajes y 30 runs por proyecto; el tamaño se loguea en nivel `debug`.
 `attachRemote` pushea con throttle de 300 ms cuando cambian `runs`, `messages`, `runtime`,
 `approvals`, `activeTaskRunId`, `chatMessages`, `binaries` o `config`.
@@ -868,10 +869,66 @@ POST /api/instruct     { projectId, agentId, text, model? }
 POST /api/stop         { projectId, agentId? } | { chatId }
 POST /api/approve      { approvalId, decision: "approve" | "reject", note? }
 POST /api/chat         { chatId, text }
+POST /api/settings     { op: "get" } | { op: "update", patch } | { op: "removeProject", projectId }
+                       | { op: "sync", kind: "mcp" | "skills" } | { op: "oauthStatus" | "oauthDisconnect", id }
 ```
 
 Errores: `{ error }` con 400; token inválido, 401. El token nunca se loguea (`maskSecrets`) ni
 queda en la barra de direcciones.
+
+### Configuración desde la vista de escritorio (`/desktop`)
+
+Decisión revertida: #53 hacía que el remoto **rechazara** `updateConfig` y `addProject`. Ahora la
+vista de escritorio edita todo lo que la app edita, y el anfitrión valida cada cambio. El celular
+sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` sigue rechazando).
+
+- La config no viaja en el snapshot (pesaría en cada push): el snapshot lleva `configVersion`
+  (`currentConfigVersion()` en `src/lib/remote.ts`, sube cada vez que cambia `state.config`) y la
+  página pide `settings { op: "get" }` cuando ese número se mueve. La respuesta
+  (`RemoteConfigView`) trae las claves editables, los proyectos completos (agentes con system
+  prompt incluidos) y `home` del anfitrión (con eso se resuelve el comando de una extensión).
+- `src/lib/remote-settings-keys.ts` (liviano, lo comparten las dos puntas): `REMOTE_CONFIG_KEYS`
+  (claves de `AppConfig` que se pueden cambiar), `REMOTE_PROJECT_KEYS` (`name`, `color`, `agents`,
+  `budget`, `board`, `room`, `verify`, `commands`, `sharedContext`), `SECRET_MASK` y
+  `REMOTE_THEME_KEY`. Fuera de la lista: `remote`, `messaging`, `binaryOverrides`, `theme`,
+  `machine`, `lastProjectId`, los `*Owned`, y la carpeta/repo/fecha de un proyecto.
+- `src/lib/remote-settings.ts` (solo anfitrión; `remote.ts` lo importa dinámico):
+  `remoteConfigView` enmascara los secretos — `boards` (tokens de GitHub y Trello), `env` y
+  `headers` de cada MCP (salvo un `${VAR}` puro), los valores `sensitive` del manifiesto de una
+  extensión (`sensitiveExtensionKeys`; manifiesto ilegible = todos) y sus copias en `args`, el
+  `webhookUrl`/`headers` de los hooks, y `secret`/`supabaseKey`/`firebaseToken` de una sala.
+  `prepareRemotePatch(raw, host)` valida con un esquema estricto (clave desconocida → `unknown`,
+  tipo o rango malo → `invalid`; una clave anidada que no está en el esquema solo pasa si el
+  anfitrión ya la tiene en ese lugar, para no romper datos de versiones viejas), devuelve los
+  secretos enmascarados a su valor (por `id` en listas, por clave en objetos) **solo** si el ítem
+  conserva su dirección (MCP: `transport`/`url`/`command`; hook: `action.type`/`action.url`;
+  sala: `backend`/`supabaseUrl`/`firebaseUrl`; si no, `secret`), deja `dir`/`managed`/
+  `source`/`plugin` de una skill y la `extension` de un MCP como las tiene el anfitrión
+  (`hostOnly`), y los plugins solo se prenden, apagan o desinstalan (se rearman desde el registro
+  del anfitrión). `null` quita una clave opcional. `applyRemotePatch` aplica con las mismas
+  acciones del store (`add/update/removeAgent`, `updateProject`, `updateConfig`) y después limpia
+  lo borrado: carpetas de skills y plugins administrados, extensiones propias, tokens OAuth.
+- `src/remote/remote-settings-client.ts` (solo `desktop.html`): `hydrateWithSettings` hidrata y
+  después pone la config del anfitrión sobre la copia liviana de los proyectos que trae el
+  snapshot. `installRemoteSettings` devuelve al store sus acciones de edición (`updateConfig`,
+  `updateProject`, `updateAgent`, `addAgent`, `removeAgent`), anota qué claves y campos tocó el
+  usuario (lo que vuelca la hidratación no cuenta) y apunta `saveConfig` a `settings update` con
+  solo eso; lo pendiente o en vuelo conserva su valor local hasta que vuelve el del anfitrión, y si
+  el anfitrión rechaza, vuelve lo suyo. `removeProject` es `settings removeProject`. `addProject`
+  sigue rechazado: la carpeta se elige con el diálogo nativo del anfitrión.
+- El tema es del navegador: `config.theme` en la página se guarda en `localStorage`
+  (`ainess.remote.theme`), se aplica al arrancar (`restoreRemoteTheme`) y nunca se manda.
+- `/api/fs` deja **leer** (no escribir ni correr git) también dentro de las carpetas que la config
+  ya nombra: extensiones, skills de carpeta y plugins (manifiesto e icono de una extensión).
+- `transport-remote`: `homeDir` devuelve el `home` de la respuesta; `oauthStatus` y
+  `oauthDisconnect` van a `settings` (el anfitrión dice si hay token, nunca el token).
+- Qué no aparece en la página (`isRemoteBuild()`): las secciones Mensajería y Remoto
+  (`REMOTE_HIDDEN_SECTIONS` en `sections.ts`, también fuera de la búsqueda); instalar extensiones y
+  plugins, actualizar plugins, importar de otros CLIs, subir skills, abrir la carpeta de una skill,
+  los botones de examinar, "Conectar" de un conector OAuth (abre un navegador en el anfitrión; queda
+  la leyenda `connectors.signInOnHost`), probar un hook, detectar/instalar CLIs y el runtime de
+  Claude en Agentes, y actualizaciones/logs en Acerca de. "Sincronizar ahora" de MCP y Skills corre en
+  el anfitrión (`settings sync`) y Diagnóstico usa `/api/diagnostics`.
 
 ## Túnel público
 
@@ -973,9 +1030,11 @@ Estado remoto sincronizado: `useRemoteSync` (montado en `App`) refresca `remoteS
 `tunnelStatus` cada 4 s para toda la app, no solo con el modal de configuración abierto; antes el
 store quedaba viejo al cerrarlo y el switch aparecía apagado con el servidor andando. El switch se
 liga a `remoteStatus.running` (la realidad) y no a `config.remote.enabled` (la intención, que es lo
-que hace que arranque solo). `toggleRemote(enabled)` vive en el store y lo comparten el switch y el
-botón nuevo de la barra de ventana (`RemoteButton` en `TitleBar`), con `remoteBusy` para que los dos
-se deshabiliten mientras tanto. En `runInit`, si el servidor ya está levantado (recarga del front),
+que hace que arranque solo). `toggleRemote(enabled)` vive en el store, con `remoteBusy` para
+deshabilitar el switch mientras tanto (la sección muestra un spinner y "Un momento…"). El botón del
+teléfono que había en la barra de ventana (`RemoteButton`) se quitó: solo abría esta sección y
+encendía una luz, y ahora la entrada "Remoto" del diálogo de Configuración lleva esa luz verde
+mientras el servidor corre. En `runInit`, si el servidor ya está levantado (recarga del front),
 se adopta ese estado en vez de intentar arrancar otro.
 
 Actualización automática del agente: ngrok rechaza la conexión cuando la versión es menor que el

@@ -6,6 +6,25 @@ it to English readers; the other languages are in `docs/changelog/`, and the rel
 let one of them fall behind.
 -->
 
+## Unreleased
+
+### Added
+
+- **Settings work from the remote desktop view.** Teams, Profile, Context, Orders, Skills, MCP,
+  Connectors, Extensions, Plugins and the rest load the host's configuration and save to it. The
+  host checks every change, and secrets (tokens, API keys, MCP env and headers) arrive masked: they
+  can be kept or replaced, never read back.
+- **The remote desktop view keeps its own theme.** Changing it in Appearance applies to that
+  browser only and leaves the host's theme alone.
+
+### Changed
+
+- **Settings → Remote replaces the phone button in the window bar.** Its entry lights up while the
+  server runs and the section says when it is starting or stopping, so the button is gone.
+- **The remote desktop view hides what only works on the host.** Messaging and Remote are not
+  offered there, nor are installing extensions or plugins, importing from other CLIs, picking files
+  or folders, signing connectors in, or detecting and installing CLIs.
+
 ## 0.32.0 — 2026-10-22
 
 ### Added
