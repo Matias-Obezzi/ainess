@@ -14,6 +14,7 @@ import { formatHeaders, parseHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
 import type { McpServer } from "@/types";
 import { Cable } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
 
 interface ConnectorsApi {
   /** Opens the dialog, empty or on an existing connector. */
@@ -209,7 +210,10 @@ function ConnectorCard({ server }: { server: McpServer }) {
       <CardFooter className="flex flex-wrap justify-end gap-2">
         {server.oauth && (connected
           ? <Button variant="outline" size="sm" onClick={() => void disconnect()}>{t("connectors.disconnect")}</Button>
-          : <Button size="sm" disabled={busy} onClick={() => void connect()}>{busy ? t("connectors.connecting") : t("connectors.connect")}</Button>)}
+          // Signing in opens a browser on the host, so from the remote page it is done there.
+          : isRemoteBuild()
+            ? connected === false && <span className="mr-auto self-center text-xs text-muted-foreground">{t("connectors.signInOnHost")}</span>
+            : <Button size="sm" disabled={busy} onClick={() => void connect()}>{busy ? t("connectors.connecting") : t("connectors.connect")}</Button>)}
         <Button variant="outline" size="sm" onClick={() => edit(server)}>{t("common.edit")}</Button>
         <Button variant="destructive" size="sm" onClick={() => void remove()}>{t("common.delete")}</Button>
       </CardFooter>

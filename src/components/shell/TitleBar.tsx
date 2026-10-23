@@ -1,57 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ChevronLeft, ChevronRight, Copy, MessagesSquare, Minus, PanelLeft, Search, Smartphone, Square, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, MessagesSquare, Minus, PanelLeft, Search, Square, X } from "lucide-react";
 import { useAppStore, canGoBack, canGoForward } from "@/store";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isTauri } from "@/lib/tauri";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/shell/NotificationBell";
 import type { BridgeProviderId } from "@/lib/bridge/types";
 import { useT } from "@/i18n/useT";
-
-/**
- * The way to the remote access screen, with the light that says whether the server is up.
- *
- * It used to be the switch itself. One click from the window bar started a server on the local
- * network — with no chance to look at the port, the token or the QR first, and no way to tell from
- * a grey phone whether it was off or about to be. Turning it on and off lives in Configuración →
- * Remoto, which is where everything else about it already was; this opens that.
- */
-function RemoteButton() {
-  const t = useT();
-  const running = useAppStore(state => state.remoteStatus.running);
-  const ip = useAppStore(state => state.remoteStatus.ip);
-  const port = useAppStore(state => state.config.remote.port);
-  const busy = useAppStore(state => state.remoteBusy);
-  const openSettings = useAppStore(state => state.openSettings);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          aria-label={t("titlebar.remoteOpen")}
-          onClick={() => openSettings("remote")}
-        >
-          {/* Starting and stopping happens on the screen this opens, so the spinner is still worth
-              drawing: it is the same server, and this is where its light is. */}
-          {busy ? (
-            <Spinner aria-hidden className="h-4 w-4" />
-          ) : (
-            <Smartphone className={running ? "h-4 w-4 text-emerald-500" : "h-4 w-4"} />
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        {busy ? t("titlebar.remoteBusy") : running ? t("titlebar.remoteAt", { host: ip ?? t("titlebar.localNetwork"), port }) : t("titlebar.remoteOpen")}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 /** What each channel is called, for the tooltip. Their own names, not ours. */
 const CHANNEL_NAMES: Record<BridgeProviderId, string> = {
@@ -253,7 +210,6 @@ export function TitleBar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
       <div className="flex items-center">
         <NotificationBell />
         {rightSlot ? rightSlot : <BridgeIndicator />}
-        {!rightSlot && <RemoteButton />}
         {isTauri() ? <WindowControls /> : <div className="w-2" />}
       </div>
     </div>

@@ -7,6 +7,7 @@ import { useT } from "@/i18n/useT";
 import { pickPath } from "@/lib/pick-dir";
 import { missingValues, type ExtensionValue, type McpbManifest, type UserConfigField } from "@/lib/mcpb";
 import { FolderOpen } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
 
 interface Props {
   open: boolean;
@@ -108,7 +109,7 @@ export function ExtensionConfigDialog({ open, onOpenChange, manifest, initial, o
                       onChange={e => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
                     />
                   )}
-                  {(field.type === "directory" || field.type === "file") && (
+                  {(field.type === "directory" || field.type === "file") && !isRemoteBuild() && (
                     <Button type="button" variant="outline" size="sm" onClick={() => void browse(field)} aria-label={t("extensions.configure.browse")}>
                       <FolderOpen className="size-4" />
                     </Button>

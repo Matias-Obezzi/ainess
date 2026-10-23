@@ -327,6 +327,7 @@ command_route!(cmd_agent, "agent");
 command_route!(cmd_diagnostics, "diagnostics");
 command_route!(cmd_fs, "fs");
 command_route!(cmd_project, "project");
+command_route!(cmd_settings, "settings");
 
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, Json(json!({ "error": "No encontrado" }))).into_response()
@@ -353,6 +354,8 @@ fn build_router(inner: Arc<Inner>) -> Router {
         .route("/diagnostics", post(cmd_diagnostics))
         .route("/fs", post(cmd_fs).layer(DefaultBodyLimit::max(40 * 1024 * 1024)))
         .route("/project", post(cmd_project))
+        // A whole list of skills (their text included) or a notification sound travels in one patch.
+        .route("/settings", post(cmd_settings).layer(DefaultBodyLimit::max(10 * 1024 * 1024)))
         .layer(axum::middleware::from_fn_with_state(Arc::<str>::from(inner.token.as_str()), auth_middleware));
 
     Router::new()

@@ -29,10 +29,12 @@ import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { AboutSection } from "@/components/settings/AboutSection";
 import { useScreenIn } from "@/hooks/use-screen-in";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
 import {
   SETTINGS_SECTIONS_META,
   SETTINGS_GROUPS,
   SETTINGS_GROUP_KEY,
+  visibleSettingsSections,
   type SettingsSectionMeta,
 } from "@/components/settings/sections";
 
@@ -99,6 +101,9 @@ export function SettingsDialog() {
   const settingsSection = useAppStore(state => state.settingsSection);
   const openSettings = useAppStore(state => state.openSettings);
   const closeSettings = useAppStore(state => state.closeSettings);
+  // The light the window bar used to carry: whether the remote server is up, beside its section.
+  const remoteRunning = useAppStore(state => state.remoteStatus.running);
+  const sections = useMemo(() => visibleSettingsSections(SETTINGS_SECTIONS, isRemoteBuild()), []);
 
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
@@ -114,7 +119,7 @@ export function SettingsDialog() {
     const needle = normalize(query);
     if (!needle) return [];
     const out: Array<{ key: string; section: SettingsSectionDef; label: string; sub: string }> = [];
-    for (const section of SETTINGS_SECTIONS) {
+    for (const section of sections) {
       const group = t(SETTINGS_GROUP_KEY[section.group]);
       const sectionLabel = t(section.labelKey);
       if (normalize(`${group} ${sectionLabel} ${t(section.helpKey)}`).includes(needle)) {
@@ -128,14 +133,14 @@ export function SettingsDialog() {
       }
     }
     return out.slice(0, 24);
-  }, [query, t]);
+  }, [query, t, sections]);
 
   const go = (id: SettingsSection) => {
     openSettings(id);
     closeSearch();
   };
 
-  const active = SETTINGS_SECTIONS.find(s => s.id === settingsSection) ?? SETTINGS_SECTIONS[0];
+  const active = sections.find(s => s.id === settingsSection) ?? sections[0];
   // Changing section is navigating: the body fades up, the sidebar and the header above it do not.
   const screenIn = useScreenIn([active.id]);
   const Provider = active.provider ?? PassThrough;
@@ -200,7 +205,7 @@ export function SettingsDialog() {
                 )
               ) : (
                 SETTINGS_GROUPS.map(group => {
-                  const inGroup = SETTINGS_SECTIONS.filter(s => s.group === group);
+                  const inGroup = sections.filter(s => s.group === group);
                   if (inGroup.length === 0) return null;
                   return (
                     <div key={group} className="flex flex-col gap-1">
@@ -223,6 +228,14 @@ export function SettingsDialog() {
                           >
                             <Icon className="h-4 w-4 shrink-0" />
                             {t(section.labelKey)}
+                            {section.id === "remote" && remoteRunning && (
+                              <span
+                                className="ml-auto h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                                role="img"
+                                aria-label={t("titlebar.remoteOn")}
+                                title={t("titlebar.remoteOn")}
+                              />
+                            )}
                           </button>
                         );
                       })}

@@ -20,6 +20,7 @@ import { plural } from "@/i18n";
 import { getTransport } from "@/lib/transport";
 import { pickPath } from "@/lib/pick-dir";
 import { revealPath } from "@/lib/open-external";
+import { isRemoteBuild } from "@/lib/platform";
 import {
   SKILL_TARGETS, detectSkills, nativeSkillsResults, parseSkillMd, skillFromDetected, skillKnown,
   subscribeNativeSkills, syncNativeSkills, type DetectedSkill,
@@ -88,7 +89,10 @@ export function SkillsSectionActions() {
   };
 
   const sync = async () => {
-    const failed = Object.values(await syncNativeSkills()).filter(r => r.status === "error").length;
+    // From the remote page it is the host that writes into its CLIs.
+    const failed = isRemoteBuild()
+      ? await (await import("@/remote/remote-settings-client")).remoteSyncNative("skills").catch(() => 1)
+      : Object.values(await syncNativeSkills()).filter(r => r.status === "error").length;
     if (failed) toast.error(t("mcpNative.syncFailed", { n: failed }));
     else toast.success(t("mcpNative.syncDone"));
   };
@@ -100,9 +104,14 @@ export function SkillsSectionActions() {
           <Button size="sm" variant="outline" aria-label={t("skills.more")}><MoreHorizontal className="size-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void uploadZip()}>{t("skills.upload.zip")}</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void uploadFolder()}>{t("skills.upload.folder")}</DropdownMenuItem>
+          {/* Reading the host's CLIs and picking a file there take that machine: not on the remote page. */}
+          {!isRemoteBuild() && (
+            <>
+              <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void uploadZip()}>{t("skills.upload.zip")}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void uploadFolder()}>{t("skills.upload.folder")}</DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void sync()}>{t("mcpNative.syncNow")}</DropdownMenuItem>
         </DropdownMenuContent>
@@ -189,6 +198,8 @@ export function SkillsSection() {
 
   const [detected, setDetected] = useState<DetectedSkill[] | null>(null);
   useEffect(() => {
+    // The skills of the host's CLIs are on the host's disk, out of the remote page's reach.
+    if (isRemoteBuild()) return;
     let live = true;
     void detectSkills().then(found => { if (live) setDetected(found); }).catch(() => { if (live) setDetected([]); });
     return () => { live = false; };
@@ -291,7 +302,7 @@ export function SkillsSection() {
             <CardFooter className="flex justify-end gap-2">
               {/* A folder skill is edited where it lives; ainess shows it, the text one it edits. */}
               {skill.dir
-                ? <Button variant="outline" size="sm" onClick={() => void revealPath(skill.dir!)}>{t("skills.openFolder")}</Button>
+                ? !isRemoteBuild() && <Button variant="outline" size="sm" onClick={() => void revealPath(skill.dir!)}>{t("skills.openFolder")}</Button>
                 : <Button variant="outline" size="sm" onClick={() => openEdit(skill)}>{t("common.edit")}</Button>}
               <Button variant="destructive" size="sm" onClick={() => void remove(skill)}>{t("common.delete")}</Button>
             </CardFooter>

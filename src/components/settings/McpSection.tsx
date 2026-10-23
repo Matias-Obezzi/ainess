@@ -18,6 +18,7 @@ import { McpServer } from "@/types";
 import { Plug, MoreHorizontal } from "lucide-react";
 import { createDialogContext, createToggleContext } from "@/components/settings/section-context";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
 
 const McpDialogCtx = createDialogContext<McpServer>();
 const SuggestedCtx = createToggleContext();
@@ -40,9 +41,11 @@ export function McpSectionActions() {
   const { show: showImport } = ImportCtx.useToggleState();
 
   const handleSync = async () => {
-    const results = Object.values(await syncNativeMcp());
-    const failed = results.filter(r => r.status === "error");
-    if (failed.length) toast.error(t("mcpNative.syncFailed", { n: failed.length }));
+    // From the remote page it is the host that writes into its CLIs.
+    const failed = isRemoteBuild()
+      ? await (await import("@/remote/remote-settings-client")).remoteSyncNative("mcp").catch(() => 1)
+      : Object.values(await syncNativeMcp()).filter(r => r.status === "error").length;
+    if (failed) toast.error(t("mcpNative.syncFailed", { n: failed }));
     else toast.success(t("mcpNative.syncDone"));
   };
 
@@ -55,7 +58,8 @@ export function McpSectionActions() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>
+          {/* The other tools' configs are files on the host: not on the remote page. */}
+          {!isRemoteBuild() && <DropdownMenuItem onSelect={showImport}>{t("mcpImport.menu")}</DropdownMenuItem>}
           <DropdownMenuItem onSelect={show}>{t("suggested.button")}</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void handleSync()}>{t("mcpNative.syncNow")}</DropdownMenuItem>
         </DropdownMenuContent>
@@ -78,6 +82,7 @@ export function McpSection() {
   // handful of small reads; nothing is written anywhere.
   const [detected, setDetected] = useState<DetectedMcp[] | null>(null);
   useEffect(() => {
+    if (isRemoteBuild()) return;
     let live = true;
     void detectMcpServers().then(found => { if (live) setDetected(found); }).catch(() => { if (live) setDetected([]); });
     return () => { live = false; };

@@ -16,6 +16,7 @@ import { useT } from "@/i18n/useT";
 import { translateNow } from "@/i18n/useT";
 import type { McpServer } from "@/types";
 import { Puzzle } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
 
 /** Waiting for the user's values, between unpacking an extension and adding its server. */
 interface Pending {
@@ -37,6 +38,8 @@ const useExtensions = () => useContext(Ctx)!;
 export function ExtensionsSectionActions() {
   const t = useT();
   const { install } = useExtensions();
+  // Installing picks a file on the host with its own dialog: not on the remote page.
+  if (isRemoteBuild()) return null;
   return <Button size="sm" onClick={install}>{t("extensions.install")}</Button>;
 }
 
@@ -142,7 +145,7 @@ export function ExtensionsSection() {
         icon={Puzzle}
         title={t("extensions.empty.title")}
         description={t("extensions.empty.body")}
-        action={{ label: t("extensions.install"), onClick: install }}
+        action={isRemoteBuild() ? undefined : { label: t("extensions.install"), onClick: install }}
       />
     );
   }

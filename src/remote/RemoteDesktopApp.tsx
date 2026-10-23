@@ -33,13 +33,13 @@ import {
   connectEvents,
   forgetToken,
   getToken,
-  hydrate,
   installRemoteActions,
   rememberToken,
   RemoteError,
   runDiagnostics,
 } from "./remote-client";
 import { readRemoteNav, restoreNav, writeRemoteLayout, writeRemoteNav } from "./remote-nav";
+import { hydrateWithSettings, installRemoteSettings, restoreRemoteTheme } from "./remote-settings-client";
 import {
   ArrowLeft, Bell, BellOff, RefreshCw, ShieldCheck,
   Smartphone, Stethoscope, WifiOff, AlertTriangle, CheckCircle2, XCircle,
@@ -62,6 +62,7 @@ export function RemoteDesktopApp() {
 
   useEffect(() => {
     useAppStore.setState({ remoteLayout: "desktop" });
+    restoreRemoteTheme();
   }, []);
 
   // Prevent unhandled drag/drop from navigating the browser window when dragging cards or files.
@@ -144,9 +145,11 @@ export function RemoteDesktopApp() {
     let stop: (() => void) | undefined;
 
     const apply = (snapshot: RemoteSnapshot) => {
-      hydrate(snapshot);
+      hydrateWithSettings(snapshot);
       if (!installed.current) {
         installRemoteActions();
+        // The configuration screens edit for real here, checked by the host.
+        installRemoteSettings();
         installed.current = true;
         try {
           if (typeof localStorage !== "undefined") {
