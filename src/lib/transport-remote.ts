@@ -7,6 +7,13 @@ async function remoteApi(path: string, body?: Record<string, unknown>) {
 
 const notAvailable = () => translateNow("app.desktopOnly");
 
+/** The host's home folder, as the settings answer said (see src/remote/remote-settings-client.ts). */
+let remoteHome: string | null = null;
+
+export function setRemoteHomeDir(home: string | null): void {
+  remoteHome = home;
+}
+
 /**
  * Transport of the phone build (see src/remote/): the orchestrator runs on the PC, so nothing
  * here can spawn, read or persist anything. The store is filled from the snapshot and every
@@ -64,13 +71,25 @@ export const remoteTransport: Transport = {
     return { status: res.status, body: await res.text() };
   },
   readHomeFile: async () => null,
-  homeDir: async () => null,
+  // An extension's command is resolved against the host's home, which is where it runs.
+  homeDir: async () => remoteHome,
   installExtension: async () => null,
   removeExtension: async () => {},
   oauthConnect: async () => { throw new Error("connectors sign in from the desktop app"); },
-  oauthStatus: async () => ({ connected: false, expiresAt: null }),
+  // Whether the host holds a token, never the token: signing in opens a browser on the host, so it
+  // is done there, but the page can tell and can sign out.
+  oauthStatus: async (id) => {
+    try {
+      const res = await remoteApi("/api/settings", { op: "oauthStatus", id });
+      return { connected: res.connected === true, expiresAt: typeof res.expiresAt === "number" ? res.expiresAt : null };
+    } catch {
+      return { connected: false, expiresAt: null };
+    }
+  },
   oauthAccessToken: async () => null,
-  oauthDisconnect: async () => {},
+  oauthDisconnect: async (id) => {
+    await remoteApi("/api/settings", { op: "oauthDisconnect", id });
+  },
   listDir: async () => null,
   copySkillDir: async () => {},
   removeSkillDir: async () => {},

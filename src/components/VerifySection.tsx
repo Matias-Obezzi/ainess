@@ -6,6 +6,8 @@ import { useProjectCommands } from "@/hooks/useProjectCommands";
 import { splitCommandLine } from "@/lib/verify-commands";
 import { useT } from "@/i18n/useT";
 import type { VerifyCommand } from "@/types";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 import { Plus, Trash2 } from "lucide-react";
 
 /**
@@ -61,6 +63,8 @@ export function VerifySection({
     <div className="space-y-2">
       <Label>{t("verify.title")}</Label>
       <p className="text-xs text-muted-foreground">{t("verify.hint")}</p>
+      {/* What they run is the host's to set: from the remote page they are relabelled or removed. */}
+      <RemoteLockedHint />
 
       {commands.map(command => (
         <VerifyRow
@@ -81,7 +85,7 @@ export function VerifySection({
         />
       ))}
 
-      <div className="flex flex-wrap gap-2">
+      {!isRemoteBuild() && <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
@@ -103,7 +107,7 @@ export function VerifySection({
             {s.command}
           </Button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -142,6 +146,7 @@ function VerifyRow({
           value={text}
           onChange={e => onCommand(e.target.value)}
           placeholder={t("verify.commandPlaceholder")}
+          disabled={isRemoteBuild()}
         />
         <Button type="button" variant="ghost" size="icon" onClick={onRemove} aria-label={t("verify.remove")}>
           <Trash2 className="size-4" />

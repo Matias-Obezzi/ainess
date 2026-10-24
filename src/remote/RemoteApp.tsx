@@ -45,6 +45,7 @@ import {
   writeRemoteNav,
   restoreNav,
   writeRemoteLayout,
+  desktopHref,
   type Tab,
 } from "./remote-nav";
 import { activeAgentsAcross } from "./active-agents";
@@ -119,7 +120,7 @@ export function RemoteApp() {
     }
     const token = getToken();
     const search = window.location.search || (token ? `?token=${encodeURIComponent(token)}` : "");
-    window.location.href = `/desktop${search}`;
+    window.location.href = desktopHref({ search, hash: window.location.hash });
   };
 
   // Persist navigation on every change, but only after initial restore has run.

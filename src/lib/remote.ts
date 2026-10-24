@@ -11,6 +11,7 @@ import { pendingApprovals } from "@/lib/approvals";
 import { isForUser } from "@/lib/pending-question";
 import { resolveLanguage, type Language } from "@/i18n";
 import { translateNow } from "@/i18n/useT";
+import type { RemoteConfigView } from "@/lib/remote-settings";
 
 /**
  * Everything the phone needs to render the same React UI as the desktop app: the page is a
@@ -43,6 +44,11 @@ export interface RemoteSnapshot {
   quota: Partial<Record<ProviderId, ProviderQuota>>;
   /** Cached git repository status per project so branch badges and diff panels work remotely. */
   repoState?: Record<string, RepoState>;
+  /**
+   * Goes up every time the config changes. The desktop page reads the config itself on its own
+   * (`settings` command, it is too big to ride on every push) and asks again when this moves.
+   */
+  configVersion?: number;
 }
 
 export interface RemoteCommand {
@@ -84,6 +90,19 @@ const PUSH_THROTTLE_MS = 300;
 const PUSH_THROTTLE_STREAMING_MS = 1500;
 /** How often the push loop looks at whether any phone is connected. */
 const CLIENT_WATCH_MS = 1500;
+
+let configVersion = 0;
+let versionedConfig: unknown = null;
+
+/** The version of the config in the store right now; see `RemoteSnapshot.configVersion`. */
+export function currentConfigVersion(): number {
+  const config = useAppStore.getState().config;
+  if (config !== versionedConfig) {
+    versionedConfig = config;
+    configVersion++;
+  }
+  return configVersion;
+}
 
 function clip(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) + "…" : text;
@@ -162,6 +181,7 @@ function snapshotWith(limits: { messages: number; runs: number }): RemoteSnapsho
     tasks: Object.values(s.tasks).flat(),
     quota: s.quota,
     repoState: s.repoState,
+    configVersion: currentConfigVersion(),
   };
 }
 
@@ -463,7 +483,16 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           ...s.config.projects.map(p => p.repoDir).filter((d): d is string => !!d),
           ...Object.values(s.worktrees).flat().map(w => w.path).filter(Boolean),
         ];
+        // Reading also reaches the folders the config itself points at — an extension's manifest and
+        // icon, a skill's files, a plugin's — so the settings screens can show them. Never writing.
+        const readRoots = [
+          ...allowedRoots,
+          ...s.config.mcpServers.map(m => m.extension?.dir).filter((d): d is string => !!d),
+          ...s.config.skills.map(sk => sk.dir).filter((d): d is string => !!d),
+          ...(s.config.plugins ?? []).map(p => p.dir).filter(Boolean),
+        ];
         const realRoots = await Promise.all(allowedRoots.map(r => getTransport().realPath(r)));
+        const realReadRoots = await Promise.all(readRoots.map(r => getTransport().realPath(r)));
         const realWorkspaces = await Promise.all(workspaceDirs.map(w => getTransport().realPath(w)));
 
         if (op === "writeBytes") {
@@ -484,7 +513,7 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           const maxBytes = typeof payload.maxBytes === "number" ? Math.min(payload.maxBytes, 25 * 1024 * 1024) : 4 * 1024 * 1024;
           if (!path) return { ok: true, data: null };
           const real = await getTransport().realPath(path);
-          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, data: null };
+          if (!isAllowedWorkspacePath(path, readRoots) || !isAllowedWorkspacePath(real, realReadRoots)) return { ok: true, data: null };
           const data = await getTransport().readFileBytes(path, maxBytes);
           return { ok: true, data };
         }
@@ -492,7 +521,7 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           const path = str("path");
           if (!path) return { ok: true, text: null };
           const real = await getTransport().realPath(path);
-          if (!isAllowedWorkspacePath(path, allowedRoots) || !isAllowedWorkspacePath(real, realRoots)) return { ok: true, text: null };
+          if (!isAllowedWorkspacePath(path, readRoots) || !isAllowedWorkspacePath(real, realReadRoots)) return { ok: true, text: null };
           const text = await getTransport().readFileAbs(path);
           return { ok: true, text };
         }
@@ -501,7 +530,7 @@ export async function handleRemoteCommand(action: string, payload: Record<string
           const checked: string[] = [];
           for (const p of rawPaths) {
             const real = await getTransport().realPath(p);
-            if (isAllowedWorkspacePath(p, allowedRoots) && isAllowedWorkspacePath(real, realRoots)) {
+            if (isAllowedWorkspacePath(p, readRoots) && isAllowedWorkspacePath(real, realReadRoots)) {
               checked.push(p);
             }
           }
@@ -522,6 +551,8 @@ export async function handleRemoteCommand(action: string, payload: Record<string
         }
         return { error: translateNow("remote.err.unknownAction", { action: `fs:${op ?? ""}` }) };
       }
+      case "settings":
+        return await handleSettingsCommand(payload);
       case "state":
         return buildSnapshot() as unknown as Record<string, unknown>;
       default:
@@ -529,6 +560,66 @@ export async function handleRemoteCommand(action: string, payload: Record<string
     }
   } catch (e) {
     return { error: String(e instanceof Error ? e.message : e) };
+  }
+}
+
+/**
+ * The configuration screens of the desktop page. They used to be refused outright; now the page edits
+ * what the app edits, and this is where every change is checked before it lands (see
+ * `lib/remote-settings.ts`). Secrets go out masked and never come back readable.
+ */
+async function handleSettingsCommand(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const s = useAppStore.getState();
+  const op = typeof payload.op === "string" ? payload.op : "";
+  // Loaded here rather than at the top: this module rides in every bundle, the phone's included,
+  // and only the host ever checks a patch.
+  const { applyRemotePatch, prepareRemotePatch, remoteConfigView, sensitiveExtensionKeys } = await import("@/lib/remote-settings");
+  switch (op) {
+    case "get": {
+      const view: RemoteConfigView = {
+        version: currentConfigVersion(),
+        home: await getTransport().homeDir().catch(() => null),
+        config: remoteConfigView(s.config, await sensitiveExtensionKeys(s.config.mcpServers)),
+      };
+      return view as unknown as Record<string, unknown>;
+    }
+    case "update": {
+      const result = prepareRemotePatch(payload.patch, s.config);
+      if (!result.ok) {
+        log.warn("remote", `settings patch refused (${result.error}): ${result.field}`);
+        return { error: translateNow(`remote.err.settings.${result.error}`, { field: result.field }) };
+      }
+      await applyRemotePatch(result.patch);
+      return { ok: true, version: currentConfigVersion() };
+    }
+    case "removeProject": {
+      const projectId = typeof payload.projectId === "string" ? payload.projectId : "";
+      if (!s.config.projects.some(p => p.id === projectId)) return { error: translateNow("remote.err.invalidProject") };
+      s.removeProject(projectId);
+      return { ok: true };
+    }
+    case "sync": {
+      // Writing into each CLI's own config only means something on the machine those CLIs live on.
+      const results = payload.kind === "skills"
+        ? await (await import("@/lib/skills-native")).syncNativeSkills()
+        : await (await import("@/lib/mcp-native")).syncNativeMcp();
+      return { ok: true, failed: Object.values(results).filter(r => r.status === "error").length };
+    }
+    case "oauthStatus": {
+      const id = typeof payload.id === "string" ? payload.id : "";
+      if (!s.config.mcpServers.some(m => m.id === id && m.oauth)) return { connected: false };
+      // Whether there is a token, never the token.
+      const status = await getTransport().oauthStatus(id);
+      return { connected: status.connected, expiresAt: status.expiresAt };
+    }
+    case "oauthDisconnect": {
+      const id = typeof payload.id === "string" ? payload.id : "";
+      if (!s.config.mcpServers.some(m => m.id === id && m.oauth)) return { error: translateNow("remote.err.missingData") };
+      await getTransport().oauthDisconnect(id);
+      return { ok: true };
+    }
+    default:
+      return { error: translateNow("remote.err.unknownAction", { action: `settings:${op}` }) };
   }
 }
 

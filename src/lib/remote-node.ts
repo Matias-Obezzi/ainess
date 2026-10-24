@@ -69,6 +69,7 @@ const ACTIONS: Record<string, string> = {
   "/api/diagnostics": "diagnostics",
   "/api/fs": "fs",
   "/api/project": "project",
+  "/api/settings": "settings",
 };
 
 /** Whether the client asked for gzip; one that did not gets the page as it is. */
@@ -158,7 +159,7 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): P
   }
   if (req.method === "POST" && ACTIONS[path]) {
     if (!handler) { json(res, 503, { error: "Servidor sin orquestador" }); return; }
-    const limit = path === "/api/fs" ? 40_000_000 : 1_000_000;
+    const limit = path === "/api/fs" ? 40_000_000 : path === "/api/settings" ? 10_000_000 : 1_000_000;
     const payload = await readBody(req, limit);
     const result = await handler({ id: crypto.randomUUID(), action: ACTIONS[path], payload });
     json(res, result.error ? 400 : 200, result);

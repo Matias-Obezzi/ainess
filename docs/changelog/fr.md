@@ -2,6 +2,37 @@
 
 Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en anglais.
 
+## Unreleased
+
+### Nouveau
+
+- **Les réglages fonctionnent depuis la vue bureau du distant.** Équipes, Profil, Contexte,
+  Ordres, Skills, MCP, Connecteurs, Extensions, Plugins et le reste chargent la configuration de
+  l'hôte et l'enregistrent. L'hôte vérifie chaque changement, et les secrets (jetons, clés d'API,
+  adresses, variables et en-têtes MCP, adresses des webhooks) arrivent masqués : on les garde ou on
+  les remplace, jamais on les lit.
+- **La vue bureau du distant a son propre thème.** Le changer dans Apparence ne touche que ce
+  navigateur et laisse celui de l'hôte tel quel.
+- **Rien de ce qui s'exécute sur l'hôte ne se change depuis le distant.** Les serveurs MCP locaux
+  (commande, arguments, environnement), les valeurs des extensions, les hooks de commande, la
+  commande des agents personnalisés, les exécutables et les commandes de vérification et rapides
+  d'un projet y sont en lecture seule, et l'hôte les refuse. Permissions, approbations et salons
+  ne peuvent que se restreindre : l'approbation automatique s'éteint, jamais ne s'allume. Un serveur
+  MCP http ajouté ou modifié là ne peut pas utiliser `${VAR}` dans son adresse ni ses en-têtes, et
+  celui qui envoie déjà des en-têtes, des variables ou une connexion garde son adresse.
+
+### Modifié
+
+- **Réglages → Distant s'allume tant que le serveur tourne.** Son entrée porte la même lumière que
+  le bouton du téléphone dans la barre de la fenêtre, et la section indique quand le serveur démarre
+  ou s'arrête.
+- **La vue bureau du distant masque ce qui ne marche que sur l'hôte.** Messagerie et Distant n'y
+  figurent pas, pas plus qu'installer des extensions ou des plugins, importer depuis d'autres CLI,
+  choisir des fichiers ou dossiers, connecter des connecteurs, ou détecter et installer des CLI.
+- **Le distant s'ouvre dans la vue qui convient à l'appareil.** Le navigateur d'un ordinateur va
+  droit à la vue bureau, un téléphone ou une tablette reste sur la page du téléphone. Le bouton
+  pour changer de vue l'emporte, et ce navigateur s'en souvient.
+
 ## 0.32.0 — 2026-10-22
 
 ### Nouveau

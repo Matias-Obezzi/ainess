@@ -5,11 +5,33 @@
 export type Tab = "tasks" | "conversations" | "approvals" | "agents";
 export type RemoteLayout = "desktop" | "mobile";
 
+/** The view this browser chose with the switch button. Unset: it is picked from the device. */
 export const REMOTE_LAYOUT_KEY = "ainess.remote.layout";
-export const DESKTOP_MIN_WIDTH = 768;
+export const DESKTOP_MIN_WIDTH = 1024;
 
-export function defaultRemoteLayout(viewportWidth: number): RemoteLayout {
-  return viewportWidth >= DESKTOP_MIN_WIDTH ? "desktop" : "mobile";
+/** What the browser says about itself, read once before the phone page draws. */
+export interface DeviceTraits {
+  /** `(pointer: fine)`: a mouse or a trackpad. */
+  finePointer: boolean;
+  /** `(hover: hover)`. */
+  hover: boolean;
+  /** `window.innerWidth`, in CSS pixels. */
+  width: number;
+}
+
+/**
+ * Which view the remote root opens in: the one chosen with the switch button, or else the desktop
+ * view on what looks like a computer (mouse, hover, a wide window). A tablet has a coarse pointer
+ * and stays on the phone page, however wide it is.
+ */
+export function pickRemoteLayout(chosen: RemoteLayout | null, device: DeviceTraits): RemoteLayout {
+  if (chosen) return chosen;
+  return device.finePointer && device.hover && device.width >= DESKTOP_MIN_WIDTH ? "desktop" : "mobile";
+}
+
+/** The desktop view's address for the page at `location`: query (the token) and hash as they are. */
+export function desktopHref(location: { search: string; hash: string }): string {
+  return `/desktop${location.search}${location.hash}`;
 }
 
 export function readRemoteLayout(storage: Storage): RemoteLayout | null {

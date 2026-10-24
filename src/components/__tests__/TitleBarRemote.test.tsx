@@ -1,11 +1,13 @@
 // The phone in the window bar used to be the switch: one click started a server on the local
 // network. It opens Configuración → Remoto now, where the port, the token and the QR are — and it
-// keeps being the light that says whether the server is up.
+// keeps being the light that says whether the server is up. The remote page draws the same title
+// bar, and there it is left out: that page is the remote, it has no server of its own to open.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "@/test/render";
 import { TitleBar } from "@/components/shell/TitleBar";
 import { useAppStore } from "@/store";
+import { markRemoteBuild } from "@/lib/platform";
 import { es } from "@/i18n";
 
 describe("the phone button in the title bar", () => {
@@ -43,5 +45,12 @@ describe("the phone button in the title bar", () => {
 
     const expected = es["titlebar.remoteAt"].replace("{host}", "192.168.0.10").replace("{port}", "4710");
     expect((await screen.findAllByText(expected)).length).toBeGreaterThan(0);
+  });
+
+  // Last: the flag cannot be taken back once set.
+  it("is not drawn in the remote page", () => {
+    markRemoteBuild();
+    render(<TitleBar />);
+    expect(screen.queryByRole("button", { name: es["titlebar.remoteOpen"] })).toBeNull();
   });
 });

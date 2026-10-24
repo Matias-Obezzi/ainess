@@ -16,6 +16,8 @@ import { useT } from "@/i18n/useT";
 import { translateNow } from "@/i18n/useT";
 import type { McpServer } from "@/types";
 import { Puzzle } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 /** Waiting for the user's values, between unpacking an extension and adding its server. */
 interface Pending {
@@ -37,6 +39,8 @@ const useExtensions = () => useContext(Ctx)!;
 export function ExtensionsSectionActions() {
   const t = useT();
   const { install } = useExtensions();
+  // Installing picks a file on the host with its own dialog: not on the remote page.
+  if (isRemoteBuild()) return null;
   return <Button size="sm" onClick={install}>{t("extensions.install")}</Button>;
 }
 
@@ -141,8 +145,8 @@ export function ExtensionsSection() {
       <EmptyState
         icon={Puzzle}
         title={t("extensions.empty.title")}
-        description={t("extensions.empty.body")}
-        action={{ label: t("extensions.install"), onClick: install }}
+        description={t(isRemoteBuild() ? "extensions.empty.bodyRemote" : "extensions.empty.body")}
+        action={isRemoteBuild() ? undefined : { label: t("extensions.install"), onClick: install }}
       />
     );
   }
@@ -150,6 +154,7 @@ export function ExtensionsSection() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">{t("extensions.reach")}</p>
+      <RemoteLockedHint />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {extensions.map(server => (
           <ExtensionCard
@@ -209,7 +214,8 @@ function ExtensionCard({ server, onToggle, onConfigure, onUninstall }: {
         </div>
       </CardHeader>
       <CardFooter className="flex justify-end gap-2">
-        {manifest && manifest.fields.length > 0 && <Button variant="outline" size="sm" onClick={onConfigure}>{t("extensions.configure.button")}</Button>}
+        {/* Its values go into what the host runs: set from the desktop app. */}
+        {manifest && manifest.fields.length > 0 && !isRemoteBuild() && <Button variant="outline" size="sm" onClick={onConfigure}>{t("extensions.configure.button")}</Button>}
         <Button variant="destructive" size="sm" onClick={onUninstall}>{t("extensions.uninstall")}</Button>
       </CardFooter>
     </Card>

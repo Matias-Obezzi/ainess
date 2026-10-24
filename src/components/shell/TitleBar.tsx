@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isTauri } from "@/lib/tauri";
+import { isRemoteBuild } from "@/lib/platform";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/shell/NotificationBell";
 import type { BridgeProviderId } from "@/lib/bridge/types";
@@ -253,7 +254,8 @@ export function TitleBar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
       <div className="flex items-center">
         <NotificationBell />
         {rightSlot ? rightSlot : <BridgeIndicator />}
-        {!rightSlot && <RemoteButton />}
+        {/* The remote page is the remote: it has no server of its own to open. */}
+        {!rightSlot && !isRemoteBuild() && <RemoteButton />}
         {isTauri() ? <WindowControls /> : <div className="w-2" />}
       </div>
     </div>

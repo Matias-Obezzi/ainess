@@ -380,10 +380,14 @@ export function RemoteSection() {
       ) : (
         <div className="flex items-center gap-2">
           <Switch checked={status.running} disabled={busy} onCheckedChange={(c) => void toggle(c)} />
+          {/* What the window bar's light used to say while the server was starting or stopping. */}
+          {busy && <Spinner aria-hidden className="h-4 w-4" />}
           <div className="flex flex-col">
             <label className="text-sm font-semibold">{t("settings.option.remote.lan")}</label>
             <span className="text-sm text-muted-foreground">
-              {status.running
+              {busy
+                ? t("titlebar.remoteBusy")
+                : status.running
                 ? t("remote.listeningOn", { host: status.ip ?? "", port: remote.port })
                 : status.error
                   ? t("remote.error", { error: status.error })

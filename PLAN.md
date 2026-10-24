@@ -821,7 +821,15 @@ Piezas:
 - `src/remote/index.html`: el tema sigue a `prefers-color-scheme` (script inline que pone la clase
   `dark` en `<html>`), `viewport-fit=cover`.
 - `src/remote/main.tsx`: instala `remoteTransport` **antes** de tocar el store y monta `RemoteApp`.
-  No hay `installConsoleCapture()`: en el celular no hay archivo de log.
+  No hay `installConsoleCapture()`: en el celular no hay archivo de log. Antes de dibujar nada
+  elige la vista: `pickRemoteLayout` (`src/remote/remote-nav.ts`) devuelve la que el navegador
+  eligió con el botón de cambio (`localStorage` `ainess.remote.layout` = `desktop` | `mobile`) y,
+  si no eligió, `desktop` cuando hay `(pointer: fine)`, `(hover: hover)` y `innerWidth >= 1024`
+  (una tablet, puntero grueso, se queda en el celular). Con `desktop` hace `location.replace` a
+  `/desktop` con la misma query (el token) y el hash (`desktopHref`). Solo esta página redirige:
+  `/desktop` nunca manda de vuelta, así que no hay bucle y abrirla directo siempre funciona. Los
+  botones de cambio (`Monitor` en la cabecera del celular, `Smartphone` en la barra de título del
+  escritorio, con `title`/`aria-label` `phone.desktopView`/`phone.mobileView`) guardan la elección.
 - `src/lib/transport-remote.ts`: `Transport` inerte (como `transport-null.ts`) salvo `httpGet`/
   `httpPost`, que son `fetch` reales. Nada spawnea, lee ni persiste: el orquestador vive en la PC.
 - `src/remote/remote-client.ts`: `getToken()` (de `?token=`, guardado en `sessionStorage` y borrado
@@ -847,7 +855,8 @@ renderizar sin leer el disco: `projects` (con `activeTaskRunId` y `running`), `a
 los proyectos, cada uno con su `projectId`), `runtime`,
 `messages` (últimos 800, con `meta` y `runId`, texto recortado a 8000), `approvals` pendientes con
 `payload`, `runs` (últimos 60 por proyecto, sin `rawLines`, `prompt`/`output` a 20 000), `chats`,
-`chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`) y `activeChats`. Si el JSON
+`chatMessages` (últimos 200 por chat cargado), `binaries` (solo `path`), `activeChats` y `configVersion`
+(ver "Configuración desde la vista de escritorio"). Si el JSON
 pasa 1 MB se rearma con 400 mensajes y 30 runs por proyecto; el tamaño se loguea en nivel `debug`.
 `attachRemote` pushea con throttle de 300 ms cuando cambian `runs`, `messages`, `runtime`,
 `approvals`, `activeTaskRunId`, `chatMessages`, `binaries` o `config`.
@@ -868,10 +877,107 @@ POST /api/instruct     { projectId, agentId, text, model? }
 POST /api/stop         { projectId, agentId? } | { chatId }
 POST /api/approve      { approvalId, decision: "approve" | "reject", note? }
 POST /api/chat         { chatId, text }
+POST /api/settings     { op: "get" } | { op: "update", patch } | { op: "removeProject", projectId }
+                       | { op: "sync", kind: "mcp" | "skills" } | { op: "oauthStatus" | "oauthDisconnect", id }
 ```
 
 Errores: `{ error }` con 400; token inválido, 401. El token nunca se loguea (`maskSecrets`) ni
 queda en la barra de direcciones.
+
+### Configuración desde la vista de escritorio (`/desktop`)
+
+Decisión revertida: #53 hacía que el remoto **rechazara** `updateConfig` y `addProject`. Ahora la
+vista de escritorio edita todo lo que la app edita, y el anfitrión valida cada cambio. El celular
+sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` sigue rechazando).
+
+- La config no viaja en el snapshot (pesaría en cada push): el snapshot lleva `configVersion`
+  (`currentConfigVersion()` en `src/lib/remote.ts`, sube cada vez que cambia `state.config`) y la
+  página pide `settings { op: "get" }` cuando ese número se mueve. La respuesta
+  (`RemoteConfigView`) trae las claves editables, los proyectos completos (agentes con system
+  prompt incluidos) y `home` del anfitrión (con eso se resuelve el comando de una extensión).
+- `src/lib/remote-settings-keys.ts` (liviano, lo comparten las dos puntas): `REMOTE_CONFIG_KEYS`
+  (claves de `AppConfig` que se pueden cambiar), `REMOTE_PROJECT_KEYS` (`name`, `color`, `agents`,
+  `budget`, `board`, `room`, `verify`, `commands`, `sharedContext`), `SECRET_MASK` y
+  `REMOTE_THEME_KEY`. Fuera de la lista: `remote`, `messaging`, `binaryOverrides`, `theme`,
+  `machine`, `lastProjectId`, los `*Owned`, y la carpeta/repo/fecha de un proyecto.
+- `src/lib/remote-settings.ts` (solo anfitrión; `remote.ts` lo importa dinámico):
+  `remoteConfigView` enmascara los secretos — `boards` (tokens de GitHub y Trello), `url`, `env`
+  y `headers` de cada MCP (salvo un `${VAR}` puro; una dirección suele llevar su clave), los valores
+  `sensitive` del manifiesto de una extensión (`sensitiveExtensionKeys`; manifiesto ilegible =
+  todos) y sus copias en `args`, el `webhookUrl`/`url`/`headers` de los hooks, y
+  `secret`/`supabaseKey`/`firebaseToken` de una sala. Una dirección enmascarada que vuelve igual es
+  la misma dirección (se restaura del anfitrión); una nueva la reemplaza.
+  `prepareRemotePatch(raw, host)` valida con un esquema estricto (clave desconocida → `unknown`,
+  tipo o rango malo → `invalid`; una clave anidada que no está en el esquema solo pasa si el
+  anfitrión ya la tiene en ese lugar, para no romper datos de versiones viejas), devuelve los
+  secretos enmascarados a su valor (por `id` en listas, por clave en objetos) **solo** si el ítem
+  conserva su dirección (MCP: `transport`/`url`/`command`; hook: `action.type`/`action.url`;
+  sala: `backend`/`supabaseUrl`/`firebaseUrl`; si no, `secret`), deja `dir`/`managed`/
+  `source`/`plugin` de una skill y la `extension` de un MCP como las tiene el anfitrión
+  (`hostOnly`), y los plugins solo se prenden, apagan o desinstalan (se rearman desde el registro
+  del anfitrión). `null` quita una clave opcional. `applyRemotePatch` aplica con las mismas
+  acciones del store (`add/update/removeAgent`, `updateProject`, `updateConfig`) y después limpia
+  lo borrado: carpetas de skills y plugins administrados, extensiones propias, tokens OAuth.
+- **Lo que decide qué corre en el anfitrión no se cambia desde el remoto** (error `locked`). Regla:
+  una opción común se puede cambiar (permitido por defecto), pero nada que decida QUÉ SE EJECUTA en
+  el anfitrión o AMPLÍE lo que pueden hacer los agentes; lo que solo restringe, y un campo
+  bloqueado que vuelve igual (la página manda objetos enteros), pasa. La lista explícita está en
+  `REMOTE_CONFIG_LOCKS`/`REMOTE_PROJECT_LOCKS` de `remote-settings.ts` (un campo nuevo que spawnea,
+  carga código o amplía permisos se agrega ahí):
+  - MCP: agregar un servidor stdio, y cambiar `transport`, `command`/`cwd`, `args`, `env` (entero,
+    secreto o no: `NODE_OPTIONS` también corre código) y `extension.config`. Un `${VAR}` en la `url`
+    o en un header de un http nuevo, o de uno cuya `url` o `headers` cambian, tampoco
+    (`mcpServers.envReference`): se expande con el entorno del agente — el del anfitrión
+    (`GITHUB_TOKEN`, `ANTHROPIC_API_KEY`…) más el `env` de cada http (`httpMcpEnv`) —, no va
+    enmascarado y nada lo ancla. Ni mover (`mcpServers.url`) un http existente que manda algo:
+    `headers` o `env` no vacíos, u `oauth` (el token del conector va como header); lo decide
+    `mcpUrlLocked` en `remote-settings-keys.ts`. Un http nuevo sin referencias, la `url` de uno que no
+    manda nada, los `headers` con el secreto reescrito, renombrar, `enabledFor` y borrar siguen.
+    Los hooks `webhook` no expanden variables (url y headers salen tal cual, sus secretos anclados a
+    la `url`) y los tableros van a direcciones fijas: no tienen este camino.
+  - Hooks: crear uno `command` o cambiar su `program`/`args`/`cwd` (pasar otro hook a `command`
+    cuenta como crearlo). Pasarlo a otro tipo, apagarlo o borrarlo sigue.
+  - Agentes (de proyectos y de formaciones): `customCommand`; `autoApprove` solo se apaga; y la
+    aprobación efectiva de delegaciones (`requireApproval ?? approveDelegations`) no se afloja.
+    `approveDelegations` global solo se prende.
+  - `plannerPermissions`: prender un grupo (contra su default si falta), agregar un `allow`, sacar
+    un `deny`; quitar la clave entera (vuelven los defaults) también se rechaza si amplía.
+  - Proyecto: `verify` (`program`/`args`) y `commands` (`command`) nuevos o cambiados; la etiqueta
+    y borrar siguen. Sala: prenderla y agregar máquinas a `allowed`; apagarla y sacar máquinas sigue.
+  - Ya eran del anfitrión: claves fuera de `REMOTE_CONFIG_KEYS` (`binaryOverrides` incluido),
+    carpetas de proyecto, `dir`/`source` de skills, la `extension` de un MCP y los plugins más allá
+    de prender/apagar.
+  En la página esos campos se dibujan de solo lectura con la leyenda `remote.locked.hint` (o
+  `remote.locked.restrictHint` donde se puede restringir), vía `RemoteLockedHint`: `McpDialog`
+  (comando, transporte, entorno; la URL si `mcpUrlLocked`; "Nuevo" y "Sugeridos" ocultos en MCP),
+  `ConnectorsSection` (la URL si `mcpUrlLocked`; con `remote.locked.envReferenceHint` bajo los
+  headers, como en `McpDialog`), `ExtensionsSection` (sin
+  "Configurar"), `HookDialog` (tipo `command` deshabilitado si no lo era), `AgentDialog`
+  (auto-aprobar solo se apaga, los modos de aprobación que aflojan deshabilitados, programa custom y
+  ejecutable), `GeneralSection`, `PermissionsSection` (un borrador que amplía vuelve atrás con
+  aviso), `VerifySection`, `QuickCommandsDialog` y `RoomDialog`. El control que cuenta es el del
+  anfitrión.
+- `src/remote/remote-settings-client.ts` (solo `desktop.html`): `hydrateWithSettings` hidrata y
+  después pone la config del anfitrión sobre la copia liviana de los proyectos que trae el
+  snapshot. `installRemoteSettings` devuelve al store sus acciones de edición (`updateConfig`,
+  `updateProject`, `updateAgent`, `addAgent`, `removeAgent`), anota qué claves y campos tocó el
+  usuario (lo que vuelca la hidratación no cuenta) y apunta `saveConfig` a `settings update` con
+  solo eso; lo pendiente o en vuelo conserva su valor local hasta que vuelve el del anfitrión, y si
+  el anfitrión rechaza, vuelve lo suyo. `removeProject` es `settings removeProject`. `addProject`
+  sigue rechazado: la carpeta se elige con el diálogo nativo del anfitrión.
+- El tema es del navegador: `config.theme` en la página se guarda en `localStorage`
+  (`ainess.remote.theme`), se aplica al arrancar (`restoreRemoteTheme`) y nunca se manda.
+- `/api/fs` deja **leer** (no escribir ni correr git) también dentro de las carpetas que la config
+  ya nombra: extensiones, skills de carpeta y plugins (manifiesto e icono de una extensión).
+- `transport-remote`: `homeDir` devuelve el `home` de la respuesta; `oauthStatus` y
+  `oauthDisconnect` van a `settings` (el anfitrión dice si hay token, nunca el token).
+- Qué no aparece en la página (`isRemoteBuild()`): las secciones Mensajería y Remoto
+  (`REMOTE_HIDDEN_SECTIONS` en `sections.ts`, también fuera de la búsqueda); instalar extensiones y
+  plugins, actualizar plugins, importar de otros CLIs, subir skills, abrir la carpeta de una skill,
+  los botones de examinar, "Conectar" de un conector OAuth (abre un navegador en el anfitrión; queda
+  la leyenda `connectors.signInOnHost`), probar un hook, detectar/instalar CLIs y el runtime de
+  Claude en Agentes, y actualizaciones/logs en Acerca de. "Sincronizar ahora" de MCP y Skills corre en
+  el anfitrión (`settings sync`) y Diagnóstico usa `/api/diagnostics`.
 
 ## Túnel público
 
@@ -973,9 +1079,11 @@ Estado remoto sincronizado: `useRemoteSync` (montado en `App`) refresca `remoteS
 `tunnelStatus` cada 4 s para toda la app, no solo con el modal de configuración abierto; antes el
 store quedaba viejo al cerrarlo y el switch aparecía apagado con el servidor andando. El switch se
 liga a `remoteStatus.running` (la realidad) y no a `config.remote.enabled` (la intención, que es lo
-que hace que arranque solo). `toggleRemote(enabled)` vive en el store y lo comparten el switch y el
-botón nuevo de la barra de ventana (`RemoteButton` en `TitleBar`), con `remoteBusy` para que los dos
-se deshabiliten mientras tanto. En `runInit`, si el servidor ya está levantado (recarga del front),
+que hace que arranque solo). `toggleRemote(enabled)` vive en el store, con `remoteBusy` para
+deshabilitar el switch mientras tanto (la sección muestra un spinner y "Un momento…"). El botón del
+teléfono de la barra de ventana (`RemoteButton`) abre esta sección y se pone verde mientras el
+servidor corre; la entrada "Remoto" del diálogo de Configuración lleva la misma luz verde. En la
+página remota el botón no se dibuja (`isRemoteBuild()`): esa página es el remoto. En `runInit`, si el servidor ya está levantado (recarga del front),
 se adopta ese estado en vez de intentar arrancar otro.
 
 Actualización automática del agente: ngrok rechaza la conexión cuando la versión es menor que el

@@ -23,6 +23,7 @@ import { openExternal } from "@/lib/open-external";
 import { installCommandText, installerFor, installProvider, type InstallPhase } from "@/lib/install-agents";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { isTauri } from "@/lib/tauri";
+import { isRemoteBuild } from "@/lib/platform";
 import { Download, RefreshCw, ScanSearch } from "lucide-react";
 
 /** Every provider that can be detected on this machine; "custom" is configured per agent. */
@@ -42,6 +43,8 @@ export function AgentsSectionActions() {
     }
   };
 
+  // The CLIs are looked for, installed and pointed at on the host: the remote page shows what it has.
+  if (isRemoteBuild()) return null;
   return (
     <Button size="sm" variant="outline" onClick={() => void handleAutoDetect()}>
       <ScanSearch className="mr-1 size-4" /> {t("agents.autoDetect")}
@@ -170,14 +173,14 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
         {hasOverride && <div className="text-xs">{t("agents.manualPath")}</div>}
       </div>
 
-      {provider === "claude" && (
+      {provider === "claude" && !isRemoteBuild() && (
         <>
           <ManagedRuntimeStatus />
           <ClaudeIdentity />
         </>
       )}
 
-      <div className="mt-auto flex flex-wrap gap-2 pt-2">
+      {!isRemoteBuild() && <div className="mt-auto flex flex-wrap gap-2 pt-2">
         {/* Only what is missing gets an install button, and it says what it is about to run. */}
         {!binary?.path && !viaAcp && method && (
           <Button
@@ -204,7 +207,7 @@ function ProviderRow({ provider }: { provider: ProviderId }) {
           {refreshing ? <Spinner aria-hidden className="mr-1 size-3" /> : <RefreshCw className="mr-1 size-3" />}
           {t("agents.refreshQuota")}
         </Button>
-      </div>
+      </div>}
     </Card>
   );
 }

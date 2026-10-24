@@ -5,7 +5,8 @@ import { useAppStore, selectAllAgents, selectProjectOfAgent, selectTasks } from 
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useT } from "@/i18n/useT";
 // Single source of truth for section metadata — no component imports, bundle-safe.
-import { SETTINGS_SECTIONS_META } from "@/components/settings/sections";
+import { SETTINGS_SECTIONS_META, visibleSettingsSections } from "@/components/settings/sections";
+import { isRemoteBuild } from "@/lib/platform";
 import { normalize, searchMessages } from "@/lib/message-search";
 
 type Group = "projects" | "tasks" | "chats" | "agents" | "settings" | "actions" | "messages";
@@ -135,7 +136,7 @@ export function SearchPalette() {
     }
 
     // "conf" should also find every settings section, not only its own label.
-    for (const s of SETTINGS_SECTIONS_META.filter(s => matches(`${t("settings.title")} ${t(s.labelKey)}`))) {
+    for (const s of visibleSettingsSections(SETTINGS_SECTIONS_META, isRemoteBuild()).filter(s => matches(`${t("settings.title")} ${t(s.labelKey)}`))) {
       out.push({
         key: `section:${s.id}`,
         group: "settings",

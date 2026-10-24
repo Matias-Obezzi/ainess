@@ -14,6 +14,9 @@ import { formatHeaders, parseHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
 import type { McpServer } from "@/types";
 import { Cable } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
+import { mcpUrlLocked, SECRET_MASK } from "@/lib/remote-settings-keys";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 
 interface ConnectorsApi {
   /** Opens the dialog, empty or on an existing connector. */
@@ -59,7 +62,10 @@ function ConnectorDialog({ open, server, onClose }: { open: boolean; server?: Mc
     setHeaders(formatHeaders(server?.headers));
   }, [open, server]);
 
-  const valid = name.trim() !== "" && /^https?:\/\/\S+$/.test(url.trim());
+  // On the remote page the address comes masked, and sent back as it came it stays the host's.
+  const masked = !!server && url === SECRET_MASK;
+  const urlLocked = isRemoteBuild() && !!server && mcpUrlLocked(server);
+  const valid = name.trim() !== "" && (masked || /^https?:\/\/\S+$/.test(url.trim()));
   const save = () => {
     const parsed = oauth ? {} : parseHeaders(headers);
     upsertMcpServer({
@@ -88,7 +94,8 @@ function ConnectorDialog({ open, server, onClose }: { open: boolean; server?: Mc
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold" htmlFor="connector-url">{t("connectors.url")}</label>
-            <Input id="connector-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://mcp.linear.app/mcp" />
+            <Input id="connector-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://mcp.linear.app/mcp" disabled={urlLocked} />
+            {urlLocked && <RemoteLockedHint />}
           </div>
           <div className="flex items-start gap-2">
             <Switch id="connector-oauth" checked={oauth} onCheckedChange={setOauth} />
@@ -108,6 +115,7 @@ function ConnectorDialog({ open, server, onClose }: { open: boolean; server?: Mc
                 placeholder="Authorization: Bearer ${API_TOKEN}"
               />
               <span className="text-xs text-muted-foreground">{t("connectors.headersHint")}</span>
+              <RemoteLockedHint envReference />
             </div>
           )}
         </div>
@@ -209,7 +217,10 @@ function ConnectorCard({ server }: { server: McpServer }) {
       <CardFooter className="flex flex-wrap justify-end gap-2">
         {server.oauth && (connected
           ? <Button variant="outline" size="sm" onClick={() => void disconnect()}>{t("connectors.disconnect")}</Button>
-          : <Button size="sm" disabled={busy} onClick={() => void connect()}>{busy ? t("connectors.connecting") : t("connectors.connect")}</Button>)}
+          // Signing in opens a browser on the host, so from the remote page it is done there.
+          : isRemoteBuild()
+            ? connected === false && <span className="mr-auto self-center text-xs text-muted-foreground">{t("connectors.signInOnHost")}</span>
+            : <Button size="sm" disabled={busy} onClick={() => void connect()}>{busy ? t("connectors.connecting") : t("connectors.connect")}</Button>)}
         <Button variant="outline" size="sm" onClick={() => edit(server)}>{t("common.edit")}</Button>
         <Button variant="destructive" size="sm" onClick={() => void remove()}>{t("common.delete")}</Button>
       </CardFooter>

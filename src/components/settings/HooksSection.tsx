@@ -9,6 +9,7 @@ import { Hook } from "@/types";
 import { Webhook } from "lucide-react";
 import { createDialogContext } from "@/components/settings/section-context";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
 
 const HookDialogCtx = createDialogContext<Hook>();
 export const HooksSectionProvider = HookDialogCtx.Provider;
@@ -69,7 +70,8 @@ export function HooksSection() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => testHook(hook.id)}>{t("hooks.test")}</Button>
+              {/* A test fires the action from where it runs, and on the remote page that is a browser. */}
+              {!isRemoteBuild() && <Button variant="outline" size="sm" onClick={() => testHook(hook.id)}>{t("hooks.test")}</Button>}
               <Button variant="outline" size="sm" onClick={() => openEdit(hook)}>{t("common.edit")}</Button>
               <Button variant="destructive" size="sm" onClick={() => void confirmDelete(t("hooks.delete"), hook.name).then(ok => ok && removeHook(hook.id))}>{t("common.delete")}</Button>
             </CardFooter>

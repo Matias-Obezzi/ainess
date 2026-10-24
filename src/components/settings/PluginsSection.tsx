@@ -20,6 +20,7 @@ import {
 } from "@/lib/plugins";
 import type { Plugin } from "@/types";
 import { Blocks } from "lucide-react";
+import { isRemoteBuild } from "@/lib/platform";
 
 interface PluginsApi { add: () => void }
 
@@ -160,6 +161,9 @@ export function PluginsSectionProvider({ children }: { children: ReactNode }) {
 export function PluginsSectionActions() {
   const t = useT();
   const { add } = usePlugins();
+  // Adding clones a repository or reads a folder on the host: not on the remote page, which can
+  // switch the installed ones on and off and uninstall them.
+  if (isRemoteBuild()) return null;
   return <Button size="sm" onClick={add}>{t("plugins.add")}</Button>;
 }
 
@@ -171,6 +175,7 @@ export function PluginsSection() {
   const { add } = usePlugins();
   const [detected, setDetected] = useState<DetectedPlugin[] | null>(null);
   useEffect(() => {
+    if (isRemoteBuild()) return;
     let live = true;
     void detectPlugins().then(found => { if (live) setDetected(found); }).catch(() => { if (live) setDetected([]); });
     return () => { live = false; };
@@ -194,7 +199,7 @@ export function PluginsSection() {
     return (
       <>
         {banner}
-        <EmptyState icon={Blocks} title={t("plugins.empty.title")} description={t("plugins.empty.body")} action={{ label: t("plugins.add"), onClick: add }} />
+        <EmptyState icon={Blocks} title={t("plugins.empty.title")} description={t("plugins.empty.body")} action={isRemoteBuild() ? undefined : { label: t("plugins.add"), onClick: add }} />
       </>
     );
   }
@@ -272,7 +277,7 @@ function PluginCard({ plugin, skills, servers }: { plugin: Plugin; skills: numbe
         {(plugin.hooks || plugin.agents) && <span className="text-xs text-muted-foreground">{t("plugins.claudeOnly")}</span>}
       </CardContent>
       <CardFooter className="flex flex-wrap justify-end gap-2">
-        {plugin.repo && <Button variant="outline" size="sm" disabled={busy} onClick={() => void update()}>{busy ? t("plugins.fetching") : t("plugins.update")}</Button>}
+        {plugin.repo && !isRemoteBuild() && <Button variant="outline" size="sm" disabled={busy} onClick={() => void update()}>{busy ? t("plugins.fetching") : t("plugins.update")}</Button>}
         <Button variant="destructive" size="sm" onClick={() => void remove()}>{t("plugins.uninstall")}</Button>
       </CardFooter>
     </Card>

@@ -15,6 +15,7 @@ import {
 } from "@/lib/diagnostics";
 import { AlertTriangle, CheckCircle2, ClipboardCopy, RefreshCw, XCircle } from "lucide-react";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
 
 const LEVEL_ICON = { ok: CheckCircle2, warn: AlertTriangle, error: XCircle };
 const LEVEL_COLOR: Record<DiagnosticLevel, string> = {
@@ -31,7 +32,10 @@ export function DiagnosticsSection() {
   const run = useCallback(async () => {
     setRunning(true);
     try {
-      setResults(await collectDiagnostics(t, { refreshQuota: true }));
+      // On the remote page the checks are about the host, so the host runs them.
+      setResults(isRemoteBuild()
+        ? await (await import("@/remote/remote-client")).runDiagnostics(true)
+        : await collectDiagnostics(t, { refreshQuota: true }));
     } finally {
       setRunning(false);
     }

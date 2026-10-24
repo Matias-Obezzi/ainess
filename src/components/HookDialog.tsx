@@ -13,6 +13,9 @@ import { useAppStore, selectAgentsByProject } from "@/store";
 import { AgentOptions } from "@/components/AgentOptions";
 import { BOSS_TARGET } from "@/lib/team";
 import { useT, type TFunction } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
+import { SECRET_MASK } from "@/lib/remote-settings-keys";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.started", label: "task.started" },
@@ -99,6 +102,9 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
     hook?.action.type === "slack" || hook?.action.type === "discord" ? hook.action.webhookUrl :
     hook?.action.type === "webhook" ? hook.action.url : ""
   );
+  // On the remote page the address of a hook being edited comes masked: sent back as it came, the
+  // host keeps its own, so the mask is not held to the shape of a URL. A new hook still needs one.
+  const maskedUrl = isEditing && url === SECRET_MASK;
   const [template, setTemplate] = useState(
     hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "telegram" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
     hook?.action.type === "webhook" ? hook.action.bodyTemplate : presetFor(t, hook?.event ?? "task.finished")
@@ -110,6 +116,10 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
   const [program, setProgram] = useState(hook?.action.type === "command" ? hook.action.program : "");
   const [argsStr, setArgsStr] = useState(hook?.action.type === "command" ? hook.action.args.join(" ") : "");
   const [agentId, setAgentId] = useState(hook?.action.type === "instruct" ? hook.action.agentId : "");
+  // What a command hook runs is the host's to set: from the remote page one is kept as it is, and
+  // none is created (see remote-settings.ts).
+  const commandLocked = isRemoteBuild();
+  const keptCommand = hook?.action.type === "command" ? hook.action : null;
   
   // When a "schedule" hook fires: a time of day, or every so many minutes.
   const [scheduleKind, setScheduleKind] = useState<"at" | "every">(hook?.schedule?.at ? "at" : "every");
@@ -146,6 +156,11 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
       case "telegram": action = { type: "telegram", template, ...(chatId.trim() ? { chatId: chatId.trim() } : {}) }; break;
       case "webhook": action = { type: "webhook", url, method: "POST", headers: { "Content-Type": "application/json" }, bodyTemplate: template }; break;
       case "command": 
+        if (commandLocked) {
+          if (!keptCommand) return;
+          action = keptCommand;
+          break;
+        }
         const parsedArgs = argsStr.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(a => a.replace(/(^"|"$)/g, "")) || [];
         action = { type: "command", program, args: parsedArgs, cwd: "workspace" }; 
         break;
@@ -207,7 +222,9 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               <Select value={actionType} onValueChange={setActionType}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{t(a.labelKey)}</SelectItem>)}
+                  {ACTIONS.map(a => (
+                    <SelectItem key={a.value} value={a.value} disabled={a.value === "command" && commandLocked && !keptCommand}>{t(a.labelKey)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -294,7 +311,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             {(actionType === "slack" || actionType === "discord" || actionType === "webhook") && (
               <div className="space-y-2">
                 <Label>Webhook URL</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" />
+                <Input value={url} onChange={e => setUrl(e.target.value)} required type={maskedUrl ? "text" : "url"} />
               </div>
             )}
             
@@ -321,12 +338,13 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
               <>
                 <div className="space-y-2">
                   <Label>{t("hookDialog.command")}</Label>
-                  <Input value={program} onChange={e => setProgram(e.target.value)} required />
+                  <Input value={program} onChange={e => setProgram(e.target.value)} required disabled={commandLocked} />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("hookDialog.args")}</Label>
-                  <TemplateInput value={argsStr} onChange={setArgsStr} />
+                  <TemplateInput value={argsStr} onChange={setArgsStr} disabled={commandLocked} />
                 </div>
+                <RemoteLockedHint />
               </>
             )}
 

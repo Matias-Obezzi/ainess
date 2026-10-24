@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
 import { Plus, X } from "lucide-react";
 
 export function QuickCommandsDialog({ projectId, open, onOpenChange }: {
@@ -66,7 +68,9 @@ export function QuickCommandsDialog({ projectId, open, onOpenChange }: {
             </ul>
           )}
 
-          <div className="flex items-end gap-2">
+          {/* A command typed here runs on the host: added from the desktop app, removed from anywhere. */}
+          <RemoteLockedHint />
+          {!isRemoteBuild() && <div className="flex items-end gap-2">
             <div className="w-32 shrink-0 space-y-1.5">
               <Label htmlFor="qc-label" className="text-xs">{t("terminals.commands.label")}</Label>
               <Input
@@ -98,7 +102,7 @@ export function QuickCommandsDialog({ projectId, open, onOpenChange }: {
             >
               <Plus className="h-3.5 w-3.5" /> {t("common.add")}
             </Button>
-          </div>
+          </div>}
         </div>
       </DialogContent>
     </Dialog>

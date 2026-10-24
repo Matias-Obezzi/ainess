@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { McpServer } from "@/types";
 import { parseHeaders, formatHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
+import { isRemoteBuild } from "@/lib/platform";
+import { RemoteLockedHint } from "@/components/RemoteLockedHint";
+import { mcpUrlLocked } from "@/lib/remote-settings-keys";
 
 interface Props {
   open: boolean;
@@ -21,6 +24,10 @@ interface Props {
 export function McpDialog({ open, onOpenChange, server }: Props) {
   const t = useT();
   const upsertMcpServer = useAppStore(state => state.upsertMcpServer);
+  // What the server runs and with which environment is the host's to set (see remote-settings.ts).
+  const locked = isRemoteBuild();
+  // Moving a server that sends headers, variables or a sign-in would send them along.
+  const urlLocked = locked && !!server && mcpUrlLocked(server);
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -87,14 +94,16 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
       argsStr = parts.slice(1);
     }
 
+    // Sent back exactly as they came: re-split from the text they would not always be the same.
+    const keep = locked && server;
     upsertMcpServer({
       id,
       name,
-      transport,
-      command: cmdStr,
-      args: argsStr,
+      transport: keep ? server.transport : transport,
+      command: keep ? server.command : cmdStr,
+      args: keep ? server.args : argsStr,
       url: transport === "http" ? url : undefined,
-      env: Object.keys(envObj).length > 0 ? envObj : undefined,
+      env: keep ? server.env : Object.keys(envObj).length > 0 ? envObj : undefined,
       headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
       enabledFor: allAgents ? "all" : Array.from(enabledAgents)
     });
@@ -117,7 +126,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
               </div>
               <div className="space-y-1">
                 <Label>{t("mcpDialog.transport")}</Label>
-                <Select value={transport} onValueChange={v => setTransport(v as "stdio" | "http")}>
+                <Select value={transport} onValueChange={v => setTransport(v as "stdio" | "http")} disabled={locked}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -132,12 +141,14 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
             {transport === "stdio" ? (
               <div className="space-y-1">
                 <Label>{t("mcpDialog.commandAndArgs")}</Label>
-                <Input value={command} onChange={e => setCommand(e.target.value)} />
+                <Input value={command} onChange={e => setCommand(e.target.value)} disabled={locked} />
+                <RemoteLockedHint />
               </div>
             ) : (
               <div className="space-y-1">
                 <Label>URL</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/sse" />
+                <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/sse" disabled={urlLocked} />
+                {urlLocked && <RemoteLockedHint />}
               </div>
             )}
 
@@ -151,6 +162,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
                   placeholder={t("mcpDialog.headersPlaceholder")}
                 />
                 <p className="text-xs text-muted-foreground">{t("mcpDialog.headersHint")}</p>
+                <RemoteLockedHint envReference />
               </div>
             )}
 
@@ -165,10 +177,12 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
                 value={env}
                 onChange={e => setEnv(e.target.value)}
                 placeholder="API_KEY=xxx"
+                disabled={locked}
               />
               {transport === "http" && (
                 <p className="text-xs text-muted-foreground">{t("mcpDialog.envHttpHint")}</p>
               )}
+              <RemoteLockedHint />
             </div>
 
             <div className="space-y-2 border p-4 rounded-md">

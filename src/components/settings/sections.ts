@@ -61,5 +61,16 @@ export const SETTINGS_SECTIONS_META: SettingsSectionMeta[] = [
   { id: "about",       labelKey: "settings.section.about",       helpKey: "settings.help.about",       group: "app",        optionKeys: options("about",       ["version", "checkUpdates", "openLogs", "copyDiagnostics", "repository"]),                                                                       icon: Info },
 ];
 
+/**
+ * Sections the remote page does not show: the server it is talking through, and the chat bridges,
+ * which hold tokens and run on the host. Neither has anything a browser elsewhere can act on.
+ */
+export const REMOTE_HIDDEN_SECTIONS: readonly SettingsSection[] = ["remote", "messaging"];
+
+/** The sections this build shows, in order. `remote` is true in the page served by the host. */
+export function visibleSettingsSections<T extends { id: SettingsSection }>(sections: T[], remote: boolean): T[] {
+  return remote ? sections.filter(s => !REMOTE_HIDDEN_SECTIONS.includes(s.id)) : sections;
+}
+
 /** All section ids, derived from the single list — used to validate persisted values. */
 export const ALL_SETTINGS_SECTION_IDS = SETTINGS_SECTIONS_META.map(s => s.id);

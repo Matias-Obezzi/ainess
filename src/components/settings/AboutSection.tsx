@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/toast";
 import { isTauri } from "@/lib/tauri";
+import { isRemoteBuild } from "@/lib/platform";
 import { appVersion, checkForUpdate, type UpdateCheck } from "@/lib/updates";
 import { getRecentLogs, log } from "@/lib/logger";
 import { getTransport } from "@/lib/transport";
@@ -123,7 +124,8 @@ export function AboutSection() {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Updating, the log folder and the log file are the host app's: not on the remote page. */}
+      {!isRemoteBuild() && <Card>
         <CardHeader>
           <CardTitle>{t("about.updatesTitle")}</CardTitle>
           <CardDescription>{t("about.updatesDescription")}</CardDescription>
@@ -160,7 +162,7 @@ export function AboutSection() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       <Card>
         <CardHeader>
@@ -168,15 +170,15 @@ export function AboutSection() {
           <CardDescription>{t("about.diagnosticsDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled={!isTauri()} onClick={() => void openLogs()}>
+          {!isRemoteBuild() && <Button variant="outline" size="sm" disabled={!isTauri()} onClick={() => void openLogs()}>
             <FolderOpen className="mr-1 h-4 w-4" /> {t("about.openLogs")}
-          </Button>
+          </Button>}
           <Button variant="outline" size="sm" onClick={() => void copyDiagnostics()}>
             <ClipboardCopy className="mr-1 h-4 w-4" /> {t("settings.option.about.copyDiagnostics")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => { log.info("about", "prueba de log desde Acerca de"); toast.success(t("about.testLineWritten")); }}>
+          {!isRemoteBuild() && <Button variant="ghost" size="sm" onClick={() => { log.info("about", "prueba de log desde Acerca de"); toast.success(t("about.testLineWritten")); }}>
             {t("about.writeTestLine")}
-          </Button>
+          </Button>}
         </CardContent>
       </Card>
       <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
