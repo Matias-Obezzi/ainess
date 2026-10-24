@@ -13,6 +13,7 @@ import { parseHeaders, formatHeaders } from "@/lib/mcp-headers";
 import { useT } from "@/i18n/useT";
 import { isRemoteBuild } from "@/lib/platform";
 import { RemoteLockedHint } from "@/components/RemoteLockedHint";
+import { mcpUrlLocked } from "@/lib/remote-settings-keys";
 
 interface Props {
   open: boolean;
@@ -25,6 +26,8 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
   const upsertMcpServer = useAppStore(state => state.upsertMcpServer);
   // What the server runs and with which environment is the host's to set (see remote-settings.ts).
   const locked = isRemoteBuild();
+  // Moving a server that sends headers, variables or a sign-in would send them along.
+  const urlLocked = locked && !!server && mcpUrlLocked(server);
 
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -144,7 +147,8 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
             ) : (
               <div className="space-y-1">
                 <Label>URL</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/sse" />
+                <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/sse" disabled={urlLocked} />
+                {urlLocked && <RemoteLockedHint />}
               </div>
             )}
 
@@ -158,6 +162,7 @@ export function McpDialog({ open, onOpenChange, server }: Props) {
                   placeholder={t("mcpDialog.headersPlaceholder")}
                 />
                 <p className="text-xs text-muted-foreground">{t("mcpDialog.headersHint")}</p>
+                <RemoteLockedHint envReference />
               </div>
             )}
 

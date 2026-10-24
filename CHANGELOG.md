@@ -12,19 +12,21 @@ let one of them fall behind.
 
 - **Settings work from the remote desktop view.** Teams, Profile, Context, Orders, Skills, MCP,
   Connectors, Extensions, Plugins and the rest load the host's configuration and save to it. The
-  host checks every change, and secrets (tokens, API keys, MCP env and headers) arrive masked: they
-  can be kept or replaced, never read back.
+  host checks every change, and secrets (tokens, API keys, MCP addresses, env and headers, webhook
+  addresses) arrive masked: they can be kept or replaced, never read back.
 - **The remote desktop view keeps its own theme.** Changing it in Appearance applies to that
   browser only and leaves the host's theme alone.
 - **Nothing that runs on the host can be changed from the remote.** Local MCP servers (command,
   arguments, environment), extension values, command hooks, custom agent commands, executables,
   and a project's verify and quick commands are read-only there, and the host refuses them.
-  Permissions, approvals and rooms can only be tightened: auto-approve goes off, never on.
+  Permissions, approvals and rooms can only be tightened: auto-approve goes off, never on. An http
+  MCP server added or changed there can't use `${VAR}` in its address or headers, and one that
+  already sends headers, variables or a sign-in keeps its address.
 
 ### Changed
 
-- **Settings → Remote replaces the phone button in the window bar.** Its entry lights up while the
-  server runs and the section says when it is starting or stopping, so the button is gone.
+- **Settings → Remote lights up while the server runs.** Its entry carries the same light as the
+  phone button in the window bar, and the section says when the server is starting or stopping.
 - **The remote desktop view hides what only works on the host.** Messaging and Remote are not
   offered there, nor are installing extensions or plugins, importing from other CLIs, picking files
   or folders, signing connectors in, or detecting and installing CLIs.

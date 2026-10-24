@@ -9,20 +9,23 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
 - **As configurações funcionam pela visão de desktop do remoto.** Equipes, Perfil, Contexto,
   Ordens, Skills, MCP, Conectores, Extensões, Plugins e o resto carregam a configuração do
   anfitrião e salvam nela. O anfitrião confere cada mudança, e os segredos (tokens, API keys,
-  variáveis e headers de MCP) chegam mascarados: podem ser mantidos ou substituídos, nunca lidos.
+  endereços, variáveis e headers de MCP, endereços de webhooks) chegam mascarados: podem ser
+  mantidos ou substituídos, nunca lidos.
 - **A visão de desktop do remoto tem seu próprio tema.** Mudá-lo em Aparência vale só para aquele
   navegador e deixa o tema do anfitrião como está.
 - **Pelo remoto não dá para mudar nada que roda no anfitrião.** Servidores MCP locais (comando,
   argumentos, ambiente), valores das extensões, hooks de comando, o comando dos agentes
   personalizados, executáveis e os comandos de verificação e rápidos de um projeto ficam somente
   leitura ali, e o anfitrião os recusa. Permissões, aprovações e salas só podem ser restringidas:
-  a aprovação automática desliga, nunca liga.
+  a aprovação automática desliga, nunca liga. Um servidor MCP http adicionado ou alterado ali não
+  pode usar `${VAR}` no endereço nem nos headers, e um que já envia headers, variáveis ou um login
+  mantém seu endereço.
 
 ### Alterado
 
-- **Configurações → Remoto substitui o botão do telefone na barra da janela.** A entrada acende
-  enquanto o servidor roda e a seção avisa quando ele está ligando ou desligando, então o botão
-  saiu.
+- **Configurações → Remoto acende enquanto o servidor roda.** A entrada leva a mesma luz que o
+  botão do telefone na barra da janela, e a seção avisa quando o servidor está ligando ou
+  desligando.
 - **A visão de desktop do remoto esconde o que só funciona no anfitrião.** Mensagens e Remoto não
   aparecem, nem instalar extensões ou plugins, importar de outros CLIs, escolher arquivos ou
   pastas, conectar conectores, ou detectar e instalar CLIs.

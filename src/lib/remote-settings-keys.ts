@@ -1,6 +1,7 @@
 // What of the configuration the remote desktop page may read and write, shared by the host (which
 // validates, see `remote-settings.ts`) and the page (which only sends these). Kept apart from the
 // validators so the page does not carry them.
+import type { McpServer } from "@/types";
 
 /**
  * What a secret looks like on its way to the page. The page shows it as is ("configured"), and
@@ -59,6 +60,17 @@ export const REMOTE_PROJECT_KEYS = [
 ] as const;
 
 export type RemoteProjectKey = (typeof REMOTE_PROJECT_KEYS)[number];
+
+/**
+ * Whether the page may not move an existing http MCP server to another address: one that sends
+ * headers, has variables for them in `env`, or signs in as a connector would send all of that to
+ * wherever it pointed next. The host refuses the change; the page draws the address read-only.
+ */
+export function mcpUrlLocked(server: Pick<McpServer, "transport" | "headers" | "env" | "oauth">): boolean {
+  if (server.transport !== "http") return false;
+  const filled = (r: Record<string, string> | undefined) => !!r && Object.keys(r).length > 0;
+  return filled(server.headers) || filled(server.env) || !!server.oauth;
+}
 
 /** Where the page keeps its own theme: per browser, never sent to the host. */
 export const REMOTE_THEME_KEY = "ainess.remote.theme";

@@ -901,10 +901,12 @@ sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` si
   `REMOTE_THEME_KEY`. Fuera de la lista: `remote`, `messaging`, `binaryOverrides`, `theme`,
   `machine`, `lastProjectId`, los `*Owned`, y la carpeta/repo/fecha de un proyecto.
 - `src/lib/remote-settings.ts` (solo anfitrión; `remote.ts` lo importa dinámico):
-  `remoteConfigView` enmascara los secretos — `boards` (tokens de GitHub y Trello), `env` y
-  `headers` de cada MCP (salvo un `${VAR}` puro), los valores `sensitive` del manifiesto de una
-  extensión (`sensitiveExtensionKeys`; manifiesto ilegible = todos) y sus copias en `args`, el
-  `webhookUrl`/`headers` de los hooks, y `secret`/`supabaseKey`/`firebaseToken` de una sala.
+  `remoteConfigView` enmascara los secretos — `boards` (tokens de GitHub y Trello), `url`, `env`
+  y `headers` de cada MCP (salvo un `${VAR}` puro; una dirección suele llevar su clave), los valores
+  `sensitive` del manifiesto de una extensión (`sensitiveExtensionKeys`; manifiesto ilegible =
+  todos) y sus copias en `args`, el `webhookUrl`/`url`/`headers` de los hooks, y
+  `secret`/`supabaseKey`/`firebaseToken` de una sala. Una dirección enmascarada que vuelve igual es
+  la misma dirección (se restaura del anfitrión); una nueva la reemplaza.
   `prepareRemotePatch(raw, host)` valida con un esquema estricto (clave desconocida → `unknown`,
   tipo o rango malo → `invalid`; una clave anidada que no está en el esquema solo pasa si el
   anfitrión ya la tiene en ese lugar, para no romper datos de versiones viejas), devuelve los
@@ -923,8 +925,16 @@ sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` si
   `REMOTE_CONFIG_LOCKS`/`REMOTE_PROJECT_LOCKS` de `remote-settings.ts` (un campo nuevo que spawnea,
   carga código o amplía permisos se agrega ahí):
   - MCP: agregar un servidor stdio, y cambiar `transport`, `command`/`cwd`, `args`, `env` (entero,
-    secreto o no: `NODE_OPTIONS` también corre código) y `extension.config`. Un http nuevo, la
-    `url` y los `headers` con el secreto reescrito, renombrar, `enabledFor` y borrar siguen.
+    secreto o no: `NODE_OPTIONS` también corre código) y `extension.config`. Un `${VAR}` en la `url`
+    o en un header de un http nuevo, o de uno cuya `url` o `headers` cambian, tampoco
+    (`mcpServers.envReference`): se expande con el entorno del agente — el del anfitrión
+    (`GITHUB_TOKEN`, `ANTHROPIC_API_KEY`…) más el `env` de cada http (`httpMcpEnv`) —, no va
+    enmascarado y nada lo ancla. Ni mover (`mcpServers.url`) un http existente que manda algo:
+    `headers` o `env` no vacíos, u `oauth` (el token del conector va como header); lo decide
+    `mcpUrlLocked` en `remote-settings-keys.ts`. Un http nuevo sin referencias, la `url` de uno que no
+    manda nada, los `headers` con el secreto reescrito, renombrar, `enabledFor` y borrar siguen.
+    Los hooks `webhook` no expanden variables (url y headers salen tal cual, sus secretos anclados a
+    la `url`) y los tableros van a direcciones fijas: no tienen este camino.
   - Hooks: crear uno `command` o cambiar su `program`/`args`/`cwd` (pasar otro hook a `command`
     cuenta como crearlo). Pasarlo a otro tipo, apagarlo o borrarlo sigue.
   - Agentes (de proyectos y de formaciones): `customCommand`; `autoApprove` solo se apaga; y la
@@ -939,7 +949,9 @@ sigue sin configuración (no tiene esas pantallas y su `installRemoteActions` si
     de prender/apagar.
   En la página esos campos se dibujan de solo lectura con la leyenda `remote.locked.hint` (o
   `remote.locked.restrictHint` donde se puede restringir), vía `RemoteLockedHint`: `McpDialog`
-  (comando, transporte, entorno; "Nuevo" y "Sugeridos" ocultos en MCP), `ExtensionsSection` (sin
+  (comando, transporte, entorno; la URL si `mcpUrlLocked`; "Nuevo" y "Sugeridos" ocultos en MCP),
+  `ConnectorsSection` (la URL si `mcpUrlLocked`; con `remote.locked.envReferenceHint` bajo los
+  headers, como en `McpDialog`), `ExtensionsSection` (sin
   "Configurar"), `HookDialog` (tipo `command` deshabilitado si no lo era), `AgentDialog`
   (auto-aprobar solo se apaga, los modos de aprobación que aflojan deshabilitados, programa custom y
   ejecutable), `GeneralSection`, `PermissionsSection` (un borrador que amplía vuelve atrás con
@@ -1069,9 +1081,9 @@ store quedaba viejo al cerrarlo y el switch aparecía apagado con el servidor an
 liga a `remoteStatus.running` (la realidad) y no a `config.remote.enabled` (la intención, que es lo
 que hace que arranque solo). `toggleRemote(enabled)` vive en el store, con `remoteBusy` para
 deshabilitar el switch mientras tanto (la sección muestra un spinner y "Un momento…"). El botón del
-teléfono que había en la barra de ventana (`RemoteButton`) se quitó: solo abría esta sección y
-encendía una luz, y ahora la entrada "Remoto" del diálogo de Configuración lleva esa luz verde
-mientras el servidor corre. En `runInit`, si el servidor ya está levantado (recarga del front),
+teléfono de la barra de ventana (`RemoteButton`) abre esta sección y se pone verde mientras el
+servidor corre; la entrada "Remoto" del diálogo de Configuración lleva la misma luz verde. En la
+página remota el botón no se dibuja (`isRemoteBuild()`): esa página es el remoto. En `runInit`, si el servidor ya está levantado (recarga del front),
 se adopta ese estado en vez de intentar arrancar otro.
 
 Actualización automática del agente: ngrok rechaza la conexión cuando la versión es menor que el

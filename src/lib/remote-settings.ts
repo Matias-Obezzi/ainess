@@ -21,6 +21,7 @@ import {
   REMOTE_CONFIG_KEYS,
   REMOTE_PROJECT_KEYS,
   SECRET_MASK,
+  mcpUrlLocked,
   type RemoteConfigKey,
   type RemoteProjectKey,
 } from "@/lib/remote-settings-keys";
@@ -78,7 +79,8 @@ export async function sensitiveExtensionKeys(servers: McpServer[]): Promise<Reco
 }
 
 function maskServer(server: McpServer, sensitive: Set<string> | "all" | undefined): McpServer {
-  const next: McpServer = { ...server, env: maskRecord(server.env), headers: maskRecord(server.headers) };
+  // An address often carries its key (`?api_key=`, a token in the path): masked like the headers.
+  const next: McpServer = { ...server, url: maskValue(server.url) as string | undefined, env: maskRecord(server.env), headers: maskRecord(server.headers) };
   if (server.extension?.config) {
     const secretValues = new Set<string>();
     const config: Record<string, string | number | boolean | string[]> = {};
@@ -94,6 +96,7 @@ function maskServer(server: McpServer, sensitive: Set<string> | "all" | undefine
     // A manifest can put a value straight into the command line.
     if (server.args) next.args = server.args.map(a => (secretValues.has(a) ? SECRET_MASK : a));
   }
+  if (next.url === undefined) delete next.url;
   if (next.env === undefined) delete next.env;
   if (next.headers === undefined) delete next.headers;
   return next;
@@ -121,6 +124,7 @@ export function remoteConfigView(
   out.hooks = (config.hooks ?? []).map(hook => {
     const action = { ...hook.action } as Record<string, unknown>;
     if (typeof action.webhookUrl === "string") action.webhookUrl = maskValue(action.webhookUrl);
+    if (typeof action.url === "string") action.url = maskValue(action.url);
     if (action.headers && typeof action.headers === "object") action.headers = maskRecord(action.headers as Record<string, string>);
     return { ...hook, action } as AppConfig["hooks"][number];
   });
@@ -540,6 +544,7 @@ interface LockContext {
 const blank = (v: unknown) =>
   v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0) || (isPlainObject(v) && Object.keys(v).length === 0);
 const sameValue = (a: unknown, b: unknown) => (blank(a) && blank(b)) || sameJson(a, b);
+const hasEnvReference = (v: unknown) => typeof v === "string" && v.includes("${");
 
 function byId<T extends { id: string }>(items: T[] | undefined): Map<string, T> {
   return new Map((items ?? []).map(i => [i.id, i] as const));
@@ -580,7 +585,8 @@ const presetOn = (perms: PlannerPermissions | undefined, id: PlannerPresetId) =>
 
 export const REMOTE_CONFIG_LOCKS: readonly ConfigLock[] = [
   // MCP servers: what is spawned and with what. A stdio server is a program; an http one may come
-  // in (its address takes its secret only when typed again, see `restoreItems`). `env` is locked
+  // in (its address takes its secret only when typed again, see `restoreItems`), as long as it
+  // expands nothing from the host's environment and does not move what it already sends. `env` is locked
   // whole, secret or not: `NODE_OPTIONS` or `PATH` decide what a command runs as much as the command.
   {
     key: "mcpServers", field: "mcpServers.transport",
@@ -589,6 +595,34 @@ export const REMOTE_CONFIG_LOCKS: readonly ConfigLock[] = [
       return (next as McpServer[]).some(s => {
         const old = before.get(s.id);
         return old ? s.transport !== old.transport : s.transport === "stdio";
+      });
+    },
+  },
+  // An http server's address is where the agent sends its headers, and `${VAR}` in a header or in
+  // the address is expanded from the agent's environment: the host's own (GITHUB_TOKEN,
+  // ANTHROPIC_API_KEY…) plus every http server's `env` (see `httpMcpEnv`). A reference is not masked,
+  // so nothing anchors it: a server that is new, or whose address or headers change, may not carry one.
+  {
+    key: "mcpServers", field: "mcpServers.envReference",
+    changes: (next, host) => {
+      const before = byId(host.mcpServers);
+      return (next as McpServer[]).some(s => {
+        if (s.transport !== "http") return false;
+        const old = before.get(s.id);
+        if (old && sameValue(s.url, old.url) && sameValue(s.headers, old.headers)) return false;
+        return hasEnvReference(s.url) || Object.values(s.headers ?? {}).some(hasEnvReference);
+      });
+    },
+  },
+  // Moving a server that already sends something (headers, the variables they expand, a connector's
+  // sign-in) would send it to the new address: see `mcpUrlLocked`.
+  {
+    key: "mcpServers", field: "mcpServers.url",
+    changes: (next, host) => {
+      const before = byId(host.mcpServers);
+      return (next as McpServer[]).some(s => {
+        const old = before.get(s.id);
+        return !!old && mcpUrlLocked(old) && !sameValue(s.url, old.url);
       });
     },
   },
