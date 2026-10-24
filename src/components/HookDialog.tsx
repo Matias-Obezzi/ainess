@@ -15,6 +15,7 @@ import { BOSS_TARGET } from "@/lib/team";
 import { useT, type TFunction } from "@/i18n/useT";
 import { isRemoteBuild } from "@/lib/platform";
 import { RemoteLockedHint } from "@/components/RemoteLockedHint";
+import { SECRET_MASK } from "@/lib/remote-settings-keys";
 
 const EVENTS: { value: HookEvent; label: string }[] = [
   { value: "task.started", label: "task.started" },
@@ -101,6 +102,9 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
     hook?.action.type === "slack" || hook?.action.type === "discord" ? hook.action.webhookUrl :
     hook?.action.type === "webhook" ? hook.action.url : ""
   );
+  // On the remote page the address of a hook being edited comes masked: sent back as it came, the
+  // host keeps its own, so the mask is not held to the shape of a URL. A new hook still needs one.
+  const maskedUrl = isEditing && url === SECRET_MASK;
   const [template, setTemplate] = useState(
     hook?.action.type === "slack" || hook?.action.type === "discord" || hook?.action.type === "telegram" || hook?.action.type === "instruct" || hook?.action.type === "notify" ? hook.action.template :
     hook?.action.type === "webhook" ? hook.action.bodyTemplate : presetFor(t, hook?.event ?? "task.finished")
@@ -307,7 +311,7 @@ export function HookDialog({ open, onClose, hook, onSave }: { open: boolean, onC
             {(actionType === "slack" || actionType === "discord" || actionType === "webhook") && (
               <div className="space-y-2">
                 <Label>Webhook URL</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" />
+                <Input value={url} onChange={e => setUrl(e.target.value)} required type={maskedUrl ? "text" : "url"} />
               </div>
             )}
             
