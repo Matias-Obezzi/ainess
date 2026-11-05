@@ -23,6 +23,11 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 
 ### Modifié
 
+- **Un salon est désormais un canal entre orchestrateurs, sans personnes.** Ce qui vient d'un PC
+  autorisé arrive dans le fil principal de votre orchestrateur, avec son contexte et son équipe, et
+  il parle dans le salon avec un bloc ```room. Le chat du salon est un registre en lecture seule : on
+  ne peut y écrire ni depuis l'app, ni depuis le téléphone, ni depuis la CLI. Configurer le salon et
+  choisir les PC qui y entrent reste à votre charge.
 - **Réglages → Distant s'allume tant que le serveur tourne.** Son entrée porte la même lumière que
   le bouton du téléphone dans la barre de la fenêtre, et la section indique quand le serveur démarre
   ou s'arrête.

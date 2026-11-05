@@ -1211,7 +1211,7 @@ async function main() {
     };
     const runTurn = async (text: string) => {
       const chatId = chat!.id;
-      await store.sendChatMessage(chatId, text);
+      await store.sendChatMessage(chatId, text).catch(e => error(e instanceof Error ? e.message : String(e)));
       // Each participant's reply is printed as soon as its bubble closes.
       while (isChatActive(chatId)) {
         await new Promise(r => setTimeout(r, 300));

@@ -9,16 +9,12 @@ import { translateNow } from "@/i18n/useT";
 import { rewound } from "@/lib/chat-rewind";
 import { runAnswerText, transcriptOf } from "@/lib/run-answer";
 import type { ChatMessage } from "@/types";
-import { isRoomChat, roomPublish, roomTurnDone } from "@/lib/room";
-import { PASS, isPass } from "@/lib/room/protocol";
+import { isRoomChat } from "@/lib/room";
 
 /** Tracks the current turn: chatId → { pending participant indices, turnId, responses so far } */
 const activeTurns = new Map<string, {
   turnId: string;
-  /**
-   * What the turn is answering, handed to each participant in turn: the user's message, or in a
-   * room what came in from the other machines since the local agents last spoke.
-   */
+  /** What the turn is answering, handed to each participant in turn: the user's message. */
   prompt: string;
   participantIdx: number;
   responses: Array<{ agentId: string; name: string; role: string; text: string }>;
@@ -145,19 +141,18 @@ function buildChatSystemPrompt(chatId: string, agentId: string): string {
     }
   }
 
-  const prompt = buildSystemPrompt(agent, [], {
+  return buildSystemPrompt(agent, [], {
     skills: selectSkillsFor(store, agentId) || [],
     sharedContext: store.config.projects.find(p => p.id === chat.projectId)?.sharedContext ?? "",
     profile: store.config.profile,
     chat: { role, others }
   });
-  // In a room the chat goes on with agents and people on other machines, and silence is an answer.
-  return isRoomChat(chatId) ? `${prompt}\n\n${translateNow("prompt.room", { pass: PASS })}` : prompt;
 }
 
 // ---- Send a message and trigger turn ----
 
 export async function sendChatMessage(chatId: string, text: string): Promise<void> {
+  if (isRoomChat(chatId)) throw new Error(translateNow("room.readOnly"));
   const store = useAppStore.getState();
   const chat = store.config.chats.find(c => c.id === chatId);
   if (!chat) return;
@@ -188,7 +183,6 @@ export async function sendChatMessage(chatId: string, text: string): Promise<voi
   });
 
   await persistMessages(chatId);
-  roomPublish(chatId, store.config.profile?.name?.trim() ?? "", text, "human");
 
   // Start turn
   await startTurn(chatId, text, 0, []);
@@ -196,16 +190,12 @@ export async function sendChatMessage(chatId: string, text: string): Promise<voi
 
 /** A message that did not come from this machine's composer (see src/lib/room), kept with the rest. */
 export async function appendChatMessage(chatId: string, message: ChatMessage): Promise<void> {
+  // Saving writes the whole list: without its history in memory first, this would write over it.
+  await loadChatMessages(chatId);
   useAppStore.setState(state => ({
     chatMessages: { ...state.chatMessages, [chatId]: [...(state.chatMessages[chatId] || []), message] },
   }));
   await persistMessages(chatId);
-}
-
-/** The chat's agents take their turn on what a room brought in, as they would on a message of yours. */
-export async function startRoomTurn(chatId: string, prompt: string): Promise<void> {
-  if (activeTurns.has(chatId)) return;
-  await startTurn(chatId, prompt, 0, []);
 }
 
 async function startTurn(
@@ -330,7 +320,7 @@ export function retryChatRun(runId: string, opts: { agentId: string; model?: str
   const store = useAppStore.getState();
   const run = store.runs[runId];
   const chatId = run?.chatId;
-  if (!run || !chatId) return;
+  if (!run || !chatId || isRoomChat(chatId)) return;
   const chat = store.config.chats.find(c => c.id === chatId);
   if (!chat) return;
   const msgs = store.chatMessages[chatId] ?? [];
@@ -417,19 +407,8 @@ export function onChatRunFinished(runId: string): void {
   // `rememberSession`). Copying it out of the agent's shared slot here was the other half of two
   // chats answering each other: whichever one finished last decided what both of them resumed.
 
-  const room = isRoomChat(chatId);
-  const silent = room && msgStatus === "done" && isPass(output);
-  if (silent) {
-    useAppStore.setState(state => {
-      const msgs = state.chatMessages[chatId!] || [];
-      return { chatMessages: { ...state.chatMessages, [chatId!]: msgs.filter(m => !(m.from === run.agentId && m.status === "pending")) } };
-    });
-  } else if (room && msgStatus === "done") {
-    roomPublish(chatId, agentName, output, "agent");
-  }
-
   // Update the pending message with the actual response
-  if (!silent) useAppStore.setState(state => {
+  useAppStore.setState(state => {
     const msgs = state.chatMessages[chatId!] || [];
     const pendingIdx = msgs.findIndex(m => m.from === run.agentId && m.status === "pending" && m.chatId === chatId);
     if (pendingIdx >= 0) {
@@ -487,8 +466,6 @@ export function onChatRunFinished(runId: string): void {
     clearTurn(chatId);
     // What was written while this turn was running goes out now (see `flushChatQueue`).
     void useAppStore.getState().flushChatQueue(chatId);
-    // And in a room, what the other machines said meanwhile gets its answer.
-    roomTurnDone(chatId);
   }
 }
 
@@ -528,6 +505,8 @@ export async function rewindChat(chatId: string, messageId: string, inclusive: b
  * the question is worse than no answer — and the new text goes out as a fresh turn.
  */
 export async function editChatMessage(chatId: string, messageId: string, text: string): Promise<void> {
+  // Before the rewind: failing after it would have already cut the history.
+  if (isRoomChat(chatId)) throw new Error(translateNow("room.readOnly"));
   await rewindChat(chatId, messageId, false);
   await sendChatMessage(chatId, text);
 }

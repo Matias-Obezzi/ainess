@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNotes, parseResult, parseSuggestion, buildSystemPrompt } from '../providers';
+import { parseNotes, parseResult, parseRoomMessages, parseSuggestion, buildSystemPrompt } from '../providers';
 
 describe('agent-blocks', () => {
   describe('parseNotes', () => {
@@ -15,6 +15,21 @@ describe('agent-blocks', () => {
     it('parses multiple notes', () => {
       const text = '```note\nfirst\n```\nsome text\n```note\nsecond\n```';
       expect(parseNotes(text)).toEqual(['first', 'second']);
+    });
+  });
+
+  describe('parseRoomMessages', () => {
+    it('reads every block, in order, and skips empty ones', () => {
+      const text = 'foo\n```room\nprimero\n```\nbar\n```room\n  \n```\n```room\nsegundo\n```';
+      expect(parseRoomMessages(text)).toEqual(['primero', 'segundo']);
+    });
+
+    it('returns nothing without a block', () => {
+      expect(parseRoomMessages('```note\nesto no\n```')).toEqual([]);
+    });
+
+    it('leaves alone a block quoted as an example inside code', () => {
+      expect(parseRoomMessages('````md\n```room\nejemplo\n```\n````')).toEqual([]);
     });
   });
 
@@ -116,6 +131,14 @@ describe('agent-blocks', () => {
         skills: [], sharedContext: '', chat: { role: 'implementer', others: [] },
       });
       expect(prompt).toContain('```suggest');
+    });
+
+    it('includes the room block only when asked, in a resumed turn too', () => {
+      for (const resuming of [false, true]) {
+        const base = { skills: [], sharedContext: '', resuming };
+        expect(buildSystemPrompt(fakeAgent, [], { ...base, room: true })).toContain('```room');
+        expect(buildSystemPrompt(fakeAgent, [], base)).not.toContain('```room');
+      }
     });
 
     it('includes note and result in resuming state', () => {

@@ -1,8 +1,9 @@
-// A project's room: where its shared chat goes out to agents on other machines. Off by default.
+// A project's room: where its orchestrator talks to those of other machines. Off by default.
 // What the user sets here is the project's `room` (src/types.ts); src/lib/room does the rest.
 import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
-import { useAppStore } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
+import { bossOf } from "@/lib/team";
 import { useT } from "@/i18n/useT";
 import { machine as roomMachine, useRoomState } from "@/lib/room";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,6 +29,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
   const updateConfig = useAppStore(state => state.updateConfig);
   const createChat = useAppStore(state => state.createChat);
   const state = useRoomState(projectId ?? undefined);
+  const boss = bossOf(useAppStore(s => selectProjectAgents(s, projectId)));
 
   const [draft, setDraft] = useState<RoomConfig>(EMPTY);
   const [machineName, setMachineName] = useState("");
@@ -46,13 +48,13 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
 
   const save = async () => {
     let chatId = draft.chatId;
-    // The room speaks through a shared chat with the project's agents; the first time, it gets one.
+    // What is said in the room is kept in a chat with the orchestrator; the first time, it gets one.
     if (draft.enabled && !(chatId && useAppStore.getState().config.chats.some(c => c.id === chatId))) {
       chatId = await createChat({
         projectId: project.id,
         name: t("room.chatName", { room: draft.room.trim() }),
         mode: "shared",
-        participants: (project.agents ?? []).map(a => ({ agentId: a.id, role: a.role })),
+        participants: boss ? [{ agentId: boss.id, role: boss.role }] : [],
       });
     }
     updateProject(project.id, { room: { ...draft, room: draft.room.trim(), chatId } });
@@ -98,6 +100,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
             )}
           </label>
           {!saved?.enabled && <RemoteLockedHint className="-mt-2" />}
+          {draft.enabled && !boss && <p className="-mt-2 text-xs text-destructive">{t("room.noOrchestrator")}</p>}
           {saved?.enabled && state?.status === "error" && state.detail && <p className="text-xs text-destructive break-words">{state.detail}</p>}
 
           <div className="grid gap-1.5">
@@ -171,7 +174,7 @@ export function RoomDialog({ projectId, open, onOpenChange }: { projectId: strin
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          <Button onClick={save} disabled={draft.enabled && !ready}>{t("common.save")}</Button>
+          <Button onClick={save} disabled={draft.enabled && (!ready || !boss)}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

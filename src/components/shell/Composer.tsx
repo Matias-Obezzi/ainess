@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROVIDERS, parseSuggestion } from "@/lib/providers";
 import { isChatActive, subscribeChatActivity } from "@/lib/chat";
+import { isRoomChat } from "@/lib/room";
 import { isTypedPrompt } from "@/lib/thread-turns";
 import { UsageDialog } from "@/components/UsageDialog";
 import { COMMANDS, clearSessions, compactProject, parseCommand, type ChatCommand } from "@/lib/commands";
@@ -377,8 +378,24 @@ function ChatParticipantModel({ chatId, participants, index, agent, name }: {
   );
 }
 
-/** The input pinned at the bottom of the project screen: orchestrator prompt or chat message. */
+/** The bottom of the project screen. A room's chat is a record: nobody writes in it, so no input. */
 export function Composer() {
+  const t = useT();
+  const currentProjectId = useCurrentProjectId();
+  const readOnly = useAppStore(state => {
+    const chatId = selectProjectChatId(state, currentProjectId);
+    return !!chatId && isRoomChat(chatId);
+  });
+  if (!readOnly) return <ComposerBox />;
+  return (
+    <div className="border-t border-border p-3 shrink-0 bg-background">
+      <p className="max-w-3xl mx-auto text-xs text-muted-foreground">{t("room.readOnlyHint")}</p>
+    </div>
+  );
+}
+
+/** The input pinned at the bottom of the project screen: orchestrator prompt or chat message. */
+function ComposerBox() {
   const t = useT();
   const config = useAppStore(state => state.config);
   const currentProjectId = useCurrentProjectId();

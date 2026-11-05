@@ -1,13 +1,16 @@
-// A project's room: its shared chat, spoken across machines. What is written in the chat goes out
-// signed; what comes in from machines the user allowed lands in the chat as theirs, and the local
-// agents answer it the way they answer a person — unless it was meant for somebody else, or the
-// agents have been talking among themselves for too long (see `shouldAnswer`).
+// A project's room: a channel between the orchestrators of different machines, with no people in
+// it. The orchestrator speaks with a ```room block, which goes out signed; what comes in from
+// machines the user allowed reaches its main thread, unless it was meant for somebody else or the
+// machines have been talking among themselves for too long (see `shouldAnswer`). The room's chat
+// is the read-only record of all of it.
 import { useSyncExternalStore } from "react";
-import { useAppStore, selectAgent } from "@/store";
+import { useAppStore, selectProjectAgents } from "@/store";
 import { translateNow } from "@/i18n/useT";
 import { log } from "@/lib/logger";
-import { appendChatMessage, isChatActive, startRoomTurn } from "@/lib/chat";
-import { isValidMessage, makeMessage, roomLabel, shouldAnswer, type RoomKind, type RoomMessage } from "./protocol";
+import { appendChatMessage } from "@/lib/chat";
+import { addMessage, instructAgent } from "@/lib/orchestrator";
+import { bossOf } from "@/lib/team";
+import { agentStreak, isValidMessage, makeMessage, roomLabel, shouldAnswer, type RoomKind, type RoomMessage } from "./protocol";
 import { openRoomTransport, type RoomStatus, type RoomTransport } from "./transports";
 import type { ChatMessage, Project, RoomConfig } from "@/types";
 
@@ -29,8 +32,8 @@ interface Hub {
 const hubs = new Map<string, Hub>();
 let states: Record<string, RoomState> = {};
 const listeners = new Set<() => void>();
-/** Chats that heard something while their agents were busy, to be answered once they are done. */
-const pending = new Set<string>();
+// shortcut: undelivered lines live in memory and are lost on restart, persist them if that turns out to matter
+const undelivered = new Map<string, string[]>();
 
 function setState(projectId: string, patch: Partial<RoomState>): void {
   const prev = states[projectId] ?? { status: "connecting", seen: {} };
@@ -74,7 +77,10 @@ function sync(): void {
     if (!project || connectionKey(project.room!) !== hub.key) {
       hub.transport.stop();
       hubs.delete(id);
-      if (!project) setState(id, { status: "connecting", detail: undefined, seen: {} });
+      if (!project) {
+        setState(id, { status: "connecting", detail: undefined, seen: {} });
+        undelivered.delete(id);
+      }
     }
   }
   for (const [id, project] of wanted) {
@@ -88,7 +94,7 @@ function connect(project: Project): void {
   const transport = openRoomTransport(room, {
     onStatus: (status, detail) => {
       setState(project.id, { status, detail });
-      if (status === "connected") void post(project.id, "", "", "hello");
+      if (status === "connected") void post(project.id, "", "", "hello").catch(() => {});
     },
     onMessage: raw => void receive(project.id, raw),
   });
@@ -102,11 +108,14 @@ function projectOf(projectId: string): Project | undefined {
 async function post(projectId: string, sender: string, text: string, kind: RoomKind): Promise<void> {
   const hub = hubs.get(projectId);
   const room = projectOf(projectId)?.room;
-  if (!hub || !room) return;
+  if (!hub || !room) throw new Error("room not connected");
   const me = machine();
   const message = await makeMessage(room.secret, { machine: me.id, machineName: me.name }, sender, text, kind);
   hub.ids.add(message.id);
-  await hub.transport.send(message).catch(e => log.warn("room", `could not send to ${room.room}: ${e instanceof Error ? e.message : String(e)}`));
+  await hub.transport.send(message).catch(e => {
+    log.warn("room", `could not send to ${room.room}: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  });
 }
 
 async function receive(projectId: string, raw: unknown): Promise<void> {
@@ -123,75 +132,71 @@ async function receive(projectId: string, raw: unknown): Promise<void> {
   setState(projectId, { seen: { ...seen, [m.machine]: m.machine_name } });
   if (m.kind === "hello") {
     // So the machine that just said hello sees this one too.
-    if (isNew) void post(projectId, "", "", "hello");
+    if (isNew) void post(projectId, "", "", "hello").catch(() => {});
     return;
   }
   if (!(m.machine in project.room.allowed)) return;
+  if (m.kind !== "agent") return;
 
   const chatId = project.room.chatId!;
   const message: ChatMessage = {
     id: crypto.randomUUID(),
     chatId,
     ts: Date.now(),
-    from: roomLabel(m, translateNow("room.human")),
+    from: roomLabel(m),
     text: m.text,
     room: { machine: m.machine, kind: m.kind },
   };
   await appendChatMessage(chatId, message);
-  answer(projectId, chatId);
+  const lines = [...(undelivered.get(projectId) ?? []), `[${message.from}] ${m.text}`].slice(-20);
+  undelivered.set(projectId, lines);
+
+  const boss = orchestratorOf(projectId);
+  if (!boss) return;
+  const logged = (useAppStore.getState().chatMessages[chatId] ?? []).filter(x => x.status !== "pending");
+  const knownNames = logged.filter(x => x.room).map(x => x.from.split(" @ ")[0]);
+  const streak = agentStreak(logged.map(x => x.ts), Date.now());
+  if (!shouldAnswer(m.text, [boss.name], knownNames, streak, project.room.maxTurns ?? DEFAULT_MAX_TURNS)) return;
+
+  undelivered.delete(projectId);
+  await instructAgent(boss.id, `${translateNow("prompt.room.incoming")}\n\n${lines.join("\n\n")}`, projectId, { from: "system" });
 }
 
-/** Who in the chat is local and which of its last messages were agents talking. */
-function roster(chatId: string) {
-  const state = useAppStore.getState();
-  const chat = state.config.chats.find(c => c.id === chatId);
-  const local = new Set(chat?.participants.map(p => p.agentId) ?? []);
-  const localNames = [...local].map(id => selectAgent(state, id)?.name ?? "").filter(Boolean);
-  const messages = (state.chatMessages[chatId] ?? []).filter(m => m.status !== "pending");
-  const isAgent = (m: ChatMessage) => m.room ? m.room.kind === "agent" : local.has(m.from);
-  let streak = 0;
-  for (let i = messages.length - 1; i >= 0 && isAgent(messages[i]); i--) streak++;
-  const knownNames = messages.filter(m => m.room?.kind === "agent").map(m => m.from.split(" @ ")[0]);
-  return { local, localNames, messages, streak, knownNames };
+function orchestratorOf(projectId: string) {
+  return bossOf(selectProjectAgents(useAppStore.getState(), projectId));
 }
 
-/** Lets the local agents answer what came in, now or once they finish what they are doing. */
-function answer(projectId: string, chatId: string): void {
-  if (isChatActive(chatId)) {
-    pending.add(chatId);
+/** Whether this agent is the one that speaks for its project in a room that is on and set up. */
+export function isRoomSpeaker(projectId: string, agentId: string): boolean {
+  return ready(projectOf(projectId)?.room) && orchestratorOf(projectId)?.id === agentId;
+}
+
+/**
+ * What the orchestrator said in a ```room block: out to the room, and into the record.
+ * A message that could not leave is said in the thread and not recorded as sent.
+ */
+export async function roomSay(projectId: string, agentName: string, text: string, runId?: string): Promise<void> {
+  try {
+    await post(projectId, agentName, text, "agent");
+  } catch {
+    addMessage({ projectId, fromAgentId: "system", kind: "system", text: translateNow("room.notSent", { text }), runId });
     return;
   }
-  const { local, localNames, messages, streak, knownNames } = roster(chatId);
-  const last = messages[messages.length - 1];
-  const max = projectOf(projectId)?.room?.maxTurns ?? DEFAULT_MAX_TURNS;
-  if (!last || !shouldAnswer(last.text, localNames, knownNames, streak, max)) return;
-
-  // Everything since the local agents last spoke: that is what they have not read yet.
-  let start = messages.length;
-  while (start > 0 && !local.has(messages[start - 1].from)) start--;
+  const chatId = projectOf(projectId)?.room?.chatId;
+  if (!chatId) return;
   const me = machine();
-  const userName = useAppStore.getState().config.profile?.name?.trim() || translateNow("room.human");
-  const lines = messages.slice(start).map(m => `[${m.from === "user" ? `${userName} @ ${me.name}` : m.from}] ${m.text}`);
-  void startRoomTurn(chatId, lines.join("\n\n"));
+  await appendChatMessage(chatId, {
+    id: crypto.randomUUID(),
+    chatId,
+    ts: Date.now(),
+    from: `${agentName} @ ${me.name}`,
+    text,
+    room: { machine: me.id, kind: "agent" },
+  }).catch(e => log.warn("room", `could not record a sent message: ${e instanceof Error ? e.message : String(e)}`));
 }
-
-// ---- what the chat tells the room ----
 
 function roomOfChat(chatId: string): Project | undefined {
   return useAppStore.getState().config.projects.find(p => p.room?.enabled && p.room.chatId === chatId);
-}
-
-/** Something said in a room's chat on this machine — by the user or by one of its agents — goes out. */
-export function roomPublish(chatId: string, sender: string, text: string, kind: "human" | "agent"): void {
-  const project = roomOfChat(chatId);
-  if (project && hubs.has(project.id)) void post(project.id, sender, text, kind);
-}
-
-/** The chat's agents are done: whatever came in meanwhile gets its answer now. */
-export function roomTurnDone(chatId: string): void {
-  if (!pending.delete(chatId)) return;
-  const project = roomOfChat(chatId);
-  if (project) answer(project.id, chatId);
 }
 
 export function isRoomChat(chatId: string): boolean {

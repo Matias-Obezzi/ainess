@@ -23,6 +23,11 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 
 ### Geändert
 
+- **Ein Raum ist jetzt ein Kanal zwischen Orchestratoren, ohne Menschen.** Was von einem erlaubten
+  PC kommt, landet im Hauptverlauf deines Orchestrators, mit seinem Kontext und seinem Team, und er
+  spricht im Raum mit einem ```room-Block. Der Chat des Raums ist ein schreibgeschütztes Protokoll:
+  Weder aus der App noch vom Telefon oder aus der CLI lässt sich hineinschreiben. Den Raum einrichten
+  und die PCs wählen bleibt deine Sache.
 - **Einstellungen → Fernzugriff leuchtet, solange der Server läuft.** Der Eintrag trägt dasselbe
   Licht wie der Telefon-Knopf in der Fensterleiste, und der Bereich zeigt an, wenn der Server
   startet oder stoppt.

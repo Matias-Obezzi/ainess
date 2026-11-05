@@ -1080,6 +1080,19 @@ function noteSection(): string {
   ].join("\n");
 }
 
+/** The ```room block: how an orchestrator speaks to the orchestrators of other machines. */
+function roomSection(): string {
+  const t = translateNow;
+  return [
+    t("prompt.room.header"),
+    t("prompt.room.intro"),
+    "```room",
+    t("prompt.room.example"),
+    "```",
+    t("prompt.room.rules"),
+  ].join("\n");
+}
+
 /**
  * The ```suggest block: the reply the user is most likely about to type, offered in grey.
  *
@@ -1169,7 +1182,7 @@ function briefly(text: string): string {
   return flat.length > 160 ? `${flat.slice(0, 159)}…` : flat;
 }
 
-export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus }; noBoard?: boolean }): string {
+export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], extras?: { skills: Skill[]; sharedContext: string; profile?: { name: string; about: string; preferences: string }; autoModel?: boolean; tasks?: Task[]; agentName?: (id: string) => string | undefined; others?: AgentConfig[]; fromUser?: boolean; resuming?: boolean; historyFile?: string; chat?: { role: string; others: { name: string; role: string }[] }; teammates?: { name: string; task: string }[]; canNote?: boolean; card?: { id: string; title: string; status: TaskStatus }; noBoard?: boolean; room?: boolean }): string {
   const t = translateNow;
   let prompt = "";
 
@@ -1225,6 +1238,7 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
         parts.push(resultSection());
         if (!extras.noBoard) parts.push(taskSection(extras.card, agent.role === "planner"));
       }
+      if (extras.room) parts.push(roomSection());
       for (const part of parts) prompt += (prompt ? "\n\n" : "") + part;
       return prompt;
     }
@@ -1332,6 +1346,9 @@ export function buildSystemPrompt(agent: AgentConfig, children: AgentConfig[], e
     if (!extras.noBoard) prompt += (prompt ? "\n\n" : "") + taskSection(extras.card, agent.role === "planner");
   }
 
+  // Here and not beside the delegate block: the orchestrator can be an agent with nobody under it.
+  if (extras?.room) prompt += (prompt ? "\n\n" : "") + roomSection();
+
   if (agent.systemPrompt) {
     prompt += (prompt ? "\n\n" : "") + agent.systemPrompt;
   }
@@ -1365,7 +1382,7 @@ export interface ParsedQuestion {
  * without at least two options is dropped — a question with one answer is not a question.
  */
 /** The fences the app reads as instructions rather than as code to show. */
-const PROTOCOL_FENCE = /^(delegate|ask|note|suggest|result|task)\b/;
+const PROTOCOL_FENCE = /^(delegate|ask|note|suggest|result|task|room)\b/;
 
 /**
  * `text` with every code block blanked out, except the app's own blocks.
@@ -1524,6 +1541,22 @@ export function parseNotes(text: string): string[] {
   while ((match = regex.exec(text)) !== null) {
     const note = match[1].trim();
     if (note) out.push(note);
+  }
+  return out;
+}
+
+/**
+ * The `room` blocks of an answer, in the order they were written. Read like `note`, except that a
+ * block quoted inside code stays there: an example of the format must not reach another machine.
+ */
+export function parseRoomMessages(text: string): string[] {
+  text = outsideCode(text);
+  const out: string[] = [];
+  const regex = /```room[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const message = match[1].trim();
+    if (message) out.push(message);
   }
   return out;
 }

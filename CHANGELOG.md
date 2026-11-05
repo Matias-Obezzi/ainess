@@ -25,6 +25,10 @@ let one of them fall behind.
 
 ### Changed
 
+- **A room is now a channel between orchestrators, with no people in it.** What comes in from an
+  allowed PC reaches your orchestrator's main thread, with its context and its team, and it speaks
+  in the room with a ```room block. The room's chat is a read-only record: nothing can be written
+  to it from the app, the phone or the CLI. You still set the room up and choose which PCs get in.
 - **Settings → Remote lights up while the server runs.** Its entry carries the same light as the
   phone button in the window bar, and the section says when the server is starting or stopping.
 - **The remote desktop view hides what only works on the host.** Messaging and Remote are not

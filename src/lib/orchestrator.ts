@@ -3,10 +3,11 @@ import { setAgentCommands } from "@/lib/agent-commands";
 import { formFields } from "@/lib/acp/form";
 import { askLive, cancelLiveRequests, onLiveRequestAdded } from "@/lib/live-requests";
 import { hasBoard } from "@/lib/board/registry";
+import { isRoomSpeaker, roomSay } from "@/lib/room";
 import { useAppStore, selectChildren, selectAgent, selectProjectAgents, selectSkillsFor, selectMcpFor, saveJsonMapSoon, QUESTION_DRAFTS_KEY, type AppState } from "@/store";
 import { getTransport } from "@/lib/transport";
 import type { Approval, VerifyCommand } from "@/types";
-import { PROVIDERS, buildSystemPrompt, resolveModelName, parseDelegations, delegationError, parseQuestions, parseNotes, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
+import { PROVIDERS, buildSystemPrompt, resolveModelName, parseDelegations, delegationError, parseQuestions, parseNotes, parseRoomMessages, parseResult, parseTaskOps, finalOutputFromLines, TASK_STATUS_KEY } from "@/lib/providers";
 import { recordAntigravityOutcome, outOfQuota, alternativeModels } from "@/lib/quota";
 import { summarizeTool } from "@/lib/tool-summary";
 import { trimMessagesInMemory, trimRunsInMemory, interruptedOutput, TRIM_MESSAGES_AT } from "@/lib/history";
@@ -270,6 +271,7 @@ export function flushStream() {
     const streamed = current.messages.find(m => m.id === `text-${runId}`);
     if (streamed) {
       emitNewNotes(run, streamed.text);
+      emitNewRoomMessages(run, streamed.text);
       applyNewTaskOps(run, streamed.text);
     }
   }
@@ -277,6 +279,9 @@ export function flushStream() {
 
 /** How many `note` blocks of a run already reached the feed, so none is handed over twice. */
 const notesEmitted = new Map<string, number>();
+
+/** How many `room` blocks of a run already went out, so none is said twice. */
+const roomMessagesEmitted = new Map<string, number>();
 
 /** How many `task` blocks of a run already took effect on the board, so none is applied twice. */
 const taskOpsApplied = new Map<string, number>();
@@ -297,6 +302,17 @@ function emitNewNotes(run: Run, text: string): void {
     addMessage({ projectId: run.projectId, fromAgentId: run.agentId, toAgentId, kind: "note", text: note, runId: run.id });
   }
   notesEmitted.set(run.id, notes.length);
+}
+
+/** Same as `emitNewNotes`, for what the orchestrator says in the room. Nobody else speaks there. */
+function emitNewRoomMessages(run: Run, text: string): void {
+  if (run.kind === "chat" || !isRoomSpeaker(run.projectId, run.agentId)) return;
+  const messages = parseRoomMessages(text);
+  const already = roomMessagesEmitted.get(run.id) ?? 0;
+  if (messages.length <= already) return;
+  const name = selectAgent(useAppStore.getState(), run.agentId)?.name ?? run.agentId;
+  for (const message of messages.slice(already)) void roomSay(run.projectId, name, message, run.id);
+  roomMessagesEmitted.set(run.id, messages.length);
 }
 
 function applyNewTaskOps(run: Run, text: string): void {
@@ -840,6 +856,7 @@ function launchRun(runId: string, opts: StartRunOptions): void {
     canNote: opts.parentRunId !== null,
     card: noBoard ? undefined : card,
     noBoard,
+    room: isRoomSpeaker(opts.projectId, agent.id),
   });
 
   const configuredMcp = selectMcpFor(store, agent.id);
@@ -1654,6 +1671,8 @@ function onRunFinished(runId: string) {
     // whose block closed on the very last delta. What was handed over already is skipped.
     emitNewNotes(run, run.output);
     notesEmitted.delete(run.id);
+    emitNewRoomMessages(run, run.output);
+    roomMessagesEmitted.delete(run.id);
     applyNewTaskOps(run, run.output);
     taskOpsApplied.delete(run.id);
     for (const key of toolFailures.keys()) {
@@ -2984,13 +3003,13 @@ export async function sendNowInterrupting(agentId: string, projectId: string): P
   await stopAgent(agentId, projectId);
 }
 
-export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string }): Promise<void> {
+export async function instructAgent(agentId: string, text: string, projectId: string, opts?: { model?: string; from?: string }): Promise<void> {
   const store = useAppStore.getState();
   // The agent has to belong to this project's team: nobody else can be given work here.
   if (!selectProjectAgents(store, projectId).some(a => a.id === agentId)) return;
   const runtime = store.runtime[projectId]?.[agentId];
 
-  addMessage({ projectId, fromAgentId: "user", toAgentId: agentId, kind: "instruction", text });
+  addMessage({ projectId, fromAgentId: opts?.from ?? "user", toAgentId: agentId, kind: "instruction", text });
 
   // A planner that delegated has nothing of its own running: it can take this and plan again while
   // its implementers work, instead of holding it until the whole round comes back.

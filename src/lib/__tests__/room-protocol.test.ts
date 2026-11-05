@@ -1,6 +1,6 @@
 // The room's messages must be signed exactly as ai-connector signs them, or the two never agree.
 import { describe, it, expect } from "vitest";
-import { canonical, isPass, isValidMessage, makeMessage, shouldAnswer } from "@/lib/room/protocol";
+import { agentStreak, canonical, isValidMessage, makeMessage, QUIET_MS, shouldAnswer } from "@/lib/room/protocol";
 
 // Signed by ai-connector's own `connector._digest` (Python), key "clave-sala".
 const FROM_PYTHON = {
@@ -33,6 +33,15 @@ describe("room protocol", () => {
     expect(shouldAnswer("@Arquitecto revisá esto", ["Planner"], ["Arquitecto"], 0, 6)).toBe(false);
     expect(shouldAnswer("@planner y @Arquitecto", ["Planner"], ["Arquitecto"], 0, 6)).toBe(true);
     expect(shouldAnswer("sigo", ["Planner"], [], 6, 6)).toBe(false);
-    expect(isPass(" [PASO] ")).toBe(true);
+  });
+
+  it("counts the messages of the conversation still going on", () => {
+    const now = 100 * QUIET_MS;
+    expect(agentStreak([], now)).toBe(0);
+    expect(agentStreak([now - 2000, now - 1000, now], now)).toBe(3);
+    // A gap that long ended the conversation before it.
+    expect(agentStreak([now - 3 * QUIET_MS, now - 1000, now], now)).toBe(2);
+    // The last message is old: nothing is going on any more.
+    expect(agentStreak([now - QUIET_MS - 2, now - QUIET_MS - 1], now)).toBe(0);
   });
 });

@@ -1,3 +1,4 @@
+import { isRoomChat } from "@/lib/room";
 import { hasBoard } from "@/lib/board/registry";
 import { create } from "zustand";
 import { AppConfig, AgentConfig, AgentQuestion, AgentWorktree, Binaries, AgentRuntime, Run, CommMessage, Skill, McpServer, Project, Formation, ProviderId, Chat, ChatMessage, ChatParticipant, Approval, AppNotification, ModelInfo, ProviderQuota, ShellInfo, TerminalTab, Task, TaskStatus, DockSectionId, EditorInfo, FilePreview, AcpSetupPhase, ClaudeAuthStatus } from "@/types";
@@ -2832,6 +2833,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
+    if (isRoomChat(chatId)) return;
     // Stopping is awaited so the turn is closed before the next one opens. The flush that follows a
     // stop finds the queue already empty, so this does not go out twice.
     await get().stopChat(chatId);
@@ -2849,7 +2851,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set(state => ({
       chatQueues: { ...state.chatQueues, [chatId]: (state.chatQueues[chatId] ?? []).slice(queued.length) },
     }));
-    if (!text) return;
+    // A room's chat takes nothing from anyone: whatever was queued before it became one is dropped.
+    if (!text || isRoomChat(chatId)) return;
     await get().sendChatMessage(chatId, text);
   },
 

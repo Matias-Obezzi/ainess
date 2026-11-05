@@ -23,6 +23,10 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 
 ### Cambiado
 
+- **Una sala ahora es un canal entre orquestadores, sin personas.** Lo que llega de una PC permitida
+  entra al hilo principal de tu orquestador, con su contexto y su equipo, y él habla en la sala con
+  un bloque ```room. El chat de la sala es un registro de solo lectura: no se puede escribir en él
+  desde la app, el teléfono ni el CLI. Configurar la sala y elegir qué PCs entran sigue siendo tuyo.
 - **Configuración → Remoto se ilumina mientras el servidor corre.** Su entrada lleva la misma luz
   que el botón del teléfono de la barra de la ventana, y la sección avisa cuando el servidor está
   arrancando o apagándose.

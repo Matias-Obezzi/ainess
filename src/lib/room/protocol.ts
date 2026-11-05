@@ -69,16 +69,17 @@ export async function isValidMessage(m: unknown, secret: string): Promise<boolea
 }
 
 /** How a message is shown and quoted: who said it, on which machine. */
-export function roomLabel(m: Pick<RoomMessage, "sender" | "machine_name">, human: string): string {
-  return `${m.sender || human} @ ${m.machine_name}`;
+export function roomLabel(m: Pick<RoomMessage, "sender" | "machine_name">): string {
+  return `${m.sender} @ ${m.machine_name}`;
 }
 
 /**
  * Whether the local agents should answer `text` at all.
  *
  * A message that names somebody with `@` is for them: when it names agents and none of ours, ours
- * keep quiet. And after `maxTurns` agent messages in a row with no human in between, everybody
- * stops — two machines whose agents answer each other would otherwise go on forever.
+ * keep quiet. And after `maxTurns` messages in a row with no quiet stretch in between (see
+ * `agentStreak`), everybody stops — two machines whose agents answer each other would otherwise go
+ * on forever.
  */
 export function shouldAnswer(text: string, localNames: string[], knownNames: string[], agentStreak: number, maxTurns: number): boolean {
   if (agentStreak >= maxTurns) return false;
@@ -88,10 +89,14 @@ export function shouldAnswer(text: string, localNames: string[], knownNames: str
   return mentioned.some(n => localNames.some(l => l.toLowerCase() === n.toLowerCase()));
 }
 
-/** What an agent answers when it has nothing to add (ai-connector's word for it). */
-export const PASS = "[PASO]";
+/** This long without a message and the conversation counts as over: the turn limit starts again. */
+export const QUIET_MS = 10 * 60_000;
 
-export function isPass(text: string): boolean {
-  const t = text.trim();
-  return t === PASS || t === "[PASS]";
+/** How many of the last messages, oldest first, belong to the conversation still going on at `now`. */
+export function agentStreak(timestamps: number[], now: number): number {
+  const last = timestamps.length - 1;
+  if (last < 0 || now - timestamps[last] > QUIET_MS) return 0;
+  let streak = 1;
+  for (let i = last; i > 0 && timestamps[i] - timestamps[i - 1] < QUIET_MS; i--) streak++;
+  return streak;
 }
