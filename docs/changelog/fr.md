@@ -44,6 +44,10 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
 - **Le distant s'ouvre dans la vue qui convient à l'appareil.** Le navigateur d'un ordinateur va
   droit à la vue bureau, un téléphone ou une tablette reste sur la page du téléphone. Le bouton
   pour changer de vue l'emporte, et ce navigateur s'en souvient.
+- **L'onglet de communication est plus calme.** Une réponse n'apparaît plus deux fois (le texte
+  complet et un résultat tronqué), le nom du chat est une petite étiquette au-dessus du message au
+  lieu de `[Chat: …]` dans le texte, et chaque ligne a moins d'ornements : le type en mot, un point
+  plus petit et la vue brute seulement au survol ou au focus. Ce qui est enregistré ne change pas.
 
 ## 0.32.0 — 2026-10-22
 

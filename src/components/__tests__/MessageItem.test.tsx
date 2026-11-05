@@ -50,6 +50,19 @@ describe("MessageItem", () => {
     }
   });
 
+  it("pulls the chat label out of the body", () => {
+    const out = html(message("result", "[Chat: Room: dev] listo"));
+    expect(out).toContain("Room: dev");
+    expect(out).not.toContain("[Chat:");
+    expect(out).toContain("listo");
+  });
+
+  it("pulls the chat label out of a text row too", () => {
+    const out = html(message("text", "[Chat: Room: dev] listo"));
+    expect(out).toContain("Room: dev");
+    expect(out).not.toContain("[Chat:");
+  });
+
   it("keeps a heading from swallowing the line it was never meant to be", () => {
     // `#` at the start of a tool summary is a path fragment, not a title.
     const out = html(message("tool", "Grep #region in src"));

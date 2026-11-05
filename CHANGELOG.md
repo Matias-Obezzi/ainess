@@ -44,6 +44,10 @@ let one of them fall behind.
 - **The remote opens in the view that fits the device.** A computer's browser goes straight to the
   desktop view and a phone or tablet stays on the phone page. The switch button in either view
   wins, and that browser remembers it.
+- **The communication tab is quieter.** A reply no longer shows twice (the full text and a cut-off
+  result), the chat name is a small label above the message instead of `[Chat: …]` in the text, and
+  each row has less chrome: a plain kind word, a smaller dot, and the raw-view button only on hover
+  or focus. Nothing stored changes.
 
 ## 0.32.0 — 2026-10-22
 

@@ -3,6 +3,7 @@ import { useAppStore, selectProjectAgents } from "@/store";
 import { stickToBottom as stick } from "@/lib/stick-to-bottom";
 import { windowOf, isNearBottom } from "@/lib/feed-window";
 import { MessageItem } from "./MessageItem";
+import { withoutRepeatedResults } from "@/lib/comm-feed";
 import { plural } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -100,15 +101,16 @@ export function CommunicationPanel() {
     });
   };
 
-  const filteredMessages = messages.filter(m => {
-    if (filterAgent !== "all" && m.fromAgentId !== filterAgent && m.toAgentId !== filterAgent) {
-      return false;
-    }
-    if (!filterKinds.has(m.kind)) {
-      return false;
-    }
-    return true;
-  });
+  // Repeats go last, so turning `Text` off still leaves the `Result` on screen.
+  const filteredMessages = useMemo(
+    () => withoutRepeatedResults(messages.filter(m => {
+      if (filterAgent !== "all" && m.fromAgentId !== filterAgent && m.toAgentId !== filterAgent) {
+        return false;
+      }
+      return filterKinds.has(m.kind);
+    })),
+    [messages, filterAgent, filterKinds],
+  );
 
   const { shown, hidden } = windowOf(filteredMessages, limit);
 

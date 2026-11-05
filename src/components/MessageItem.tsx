@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { kindLabelKey } from "@/lib/status-labels";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import { splitChatPrefix } from "@/lib/comm-feed";
 import { FileText } from "lucide-react";
 import { MessageDetailDialog } from "./MessageDetailDialog";
 import { ErrorMessage } from "./ErrorMessage";
@@ -45,10 +46,15 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
 
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Only what chat.ts writes (user, result, and a text that took its result's place) carries the label; the raw view keeps the original.
+  const { chat, body } = message.kind === "user" || message.kind === "result" || message.kind === "text"
+    ? splitChatPrefix(message.text)
+    : { chat: undefined, body: message.text };
+
   return (
     <>
       <div 
-        className={cn("flex flex-col gap-1 p-3 text-sm border-b border-border min-w-0", isDelegation && "border-l-4")}
+        className={cn("group flex flex-col gap-1 px-3 py-2 text-sm border-b border-border min-w-0", isDelegation && "border-l-4")}
         style={isDelegation ? { borderLeftColor: toColor } : undefined}
       >
         {/*
@@ -58,7 +64,7 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
           than the space it has.
         */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: fromColor }} />
+          <div className="w-2 h-2 shrink-0 rounded-full" style={{ backgroundColor: fromColor }} />
           <span className="font-semibold truncate">{fromName}</span>
           {message.toAgentId && (
             <>
@@ -67,13 +73,20 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
             </>
           )}
           <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeStr}</span>
-          <Badge variant="outline" className="shrink-0">{t(kindLabelKey[message.kind]) || message.kind}</Badge>
+          <span
+            className={cn(
+              "text-[10px] uppercase tracking-wide shrink-0",
+              message.kind === "error" ? "text-destructive font-semibold" : "text-muted-foreground",
+            )}
+          >
+            {t(kindLabelKey[message.kind]) || message.kind}
+          </span>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 ml-1 text-muted-foreground"
+                className="h-5 w-5 ml-1 shrink-0 text-muted-foreground [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                 aria-label={t("messageDetail.viewRaw")}
                 onClick={() => setDetailOpen(true)}
               >
@@ -85,10 +98,13 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
             </TooltipContent>
           </Tooltip>
         </div>
+        {chat && (
+          <Badge variant="secondary" className="max-w-full self-start truncate">{chat}</Badge>
+        )}
         {message.kind === "error" ? (
           <ErrorMessage text={message.text} className="mt-1" />
         ) : isProse ? (
-          <Markdown text={message.text} className="mt-1" />
+          <Markdown text={body} className="mt-1" />
         ) : (
           <div
             className={cn(
@@ -98,7 +114,7 @@ export const MessageItem = memo(function MessageItem({ message }: { message: Com
             )}
             title={message.kind === "tool" && message.meta?.failed && message.meta?.error ? message.meta.error : undefined}
           >
-            {message.text}
+            {body}
           </div>
         )}
       </div>

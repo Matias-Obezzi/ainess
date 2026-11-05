@@ -45,6 +45,10 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
 - **Der Fernzugriff öffnet in der Ansicht, die zum Gerät passt.** Der Browser eines Computers geht
   direkt zur Desktop-Ansicht, Telefon und Tablet bleiben auf der Telefonseite. Der Umschaltknopf
   in beiden Ansichten hat Vorrang, und der Browser merkt ihn sich.
+- **Der Kommunikations-Tab ist ruhiger.** Eine Antwort erscheint nicht mehr doppelt (der volle Text
+  und ein abgeschnittenes Ergebnis), der Chat-Name ist ein kleines Label über der Nachricht statt
+  `[Chat: …]` im Text, und jede Zeile hat weniger Beiwerk: den Typ als Wort, einen kleineren Punkt und
+  die Rohansicht nur bei Hover oder Fokus. Gespeichertes ändert sich nicht.
 
 ## 0.32.0 — 2026-10-22
 

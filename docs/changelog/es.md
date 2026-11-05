@@ -43,6 +43,10 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
 - **El remoto abre en la vista que corresponde al dispositivo.** El navegador de una computadora
   va directo a la vista de escritorio y un teléfono o una tablet se quedan en la página del
   teléfono. El botón para cambiar de vista manda, y ese navegador lo recuerda.
+- **La pestaña de comunicación es más tranquila.** Una respuesta ya no aparece dos veces (el texto
+  completo y un resultado cortado), el nombre del chat es una etiqueta chica sobre el mensaje en
+  lugar de `[Chat: …]` dentro del texto, y cada fila tiene menos adornos: el tipo como palabra, un
+  punto más chico y el botón de vista cruda solo al pasar el puntero o con foco. Lo guardado no cambia.
 
 ## 0.32.0 — 2026-10-22
 
