@@ -198,6 +198,13 @@ export const zh = {
     error: '出了点问题',
     undo: '撤销',
   },
+  'context-meter': {
+    trigger: (percent: number) => `上下文窗口已用 ${percent}%`,
+    title: '上下文窗口',
+    usage: (used: string, limit: string) => `已用 ${used} / ${limit} 个 token`,
+    compact: '压缩',
+    nearlyFull: '快满了。压缩会总结较早的对话以腾出空间。',
+  },
   'copy-button': {
     copy: '复制',
     copied: '已复制',

@@ -206,6 +206,13 @@ export const fr = {
     error: 'Une erreur est survenue',
     undo: 'Annuler',
   },
+  'context-meter': {
+    trigger: (percent: number) => `Fenêtre de contexte remplie à ${percent} %`,
+    title: 'Fenêtre de contexte',
+    usage: (used: string, limit: string) => `${used} sur ${limit} jetons`,
+    compact: 'Compacter',
+    nearlyFull: 'Presque pleine. Compacter résume les anciens échanges pour faire de la place.',
+  },
   'copy-button': {
     copy: 'Copier',
     copied: 'Copié',

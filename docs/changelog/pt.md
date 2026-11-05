@@ -20,6 +20,13 @@ As versões anteriores à 0.6.0 estão, em inglês, no CHANGELOG do repositório
   a aprovação automática desliga, nunca liga. Um servidor MCP http adicionado ou alterado ali não
   pode usar `${VAR}` no endereço nem nos headers, e um que já envia headers, variáveis ou um login
   mantém seu endereço.
+- **Um medidor de quão pesada está a conversa.** O composer mostra um anel pequeno para o agente com
+  quem você fala, que vai se enchendo até o ponto em que a sessão dele se compacta sozinha. Ele abre
+  um detalhamento e, perto do limite, um botão Compactar. Aparece só na conversa do orquestrador no
+  desktop, e só para provedores que informam o uso.
+- **Renomear um chat pela própria linha.** «Renomear» no menu de um chat transforma o nome em um
+  campo ali mesmo: Enter salva, Esc devolve o nome anterior e um nome vazio é recusado. O diálogo de
+  antes agora é «Editar».
 
 ### Alterado
 

@@ -47,6 +47,13 @@ export const ja = {
     title: 'コマンドメニュー',
     description: 'コマンドやページを検索',
   },
+  'context-meter': {
+    trigger: (percent: number) => `コンテキストウィンドウ ${percent}% 使用中`,
+    title: 'コンテキストウィンドウ',
+    usage: (used: string, limit: string) => `${limit}トークン中 ${used}`,
+    compact: '圧縮',
+    nearlyFull: 'ほぼいっぱいです。圧縮すると古いやり取りが要約され、空きができます。',
+  },
   'copy-button': {
     copy: 'コピー',
     copied: 'コピーしました',
@@ -80,6 +87,12 @@ export const ja = {
     home: 'Home',
     end: 'End',
     plus: 'プラス',
+  },
+  'inline-edit': {
+    placeholder: '空',
+    saveError: '保存できませんでした。もう一度お試しください。',
+    saving: '保存中…',
+    saved: '保存しました',
   },
   'multi-select': {
     placeholder: '選択…',

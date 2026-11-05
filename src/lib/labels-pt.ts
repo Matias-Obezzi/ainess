@@ -202,6 +202,13 @@ export const pt = {
     error: 'Algo deu errado',
     undo: 'Desfazer',
   },
+  'context-meter': {
+    trigger: (percent: number) => `Janela de contexto ${percent}% cheia`,
+    title: 'Janela de contexto',
+    usage: (used: string, limit: string) => `${used} de ${limit} tokens`,
+    compact: 'Compactar',
+    nearlyFull: 'Quase cheia. Compactar resume as trocas mais antigas para abrir espaço.',
+  },
   'copy-button': {
     copy: 'Copiar',
     copied: 'Copiado',

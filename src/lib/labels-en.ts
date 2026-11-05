@@ -199,6 +199,13 @@ export const en = {
     error: 'Something went wrong',
     undo: 'Undo',
   },
+  'context-meter': {
+    trigger: (percent: number) => `Context window ${percent}% full`,
+    title: 'Context window',
+    usage: (used: string, limit: string) => `${used} of ${limit} tokens`,
+    compact: 'Compact',
+    nearlyFull: 'Nearly full. Compacting summarizes older turns to make room.',
+  },
   'copy-button': {
     copy: 'Copy',
     copied: 'Copied',

@@ -201,6 +201,13 @@ export const es = {
     error: 'Algo salió mal',
     undo: 'Deshacer',
   },
+  'context-meter': {
+    trigger: (percent: number) => `Ventana de contexto al ${percent}%`,
+    title: 'Ventana de contexto',
+    usage: (used: string, limit: string) => `${used} de ${limit} tokens`,
+    compact: 'Compactar',
+    nearlyFull: 'Casi llena. Compactar resume los turnos más viejos para hacer lugar.',
+  },
   'copy-button': {
     copy: 'Copiar',
     copied: 'Copiado',

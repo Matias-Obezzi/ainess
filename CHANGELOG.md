@@ -22,6 +22,13 @@ let one of them fall behind.
   Permissions, approvals and rooms can only be tightened: auto-approve goes off, never on. An http
   MCP server added or changed there can't use `${VAR}` in its address or headers, and one that
   already sends headers, variables or a sign-in keeps its address.
+- **A gauge for how heavy the conversation is.** The composer shows a small ring for the agent you
+  are talking to, filling toward the point where its session compacts on its own. It opens a
+  breakdown and, once close, a Compact button. It only appears in the orchestrator's thread on
+  desktop, and only for providers that report their usage.
+- **Rename a chat from its row.** "Rename" in a chat's menu turns its name into a field right there:
+  Enter saves, Escape puts the old name back, and an empty name is refused. The old dialog is now
+  "Edit".
 
 ### Changed
 

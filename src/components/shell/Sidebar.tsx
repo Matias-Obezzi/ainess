@@ -1,5 +1,5 @@
 import { hasBoard } from "@/lib/board/registry";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useAppStore, selectProjectAgents, PANE_MIN_WIDTH, PANE_MAX_WIDTH } from "@/store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { ProjectDialog } from "@/components/ProjectDialog";
 import { RoomDialog } from "@/components/RoomDialog";
 import { GitStatusLine } from "@/components/GitStatus";
 import { ChatDialog } from "@/components/ChatDialog";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import { toast } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
 import { openFolder, openInEditor } from "@/lib/open-external";
@@ -76,12 +77,22 @@ export function Sidebar() {
   const setCurrentProject = useAppStore(state => state.setCurrentProject);
   const removeProject = useAppStore(state => state.removeProject);
   const removeChat = useAppStore(state => state.removeChat);
+  const updateChat = useAppStore(state => state.updateChat);
 
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [roomProjectId, setRoomProjectId] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | undefined>(undefined);
+  // The chat whose name is a text field right now.
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  // Set when the menu closes because "Rename" was picked: Radix would hand focus back to the row and blur the field.
+  const renameRequested = useRef(false);
+  const keepFocusForRename = (e: Event) => {
+    if (!renameRequested.current) return;
+    renameRequested.current = false;
+    e.preventDefault();
+  };
 
   // A chat's "is it answering right now" lives outside the store. Subscribed to rather than polled:
   // the poll re-rendered the whole sidebar every 800ms, idle or not, for as long as the app was open.
@@ -281,7 +292,16 @@ export function Sidebar() {
       icon: MessageCircle,
       onSelect: () => openProject(projectId, chat.id),
     },
-    { key: "rename", label: t("common.rename"), icon: Pencil, onSelect: () => editChat(chat.id) },
+    {
+      key: "rename",
+      label: t("common.rename"),
+      icon: Pencil,
+      onSelect: () => {
+        renameRequested.current = true;
+        setRenamingChatId(chat.id);
+      },
+    },
+    { key: "edit", label: t("common.edit"), icon: Pencil, onSelect: () => editChat(chat.id) },
     {
       key: "delete",
       label: t("common.delete"),
@@ -339,12 +359,20 @@ export function Sidebar() {
                   className={`group/chat flex items-center gap-2 rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-accent ${
                     selected ? "bg-accent font-medium" : "text-muted-foreground"
                   }`}
-                  onClick={() => openProject(p.id, chat.id)}
+                  onClick={renamingChatId === chat.id ? undefined : () => openProject(p.id, chat.id)}
                 >
                   {chat.mode === "shared"
                     ? <Users className="h-3.5 w-3.5 shrink-0" />
                     : <MessageCircle className="h-3.5 w-3.5 shrink-0" />}
-                  <span className="truncate flex-1">{chat.name}</span>
+                  {renamingChatId === chat.id ? (
+                    <ChatRename
+                      name={chat.name}
+                      onSave={name => updateChat(chat.id, { name })}
+                      onDone={() => setRenamingChatId(null)}
+                    />
+                  ) : (
+                    <span className="truncate flex-1">{chat.name}</span>
+                  )}
                   {active && <StatusDot status="working" className="h-1.5 w-1.5 shrink-0" />}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -357,13 +385,13 @@ export function Sidebar() {
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()} onCloseAutoFocus={keepFocusForRename}>
                       <DropdownActionItems actions={chatActions(chat, p.id)} />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent className="w-48">
+              <ContextMenuContent className="w-48" onCloseAutoFocus={keepFocusForRename}>
                 <ContextActionItems actions={chatActions(chat, p.id)} />
               </ContextMenuContent>
             </ContextMenu>
@@ -787,6 +815,36 @@ export function Sidebar() {
 }
 
 /** The chats answering right now, as one string: React re-renders only when the set changes. */
+/** A chat's name as a field in its own row. Keys and clicks stay inside: they must not open the chat or reach the global shortcuts. */
+function ChatRename({ name, onSave, onDone }: { name: string; onSave: (name: string) => void; onDone: () => void }) {
+  const t = useT();
+  const input = useRef<HTMLInputElement>(null);
+  // A tick late: the menu that opened this is still trapping focus in the commit that mounts it.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      input.current?.focus();
+      input.current?.select();
+    });
+    return () => clearTimeout(id);
+  }, []);
+  return (
+    <span className="min-w-0 flex-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+      <InlineEdit
+        ref={input}
+        editing
+        value={name}
+        className="-mx-[5px] -my-[3px] w-full"
+        aria-label={t("sidebar.renameChat.label")}
+        labels={{ placeholder: t("inlineEdit.placeholder"), saveError: t("inlineEdit.saveError"), saving: t("inlineEdit.saving"), saved: t("inlineEdit.saved") }}
+        validate={draft => (draft.trim() ? null : t("sidebar.renameChat.empty"))}
+        onSave={draft => onSave(draft.trim())}
+        onEditingChange={editing => { if (!editing) onDone(); }}
+        onCancel={onDone}
+      />
+    </span>
+  );
+}
+
 function answeringChats(): string {
   return useAppStore.getState().config.chats.filter(c => isChatActive(c.id)).map(c => c.id).join(",");
 }

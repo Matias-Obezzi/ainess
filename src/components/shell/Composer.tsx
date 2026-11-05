@@ -30,7 +30,7 @@ import { repoDirOf } from "@/lib/repo-dir";
 import { getTransport } from "@/lib/transport";
 import { confirm } from "@/lib/confirm";
 import { roleLabelKey } from "@/lib/status-labels";
-import { useT } from "@/i18n/useT";
+import { useT, useLocale } from "@/i18n/useT";
 import { plural } from "@/i18n";
 import { ChevronDown, FileText, Paperclip, Send, SlidersHorizontal, Square, X } from "lucide-react";
 import { QuestionGroup } from "@/components/InlineQuestion";
@@ -40,6 +40,8 @@ import { ghostFor, ghostTakesPlaceholder } from "@/lib/ghost-suggestion";
 import { toast } from "@/components/ui/toast";
 import { escapeShouldStop } from "@/lib/escape-stop";
 import { Typewriter } from "@/components/ui/typewriter";
+import { ContextMeter } from "@/components/ui/context-meter";
+import { COMPACT_AT_TOKENS, sessionWeight } from "@/lib/session-weight";
 import { cn } from "@/lib/utils";
 import {
   MAX_ATTACHMENT_BYTES,
@@ -845,6 +847,13 @@ function ComposerBox() {
     requestAnimationFrame(() => textareaRef.current?.setSelectionRange(newCaret, newCaret));
   };
 
+  /** What `/compact` does, and what the context meter's button does. */
+  const compactNow = () => {
+    if (!currentProjectId) return;
+    const n = compactProject(currentProjectId);
+    toast.success(plural(n, t("command.compact.done.one", { n }), t("command.compact.done.other", { n })));
+  };
+
   /** Runs one and empties the box. Commands never reach an agent, so nothing is queued or sent. */
   const runCommand = (command: ChatCommand) => {
     if (!currentProjectId) return;
@@ -852,8 +861,7 @@ function ComposerBox() {
     noteTyping("");
     setHistoryIndex(null);
     if (command.id === "compact") {
-      const n = compactProject(currentProjectId);
-      toast.success(plural(n, t("command.compact.done.one", { n }), t("command.compact.done.other", { n })));
+      compactNow();
     } else if (command.id === "cost") {
       setUsageOpen(true);
     } else if (command.id === "tasks") {
@@ -1590,6 +1598,9 @@ function ComposerBox() {
               )}
 
               <div className="flex items-center gap-1">
+                {!chatMode && !compact && currentProjectId && targetId && (
+                  <SessionMeter projectId={currentProjectId} agentId={targetId} onCompact={compactNow} />
+                )}
                 <ApprovalsPill />
                 {quotaAgent && <QuotaIndicator agent={quotaAgent} />}
               </div>
@@ -1603,5 +1614,33 @@ function ComposerBox() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * How heavy the target agent's conversation is, against the point where it compacts by itself.
+ * Its own component so the stream's deltas re-render this ring and not the whole composer; the
+ * selector hands back a number. Nothing shows when the provider doesn't report it.
+ */
+function SessionMeter({ projectId, agentId, onCompact }: { projectId: string; agentId: string; onCompact: () => void }) {
+  const t = useT();
+  const locale = useLocale();
+  // A chat keeps a session of its own: its weight says nothing about this thread's.
+  const tokens = useAppStore(state => sessionWeight(Object.values(state.runs).filter(r => r.projectId === projectId && r.kind !== "chat"), agentId));
+  if (tokens === undefined) return null;
+  return (
+    <ContextMeter
+      sources={[{ label: t("contextMeter.session"), tokens }]}
+      limit={COMPACT_AT_TOKENS}
+      locale={locale}
+      onCompact={onCompact}
+      labels={{
+        trigger: percent => t("contextMeter.trigger", { percent }),
+        title: t("contextMeter.title"),
+        usage: (used, limit) => t("contextMeter.usage", { used, limit }),
+        compact: t("contextMeter.compact"),
+        nearlyFull: t("contextMeter.nearlyFull"),
+      }}
+    />
   );
 }

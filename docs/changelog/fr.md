@@ -20,6 +20,13 @@ Les versions antérieures à la 0.6.0 sont dans le CHANGELOG du dépôt, en angl
   ne peuvent que se restreindre : l'approbation automatique s'éteint, jamais ne s'allume. Un serveur
   MCP http ajouté ou modifié là ne peut pas utiliser `${VAR}` dans son adresse ni ses en-têtes, et
   celui qui envoie déjà des en-têtes, des variables ou une connexion garde son adresse.
+- **Une jauge du poids de la conversation.** Le composer affiche un petit anneau pour l'agent auquel
+  vous parlez, qui se remplit jusqu'au seuil où sa session se compacte seule. Il ouvre un détail et,
+  à l'approche du seuil, un bouton Compacter. Il n'apparaît que dans le fil de l'orchestrateur sur
+  ordinateur, et seulement pour les fournisseurs qui indiquent leur usage.
+- **Renommer un chat depuis sa ligne.** « Renommer » dans le menu d'un chat transforme son nom en
+  champ sur place : Entrée enregistre, Échap rétablit l'ancien nom et un nom vide est refusé.
+  L'ancienne boîte de dialogue s'appelle désormais « Modifier ».
 
 ### Modifié
 

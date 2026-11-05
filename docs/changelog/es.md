@@ -20,6 +20,13 @@ Las versiones anteriores a la 0.6.0 están, en inglés, en el CHANGELOG del repo
   salas solo se pueden restringir: la autoaprobación se apaga, nunca se prende. Un servidor MCP
   http agregado o cambiado ahí no puede usar `${VAR}` en su dirección ni en sus headers, y uno que
   ya manda headers, variables o un inicio de sesión conserva su dirección.
+- **Un medidor de cuánto pesa la conversación.** El composer muestra un anillo chico para el agente
+  con el que hablás, que se llena hacia el punto donde su sesión se compacta sola. Abre un desglose
+  y, cuando está cerca, un botón Compactar. Aparece solo en el hilo del orquestador en escritorio, y
+  solo para los proveedores que informan su uso.
+- **Renombrar un chat desde su fila.** «Renombrar» en el menú de un chat convierte su nombre en un
+  campo ahí mismo: Enter guarda, Escape devuelve el nombre anterior y un nombre vacío se rechaza. El
+  diálogo de antes ahora es «Editar».
 
 ### Cambiado
 

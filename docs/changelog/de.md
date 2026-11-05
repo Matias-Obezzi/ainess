@@ -20,6 +20,14 @@ Die Versionen vor 0.6.0 stehen auf Englisch im CHANGELOG des Repositorys.
   Auto-Freigabe geht aus, nie an. Ein dort hinzugefügter oder geänderter HTTP-MCP-Server kann kein
   `${VAR}` in Adresse oder Headern verwenden, und einer, der schon Header, Variablen oder eine
   Anmeldung sendet, behält seine Adresse.
+- **Eine Anzeige dafür, wie schwer die Unterhaltung ist.** Der Composer zeigt für den Agenten, mit
+  dem du sprichst, einen kleinen Ring, der sich bis zu dem Punkt füllt, an dem seine Sitzung sich
+  selbst verdichtet. Er öffnet eine Aufschlüsselung und, kurz davor, eine Schaltfläche „Verdichten“.
+  Er erscheint nur im Thread des Orchestrators auf dem Desktop und nur bei Anbietern, die ihre
+  Nutzung melden.
+- **Einen Chat in seiner Zeile umbenennen.** „Umbenennen“ im Menü eines Chats macht seinen Namen
+  direkt dort zu einem Feld: Enter speichert, Escape stellt den alten Namen wieder her, ein leerer
+  Name wird abgelehnt. Der bisherige Dialog heißt jetzt „Bearbeiten“.
 
 ### Geändert
 

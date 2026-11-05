@@ -49,6 +49,13 @@ export const de = {
     title: 'Befehlsmenü',
     description: 'Nach einem Befehl oder einer Seite suchen',
   },
+  'context-meter': {
+    trigger: (percent: number) => `Kontextfenster zu ${percent} % voll`,
+    title: 'Kontextfenster',
+    usage: (used: string, limit: string) => `${used} von ${limit} Tokens`,
+    compact: 'Verdichten',
+    nearlyFull: 'Fast voll. Beim Verdichten werden ältere Runden zusammengefasst, um Platz zu schaffen.',
+  },
   'copy-button': {
     copy: 'Kopieren',
     copied: 'Kopiert',
@@ -82,6 +89,12 @@ export const de = {
     home: 'Pos1',
     end: 'Ende',
     plus: 'Plus',
+  },
+  'inline-edit': {
+    placeholder: 'Leer',
+    saveError: 'Speichern fehlgeschlagen. Versuche es erneut.',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
   },
   'multi-select': {
     placeholder: 'Auswählen…',
