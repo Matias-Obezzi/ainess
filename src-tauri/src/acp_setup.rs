@@ -599,7 +599,9 @@ fn unpack(archive: &Path, bun: &Path, target: &str) -> Result<(), String> {
     let index = (0..zip.len())
         .find(|i| {
             zip.by_index(*i)
-                .map(|e| e.name() == wanted_exe || e.name() == wanted_bin)
+                .ok()
+                // zip 9: `name()` devuelve Result (el nombre puede no ser UTF-8 válido).
+                .and_then(|e| e.name().ok().map(|n| n == wanted_exe || n == wanted_bin))
                 .unwrap_or(false)
         })
         .ok_or_else(|| format!("no bun executable inside bun-{target}.zip"))?;

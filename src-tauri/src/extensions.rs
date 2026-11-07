@@ -59,7 +59,7 @@ fn install_into(root: &Path, archive: &Path) -> Result<InstalledExtension, Strin
     let unpacked = (|| -> Result<(), String> {
         for i in 0..zip.len() {
             let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
-            let relative = entry.enclosed_name().ok_or_else(|| format!("unsafe path in the archive: {}", entry.name()))?;
+            let relative = entry.enclosed_name().ok_or_else(|| format!("unsafe path in the archive: {}", entry.name().unwrap_or_default()))?;
             let out_path = staging.join(relative);
             if entry.is_dir() {
                 fs::create_dir_all(&out_path).map_err(|e| e.to_string())?;
