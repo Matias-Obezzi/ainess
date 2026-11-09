@@ -45,7 +45,7 @@ sysinfo = { version = "0.39.6", default-features = false, features = ["system"] 
 tauri-plugin-window-state = "2"
 # The managed JS runtime (src/acp_setup.rs): bun ships as a zip, checked against the sha256 the
 # release publishes next to it.
-zip = { version = "6", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 sha2 = "0.10"
 # Connector logins (src/oauth.rs): tokens go to the OS keychain (Windows Credential Manager, macOS
 # Keychain), never into config.json; and PKCE needs randomness the OS vouches for.
@@ -66,8 +66,8 @@ windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_
 # through ICoreWebView2Settings and its 3/4/5/6, reached from the controller Tauri hands over in
 # `with_webview` (see src/webview.rs). Both versions are the ones wry already links against: with
 # any other one the COM types stop being the same types and nothing compiles.
-webview2-com = "0.38"
-windows-core = "0.61"
+webview2-com = "0.39"
+windows-core = "0.62"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
